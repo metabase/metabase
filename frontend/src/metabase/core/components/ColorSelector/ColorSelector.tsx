@@ -17,18 +17,27 @@ export interface ColorSelectorProps extends ColorSelectorAttributes {
   colors: string[];
   pillSize?: PillSize;
   onChange?: (newValue: string) => void;
+  withinPortal?: boolean;
 }
 
 export const ColorSelector = ({
   value,
   colors,
   onChange,
+  withinPortal = true,
   ...props
 }: ColorSelectorProps) => {
   const [opened, { toggle, close }] = useDisclosure(false);
 
   return (
-    <Popover opened={opened} onClose={close} position="bottom-start">
+    <Popover
+      withinPortal={withinPortal}
+      floatingStrategy="fixed"
+      opened={opened}
+      onDismiss={close}
+      position="bottom-start"
+      trapFocus
+    >
       <Popover.Target>
         <Center data-testid="color-selector-button">
           <ColorPill {...props} color={value} onClick={toggle} />
@@ -40,6 +49,7 @@ export const ColorSelector = ({
           colors={colors}
           onChange={onChange}
           onClose={close}
+          data-testid="color-selector-popover"
         />
       </Popover.Dropdown>
     </Popover>

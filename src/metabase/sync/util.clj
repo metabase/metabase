@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.models.task-history :as task-history]
    [metabase.query-processor.interface :as qp.i]
@@ -19,6 +20,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.memory :as u.mem]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
@@ -128,11 +130,12 @@
   {:style/indent [:form]}
   [log-fn message f]
   (let [start-time (System/nanoTime)
-        _          (log-fn (u/format-color 'magenta "STARTING: %s" message))
+        _          (log-fn (u/format-color 'magenta "STARTING: %s (%s)" message (u.mem/pretty-usage-str)))
         result     (f)]
-    (log-fn (u/format-color 'magenta "FINISHED: %s (%s)"
+    (log-fn (u/format-color 'magenta "FINISHED: %s (%s) (%s)"
                             message
-                            (u/format-nanoseconds (- (System/nanoTime) start-time))))
+                            (u/format-nanoseconds (- (System/nanoTime) start-time))
+                            (u.mem/pretty-usage-str)))
     result))
 
 (defn- with-start-and-finish-logging
@@ -213,15 +216,16 @@
    database  :- (ms/InstanceOf :model/Database)
    message   :- ms/NonBlankString
    f         :- fn?]
-  ((with-duplicate-ops-prevented
-    operation database
-    (with-sync-events
-     operation database
-     (with-start-and-finish-logging
-      message
-      (with-db-logging-disabled
-       (sync-in-context database
-                        (partial do-with-error-handling (format "Error in sync step %s" message) f))))))))
+  (when (database/should-sync? database)
+    ((with-duplicate-ops-prevented
+      operation database
+      (with-sync-events
+       operation database
+       (with-start-and-finish-logging
+        message
+        (with-db-logging-disabled
+         (sync-in-context database
+                          (partial do-with-error-handling (format "Error in sync step %s" message) f)))))))))
 
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things
@@ -603,3 +607,15 @@
   `(sum-for* (for [~item-binding ~coll
                    ~@more-for-bindings]
                (do ~@body))))
+
+(defn can-be-category-or-list?
+  "Can this type be a category or list?"
+  [base-type semantic-type]
+  (not
+   (or (isa? base-type :type/Temporal)
+       (isa? base-type :type/Collection)
+       (isa? base-type :type/Float)
+        ;; Don't let IDs become list Fields (they already can't become categories, because they already have a semantic
+        ;; type). It just doesn't make sense to cache a sequence of numbers since they aren't inherently meaningful
+       (isa? semantic-type :type/PK)
+       (isa? semantic-type :type/FK))))

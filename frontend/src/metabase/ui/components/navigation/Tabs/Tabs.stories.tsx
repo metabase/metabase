@@ -22,13 +22,13 @@ const tabs = [
 const DefaultTemplate = (args: TabsProps) => (
   <Tabs {...args}>
     <Tabs.List>
-      {tabs.map(tab => (
+      {tabs.map((tab) => (
         <Tabs.Tab key={tab.value} value={tab.value} disabled={tab.disabled}>
           {tab.label}
         </Tabs.Tab>
       ))}
     </Tabs.List>
-    {tabs.map(tab => (
+    {tabs.map((tab) => (
       <Tabs.Panel key={tab.value} value={tab.value}>
         {tab.label}
       </Tabs.Panel>
@@ -39,18 +39,18 @@ const DefaultTemplate = (args: TabsProps) => (
 const IconsTemplate = (args: TabsProps) => (
   <Tabs {...args}>
     <Tabs.List>
-      {tabs.map(tab => (
+      {tabs.map((tab) => (
         <Tabs.Tab
           key={tab.value}
           value={tab.value}
           disabled={tab.disabled}
-          icon={<Icon name={tab.icon as keyof typeof Icon} />}
+          leftSection={<Icon name={tab.icon as keyof typeof Icon} />}
         >
           {tab.label}
         </Tabs.Tab>
       ))}
     </Tabs.List>
-    {tabs.map(tab => (
+    {tabs.map((tab) => (
       <Tabs.Panel key={tab.value} value={tab.value}>
         {tab.label}
       </Tabs.Panel>
@@ -59,7 +59,7 @@ const IconsTemplate = (args: TabsProps) => (
 );
 
 export default {
-  title: "Navigation/Tabs",
+  title: "Components/Navigation/Tabs",
   component: Tabs,
   args,
   argTypes,

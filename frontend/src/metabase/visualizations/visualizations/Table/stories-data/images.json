@@ -1,0 +1,209 @@
+[
+  {
+    "data": {
+      "rows": [
+        ["foo", "https://placehold.co/600x400/EEE/31343C", "bar"],
+        ["foo", "https://placehold.co/600x400/EEE/31343C", "bar"]
+      ],
+      "results_timezone": "America/Toronto",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "X",
+            "field_ref": [
+              "field",
+              "X",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "database_type": "CHARACTER VARYING",
+            "name": "X",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 3
+                }
+              }
+            }
+          },
+          {
+            "display_name": "IMAGE",
+            "field_ref": [
+              "field",
+              "IMAGE",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "database_type": "CHARACTER VARYING",
+            "name": "IMAGE",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 1,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 39
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Y",
+            "field_ref": [
+              "field",
+              "Y",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "database_type": "CHARACTER VARYING",
+            "name": "Y",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 3
+                }
+              }
+            }
+          }
+        ]
+      },
+      "requested_timezone": "UTC",
+      "format-rows?": true,
+      "cols": [
+        {
+          "display_name": "X",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Text",
+          "database_type": "CHARACTER VARYING",
+          "effective_type": "type/Text"
+        },
+        {
+          "display_name": "IMAGE",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "IMAGE",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "IMAGE",
+          "base_type": "type/Text",
+          "database_type": "CHARACTER VARYING",
+          "effective_type": "type/Text"
+        },
+        {
+          "display_name": "Y",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "Y",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "Y",
+          "base_type": "type/Text",
+          "database_type": "CHARACTER VARYING",
+          "effective_type": "type/Text"
+        }
+      ],
+      "native_form": {
+        "params": null,
+        "query": "select 'foo' x, 'https://placehold.co/600x400/EEE/31343C' image, 'bar' y\nunion all select 'foo', 'https://placehold.co/600x400/EEE/31343C', 'bar'"
+      },
+      "is_sandboxed": false,
+      "insights": null
+    },
+    "cached": null,
+    "database_id": 1,
+    "started_at": "2025-03-28T21:15:18.343689-04:00",
+    "json_query": {
+      "database": 1,
+      "type": "native",
+      "native": {
+        "template-tags": {},
+        "query": "select 'foo' x, 'https://placehold.co/600x400/EEE/31343C' image, 'bar' y\nunion all select 'foo', 'https://placehold.co/600x400/EEE/31343C', 'bar'"
+      },
+      "middleware": {
+        "js-int-to-string?": true,
+        "userland-query?": true,
+        "add-default-userland-constraints?": true
+      }
+    },
+    "average_execution_time": null,
+    "status": "completed",
+    "context": "ad-hoc",
+    "row_count": 2,
+    "running_time": 12,
+    "card": {
+      "dataset_query": {
+        "database": 1,
+        "info": {
+          "card-entity-id": "v7NDjIFM4I_rb1hwkH0hY"
+        },
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "select 'foo' x, 'https://placehold.co/600x400/EEE/31343C' image, 'bar' y\nunion all select 'foo', 'https://placehold.co/600x400/EEE/31343C', 'bar'"
+        }
+      },
+      "display": "table",
+      "displayIsLocked": true,
+      "parameters": [],
+      "visualization_settings": {
+        "table.column_widths": [64, 127, 225],
+        "table.pivot_column": "X",
+        "table.cell_column": "Z",
+        "column_settings": {
+          "[\"name\",\"IMAGE\"]": {
+            "view_as": "image"
+          }
+        }
+      },
+      "type": "question"
+    }
+  }
+]

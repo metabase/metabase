@@ -1,14 +1,14 @@
 import type { Alert, AlertCard } from "../alert";
-import type { Channel } from "../notifications";
+import type { Channel } from "../notification-channels";
 
 import { createMockEntityId } from "./entity-id";
 import { createMockUserInfo } from "./user";
 
-export const createMockAlert = (opts?: Partial<Alert>): Alert => ({
+export const createMockPulse = (opts?: Partial<Alert>): Alert => ({
   id: 1,
-  name: "Alert",
-  alert_above_goal: false,
-  alert_condition: "rows",
+  name: "Pulse",
+  alert_above_goal: true,
+  alert_condition: "goal",
   alert_first_only: false,
   skip_if_empty: false,
 

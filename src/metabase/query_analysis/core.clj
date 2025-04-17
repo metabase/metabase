@@ -19,10 +19,15 @@
    [metabase.query-analysis.native-query-analyzer.replacement :as nqa.replacement]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.namespaces :as shared.ns]
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(shared.ns/import-fns
+ [nqa
+  tables-for-native])
 
 (def ^:private realtime-queue-capacity
   "The maximum number of cards which can be queued for async analysis. When exceeded, additional cards will be dropped."
@@ -226,7 +231,7 @@
   (if (every? #(some? (% card-or-id)) [:id :dataset_query])
     card-or-id
     ;; If we need to query the database though, find out for sure.
-    (t2/select-one [:model/Card :id :archived :dataset_query] (u/the-id card-or-id))))
+    (t2/select-one [:model/Card :id :archived :dataset_query :card_schema] (u/the-id card-or-id))))
 
 (defn analyze!*
   "Update the analysis for a given card if it is active. Should only be called

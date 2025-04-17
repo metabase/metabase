@@ -151,7 +151,7 @@
   (.local value))
 
 (def ^:private parse-time-formats
-  #js ["HH:mm:ss.SSS[Z]"
+  #js ["HH:mm:ss.SSSZ"
        "HH:mm:ss.SSS"
        "HH:mm:ss"
        "HH:mm"])
@@ -228,30 +228,64 @@
       common/drop-trailing-time-zone
       (moment/utc moment/ISO_8601)))
 
+(def ^:private unit-formats
+  {:day-of-week        "dddd"
+   :day-of-week-abbrev "ddd"
+   :day-of-week-iso    "dddd"
+   :month-of-year      "MMM"
+   :month-of-year-full "MMMM"
+   :minute-of-hour     "m"
+   :hour-of-day        "h A"
+   :hour-of-day-24     "h"
+   :day-of-month       "D"
+   :day-of-year        "DDD"
+   :week-of-year       "w"
+   :quarter-of-year    "[Q]Q"})
+
 (defn ^:private format-extraction-unit
   "Formats a date-time value given the temporal extraction unit.
   If unit is not supported, returns nil."
-  [t unit]
-  (case unit
-    :day-of-week     (.format t "dddd")
-    :day-of-week-iso (.format t "dddd")
-    :month-of-year   (.format t "MMM")
-    :minute-of-hour  (.format t "m")
-    :hour-of-day     (.format t "h A")
-    :day-of-month    (.format t "D")
-    :day-of-year     (.format t "DDD")
-    :week-of-year    (.format t "w")
-    :quarter-of-year (.format t "[Q]Q")
-    nil))
+  [t unit locale]
+  (when-some [format (get unit-formats unit)]
+    (if locale
+      (-> t
+          (.locale locale)
+          (.format format))
+      (.format t format))))
+
+(defn- has-explicit-time?
+  "Does this moment value have explicit time parts (i.e., what it parsed with time components?"
+  [m]
+  ;; type hints to quell warnings from compiler
+  (let [^js/Object flags (.parsingFlags ^moment/Moment m)
+        ^js/Array parts (.-parsedDateParts flags)]
+    (when parts
+      (some (fn [i] (aget parts i)) [3 ;; hours
+                                     4 ;; minutes
+                                     5 ;; seconds
+                                     ]))))
+
+(defn- has-explicit-date?
+  "Does this moment value have explicit date parts (i.e., what it parsed with date components?"
+  [m]
+  ;; type hints to quell warnings from compiler
+  (let [^js/Object flags (.parsingFlags ^moment/Moment m)
+        ^js/Array parts (.-parsedDateParts flags)]
+    (when parts
+      (some (fn [i] (aget parts i)) [0 ;; year
+                                     1 ;; month
+                                     2 ;; day
+                                     ]))))
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for extraction units) given the temporal-bucketing unit.
    If unit is nil, formats the full date/time.
    Time input formatting is only defined with time units."
   ;; This third argument is needed for the JVM side; it can be ignored here.
-  ([input unit _locale] (format-unit input unit))
-  ([input unit]
-   (if (string? input)
+  ([input unit] (format-unit input unit nil))
+  ([input unit locale]
+   (cond
+     (string? input)
      (let [time? (common/matches-time? input)
            date? (common/matches-date? input)
            date-time? (common/matches-date-time? input)
@@ -262,17 +296,48 @@
                (or date? date-time?) (coerce-local-date-time input))]
        (if (and t (.isValid t))
          (or
-          (format-extraction-unit t unit)
+          (format-extraction-unit t unit locale)
+          ;; no locale for default formats
           (cond
             time? (.format t "h:mm A")
             date? (.format t "MMM D, YYYY")
             date-time? (.format t "MMM D, YYYY, h:mm A")))
          input))
+
+     (number? input)
      (if (= unit :hour-of-day)
        (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
        (or
-        (format-extraction-unit (common/number->timestamp input {:unit unit}) unit)
-        (str input))))))
+        (format-extraction-unit (common/number->timestamp input {:unit unit}) unit locale)
+        (str input)))
+
+     (moment/isMoment input)
+     (or (format-extraction-unit input unit locale)
+         ;; no locale for default formats
+         (cond
+           ;; no hour, minute, or seconds, must be date
+           (not (has-explicit-time? input))
+           (.format input "MMM D, YYYY")
+
+           ;; no year, month, or day, must be a time
+           (not (has-explicit-date? input))
+           (.format input "h:mm A")
+
+           :else ;; otherwise both date and time
+           (.format input "MMM D, YYYY, h:mm A"))))))
+
+(defn parse-unit
+  "Parse a unit of time/date, e.g., 'Wed' or 'August' or '14'."
+  ([input unit]
+   (when-some [format (get unit-formats unit)]
+     (moment input format)))
+  ([input unit locale]
+   (let [temp (.locale moment)]     ;; 1. save current locale
+     (try
+       (.locale moment locale)      ;; 2. set new locale for subsequent parse
+       (parse-unit input unit)
+       (finally
+         (.locale moment temp)))))) ;; 3. set locale to original
 
 (defn format-diff
   "Formats a time difference between two temporal values.
@@ -356,29 +421,25 @@
 
 (def ^:private temporal-formats
   {:offset-date-time {:regex   common/offset-datetime-regex
-                      :formats #js ["YYYY-MM-DDTHH:mm:ss.SSS[Z]"
-                                    "YYYY-MM-DDTHH:mm:ss[Z]"
-                                    "YYYY-MM-DDTHH:mm[Z]"
-                                    "YYYY-MM-DDTHH[Z]"]}
+                      :formats #js ["YYYY-MM-DDTHH:mm:ss.SSSZ"
+                                    "YYYY-MM-DDTHH:mm:ssZ"
+                                    "YYYY-MM-DDTHH:mmZ"]}
    :local-date-time  {:regex   common/local-datetime-regex
                       :formats #js ["YYYY-MM-DDTHH:mm:ss.SSS"
                                     "YYYY-MM-DDTHH:mm:ss"
-                                    "YYYY-MM-DDTHH:mm"
-                                    "YYYY-MM-DDTHH"]}
+                                    "YYYY-MM-DDTHH:mm"]}
    :local-date       {:regex   common/local-date-regex
                       :formats #js ["YYYY-MM-DD"
                                     "YYYY-MM"
                                     "YYYY"]}
    :offset-time      {:regex   common/offset-time-regex
-                      :formats #js ["HH:mm:ss.SSS[Z]"
-                                    "HH:mm:ss[Z]"
-                                    "HH:mm[Z]"
-                                    "HH[Z]"]}
+                      :formats #js ["HH:mm:ss.SSSZ"
+                                    "HH:mm:ssZ"
+                                    "HH:mmZ"]}
    :local-time       {:regex   common/local-time-regex
                       :formats #js ["HH:mm:ss.SSS"
                                     "HH:mm:ss"
-                                    "HH:mm"
-                                    "HH"]}})
+                                    "HH:mm"]}})
 
 (defn- iso-8601->moment+type
   [s]
@@ -388,6 +449,22 @@
               (when (.isValid parsed)
                 [parsed value-type]))))
         temporal-formats))
+
+(comment
+  (moment "01:49:10.858Z" "HH:mm:ss.SSSZ")
+
+  (let [s "1982-03-16T01:49:10.858Z"
+        formats #js ["YYYY-MM-DDTHH:mm:ss.SSS[Z]"]
+        formatz #js ["YYYY-MM-DDTHH:mm:ss.SSSZ"]
+        s-parsed (moment/parseZone s formats #_strict? true)
+        z-parsed (moment/parseZone s formatz #_strict? true)]
+    {:tz (.. (js/Intl.DateTimeFormat) resolvedOptions -timeZone)
+     :tzo (.getTimezoneOffset (js/Date.)) #_mins
+     :s s-parsed
+     :z z-parsed
+     :fz (.format z-parsed "YYYY-MM-DDTHH:mm:ss.SSSZ")
+     :fs (.format z-parsed "YYYY-MM-DDTHH:mm:ss.SSS[Z]")})
+  -)
 
 (defmulti ^:private moment+type->iso-8601
   {:arglists '([moment+type])}

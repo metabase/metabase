@@ -6,7 +6,6 @@ import Snippets from "metabase/entities/snippets";
 import { deserializeCardFromUrl } from "metabase/lib/card";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
-import { fetchAlertsForQuestion } from "metabase/notifications/redux/alert";
 import {
   getIsEditingInDashboard,
   getIsNotebookNativePreviewShown,
@@ -218,7 +217,7 @@ export async function updateTemplateTagNames(
 ): Promise<NativeQuery> {
   const referencedCards = (
     await Promise.all(
-      query.referencedQuestionIds().map(async id => {
+      query.referencedQuestionIds().map(async (id) => {
         try {
           const actionResult = await dispatch(
             Questions.actions.fetch({ id }, { noEvent: true }),
@@ -302,10 +301,6 @@ async function handleQBInit(
     });
   }
 
-  if (isSavedCard(card)) {
-    dispatch(fetchAlertsForQuestion(card.id));
-  }
-
   await dispatch(loadMetadataForCard(card));
   const metadata = getMetadata(getState());
 
@@ -331,7 +326,7 @@ async function handleQBInit(
   }
 
   if (isNative && isEditable) {
-    const query = question.legacyQuery() as NativeQuery;
+    const query = question.legacyNativeQuery() as NativeQuery;
     const newQuery = await updateTemplateTagNames(query, getState, dispatch);
     question = question.setLegacyQuery(newQuery);
   }

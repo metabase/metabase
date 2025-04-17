@@ -11,6 +11,7 @@
    [diehard.core :as dh]
    [environ.core :refer [env]]
    [metabase.config :as config]
+   [metabase.internal-stats :as internal-stats]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.util :as u]
@@ -92,6 +93,31 @@
                   0
                   (locking-active-user-count))))
 
+(defenterprise embedding-settings
+  "Boolean values that report on the state of different embedding configurations."
+  metabase-enterprise.internal-stats
+  [_embedded-dashboard-count _embedded-question-count]
+  {:enabled-embedding-static      false
+   :enabled-embedding-interactive false
+   :enabled-embedding-sdk         false})
+
+(defn- stats-for-token-request
+  []
+  (let [users (active-users-count)
+        ext-users (internal-stats/external-users-count)
+        embedding-dashboard-count (internal-stats/embedding-dashboard-count)
+        embedding-question-count (internal-stats/embedding-question-count)
+        stats (merge (internal-stats/query-execution-last-utc-day)
+                     (embedding-settings embedding-dashboard-count embedding-question-count)
+                     {:users users
+                      :embedding-dashboard-count embedding-dashboard-count
+                      :embedding-question-count embedding-question-count
+                      :external-users ext-users
+                      :internal-users (- users ext-users)
+                      :domains (internal-stats/email-domain-count)})]
+    (log/info "Reporting embedding stats:" stats)
+    stats))
+
 (defn- token-status-url [token base-url]
   (when (seq token)
     (format "%s/api/%s/v2/status" base-url token)))
@@ -110,7 +136,7 @@
    [:company       {:optional true} [:string {:min 1}]]])
 
 (def ^:private ^:const token-status-cache-ttl
-  "Amount of time to cache the status of a valid enterprise token before forcing a re-check."
+  "Amount of time in ms to cache the status of a valid enterprise token before forcing a re-check."
   (u/hours->ms 12))
 
 (def ^{:arglists '([token base-url site-uuid])} ^:private fetch-token-and-parse-body*
@@ -122,9 +148,9 @@
    (fn [token base-url site-uuid]
      (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
      (let [{:keys [body status] :as resp} (some-> (token-status-url token base-url)
-                                                  (http/get {:query-params     {:users      (active-users-count)
-                                                                                :site-uuid  site-uuid
-                                                                                :mb-version (:tag config/mb-version-info)}
+                                                  (http/get {:query-params     (merge (stats-for-token-request)
+                                                                                      {:site-uuid  site-uuid
+                                                                                       :mb-version (:tag config/mb-version-info)})
                                                              :throw-exceptions false}))]
        (cond
          (http/success? resp) (some-> body json/decode+kw)

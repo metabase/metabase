@@ -1,18 +1,17 @@
 import type { ChangeEvent } from "react";
 import { useRef, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { UploadInput } from "metabase/components/upload";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import Button from "metabase/core/components/Button";
-import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { QuestionMoreActionsMenu } from "metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
-import { Box, Divider, Icon, Menu } from "metabase/ui";
+import { Box, Divider, Icon, Menu, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 import { UploadMode } from "metabase-types/store/upload";
@@ -49,6 +48,20 @@ export const QuestionActions = ({
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.append);
 
   const dispatch = useDispatch();
+
+  useRegisterShortcut(
+    [
+      {
+        id: "query-builder-info-sidebar",
+        perform: onInfoClick,
+      },
+      {
+        id: "query-builder-bookmark",
+        perform: onToggleBookmark,
+      },
+    ],
+    [isShowingQuestionInfoSidebar, isBookmarked],
+  );
 
   const infoButtonColor = isShowingQuestionInfoSidebar
     ? color("brand")
@@ -101,7 +114,7 @@ export const QuestionActions = ({
           />
         </Box>
       )}
-      <Tooltip tooltip={t`More info`}>
+      <Tooltip label={t`More info`}>
         <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
           <Button
             className={ViewTitleHeaderS.ViewHeaderIconButton}
@@ -121,7 +134,7 @@ export const QuestionActions = ({
             ref={fileInputRef}
             onChange={handleFileUpload}
           />
-          <Tooltip tooltip={t`Upload data to this model`}>
+          <Tooltip label={t`Upload data to this model`}>
             <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
               <Menu position="bottom-end">
                 <Menu.Target>
@@ -136,14 +149,14 @@ export const QuestionActions = ({
                 </Menu.Target>
                 <Menu.Dropdown>
                   <Menu.Item
-                    icon={<Icon name="add" />}
+                    leftSection={<Icon name="add" />}
                     onClick={() => handleUploadClick(UploadMode.append)}
                   >
                     {t`Append data to this model`}
                   </Menu.Item>
 
                   <Menu.Item
-                    icon={<Icon name="refresh" />}
+                    leftSection={<Icon name="refresh" />}
                     onClick={() => handleUploadClick(UploadMode.replace)}
                   >
                     {t`Replace all data in this model`}

@@ -7,8 +7,8 @@
    [metabase.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [metabase.test.initialize :as initialize]
-   [metabase.test.util :as tu]
-   [metabase.util.encryption :as encryption])
+   [metabase.util.encryption :as encryption]
+   [metabase.util.string :as string])
   (:import (java.io ByteArrayInputStream)
            (org.apache.commons.io IOUtils)))
 
@@ -137,7 +137,7 @@
                   decrypted-stream (encryption/maybe-decrypt-stream secret encrypted-stream)]
         (is (= "test string" (slurp decrypted-stream))))))
   (testing "Can encrypt and decrypt a large stream"
-    (let [data (tu/random-string 100000)
+    (let [data (string/random-string 100000)
           input-stream (ByteArrayInputStream. (codecs/to-bytes data))]
       (with-open [encrypted-stream (encryption/encrypt-stream secret input-stream)
                   decrypted-stream (encryption/maybe-decrypt-stream secret encrypted-stream)]
@@ -151,7 +151,7 @@
       (with-open [decrypted-stream (encryption/maybe-decrypt-stream secret input-stream)]
         (is (= -1 (.read decrypted-stream))))))
   (testing "Long unencrypted streams come back as-is"
-    (let [data (tu/random-string 100000)
+    (let [data (string/random-string 100000)
           input-stream (ByteArrayInputStream. (codecs/to-bytes data))]
       (with-open [decrypted-stream (encryption/maybe-decrypt-stream secret input-stream)]
         (is (= data (codecs/bytes->str (IOUtils/toByteArray decrypted-stream))))))))

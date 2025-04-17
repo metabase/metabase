@@ -33,15 +33,17 @@ export type BaseRecentItem = {
   timestamp: string;
 };
 
+export type RecentTableDatabaseInfo = {
+  id: number;
+  name: string;
+  initial_sync_status: InitialSyncStatus;
+};
+
 export type RecentTableItem = BaseRecentItem & {
   model: "table";
   display_name: string;
   table_schema: string;
-  database: {
-    id: number;
-    name: string;
-    initial_sync_status: InitialSyncStatus;
-  };
+  database: RecentTableDatabaseInfo;
 };
 
 export type RecentCollectionItem = BaseRecentItem & {

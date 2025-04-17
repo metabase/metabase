@@ -1,5 +1,6 @@
 (ns metabase.server.middleware.request-id
-  (:require [metabase.config :refer [*request-id*]]))
+  (:require
+   [metabase.config :refer [*request-id*]]))
 
 (defn wrap-request-id
   "Attach a unique request ID to the request"

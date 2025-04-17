@@ -1,7 +1,6 @@
 import { useReducer, useRef, useState } from "react";
 import { useAsyncFn, useUnmount } from "react-use";
 
-import type { ParameterValues } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import {
   loadQuestionSdk,
   runQuestionOnNavigateSdk,
@@ -13,6 +12,7 @@ import type {
   LoadSdkQuestionParams,
   NavigateToNewCardParams,
   SdkQuestionState,
+  SqlParameterValues,
 } from "embedding-sdk/types/question";
 import { type Deferred, defer } from "metabase/lib/promise";
 import type Question from "metabase-lib/v1/Question";
@@ -22,9 +22,6 @@ type LoadQuestionResult = Promise<
 >;
 
 export interface LoadQuestionHookResult {
-  // The ID provided to the question component.
-  originalId?: number | string;
-
   question?: Question;
   originalQuestion?: Question;
 
@@ -52,8 +49,9 @@ export interface LoadQuestionHookResult {
 }
 
 export function useLoadQuestion({
-  cardId,
+  questionId,
   options,
+  // Passed when navigating from `InteractiveDashboard` or `EditableDashboard`
   deserializedCard,
   initialSqlParameters,
 }: LoadSdkQuestionParams): LoadQuestionHookResult {
@@ -82,7 +80,7 @@ export function useLoadQuestion({
   // Avoid re-running the query if the parameters haven't changed.
   const sqlParameterKey = getParameterDependencyKey(initialSqlParameters);
 
-  const shouldLoadQuestion = cardId != null;
+  const shouldLoadQuestion = questionId != null || deserializedCard != null;
   const [isQuestionLoading, setIsQuestionLoading] =
     useState(shouldLoadQuestion);
 
@@ -94,7 +92,7 @@ export function useLoadQuestion({
       loadQuestionSdk({
         options,
         deserializedCard,
-        cardId,
+        questionId: questionId,
         initialSqlParameters,
       }),
     ).finally(() => {
@@ -112,7 +110,7 @@ export function useLoadQuestion({
     mergeQuestionState(results);
 
     return { ...results, originalQuestion };
-  }, [dispatch, options, deserializedCard, cardId, sqlParameterKey]);
+  }, [dispatch, options, deserializedCard, questionId, sqlParameterKey]);
 
   const [runQuestionState, queryQuestion] = useAsyncFn(async () => {
     if (!question) {
@@ -142,7 +140,7 @@ export function useLoadQuestion({
           previousQuestion: question,
           originalQuestion,
           cancelDeferred: deferred(),
-          optimisticUpdateQuestion: question =>
+          optimisticUpdateQuestion: (question) =>
             mergeQuestionState({ question }),
           shouldRunQueryOnQuestionChange: run,
         }),
@@ -160,7 +158,7 @@ export function useLoadQuestion({
           ...params,
           originalQuestion,
           cancelDeferred: deferred(),
-          onQuestionChange: question => mergeQuestionState({ question }),
+          onQuestionChange: (question) => mergeQuestionState({ question }),
           onClearQueryResults: () =>
             mergeQuestionState({ queryResults: [null] }),
         }),
@@ -206,7 +204,7 @@ const questionReducer = (state: SdkQuestionState, next: SdkQuestionState) => ({
 });
 
 export const getParameterDependencyKey = (
-  parameters?: ParameterValues,
+  parameters?: SqlParameterValues,
 ): string =>
   Object.entries(parameters ?? {})
     .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))

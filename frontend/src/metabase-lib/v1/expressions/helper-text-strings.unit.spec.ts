@@ -1,7 +1,10 @@
 import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks/database";
 
+import { MBQL_CLAUSES } from "./config";
+import { formatExpressionParts } from "./formatter";
 import { getHelpText } from "./helper-text-strings";
 
 describe("getHelpText", () => {
@@ -24,7 +27,11 @@ describe("getHelpText", () => {
       const helpText = getHelpText("count", database, reportTimezone);
 
       expect(helpText?.structure).toBe("Count");
-      expect(helpText?.example).toBe("Count");
+      expect(helpText?.example).toEqual({
+        operator: "count",
+        options: {},
+        args: [],
+      });
       expect(helpText?.description).toMatch(/returns the count of rows/i);
       expect(helpText?.args).toBe(undefined);
     });
@@ -34,11 +41,81 @@ describe("getHelpText", () => {
       const helpText = getHelpText("percentile", database, reportTimezone);
 
       expect(helpText?.structure).toBe("Percentile");
-      expect(helpText?.example).toBe("Percentile([Score], 0.9)");
+      expect(helpText?.example).toEqual({
+        operator: "percentile",
+        options: {},
+        args: [
+          {
+            operator: "dimension",
+            options: {},
+            args: ["Score"],
+          },
+          0.9,
+        ],
+      });
       expect(helpText?.description).toBe(
         "Returns the value of the column at the percentile value.",
       );
       expect(helpText?.args).toHaveLength(2);
+    });
+
+    it("convertTimezone", () => {
+      const { database } = setup();
+      const helpText = getHelpText(
+        "convert-timezone",
+        database,
+        reportTimezone,
+      );
+
+      expect(helpText?.structure).toEqual("convertTimezone");
+      expect(helpText?.description).toEqual(
+        expect.not.stringContaining("https"),
+      );
+    });
+
+    it("offset", async () => {
+      const { database } = setup();
+      const helpText = getHelpText("offset", database, reportTimezone);
+
+      expect(helpText?.structure).toBe("Offset");
+      expect(helpText?.example).toEqual({
+        operator: "offset",
+        options: {},
+        args: [
+          {
+            operator: "sum",
+            options: {},
+            args: [
+              {
+                operator: "dimension",
+                options: {},
+                args: ["Total"],
+              },
+            ],
+          },
+          -1,
+        ],
+      });
+      if (!helpText?.example) {
+        throw new Error("unreachable");
+      }
+      expect(await formatExpressionParts(helpText?.example)).toEqual(
+        "Offset(Sum([Total]), -1)",
+      );
+    });
+
+    describe("datetimeDiff", () => {
+      it("should not mention milliseconds in the unit description", () => {
+        const { database } = setup();
+        const helpText = checkNotNull(
+          getHelpText("datetime-diff", database, reportTimezone),
+        );
+        const unitArg = checkNotNull(
+          helpText.args?.find((arg) => arg.name === "unit"),
+        );
+        expect(unitArg.description).toContain("second");
+        expect(unitArg.description).not.toContain("millisecond");
+      });
     });
   });
 
@@ -70,6 +147,17 @@ describe("getHelpText", () => {
 
       expect(helpText?.description).toMatch("UTC");
     });
+  });
+
+  it("all help texts can be formatted", async () => {
+    for (const name in MBQL_CLAUSES) {
+      const { database } = setup();
+      const helpText = getHelpText(name, database, reportTimezone);
+      if (!helpText) {
+        continue;
+      }
+      expect(() => formatExpressionParts(helpText.example)).not.toThrow();
+    }
   });
 });
 

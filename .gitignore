@@ -36,8 +36,13 @@
 /crate-*
 /cypress
 /deploy/artifacts/*
+/docs/**/node_modules
+/docs/**/package.json
+/docs/**/yarn.lock
+/docs/embedding/sdk/api/
 /frontend/test/snapshots/*
 /e2e/snapshots/*
+/e2e/tmp/*
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot
@@ -66,6 +71,8 @@
 /storybook-static
 /target
 /test-report-*
+/temp
+**/cli-snippets-tmp/**
 \#*\#
 bin/node_modules/
 bin/release/aws-eb/metabase-aws-eb.zip
@@ -98,6 +105,7 @@ modules/drivers/*/.lsp/*
 .clj-kondo/*
 !.clj-kondo/README.md
 !.clj-kondo/config.edn
+!.clj-kondo/config/
 !.clj-kondo/src/
 !.clj-kondo/test/
 !.clj-kondo/macros/
@@ -117,3 +125,13 @@ modules/drivers/*/.lsp/*
 
 # swc
 .swc/
+
+*storybook.log
+
+# jar downloader
+/jars/
+/bin/bb
+
+.aider*
+/config.yml
+CLAUDE.local.md

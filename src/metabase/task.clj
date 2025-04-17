@@ -8,11 +8,17 @@
   application goes through normal startup procedures. Inside this function you can do any work needed and add your
   task to the scheduler as usual via `schedule-task!`.
 
+  ## Documentation
+
+  For more detailed information about using Quartz in Metabase, including examples and best practices,
+  see the [QUARTZ.md](src/metabase/task/QUARTZ.md) documentation.
+
   ## Quartz JavaDoc
 
   Find the JavaDoc for Quartz here: http://www.quartz-scheduler.org/api/2.3.0/index.html"
   (:require
    [clojure.string :as str]
+   [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [environ.core :as env]
    [metabase.db :as mdb]
@@ -23,7 +29,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
-   (org.quartz CronTrigger JobDetail JobKey JobPersistenceException ObjectAlreadyExistsException Scheduler Trigger TriggerKey)))
+   (org.quartz CronTrigger JobDetail JobExecutionContext JobExecutionException JobKey JobPersistenceException
+               ObjectAlreadyExistsException Scheduler Trigger TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -35,7 +42,7 @@
   *quartz-scheduler*
   (atom nil))
 
-(defn- scheduler
+(defn scheduler
   "Fetch the instance of our Quartz scheduler."
   ^Scheduler []
   @*quartz-scheduler*)
@@ -86,10 +93,25 @@
         (qs/get-job scheduler job-key)
         (catch JobPersistenceException e
           (when (instance? ClassNotFoundException (.getCause e))
-            (log/infof "Deleting job %s due to class not found" (.getName ^JobKey job-key))
+            (log/warnf "Deleting job %s due to class not found (%s)"
+                       (.getName ^JobKey job-key)
+                       (ex-message (.getCause e)))
             (qs/delete-job scheduler job-key)))))))
 
-(defn- init-scheduler!
+(defn- reset-errored-triggers!
+  "Quartz does not play well with rolling updates. For example, if a new instance adds and schedules a new job, an older
+  instance may pick this up, but be unable to construct the job. It will then put the trigger into the `ERROR` state,
+  from which it will never recover.
+
+  Actually fixing this odd and undesirable behavior would be the ideal solution, but as a stopgap, let's just
+  automatically reset all `ERROR`ed triggers to `WAITING` on startup."
+  [^Scheduler scheduler]
+  (doseq [^TriggerKey tk (.getTriggerKeys scheduler nil)]
+    ;; From dox: "Only affects triggers that are in ERROR state - if identified trigger is not
+    ;; in that state then the result is a no-op."
+    (.resetTriggerFromErrorState scheduler tk)))
+
+(defn init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
   standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
   []
@@ -101,6 +123,7 @@
         (qs/standby new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
         (delete-jobs-with-no-class!)
+        (reset-errored-triggers! new-scheduler)
         (init-tasks!)))))
 
 ;;; this is a function mostly to facilitate testing.
@@ -135,11 +158,12 @@
     (when-let [scheduler (scheduler)]
       (let [job-key          (.getKey ^JobDetail job)
             new-trigger-key  (.getKey ^Trigger new-trigger)
-            triggers         (qs/get-triggers-of-job scheduler job-key)
+            triggers         (try (qs/get-triggers-of-job scheduler job-key) (catch Exception _))
             matching-trigger (first (filter (comp #{new-trigger-key} #(.getKey ^Trigger %)) triggers))
             replaced-trigger (or matching-trigger (first triggers))]
-        (when replaced-trigger
-          (log/debugf "Rescheduling job %s" (.getName job-key))
+        (log/debugf "Rescheduling job %s" (.getName job-key))
+        (if-not replaced-trigger
+          (.scheduleJob scheduler new-trigger)
           (let [replaced-key (.getKey ^Trigger replaced-trigger)]
             (when-not matching-trigger
               (log/warnf "Replacing trigger %s with trigger %s%s"
@@ -149,9 +173,8 @@
                            ;; We probably want more intuitive rescheduling semantics for multi-trigger jobs...
                            ;; Ideally we would pass *all* the new triggers at once, so we can match them up atomically.
                            ;; The current behavior is especially confounding if replacing N triggers with M ones.
-                           (str " (chosen randomly from " (count triggers) " existing ones)")))
-              matching-trigger)
-            (.rescheduleJob scheduler (.getKey ^Trigger matching-trigger) new-trigger)))))
+                           (str " (chosen randomly from " (count triggers) " existing ones)"))))
+            (.rescheduleJob scheduler replaced-key new-trigger)))))
     (catch Throwable e
       (log/error e "Error rescheduling job"))))
 
@@ -206,6 +229,12 @@
   [trigger-key :- (ms/InstanceOfClass TriggerKey)]
   (when-let [scheduler (scheduler)]
     (qs/delete-trigger scheduler trigger-key)))
+
+(mu/defn delete-all-triggers-of-job!
+  "Delete all triggers for a given job key."
+  [job-key :- (ms/InstanceOfClass JobKey)]
+  (when-let [scheduler (scheduler)]
+    (qs/delete-triggers scheduler (map #(.getKey ^Trigger %) (qs/get-triggers-of-job scheduler job-key)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Scheduler Info                                                 |
@@ -275,6 +304,7 @@
     (task/job-info \"metabase.task.sync-and-analyze.job\")"
   [job-key]
   (when-let [scheduler (scheduler)]
+    (qs/shutdown? scheduler)
     (let [job-key (->job-key job-key)]
       (try
         (assoc (job-detail->info (qs/get-job scheduler job-key))
@@ -303,3 +333,22 @@
   []
   {:scheduler (some-> (scheduler) .getMetaData .getSummary str/split-lines)
    :jobs      (jobs-info)})
+
+(defmacro rerun-on-error
+  "Retry the current Job if an exception is thrown by the enclosed code."
+  {:style/indent 1}
+  [^JobExecutionContext ctx & body]
+  `(let [msg# (str (.getName (.getKey (.getJobDetail ~ctx))) " failed, but we will try it again.")]
+     (try
+       ~@body
+       (catch Exception e#
+         (log/error e# msg#)
+         (throw (JobExecutionException. msg# e# true))))))
+
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defmacro defjob
+  "Like `clojurewerkz.quartzite.task/defjob` but with a log context."
+  [jtype args & body]
+  `(jobs/defjob ~jtype ~args
+     (log/with-context {:quartz-job-type (quote ~jtype)}
+       ~@body)))

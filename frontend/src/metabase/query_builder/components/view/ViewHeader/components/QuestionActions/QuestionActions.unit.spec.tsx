@@ -1,4 +1,3 @@
-import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
@@ -8,6 +7,7 @@ import {
   queryIcon,
   renderWithProviders,
   screen,
+  waitFor,
 } from "__support__/ui";
 import * as modelActions from "metabase/query_builder/actions/models";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -38,8 +38,8 @@ const ICON_CASES_LABELS = [
   },
 ];
 
-const ICON_CASES = ICON_CASES_CARDS.flatMap(card =>
-  ICON_CASES_LABELS.map(labels => ({ ...labels, card })),
+const ICON_CASES = ICON_CASES_CARDS.flatMap((card) =>
+  ICON_CASES_LABELS.map((labels) => ({ ...labels, card })),
 );
 
 interface SetupOpts {
@@ -99,8 +99,7 @@ describe("QuestionActions", () => {
       setup({ card });
 
       await userEvent.hover(screen.getByRole("button", { name: label }));
-      const tooltip = screen.getByRole("tooltip", { name: tooltipText });
-      expect(tooltip).toHaveAttribute("data-placement", "top");
+      const tooltip = await screen.findByRole("tooltip", { name: tooltipText });
       expect(tooltip).toHaveTextContent(tooltipText);
     },
   );

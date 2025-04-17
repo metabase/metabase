@@ -1,5 +1,4 @@
 import type { Location } from "history";
-import { useEffect } from "react";
 
 import {
   useDashboardFullscreen,
@@ -8,13 +7,10 @@ import {
 } from "metabase/dashboard/hooks";
 import { useLocationSync } from "metabase/dashboard/hooks/use-location-sync";
 import type { RefreshPeriod } from "metabase/dashboard/types";
-import type { DashboardUrlHashOptions } from "metabase/dashboard/types/hash-options";
-import { parseHashOptions } from "metabase/lib/browser";
-import { useEmbedFrameOptions } from "metabase/public/hooks";
+import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
 import type { DisplayTheme } from "metabase/public/lib/types";
 
 import { useAutoScrollToDashcard } from "./use-auto-scroll-to-dashcard";
-import { useEmbedFont } from "./use-embed-font";
 
 export const useDashboardUrlParams = ({
   location,
@@ -23,7 +19,7 @@ export const useDashboardUrlParams = ({
   location: Location;
   onRefresh: () => Promise<void>;
 }) => {
-  const { font, setFont } = useEmbedFont();
+  useSetEmbedFont({ location });
 
   const {
     background,
@@ -58,22 +54,16 @@ export const useDashboardUrlParams = ({
   useLocationSync<boolean>({
     key: "fullscreen",
     value: isFullscreen,
-    onChange: value => onFullscreenChange(value ?? false),
+    onChange: (value) => onFullscreenChange(value ?? false),
     location,
   });
 
   useLocationSync<DisplayTheme>({
     key: "theme",
     value: theme,
-    onChange: value => setTheme(value ?? "light"),
+    onChange: (value) => setTheme(value ?? "light"),
     location,
   });
-
-  useEffect(() => {
-    const { font } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
-
-    setFont(font ?? null);
-  }, [location.hash, setFont]);
 
   return {
     isFullscreen,
@@ -87,8 +77,6 @@ export const useDashboardUrlParams = ({
     background,
     bordered,
     titled,
-    font,
-    setFont,
     theme,
     setTheme,
     hideParameters: hide_parameters,

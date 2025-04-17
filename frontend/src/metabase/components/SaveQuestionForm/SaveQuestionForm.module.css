@@ -1,3 +1,12 @@
-.dashboardTabSelectContainer {
-  z-index: 201 !important; /* DEFAULT_MODAL_Z_INDEX + 1 */
+.labelWrapper {
+  max-width: 100%;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  &.labelActive {
+    color: var(--mb-color-brand);
+  }
 }

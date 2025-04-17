@@ -21,8 +21,8 @@ export const BadgeList = <T,>({
   onRemoveItem,
   addButtonLabel,
 }: BadgeListProps<T>) => (
-  <Paper p="md" w="30rem">
-    <Group spacing="sm">
+  <Paper p="md" w="30rem" bg="bg-white">
+    <Group gap="sm">
       {items.map(({ name, item }, index) => (
         <BadgeListItem
           key={`${name}/${index}`}

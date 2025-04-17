@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -63,10 +63,10 @@ describe("scenarios > question > new", () => {
 
         const searchResultItems = cy.findAllByTestId("result-item");
 
-        searchResultItems.then($results => {
+        searchResultItems.then(($results) => {
           const types = $results
             .toArray()
-            .map(element => element.getAttribute("data-model-type"));
+            .map((element) => element.getAttribute("data-model-type"));
 
           // Search results include both saved questions and database tables
           expect(types).to.include("card");
@@ -196,16 +196,16 @@ describe("scenarios > question > new", () => {
     H.openOrdersTable();
 
     cy.get(".test-TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Database)
-      .eq(1) // first table body cell
+      .eq(0) // first table body cell
       .should("contain", "2"); // quantity for order ID#1
 
     // Test was flaky due to long chain.
-    cy.get(".test-TableInteractive-cellWrapper--lastColumn").eq(1).click();
+    cy.get(".test-TableInteractive-cellWrapper--lastColumn").eq(0).click();
     cy.wait("@dataset");
 
-    cy.get(
-      "#main-data-grid .test-TableInteractive-cellWrapper--firstColumn",
-    ).should("have.length.gt", 1);
+    H.tableInteractiveBody()
+      .get(".test-TableInteractive-cellWrapper--firstColumn")
+      .should("have.length.gt", 1);
 
     cy.log(
       "**Reported at v0.34.3 - v0.37.0.2 / probably was always like this**",
@@ -213,18 +213,18 @@ describe("scenarios > question > new", () => {
     cy.log(
       "**It should display the table with all orders with the selected quantity.**",
     );
-    cy.get(".test-TableInteractive");
+    H.tableInteractive();
 
     cy.get(".test-TableInteractive-cellWrapper--firstColumn") // ID (first in the default order for Sample Database)
-      .eq(1) // first table body cell
+      .eq(0) // first table body cell
       .should("contain", 1)
       .click();
     cy.wait("@dataset");
 
     cy.log("only one row should appear after filtering by ID");
-    cy.get(
-      "#main-data-grid .test-TableInteractive-cellWrapper--firstColumn",
-    ).should("have.length", 1);
+    H.tableInteractiveBody()
+      .get(".test-TableInteractive-cellWrapper--firstColumn")
+      .should("have.length", 1);
   });
 
   it("should handle ad-hoc question with old syntax (metabase#15372)", () => {
@@ -281,6 +281,74 @@ describe("scenarios > question > new", () => {
         "have.text",
         "Orders in a dashboard",
       );
+    });
+  });
+
+  it("should not suggest recent items where can_write=false when saving a question", () => {
+    // SETUP TEST - prevent normal user from having access to third collection w/ added content
+    cy.log("setup restricted permissions scenario");
+    cy.signInAsAdmin();
+
+    // create dashboard that will have restricted access
+    H.createDashboard(
+      {
+        name: "Third collection dashboard",
+        collection_id: THIRD_COLLECTION_ID,
+      },
+      { wrapId: true },
+    );
+
+    // restrict access to a collection
+    cy.visit(`/admin/permissions/collections/${THIRD_COLLECTION_ID}`);
+    H.selectPermissionRow("collection", 0);
+    H.popover().within(() => {
+      cy.findByText("View").click();
+    });
+
+    cy.intercept("PUT", "/api/collection/graph?skip-graph=true").as(
+      "saveGraph",
+    );
+    cy.button("Save changes").click();
+    H.modal().within(() => {
+      cy.findByText("Save permissions?");
+      cy.button("Yes").click();
+    });
+    cy.wait("@saveGraph");
+
+    // TEST STARTS HERE
+    cy.log("start testing proper enforcement");
+    cy.signIn("normal");
+    cy.visit("/");
+
+    // log recents
+    cy.log("log recent views to items with can_write access");
+    cy.log("visit valid recent item");
+    logRecent("collection", SECOND_COLLECTION_ID); // report recent interaction for collection w/ write access
+    logRecent("collection", THIRD_COLLECTION_ID); // report recent interaction for collection w/o write access
+    logRecent("dashboard", ORDERS_DASHBOARD_ID); // report recent interaction for dashboard w/ write access
+    cy.get("@dashboardId").then((id) => {
+      logRecent("dashboard", id); // report recent interaction for dashboard w/o write access
+    });
+
+    // test recent items do not exist
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("select 'hi'");
+    cy.findByTestId("native-query-editor-sidebar").button("Get Answer").click();
+    cy.findByRole("button", { name: "Save" }).click();
+
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByLabelText(/Where do you want to save this/).click();
+    });
+
+    H.pickEntity({ tab: "Recents" });
+    H.entityPickerModal().within(() => {
+      cy.log("test valid recents appear");
+      cy.findByText("Second collection").should("exist");
+      cy.findByText("Orders in a dashboard").should("exist");
+
+      cy.log("test invalid recents do not appear");
+      cy.findByText("Third collection").should("not.exist");
+      cy.findByText("Third collection dashboard").should("not.exist");
     });
   });
 
@@ -425,7 +493,7 @@ describe("scenarios > question > new", () => {
 
     beforeEach(() => {
       cy.intercept("POST", "/api/card").as("createQuestion");
-      cy.createCollection(collectionInRoot).then(({ body: { id } }) => {
+      H.createCollection(collectionInRoot).then(({ body: { id } }) => {
         H.createDashboard({
           name: "Extra Dashboard",
           collection_id: id,
@@ -468,7 +536,6 @@ describe("scenarios > question > new", () => {
 
       H.entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
-        H.entityPickerModalTab("Dashboards").click();
         cy.findByText(/bobby tables's personal collection/i).should(
           "be.visible",
         );
@@ -520,7 +587,7 @@ describe("scenarios > question > new", () => {
 
         H.queryBuilderHeader().button("Save").click();
 
-        cy.findByTestId("save-question-modal").within(modal => {
+        cy.findByTestId("save-question-modal").within((modal) => {
           cy.findByLabelText(/Where do you want to save/).click();
         });
 
@@ -641,7 +708,6 @@ describe(
   { tags: ["@OSS", "@smoke"] },
   () => {
     beforeEach(() => {
-      H.onlyOnOSS();
       H.restore("without-models");
       cy.signInAsAdmin();
     });
@@ -659,7 +725,7 @@ describe(
       // strange: we get different behavior when we go to question/new
       cy.findAllByTestId("run-button").first().click();
 
-      cy.findByTestId("TableInteractive-root").within(() => {
+      H.tableInteractive().within(() => {
         cy.findByText("Rustic Paper Wallet").should("be.visible");
       });
     });
@@ -675,7 +741,7 @@ describe(
       // strange: we get different behavior when we go to question/new
       cy.findAllByTestId("run-button").first().click();
 
-      cy.findByTestId("TableInteractive-root").within(() => {
+      H.tableInteractive().within(() => {
         cy.findByText(39.72).should("be.visible");
       });
     });
@@ -718,4 +784,12 @@ function assertDataPickerEntitySelected(level, name) {
     "data-active",
     "true",
   );
+}
+
+function logRecent(model, model_id) {
+  cy.request("POST", "/api/activity/recents", {
+    context: "selection",
+    model,
+    model_id,
+  });
 }

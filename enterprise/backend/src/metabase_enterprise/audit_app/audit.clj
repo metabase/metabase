@@ -27,10 +27,10 @@
 
   More info: https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Thread.html"
   []
-  (-> (Thread/currentThread)
-      (.getContextClassLoader)
-      (.getResource "")
-      (str/starts-with? "jar:")))
+  (= "jar" (.. (Thread/currentThread)
+               getContextClassLoader
+               (getResource ".keep-me")
+               getProtocol)))
 
 (defn- get-jar-path
   "Returns the path to the currently running jar file.
@@ -65,6 +65,12 @@
                       out (io/output-stream (str out-file))]
             (io/copy in out)))))))
 
+(def ^:private audit-db-entity-id
+  "Hard-coded `:entity_id` for the audit DB. Used to compute any missing `:entity_id`s for existing audit DBs."
+  ;; NOTE: This was previously "audit__rP75CiURKZ-0pq" instead. It was changed to signal whether an existing audit DB
+  ;; has the old, incorrect hard-coded IDs or the new ones.
+  "audit__yAxFew6vgTlc6n")
+
 (def default-question-overview-entity-id
   "Default Question Overview (this is a dashboard) entity id."
   "jm7KgY6IuS6pQjkBZ7WUI")
@@ -81,6 +87,7 @@
   [engine id]
   (t2/insert! :model/Database {:is_audit         true
                                :id               id
+                               :entity_id        audit-db-entity-id
                                :name             "Internal Metabase Database"
                                :description      "Internal Audit DB used to power metabase analytics."
                                :engine           engine
@@ -159,10 +166,20 @@
                       {:replace-existing true})
         (log/info "Copying complete.")))))
 
-(defsetting load-analytics-content
-  "Whether or not we should load Metabase analytics content on startup. Defaults to true, but can be disabled via environment variable."
+(defsetting install-analytics-database
+  "Whether or not we should install the Metabase analytics database on startup. Defaults to true, but can be disabled via environmment variable."
   :type       :boolean
   :default    true
+  :visibility :internal
+  :setter     :none
+  :audit      :never
+  :export?    false
+  :doc        "Setting this environment variable to false will prevent installing the analytics database, which is handy in a migration use-case where it conflicts with the incoming database.")
+
+(defsetting load-analytics-content
+  "Whether or not we should load Metabase analytics content on startup. Defaults to match `install-analytics-database`, which defaults to true, but can be disabled via environment variable."
+  :type       :boolean
+  :default    (install-analytics-database)
   :visibility :internal
   :setter     :none
   :audit      :never
@@ -227,6 +244,10 @@
   []
   (let [audit-db (t2/select-one :model/Database :is_audit true)]
     (cond
+      (not (install-analytics-database))
+      (u/prog1 ::blocked
+        (log/info "Not installing Audit DB - install-analytics-database setting is false"))
+
       (nil? audit-db)
       (u/prog1 ::installed
         (log/info "Installing Audit DB...")
@@ -246,7 +267,7 @@
   :feature :none
   []
   (u/prog1 (maybe-install-audit-db)
-    (let [audit-db (t2/select-one :model/Database :is_audit true)]
+    (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
       ;; prevent sync while loading
       ((sync-util/with-duplicate-ops-prevented
         :sync-database audit-db

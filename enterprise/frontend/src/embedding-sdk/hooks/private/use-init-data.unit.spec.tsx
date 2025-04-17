@@ -1,4 +1,3 @@
-import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -9,7 +8,7 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import * as sdkConfigModule from "embedding-sdk/config";
 import { useInitData } from "embedding-sdk/hooks";
 import {

@@ -15,7 +15,7 @@ import { LicenseTokenForm } from "./LicenseTokenForm";
 export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
   const { isStepActive, isStepCompleted } = useStep("license_token");
 
-  const storeToken = useSelector(state => state.setup.licenseToken);
+  const storeToken = useSelector((state) => state.setup.licenseToken);
 
   const dispatch = useDispatch();
 

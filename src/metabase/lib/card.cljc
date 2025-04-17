@@ -7,6 +7,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -183,3 +184,15 @@
                         (lib.util/query-stage metric-query -1)
                         options)))
           (card-metadata-columns query card))))
+
+(mu/defn source-card-type :- [:maybe ::lib.schema.metadata/card.type]
+  "The type of the query's source-card, if it has one."
+  [query :- ::lib.schema/query]
+  (when-let [card-id (lib.util/source-card-id query)]
+    (when-let [card (lib.metadata/card query card-id)]
+      (:type card))))
+
+(mu/defn source-card-is-model? :- :boolean
+  "Is the query's source-card a model?"
+  [query :- ::lib.schema/query]
+  (= (source-card-type query) :model))

@@ -1,17 +1,18 @@
 (ns metabase-enterprise.stale-test
-  (:require [clojure.test :refer [deftest is are testing]]
-            [metabase-enterprise.stale :as stale]
-            [metabase-enterprise.test :as met]
-            [metabase.models.collection :as collection]
-            [metabase.models.moderation-review :as moderation-review]
-            [metabase.stale-test :refer [with-stale-items
-                                         stale-dashboard
-                                         stale-card
-                                         date-months-ago
-                                         datetime-months-ago]]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan2.core :as t2])
+  (:require
+   [clojure.test :refer [deftest is are testing]]
+   [metabase-enterprise.stale :as stale]
+   [metabase-enterprise.test :as met]
+   [metabase.models.collection :as collection]
+   [metabase.models.moderation-review :as moderation-review]
+   [metabase.stale-test :refer [with-stale-items
+                                stale-dashboard
+                                stale-card
+                                date-months-ago
+                                datetime-months-ago]]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan2.core :as t2])
   (:import (java.time LocalDate)))
 
 (set! *warn-on-reflection* true)

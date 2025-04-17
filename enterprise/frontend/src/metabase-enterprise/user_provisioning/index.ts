@@ -22,7 +22,7 @@ if (hasPremiumFeature("scim")) {
     to: "/admin/settings/authentication/api-keys",
   });
 
-  PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
+  PLUGIN_ADMIN_SETTINGS_UPDATES.push((sections) => ({
     ...sections,
     authentication: {
       ...sections.authentication,

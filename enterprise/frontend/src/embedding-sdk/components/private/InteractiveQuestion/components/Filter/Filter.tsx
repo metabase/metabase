@@ -7,7 +7,17 @@ import { AddBadgeListItem } from "../util/BadgeList/AddBadgeListItem";
 
 import { DropdownFilterBadgeList } from "./DropdownFilterBadgeList";
 import { FilterPicker } from "./FilterPicker";
-import type { FilterProps } from "./types";
+
+/**
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionFilterProps = {
+  /**
+   * Whether to show the icon for the column item
+   */
+  withColumnItemIcon?: boolean;
+};
 
 const AddFilterPopover = () => {
   const [opened, { close, toggle }] = useDisclosure();
@@ -24,7 +34,17 @@ const AddFilterPopover = () => {
   );
 };
 
-export const Filter = ({ withColumnItemIcon }: FilterProps) => (
+/**
+ * A set of interactive filter badges that allow adding, editing, and removing filters.
+ * Displays current filters as badges with an "Add another filter" option.
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
+export const Filter = ({
+  withColumnItemIcon,
+}: InteractiveQuestionFilterProps) => (
   <Group>
     <DropdownFilterBadgeList withColumnItemIcon={withColumnItemIcon} />
     <AddFilterPopover />

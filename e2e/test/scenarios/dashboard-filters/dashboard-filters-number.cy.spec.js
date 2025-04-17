@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
@@ -49,6 +49,7 @@ describe("scenarios > dashboard > filters > number", () => {
 
     DASHBOARD_NUMBER_FILTERS.forEach(
       ({ operator, value, representativeResult }, index) => {
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
         addWidgetNumberFilter(value);
         cy.wait("@dashboardData");

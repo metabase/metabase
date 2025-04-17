@@ -5,7 +5,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { createMockTable } from "metabase-types/api/mocks";
 
 import { useTableListQuery } from "./use-table-list-query";
@@ -21,7 +21,7 @@ const TestComponent = () => {
 
   return (
     <div>
-      {data.map(table => (
+      {data.map((table) => (
         <div key={table.id}>{table.name}</div>
       ))}
 

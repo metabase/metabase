@@ -43,7 +43,7 @@ const makeRecentFilter = (
 ) => {
   return (recentItems: RecentItem[]) =>
     recentItems.filter(
-      result => !disableFn?.(result as CollectionPickerItem) ?? true,
+      (result) => !disableFn?.(result as CollectionPickerItem) ?? true,
     );
 };
 
@@ -52,7 +52,7 @@ const makeSearchResultFilter = (
 ) => {
   return (searchResults: SearchResult[]) =>
     searchResults.filter(
-      result => !disableFn?.(result as CollectionPickerItem) ?? true,
+      (result) => !disableFn?.(result as CollectionPickerItem) ?? true,
     );
 };
 
@@ -76,7 +76,10 @@ export const MoveModal = ({
     : undefined;
 
   const searchResultFilter = makeSearchResultFilter(shouldDisableItem);
-  const recentFilter = makeRecentFilter(shouldDisableItem);
+
+  const recentFilter = makeRecentFilter((item) => {
+    return Boolean(!item.can_write || shouldDisableItem?.(item));
+  });
 
   const handleMove = useCallback(
     (destination: CollectionPickerValueItem) => {
@@ -177,7 +180,9 @@ export const BulkMoveModal = ({
       ? t`Move ${selectedItems.length} items?`
       : t`Move "${selectedItems[0].name}"?`;
 
-  const canMoveToDashboard = selectedItems.every(item => item.model === "card");
+  const canMoveToDashboard = selectedItems.every(
+    (item) => item.model === "card",
+  );
 
   const models: CollectionPickerModel[] = canMoveToDashboard
     ? ["collection", "dashboard"]
@@ -190,7 +195,7 @@ export const BulkMoveModal = ({
         id: initialCollectionId,
         model: "collection",
       }}
-      onChange={destination => {
+      onChange={(destination) => {
         onMove({
           id: destination.id,
           model: destination.model,

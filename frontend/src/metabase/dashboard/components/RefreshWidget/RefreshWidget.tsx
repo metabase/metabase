@@ -57,7 +57,7 @@ export const RefreshWidget = ({
             c="text-medium"
           >{t`Auto Refresh`}</Box>
           <ul>
-            {OPTIONS.map(option => (
+            {OPTIONS.map((option) => (
               <RefreshOption
                 key={option.period}
                 name={option.name}

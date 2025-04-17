@@ -2,13 +2,17 @@
   (:require
    [clojure.java.io :as io]
    [environ.core :as env]
+   [hashp.preload]
    [metabase.core.bootstrap]
    [metabase.plugins.classloader :as classloader]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [nrepl.cmdline]))
 
 (set! *warn-on-reflection* true)
 
-(comment metabase.core.bootstrap/keep-me)
+(comment
+  metabase.core.bootstrap/keep-me
+  hashp.preload/keep-me)
 
 ;; Load all user.clj files (including the system-wide one).
 (when *file* ; Ensure we don't load ourselves recursively, just in case.
@@ -23,22 +27,22 @@
 ;; libraries might not be available in the classpath
 (u/ignore-exceptions
  ;; make sure stuff like `=?` and what not are loaded
- (classloader/require 'mb.hawk.assert-exprs))
+  (classloader/require 'mb.hawk.assert-exprs))
 
 (u/ignore-exceptions
- (classloader/require 'metabase.test-runner.assert-exprs))
+  (classloader/require 'metabase.test-runner.assert-exprs))
 
 (u/ignore-exceptions
- (classloader/require 'humane-are.core)
- ((resolve 'humane-are.core/install!)))
+  (classloader/require 'humane-are.core)
+  ((resolve 'humane-are.core/install!)))
 
 (u/ignore-exceptions
- (classloader/require 'pjstadig.humane-test-output)
+  (classloader/require 'pjstadig.humane-test-output)
  ;; Initialize Humane Test Output if it's not already initialized. Don't enable humane-test-output when running tests
  ;; from the CLI, it breaks diffs. This uses [[env/env]] rather than [[metabase.config]] so we don't load that namespace
  ;; before we load [[metabase.core.bootstrap]]
- (when-not (= (env/env :mb-run-mode) "test")
-   ((resolve 'pjstadig.humane-test-output/activate!))))
+  (when-not (= (env/env :mb-run-mode) "test")
+    ((resolve 'pjstadig.humane-test-output/activate!))))
 
 (defn dev
   "Load and switch to the 'dev' namespace."
@@ -46,3 +50,12 @@
   (require 'dev)
   (in-ns 'dev)
   :loaded)
+
+(defn -main
+  "This is called by the `:dev-start` cli alias.
+
+  Try it out: `clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev`"
+  [& _args]
+  (future (nrepl.cmdline/-main "-p" "50605" "-b" "0.0.0.0"))
+  ((requiring-resolve 'dev/start!))
+  (deref (promise)))

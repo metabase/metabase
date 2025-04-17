@@ -32,7 +32,7 @@
               :type/Text)))))
 
 (deftest ^:parallel column-isa-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))
         orderable-columns (lib/orderable-columns query)
         columns-of-type (fn [typ] (filter #(lib.types.isa/isa? % typ)

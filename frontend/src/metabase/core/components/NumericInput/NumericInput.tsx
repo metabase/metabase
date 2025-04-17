@@ -12,7 +12,7 @@ export interface NumericInputProps extends NumericInputAttributes {
   value?: number | string;
   error?: boolean;
   fullWidth?: boolean;
-  onChange?: (value: number | undefined) => void;
+  onChange?: (value: number | undefined, inputValue: string) => void;
 }
 
 /**
@@ -50,9 +50,9 @@ const NumericInput = forwardRef(function NumericInput(
       setInputText(newText);
 
       if (!isNaN(newValue)) {
-        onChange?.(newValue);
+        onChange?.(newValue, newText);
       } else {
-        onChange?.(undefined);
+        onChange?.(undefined, newText);
       }
     },
     [onChange],

@@ -4,9 +4,6 @@ redirect_from:
   - /docs/latest/questions/sharing/visualizations/tooltips
 ---
 
-
----
-
 # Tooltips
 
 When you hover over a data point on a chart in Metabase, you'll see a tooltip about that data.

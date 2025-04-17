@@ -37,7 +37,10 @@ const omitOverlappingTicks = (
     const currentTickEnd = currentTickX + currentTickWidth / 2;
     const currentTickStart = currentTickX - currentTickWidth / 2;
 
-    if (currentTickEnd > nextAvailableX || currentTickEnd > max) {
+    if (
+      currentTickEnd > nextAvailableX ||
+      currentTickEnd > max + currentTickWidth / 2
+    ) {
       continue;
     }
 
@@ -59,7 +62,7 @@ const getMaxTickWidth = (
   const borderTicksWidths = scale
     .domain()
     .map(
-      tick => measureTextWidth(tickFormatter(tick), tickFont) + TICK_SPACING,
+      (tick) => measureTextWidth(tickFormatter(tick), tickFont) + TICK_SPACING,
     );
 
   return Math.max(...borderTicksWidths);
@@ -88,7 +91,7 @@ const getEvenlySpacedTicks = (
 ) => {
   const [startCoordinate] = scale.range();
 
-  return _.range(ticksCount).map(i => {
+  return _.range(ticksCount).map((i) => {
     const tickCoordinate = startCoordinate + i * ticksInterval;
     return scale.invert(tickCoordinate);
   });

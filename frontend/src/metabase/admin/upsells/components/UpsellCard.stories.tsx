@@ -52,7 +52,7 @@ const DefaultTemplate = (args: UpsellCardProps) => (
 );
 
 export default {
-  title: "Upsells/Card",
+  title: "Patterns/Upsells/Card",
   component: _UpsellCard,
   args,
   argTypes,

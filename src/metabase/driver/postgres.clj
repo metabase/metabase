@@ -77,7 +77,12 @@
                               :schemas                  true
                               :identifiers-with-spaces  true
                               :uuid-type                true
-                              :uploads                  true}]
+                              :split-part               true
+                              :uploads                  true
+                              :expression-literals      true
+                              :expressions/text         true
+                              :expressions/integer      true
+                              :expressions/date         true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -203,8 +208,7 @@
     (assoc driver.common/additional-options
            :placeholder "prepareThreshold=0")
     driver.common/default-advanced-options]
-   (map u/one-or-many)
-   (apply concat)))
+   (into [] (mapcat u/one-or-many))))
 
 (defmethod driver/db-start-of-week :postgres
   [_]
@@ -418,15 +422,13 @@
 
 ;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
 ;; name, but first fetches database enum types so we have access to them.
-(defmethod driver/describe-fields :postgres
-  [driver database & args]
+(defmethod sql-jdbc.sync/describe-fields-pre-process-xf :postgres
+  [_driver database & _args]
   (let [enums (enum-types database)]
-    (eduction
-     (map (fn [{:keys [database-type] :as col}]
-            (cond-> col
-              (contains? enums database-type)
-              (assoc :base-type :type/PostgresEnum))))
-     (apply (get-method driver/describe-fields :sql-jdbc) driver database args))))
+    (map (fn [{:keys [database-type] :as col}]
+           (cond-> col
+             (contains? enums database-type)
+             (assoc :base-type :type/PostgresEnum))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
@@ -460,8 +462,15 @@
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
   ;; Postgres doesn't support quarter in intervals (#20683)
-  (if (= unit :quarter)
+  (cond
+    (= unit :quarter)
     (recur driver hsql-form (* 3 amount) :month)
+
+    ;; date + interval -> timestamp, so cast the expression back to date
+    (h2x/is-of-type? hsql-form "date")
+    (h2x/cast "date" (h2x/+ hsql-form (interval amount unit)))
+
+    :else
     (let [hsql-form (->timestamp hsql-form)]
       (-> (h2x/+ hsql-form (interval amount unit))
           (h2x/with-type-info (h2x/type-info hsql-form))))))
@@ -472,11 +481,12 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:postgres :seconds]
   [_ _ expr]
-  [:to_timestamp expr])
+  ;; without tagging the expression, other code will want to add a type
+  (h2x/with-database-type-info [:to_timestamp expr] "timestamptz"))
 
 (defmethod sql.qp/cast-temporal-string [:postgres :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
-  [:to_timestamp expr (h2x/literal "YYYYMMDDHH24MISS")])
+  (h2x/with-database-type-info [:to_timestamp expr (h2x/literal "YYYYMMDDHH24MISS")] "timestamptz"))
 
 (defmethod sql.qp/cast-temporal-byte [:postgres :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
@@ -511,6 +521,10 @@
     "timetz"
     (h2x/cast "timetz" (time-trunc unit expr))
 
+    ;; postgres returns timestamp or timestamptz from `date_trunc`, so cast back if we've got a date column
+    "date"
+    (h2x/cast "date" [:date_trunc (h2x/literal unit) expr])
+
     #_else
     (let [expr' (->timestamp expr)]
       (-> [:date_trunc (h2x/literal unit) expr']
@@ -528,7 +542,6 @@
 (defmethod sql.qp/date [:postgres :minute-of-hour]   [_ _ expr] (extract-integer :minute expr))
 (defmethod sql.qp/date [:postgres :hour]             [_ _ expr] (date-trunc :hour expr))
 (defmethod sql.qp/date [:postgres :hour-of-day]      [_ _ expr] (extract-integer :hour expr))
-(defmethod sql.qp/date [:postgres :day]              [_ _ expr] (h2x/->date expr))
 (defmethod sql.qp/date [:postgres :day-of-month]     [_ _ expr] (extract-integer :day expr))
 (defmethod sql.qp/date [:postgres :day-of-year]      [_ _ expr] (extract-integer :doy expr))
 (defmethod sql.qp/date [:postgres :month]            [_ _ expr] (date-trunc :month expr))
@@ -557,6 +570,10 @@
 (mu/defn- quoted? [database-type :- ::lib.schema.common/non-blank-string]
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
+
+(defmethod sql.qp/date [:postgres :day]
+  [_ _ expr]
+  (h2x/maybe-cast (h2x/database-type expr) (h2x/->date expr)))
 
 (defmethod sql.qp/->honeysql [:postgres :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
@@ -608,8 +625,7 @@
 
 (defmethod sql.qp/datetime-diff [:postgres :day]
   [_driver _unit x y]
-  (let [interval (h2x/- (date-trunc :day y) (date-trunc :day x))]
-    (h2x/->integer (extract :day interval))))
+  (h2x/- (h2x/cast :DATE y) (h2x/cast :DATE x)))
 
 (defmethod sql.qp/datetime-diff [:postgres :hour]
   [driver _unit x y]
@@ -623,6 +639,10 @@
   [_driver _unit x y]
   (let [seconds (h2x/- (extract-from-timestamp :epoch y) (extract-from-timestamp :epoch x))]
     (h2x/->integer [:trunc seconds])))
+
+(defmethod sql.qp/->honeysql [:postgres :integer]
+  [driver [_ value]]
+  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
 
 (defn- format-regex-match-first [_fn [identifier pattern]]
   (let [[identifier-sql & identifier-args] (sql/format-expr identifier {:nested true})
@@ -638,6 +658,24 @@
   [driver [_ arg pattern]]
   (let [identifier (sql.qp/->honeysql driver arg)]
     [::regex-match-first identifier pattern]))
+
+(defmethod sql.qp/->honeysql [:postgres :split-part]
+  [driver [_ text divider position]]
+  (let [position (sql.qp/->honeysql driver position)]
+    [:case
+     [:< position 1]
+     ""
+
+     :else
+     [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) position]]))
+
+(defmethod sql.qp/->honeysql [:postgres :text]
+  [driver [_ value]]
+  (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
+
+(defmethod sql.qp/->honeysql [:postgres :date]
+  [driver [_ value]]
+  [:to_date (sql.qp/->honeysql driver value) [:inline "YYYY-MM-DD"]])
 
 (defn- format-pg-conversion [_fn [expr psql-type]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]
@@ -840,6 +878,17 @@
    (keyword "timestamp with time zone")    :type/DateTimeWithLocalTZ
    (keyword "timestamp without time zone") :type/DateTime})
 
+(defmethod driver/dynamic-database-types-lookup :postgres
+  [_driver database database-types]
+  (when (seq database-types)
+    (let [ts (enum-types database)]
+      (not-empty
+       (into {}
+             (comp
+              (filter ts)
+              (map #(vector % :type/PostgresEnum)))
+             database-types)))))
+
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
   [_driver database-type]
   (default-base-types database-type))
@@ -955,9 +1004,11 @@
   [_ ^ResultSet rs _ ^Integer i]
   (fn []
     (let [obj (.getObject rs i)]
-      (if (instance? org.postgresql.util.PGobject obj)
-        (.getValue ^org.postgresql.util.PGobject obj)
-        obj))))
+      (cond (instance? org.postgresql.util.PGobject obj)
+            (.getValue ^org.postgresql.util.PGobject obj)
+
+            :else
+            obj))))
 
 ;; Postgres doesn't support OffsetTime
 (defmethod sql-jdbc.execute/set-parameter [:postgres OffsetTime]
@@ -978,23 +1029,58 @@
     ::upload/datetime                 [:timestamp]
     ::upload/offset-datetime          [:timestamp-with-time-zone]))
 
+(defmethod driver/allowed-promotions :postgres
+  [_driver]
+  {::upload/int     #{::upload/float}
+   ::upload/boolean #{::upload/int
+                      ::upload/float}})
+
 (defmethod driver/create-auto-pk-with-append-csv? :postgres
   [driver]
   (= driver :postgres))
 
-(defmethod sql-jdbc.sync/alter-columns-sql :postgres
-  [driver table-name column-definitions]
+(defn- alter-column-using-hsql-expr
+  "In postgres some ALTER COLUMN statements generated by replacing or appending csv files
+  will result in an error, e.g. boolean columns cannot be changed to bigint.
+
+  This function returns a honey expr suitable for use with the USING keyword to tell postgres how to transform
+  values of the old type to the new, to avoid an error.
+
+  It returns nil if no such expression has been defined for the pair of types. In this case, the caller should
+  generate the ALTER COLUMN statement without a USING."
+  [column old-type new-type]
+  (case [old-type new-type]
+
+    [[:boolean] [:bigint]]
+    [:case
+     (quote-identifier column) 1
+     :else 0]
+
+    [[:boolean] [:float]]
+    [:case
+     (quote-identifier column) 1.0
+     :else 0.0]
+
+    nil))
+
+(defmethod sql-jdbc.sync/alter-table-columns-sql :postgres
+  [driver table-name column-definitions & {:keys [old-types]}]
   (with-quoting driver
-    (first (sql/format {:alter-table  (keyword table-name)
-                        :alter-column (map (fn [[column-name type-and-constraints]]
-                                             (vec (list* (quote-identifier column-name)
-                                                         :type
-                                                         (if (string? type-and-constraints)
-                                                           [[:raw type-and-constraints]]
-                                                           type-and-constraints))))
-                                           column-definitions)}
-                       :quoted true
-                       :dialect (sql.qp/quote-style driver)))))
+    (-> {:alter-table  (keyword table-name)
+         :alter-column (for [[column column-type] column-definitions
+                             :let [old-type (get old-types column)]]
+                         (let [base (list* (quote-identifier column)
+                                           :type
+                                           (if (string? column-type)
+                                             [[:raw column-type]]
+                                             column-type))]
+                           (if-some [using (alter-column-using-hsql-expr column old-type column-type)]
+                             (vec (concat base [:using using]))
+                             (vec base))))}
+        (sql/format
+         :quoted  true
+         :dialect (sql.qp/quote-style driver))
+        first)))
 
 (defmethod driver/table-name-length-limit :postgres
   [_driver]

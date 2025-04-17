@@ -20,7 +20,7 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   isNativeEditorOpen: false,
   initialChartSetting: {},
   isShowingRawTable: false, // table/viz toggle
-  queryBuilderMode: false, // "view" | "notebook" | "dataset"
+  queryBuilderMode: "view", // "view" | "notebook" | "dataset"
   previousQueryBuilderMode: false,
   snippetCollectionId: null,
   datasetEditorTab: "query", // "query" / "metadata"
@@ -52,6 +52,7 @@ export const UI_CONTROLS_SIDEBAR_DEFAULTS: Partial<QueryBuilderUIControls> = {
   isShowingChartTypeSidebar: false,
   isShowingTimelineSidebar: false,
   isShowingQuestionInfoSidebar: false,
+  isShowingDataReference: false,
 };
 
 // this is used to close other sidebar when one is updated

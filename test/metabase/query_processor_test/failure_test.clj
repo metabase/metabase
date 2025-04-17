@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.limit :as limit]
    [metabase.test :as mt]
    [metabase.util.malli.schema :as ms]))
 
@@ -28,7 +28,7 @@
    [:query    [:map
                [:source-table [:= (mt/id :venues)]]
                [:fields       [:= [[:field (mt/id :venues :id) {:temporal-unit :month}]]]]
-               [:limit        [:= qp.i/absolute-max-results]]]]
+               [:limit        [:= limit/absolute-max-results]]]]
    [:driver {:optional true} [:= :h2]]])
 
 (def ^:private bad-query-native-schema

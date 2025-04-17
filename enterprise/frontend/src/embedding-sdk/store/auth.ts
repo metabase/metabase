@@ -14,6 +14,7 @@ import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
+import type { Settings } from "metabase-types/api";
 
 import { getOrRefreshSession } from "./reducer";
 import { getFetchRefreshTokenFn } from "./selectors";
@@ -45,10 +46,10 @@ export const initAuth = createAsyncThunk(
     // Fetch user and site settings
     const [user, siteSettings] = await Promise.all([
       dispatch(refreshCurrentUser()),
-      dispatch(refreshSiteSettings({})),
+      dispatch(refreshSiteSettings()),
     ]);
 
-    const mbVersion = siteSettings.payload?.version?.tag;
+    const mbVersion = (siteSettings.payload as Settings)?.version?.tag;
     const sdkVersion = getEmbeddingSdkVersion();
 
     if (mbVersion && sdkVersion !== "unknown") {
@@ -155,27 +156,28 @@ const safeStringify = (value: unknown) => {
  * The default implementation of the function to get the refresh token.
  * Only supports sessions by default.
  */
-export const defaultGetRefreshTokenFn: MetabaseFetchRequestTokenFn =
-  async url => {
-    const response = await fetch(url, {
-      method: "GET",
-      credentials: "include",
-    });
+export const defaultGetRefreshTokenFn: MetabaseFetchRequestTokenFn = async (
+  url,
+) => {
+  const response = await fetch(url, {
+    method: "GET",
+    credentials: "include",
+  });
 
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch the session, HTTP status: ${response.status}`,
-      );
-    }
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch the session, HTTP status: ${response.status}`,
+    );
+  }
 
-    const asText = await response.text();
+  const asText = await response.text();
 
-    try {
-      return JSON.parse(asText);
-    } catch (ex) {
-      return asText;
-    }
-  };
+  try {
+    return JSON.parse(asText);
+  } catch (ex) {
+    return asText;
+  }
+};
 
 const sessionSchema = Yup.object({
   id: Yup.string().required(),

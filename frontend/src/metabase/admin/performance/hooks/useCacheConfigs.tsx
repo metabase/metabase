@@ -23,7 +23,7 @@ export const useCacheConfigs = ({
 }) => {
   const configsApiResult = useAsync(async () => {
     const configsForEachModel = await Promise.all(
-      configurableModels.map(model =>
+      configurableModels.map((model) =>
         CacheConfigApi.list({ model, id }).then(
           (response: CacheConfigAPIResponse) => response.data,
         ),
@@ -39,7 +39,7 @@ export const useCacheConfigs = ({
   const [configs, setConfigs] = useState<CacheConfig[]>([]);
 
   const rootStrategyOverriddenOnce = configs.some(
-    config => config.model_id !== rootId,
+    (config) => config.model_id !== rootId,
   );
 
   const [rootStrategyRecentlyOverridden] = useRecentlyTrue(

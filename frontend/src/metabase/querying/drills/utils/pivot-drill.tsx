@@ -29,10 +29,10 @@ const ACTIONS = {
   },
 } as const;
 
-export const pivotDrill: Drill = ({ query, stageIndex, drill, applyDrill }) => {
-  const pivotTypes = Lib.pivotTypes(drill);
+export const pivotDrill: Drill = ({ query, drill, applyDrill }) => {
+  const { pivotTypes, stageIndex } = Lib.pivotDrillDetails(drill);
 
-  const actions = pivotTypes.map(pivotType =>
+  const actions = pivotTypes.map((pivotType) =>
     getActionForType(query, stageIndex, drill, pivotType, applyDrill),
   );
 
@@ -93,7 +93,7 @@ function getColumnPopover(
           stageIndex={stageIndex}
           columnGroups={Lib.groupColumns(columns)}
           checkIsColumnSelected={() => false}
-          onSelect={column => {
+          onSelect={(column) => {
             const nextQuestion = applyDrill(drill, column).setDefaultDisplay();
             const nextCard = nextQuestion.card();
             onChangeCardAndRun({ nextCard });

@@ -1,14 +1,50 @@
-import { isProduction } from "metabase/env";
+import { CompileError } from "../errors";
 
 type VariableKind = "dimension" | "segment" | "aggregation" | "expression";
 type Type = VariableKind | "string" | "number" | "boolean";
 type VariableId = number;
 
-export interface Token {
+export class Token {
   type: NodeType;
   text: string;
-  length: number;
+  value?: string;
+
   pos: number;
+  length: number;
+
+  constructor({
+    type,
+    pos,
+    length,
+    text,
+    value,
+  }: {
+    type: NodeType;
+    text: string;
+    value?: string;
+    length: number;
+    pos: number;
+  }) {
+    this.type = type;
+    this.pos = pos;
+    this.length = length;
+
+    this.text = text;
+    this.value = value;
+  }
+
+  get start(): number {
+    return this.pos;
+  }
+  get end(): number {
+    return this.pos + this.length;
+  }
+  get from(): number {
+    return this.start;
+  }
+  get to(): number {
+    return this.end;
+  }
 }
 
 export interface Node {
@@ -60,67 +96,6 @@ export interface NodeType {
   expectedTypes: Type[] | null;
 }
 
-type HookFn = (token: Token, node: Node) => void;
-type HookErrFn = (token: Token, node: Node, err: CompileError) => void;
-type NodeErrFn = (node: Node, err: CompileError) => void;
-export interface Hooks {
-  onIteration?: HookFn;
-  onCreateNode?: HookFn;
-  onPlaceNode?: (node: Node, parent: Node) => void;
-  onSkipToken?: HookFn;
-  onReparentNode?: HookFn;
-  onCompleteNode?: HookFn;
-  onTerminatorToken?: HookFn;
-  onBadToken?: HookErrFn;
-  onUnexpectedTerminator?: HookErrFn;
-  onMissinChildren?: HookErrFn;
-  onChildConstraintViolation?: NodeErrFn;
-}
-
-/*
- * This class helps anything that handles parser errors to use instanceof to
- * easily distinguish between compilation error exceptions and exceptions due to
- * bugs
- */
-abstract class ExpressionError extends Error {
-  abstract get pos(): number | null;
-  abstract get len(): number | null;
-}
-
-export class CompileError extends ExpressionError {
-  constructor(
-    message: string,
-    private data: any,
-  ) {
-    super(message);
-  }
-
-  get pos(): number | null {
-    return this.data?.token?.pos ?? null;
-  }
-
-  get len(): number | null {
-    return this.data?.token?.len ?? null;
-  }
-}
-
-export class ResolverError extends ExpressionError {
-  constructor(
-    message: string,
-    private node?: Node,
-  ) {
-    super(message);
-  }
-
-  get pos(): number | null {
-    return this.node?.token?.pos ?? null;
-  }
-
-  get len(): number | null {
-    return this.node?.token?.length ?? null;
-  }
-}
-
 class AssertionError extends Error {
   data?: any;
 
@@ -130,14 +105,30 @@ class AssertionError extends Error {
   }
 }
 
+/**
+ * Assert compiler invariants and assumptions.
+ * Throws a non-friendly error if the condition is false.
+ */
 export function assert(
   condition: any,
   msg: string,
   data?: any,
 ): asserts condition {
-  if (isProduction) {
-    if (!condition) {
-      throw new AssertionError(msg, data || {});
-    }
+  if (!condition) {
+    throw new AssertionError(msg, data || {});
+  }
+}
+
+/**
+ * Check assumptions that might fail based on the query source.
+ * Throws a user-friendly error if the condition is false.
+ */
+export function check(
+  condition: any,
+  msg: string,
+  node: Node,
+): asserts condition {
+  if (!condition) {
+    throw new CompileError(msg, node);
   }
 }

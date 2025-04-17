@@ -1,0 +1,9 @@
+.checkboxLabelRoot {
+  display: flex;
+  align-items: center;
+  padding-left: 0.25rem;
+
+  > * {
+    padding-left: 0.25rem;
+  }
+}

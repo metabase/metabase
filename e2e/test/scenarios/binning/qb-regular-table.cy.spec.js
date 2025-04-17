@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;

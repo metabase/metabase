@@ -7,6 +7,10 @@
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [query-analysis-enabled true]
+                        (thunk))))
+
 (defn- do-with-test-setup! [f]
   (query-analysis/without-analysis
    (mt/with-temp [:model/Table      {table-1 :id}  {:name "T1"}

@@ -31,9 +31,9 @@ export const createDashboardWithQuestions = ({
             cards ? cards[index] : undefined,
           ),
         ),
-      ).then(dashcardResponses => {
+      ).then((dashcardResponses) => {
         const questions = dashcardResponses.map(
-          dashcardResponse => dashcardResponse.body.card,
+          (dashcardResponse) => dashcardResponse.body.card,
         );
 
         return {

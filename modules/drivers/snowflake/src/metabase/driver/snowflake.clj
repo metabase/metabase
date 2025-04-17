@@ -5,7 +5,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -39,6 +38,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [pangloss.transducers :as transducers]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -55,8 +55,11 @@
                               :connection-impersonation-requires-role true
                               :convert-timezone                       true
                               :datetime-diff                          true
-                              :identifiers-with-spaces                true
                               :describe-fields                        true
+                              :expression-literals                    true
+                              :expressions/integer                    true
+                              :identifiers-with-spaces                true
+                              :split-part                             true
                               :now                                    true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
@@ -103,11 +106,12 @@
     :as   details}]
   (if password
     details
-    (let [private-key-file (secret/value-as-file! :snowflake details "private-key")]
+    (if-let [private-key-file (secret/value-as-file! :snowflake details "private-key")]
       (-> details
           (secret/clean-secret-properties-from-details :snowflake)
           (handle-conn-uri user account private-key-file)
-          (assoc :private_key_file private-key-file)))))
+          (assoc :private_key_file private-key-file))
+      (secret/clean-secret-properties-from-details details :snowflake))))
 
 (defn- quote-name
   [raw-name]
@@ -135,6 +139,50 @@
       (-> spec
           (update :connection-uri sql-jdbc.common/conn-str-with-additional-opts :url role-opts-str)))
     spec))
+
+(defmethod driver/db-details-to-test-and-migrate :snowflake
+  [_ {:keys [password private-key-id private-key-value private-key-path use-password private-key-options] :as details}]
+  (when-not (= 1 (count (remove nil? [password private-key-id private-key-value private-key-path])))
+    (let [password-details (when password
+                             (-> details
+                                 ;; Setting private-key-value to nil will delete the secret
+                                 (assoc :use-password true :private-key-value nil)
+                                 (dissoc :private-key-id :private-key-value :private-key-path :private-key-options)
+                                 ;; Add meta for testing
+                                 (with-meta {:auth :password})))
+          private-key-path-details (when private-key-path
+                                     (-> details
+                                         (assoc :use-password false :private-key-options "local")
+                                         (dissoc :password :private-key-value)
+                                         (with-meta {:auth :private-key-path})))
+          private-key-value-details (when private-key-value
+                                      (-> details
+                                          (assoc :use-password false :private-key-options "uploaded")
+                                          (dissoc :password :private-key-path)
+                                          (with-meta {:auth :private-key-value})))
+          private-key-id-details (when private-key-id
+                                   (-> details
+                                       (assoc :use-password false)
+                                       (dissoc :password :private-key-value :private-key-path :private-key-options)
+                                       (with-meta {:auth :private-key-id})))]
+      (cond-> []
+        (and use-password password-details)
+        (conj password-details)
+
+        (and (= "local" private-key-options) private-key-path-details)
+        (conj private-key-path-details)
+
+        private-key-value-details
+        (conj private-key-value-details)
+
+        (and (not= "local" private-key-options) private-key-path-details)
+        (conj private-key-path-details)
+
+        private-key-id-details
+        (conj private-key-id-details)
+
+        (and (not use-password) password-details)
+        (conj password-details)))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options host use-hostname password use-password], :as details}]
@@ -401,6 +449,29 @@
 (defmethod sql.qp/->honeysql [:snowflake :median]
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
+
+(defmethod sql.qp/->honeysql [:snowflake :integer]
+  [driver [_ arg]]
+  ;; BIGINT is an alias for NUMBER
+  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:snowflake :split-part]
+  [driver [_ text divider position]]
+  (let [position (sql.qp/->honeysql driver position)]
+    [:case
+     [:< position 1]
+     ""
+
+     :else
+     [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) position]]))
+
+(defmethod sql.qp/->honeysql [:snowflake :text]
+  [driver [_ value]]
+  [:to_char (sql.qp/->honeysql driver value)])
+
+(defmethod sql.qp/->honeysql [:snowflake :date]
+  [driver [_ value]]
+  [:to_date (sql.qp/->honeysql driver value) "YYYY-MM-DD"])
 
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but
@@ -678,20 +749,40 @@
   [_]
   #{"INFORMATION_SCHEMA"})
 
+(defn- adjust-host-and-port
+  [{:keys [account host port] :as db-details}]
+  (cond-> db-details
+    (not host) (assoc :host (str account ".snowflakecomputing.com"))
+    (not port) (assoc :port 443)))
+
+(defmethod driver/incorporate-ssh-tunnel-details :snowflake
+  [_driver db-details]
+  (let [details (adjust-host-and-port db-details)]
+    (driver/incorporate-ssh-tunnel-details :sql-jdbc details)))
+
 (defmethod driver/can-connect? :snowflake
   [driver {:keys [db], :as details}]
-  (and ((get-method driver/can-connect? :sql-jdbc) driver details)
-       (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
-         ;; jdbc/query is used to see if we throw, we want to ignore the results
-         (jdbc/query spec (format "SHOW OBJECTS IN DATABASE \"%s\";" db))
-         true)))
+  (let [details (adjust-host-and-port details)]
+    (and ((get-method driver/can-connect? :sql-jdbc) driver details)
+         (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
+           ;; jdbc/query is used to see if we throw, we want to ignore the results
+           (jdbc/query spec (format "SHOW OBJECTS IN DATABASE \"%s\";" db))
+           true))))
 
 (defmethod driver/normalize-db-details :snowflake
   [_ database]
-  (if-not (str/blank? (-> database :details :regionid))
-    (-> (update-in database [:details :account] #(str/join "." [% (-> database :details :regionid)]))
+  (cond-> database
+    (not (str/blank? (-> database :details :regionid)))
+    (-> (update-in [:details :account] #(str/join "." [% (-> database :details :regionid)]))
         (m/dissoc-in [:details :regionid]))
-    database))
+
+    (and
+     (not (contains? (:details database) :use-password))
+     (get-in database [:details :password])
+     (nil? (get-in database [:details :private-key-id]))
+     (nil? (get-in database [:details :private-key-path]))
+     (nil? (get-in database [:details :private-key-value])))
+    (assoc-in [:details :use-password] true)))
 
 ;;; If you try to read a Snowflake `timestamptz` as a String with `.getString` it always comes back in
 ;;; `America/Los_Angeles` for some reason I cannot figure out. Let's just read them out as UTC, which is what they're
@@ -743,59 +834,95 @@
   [_ database]
   (-> database :details :role))
 
-(defmethod driver/incorporate-ssh-tunnel-details :snowflake
-  [_driver {:keys [account host port] :as db-details}]
-  (let [details (cond-> db-details
-                  (not host) (assoc :host (str account ".snowflakecomputing.com"))
-                  (not port) (assoc :port 443))]
-    (driver/incorporate-ssh-tunnel-details :sql-jdbc details)))
+(defn- normalize-type*
+  [data-type]
+  (let [info (json/decode data-type)
+        raw-type (get info "type")]
+    (get {"FIXED" "NUMBER"
+          "TIMESTAMP_TZ" "TIMESTAMPTZ"
+          "TIMESTAMP_LTZ" "TIMESTAMPLTZ"
+          "TIMESTAMP_NTZ" "TIMESTAMPNTZ"
+          "TEXT" "VARCHAR"
+          "REAL" "DOUBLE"
+          "FLOAT" "DOUBLE"}
+         raw-type
+         raw-type)))
 
-(defmethod driver/describe-fields :snowflake
-  [driver database & args]
-  (let [pks (sql-jdbc.execute/do-with-connection-with-options
-             driver database nil
+(defn- assoc-database-required
+  [row]
+  (let [is-nullable? (= (:null? row) "true")
+        has-default? (boolean (:default row))
+        autoincrement? (:autoincrement row)
+        required? (not (or is-nullable? has-default? autoincrement?))]
+    (assoc row :database-required required?)))
+
+(defn- normalize-describe-fields-row
+  [row normalize-type]
+  (-> (m/remove-vals str/blank? row)
+      (m/update-existing :data_type normalize-type)
+      (update :autoincrement boolean)
+      (assoc-database-required)
+      (dissoc :kind :null? :database_name)
+      (set/rename-keys {:schema_name :table-schema
+                        :data_type :database-type
+                        :table_name :table-name
+                        :column_name :name
+                        :comment :field-comment
+                        :autoincrement :database-is-auto-increment})))
+
+(defmethod sql-jdbc.sync/describe-fields-pre-process-xf :snowflake
+  [driver db & {:keys [schema-names table-names] :as _args}]
+  (let [schema-names (set schema-names)
+        table-names (set table-names)
+        position-counter (volatile! {})
+        positioner (map (fn [{:keys [schema-name table-name] :as row}]
+                          (let [idx [schema-name table-name]
+                                pos (inc (get @position-counter idx -1))]
+                            (vswap! position-counter assoc idx pos)
+                            (assoc row :database-position pos))))
+        normalize-type (memoize normalize-type*)
+        pks (sql-jdbc.execute/do-with-connection-with-options
+             driver db nil
              (fn [^java.sql.Connection conn]
-               (with-open [stmt (.prepareStatement conn (format "show primary keys in database \"%s\";" (get-in database [:details :db])))
+               (with-open [stmt (.prepareStatement conn (format "show primary keys in database \"%s\";" (get-in db [:details :db])))
                            rset (.executeQuery stmt)]
-                 (into #{} (map (juxt :schema_name :table_name :column_name)) (resultset-seq rset)))))]
-    (eduction
-     (map (fn [col]
-            (let [lookup ((juxt :table-schema :table-name :name) col)
-                  pk? (contains? pks lookup)]
-              (assoc col :pk? pk?))))
-     (apply (get-method driver/describe-fields :sql-jdbc) driver database args))))
+                 (into #{} (map (juxt :schema_name :table_name :column_name)) (resultset-seq rset)))))
+        normalize-row (comp
+                       (remove #(= (:schema_name %) "INFORMATION_SCHEMA"))
+                       (map #(normalize-describe-fields-row % normalize-type))
+                       positioner
+                       (map (fn [col]
+                              (let [lookup ((juxt :table-schema :table-name :name) col)
+                                    pk? (contains? pks lookup)]
+                                (assoc col :pk? pk?))))
+                       (transducers/sorted-by (juxt :table-schema :table-name :database-position)))]
+    (cond-> identity
+      ;; Add pre-filter to schemas and tables (schemas are checked first)
+      (seq schema-names)
+      (comp (filter #(contains? schema-names (:schema_name %))))
+
+      (seq table-names)
+      (comp (filter #(contains? table-names (:table_name %))))
+
+      :always
+      (comp normalize-row))))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :snowflake
-  [driver & {:keys [schema-names table-names details]}]
-  (sql/format {:select [[:c.COLUMN_NAME :name]
-                        [[:- :c.ORDINAL_POSITION [:inline 1]] :database-position]
-                        [:c.TABLE_SCHEMA :table-schema]
-                        [:c.TABLE_NAME :table-name]
-                        [[:case-expr [:upper :c.DATA_TYPE]
-                          [:inline "TIMESTAMP_TZ"] [:inline "TIMESTAMPTZ"]
+  [driver {:keys [schema-names table-names details]}]
+  (let [has-one-schema? (= (count schema-names) 1)
+        has-one-table? (= (count table-names) 1)]
+    (cond
+      (and has-one-schema? has-one-table?)
+      [(format "show columns in table %s.%s.%s"
+               (sql.u/quote-name driver :database (:db details))
+               (sql.u/quote-name driver :schema (first schema-names))
+               (sql.u/quote-name driver :table (first table-names)))]
 
-                          [:inline "TIMESTAMP_LTZ"] [:inline "TIMESTAMPLTZ"]
+      has-one-schema?
+      [(format "show columns in schema %s.%s"
+               (sql.u/quote-name driver :database (:db details))
+               (sql.u/quote-name driver :schema (first schema-names)))]
 
-                          [:inline "TIMESTAMP_NTZ"] [:inline "TIMESTAMPNTZ"]
-
-                          ;; These are synonymous, but we want consistency with getColumnMetadata
-                          [:inline "FLOAT"] [:inline "DOUBLE"]
-
-                          [:inline "TEXT"] [:inline "VARCHAR"]
-
-                          :else [:upper :c.DATA_TYPE]]
-                         :database-type]
-                        [[:!= :c.IDENTITY_GENERATION nil] :database-is-auto-increment]
-                        [[:and
-                          [:or [:= :COLUMN_DEFAULT nil] [:= [:lower :COLUMN_DEFAULT] [:inline "null"]]]
-                          [:= :IS_NULLABLE [:inline "NO"]]
-                          [:not [:!= :c.IDENTITY_GENERATION nil]]]
-                         :database-required]
-                        [[:nullif :c.COMMENT [:inline ""]] :field-comment]]
-               :from [[[:raw (format "\"%s\".\"%s\".\"%s\"" (:db details) "INFORMATION_SCHEMA" "COLUMNS")] :c]]
-               :where
-               [:and [:not [:in :c.TABLE_SCHEMA [[:inline "INFORMATION_SCHEMA"]]]]
-                (when (seq schema-names) [:in [:lower :c.TABLE_SCHEMA] (map u/lower-case-en schema-names)])
-                (when (seq table-names) [:in [:lower :c.TABLE_NAME] (map u/lower-case-en table-names)])]
-               :order-by [:c.TABLE_SCHEMA :c.TABLE_NAME :c.ORDINAL_POSITION]}
-              :dialect (sql.qp/quote-style driver)))
+      :else
+      [(format "show columns in database %s"
+               (sql.u/quote-name driver :database (:db details)))])))

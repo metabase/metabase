@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, screen } from "__support__/ui";
+import { screen } from "__support__/ui";
 import type { CollectionId } from "metabase-types/api";
 
 import { setup } from "./setup";
@@ -272,7 +272,7 @@ describe("CollectionHeader", () => {
       await userEvent.click(screen.getByLabelText("Upload data"));
 
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
-      await userEvent.click(getIcon("close"));
+      await userEvent.click(screen.getByRole("button", { name: "Close" }));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 

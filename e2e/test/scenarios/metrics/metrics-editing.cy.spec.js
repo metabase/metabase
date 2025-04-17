@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -407,8 +407,9 @@ describe("scenarios > metrics > editing", () => {
       H.enterCustomColumnDetails({
         formula: `[${ORDERS_SCALAR_METRIC.name}] / 2`,
         name: "",
+        blur: true,
       });
-      H.popover().button("Update").click();
+      H.popover().button("Update").should("not.be.disabled").click();
       saveMetric();
       verifyScalarValue("9,380");
     });
@@ -511,6 +512,7 @@ function getActionButton(title) {
 }
 
 function getPlusButton() {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return cy.findAllByTestId("notebook-cell-item").last();
 }
 
@@ -551,7 +553,7 @@ function addStringCategoryFilter({ tableName, columnName, values }) {
       cy.findByText(tableName).click();
     }
     cy.findByText(columnName).click();
-    values.forEach(value => cy.findByText(value).click());
+    values.forEach((value) => cy.findByText(value).click());
     cy.button("Add filter").click();
   });
 }
@@ -587,6 +589,7 @@ function addBreakout({ tableName, columnName, bucketName, stageIndex }) {
   }
   if (bucketName) {
     H.popover().findByLabelText(columnName).findByText("by month").click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText(bucketName).click();
   } else {
     H.popover().findByText(columnName).click();

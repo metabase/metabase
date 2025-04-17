@@ -19,7 +19,7 @@ describe("getTimePassedSince", () => {
     { interval: 1, unit: "year", expected: "1yr" },
     { interval: 5, unit: "year", expected: "5yr" },
   ];
-  tests.forEach(test => {
+  tests.forEach((test) => {
     const { interval, unit, expected } = test;
 
     it(`${interval} ${unit}s ago -> ${expected}`, () => {

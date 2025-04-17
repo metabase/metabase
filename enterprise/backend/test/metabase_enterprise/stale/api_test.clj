@@ -1,11 +1,12 @@
 (ns metabase-enterprise.stale.api-test
-  (:require  [clojure.test :refer [deftest testing is]]
-             [metabase.analytics.snowplow-test :as snowplow-test]
-             [metabase.models.collection :as collection]
-             [metabase.models.collection-test :refer [with-collection-hierarchy!]]
-             [metabase.stale-test :as stale.test]
-             [metabase.test :as mt]
-             [metabase.util :as u]))
+  (:require
+   [clojure.test :refer [deftest testing is]]
+   [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.models.collection :as collection]
+   [metabase.models.collection-test :refer [with-collection-hierarchy!]]
+   [metabase.stale-test :as stale.test]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -32,7 +33,7 @@
                                              :models "dashboard" :models "card")
                        (dissoc :models)
                        (update :data (fn [results] (map (fn [result] (dissoc result :moderated_status)) results))))
-                   (update result :data (fn [results] (map (fn [result] (dissoc result :collection :moderated_status)) results))))))
+                   (update result :data (fn [results] (map (fn [result] (dissoc result :collection :moderated_status :card_schema)) results))))))
           (testing "The card and dashboard are in there"
             (is (= #{["card" (u/the-id card)] ["dashboard" (u/the-id dashboard)]}
                    (->> result
@@ -138,10 +139,10 @@
                  (->> (mt/user-http-request :crowberto :get 200 "ee/stale/root"
                                             :is_recursive true)
                       :data
-                      (filter #(contains? #{(u/the-id card-a)
-                                            (u/the-id card-b)
-                                            (u/the-id dashboard-a)
-                                            (u/the-id dashboard-b)}
+                      (filter #(contains? (into #{} [(u/the-id card-a) ; there might be some duplicates here
+                                                     (u/the-id card-b)
+                                                     (u/the-id dashboard-a)
+                                                     (u/the-id dashboard-b)])
                                           (:id %)))
                       (map :name)
                       set))))))))

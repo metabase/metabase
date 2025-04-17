@@ -16,10 +16,10 @@
   []
   (or (public-settings/notification-link-base-url) (public-settings/site-url)))
 
-(defn archive-url
-  "Return an appropriate URL to view the archive page."
+(defn trash-url
+  "Return an appropriate URL to view the trash page."
   []
-  (str (site-url) "/archive"))
+  (str (site-url) "/trash"))
 
 (defn dashboard-url
   "Return an appropriate URL for a `Dashboard` with ID.

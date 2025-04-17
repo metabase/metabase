@@ -31,7 +31,6 @@ import type { State } from "metabase-types/store";
 import { isSavedAction } from "../../utils";
 
 import ActionContext, { useActionContext } from "./ActionContext";
-import { ACE_ELEMENT_ID } from "./ActionContext/QueryActionContextProvider";
 import ActionCreatorView from "./ActionCreatorView";
 import type { FormValues as CreateActionFormValues } from "./CreateActionForm";
 import CreateActionForm from "./CreateActionForm";
@@ -149,7 +148,6 @@ function ActionCreator({
   };
 
   const showSaveModal = () => {
-    ensureAceEditorClosed();
     setShowSaveModal(true);
   };
 
@@ -201,12 +199,6 @@ function ActionCreator({
       )}
     </>
   );
-}
-
-function ensureAceEditorClosed() {
-  // @ts-expect-error — `ace` isn't typed yet
-  const editor = window.ace?.edit?.(ACE_ELEMENT_ID);
-  editor?.completer?.popup?.hide();
 }
 
 function ActionCreatorWithContext({

@@ -1,6 +1,7 @@
 import { type ReactNode, type Ref, forwardRef } from "react";
 
-import { Button, type ButtonProps, Icon, type IconName } from "metabase/ui";
+import type { IconName } from "embedding-sdk/types/ui";
+import { Button, type ButtonProps, Icon } from "metabase/ui";
 
 export const ToolbarButton = forwardRef(_ToolbarButton);
 
@@ -21,7 +22,7 @@ function _ToolbarButton(
     <Button
       ref={ref}
       variant={isHighlighted ? "filled" : "subtle"}
-      leftIcon={icon ? <Icon name={icon} /> : undefined}
+      leftSection={icon ? <Icon name={icon} /> : undefined}
       py="sm"
       px="md"
       {...buttonProps}

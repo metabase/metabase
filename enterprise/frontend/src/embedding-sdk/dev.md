@@ -52,13 +52,14 @@ CYPRESS_ALL_FEATURES_TOKEN=  ${usual token from password manager}
 CYPRESS_NO_FEATURES_TOKEN=  ${usual token from password manager}
 ```
 
-And then run:
+Cypress will use the built package, so you'll have to build the sdk first (see above).
+We recommend running either the dev or the watch command to have shorter a feedback loop.
+
+To start the cypress for the e2e tests:
 
 ```bash
-yarn test-cypress-open-component-sdk
+TEST_SUITE="component" yarn test-cypress
 ```
-
-Cypress will use the built package, so we recommend running it together with either the watch or dev command.
 
 ## Use the local build in a project
 

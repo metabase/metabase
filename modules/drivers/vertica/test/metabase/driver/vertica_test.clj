@@ -5,7 +5,8 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]))
 
 (set! *warn-on-reflection* true)
 
@@ -64,3 +65,10 @@
                  :parameters [{:type   :text
                                :target [:dimension [:template-tag "x"]]
                                :value  "ouija_board"}]})))))))
+
+(deftest array-is-returned-correctly-test
+  (mt/test-driver :vertica
+    (is (= [[["a" "b" "c"]]]
+           (->> (mt/native-query {:query (tx/native-array-query :vertica)})
+                mt/process-query
+                mt/rows)))))

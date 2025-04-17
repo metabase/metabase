@@ -19,7 +19,7 @@ export const UserNameDisplay = ({
   >(UserApi.list);
   const users = value?.data ?? [];
 
-  const selectedUserList = users.filter(user => userIdList.includes(user.id));
+  const selectedUserList = users.filter((user) => userIdList.includes(user.id));
 
   const getDisplayValue = () => {
     if (isLoading) {
@@ -38,7 +38,7 @@ export const UserNameDisplay = ({
   };
 
   return (
-    <Text c="inherit" weight={700} truncate>
+    <Text c="inherit" fw={700} truncate>
       {getDisplayValue()}
     </Text>
   );

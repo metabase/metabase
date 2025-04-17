@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
+import type { EnterpriseSettings } from "metabase-types/api";
 
 import type { StringSetting } from "./IllustrationWidget";
 import { IllustrationWidget } from "./IllustrationWidget";
@@ -80,7 +80,7 @@ describe("IllustrationWidget", () => {
         type: defaultType,
         customIllustrationSetting,
       });
-      await userEvent.click(screen.getByRole("searchbox"));
+      await userEvent.click(screen.getByRole("textbox"));
       expect(screen.getByText(defaultIllustrationLabel)).toBeInTheDocument();
       expect(screen.getByText("No illustration")).toBeInTheDocument();
       expect(screen.getByText("Custom")).toBeInTheDocument();
@@ -98,7 +98,7 @@ describe("IllustrationWidget", () => {
         type: defaultType,
         customIllustrationSetting,
       });
-      await userEvent.click(screen.getByRole("searchbox"));
+      await userEvent.click(screen.getByRole("textbox"));
       await userEvent.click(screen.getByText(noIllustrationOption.label));
       expect(onChange).toHaveBeenCalledWith(noIllustrationOption.value);
     });
@@ -112,7 +112,7 @@ describe("IllustrationWidget", () => {
         type: defaultType,
         customIllustrationSetting,
       });
-      await userEvent.click(screen.getByRole("searchbox"));
+      await userEvent.click(screen.getByRole("textbox"));
       await userEvent.click(screen.getByText(customOption.label));
       expect(onChange).not.toHaveBeenCalled();
     });
@@ -144,7 +144,7 @@ describe("IllustrationWidget", () => {
         customIllustrationSetting,
       });
 
-      await userEvent.click(screen.getByRole("searchbox"));
+      await userEvent.click(screen.getByRole("textbox"));
       await userEvent.click(screen.getByText(noIllustrationOption.label));
 
       expect(onChange).toHaveBeenCalledWith(noIllustrationOption.value);
@@ -172,7 +172,7 @@ describe("IllustrationWidget", () => {
         customIllustrationSetting,
       });
 
-      await userEvent.click(screen.getByRole("searchbox"));
+      await userEvent.click(screen.getByRole("textbox"));
       await userEvent.click(screen.getByText(defaultOption.label));
 
       expect(onChange).toHaveBeenCalledWith(defaultOption.value);
@@ -217,7 +217,7 @@ describe("IllustrationWidget", () => {
         customIllustrationSetting,
       });
 
-      await userEvent.click(screen.getByRole("searchbox"));
+      await userEvent.click(screen.getByRole("textbox"));
       await userEvent.click(screen.getByText(defaultIllustrationLabel));
       expect(
         screen.queryByText(defaultIllustrationLabel),
@@ -239,7 +239,7 @@ describe("IllustrationWidget", () => {
         customIllustrationSetting,
       });
 
-      await userEvent.click(screen.getByRole("searchbox"));
+      await userEvent.click(screen.getByRole("textbox"));
       await userEvent.click(screen.getByText("No illustration"));
       expect(screen.queryByText("No illustration")).not.toBeInTheDocument();
 
@@ -259,7 +259,7 @@ describe("IllustrationWidget", () => {
         customIllustrationSetting,
       });
 
-      await userEvent.click(screen.getByRole("searchbox"));
+      await userEvent.click(screen.getByRole("textbox"));
       await userEvent.click(screen.getByText("Custom"));
       expect(screen.queryByText("Custom")).not.toBeInTheDocument();
 

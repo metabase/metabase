@@ -31,6 +31,7 @@
                               :describe-fields                 true
                               :describe-fks                    true
                               :expression-aggregations         true
+                              :expression-literals             true
                               :expressions                     true
                               :native-parameters               true
                               :nested-queries                  true
@@ -72,27 +73,25 @@
      "    AND TABLE_SCHEMA <> 'information_schema'"])
    catalog])
 
-(defn- describe-database-tables
-  [database]
-  (let [[inclusion-patterns
-         exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
-        syncable? (fn [schema]
-                    (driver.s/include-schema? inclusion-patterns exclusion-patterns schema))]
-    (eduction
-     (filter (comp syncable? :schema))
-     (sql-jdbc.execute/reducible-query database (get-tables-sql (-> database :details :catalog))))))
-
 (defmethod driver/describe-database :databricks
   [driver database]
   (try
-    {:tables (into #{} (describe-database-tables database))}
+    {:tables
+     (let [[inclusion-patterns
+            exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
+           included? (fn [schema]
+                       (driver.s/include-schema? inclusion-patterns exclusion-patterns schema))]
+       (into
+        #{}
+        (filter (comp included? :schema))
+        (sql-jdbc.execute/reducible-query database (get-tables-sql (-> database :details :catalog)))))}
     (catch Throwable e
       (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
                       {}
                       e)))))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :databricks
-  [driver & {:keys [schema-names table-names catalog]}]
+  [driver & {:keys [schema-names table-names] {:keys [catalog]} :details}]
   (assert (string? (not-empty catalog)) "`catalog` is required for sync.")
   (sql/format {:select [[:c.column_name :name]
                         [:c.full_data_type :database-type]
@@ -141,11 +140,6 @@
                        (when table-names [:in :c.table_name table-names])]
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
-
-(defmethod driver/describe-fields :databricks
-  [driver database & {:as args}]
-  (let [catalog (get-in database [:details :catalog])]
-    (sql-jdbc.sync/describe-fields driver database (assoc args :catalog catalog))))
 
 (defmethod sql-jdbc.sync/describe-fks-sql :databricks
   [driver & {:keys [schema-names table-names catalog]}]

@@ -4,11 +4,11 @@ import ProgressBar, { type ProgressBarProps } from "./ProgressBar";
 import { BELOW_GOAL, EXCEEDS_GOAL, REACHED_GOAL, ZERO } from "./stories-data";
 
 export default {
-  title: "static-viz/ProgressBar",
+  title: "Viz/Static Viz/ProgressBar",
   component: ProgressBar,
 };
 
-const Template: StoryFn<ProgressBarProps> = args => {
+const Template: StoryFn<ProgressBarProps> = (args) => {
   return <ProgressBar {...args} />;
 };
 

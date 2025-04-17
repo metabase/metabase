@@ -728,7 +728,7 @@
 (deftest current-datetime-honeysql-form-test-2
   (mt/test-driver :bigquery-cloud-sdk
     (qp.store/with-metadata-provider (mt/id)
-      (testing (str "The object returned by `current-datetime-honeysql-form` should use the reporting timezone when set.")
+      (testing "The object returned by `current-datetime-honeysql-form` should use the reporting timezone when set."
         (doseq [timezone ["UTC" "US/Pacific"]]
           (mt/with-report-timezone-id! timezone
             (let [form (sql.qp/current-datetime-honeysql-form :bigquery-cloud-sdk)]

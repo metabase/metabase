@@ -8,11 +8,10 @@ import { t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
-import Tooltip from "metabase/core/components/Tooltip";
 import DashboardS from "metabase/css/dashboard.module.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { useMantineTheme } from "metabase/ui";
+import { Tooltip, useMantineTheme } from "metabase/ui";
 
 import {
   ScalarDescriptionContainer,
@@ -101,12 +100,12 @@ export const ScalarTitle = ({ lines = 2, title, description, onClick }) => (
     {description && description.length > 0 && (
       <ScalarDescriptionContainer data-testid="scalar-description">
         <Tooltip
-          tooltip={
+          label={
             <Markdown dark disallowHeading unstyleLinks>
               {description}
             </Markdown>
           }
-          maxWidth="22em"
+          maw="22em"
         >
           <ScalarDescriptionIcon name="info_filled" />
         </Tooltip>

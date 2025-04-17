@@ -1,12 +1,7 @@
-import { render, screen } from "@testing-library/react";
-
+import { render, screen } from "__support__/ui";
 import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
 
 describe("SessionTimeoutSetting", () => {
-  beforeAll(() => {
-    window.HTMLElement.prototype.scrollIntoView = jest.fn();
-  });
-
   const SUCCEED_TEST_CASES = [
     { value: { amount: 1, unit: "minutes" } },
     { value: { amount: 1, unit: "hours" } },

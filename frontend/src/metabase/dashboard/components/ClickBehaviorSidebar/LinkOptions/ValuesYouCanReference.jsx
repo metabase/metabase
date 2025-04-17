@@ -7,13 +7,13 @@ import {
   isMappableColumn,
   withUserAttributes,
 } from "metabase/dashboard/components/ClickMappings";
-import { Icon } from "metabase/ui";
+import { Flex, Icon } from "metabase/ui";
 
-import { PopoverTrigger } from "./ValuesYouCanReference.styled";
+import S from "./ValuesYouCanReference.module.css";
 
 function prefixIfNeeded(values, prefix, otherLists) {
-  const otherValues = otherLists.flat().map(s => s.toLowerCase());
-  return values.map(value =>
+  const otherValues = otherLists.flat().map((s) => s.toLowerCase());
+  return values.map((value) =>
     otherValues.includes(value.toLowerCase()) ? `${prefix}:${value}` : value,
   );
 }
@@ -21,8 +21,8 @@ function prefixIfNeeded(values, prefix, otherLists) {
 export const ValuesYouCanReference = withUserAttributes(
   ({ dashcard, parameters, userAttributes }) => {
     const columnMetadata = dashcard.card.result_metadata || [];
-    const columns = columnMetadata?.filter(isMappableColumn).map(c => c.name);
-    const parameterNames = parameters.map(p => p.name);
+    const columns = columnMetadata?.filter(isMappableColumn).map((c) => c.name);
+    const parameterNames = parameters.map((p) => p.name);
     const sections = [
       {
         items: prefixIfNeeded(columns, "column", [
@@ -45,7 +45,7 @@ export const ValuesYouCanReference = withUserAttributes(
         ]),
         name: t`User attributes`,
       },
-    ].filter(section => section.items.length > 0);
+    ].filter((section) => section.items.length > 0);
 
     if (!sections.length) {
       return null;
@@ -54,16 +54,16 @@ export const ValuesYouCanReference = withUserAttributes(
     return (
       <PopoverWithTrigger
         triggerElement={
-          <PopoverTrigger>
+          <Flex align="center" my="md" className={S.PopoverTrigger}>
             <h4>{t`Values you can reference`}</h4>
             <Icon name="chevrondown" className={CS.ml1} size={12} />
-          </PopoverTrigger>
+          </Flex>
         }
       >
         <AccordionList
           alwaysExpanded
           sections={sections}
-          renderItemName={name => name}
+          renderItemName={(name) => name}
           itemIsClickable={() => false}
         />
       </PopoverWithTrigger>

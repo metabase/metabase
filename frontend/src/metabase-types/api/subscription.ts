@@ -2,7 +2,7 @@ import type { Card } from "./card";
 import type { RegularCollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { BaseEntityId } from "./entity-id";
-import type { Channel } from "./notifications";
+import type { Channel } from "./notification-channels";
 import type { Parameter } from "./parameters";
 import type { User } from "./user";
 

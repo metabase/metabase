@@ -68,7 +68,7 @@ describe("ExcludeDatePicker", () => {
     expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
 
     await userEvent.click(screen.getByLabelText("Select all"));
-    expect(screen.getByLabelText("Select none")).toBeChecked();
+    expect(screen.getByLabelText("Select all")).toBeChecked();
     expect(screen.getByLabelText("Monday")).toBeChecked();
     expect(screen.getByRole("button", { name: "Apply" })).toBeEnabled();
 
@@ -86,7 +86,7 @@ describe("ExcludeDatePicker", () => {
 
     await userEvent.click(screen.getByText("Days of the week…"));
     await userEvent.click(screen.getByLabelText("Select all"));
-    await userEvent.click(screen.getByLabelText("Select none"));
+    await userEvent.click(screen.getByLabelText("Select all"));
 
     expect(screen.getByLabelText("Select all")).not.toBeChecked();
     expect(screen.getByLabelText("Monday")).not.toBeChecked();
@@ -146,7 +146,7 @@ describe("ExcludeDatePicker", () => {
   it("should allow to exclude empty values", async () => {
     const { onChange } = setup();
 
-    await userEvent.click(screen.getByText("Is empty"));
+    await userEvent.click(screen.getByText("Empty values"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "exclude",
@@ -158,7 +158,7 @@ describe("ExcludeDatePicker", () => {
   it("should allow to exclude not empty values", async () => {
     const { onChange } = setup();
 
-    await userEvent.click(screen.getByText("Is not empty"));
+    await userEvent.click(screen.getByText("Not empty values"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "exclude",

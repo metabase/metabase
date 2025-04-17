@@ -9,7 +9,6 @@ import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type Field from "metabase-lib/v1/metadata/Field";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
@@ -17,6 +16,7 @@ import type {
   NativeDatasetQuery,
   Parameter,
   ParameterId,
+  ParameterValuesConfig,
   RowValue,
   TemplateTag,
   TemplateTagId,
@@ -33,12 +33,14 @@ interface TagEditorSidebarProps {
   card: Card;
   query: NativeQuery;
   databases: Database[];
-  databaseFields: Field[];
   question: Question;
   sampleDatabaseId: DatabaseId;
   setDatasetQuery: (query: NativeDatasetQuery) => void;
   setTemplateTag: (tag: TemplateTag) => void;
-  setTemplateTagConfig: (tag: TemplateTag, config: Parameter) => void;
+  setTemplateTagConfig: (
+    tag: TemplateTag,
+    config: ParameterValuesConfig,
+  ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   onClose: () => void;
   getEmbeddedParameterVisibility: GetEmbeddedParamVisibility;
@@ -60,7 +62,6 @@ export class TagEditorSidebar extends Component<TagEditorSidebarProps> {
   render() {
     const {
       databases,
-      databaseFields,
       sampleDatabaseId,
       setDatasetQuery,
       query,
@@ -126,7 +127,6 @@ export class TagEditorSidebar extends Component<TagEditorSidebarProps> {
             <SettingsPane
               tags={tags}
               parametersById={parametersById}
-              databaseFields={databaseFields}
               database={database}
               databases={databases}
               setTemplateTag={setTemplateTag}
@@ -152,10 +152,12 @@ interface SettingsPaneProps {
   tags: TemplateTag[];
   database?: Database | null;
   databases: Database[];
-  databaseFields: Field[];
   parametersById: Record<ParameterId, Parameter>;
   setTemplateTag: (tag: TemplateTag) => void;
-  setTemplateTagConfig: (tag: TemplateTag, config: Parameter) => void;
+  setTemplateTagConfig: (
+    tag: TemplateTag,
+    config: ParameterValuesConfig,
+  ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   getEmbeddedParameterVisibility: GetEmbeddedParamVisibility;
 }
@@ -163,7 +165,6 @@ interface SettingsPaneProps {
 const SettingsPane = ({
   tags,
   parametersById,
-  databaseFields,
   database,
   databases,
   setTemplateTag,
@@ -172,7 +173,7 @@ const SettingsPane = ({
   getEmbeddedParameterVisibility,
 }: SettingsPaneProps) => (
   <div>
-    {tags.map(tag => (
+    {tags.map((tag) => (
       <div key={tag.id}>
         <TagEditorParam
           tag={tag}
@@ -183,7 +184,6 @@ const SettingsPane = ({
               ? getEmbeddedParameterVisibility(parametersById[tag.id].slug)
               : null
           }
-          databaseFields={databaseFields}
           database={database}
           databases={databases}
           setTemplateTag={setTemplateTag}

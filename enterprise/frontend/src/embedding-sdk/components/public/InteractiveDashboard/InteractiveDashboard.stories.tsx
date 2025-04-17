@@ -27,7 +27,7 @@ export default {
   },
 };
 
-const Template: StoryFn<InteractiveDashboardProps> = args => {
+const Template: StoryFn<InteractiveDashboardProps> = (args) => {
   return <InteractiveDashboard {...args} />;
 };
 
@@ -36,6 +36,7 @@ export const Default = {
 
   args: {
     dashboardId: DASHBOARD_ID,
+    withFooter: true,
   },
 };
 

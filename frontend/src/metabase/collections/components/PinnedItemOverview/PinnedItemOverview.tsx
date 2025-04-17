@@ -41,7 +41,7 @@ function PinnedItemOverview({
   onCopy,
   onMove,
 }: Props) {
-  const sortedItems = _.sortBy(items, item => item.collection_position);
+  const sortedItems = _.sortBy(items, (item) => item.collection_position);
   const {
     card: cardItems = [],
     dashboard: dashboardItems = [],
@@ -59,7 +59,7 @@ function PinnedItemOverview({
     <Container data-testid="pinned-items">
       <PinDropZone variant="pin" />
 
-      <Stack spacing="1.5rem">
+      <Stack gap="1.5rem">
         {metricItems.length > 0 && (
           <div>
             <SectionTitle title={t`Metrics`} icon="metric" />
@@ -67,7 +67,7 @@ function PinnedItemOverview({
               (cardGroup, cardGroupIndex) =>
                 cardGroup.length > 0 && (
                   <Grid key={cardGroupIndex}>
-                    {cardGroup.map(item => (
+                    {cardGroup.map((item) => (
                       <div key={item.id} className={CS.relative}>
                         <PinnedItemSortDropTarget
                           isFrontTarget
@@ -110,7 +110,7 @@ function PinnedItemOverview({
               (cardGroup, cardGroupIndex) =>
                 cardGroup.length > 0 && (
                   <Grid key={cardGroupIndex}>
-                    {cardGroup.map(item => (
+                    {cardGroup.map((item) => (
                       <div key={item.id} className={CS.relative}>
                         <PinnedItemSortDropTarget
                           isFrontTarget
@@ -150,7 +150,7 @@ function PinnedItemOverview({
           <div>
             <SectionTitle title={t`Dashboards`} icon="dashboard" />
             <Grid>
-              {dashboardItems.map(item => (
+              {dashboardItems.map((item) => (
                 <div key={item.id} className={CS.relative}>
                   <PinnedItemSortDropTarget
                     isFrontTarget
@@ -196,7 +196,7 @@ function PinnedItemOverview({
               }
             />
             <Grid>
-              {modelItems.map(item => (
+              {modelItems.map((item) => (
                 <div key={item.id} className={CS.relative}>
                   <PinnedItemSortDropTarget
                     isFrontTarget
@@ -242,8 +242,8 @@ interface SectionTitleProps {
 
 function SectionTitle({ title, description, icon }: SectionTitleProps) {
   return (
-    <Stack spacing="sm" pb="md">
-      <Group spacing="sm">
+    <Stack gap="sm" pb="md">
+      <Group gap="sm">
         {icon && <Icon name={icon} color={color("brand")} />}
         <h3>{title}</h3>
       </Group>

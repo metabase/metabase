@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import DashboardS from "metabase/css/dashboard.module.css";

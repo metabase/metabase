@@ -6,16 +6,16 @@
    [hooks.common]))
 
 (deftest ^:parallel ignored-linters-test
-  (doseq [ignored [":metabase/ns-module-checker"
-                   "[:metabase/ns-module-checker]"
-                   "(:metabase/ns-module-checker)"]
+  (doseq [ignored [":metabase/modules"
+                   "[:metabase/modules]"
+                   "(:metabase/modules)"]
           prefix ["#_"
                   "^"]
           :let [s (format "%s{:clj-kondo/ignore %s} [metabase.search.config :as search.config]"
                           prefix
                           ignored)]]
     (testing (pr-str s)
-      (is (= #{:metabase/ns-module-checker}
+      (is (= #{:metabase/modules}
              (hooks.common/ignored-linters (api/parse-string s)))))))
 
 (deftest ^:parallel merge-ignored-linters-test

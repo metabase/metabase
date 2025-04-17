@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import type { ShortcutGroup } from "./types";
 
@@ -9,7 +9,7 @@ export function getShortcutGroups(): ShortcutGroup[] {
       shortcuts: [
         {
           label: t`Today`,
-          value: { type: "relative", value: "current", unit: "day" },
+          value: { type: "relative", value: 0, unit: "day" },
         },
         {
           label: t`Yesterday`,
@@ -30,15 +30,15 @@ export function getShortcutGroups(): ShortcutGroup[] {
       columns: 3,
       shortcuts: [
         {
-          label: t`Week`,
+          label: ngettext(msgid`Week`, `Weeks`, 1),
           value: { type: "relative", value: -1, unit: "week" },
         },
         {
-          label: t`Month`,
+          label: ngettext(msgid`Month`, `Months`, 1),
           value: { type: "relative", value: -1, unit: "month" },
         },
         {
-          label: t`Year`,
+          label: ngettext(msgid`Year`, `Years`, 1),
           value: { type: "relative", value: -1, unit: "year" },
         },
       ],
@@ -48,16 +48,16 @@ export function getShortcutGroups(): ShortcutGroup[] {
       columns: 3,
       shortcuts: [
         {
-          label: t`Week`,
-          value: { type: "relative", value: "current", unit: "week" },
+          label: ngettext(msgid`Week`, `Weeks`, 1),
+          value: { type: "relative", value: 0, unit: "week" },
         },
         {
-          label: t`Month`,
-          value: { type: "relative", value: "current", unit: "month" },
+          label: ngettext(msgid`Month`, `Months`, 1),
+          value: { type: "relative", value: 0, unit: "month" },
         },
         {
-          label: t`Year`,
-          value: { type: "relative", value: "current", unit: "year" },
+          label: ngettext(msgid`Year`, `Years`, 1),
+          value: { type: "relative", value: 0, unit: "year" },
         },
       ],
     },

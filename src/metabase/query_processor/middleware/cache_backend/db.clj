@@ -103,13 +103,14 @@
   creating a new entry."
   [^bytes query-hash ^bytes results]
   (log/debugf "Caching results for query with hash %s." (pr-str (i/short-hex-hash query-hash)))
-  (let [final-results (encryption/maybe-encrypt-for-stream results)]
+  (let [final-results (encryption/maybe-encrypt-for-stream results)
+        timestamp     (t/offset-date-time)]
     (try
       (or (pos? (t2/update! :model/QueryCache {:query_hash query-hash}
-                            {:updated_at (t/offset-date-time)
+                            {:updated_at timestamp
                              :results    final-results}))
           (first (t2/insert-returning-instances! :model/QueryCache
-                                                 :updated_at (t/offset-date-time)
+                                                 :updated_at timestamp
                                                  :query_hash query-hash
                                                  :results final-results)))
       (catch Throwable e

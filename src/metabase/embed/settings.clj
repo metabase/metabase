@@ -3,7 +3,8 @@
   (:require
    [clojure.string :as str]
    [crypto.random :as crypto-random]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
+   [metabase.embed.app-origins-sdk :as aos]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
@@ -23,15 +24,15 @@
           (setting/set-value-of-type! :boolean setting-key new-value)
           (when (and new-value (str/blank? (embed/embedding-secret-key)))
             (embed/embedding-secret-key! (crypto-random/hex 32)))
-          (snowplow/track-event! ::snowplow/embed_share
-                                 {:event                      (keyword (str event-name (if new-value "-enabled" "-disabled")))
-                                  :embedding-app-origin-set   (boolean
-                                                               (or (setting/get-value-of-type :string :embedding-app-origin)
-                                                                   (setting/get-value-of-type :string :embedding-app-origins-interactive)
-                                                                   (let [sdk-origins (setting/get-value-of-type :string :embedding-app-origins-sdk)]
-                                                                     (and sdk-origins (not= "localhost:*" sdk-origins)))))
-                                  :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
-                                  :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))))
+          (analytics/track-event! :snowplow/embed_share
+                                  {:event                      (keyword (str event-name (if new-value "-enabled" "-disabled")))
+                                   :embedding-app-origin-set   (boolean
+                                                                (or (setting/get-value-of-type :string :embedding-app-origin)
+                                                                    (setting/get-value-of-type :string :embedding-app-origins-interactive)
+                                                                    (let [sdk-origins (setting/get-value-of-type :string :embedding-app-origins-sdk)]
+                                                                      (and sdk-origins (not= "localhost:*" sdk-origins)))))
+                                   :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
+                                   :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Embed Settings ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -66,44 +67,6 @@
   :export?    false
   :audit      :getter
   :setter     (make-embedding-toggle-setter :enable-embedding-sdk "sdk-embedding"))
-
-(mu/defn- ignore-localhost :- :string
-  "Remove localhost:* or localhost:<port> from the list of origins."
-  [s :- [:maybe :string]]
-  (->> (str/split (or s "") #"\s+")
-       (remove #(re-matches #"localhost:(\*|\d+)" %))
-       distinct
-       (str/join " ")
-       str/trim))
-
-(mu/defn- add-localhost :- :string [s :- [:maybe :string]]
-  (->> s ignore-localhost (str "localhost:* ") str/trim))
-
-(defn embedding-app-origins-sdk-setter
-  "The setter for [[embedding-app-origins-sdk]].
-
-  Checks that we have SDK embedding feature and that it's enabled, then sets the value accordingly."
-  [new-value]
-  (add-localhost ;; return the same value that is returned from the getter
-   (->> new-value
-        ignore-localhost
-        ;; Why ignore-localhost?, because localhost:* will always be allowed, so we don't need to store it, if we
-        ;; were to store it, and the value was set N times, it would have localhost:* prefixed N times. Also, we
-        ;; should not store localhost:port, since it's covered by localhost:* (which is the minumum value).
-        (setting/set-value-of-type! :string :embedding-app-origins-sdk))))
-
-(defsetting embedding-app-origins-sdk
-  (deferred-tru "Allow Metabase SDK access to these space delimited origins.")
-  :type       :string
-  :export?    false
-  :visibility :public
-  :feature    :embedding-sdk
-  :default    "localhost:*"
-  :encryption :no
-  :audit      :getter
-  :getter    (fn embedding-app-origins-sdk-getter []
-               (add-localhost (setting/get-value-of-type :string :embedding-app-origins-sdk)))
-  :setter   embedding-app-origins-sdk-setter)
 
 (defsetting enable-embedding-interactive
   (deferred-tru "Allow admins to embed Metabase via interactive embedding?")
@@ -178,7 +141,7 @@
                               " to match MB_ENABLE_EMBEDDING, which is "
                               (pr-str app-origin-from-env) ".")]))
     (when (premium-features/has-feature? :embedding-sdk)
-      (embedding-app-origins-sdk! app-origin-from-env))
+      (aos/embedding-app-origins-sdk! app-origin-from-env))
     (when (premium-features/has-feature? :embedding)
       (embedding-app-origins-interactive! app-origin-from-env))))
 
@@ -216,7 +179,7 @@
 
 ;; settings for the embedding homepage
 (defsetting embedding-homepage
-  (deferred-tru "Embedding homepage status, indicating if it's visible, hidden or has been dismissed")
+  (deferred-tru "Embedding homepage status, indicating if it''s visible, hidden or has been dismissed")
   :type       :keyword
   :default    :hidden
   :export?    true

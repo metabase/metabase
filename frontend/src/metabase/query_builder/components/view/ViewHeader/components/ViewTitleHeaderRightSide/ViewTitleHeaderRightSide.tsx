@@ -4,14 +4,15 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { QuestionSharingMenu } from "metabase/embedding/components/SharingMenu";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import { QuestionSharingMenu } from "metabase/sharing/components/SharingMenu";
-import { Box, Button, Divider, Flex, Tooltip } from "metabase/ui";
+import { Box, Button, Flex, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
@@ -136,7 +137,22 @@ export function ViewTitleHeaderRightSide({
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
   const isBrandNew = !isSaved && !result && queryBuilderMode === "notebook";
-  const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);
+  const disabledSaveTooltip = isSaveDisabled
+    ? getDisabledSaveTooltip(isEditable)
+    : undefined;
+
+  useRegisterShortcut(
+    hasRunButton && !isShowingNotebook
+      ? [
+          {
+            id: "query-builder-data-refresh",
+            perform: () =>
+              isRunning ? cancelQuery : runQuestionQuery({ ignoreCache: true }),
+          },
+        ]
+      : [],
+    [isRunning, isShowingNotebook, hasRunButton],
+  );
 
   return (
     <Flex
@@ -151,8 +167,7 @@ export function ViewTitleHeaderRightSide({
       }) && (
         <FilterHeaderButton
           className={cx(CS.hide, CS.smShow)}
-          onOpenModal={onOpenModal}
-          query={question.query()}
+          question={question}
           isExpanded={areFiltersExpanded}
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
@@ -185,9 +200,6 @@ export function ViewTitleHeaderRightSide({
         question,
         queryBuilderMode,
       }) && <ToggleNativeQueryPreview question={question} />}
-      {queryBuilderMode !== "notebook" && (
-        <Divider orientation="vertical" my="xs" />
-      )}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && !isShowingNotebook && (
         <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
@@ -202,8 +214,6 @@ export function ViewTitleHeaderRightSide({
             iconSize={16}
             onlyIcon
             medium
-            compact
-            result={result}
             isRunning={isRunning}
             isDirty={isResultDirty}
             onRun={() => runQuestionQuery({ ignoreCache: true })}
@@ -225,7 +235,11 @@ export function ViewTitleHeaderRightSide({
         />
       )}
       {hasSaveButton && (
-        <Tooltip label={disabledSaveTooltip} disabled={canSave} position="left">
+        <Tooltip
+          disabled={!disabledSaveTooltip}
+          label={disabledSaveTooltip}
+          position="left"
+        >
           <Button
             className={ViewTitleHeaderS.SaveButton}
             data-testid="qb-save-button"
@@ -234,7 +248,7 @@ export function ViewTitleHeaderRightSide({
             variant="subtle"
             aria-disabled={isSaveDisabled || undefined}
             data-disabled={isSaveDisabled || undefined}
-            onClick={event => {
+            onClick={(event) => {
               event.preventDefault();
               if (!isSaveDisabled) {
                 onOpenModal(MODAL_TYPES.SAVE);

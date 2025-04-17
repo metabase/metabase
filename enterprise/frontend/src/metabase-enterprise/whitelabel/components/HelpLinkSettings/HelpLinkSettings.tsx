@@ -32,9 +32,9 @@ export const HelpLinkSettings = ({
 
   const [error, setError] = useState<string | null>(null);
 
-  const handleRadioChange = (value: HelpLinkSetting) => {
-    setHelpLinkSetting(value);
-    onChangeSetting("help-link", value);
+  const handleRadioChange = (value: string) => {
+    setHelpLinkSetting(value as HelpLinkSetting);
+    onChangeSetting("help-link", value as HelpLinkSetting);
   };
   const customUrl = settingValues["help-link-custom-destination"];
 
@@ -43,7 +43,7 @@ export const HelpLinkSettings = ({
   const handleChange = async (value: string) => {
     if (value === "") {
       setError(t`This field can't be left empty.`);
-    } else if (!supportedPrefixes.some(prefix => value.startsWith(prefix))) {
+    } else if (!supportedPrefixes.some((prefix) => value.startsWith(prefix))) {
       setError(t`This needs to be an "http://", "https://" or "mailto:" URL.`);
     } else {
       setError("");
@@ -66,7 +66,7 @@ export const HelpLinkSettings = ({
         </Stack>
       </Radio.Group>
       {isTextInputVisible && (
-        <Stack ml={28} spacing={0}>
+        <Stack ml={28} gap={0}>
           {error && (
             <Text size="md" color="error">
               {error}
@@ -83,7 +83,7 @@ export const HelpLinkSettings = ({
             onChange={() => setError(null)}
             aria-label={t`Help link custom destination`}
             placeholder={t`Enter a URL it should go to`}
-            onBlurChange={e => handleChange(e.target.value)}
+            onBlurChange={(e) => handleChange(e.target.value)}
           />
         </Stack>
       )}

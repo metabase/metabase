@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { useListApiKeysQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
@@ -62,7 +62,7 @@ function GroupMembersTable({
 }: GroupMembersTableProps) {
   const { isLoading, data: apiKeys } = useListApiKeysQuery();
   const groupApiKeys = useMemo(() => {
-    return apiKeys?.filter(apiKey => apiKey.group.id === group.id) ?? [];
+    return apiKeys?.filter((apiKey) => apiKey.group.id === group.id) ?? [];
   }, [apiKeys, group.id]);
 
   // you can't remove people from Default and you can't remove the last user from Admin
@@ -72,11 +72,12 @@ function GroupMembersTable({
 
   const hasMembers = group.members.length > 0;
 
-  const handleAddUser: GroupMembersTableProps["onAddUserDone"] =
-    async userIds => {
-      await onAddUserDone(userIds);
-      reload();
-    };
+  const handleAddUser: GroupMembersTableProps["onAddUserDone"] = async (
+    userIds,
+  ) => {
+    await onAddUserDone(userIds);
+    reload();
+  };
 
   const handleRemoveUser = async (membershipId: number) => {
     await onMembershipRemove(membershipId);
@@ -90,7 +91,7 @@ function GroupMembersTable({
   ].filter(isNotNull);
 
   const alreadyMembersIds = useMemo(
-    () => new Set(groupMemberships.map(membership => membership.user_id)),
+    () => new Set(groupMemberships.map((membership) => membership.user_id)),
     [groupMemberships],
   );
 
@@ -177,7 +178,7 @@ const UserRow = ({
   memberships = [],
 }: UserRowProps) => {
   const groupMembership = memberships.find(
-    membership => membership.group_id === group.id,
+    (membership) => membership.group_id === group.id,
   );
 
   if (!groupMembership) {
@@ -228,10 +229,10 @@ const ApiKeyRow = ({ apiKey }: { apiKey: ApiKey }) => {
   return (
     <tr>
       <td>
-        <Text weight="bold">{apiKey.name}</Text>
+        <Text fw="bold">{apiKey.name}</Text>
       </td>
       <td>
-        <Text weight="bold" color="text-medium">{t`API Key`}</Text>
+        <Text fw="bold" color="text-medium">{t`API Key`}</Text>
       </td>
       <td>{/* api keys don't have real emails */}</td>
       <td className={CS.textRight}>

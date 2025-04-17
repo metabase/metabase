@@ -1,4 +1,4 @@
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 
 import { SidebarRoot } from "./PermissionsSidebar.styled";
 import type { PermissionsSidebarContentProps } from "./PermissionsSidebarContent";

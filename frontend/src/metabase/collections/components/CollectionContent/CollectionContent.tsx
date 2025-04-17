@@ -6,7 +6,7 @@ import {
   useCollectionQuery,
   useDatabaseListQuery,
 } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Bookmark from "metabase/entities/bookmarks";
 import Databases from "metabase/entities/databases";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -41,12 +41,12 @@ export function CollectionContent({
   });
 
   const uploadDbId = useSelector(
-    state => getSetting(state, "uploads-settings")?.db_id,
+    (state) => getSetting(state, "uploads-settings")?.db_id,
   );
   const uploadsEnabled = !!uploadDbId;
 
   const canCreateUploadInDb = useSelector(
-    state =>
+    (state) =>
       uploadDbId &&
       Databases.selectors
         .getObject(state, {

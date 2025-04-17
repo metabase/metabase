@@ -4,13 +4,13 @@ import { useState } from "react";
 import SelectList from "./SelectList";
 
 export default {
-  title: "Core/SelectList",
+  title: "Deprecated/Components/SelectList",
   component: SelectList,
 };
 
 const items = ["alert", "all", "archive", "dyno", "history"];
 
-const Template: StoryFn<any> = args => {
+const Template: StoryFn<any> = (args) => {
   const [value, setValue] = useState("dyno");
 
   return (

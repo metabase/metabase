@@ -2,14 +2,15 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { HTMLAttributes, MutableRefObject } from "react";
 
-import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 import type { ButtonProps as BaseButtonProps } from "metabase/ui";
-import { Button, Flex } from "metabase/ui";
+import { Button } from "metabase/ui";
 
 type ButtonProps = BaseButtonProps & HTMLAttributes<HTMLButtonElement>;
-export const PolicyToken = styled(Button)<
+export const PolicyToken = styled((props: ButtonProps) => (
+  <Button {...props} radius={props.radius ?? "sm"} />
+))<
   { variant?: string; ref?: MutableRefObject<HTMLButtonElement> } & ButtonProps
 >`
   cursor: pointer;
@@ -31,13 +32,9 @@ export const PolicyToken = styled(Button)<
   ${breakpointMaxSmall} {
     flex: 1;
   }
-`;
-PolicyToken.defaultProps = { radius: "sm" };
+` as unknown as typeof Button;
 
-export const StyledLauncher = styled(
-  Flex,
-  doNotForwardProps("forRoot", "inheritsRootStrategy"),
-)<
+export const StyledLauncher = styled.div<
   {
     forRoot?: boolean;
     inheritsRootStrategy?: boolean;
@@ -52,7 +49,8 @@ export const StyledLauncher = styled(
   padding: 1rem;
   border-width: 1px;
   border-style: solid;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   width: 100%;
   ${({ variant }) => css`
     border-color: ${["filled", "outline"].includes(variant || "")
@@ -75,4 +73,4 @@ export const StyledLauncher = styled(
     align-items: stretch;
     gap: 0.5rem;
   }
-`;
+`; // FIXME, make this into CSS modules

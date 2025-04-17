@@ -334,3 +334,20 @@
             preprocessed (qp.preprocess/preprocess query)]
         ;; [:query :filter 2 2 :database_type] points to wrapped value's options
         (is (= "BIGINT" (get-in preprocessed [:query :filter 2 2 :database_type])))))))
+
+(deftest ^:parallel type-info-gets-field-ref-data-test
+  (testing "type info includes data from :field_ref as well as :source-metadata"
+    (is (=? {:query
+             {:filter
+              [:=
+               [:field "CATEGORY" {:base-type :type/Text}]
+               [:value "Doohickey" {:base_type :type/Text,
+                                    :effective_type :type/Text,
+                                    :database_type "CHARACTER VARYING"}]]}}
+            (wrap-value-literals
+             (qp.preprocess/preprocess
+              (mt/mbql-query products
+                {:filter [:= [:field "CATEGORY" {:base-type :type/Text}] "Doohickey"]
+                 :source-query {:source-table $$products
+                                :aggregation [[:count]]
+                                :breakout [$category]}})))))))

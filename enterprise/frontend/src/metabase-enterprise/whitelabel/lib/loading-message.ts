@@ -8,11 +8,11 @@ export const LOADING_MESSAGE_BY_SETTING = {
   },
   "running-query": {
     name: t`Running query...`,
-    value: (_: boolean) => t`Running query...`,
+    value: (_isSlow: boolean) => t`Running query...`,
   },
   "loading-results": {
     name: t`Loading results...`,
-    value: (_: boolean) => t`Loading results...`,
+    value: (_isSlow: boolean) => t`Loading results...`,
   },
 };
 

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -63,12 +63,14 @@ const SUM_OF_TOTAL_MONTH_EXCLUDE_MAY_AUG = {
       "2024-08-02",
     ],
     "source-query": {
-      "source-table": 5,
-      aggregation: [["sum", ["field", 40, { "base-type": "type/Float" }]]],
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["sum", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }]],
+      ],
       breakout: [
         [
           "field",
-          39,
+          ORDERS.CREATED_AT,
           { "base-type": "type/DateTime", "temporal-unit": "month" },
         ],
       ],
@@ -218,6 +220,39 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     cy.signInAsAdmin();
   });
 
+  it("should be enterable and scrollable to view all rows in long tooltips (metabase#53586) (metabase#48347)", () => {
+    const testQuestion = {
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+            [
+              "field",
+              ORDERS.TOTAL,
+              { binning: { strategy: "num-bins", "num-bins": 50 } },
+            ],
+          ],
+        },
+        type: "query",
+      },
+      display: "bar",
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT", "TOTAL"],
+        "graph.metrics": ["count"],
+      },
+    };
+    H.visitQuestionAdhoc(testQuestion);
+
+    showTooltipForBarInSeries("#A989C5", 3);
+    H.echartsTooltip()
+      .findByText("155 – 160") // bottom row
+      .scrollIntoView()
+      .should("be.visible");
+  });
+
   describe("> additional columns setting", () => {
     const COUNT = "Count";
     const SUM_OF_TOTAL = "Sum of Total";
@@ -262,16 +297,14 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       H.openVizSettingsSidebar();
       H.leftSidebar().within(() => {
         cy.findByText("Display").click();
-        cy.findByPlaceholderText("Enter metric names").click();
+        cy.findByPlaceholderText("Enter column names").click();
       });
 
-      // Select two additional metric columns to show in the tooltip
+      // Select two additional columns to show in the tooltip
       cy.findByRole("option", { name: SUM_OF_TOTAL }).click();
       cy.findByRole("option", { name: AVG_OF_QUANTITY }).click();
-      // It should not suggest categorical columns
-      cy.findByRole("option", { name: "Product → Category" }).should(
-        "not.exist",
-      );
+      // It should suggest categorical columns as well
+      cy.findByRole("option", { name: "Product → Category" }).should("exist");
 
       // Ensure the tooltip shows additional columns
       showTooltipForBarInSeries(COUNT_COLOR);
@@ -323,7 +356,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     beforeEach(() => {
       setup({
         question: SUM_OF_TOTAL,
-      }).then(dashboardId => {
+      }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
     });
@@ -361,7 +394,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       setup({
         question: SUM_OF_TOTAL,
         addedSeriesQuestion: AVG_OF_TOTAL,
-      }).then(dashboardId => {
+      }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
     });
@@ -434,7 +467,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     beforeEach(() => {
       setup({
         question: AVG_OF_TOTAL_CUM_SUM_QUANTITY,
-      }).then(dashboardId => {
+      }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
     });
@@ -501,7 +534,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         x: 4,
         y: 4,
       },
-    }).then(dashboardId => {
+    }).then((dashboardId) => {
       H.visitDashboard(dashboardId);
     });
     H.cartesianChartCircleWithColor("#A989C5")
@@ -513,10 +546,10 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     H.assertEChartsTooltip({ header: "2022" });
 
     // Ensuring the circle is not covered by the tooltip element
-    cy.get("@firstCircle").then($circle => {
+    cy.get("@firstCircle").then(($circle) => {
       const circleRect = $circle[0].getBoundingClientRect();
 
-      H.echartsTooltip().then($tooltip => {
+      H.echartsTooltip().then(($tooltip) => {
         const tooltipRect = $tooltip[0].getBoundingClientRect();
         const isCovered =
           circleRect.top < tooltipRect.bottom &&
@@ -532,7 +565,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
   it("tooltips should be hidden when click popover is visible", () => {
     setup({
       question: AVG_OF_TOTAL_CUM_SUM_QUANTITY,
-    }).then(dashboardId => {
+    }).then((dashboardId) => {
       H.visitDashboard(dashboardId);
     });
 
@@ -546,7 +579,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
     cy.get("@firstCircle").click();
 
-    H.echartsTooltip().should("not.be.visible");
+    cy.findAllByTestId("echarts-tooltip").should("be.hidden");
   });
 
   describe("> multi series question on dashboard with added question", () => {
@@ -554,7 +587,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       setup({
         question: AVG_OF_TOTAL_CUM_SUM_QUANTITY,
         addedSeriesQuestion: AVG_DISCOUNT_SUM_DISCOUNT,
-      }).then(dashboardId => {
+      }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
     });
@@ -574,7 +607,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       const updatedAddedAvgSeriesName = "Q2 Custom 1";
       const updatedAddedSumSeriesName = "Q2 Custom 2";
 
-      [...originalSeriesColors, ...addedSeriesColors].forEach(color => {
+      [...originalSeriesColors, ...addedSeriesColors].forEach((color) => {
         showTooltipForCircleInSeries(color, circleIndex);
         H.assertEChartsTooltip({
           header: "2023",
@@ -616,7 +649,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       saveDashCardVisualizationOptions();
 
-      [...originalSeriesColors, ...addedSeriesColors].forEach(color => {
+      [...originalSeriesColors, ...addedSeriesColors].forEach((color) => {
         showTooltipForCircleInSeries(color, circleIndex);
         H.assertEChartsTooltip({
           header: "2023",
@@ -658,7 +691,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     beforeEach(() => {
       setup({
         question: { ...SUM_OF_TOTAL, display: "bar" },
-      }).then(dashboardId => {
+      }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
     });
@@ -708,7 +741,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       setup({
         question: { ...SUM_OF_TOTAL, display: "bar" },
         addedSeriesQuestion: { ...AVG_OF_TOTAL, display: "bar" },
-      }).then(dashboardId => {
+      }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
     });
@@ -787,7 +820,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     it("should show percent change in tooltip for timeseries axis", () => {
       setup({
         question: SUM_OF_TOTAL_MONTH,
-      }).then(dashboardId => {
+      }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -821,7 +854,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     it("should not show percent change when previous month is missing from result data", () => {
       setup({
         question: SUM_OF_TOTAL_MONTH_EXCLUDE_MAY_AUG,
-      }).then(dashboardId => {
+      }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -880,7 +913,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     it("should not show if x-axis is not timeseries", () => {
       setup({
         question: SUM_OF_TOTAL_MONTH_ORDINAL,
-      }).then(dashboardId => {
+      }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -922,7 +955,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
         filter: [
           "between",
-          ["field", 39, { "base-type": "type/DateTime" }],
+          ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
           "2024-01-01",
           "2024-05-30",
         ],
@@ -940,7 +973,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
         filter: [
           "between",
-          ["field", 39, { "base-type": "type/DateTime" }],
+          ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
           "2024-03-01",
           "2024-03-31",
         ],
@@ -958,7 +991,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }]],
         filter: [
           "between",
-          ["field", 39, { "base-type": "type/DateTime" }],
+          ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
           "2024-03-09",
           "2024-03-12",
         ],
@@ -969,7 +1002,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     const DST_DAY_CHANGES = [null, "+27.5%", "-26.16%"];
 
     it("should not omit percent change on April", () => {
-      setup({ question: SUM_OF_TOTAL_APRIL }).then(dashboardId => {
+      setup({ question: SUM_OF_TOTAL_APRIL }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -992,7 +1025,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
 
     it("should not omit percent change the week after DST begins", () => {
-      setup({ question: SUM_OF_TOTAL_DST_WEEK }).then(dashboardId => {
+      setup({ question: SUM_OF_TOTAL_DST_WEEK }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -1016,7 +1049,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
 
     it("should not omit percent change the day after DST begins", () => {
-      setup({ question: SUM_OF_TOTAL_DST_DAY }).then(dashboardId => {
+      setup({ question: SUM_OF_TOTAL_DST_DAY }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -1041,9 +1074,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 });
 
 function setup({ question, addedSeriesQuestion, cardSize }) {
-  return cy.createQuestion(question).then(({ body: { id: card1Id } }) => {
+  return H.createQuestion(question).then(({ body: { id: card1Id } }) => {
     if (addedSeriesQuestion) {
-      cy.createQuestion(addedSeriesQuestion).then(
+      H.createQuestion(addedSeriesQuestion).then(
         ({ body: { id: card2Id } }) => {
           return setupDashboard(card1Id, card2Id, cardSize);
         },
@@ -1059,7 +1092,7 @@ function setupDashboard(
   addedSeriesCardId,
   cardSize = { x: 24, y: 12 },
 ) {
-  return cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+  return H.createDashboard().then(({ body: { id: dashboardId } }) => {
     return H.addOrUpdateDashboardCard({
       dashboard_id: dashboardId,
       card_id: cardId,
@@ -1073,18 +1106,16 @@ function setupDashboard(
     });
   });
 }
-function resetHoverState() {
-  H.echartsTriggerBlur();
-  cy.wait(50);
-}
 
 function showTooltipForCircleInSeries(seriesColor, index = 0) {
-  resetHoverState();
+  H.echartsTriggerBlur();
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.cartesianChartCircleWithColor(seriesColor).eq(index).realHover();
 }
 
 function showTooltipForBarInSeries(seriesColor, index = 0) {
-  resetHoverState();
+  H.echartsTriggerBlur();
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.chartPathWithFillColor(seriesColor).eq(index).realHover();
 }
 

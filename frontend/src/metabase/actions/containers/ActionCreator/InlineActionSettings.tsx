@@ -1,22 +1,20 @@
-import type { ChangeEvent } from "react";
+import { useDisclosure } from "@mantine/hooks";
+import type { ChangeEvent, ChangeEventHandler } from "react";
 import { t } from "ttag";
 
-import ConfirmContent from "metabase/components/ConfirmContent";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import CopyWidget from "metabase/components/CopyWidget";
-import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
 import FormField from "metabase/core/components/FormField";
 import TextArea from "metabase/core/components/TextArea";
-import Toggle from "metabase/core/components/Toggle";
-import Tooltip from "metabase/core/components/Tooltip";
 import Actions from "metabase/entities/actions/actions";
-import { useToggle } from "metabase/hooks/use-toggle";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { Switch, Tooltip } from "metabase/ui";
 import type {
   ActionFormSettings,
   WritebackAction,
@@ -36,7 +34,8 @@ interface OwnProps {
   formSettings: ActionFormSettings;
   isEditable: boolean;
   onChangeFormSettings: (formSettings: ActionFormSettings) => void;
-  onClose: () => void;
+  onClose?: () => void;
+  onBack?: () => void;
 }
 
 interface StateProps {
@@ -57,7 +56,7 @@ export const ActionSettingsTriggerButton = ({
 }: {
   onClick: () => void;
 }) => (
-  <Tooltip tooltip={t`Action settings`}>
+  <Tooltip label={t`Action settings`}>
     <Button
       onlyIcon
       onClick={onClick}
@@ -90,12 +89,16 @@ const InlineActionSettings = ({
   onCreatePublicLink,
   onDeletePublicLink,
   onClose,
+  onBack,
 }: ActionSettingsInlineProps) => {
   const id = useUniqueId();
-  const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] = useToggle();
+  const [modalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
   const hasSharingPermission = isAdmin && isPublicSharingEnabled;
 
-  const handleTogglePublic = (isPublic: boolean) => {
+  const handleTogglePublic: ChangeEventHandler<HTMLInputElement> = (event) => {
+    const isPublic = event.target.checked;
+
     if (isPublic) {
       if (isSavedAction(action)) {
         onCreatePublicLink({ id: action.id });
@@ -109,6 +112,7 @@ const InlineActionSettings = ({
     if (isSavedAction(action)) {
       onDeletePublicLink({ id: action.id });
     }
+    closeModal();
   };
 
   const handleSuccessMessageChange = (
@@ -121,7 +125,11 @@ const InlineActionSettings = ({
   };
 
   return (
-    <SidebarContent title={t`Action settings`} onClose={onClose}>
+    <SidebarContent
+      title={t`Action settings`}
+      onClose={onClose}
+      onBack={onBack}
+    >
       <ActionSettingsContent>
         {action && hasSharingPermission && (
           <FormField
@@ -130,11 +138,19 @@ const InlineActionSettings = ({
             orientation="horizontal"
             htmlFor={`${id}-public`}
           >
-            <Toggle
-              id={`${id}-public`}
-              value={isActionPublic(action)}
-              onChange={handleTogglePublic}
-            />
+            <Tooltip
+              disabled={isSavedAction(action)}
+              label={t`To enable creating a shareable link you first need to save your action`}
+            >
+              <div>
+                <Switch
+                  id={`${id}-public`}
+                  disabled={!isSavedAction(action)}
+                  checked={isActionPublic(action)}
+                  onChange={handleTogglePublic}
+                />
+              </div>
+            </Tooltip>
           </FormField>
         )}
         {action?.public_uuid && hasSharingPermission && (
@@ -145,16 +161,13 @@ const InlineActionSettings = ({
             />
           </CopyWidgetContainer>
         )}
-        {isModalOpen && (
-          <Modal>
-            <ConfirmContent
-              title={t`Disable this public link?`}
-              content={t`This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link.`}
-              onAction={handleDisablePublicLink}
-              onClose={closeModal}
-            />
-          </Modal>
-        )}
+        <ConfirmModal
+          opened={modalOpened}
+          title={t`Disable this public link?`}
+          content={t`This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link.`}
+          onConfirm={handleDisablePublicLink}
+          onClose={closeModal}
+        />
         <FormField title={t`Success message`} htmlFor={`${id}-message`}>
           <TextArea
             id={`${id}-message`}

@@ -3,9 +3,9 @@
 
   Currently only used for http channels."
   (:require
-   [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.api.macros :as api.macros]
    [metabase.channel.core :as channel]
    [metabase.events :as events]
    [metabase.models.interface :as mi]
@@ -22,14 +22,17 @@
     channel
     (dissoc channel :details)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "Get all channels"
-  [:as {{:keys [include_inactive]} :body}]
-  {include_inactive [:maybe {:default false} :boolean]}
-  (map remove-details-if-needed (if include_inactive
-                                  (t2/select :model/Channel)
-                                  (t2/select :model/Channel :active true))))
+  [_route-params
+   _query-params
+   {:keys [include_inactive]} :- [:map
+                                  [:include_inactive {:optional true} [:maybe {:default false} :boolean]]]]
+  (->> (if include_inactive
+         (t2/select :model/Channel)
+         (t2/select :model/Channel :active true))
+       (filter mi/can-read?)
+       (map remove-details-if-needed)))
 
 (def ^:private ChannelType
   (mu/with-api-error-message
@@ -37,41 +40,41 @@
     #(= "channel" (namespace (keyword %)))]
    (deferred-tru "Must be a namespaced channel. E.g: channel/http")))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Create a channel"
-  [:as {{:keys [name description type active details] :as body} :body}]
-  {name        ms/NonBlankString
-   description [:maybe ms/NonBlankString]
-   type        ChannelType
-   details     :map
-   active      [:maybe {:default true} :boolean]}
+  [_route-params
+   _query-params
+   {channel-name :name, :as body} :- [:map
+                                      [:name        ms/NonBlankString]
+                                      [:description {:optional true} [:maybe ms/NonBlankString]]
+                                      [:type        ChannelType]
+                                      [:details     :map]
+                                      [:active      {:optional true} [:maybe {:default true} :boolean]]]]
   (validation/check-has-application-permission :setting)
-  (when (t2/exists? :model/Channel :name name)
+  (when (t2/exists? :model/Channel :name channel-name)
     (throw (ex-info "Channel with that name already exists" {:status-code 409
                                                              :errors      {:name "Channel with that name already exists"}})))
   (u/prog1 (t2/insert-returning-instance! :model/Channel body)
     (events/publish-event! :event/channel-create {:object <> :user-id api/*current-user-id*})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id"
+(api.macros/defendpoint :get "/:id"
   "Get a channel"
-  [id]
-  {id ms/PositiveInt}
-  (-> (t2/select-one :model/Channel id) api/check-404 remove-details-if-needed))
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (-> (t2/select-one :model/Channel id) api/read-check remove-details-if-needed))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/:id"
+(api.macros/defendpoint :put "/:id"
   "Update a channel"
-  [id :as {{:keys [name type description details active] :as body} :body}]
-  {id          ms/PositiveInt
-   name        [:maybe ms/NonBlankString]
-   description [:maybe ms/NonBlankString]
-   type        [:maybe ChannelType]
-   details     [:maybe :map]
-   active      [:maybe :boolean]}
-  (validation/check-has-application-permission :setting)
-  (let [channel-before-update (api/check-404 (t2/select-one :model/Channel id))]
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   body :- [:map
+            [:name        {:optional true} [:maybe ms/NonBlankString]]
+            [:description {:optional true} [:maybe ms/NonBlankString]]
+            [:type        {:optional true} [:maybe ChannelType]]
+            [:details     {:optional true} [:maybe :map]]
+            [:active      {:optional true} [:maybe :boolean]]]]
+  (let [channel-before-update (api/write-check (t2/select-one :model/Channel id))]
     (t2/update! :model/Channel id body)
     (u/prog1 (t2/select-one :model/Channel id)
       (events/publish-event! :event/channel-update {:object          <>
@@ -93,12 +96,11 @@
        :body   {:message     (ex-message e)
                 :data        (ex-data e)}})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/test"
+(api.macros/defendpoint :post "/test"
   "Test a channel connection"
-  [:as {{:keys [type details]} :body}]
-  {type    ChannelType
-   details :map}
+  [_route-params
+   _query-params
+   {:keys [type details]} :- [:map
+                              [:type    ChannelType]
+                              [:details :map]]]
   (test-channel-connection! type details))
-
-(api/define-routes)

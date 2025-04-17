@@ -77,8 +77,8 @@ export const ChartSettingSeriesOrder = ({
   const [items, hiddenItems] = useMemo(
     () =>
       _.partition(
-        orderedItems.filter(item => !item.hidden),
-        item => item.enabled,
+        orderedItems.filter((item) => !item.hidden),
+        (item) => item.enabled,
       ),
     [orderedItems],
   );
@@ -109,16 +109,18 @@ export const ChartSettingSeriesOrder = ({
   const toggleDisplay = useCallback(
     (selectedItem: SortableItem) => {
       const index = orderedItems.findIndex(
-        item => item.key === selectedItem.key,
+        (item) => item.key === selectedItem.key,
       );
-      onChange(updateIn(orderedItems, [index, "enabled"], enabled => !enabled));
+      onChange(
+        updateIn(orderedItems, [index, "enabled"], (enabled) => !enabled),
+      );
     },
     [orderedItems, onChange],
   );
 
   const handleSortEnd = useCallback(
     ({ id, newIndex }: DragEndEvent) => {
-      const oldIndex = orderedItems.findIndex(item => item.key === id);
+      const oldIndex = orderedItems.findIndex((item) => item.key === id);
 
       if (onSortEnd != null) {
         onSortEnd(arrayMove(orderedItems, oldIndex, newIndex));
@@ -155,8 +157,8 @@ export const ChartSettingSeriesOrder = ({
   );
 
   const handleAddSeries = useCallback(
-    (seriesKey: string) => {
-      const item = hiddenItems.find(item => item.key === seriesKey);
+    (seriesKey: string | null) => {
+      const item = hiddenItems.find((item) => item.key === seriesKey);
       if (item) {
         toggleDisplay(item);
         setSeriesPickerVisible(false);
@@ -180,7 +182,7 @@ export const ChartSettingSeriesOrder = ({
         afterIndex: groupedAfterIndex,
         renderFn: () => (
           <Flex justify="space-between" px={4}>
-            <Group p={4} spacing="sm">
+            <Group p={4} gap="sm">
               <ColorSelector
                 value={otherColor ?? color("text-light")}
                 colors={getAccentColors()}
@@ -190,10 +192,10 @@ export const ChartSettingSeriesOrder = ({
               <Text truncate fw="bold">{t`Other`}</Text>
             </Group>
             <Button
-              compact
+              size="compact-md"
               color="text-medium"
               variant="subtle"
-              leftIcon={<Icon name="gear" />}
+              leftSection={<Icon name="gear" />}
               aria-label={t`Other series settings`}
               onClick={handleOtherSeriesSettingsClick}
             />
@@ -246,10 +248,10 @@ export const ChartSettingSeriesOrder = ({
           )}
           {isSeriesPickerVisible && (
             <Select
-              initiallyOpened
+              dropdownOpened
               searchable
               placeholder={searchPickerPlaceholder}
-              data={hiddenItems.map(item => ({
+              data={hiddenItems.map((item) => ({
                 value: item.key,
                 label: getItemTitle(item),
               }))}

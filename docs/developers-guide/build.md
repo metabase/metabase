@@ -40,7 +40,7 @@ If you have multiple JDK versions installed in your machine, be sure to switch y
 sudo update-alternatives --config java
 ```
 
-Then select Java 11 in the menu.
+Then select Java 21 in the menu.
 
 ### Running on M1 Apple computers
 

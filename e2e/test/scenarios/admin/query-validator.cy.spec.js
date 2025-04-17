@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 import { createNativeQuestion } from "../../../support/helpers/api/createNativeQuestion";
@@ -6,8 +6,8 @@ import { createNativeQuestion } from "../../../support/helpers/api/createNativeQ
 const SCOREBOARD_TABLE = "scoreboard_actions";
 const COLORS_TABLE = "colors27745";
 
-H.describeEE("query validator", { tags: "@external" }, () => {
-  describe("feature disbaled", () => {
+describe("query validator", { tags: "@external" }, () => {
+  describe("feature disabled", () => {
     beforeEach(() => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
@@ -21,9 +21,7 @@ H.describeEE("query validator", { tags: "@external" }, () => {
         "Query Validator",
       );
       cy.visit("/admin/settings/general");
-      cy.findByRole("switch", { name: /ENABLE QUERY ANALYSIS/i }).should(
-        "not.exist",
-      );
+      cy.findByTestId("query-analysis-enabled-setting").should("not.exist");
     });
   });
 
@@ -32,16 +30,15 @@ H.describeEE("query validator", { tags: "@external" }, () => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.setTokenFeatures("all");
+      H.updateSetting("query-analysis-enabled", true);
     });
 
     it("enable query analysis setting", () => {
       cy.visit("/admin/settings/general");
 
-      cy.findByRole("switch", { name: /ENABLE QUERY ANALYSIS/i }).should(
-        "have.attr",
-        "checked",
-      );
-      cy.findByRole("switch", { name: /ENABLE QUERY ANALYSIS/i }).click();
+      cy.findByTestId("query-analysis-enabled-setting")
+        .findByText("Enabled")
+        .click();
 
       cy.findByRole("link", { name: /troubleshooting/i }).click();
 
@@ -92,13 +89,13 @@ H.describeEE("query validator", { tags: "@external" }, () => {
       cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
         ({ body: tables }) => {
           const scoreboardTable = tables.find(
-            table => table.name === SCOREBOARD_TABLE,
+            (table) => table.name === SCOREBOARD_TABLE,
           );
 
           cy.request(`/api/table/${scoreboardTable.id}/query_metadata`).then(
             ({ body: { fields } }) => {
               const teamNameField = fields.find(
-                field => field.name === "team_name",
+                (field) => field.name === "team_name",
               );
 
               H.createQuestion({
@@ -117,12 +114,14 @@ H.describeEE("query validator", { tags: "@external" }, () => {
 
       cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
         ({ body: tables }) => {
-          const colorsTable = tables.find(table => table.name === COLORS_TABLE);
+          const colorsTable = tables.find(
+            (table) => table.name === COLORS_TABLE,
+          );
 
           cy.request(`/api/table/${colorsTable.id}/query_metadata`).then(
             ({ body: { fields } }) => {
               const colorNameField = fields.find(
-                field => field.name === "name",
+                (field) => field.name === "name",
               );
 
               H.createQuestion({
@@ -180,7 +179,6 @@ H.describeEE("query validator", { tags: "@external" }, () => {
 
 describe("OSS", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    H.onlyOnOSS();
     H.restore();
     cy.signInAsAdmin();
   });
@@ -192,8 +190,7 @@ describe("OSS", { tags: "@OSS" }, () => {
       "Query Validator",
     );
     cy.visit("/admin/settings/general");
-    cy.findByRole("switch", { name: /ENABLE QUERY ANALYSIS/i }).should(
-      "not.exist",
-    );
+
+    cy.findByTestId("query-analysis-enabled-setting").should("not.exist");
   });
 });

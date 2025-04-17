@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -57,7 +57,7 @@ describe("time-series chrome filter widget", () => {
         );
 
         cy.log("Make sure we display all the operators");
-        operators.forEach(operator => {
+        operators.forEach((operator) => {
           cy.findByRole("option", { name: operator }).should("be.visible");
         });
       });
@@ -169,7 +169,7 @@ describe("time-series chrome filter widget", () => {
         "Created At is in the next 30 years",
       );
       cy.findByTestId("timeseries-filter-button")
-        .should("have.text", "Next 30 Years")
+        .should("have.text", "Next 30 years")
         .click();
     });
 

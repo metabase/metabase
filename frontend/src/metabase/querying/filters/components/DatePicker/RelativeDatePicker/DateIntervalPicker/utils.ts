@@ -1,18 +1,21 @@
-import type { DatePickerTruncationUnit } from "metabase/querying/filters/types";
+import type {
+  DatePickerTruncationUnit,
+  RelativeDatePickerValue,
+} from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
-
-import type { DateIntervalValue } from "../types";
 
 import { DEFAULT_OFFSETS } from "./constants";
 
 export function setUnit(
-  value: DateIntervalValue,
+  value: RelativeDatePickerValue,
   unit: DatePickerTruncationUnit,
-): DateIntervalValue {
+): RelativeDatePickerValue {
   return { ...value, unit };
 }
 
-export function setDefaultOffset(value: DateIntervalValue): DateIntervalValue {
+export function setDefaultOffset(
+  value: RelativeDatePickerValue,
+): RelativeDatePickerValue {
   return {
     ...value,
     offsetValue: DEFAULT_OFFSETS[value.unit] * Math.sign(value.value),
@@ -21,7 +24,7 @@ export function setDefaultOffset(value: DateIntervalValue): DateIntervalValue {
   };
 }
 
-export function getIncludeCurrent(value: DateIntervalValue): boolean {
+export function getIncludeCurrent(value: RelativeDatePickerValue): boolean {
   return value.options?.includeCurrent ?? false;
 }
 
@@ -30,8 +33,8 @@ export function getIncludeCurrentLabel(unit: DatePickerTruncationUnit): string {
 }
 
 export function setIncludeCurrent(
-  value: DateIntervalValue,
+  value: RelativeDatePickerValue,
   includeCurrent: boolean,
-): DateIntervalValue {
+): RelativeDatePickerValue {
   return { ...value, options: { includeCurrent: includeCurrent } };
 }

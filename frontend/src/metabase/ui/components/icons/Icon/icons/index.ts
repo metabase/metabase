@@ -145,10 +145,14 @@ import fields_component from "./fields.svg?component";
 import fields_source from "./fields.svg?source";
 import filter_component from "./filter.svg?component";
 import filter_source from "./filter.svg?source";
+import filter_plus_component from "./filter_plus.svg?component";
+import filter_plus_source from "./filter_plus.svg?source";
 import folder_component from "./folder.svg?component";
 import folder_source from "./folder.svg?source";
 import folder_filled_component from "./folder_filled.svg?component";
 import folder_filled_source from "./folder_filled.svg?source";
+import format_code_component from "./format_code.svg?component";
+import format_code_source from "./format_code.svg?source";
 import formula_component from "./formula.svg?component";
 import formula_source from "./formula.svg?source";
 import function_component from "./function.svg?component";
@@ -167,6 +171,10 @@ import globe_component from "./globe.svg?component";
 import globe_source from "./globe.svg?source";
 import google_component from "./google.svg?component";
 import google_source from "./google.svg?source";
+import google_drive_component from "./google_drive.svg?component";
+import google_drive_source from "./google_drive.svg?source";
+import google_sheet_component from "./google_sheet.svg?component";
+import google_sheet_source from "./google_sheet.svg?source";
 import grabber_component from "./grabber.svg?component";
 import grabber_source from "./grabber.svg?source";
 import grid_component from "./grid.svg?component";
@@ -387,6 +395,8 @@ import unknown_component from "./unknown.svg?component";
 import unknown_source from "./unknown.svg?source";
 import unpin_component from "./unpin.svg?component";
 import unpin_source from "./unpin.svg?source";
+import unsubscribe_component from "./unsubscribe.svg?component";
+import unsubscribe_source from "./unsubscribe.svg?source";
 import upload_component from "./upload.svg?component";
 import upload_source from "./upload.svg?source";
 import variable_component from "./variable.svg?component";
@@ -691,9 +701,17 @@ export const Icons = {
     component: filter_component,
     source: filter_source,
   },
+  filter_plus: {
+    component: filter_plus_component,
+    source: filter_plus_source,
+  },
   bug: {
     component: bug_component,
     source: bug_source,
+  },
+  format_code: {
+    component: format_code_component,
+    source: format_code_source,
   },
   formula: {
     component: formula_component,
@@ -750,6 +768,14 @@ export const Icons = {
   google: {
     component: google_component,
     source: google_source,
+  },
+  google_drive: {
+    component: google_drive_component,
+    source: google_drive_source,
+  },
+  google_sheet: {
+    component: google_sheet_component,
+    source: google_sheet_source,
   },
   history: {
     component: history_component,
@@ -1169,13 +1195,17 @@ export const Icons = {
     component: unarchive_component,
     source: unarchive_source,
   },
+  unknown: {
+    component: unknown_component,
+    source: unknown_source,
+  },
   unpin: {
     component: unpin_component,
     source: unpin_source,
   },
-  unknown: {
-    component: unknown_component,
-    source: unknown_source,
+  unsubscribe: {
+    component: unsubscribe_component,
+    source: unsubscribe_source,
   },
   upload: {
     component: upload_component,

@@ -130,7 +130,10 @@
 
 (defn- backfill-effective-type [{:keys [base_type effective_type] :as col}]
   (cond-> col
-    (and (nil? effective_type) base_type) (assoc :effective_type base_type)))
+    ;; If the :effective_type is missing, or the :base_type is more specific, copy it to the `:effective_type`.
+    ;; Some driver extensions set a specialized `:base_type` but not `:effective_type`.
+    (or (and (nil? effective_type) base_type)
+        (isa? base_type effective_type))      (assoc :effective_type base_type)))
 
 (defn aggregate-col
   "Return the column information we'd expect for an aggregate column. For all columns besides `:count`, you'll need to
@@ -257,6 +260,21 @@
   (if (float? x)
     (partial u/round-to-decimals (int x))
     x))
+
+(defn boolish->bool
+  "Convert something that looks like a reasonable DB bool to a bool.
+
+  Throw an exception if the input does not seem boolish. Valid inputs are #{0 1 true false}.
+
+  Can be used with [[format-rows-by]] to normalize DB-specific bools in results."
+  [x]
+  ;; The compiler warns about performance here since (= (hash 0) (hash 0M)), so the `case` will fallback to linear
+  ;; probing for those values. It shouldn't matter for this function, but if it becomes an issue or we want to silence
+  ;; the warning, it could be rewritten to avoid the `case`.
+  (case x
+    (0 0M false) false
+    (1 1M true)  true
+    (throw (ex-info "value is not boolish" {:value x}))))
 
 (defn format-rows-by
   "Format the values in result `rows` with the fns at the corresponding indecies in `format-fns`. `rows` can be a

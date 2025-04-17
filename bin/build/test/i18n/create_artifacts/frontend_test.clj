@@ -30,5 +30,11 @@
 
                           "${ 0 } metric"
                           {:msgid_plural "{0} metrics"
-                           :msgstr       ["${ 0 } metrik" ""]}}}}
+                           :msgstr       ["${ 0 } metrik" ""]}
+
+                          "Average of ${ 0 }"
+                          {:msgstr ["Average of ${ 0 }"]}
+
+                          "Median of ${ 0 }"
+                          {:msgstr ["Median of ${ 0 }"]}}}}
          (#'frontend/->i18n-map test-common/po-contents))))

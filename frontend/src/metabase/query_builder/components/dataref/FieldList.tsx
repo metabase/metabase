@@ -36,7 +36,7 @@ const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
           )}
         </NodeListTitleText>
       </NodeListTitle>
-      {fields.map(field => {
+      {fields.map((field) => {
         // field.icon() cannot be annotated to return IconName
         // because metabase-lib cannot import from metabase.
         const iconName = field.icon() as IconName;

@@ -1,13 +1,9 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { Button, Icon, Tooltip } from "metabase/ui";
+import { Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
 
-import {
-  ButtonContainer,
-  ChildrenContainer,
-  SidebarAside,
-} from "./Sidebar.styled";
+import S from "./Sidebar.module.css";
 
 interface SidebarProps {
   children: ReactNode;
@@ -30,18 +26,32 @@ export function Sidebar({
   "data-testid": dataTestId,
 }: SidebarProps) {
   return (
-    <SidebarAside data-testid={dataTestId} $width={SIDEBAR_WIDTH}>
-      <ChildrenContainer>{children}</ChildrenContainer>
+    <Box
+      component="aside"
+      data-testid={dataTestId}
+      miw={SIDEBAR_WIDTH}
+      w={SIDEBAR_WIDTH}
+      className={S.SidebarAside}
+    >
+      <Flex direction="column" className={S.ChildrenContainer}>
+        {children}
+      </Flex>
       {(onClose || onCancel || onRemove) && (
-        <ButtonContainer spaceBetween>
+        <Flex
+          justify="space-between"
+          align="center"
+          gap="20px"
+          p="0.75rem 2rem"
+          className={S.ButtonContainer}
+        >
           {onRemove && (
             <Button
-              leftIcon={<Icon name="trash" />}
+              leftSection={<Icon name="trash" />}
               variant="subtle"
               color="error"
               onClick={onRemove}
               style={{ paddingLeft: 0, paddingRight: 0 }}
-              compact
+              size="compact-md"
               role="button"
               aria-label={t`Remove`}
             >{t`Remove`}</Button>
@@ -67,8 +77,8 @@ export function Sidebar({
               </div>
             </Tooltip>
           )}
-        </ButtonContainer>
+        </Flex>
       )}
-    </SidebarAside>
+    </Box>
   );
 }

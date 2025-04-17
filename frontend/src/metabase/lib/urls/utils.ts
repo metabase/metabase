@@ -11,7 +11,7 @@ export function extractEntityId(slug = "") {
 
 function flattenParam([key, value]: [string, unknown]) {
   if (value instanceof Array) {
-    return value.map(p => [key, p]);
+    return value.map((p) => [key, p]);
   }
   return [[key, value]];
 }

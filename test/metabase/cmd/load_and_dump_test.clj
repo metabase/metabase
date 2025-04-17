@@ -2,7 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [metabase.cmd.compare-h2-dbs :as compare-h2-dbs]
+   [metabase.cmd.compare-h2-dbs-test-util :as compare-h2-dbs]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.copy.h2 :as copy.h2]
    [metabase.cmd.dump-to-h2 :as dump-to-h2]

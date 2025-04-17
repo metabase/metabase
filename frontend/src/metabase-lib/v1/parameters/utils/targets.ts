@@ -1,9 +1,8 @@
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
-import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
+import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import { isTemplateTagReference } from "metabase-lib/v1/references";
 import type TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
@@ -56,69 +55,87 @@ export function getParameterTargetField(
     return null;
   }
 
-  const fieldRef = target[1];
-  const metadata = question.metadata();
+  const targetRef = target[1];
 
   // native queries
-  if (isTemplateTagReference(fieldRef)) {
-    if (!Lib.queryDisplayInfo(question.query()).isNative) {
+  if (isTemplateTagReference(targetRef)) {
+    const query = question.query();
+    if (!Lib.queryDisplayInfo(query).isNative) {
       return null;
     }
 
-    const dimension = TemplateTagDimension.parseMBQL(
-      fieldRef,
-      metadata,
-      question.legacyQuery() as NativeQuery,
+    const tagName = targetRef[1];
+    const tag = Lib.templateTags(query)[tagName];
+    if (tag == null || tag.dimension == null) {
+      return null;
+    }
+
+    return getParameterTargetFieldFromFieldRef(
+      question,
+      parameter,
+      tag.dimension,
     );
-    return dimension?.field();
   }
 
-  if (isConcreteFieldReference(fieldRef)) {
-    const [_type, fieldIdOrName] = fieldRef;
-    const fields = metadata.fieldsList();
-    if (typeof fieldIdOrName === "number") {
-      // performance optimization:
-      // we can match by id directly without finding this column via query
-      return fields.find(field => field.id === fieldIdOrName);
-    }
+  // mbql queries
+  if (isConcreteFieldReference(targetRef)) {
+    return getParameterTargetFieldFromFieldRef(question, parameter, targetRef);
+  }
 
-    const { query, columns } = getParameterColumns(question, parameter);
+  return null;
+}
 
-    if (columns.length === 0) {
-      // query and metadata are not available: 1) no data permissions 2) embedding
-      // there is no way to find the correct field so pick the first one matching by name
-      return fields.find(
-        field => typeof field.id === "number" && field.name === fieldIdOrName,
-      );
-    }
+function getParameterTargetFieldFromFieldRef(
+  question: Question,
+  parameter: Parameter,
+  fieldRef: ConcreteFieldReference,
+) {
+  const metadata = question.metadata();
 
-    const stageIndexes = _.uniq(columns.map(({ stageIndex }) => stageIndex));
+  const [_type, fieldIdOrName] = fieldRef;
+  const fields = metadata.fieldsList();
+  if (typeof fieldIdOrName === "number") {
+    // performance optimization:
+    // we can match by id directly without finding this column via query
+    return fields.find((field) => field.id === fieldIdOrName);
+  }
 
-    for (const stageIndex of stageIndexes) {
-      const stageColumns = columns
-        .filter(column => column.stageIndex === stageIndex)
-        .map(({ column }) => column);
+  const { query, columns } = getParameterColumns(question, parameter);
 
-      const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
-        query,
-        stageIndex,
-        stageColumns,
-        [fieldRef],
-      );
+  if (columns.length === 0) {
+    // query and metadata are not available: 1) no data permissions 2) embedding
+    // there is no way to find the correct field so pick the first one matching by name
+    return fields.find(
+      (field) => typeof field.id === "number" && field.name === fieldIdOrName,
+    );
+  }
 
-      if (columnIndex >= 0) {
-        const column = stageColumns[columnIndex];
-        const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
+  const stageIndexes = _.uniq(columns.map(({ stageIndex }) => stageIndex));
 
-        if (fieldValuesInfo.fieldId == null) {
-          // the column does not represent to a database field, e.g. coming from an aggregation clause
-          return null;
-        }
+  for (const stageIndex of stageIndexes) {
+    const stageColumns = columns
+      .filter((column) => column.stageIndex === stageIndex)
+      .map(({ column }) => column);
 
-        // do not use `metadata.field(id)` because it only works for fields loaded
-        // with the original table, not coming from model metadata
-        return fields.find(field => field.id === fieldValuesInfo.fieldId);
+    const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
+      query,
+      stageIndex,
+      stageColumns,
+      [fieldRef],
+    );
+
+    if (columnIndex >= 0) {
+      const column = stageColumns[columnIndex];
+      const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
+
+      if (fieldValuesInfo.fieldId == null) {
+        // the column does not represent to a database field, e.g. coming from an aggregation clause
+        return null;
       }
+
+      // do not use `metadata.field(id)` because it only works for fields loaded
+      // with the original table, not coming from model metadata
+      return fields.find((field) => field.id === fieldValuesInfo.fieldId);
     }
   }
 
@@ -189,12 +206,12 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
 }
 
 function getTemporalColumns(query: Lib.Query, stageIndex: number) {
-  const columns = Lib.breakouts(query, stageIndex).map(breakout => {
+  const columns = Lib.breakouts(query, stageIndex).map((breakout) => {
     return Lib.breakoutColumn(query, stageIndex, breakout);
   });
   const [group] = Lib.groupColumns(columns);
 
-  return columns.map(column => ({
+  return columns.map((column) => ({
     stageIndex,
     column,
     group,
@@ -202,14 +219,14 @@ function getTemporalColumns(query: Lib.Query, stageIndex: number) {
 }
 
 function getFilterableColumns(query: Lib.Query) {
-  return Lib.stageIndexes(query).flatMap(stageIndex => {
+  return Lib.stageIndexes(query).flatMap((stageIndex) => {
     const columns = Lib.filterableColumns(query, stageIndex);
     const groups = Lib.groupColumns(columns);
 
-    return groups.flatMap(group => {
+    return groups.flatMap((group) => {
       const columns = Lib.getColumnsFromColumnGroup(group);
 
-      return columns.map(column => ({
+      return columns.map((column) => ({
         stageIndex,
         column,
         group,

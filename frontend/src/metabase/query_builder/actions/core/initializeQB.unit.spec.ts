@@ -5,8 +5,8 @@ import { createMockEntitiesState } from "__support__/store";
 import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
 import * as CardLib from "metabase/lib/card";
+import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
-import * as alert from "metabase/notifications/redux/alert";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -79,7 +79,7 @@ async function baseSetup({
   jest.runAllTimers();
 
   const actions = dispatch.mock.calls.find(
-    call => call[0]?.type === "metabase/qb/INITIALIZE_QB",
+    (call) => call[0]?.type === "metabase/qb/INITIALIZE_QB",
   );
   const hasDispatchedInitAction = Array.isArray(actions);
   const result = hasDispatchedInitAction ? actions[0].payload : null;
@@ -226,7 +226,7 @@ describe("QB Actions > initializeQB", () => {
   ];
 
   describe("common", () => {
-    ALL_TEST_CASES.forEach(testCase => {
+    ALL_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -316,21 +316,10 @@ describe("QB Actions > initializeQB", () => {
   });
 
   describe("saved questions and models", () => {
-    [...SAVED_QUESTION_TEST_CASES, ...MODEL_TEST_CASES].forEach(testCase => {
+    [...SAVED_QUESTION_TEST_CASES, ...MODEL_TEST_CASES].forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
-        it("fetches alerts", async () => {
-          const fetchAlertsForQuestionSpy = jest.spyOn(
-            alert,
-            "fetchAlertsForQuestion",
-          );
-
-          await setup({ card: card });
-
-          expect(fetchAlertsForQuestionSpy).toHaveBeenCalledWith(card.id);
-        });
-
         it("passes object ID from params correctly", async () => {
           const params = getQueryParamsForCard(card, { objectId: 123 });
           const { result } = await setup({ card: card, params });
@@ -384,7 +373,7 @@ describe("QB Actions > initializeQB", () => {
   });
 
   describe("saved questions", () => {
-    SAVED_QUESTION_TEST_CASES.forEach(testCase => {
+    SAVED_QUESTION_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -416,7 +405,7 @@ describe("QB Actions > initializeQB", () => {
   });
 
   describe("unsaved questions", () => {
-    UNSAVED_QUESTION_TEST_CASES.forEach(testCase => {
+    UNSAVED_QUESTION_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       const ORIGINAL_CARD_ID = 321;
@@ -482,17 +471,6 @@ describe("QB Actions > initializeQB", () => {
           expect(result.card.displayIsLocked).toBeFalsy();
         });
 
-        it("does not try to fetch alerts", async () => {
-          const fetchAlertsForQuestionSpy = jest.spyOn(
-            alert,
-            "fetchAlertsForQuestion",
-          );
-
-          await setup({ card: card });
-
-          expect(fetchAlertsForQuestionSpy).not.toHaveBeenCalled();
-        });
-
         it("does not show qbnewb modal", async () => {
           const { result } = await setup({
             card: card,
@@ -538,7 +516,7 @@ describe("QB Actions > initializeQB", () => {
   });
 
   describe("models", () => {
-    MODEL_TEST_CASES.forEach(testCase => {
+    MODEL_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -599,7 +577,7 @@ describe("QB Actions > initializeQB", () => {
   });
 
   describe("native questions with snippets", () => {
-    NATIVE_SNIPPETS_TEST_CASES.forEach(testCase => {
+    NATIVE_SNIPPETS_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       type SnippetsSetupOpts = Omit<SetupOpts, "card"> & {
@@ -652,7 +630,7 @@ describe("QB Actions > initializeQB", () => {
             },
           });
           const formattedQuestion = new Question(result.card, metadata);
-          const query = formattedQuestion.legacyQuery() as NativeQuery;
+          const query = formattedQuestion.legacyNativeQuery() as NativeQuery;
 
           expect(query.queryText().toLowerCase()).toBe(
             "select * from orders {{snippet: bar}}",
@@ -725,16 +703,28 @@ describe("QB Actions > initializeQB", () => {
       const question = new Question(result.card, metadata);
       const query = question.query();
 
-      expect(result.card).toEqual(expectedCard);
+      expect(
+        Lib.areLegacyQueriesEqual(
+          result.card.dataset_query,
+          expectedCard.dataset_query,
+        ),
+      ).toBe(true);
       expect(Lib.sourceTableOrCardId(query)).toBe(null);
       expect(result.originalCard).toBeUndefined();
     });
 
     it("constructs a card based on provided 'db' and 'table' params", async () => {
       const { result, metadata } = await setupOrdersTable();
-      const expectedCard = metadata.table(ORDERS_ID)?.question().card();
+      const expectedCard = checkNotNull(
+        metadata.table(ORDERS_ID)?.question().card(),
+      );
 
-      expect(result.card).toEqual(expectedCard);
+      expect(
+        Lib.areLegacyQueriesEqual(
+          result.card.dataset_query,
+          expectedCard.dataset_query,
+        ),
+      ).toBe(true);
       expect(result.originalCard).toBeUndefined();
     });
 
@@ -770,17 +760,6 @@ describe("QB Actions > initializeQB", () => {
     it("does not lock question display", async () => {
       const { result } = await setupOrdersTable();
       expect(result.card.displayIsLocked).toBeFalsy();
-    });
-
-    it("does not try to fetch alerts", async () => {
-      const fetchAlertsForQuestionSpy = jest.spyOn(
-        alert,
-        "fetchAlertsForQuestion",
-      );
-
-      await setupOrdersTable();
-
-      expect(fetchAlertsForQuestionSpy).not.toHaveBeenCalled();
     });
 
     it("does not show qbnewb modal", async () => {

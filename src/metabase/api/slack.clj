@@ -3,9 +3,8 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [compojure.core :refer [PUT]]
-   [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.api.macros :as api.macros]
    [metabase.config :as config]
    [metabase.integrations.slack :as slack]
    [metabase.util.i18n :refer [tru]]
@@ -26,19 +25,27 @@
   [diagnostic-info file-info]
   (let [version-info (get-in diagnostic-info [:bugReportDetails :metabase-info :version])
         description (get diagnostic-info :description)
+        reporter (get diagnostic-info :reporter)
         file-url (if (string? file-info)
                    file-info
                    (:url file-info))]
     [{:type "rich_text"
       :elements [{:type "rich_text_section"
                   :elements [{:type "text"
-                              :text "New bug report"}
+                              :text "New bug report from "}
+                             (if reporter
+                               {:type "link"
+                                :url (str "mailto:" (:email reporter))
+                                :text (:name reporter)}
+                               {:type "text"
+                                :text "anonymous user"})
                              {:type "text"
                               :text "\n\nDescription:\n"
-                              :style {:bold true}}
-                             {:type "text"
-                              :text (or description "N/A")}
-                             {:type "text"
+                              :style {:bold true}}]}]}
+     {:type "section" :text {:type "mrkdwn" :text (or description "N/A")}}
+     {:type "rich_text"
+      :elements [{:type "rich_text_section"
+                  :elements [{:type "text"
                               :text "\n\nURL:\n"
                               :style {:bold true}}
                              {:type "link"
@@ -68,26 +75,24 @@
                          :emoji true}
                   :url file-url}]}]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/settings"
+(api.macros/defendpoint :put "/settings"
   "Update Slack related settings. You must be a superuser to do this. Also updates the slack-cache.
   There are 3 cases where we alter the slack channel/user cache:
   1. falsy token           -> clear
   2. invalid token         -> clear
   3. truthy, valid token   -> refresh "
-  [:as {{slack-app-token :slack-app-token, slack-files-channel :slack-files-channel, slack-bug-report-channel :slack-bug-report-channel} :body}]
-  {slack-app-token     [:maybe ms/NonBlankString]
-   slack-files-channel    [:maybe ms/NonBlankString]
-   slack-bug-report-channel [:maybe :string]}
+  [_route-params
+   _query-params
+   {:keys [slack-app-token slack-bug-report-channel]}
+   :- [:map
+       [:slack-app-token          {:optional true} [:maybe ms/NonBlankString]]
+       [:slack-bug-report-channel {:optional true} [:maybe :string]]]]
   (validation/check-has-application-permission :setting)
   (try
     ;; Clear settings if no values are provided
     (when (nil? slack-app-token)
       (slack/slack-app-token! nil)
       (slack/clear-channel-cache!))
-
-    (when (nil? slack-files-channel)
-      (slack/slack-files-channel! "metabase_files"))
 
     (when (and slack-app-token
                (not config/is-test?)
@@ -105,18 +110,6 @@
       ;; clear user/conversation cache when token is newly empty
       (slack/clear-channel-cache!))
 
-    (when slack-files-channel
-      (let [processed-files-channel (slack/process-files-channel-name slack-files-channel)]
-        (when-not (slack/channel-exists? processed-files-channel)
-          ;; Files channel could not be found; clear the token we had previously set since the integration should not be
-          ;; enabled.
-          (slack/slack-token-valid?! false)
-          (slack/slack-app-token! nil)
-          (slack/clear-channel-cache!)
-          (throw (ex-info (tru "Slack channel not found.")
-                          {:errors {:slack-files-channel (tru "channel not found")}})))
-        (slack/slack-files-channel! processed-files-channel)))
-
     (when slack-bug-report-channel
       (let [processed-bug-channel (slack/process-files-channel-name slack-bug-report-channel)]
         (when (not (slack/channel-exists? processed-bug-channel))
@@ -131,38 +124,31 @@
 (def ^:private slack-manifest
   (delay (slurp (io/resource "slack-manifest.yaml"))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/manifest"
+(api.macros/defendpoint :get "/manifest"
   "Returns the YAML manifest file that should be used to bootstrap new Slack apps"
   []
   (validation/check-has-application-permission :setting)
   @slack-manifest)
 
 ;; Handle bug report submissions to Slack
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/bug-report"
+(api.macros/defendpoint :post "/bug-report"
   "Send diagnostic information to the configured Slack channels."
-  [:as {{:keys [diagnosticInfo]} :body}]
-  {diagnosticInfo map?}
+  [_route-params
+   _query-params
+   {diagnostic-info :diagnosticInfo} :- [:map
+                                         ;; TODO FIXME -- this should not use `camelCase` keys
+                                         [:diagnosticInfo map?]]]
   (try
-    (let [files-channel (slack/files-channel)
-          bug-report-channel (slack/bug-report-channel)
-          file-content (.getBytes (json/encode diagnosticInfo {:pretty true}))
-          file-info (slack/upload-file! file-content
-                                        "diagnostic-info.json"
-                                        files-channel)]
-
-      (let [blocks (create-slack-message-blocks diagnosticInfo file-info)]
-
-        (slack/post-chat-message!
-         bug-report-channel
-         nil
-         {:blocks blocks})
-
-        {:success true
-         :file-url (get file-info :permalink_public)}))
+    (let [bug-report-channel (slack/bug-report-channel)
+          file-content (.getBytes (json/encode diagnostic-info {:pretty true}))
+          file-info (slack/upload-file! file-content "diagnostic-info.json")
+          blocks (create-slack-message-blocks diagnostic-info file-info)]
+      (slack/post-chat-message!
+       bug-report-channel
+       nil
+       {:blocks blocks})
+      {:success true
+       :file-url (get file-info :permalink_public)})
     (catch Exception e
       {:success false
        :error (.getMessage e)})))
-
-(api/define-routes)

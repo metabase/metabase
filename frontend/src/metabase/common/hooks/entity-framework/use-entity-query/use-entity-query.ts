@@ -60,11 +60,11 @@ export const useEntityQuery = <TId, TItem, TQuery = never>(
   }: UseEntityOwnProps<TId, TItem>,
 ): UseEntityQueryResult<TItem> => {
   const options = { entityId, requestType };
-  const data = useSelector(state => getObject(state, options));
-  const isLoading = useSelector(state => getLoading(state, options));
+  const data = useSelector((state) => getObject(state, options));
+  const isLoading = useSelector((state) => getLoading(state, options));
   const isActive = entityId != null && enabled;
   const isLoadingOrDefault = isLoading ?? isActive;
-  const error = useSelector(state => getError(state, options));
+  const error = useSelector((state) => getError(state, options));
 
   const dispatch = useDispatch();
   useDeepCompareEffect(() => {

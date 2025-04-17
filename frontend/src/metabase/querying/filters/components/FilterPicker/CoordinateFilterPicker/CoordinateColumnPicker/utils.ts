@@ -30,7 +30,7 @@ export function getInitialOption(
   }
 
   const columnInfo = Lib.displayInfo(query, stageIndex, secondColumn);
-  return options.find(option => option.label === columnInfo?.longDisplayName);
+  return options.find((option) => option.label === columnInfo?.longDisplayName);
 }
 
 export function getColumnPlaceholder(column: Lib.ColumnMetadata) {

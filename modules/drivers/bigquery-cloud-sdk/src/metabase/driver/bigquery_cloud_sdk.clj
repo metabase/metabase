@@ -15,6 +15,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.table :as table]
+   [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
@@ -56,6 +57,8 @@
   (let [creds   (bigquery.common/database-details->service-account-credential details)
         bq-bldr (doto (BigQueryOptions/newBuilder)
                   (.setCredentials (.createScoped creds bigquery-scopes)))]
+    (when-let [host (not-empty (:host details))]
+      (.setHost bq-bldr host))
     (.. bq-bldr build getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -594,6 +597,8 @@
         result-promise (promise)
         request (build-bigquery-request sql parameters)
         query-future (future
+                       ;; ensure the classloader is available within the future.
+                       (classloader/the-classloader)
                        (try
                          (*page-callback*)
                          (if-let [result (.query client request (u/varargs BigQuery$JobOption))]
@@ -665,11 +670,14 @@
                               :percentile-aggregations  true
                               :metadata/key-constraints false
                               :identifiers-with-spaces  true
+                              :expressions/integer      true
+                              :split-part               true
                               ;; BigQuery uses timezone operators and arguments on calls like extract() and
                               ;; timezone_trunc() rather than literally using SET TIMEZONE, but we need to flag it as
                               ;; supporting set-timezone anyway so that reporting timezones are returned and used, and
                               ;; tests expect the converted values.
-                              :set-timezone             true}]
+                              :set-timezone             true
+                              :expression-literals      true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC

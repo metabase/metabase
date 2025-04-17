@@ -41,7 +41,7 @@ class FieldRemappingSettings extends Component {
     this.fkPopover = createRef();
   }
 
-  getMappingTypeForField = field => {
+  getMappingTypeForField = (field) => {
     if (this.state.isChoosingInitialFkTarget) {
       return MAP_OPTIONS.foreign;
     }
@@ -74,7 +74,7 @@ class FieldRemappingSettings extends Component {
     return (
       remapping.size > 0 &&
       [...remapping.keys()].every(
-        key => typeof key === "number" || key === null,
+        (key) => typeof key === "number" || key === null,
       )
     );
   };
@@ -97,7 +97,7 @@ class FieldRemappingSettings extends Component {
 
   getFKTargetTableEntityNameOrNull = () => {
     const fkTargetFields = this.getForeignKeyTargetFields();
-    const nameField = fkTargetFields.find(field => isEntityName(field));
+    const nameField = fkTargetFields.find((field) => isEntityName(field));
     return nameField ? nameField.id : null;
   };
 
@@ -151,7 +151,7 @@ class FieldRemappingSettings extends Component {
     }
   };
 
-  onForeignKeyFieldChange = async fkFieldId => {
+  onForeignKeyFieldChange = async (fkFieldId) => {
     const { field, updateFieldDimension } = this.props;
 
     this.clearEditingStates();
@@ -167,7 +167,7 @@ class FieldRemappingSettings extends Component {
     this.fkPopover.current?.close();
   };
 
-  onUpdateRemappings = remappings => {
+  onUpdateRemappings = (remappings) => {
     const { field, updateFieldValues } = this.props;
     return updateFieldValues({ id: field.id }, Array.from(remappings));
   };
@@ -199,7 +199,7 @@ class FieldRemappingSettings extends Component {
             value={mappingType}
             onChange={this.handleChangeMappingType}
             options={this.getAvailableMappingTypes()}
-            optionValueFn={o => o}
+            optionValueFn={(o) => o}
             className={CS.inlineBlock}
           />
           {mappingType === MAP_OPTIONS.foreign && (
@@ -325,7 +325,7 @@ class ValueRemappings extends Component {
 
   customValuesAreNonEmpty = () => {
     return Array.from(this.state.editingRemappings.values()).every(
-      value => value !== "",
+      (value) => value !== "",
     );
   };
 
@@ -352,7 +352,7 @@ class ValueRemappings extends Component {
               <FieldValueMapping
                 original={original}
                 mapped={mapped}
-                setMapping={newMapped =>
+                setMapping={(newMapped) =>
                   this.onSetRemapping(original, newMapped)
                 }
               />
@@ -374,7 +374,7 @@ class ValueRemappings extends Component {
 }
 
 class FieldValueMapping extends Component {
-  onInputChange = e => {
+  onInputChange = (e) => {
     this.props.setMapping(e.target.value);
   };
 

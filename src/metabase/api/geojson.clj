@@ -3,9 +3,8 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [compojure.core :refer [GET]]
-   [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.api.macros :as api.macros]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
@@ -15,7 +14,9 @@
   (:import
    (java.io BufferedReader)
    (java.net InetAddress URL)
-   (org.apache.commons.io.input ReaderInputStream)))
+   (org.apache.commons.io.input ReaderInputStream)
+   (org.apache.http.conn DnsResolver)
+   (org.apache.http.impl.conn SystemDefaultDnsResolver)))
 
 (set! *warn-on-reflection* true)
 
@@ -125,15 +126,30 @@
 
 (def ^:private connection-timeout-ms 8000)
 
+(def ^DnsResolver ^:private ^:dynamic  *system-dns-resolver* (SystemDefaultDnsResolver.))
+
+(def ^:private non-link-local-dns-resolver
+  (reify
+    DnsResolver
+    (^"[Ljava.net.InetAddress;" resolve [_ ^String host]
+      (let [addresses (.resolve *system-dns-resolver* host)]
+        (if (some #(.isLinkLocalAddress ^InetAddress %) addresses)
+          (throw (ex-info (invalid-location-msg) {:status-code 400
+                                                  :link-local true}))
+          addresses)))))
+
 (defn- url->geojson
   [url]
   (let [resp (try (http/get url {:as                 :reader
                                  :redirect-strategy  :none
                                  :socket-timeout     connection-timeout-ms
                                  :connection-timeout connection-timeout-ms
-                                 :throw-exceptions   false})
-                  (catch Throwable _
-                    (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))))
+                                 :throw-exceptions   false
+                                 :dns-resolver       non-link-local-dns-resolver})
+                  (catch Throwable e
+                    (if (:link-local (ex-data e))
+                      (throw (ex-info (ex-message e) (dissoc (ex-data e) :link-local) e))
+                      (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400})))))
         success? (<= 200 (:status resp) 399)
         allowed-content-types #{"application/geo+json"
                                 "application/vnd.geo+json"
@@ -165,25 +181,35 @@
     (respond (-> (response/response is)
                  (response/content-type "application/json")))))
 
-(api/defendpoint-async GET "/:key"
+(api.macros/defendpoint :get "/:key"
   "Fetch a custom GeoJSON file as defined in the `custom-geojson` setting. (This just acts as a simple proxy for the
   file specified for `key`)."
-  [{{:keys [key]} :params} respond raise]
-  {key ms/NonBlankString}
-  (when-not (or (custom-geojson-enabled) ((builtin-geojson) (keyword key)))
+  [{k :key, :as _route-params} :- [:map
+                                   [:key ms/NonBlankString]]
+   _query-params
+   _body
+   _request
+   respond
+   raise]
+  (when-not (or (custom-geojson-enabled) ((builtin-geojson) (keyword k)))
     (raise (ex-info (tru "Custom GeoJSON is not enabled") {:status-code 400})))
-  (if-let [url (get-in (custom-geojson) [(keyword key) :url])]
+  (if-let [url (get-in (custom-geojson) [(keyword k) :url])]
     (try
       (read-url-and-respond url respond)
       (catch Throwable e
         (raise e)))
-    (raise (ex-info (tru "Invalid custom GeoJSON key: {0}" key) {:status-code 400}))))
+    (raise (ex-info (tru "Invalid custom GeoJSON key: {0}" k) {:status-code 400}))))
 
-(api/defendpoint-async GET "/"
+(api.macros/defendpoint :get "/"
   "Load a custom GeoJSON file based on a URL or file path provided as a query parameter.
   This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first."
-  [{{:keys [url]} :params} respond raise]
-  {url ms/NonBlankString}
+  [_route-params
+   {:keys [url], :as _query-params} :- [:map
+                                        [:url ms/NonBlankString]]
+   _body
+   _request
+   respond
+   raise]
   (validation/check-has-application-permission :setting)
   (when-not (custom-geojson-enabled)
     (raise (ex-info (tru "Custom GeoJSON is not enabled") {:status-code 400})))
@@ -194,5 +220,3 @@
       (read-url-and-respond decoded-url respond)
       (catch Throwable e
         (raise e)))))
-
-(api/define-routes)

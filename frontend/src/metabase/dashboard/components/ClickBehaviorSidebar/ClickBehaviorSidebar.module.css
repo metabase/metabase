@@ -1,0 +1,24 @@
+.SidebarHeader {
+  border-bottom: 1px solid var(--mb-color-border);
+  padding-left: 32px;
+  padding-right: 36px;
+  margin-bottom: 16px;
+}
+
+.SidebarContentBordered {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--mb-color-border);
+
+  /* increase specificity */
+  .SelectedClickBehaviorItemIcon {
+    border-color: transparent;
+    padding-left: 12px;
+  }
+}
+
+.Heading {
+  color: var(--mb-color-text-dark);
+  padding-top: 22px;
+  padding-bottom: 16px;
+  margin-bottom: 8px;
+}

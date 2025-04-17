@@ -54,7 +54,7 @@ export const useErrorInfo = (
       : Promise.resolve(null);
 
     // @ts-expect-error non-standard error property
-    const frontendErrors = console?.errorBuffer?.map?.(errArray =>
+    const frontendErrors = console?.errorBuffer?.map?.((errArray) =>
       errArray
         .map((errLine: any) => JSON.stringify(errLine, maybeSerializeError))
         .join(""),
@@ -95,6 +95,10 @@ export const useErrorInfo = (
     const browserInfo = getBrowserInfo();
 
     const payload: ErrorPayload = {
+      reporter: {
+        name: `${currentUser.first_name} ${currentUser.last_name}`,
+        email: currentUser.email,
+      },
       url: location,
       entityInfo,
       entityName: entity,

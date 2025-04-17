@@ -11,7 +11,7 @@ const TitleActions = () => {
   const [checked, setChecked] = useState(true);
   return (
     <CheckBox
-      onChange={() => setChecked(checked => !checked)}
+      onChange={() => setChecked((checked) => !checked)}
       checked={checked}
       label="Show field"
     />
@@ -19,7 +19,7 @@ const TitleActions = () => {
 };
 
 export default {
-  title: "Core/FormInput",
+  title: "Components/Ask Before Using/FormInput",
   component: FormInput,
   argTypes: {
     actions: {
@@ -30,7 +30,7 @@ export default {
   },
 };
 
-const Template: StoryFn<typeof FormInput> = args => {
+const Template: StoryFn<typeof FormInput> = (args) => {
   const initialValues = { value: false };
   const handleSubmit = () => undefined;
 

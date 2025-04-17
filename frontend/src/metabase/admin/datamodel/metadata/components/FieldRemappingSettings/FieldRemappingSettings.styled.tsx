@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
@@ -20,7 +21,7 @@ interface FieldSelectButtonProps {
 }
 
 export const FieldSelectButton = styled(SelectButton)<FieldSelectButtonProps>`
-  border-color: ${props =>
+  border-color: ${(props) =>
     props.hasError ? color("error") : alpha("accent2", 0.2)};
 `;
 

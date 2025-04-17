@@ -13,9 +13,8 @@
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.debug :as qp.debug]
@@ -598,12 +597,24 @@
                        (h2x/with-type-info value {:database-type "varchar"}))))
       (->honeysql driver value))))
 
+(defn- literal-text-value?
+  [[_ value {base-type :base_type effective-type :effective_type} :as clause]]
+  (and (mbql.u/is-clause? :value clause)
+       (string? value)
+       (isa? (or effective-type base-type)
+             :type/Text)))
+
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name {::add/keys [source-table source-alias]} :as _clause]]
   (let [expression-definition (mbql.u/expression-with-name *inner-query* expression-name)]
-    (->honeysql driver (if (= source-table ::add/source)
-                         (apply h2x/identifier :field source-query-alias source-alias)
-                         expression-definition))))
+    (->honeysql driver (cond (= source-table ::add/source)
+                             (apply h2x/identifier :field source-query-alias source-alias)
+
+                             (literal-text-value? expression-definition)
+                             [::expression-literal-text-value expression-definition]
+
+                             :else
+                             expression-definition))))
 
 (defmethod ->honeysql [:sql :now]
   [driver _clause]
@@ -646,6 +657,9 @@
 
                [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
                (cast-temporal-byte driver coercion-strategy honeysql-form)
+
+               [:type/Text (:isa? :Coercion/String->Float)]
+               (->float driver honeysql-form)
 
                :else honeysql-form)
       (when-not (= <> honeysql-form)
@@ -725,12 +739,16 @@
     (let [source-table-aliases (field-source-table-aliases field-clause)
           source-nfc-path      (field-nfc-path field-clause)
           source-alias         (field-source-alias field-clause)
-          field                (when (integer? id-or-name)
+          ;; we can only get database type if we have a field-id
+          ;; which means nested native queries will cause bugs like #42817
+          ;; but this should all be fixed with field refs overhaul!
+          ;; https://linear.app/metabase-inc/issue/ENG-8766/[epic]-field-refs-overhaul
+          field-metadata       (when (integer? id-or-name)
                                  (lib.metadata/field (qp.store/metadata-provider) id-or-name))
-          allow-casting?       (and field
+          allow-casting?       (and field-metadata
                                     (not (:qp/ignore-coercion options)))
           database-type        (or database-type
-                                   (:database-type field))
+                                   (:database-type field-metadata))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
                                           (concat source-table-aliases (->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
@@ -742,7 +760,7 @@
                                    (h2x/with-database-type-info expr database-type)))]
       (u/prog1
         (cond->> identifier
-          allow-casting?           (cast-field-if-needed driver field)
+          allow-casting?           (cast-field-if-needed driver field-metadata)
           ;; only add type info if it wasn't added by [[cast-field-if-needed]]
           database-type            maybe-add-db-type
           (:temporal-unit options) (apply-temporal-bucketing driver options)
@@ -825,14 +843,22 @@
   "Order by the first breakout, then partition by all the other ones. See #42003 and
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
-  (let [breakouts (:breakout inner-query)
+  (let [breakouts (remove
+                   (comp :metabase.query-processor.util.transformations.nest-breakouts/externally-remapped-field
+                         #(nth % 2))
+                   (:breakout inner-query))
         group-bys (:group-by (apply-top-level-clause driver :breakout {} inner-query))
         finest-temp-breakout (qp.util.transformations.nest-breakouts/finest-temporal-breakout-index breakouts 2)
         partition-exprs (when (> (count breakouts) 1)
                           (if finest-temp-breakout
                             (m/remove-nth finest-temp-breakout group-bys)
                             (butlast group-bys)))
-        order-bys (over-order-bys driver (:aggregation inner-query) (:order-by inner-query))]
+        order-bys (over-order-bys driver (:aggregation inner-query)
+                                  (remove
+                                   (comp :metabase.query-processor.util.transformations.nest-breakouts/externally-remapped-field
+                                         #(nth % 2)
+                                         second)
+                                   (:order-by inner-query)))]
     (merge
      (when (seq partition-exprs)
        {:partition-by (mapv (fn [expr]
@@ -1042,6 +1068,12 @@
 (defmethod ->honeysql [:sql :share]
   [driver [_ pred]]
   [:/ (->honeysql driver [:count-where pred]) :%count.*])
+
+(defmethod ->honeysql [:sql :distinct-where]
+  [driver [_ arg pred]]
+  [::h2x/distinct-count
+   [:case
+    (->honeysql driver pred) (->honeysql driver arg)]])
 
 (defmethod ->honeysql [:sql :trim]
   [driver [_ arg]]
@@ -1391,6 +1423,18 @@
   ;; athena cannot cast uuid to bounded varchars
   (->honeysql driver [::cast expr "text"]))
 
+(defmethod ->honeysql [:sql ::expression-literal-text-value]
+  [driver [_ value]]
+  ;; When compiling with driver/*compile-with-inline-parameters* bound to false, a literal string expression will
+  ;; usually get replaced with a parameter placeholder like ?. For some databases, this causes a problem as the
+  ;; database engine cannot determine the type of the value in an expression like `SELECT ? AS "FOO"`. Drivers that
+  ;; need special handling for literal string expressions can provide an implementation for this method, e.g. to add
+  ;; an explicit CAST to the appropriate text type for the given driver. See the H2 driver for an example. We
+  ;; only need to do this for string literals, since numbers and booleans get inlined directly.
+  ;;
+  ;; Most databases don't require special handling, so just compile the unwrapped value.
+  (->honeysql driver value))
+
 (defmethod ->honeysql [:sql :starts-with]
   [driver [_ field arg options]]
   (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare field))
@@ -1414,6 +1458,16 @@
              (map? (field 2)))
     (select-keys (field 2) [:base-type])))
 
+(defn- parent-honeysql-col-effective-type-map
+  [field]
+  (when-let [field-id (and (vector? field)
+                           (= 3 (count field))
+                           (= :field (first field))
+                           (integer? (second field))
+                           (second field))]
+    (select-keys (lib.metadata/field (qp.store/metadata-provider) field-id)
+                 [:effective-type])))
+
 (def ^:dynamic *parent-honeysql-col-type-info*
   "To be bound in `->honeysql <driver> <op>` where op is on of {:>, :>=, :<, :<=, :=, :between}`. Its value should be
   `{:base-type keyword? :database-type string?}`. The value is used in `->honeysql <driver> :relative-datetime`,
@@ -1426,6 +1480,7 @@
   (let [field-honeysql (->honeysql driver field)]
     (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                        {:database-type database-type})
+                                                     (parent-honeysql-col-effective-type-map field)
                                                      (parent-honeysql-col-base-type-map field))]
       [:between field-honeysql (->honeysql driver min-val) (->honeysql driver max-val)])))
 
@@ -1435,15 +1490,17 @@
     (let [field-honeysql (->honeysql driver field)]
       (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                          {:database-type database-type})
+                                                       (parent-honeysql-col-effective-type-map field)
                                                        (parent-honeysql-col-base-type-map field))]
         [operator field-honeysql (->honeysql driver value)]))))
 
 (defmethod ->honeysql [:sql :=]
   [driver [_ field value]]
-  (assert field)
+  (assert (some? field))
   (let [field-honeysql (->honeysql driver (maybe-cast-uuid-for-equality driver field value))]
     (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                        {:database-type database-type})
+                                                     (parent-honeysql-col-effective-type-map field)
                                                      (parent-honeysql-col-base-type-map field))]
       [:= field-honeysql (->honeysql driver value)])))
 
@@ -1797,9 +1854,9 @@
   [inner-query :- mbql.s/MBQLQuery]
   (let [metadata-provider (qp.store/metadata-provider)
         database-id       (u/the-id (lib.metadata/database (qp.store/metadata-provider)))]
-    (-> (lib.query/query-from-legacy-inner-query metadata-provider database-id inner-query)
+    (-> (lib/query-from-legacy-inner-query metadata-provider database-id inner-query)
         qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation
-        lib.convert/->legacy-MBQL
+        lib/->legacy-MBQL
         :query)))
 
 ;;; [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation]] already does

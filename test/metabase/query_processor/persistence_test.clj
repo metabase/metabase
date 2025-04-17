@@ -9,9 +9,9 @@
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
+   [metabase.query-processor.middleware.limit :as limit]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [toucan2.core :as t2])
@@ -66,7 +66,7 @@
 (deftest persisted-models-max-rows-test
   (testing "Persisted models should have the full number of rows of the underlying query,
             not limited by `absolute-max-results` (#24793)"
-    (with-redefs [qp.i/absolute-max-results 3]
+    (with-redefs [limit/absolute-max-results 3]
       (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
         (mt/dataset daily-bird-counts
           (mt/with-persistence-enabled! [persist-models!]

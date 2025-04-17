@@ -8,8 +8,8 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
@@ -126,44 +126,46 @@
 
 (defn- remove-replace-location
   [query stage-number unmodified-query-for-stage location target-clause remove-replace-fn]
-  (let [result (lib.util/update-query-stage query stage-number
-                                            remove-replace-fn location target-clause)
-        target-uuid (lib.options/uuid target-clause)]
-    (if (not= query result)
-      (lib.util.match/match-one location
-        [:expressions]
-        (-> result
-            (remove-local-references
-             stage-number
-             unmodified-query-for-stage
-             :expression
-             {}
-             (lib.util/expression-name target-clause))
-            (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
-            (update-stale-references stage-number unmodified-query-for-stage))
+  ;; We may see missing idents during the remove/replace process, so disable the assertions.
+  (binding [lib.metadata.ident/*enforce-idents-present* false]
+    (let [result (lib.util/update-query-stage query stage-number
+                                              remove-replace-fn location target-clause)
+          target-uuid (lib.options/uuid target-clause)]
+      (if (not= query result)
+        (lib.util.match/match-one location
+          [:expressions]
+          (-> result
+              (remove-local-references
+               stage-number
+               unmodified-query-for-stage
+               :expression
+               {}
+               (lib.util/expression-name target-clause))
+              (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
+              (update-stale-references stage-number unmodified-query-for-stage))
 
-        [:aggregation]
-        (-> result
-            (remove-local-references
-             stage-number
-             unmodified-query-for-stage
-             :aggregation
-             {}
-             target-uuid)
-            (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
-            (update-stale-references stage-number unmodified-query-for-stage))
+          [:aggregation]
+          (-> result
+              (remove-local-references
+               stage-number
+               unmodified-query-for-stage
+               :aggregation
+               {}
+               target-uuid)
+              (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
+              (update-stale-references stage-number unmodified-query-for-stage))
 
-        #_{:clj-kondo/ignore [:invalid-arity]}
-        (:or
-         [:breakout]
-         [:fields]
-         [:joins _ :fields])
-        (-> (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
-            (update-stale-references stage-number unmodified-query-for-stage))
+          #_{:clj-kondo/ignore [:invalid-arity]}
+          (:or
+           [:breakout]
+           [:fields]
+           [:joins _ :fields])
+          (-> (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
+              (update-stale-references stage-number unmodified-query-for-stage))
 
-        _
-        result)
-      result)))
+          _
+          result)
+        result))))
 
 (defn- remove-local-references [query stage-number unmodified-query-for-stage target-op target-opts target-ref-id]
   (let [stage (lib.util/query-stage query stage-number)
@@ -511,12 +513,12 @@
     (lib.join/with-join-alias field new-name)))
 
 (defn- rename-join-in-stage
-  [metadata-providerable stage idx new-name]
+  [stage idx new-name]
   (let [the-joins      (:joins stage)
         [idx old-name] (when (< -1 idx (count the-joins))
                          [idx (get-in the-joins [idx :alias])])]
     (if (and idx (not= old-name new-name))
-      (let [unique-name-fn (lib.util/unique-name-generator (lib.metadata/->metadata-provider metadata-providerable))
+      (let [unique-name-fn (lib.util/unique-name-generator)
             _              (run! unique-name-fn (map :alias the-joins))
             unique-name    (unique-name-fn new-name)]
         (-> stage
@@ -551,7 +553,7 @@
     join-spec    :- [:or :metabase.lib.schema.join/join :string :int]
     new-name     :- :metabase.lib.schema.common/non-blank-string]
    (if-let [idx (join-spec->clause query stage-number join-spec)]
-     (lib.util/update-query-stage query stage-number (partial rename-join-in-stage query) idx new-name)
+     (lib.util/update-query-stage query stage-number rename-join-in-stage idx new-name)
      query)))
 
 (defn- remove-matching-missing-columns
@@ -674,8 +676,8 @@
                                                        (not= (:source-card new-join)
                                                              (:source-card %)))]
                                 (cond-> new-join
-                                  ;; We need to remove so the default alias is used when changing the join.
-                                  should-rename? (dissoc :alias)
+                                  ;; We need to tag the join so that add-default-alias knows to replace this alias
+                                  should-rename? (assoc ::lib.join/replace-alias true)
                                   ;; TODO: Maybe join idents *should* change under the same conditions as aliases?
                                   ;; All the column idents are going to change anyway, so it doesn't matter that much.
                                   (:ident %)     (assoc :ident (:ident %))))

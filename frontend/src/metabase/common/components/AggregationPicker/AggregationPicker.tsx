@@ -126,7 +126,7 @@ export function AggregationPicker({
     );
 
     if (operators.length > 0) {
-      const operatorItems = operators.map(operator =>
+      const operatorItems = operators.map((operator) =>
         getOperatorListItem(query, stageIndex, operator),
       );
 
@@ -142,7 +142,7 @@ export function AggregationPicker({
       sections.push({
         key: "metrics",
         name: t`Metrics`,
-        items: metrics.map(metric =>
+        items: metrics.map((metric) =>
           getMetricListItem(query, stageIndex, metric, clauseIndex),
         ),
         icon: "metric",
@@ -372,7 +372,7 @@ function getInitialOperator(
   operators: Lib.AggregationOperator[],
 ) {
   const operator = operators.find(
-    operator => Lib.displayInfo(query, stageIndex, operator).selected,
+    (operator) => Lib.displayInfo(query, stageIndex, operator).selected,
   );
   return operator ?? null;
 }

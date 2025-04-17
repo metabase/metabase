@@ -14,7 +14,7 @@ import { Icon } from "metabase/ui";
 /**
  * @deprecated HOCs are deprecated
  */
-const FilteredToUrlTable = propName => ComposedComponent =>
+const FilteredToUrlTable = (propName) => (ComposedComponent) =>
   connect(null, { push })(
     class FilteredToUrlTable extends Component {
       constructor(props) {
@@ -23,7 +23,7 @@ const FilteredToUrlTable = propName => ComposedComponent =>
         this.state = { tableId: table != null ? parseInt(table) : null };
       }
 
-      setTableId = tableId => {
+      setTableId = (tableId) => {
         this.setState({ tableId });
         this.props.push({
           ...this.props.location,
@@ -38,7 +38,7 @@ const FilteredToUrlTable = propName => ComposedComponent =>
           [propName]:
             tableId == null
               ? items
-              : items.filter(item => item.table_id === tableId),
+              : items.filter((item) => item.table_id === tableId),
           tableSelector: (
             <TableSelector tableId={tableId} setTableId={this.setTableId} />
           ),
@@ -64,42 +64,29 @@ class TableSelectorInner extends Component {
             selectedTableId={tableId}
             setSourceTableFn={setTableId}
             triggerElement={
-              tableId == null ? (
-                <span
-                  className={cx(
-                    CS.flex,
-                    CS.alignCenter,
-                    CS.justifyBetween,
-                    CS.flexFull,
-                    CS.textMedium,
-                    CS.textBold,
-                  )}
-                >
-                  {t`Filter by table`}
-                  <Icon name="chevrondown" size={12} />
-                </span>
-              ) : (
-                <span
-                  className={cx(
-                    CS.flex,
-                    CS.alignCenter,
-                    CS.justifyBetween,
-                    CS.flexFull,
-                    CS.textBrand,
-                    CS.textBold,
-                  )}
-                >
-                  {table && table.displayName()}
-                  <Icon
-                    name="close"
-                    onClick={e => {
+              <span
+                className={cx(
+                  CS.flex,
+                  CS.alignCenter,
+                  CS.justifyBetween,
+                  CS.flexFull,
+                  CS.textMedium,
+                  CS.textBold,
+                )}
+                data-testid="segment-list-table"
+              >
+                {table ? table.displayName() : t`Filter by table`}
+                <Icon
+                  name={table ? "close" : "chevrondown"}
+                  size={12}
+                  onClick={(e) => {
+                    if (table) {
                       e.stopPropagation();
                       setTableId(null);
-                    }}
-                    size={12}
-                  />
-                </span>
-              )
+                    }
+                  }}
+                />
+              </span>
             }
           />
         </div>

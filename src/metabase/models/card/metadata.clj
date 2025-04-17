@@ -150,7 +150,7 @@ saved later when it is ready."
             (log/infof "Not updating metadata asynchronously for card %s because no metadata" (u/the-id card))
 
             :else
-            (let [current-query (t2/select-one-fn :dataset_query [:model/Card :dataset_query] :id id)]
+            (let [current-query (t2/select-one-fn :dataset_query [:model/Card :dataset_query :card_schema] :id id)]
               (if (= (:dataset_query card) current-query)
                 (do
                   (t2/update! :model/Card id {:result_metadata metadata})
@@ -158,6 +158,24 @@ saved later when it is ready."
                 (log/infof "Not updating metadata asynchronously for card %s because query has changed" id)))))
         (catch Throwable e
           (log/errorf e "Error updating metadata for Card %d asynchronously: %s" id (ex-message e)))))))
+
+(defn infer-metadata
+  "Infer the default result_metadata to store for MBQL cards."
+  [query]
+  (not-empty (request/with-current-user nil
+               (u/ignore-exceptions
+                 (qp.preprocess/query->expected-cols query)))))
+
+(defn refresh-metadata
+  "Update cached result metadata to reflect changes to the underlying tables.
+  For now, this only handles the additional and removal of columns, and does not get into things like type changes."
+  [{:keys [result_metadata dataset_query]} {:keys [update-fn] :or {update-fn identity}}]
+  (let [new-metadata (infer-metadata dataset_query)
+        old-names    (into #{} (map :name) result_metadata)
+        new-names    (into #{} (map :name) new-metadata)]
+    (vec (concat (filter (comp new-names :name) result_metadata)
+                 (->> (remove (comp old-names :name) new-metadata)
+                      (map update-fn))))))
 
 (defn populate-result-metadata
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
@@ -197,7 +215,4 @@ saved later when it is ready."
     :else
     (do
       (log/debug "Attempting to infer result metadata for Card")
-      (let [inferred-metadata (not-empty (request/with-current-user nil
-                                           (u/ignore-exceptions
-                                             (qp.preprocess/query->expected-cols query))))]
-        (assoc card :result_metadata inferred-metadata)))))
+      (assoc card :result_metadata (infer-metadata query)))))

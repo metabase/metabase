@@ -37,6 +37,7 @@
                               :nested-fields                 false
                               :uuid-type                     true
                               :connection/multiple-databases true
+                              :expression-literals           true
                               :identifiers-with-spaces       false
                               :metadata/key-constraints      false
                               :test/jvm-timezone-setting     false}]
@@ -372,6 +373,7 @@
   (let [field-info-str (:_col0 raw-field-info)
         components (map (comp not-empty str/trim) (str/split field-info-str #"\t"))
         field-info (zipmap [:col_name :data_type :remark] components)]
+    (log/tracef "DESCRIBE result: %s" (pr-str field-info-str))
     (into {} (remove (fn [[_ v]] (nil? v))) field-info)))
 
 (defn- describe-table-fields-with-nested-fields [database schema table-name]
@@ -417,6 +419,8 @@
   [^DatabaseMetaData metadata database driver {^String schema :schema, ^String table-name :name} catalog]
   (try
     (let [columns (get-columns metadata catalog schema table-name)]
+      (when (empty? columns)
+        (log/trace "Falling back to DESCRIBE due to #43980"))
       (if (or (table-has-nested-fields? columns)
                 ; If `.getColumns` returns an empty result, try to use DESCRIBE, which is slower
                 ; but doesn't suffer from the bug in the JDBC driver as metabase#43980
@@ -486,7 +490,7 @@
   ;; TODO: Catch errors here so a single exception doesn't fail the entire schema
   ;;
   ;; Also we're creating a set here, so even if we set "ProxyAPI", we'll miss dupe database names
-  (with-open [rs (.getSchemas metadata)]
+  (with-open [rs (if catalog (.getSchemas metadata catalog "%") (.getSchemas metadata))]
     ;; it seems like `table_catalog` is ALWAYS `AwsDataCatalog`. `table_schem` seems to correspond to the Database name,
     ;; at least for stuff we create with the test data extensions?? :thinking_face:
     (let [all-schemas (set (cond->> (jdbc/metadata-result rs)

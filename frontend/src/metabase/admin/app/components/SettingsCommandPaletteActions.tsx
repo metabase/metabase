@@ -1,6 +1,5 @@
 import { type Action, useKBar, useRegisterActions } from "kbar";
 import { useMemo } from "react";
-import { push } from "react-router-redux";
 import { useMount } from "react-use";
 
 import { getSections } from "metabase/admin/settings/selectors";
@@ -26,11 +25,11 @@ export const SettingsCommandPaletteActions = () => {
     dispatch(initializeSettings());
   });
 
-  const sections = useSelector<Record<string, AdminSection>>(state =>
+  const sections = useSelector<Record<string, AdminSection>>((state) =>
     getSections(state),
   );
 
-  const { search: query } = useKBar(state => ({ search: state.searchQuery }));
+  const { search: query } = useKBar((state) => ({ search: state.searchQuery }));
   const hasQuery = query.length > 0;
 
   const adminSettingsActions = useMemo(() => {
@@ -40,25 +39,21 @@ export const SettingsCommandPaletteActions = () => {
       const acc: Action[] = [
         ...memo,
         ...settings
-          .filter(s => s.display_name)
-          .map(s => ({
+          .filter((s) => s.display_name)
+          .map((s) => ({
             name: s.display_name || "",
             section: "admin",
             id: `admin-setting-${s.key}`,
-            perform: () => {
-              dispatch(
-                push({
-                  pathname: path,
-                  hash: `#${s.key}`,
-                }),
-              );
-            },
+            perform: () => {},
             icon: "gear",
+            extra: {
+              href: `${path}#${s.key}`,
+            },
           })),
       ];
       return acc;
     }, []);
-  }, [sections, dispatch]);
+  }, [sections]);
 
   useRegisterActions(hasQuery ? adminSettingsActions : [], [hasQuery]);
 

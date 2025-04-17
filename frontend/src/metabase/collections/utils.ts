@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {
@@ -90,7 +89,7 @@ export function currentUserPersonalCollections(
   userID: number,
 ): Collection[] {
   return collectionList
-    .filter(l => l.personal_owner_id === userID)
+    .filter((l) => l.personal_owner_id === userID)
     .map(preparePersonalCollection);
 }
 
@@ -112,7 +111,7 @@ export function isPersonalCollectionChild(
   if (!nonRootParentId) {
     return false;
   }
-  const parentCollection = collectionList.find(c => c.id === nonRootParentId);
+  const parentCollection = collectionList.find((c) => c.id === nonRootParentId);
   return Boolean(parentCollection && !!parentCollection.personal_owner_id);
 }
 
@@ -259,7 +258,7 @@ export const getCollectionPath = (collection: CollectionEssentials) => {
 export const getCollectionPathAsString = (collection: CollectionEssentials) => {
   const collections = getCollectionPath(collection);
   return collections
-    .map(coll => getCollectionName(coll))
+    .map((coll) => getCollectionName(coll))
     .join(` ${collectionPathSeparator} `);
 };
 

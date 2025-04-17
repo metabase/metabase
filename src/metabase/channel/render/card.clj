@@ -29,7 +29,7 @@
   [card]
   (h (urls/card-url (u/the-id card))))
 
-(mu/defn- make-title-if-needed :- [:maybe body/RenderedPartCard]
+(mu/defn- make-title-if-needed :- [:maybe ::body/RenderedPartCard]
   [render-type card dashcard options :- [:maybe ::options]]
   (when (:channel.render/include-title? options)
     (let [card-name    (or (-> dashcard :visualization_settings :card.title)
@@ -56,7 +56,7 @@
                                  :width 16
                                  :src   (:image-src image-bundle)}])]]]]})))
 
-(mu/defn- make-description-if-needed :- [:maybe body/RenderedPartCard]
+(mu/defn- make-description-if-needed :- [:maybe ::body/RenderedPartCard]
   [dashcard card options :- [:maybe ::options]]
   (when (:channel.render/include-description? options)
     (when-let [description (or (get-in dashcard [:visualization_settings :card.description])
@@ -121,7 +121,7 @@
   [card]
   ((some-fn :include_csv :include_xls) card))
 
-(mu/defn- render-pulse-card-body :- body/RenderedPartCard
+(mu/defn- render-pulse-card-body :- ::body/RenderedPartCard
   [render-type
    timezone-id :- [:maybe :string]
    card
@@ -145,15 +145,15 @@
           (log/error e "Pulse card render error")
           (body/render :render-error nil nil nil nil nil))))))
 
-(mu/defn render-pulse-card :- body/RenderedPartCard
+(mu/defn render-pulse-card :- ::body/RenderedPartCard
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results. Returns a map with keys
 
   - attachments
   - content (a hiccup form suitable for rendering on rich clients or rendering into an image)
   - render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
     scalar results where text is preferable to an image of a div of a single result."
-  ([render-type timezone-id  card dashcard results]
-   (render-pulse-card render-type timezone-id  card dashcard results nil))
+  ([render-type timezone-id card dashcard results]
+   (render-pulse-card render-type timezone-id card dashcard results nil))
 
   ([render-type
     timezone-id :- [:maybe :string]
@@ -199,22 +199,23 @@
   ([timezone-id card results options :- [:maybe ::options]]
    (:content (render-pulse-card :inline timezone-id card nil results options))))
 
-(mu/defn render-pulse-section :- body/RenderedPartCard
+(mu/defn render-pulse-section :- ::body/RenderedPartCard
   "Render a single Card section of a Pulse to a Hiccup form (representating HTML)."
   ([timezone-id part]
-   (render-pulse-section timezone-id part))
+   (render-pulse-section timezone-id part {}))
 
   ([timezone-id
     {card :card, dashcard :dashcard, result :result, :as _part}
     options :- [:maybe ::options]]
-   (let [options                       (merge {:channel.render/include-title?       true
-                                               :channel.render/include-description? true}
-                                              options)
-         {:keys [attachments content]} (render-pulse-card :attachment timezone-id card dashcard result options)]
-     {:attachments attachments
-      :content     [:div {:style (style/style {:margin-top    :20px
-                                               :margin-bottom :20px})}
-                    content]})))
+   (log/with-context {:card_id (:id card)}
+     (let [options                       (merge {:channel.render/include-title?       true
+                                                 :channel.render/include-description? true}
+                                                options)
+           {:keys [attachments content]} (render-pulse-card :attachment timezone-id card dashcard result options)]
+       {:attachments attachments
+        :content     [:div {:style (style/style {:margin-top    :20px
+                                                 :margin-bottom :20px})}
+                      content]}))))
 
 (mu/defn render-pulse-card-to-png :- bytes?
   "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result."
@@ -237,7 +238,7 @@
 
 (mu/defn png-from-render-info :- bytes?
   "Create a PNG file (as a byte array) from rendering info."
-  ^bytes [rendered-info :- body/RenderedPartCard width]
+  ^bytes [rendered-info :- ::body/RenderedPartCard width]
   ;; TODO huh? why do we need this indirection?
   (png/render-html-to-png rendered-info width))
 

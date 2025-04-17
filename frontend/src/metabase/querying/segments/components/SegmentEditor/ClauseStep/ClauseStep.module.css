@@ -23,7 +23,7 @@
   &:last-child {
     flex-grow: 1;
     flex-shrink: 0;
-    justify-content: end;
+    justify-content: flex-end;
   }
 
   &:not(:last-child) {

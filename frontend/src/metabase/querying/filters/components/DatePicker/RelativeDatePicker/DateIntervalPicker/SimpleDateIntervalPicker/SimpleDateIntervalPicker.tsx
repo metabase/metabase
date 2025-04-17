@@ -1,17 +1,19 @@
 import { t } from "ttag";
 
-import type { DatePickerUnit } from "metabase/querying/filters/types";
+import type {
+  DatePickerUnit,
+  RelativeDatePickerValue,
+} from "metabase/querying/filters/types";
 import { Group, NumberInput, Select } from "metabase/ui";
 
 import { IncludeCurrentSwitch } from "../../IncludeCurrentSwitch";
-import type { DateIntervalValue } from "../../types";
 import { getInterval, getUnitOptions, setInterval } from "../../utils";
 import { setUnit } from "../utils";
 
 interface SimpleDateIntervalPickerProps {
-  value: DateIntervalValue;
+  value: RelativeDatePickerValue;
   availableUnits: DatePickerUnit[];
-  onChange: (value: DateIntervalValue) => void;
+  onChange: (value: RelativeDatePickerValue) => void;
 }
 
 export function SimpleDateIntervalPicker({
@@ -29,7 +31,7 @@ export function SimpleDateIntervalPicker({
   };
 
   const handleUnitChange = (inputValue: string | null) => {
-    const option = unitOptions.find(option => option.value === inputValue);
+    const option = unitOptions.find((option) => option.value === inputValue);
     if (option) {
       onChange(setUnit(value, option.value));
     }
@@ -49,6 +51,11 @@ export function SimpleDateIntervalPicker({
           value={value.unit}
           aria-label={t`Unit`}
           onChange={handleUnitChange}
+          comboboxProps={{
+            withinPortal: false,
+            floatingStrategy: "fixed",
+            position: "top",
+          }}
         />
       </Group>
       <IncludeCurrentSwitch value={value} onChange={onChange} />

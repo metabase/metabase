@@ -4,15 +4,14 @@
   Currently used to store card's rows data when sending notification since it can be large and we don't want to keep it in memory."
   (:require
    [clojure.java.io :as io]
+   [metabase.util.log :as log]
    [metabase.util.random :as random]
    [taoensso.nippy :as nippy])
   (:import
    (java.io File)
-   (java.util.concurrent Executors ScheduledThreadPoolExecutor TimeUnit)))
+   (java.util.concurrent Executors ScheduledThreadPoolExecutor)))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private temp-file-lifetime-seconds (* 5 60))
 
 (def ^:private temp-dir
   (delay
@@ -25,16 +24,6 @@
 (def ^:private deletion-scheduler
   (delay
     (Executors/newScheduledThreadPool 1)))
-
-(defn- schedule-deletion!
-  "Schedule file for deletion after specified seconds."
-  [^File file seconds]
-  (.schedule ^ScheduledThreadPoolExecutor @deletion-scheduler
-             ^Callable (fn []
-                         (when (.exists file)
-                           (io/delete-file file true)))
-             ^Long seconds
-             TimeUnit/SECONDS))
 
 (defn- temp-file
   []
@@ -56,24 +45,53 @@
                       (when @deletion-scheduler
                         (.shutdown ^ScheduledThreadPoolExecutor @deletion-scheduler)))))
 
+(defprotocol Cleanable
+  (cleanup! [this] "Cleanup any resources associated with this object"))
+
+;; Add a default implementation that does nothing
+(extend-protocol Cleanable
+  Object
+  (cleanup! [_] nil))
+
+(deftype TempFileStorage [^File file]
+  Cleanable
+  (cleanup! [_]
+    (when (.exists file)
+      (io/delete-file file true)))
+
+  clojure.lang.IDeref
+  (deref [_]
+    (if (.exists file)
+      (read-from-file file)
+      (throw (ex-info "File no longer exists" {:file file}))))
+
+  Object
+  (toString [_]
+    (str "#TempFileStorage{:file " file "}"))
+
+  ;; Add equality behavior
+  (equals [_this other]
+    (and (instance? TempFileStorage other)
+         (= file (.file ^TempFileStorage other))))
+
+  (hashCode [_]
+    (.hashCode file)))
+
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                           Public APIs                                           ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn to-temp-file!
-  "Write data to a temporary file and schedule it for deletion after a specified time period.
-  The file will be automatically deleted after the given number of seconds.
-  Returns a derefable object that, when dereferenced, reads and returns the data from the temporary file.
+(defn is-cleanable?
+  "Returns true if x implements the Cleanable protocol"
+  [x]
+  (satisfies? Cleanable x))
 
-  Arguments:
-    data    - The data to write to the temporary file
-    seconds - Optional. Number of seconds before file deletion (default: is [[temp-file-lifetime-seconds]])"
-  ([data]
-   (to-temp-file! data temp-file-lifetime-seconds))
-  ([data seconds]
-   (let [f (temp-file)]
-     (schedule-deletion! f seconds)
-     (write-to-file f data)
-     (reify
-       clojure.lang.IDeref
-       (deref [_] (read-from-file f))))))
+(defn to-temp-file!
+  "Write data to a temporary file. Returns a TempFileStorage type that:
+   - Implements IDeref - use @ to read the data from the file
+   - Implements Cleanable - call cleanup! when the file is no longer needed"
+  [data]
+  (let [f (temp-file)]
+    (write-to-file f data)
+    (log/debug "stored data in temp file" {:length (.length ^File f)})
+    (TempFileStorage. f)))

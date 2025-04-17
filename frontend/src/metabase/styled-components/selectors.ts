@@ -17,6 +17,6 @@ export const getFont = createSelector(
   },
 );
 
-export const getFontFiles = createSelector([getSettings], settings => {
+export const getFontFiles = createSelector([getSettings], (settings) => {
   return settings["application-font-files"];
 });

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -60,11 +60,11 @@ describe("scenarios > home > homepage", () => {
       cy.signInAsAdmin();
       cy.addSQLiteDatabase();
 
-      cy.intercept("/api/database", req => {
-        req.continue(res => {
+      cy.intercept("/api/database", (req) => {
+        req.continue((res) => {
           res.body.data[1].initial_sync_status = "incomplete";
 
-          return new Promise(resolve => {
+          return new Promise((resolve) => {
             setTimeout(() => {
               resolve();
               // Setting this to be arbitrarly long so that the repeat assertion
@@ -171,7 +171,7 @@ describe("scenarios > home > homepage", () => {
     });
 
     // TODO: popular items endpoint is currently broken in OSS. Re-enable test once endpoint has been fixed.
-    H.describeEE("EE", () => {
+    describe("EE", () => {
       it("should display popular items for a new user", () => {
         cy.signInAsAdmin();
         // Setting this to true so that displaying popular items for new users works.
@@ -225,8 +225,8 @@ describe("scenarios > home > homepage", () => {
         {
           url: "/",
         },
-        req => {
-          req.continue(res => {
+        (req) => {
+          req.continue((res) => {
             res.body = res.body.replace(
               'src="app/dist/app-main',
               'src="bad-link.js',
@@ -236,7 +236,7 @@ describe("scenarios > home > homepage", () => {
         },
       );
 
-      cy.on("window:before:load", win => {
+      cy.on("window:before:load", (win) => {
         cy.spy(win.console, "error").as("errorConsole");
       });
 
@@ -265,9 +265,9 @@ describe("scenarios > home > custom homepage", () => {
       cy.visit("/admin/settings/general");
 
       cy.findByTestId("custom-homepage-setting").within(() => {
-        cy.findByText("Disabled").should("exist");
-        cy.findByRole("switch").click();
-        cy.findByText("Enabled").should("exist");
+        cy.findByText("Disabled").should("be.visible");
+        cy.findByText("Disabled").click();
+        cy.findByText("Enabled").should("be.visible");
       });
 
       cy.findByTestId("custom-homepage-dashboard-setting")
@@ -284,12 +284,13 @@ describe("scenarios > home > custom homepage", () => {
       );
 
       cy.log(
-        "disabling custom-homepge-setting should also remove custom-homepage-dashboard-setting",
+        "disabling custom-homepage-setting should also remove custom-homepage-dashboard-setting",
       );
+      cy.visit("/admin/settings/general");
 
       cy.findByTestId("custom-homepage-setting").within(() => {
         cy.findByText("Enabled").should("exist");
-        cy.findByRole("switch").click();
+        cy.findByText("Enabled").click();
         cy.findByText("Disabled").should("exist");
       });
 
@@ -297,7 +298,7 @@ describe("scenarios > home > custom homepage", () => {
 
       cy.findByTestId("custom-homepage-setting").within(() => {
         cy.findByText("Disabled").should("exist");
-        cy.findByRole("switch").click();
+        cy.findByText("Disabled").click();
         cy.findByText("Enabled").should("exist");
       });
 
@@ -347,7 +348,7 @@ describe("scenarios > home > custom homepage", () => {
           description: "nested 2 levels",
           parent_id: body.id,
         }).then(({ body }) => {
-          cy.createDashboard({
+          H.createDashboard({
             name: "nested dash",
             collection_id: body.id,
           });
@@ -410,8 +411,8 @@ describe("scenarios > home > custom homepage", () => {
           method: "GET",
           middleware: true,
         },
-        req => {
-          req.continue(res => {
+        (req) => {
+          req.continue((res) => {
             res.delay = 1000;
             res.send();
           });
@@ -442,8 +443,8 @@ describe("scenarios > home > custom homepage", () => {
         cy.findByText(
           /Your admin has set this dashboard as your homepage/,
         ).should("exist");
-        cy.findByText("Got it").click();
       });
+      cy.button("Got it").click();
 
       cy.log("let the dashboard load");
       H.dashboardHeader().findByText("Orders in a dashboard");
@@ -572,7 +573,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
   it("should send snowplow events through admin settings", () => {
     cy.visit("/admin/settings/general");
-    cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
+    cy.findByTestId("custom-homepage-setting").findByText("Disabled").click();
 
     cy.findByTestId("custom-homepage-dashboard-setting")
       .findByRole("button")
@@ -604,7 +605,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
   });
 });
 
-const pinItem = name => {
+const pinItem = (name) => {
   cy.findByText(name).closest("tr").icon("ellipsis").click();
 
   H.popover().icon("pin").click();

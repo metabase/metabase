@@ -1,4 +1,4 @@
-import type { ComponentMeta } from "@storybook/react";
+import type { Meta } from "@storybook/react";
 
 import { Code, type CodeProps } from "metabase/ui";
 
@@ -15,7 +15,7 @@ function Demo() {
 const BlockTemplate = (args: CodeProps) => <Code {...args}>{CODE_BLOCK}</Code>;
 
 export default {
-  title: "Typography/Code",
+  title: "Components/Text/Code",
   component: Code,
   argTypes: {
     bg: {
@@ -36,7 +36,7 @@ export default {
       ],
     },
   },
-} as ComponentMeta<typeof Code>;
+} as Meta<typeof Code>;
 
 export const Inline = {
   render: InlineTemplate,

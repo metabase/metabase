@@ -211,7 +211,6 @@ const config = {
       __support__: TEST_SUPPORT_PATH,
       e2e: E2E_PATH,
       style: SRC_PATH + "/css/core/index",
-      ace: __dirname + "/node_modules/ace-builds/src-noconflict",
       // NOTE @kdoh - 7/24/18
       // icepick 2.x is es6 by defalt, to maintain backwards compatability
       // with ie11 point to the minified version
@@ -313,11 +312,6 @@ const config = {
     }),
     // https://github.com/remarkjs/remark/discussions/903
     new webpack.ProvidePlugin({ process: "process/browser.js" }),
-    // https://github.com/metabase/metabase/issues/35374
-    new webpack.NormalModuleReplacementPlugin(
-      /.\/use-popover.js/,
-      `${SRC_PATH}/ui/components/overlays/Popover/use-popover`,
-    ),
   ],
 };
 

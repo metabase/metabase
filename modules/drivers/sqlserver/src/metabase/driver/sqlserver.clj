@@ -15,11 +15,13 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.parameters.substitution
+    :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -218,6 +220,18 @@
   [_driver _unit expr]
   (date-part :hour expr))
 
+;; TODO -- if we ever allow db-start-of-week to vary based on db localization settings, this should be replaced
+;; with something using the new system
+;; Issue: https://github.com/metabase/metabase/issues/39386
+(defn- weekday
+  "Wrapper around (date-part :weekday ...) to account for potentially varying @@DATEFIRST"
+  [expr]
+  [:coalesce
+   [:nullif
+    (h2x/mod (h2x/+ (date-part :weekday expr) [:raw "@@DATEFIRST"]) [:inline 7])
+    [:inline 0]]
+   [:inline 7]])
+
 (defmethod sql.qp/date [:sqlserver :day]
   [_driver _unit expr]
   ;; `::optimized-bucketing?` is added by `optimized-temporal-buckets`; this signifies that we can use more efficient
@@ -228,7 +242,7 @@
 
 (defmethod sql.qp/date [:sqlserver :day-of-week]
   [_driver _unit expr]
-  (sql.qp/adjust-day-of-week :sqlserver (date-part :weekday expr)))
+  (sql.qp/adjust-day-of-week :sqlserver (weekday expr)))
 
 (defmethod sql.qp/date [:sqlserver :day-of-month]
   [_driver _unit expr]
@@ -246,7 +260,7 @@
                         "datetime")]
     (h2x/cast original-type
               (date-add :day
-                        (h2x/- 1 (date-part :weekday expr))
+                        (h2x/- 1 (weekday expr))
                         (h2x/->date expr)))))
 
 (defmethod sql.qp/date [:sqlserver :week]
@@ -544,6 +558,10 @@
   [driver [_ arg power]]
   [:power (h2x/cast :float (sql.qp/->honeysql driver arg)) (sql.qp/->honeysql driver power)])
 
+(defmethod sql.qp/->honeysql [:sqlserver :avg]
+  [driver [_ field]]
+  [:avg [:cast (sql.qp/->honeysql driver field) :float]])
+
 (defn- format-approx-percentile-cont
   [_tag [expr p :as _args]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})
@@ -710,7 +728,7 @@
       (fix-order-bys (dissoc m :order-by))
 
       (m :guard (partial add-limit? &parents))
-      (fix-order-bys (assoc m :limit qp.i/absolute-max-results)))))
+      (fix-order-bys (assoc m :limit limit/absolute-max-results)))))
 
 (defmethod sql.qp/preprocess :sqlserver
   [driver inner-query]
@@ -834,3 +852,7 @@
 (defmethod driver.sql/->prepared-substitution [:sqlserver Boolean]
   [driver bool]
   (driver.sql/->prepared-substitution driver (if bool 1 0)))
+
+(defmethod sql.params.substitution/->replacement-snippet-info [:sqlserver UUID]
+  [_driver this]
+  {:replacement-snippet (format "'%s'" (str this))})

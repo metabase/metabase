@@ -5,6 +5,7 @@ import { useMount } from "react-use";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
+import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
 import { setErrorPage } from "metabase/redux/app";
 import { addFields, addParamValues } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -48,6 +49,9 @@ export const PublicOrEmbeddedQuestion = ({
   const [parameterValues, setParameterValues] = useState<ParameterValuesMap>(
     {},
   );
+
+  useSetEmbedFont({ location });
+
   const { bordered, hide_parameters, theme, titled, downloadsEnabled, locale } =
     useEmbedFrameOptions({ location });
 
@@ -98,7 +102,7 @@ export const PublicOrEmbeddedQuestion = ({
   });
 
   const setParameterValue = async (parameterId: ParameterId, value: any) => {
-    setParameterValues(prevParameterValues => ({
+    setParameterValues((prevParameterValues) => ({
       ...prevParameterValues,
       [parameterId]: value,
     }));
@@ -193,7 +197,7 @@ export const PublicOrEmbeddedQuestion = ({
         theme={theme}
         titled={titled}
         setCard={setCard}
-        downloadsEnabled={downloadsEnabled}
+        downloadsEnabled={downloadsEnabled.results}
       />
     </LocaleProvider>
   );

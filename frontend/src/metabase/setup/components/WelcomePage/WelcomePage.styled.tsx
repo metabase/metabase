@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
@@ -22,6 +23,7 @@ export const PageMain = styled.main`
 export const PageTitle = styled.h1`
   color: var(--mb-color-brand);
   font-size: 2.2rem;
+  margin-top: 1.5rem;
 `;
 
 export const PageBody = styled.div`

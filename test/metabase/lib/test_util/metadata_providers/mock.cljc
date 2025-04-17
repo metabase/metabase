@@ -3,10 +3,10 @@
    [clojure.core.protocols]
    [clojure.test :refer [deftest is]]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (defn- with-optional-lib-type
@@ -33,8 +33,6 @@
           (assoc :lib/type :metadata/database)
           (dissoc :tables)))
 
-(declare ^:private metadata->prefix-fn)
-
 (defn- mock-metadatas [metadata metadata-type ids]
   (let [k   (case metadata-type
               :metadata/table         :tables
@@ -43,20 +41,11 @@
               :metadata/segment       :segments)
         ids (set ids)]
     (into []
-          (comp (keep (fn [object]
-                        (when (contains? ids (:id object))
-                          (cond-> (assoc object :lib/type metadata-type)
-                            (= metadata-type :metadata/table) (dissoc :fields)))))
-                (if (= metadata-type :metadata/column)
-                  (lib.metadata.ident/attach-idents (metadata->prefix-fn metadata))
-                  identity))
+          (keep (fn [object]
+                  (when (contains? ids (:id object))
+                    (cond-> (assoc object :lib/type metadata-type)
+                      (= metadata-type :metadata/table) (dissoc :fields)))))
           (get metadata k))))
-
-(defn- metadata->prefix-fn [metadata]
-  (let [db-name (:name (mock-database metadata))]
-    (fn [table-id]
-      (let [[table] (mock-metadatas metadata :metadata/table [table-id])]
-        (lib.metadata.ident/table-prefix db-name table)))))
 
 (defn- mock-tables [metadata]
   (for [table (:tables metadata)]
@@ -69,16 +58,13 @@
             :metadata/metric        :cards
             :metadata/segment       :segments)]
     (into []
-          (comp (keep (fn [object]
-                        (when (and (= (:table-id object) table-id)
-                                   (if (= metadata-type :metadata/metric)
-                                     (and (= (:type object) :metric)
-                                          (not (:archived object)))
-                                     true))
-                          (assoc object :lib/type metadata-type))))
-                (if (= metadata-type :metadata/column)
-                  (lib.metadata.ident/attach-idents (metadata->prefix-fn metadata))
-                  identity))
+          (keep (fn [object]
+                  (when (and (= (:table-id object) table-id)
+                             (if (= metadata-type :metadata/metric)
+                               (and (= (:type object) :metric)
+                                    (not (:archived object)))
+                               true))
+                    (assoc object :lib/type metadata-type))))
           (get metadata k))))
 
 (defn- mock-metadatas-for-card [metadata metadata-type card-id]
@@ -138,7 +124,10 @@
     =>
     (lib/composed-metadata-provider (lib.tu/mock-metadata-provider {...}) parent-metadata-provider)"
   ([m :- MockMetadata]
-   (->MockMetadataProvider m))
+   (-> m
+       (update :fields #(for [field %]
+                          (u/assoc-default field :ident (u/generate-nano-id))))
+       ->MockMetadataProvider))
 
   ([parent-metadata-provider mock-metadata]
    (lib/composed-metadata-provider

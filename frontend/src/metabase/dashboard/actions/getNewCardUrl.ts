@@ -50,16 +50,7 @@ export const getNewCardUrl = ({
   let nextQuestion: Question | undefined = undefined;
 
   if (isEditable) {
-    nextQuestion = new Question(cardAfterClick, metadata);
-
-    // Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations
-    if (nextQuestion.display() !== "pivot") {
-      nextQuestion = nextQuestion.setQuery(
-        Lib.ensureFilterStage(nextQuestion.query()),
-      );
-    }
-
-    nextQuestion = nextQuestion
+    nextQuestion = new Question(cardAfterClick, metadata)
       .setDisplay(cardAfterClick.display || previousCard.display)
       .setSettings(dashcard.card.visualization_settings)
       .lockDisplay();
@@ -94,7 +85,7 @@ export function getParametersMappedToDashcard(
   dashcard: QuestionDashboardCard,
 ): ParameterWithTarget[] {
   const { parameter_mappings } = dashcard;
-  return (parameters || []).flatMap(parameter => {
+  return (parameters || []).flatMap((parameter) => {
     const mapping = _.findWhere(parameter_mappings || [], {
       parameter_id: parameter.id,
     });

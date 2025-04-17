@@ -34,6 +34,7 @@ export const ENGINE_LOGO: Record<string, string> = {
   athena: "athena.svg",
   bigquery: "bigquery.svg",
   "bigquery-cloud-sdk": "bigquery.svg",
+  clickhouse: "clickhouse.svg",
   databricks: "databricks.svg",
   druid: "druid.svg",
   "druid-jdbc": "druid.svg",

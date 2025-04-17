@@ -10,24 +10,22 @@ const {
 } = resolveEmbeddingSdkPackage();
 
 module.exports = {
-  core: {
-    builder: "webpack5",
-  },
   stories: ["../enterprise/frontend/src/embedding-sdk/**/*.stories.tsx"],
   staticDirs: ["../resources/frontend_client"],
   addons: [
+    "@storybook/addon-webpack5-compiler-babel",
+    "@storybook/addon-interactions",
     "@storybook/addon-essentials",
     "@storybook/addon-links",
     "@storybook/addon-a11y",
-    "@storybook/addon-interactions",
     "storybook-addon-pseudo-states",
   ],
-  features: {
-    interactionsDebugger: true,
+  framework: {
+    name: "@storybook/react-webpack5",
+    options: {},
   },
-  babel: () => {},
   typescript: {
-    reactDocgen: "react-docgen-typescript-plugin",
+    reactDocgen: "react-docgen-typescript",
   },
   webpackFinal: storybookConfig => ({
     ...storybookConfig,
@@ -67,7 +65,7 @@ module.exports = {
   }),
 };
 
-const isCSSRule = rule => rule.test.toString() === "/\\.css$/";
+const isCSSRule = rule => rule.test?.toString() === "/\\.css$/";
 const isSvgRule = rule => rule.test && rule.test?.test(".svg");
 
 function resolveEmbeddingSdkPackage() {

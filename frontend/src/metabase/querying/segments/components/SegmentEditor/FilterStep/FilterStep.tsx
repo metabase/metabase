@@ -28,6 +28,7 @@ export function FilterStep({ query, stageIndex, onChange }: FilterStepProps) {
               query={query}
               stageIndex={stageIndex}
               filter={filter}
+              filterIndex={filterIndex}
               hasFilters={hasFilters}
               onChange={onChange}
             />
@@ -50,6 +51,7 @@ type FilterPopoverProps = {
   query: Lib.Query;
   stageIndex: number;
   filter?: Lib.FilterClause;
+  filterIndex?: number;
   hasFilters: boolean;
   onChange: (query: Lib.Query) => void;
 };
@@ -58,6 +60,7 @@ function FilterPopover({
   query,
   stageIndex,
   filter,
+  filterIndex,
   hasFilters,
   onChange,
 }: FilterPopoverProps) {
@@ -98,11 +101,12 @@ function FilterPopover({
           />
         )}
       </Popover.Target>
-      <Popover.Dropdown>
+      <Popover.Dropdown data-testid="segment-popover">
         <FilterPicker
           query={query}
           stageIndex={stageIndex}
           filter={filter}
+          filterIndex={filterIndex}
           onSelect={handleSelect}
         />
       </Popover.Dropdown>
@@ -126,9 +130,9 @@ const AddFilterButton = forwardRef(function AddFilterButton(
       c="text-light"
       p={compact ? undefined : 0}
       variant={compact ? "default" : "subtle"}
-      compact={compact}
+      size={compact ? "compact-md" : "md"}
       disabled={disabled}
-      rightIcon={<Icon name="add" />}
+      rightSection={<Icon name="add" />}
       aria-label={compact ? t`Add filters` : undefined}
       onClick={onClick}
     >

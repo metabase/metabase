@@ -77,7 +77,7 @@ async function setup({
   renderWithProviders(
     <Route
       path="/public/action/:uuid"
-      component={props => (
+      component={(props) => (
         <PublicApp {...props}>
           <PublicAction {...props} />
         </PublicApp>

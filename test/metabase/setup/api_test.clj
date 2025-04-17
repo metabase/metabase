@@ -2,19 +2,18 @@
   "Tests for /api/setup endpoints."
   (:require
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.config :as config]
-   [metabase.core.core :as mbc]
-   [metabase.db :as mdb]
    [metabase.driver.h2 :as h2]
    [metabase.events :as events]
    [metabase.http-client :as client]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache-test :as setting.cache-test]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-settings :as public-settings]
    [metabase.setup.api :as api.setup]
    [metabase.setup.core :as setup]
@@ -212,49 +211,57 @@
       (testing "missing"
         (is (=? {:errors {:token "Token does not match the setup token."}}
                 (setup! dissoc :token))))
-
       (testing "incorrect"
         (is (=? {:errors {:token "Token does not match the setup token."}}
-                (setup! assoc :token "foobar")))))
+                (setup! assoc :token "foobar")))))))
 
+(deftest setup-validation-test-2
+  (testing "POST /api/setup validation"
     (testing "site name"
-      (is (=? {:errors {:site_name "value must be a non-blank string."}}
-              (setup! m/dissoc-in [:prefs :site_name]))))
+      ;; TODO -- it seems like this should be `{:specific-errors {:prefs {:site_name ...}}}` but defendpoint validation
+      ;; is not currently that advanced.
+      (is (=? {:specific-errors {:prefs ["missing required key, received: nil"]},
+               :errors {:prefs #(str/starts-with? % "map where {:site_name -> <value must be a non-blank string.>")}}
+              (setup! m/dissoc-in [:prefs :site_name]))))))
 
+(deftest setup-validation-test-3
+  (testing "POST /api/setup validation"
     (testing "site locale"
       (testing "invalid format"
-        (is (=? {:errors {:site_locale #".*must be a valid two-letter ISO language or language-country code.*"}}
+        (is (=? {:specific-errors {:prefs {:site_locale ["valid locale, received: \"eng-USA\""]}}
+                 :errors {:prefs #(str/includes? % ":site_locale (optional) -> <nullable String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.>")}}
                 (setup! assoc-in [:prefs :site_locale] "eng-USA"))))
       (testing "non-existent locale"
-        (is (=? {:errors {:site_locale #".*must be a valid two-letter ISO language or language-country code.*"}}
-                (setup! assoc-in [:prefs :site_locale] "en-EN")))))
+        (is (=? {:specific-errors {:prefs {:site_locale ["valid locale, received: \"en-EN\""]}}
+                 :errors {:prefs #(str/includes? % ":site_locale (optional) -> <nullable String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.>")}}
+                (setup! assoc-in [:prefs :site_locale] "en-EN")))))))
 
+(deftest setup-validation-test-4
+  (testing "POST /api/setup validation"
     (testing "user"
       (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
         (testing "first name may be nil"
           (is (:id (setup! 200 m/dissoc-in [:user :first_name])))
           (is (:id (setup! 200 assoc-in [:user :first_name] nil))))
-
         (testing "last name may be nil"
           (is (:id (setup! 200 m/dissoc-in [:user :last_name])))
           (is (:id (setup! 200 assoc-in [:user :last_name] nil)))))
-
       (testing "email"
         (testing "missing"
-          (is (=? {:errors {:email "value must be a valid email address."}}
+          (is (=? {:errors          {:user #(str/includes? % ":email -> <value must be a valid email address.>")}
+                   :specific-errors {:user {:email ["missing required key, received: nil"]}}}
                   (setup! m/dissoc-in [:user :email]))))
-
         (testing "invalid"
-          (is (=? {:errors {:email "value must be a valid email address."}}
+          (is (=? {:errors          {:user #(str/includes? % ":email -> <value must be a valid email address.>")}
+                   :specific-errors {:user {:email ["valid email address, received: \"anything\""]}}}
                   (setup! assoc-in [:user :email] "anything")))))
-
       (testing "password"
         (testing "missing"
-          (is (=? {:errors {:password "password is too common."}}
+          (is (=? {:specific-errors {:user {:password ["missing required key, received: nil"]}}
+                   :errors          {:user #(str/includes? % ":password -> <password is too common.>")}}
                   (setup! m/dissoc-in [:user :password]))))
-
         (testing "invalid"
-          (is (=? {:errors {:password "password is too common."}}
+          (is (=? {:specific-errors {:user {:password ["valid password that is not too common, received: \"anything\""]}}}
                   (setup! assoc-in [:user :password] "anything"))))))))
 
 (deftest setup-with-empty-cache-test
@@ -342,202 +349,6 @@
            (testing "Setup token should still be set"
              (is (= setup-token
                     (setup/setup-token))))))))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         GET /api/setup/admin_checklist                                         |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; basic sanity check
-
-(def ^:private default-checklist-state
-  {:db-type    :h2
-   :hosted?    false
-   :embedding  {:interested? false
-                :done?       false
-                :app-origin  false}
-   :configured {:email true
-                :slack false
-                :sso   false}
-   :counts     {:user  5
-                :card  5
-                :table 5}
-   :exists     {:non-sample-db     true
-                :dashboard         true
-                :pulse             true
-                :hidden-table      false
-                :collection        true
-                :model             true
-                :embedded-resource false}})
-
-(defn get-embedding-step
-  [checklist]
-  (let [[{:keys [tasks]}] checklist]
-    (first (filter #(= (get % :title) "Setup embedding") tasks))))
-
-(deftest admin-checklist-test
-  (testing "GET /api/setup/admin_checklist"
-    (with-redefs [api.setup/state-for-checklist (constantly default-checklist-state)]
-      (is (partial= [{:name  "Get connected"
-                      :tasks [{:title        "Add a database"
-                               :completed    true
-                               :triggered    true
-                               :is_next_step false}
-                              {:title        "Set up email"
-                               :completed    true
-                               :triggered    true
-                               :is_next_step false}
-                              {:title        "Set Slack credentials"
-                               :completed    false
-                               :triggered    true
-                               :is_next_step true}
-                              {:completed false,
-                               :is_next_step false,
-                               :title "Setup embedding",
-                               :triggered false}
-                              {:title        "Invite team members"
-                               :completed    true
-                               :triggered    true
-                               :is_next_step false}]}
-                     {:name  "Productionize"
-                      :tasks [{:title "Switch to a production-ready app database"}]}
-                     {:name  "Curate your data"
-                      :tasks [{:title        "Hide irrelevant tables"
-                               :completed    false
-                               :triggered    false
-                               :is_next_step false}
-                              {:title        "Organize questions"
-                               :completed    true
-                               :triggered    false
-                               :is_next_step false}
-                              {:title        "Create a model"
-                               :completed    true
-                               :triggered    false
-                               :is_next_step false}]}]
-                    (for [{group-name :name, tasks :tasks} (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
-                      {:name  (str group-name)
-                       :tasks (for [task tasks]
-                                (-> (select-keys task [:title :completed :triggered :is_next_step])
-                                    (update :title str)))}))))
-    (testing "info about switching to postgres or mysql"
-      (testing "is included when h2 and not hosted"
-        (with-redefs [api.setup/state-for-checklist (constantly default-checklist-state)]
-          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
-            (is (= ["Get connected" "Productionize" "Curate your data"]
-                   (map :name checklist))))))
-      (testing "is omitted if hosted"
-        (with-redefs [api.setup/state-for-checklist (constantly
-                                                     (merge default-checklist-state
-                                                            {:hosted? true}))]
-          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
-            (is (= ["Get connected" "Curate your data"]
-                   (map :name checklist)))))))
-    (testing "setup-embedding"
-      (testing "should be done when a dashboard as been published"
-        (with-redefs [api.setup/state-for-checklist
-                      (constantly
-                       (update default-checklist-state
-                               :exists #(merge %  {:embedded-resource true})))]
-          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
-            (is (partial= {:completed true} (get-embedding-step checklist))))))
-      (testing "should be done when sso and embed-app-origin has been configured"
-        (with-redefs [api.setup/state-for-checklist
-                      (constantly
-                       (-> default-checklist-state
-                           (assoc-in [:configured :sso] true)
-                           (assoc-in [:embedding :app-origin] true)))]
-          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
-            (is (partial= {:completed true}
-                          (get-embedding-step checklist))))))
-      (testing "should be done when dismissed-done"
-        (with-redefs [api.setup/state-for-checklist
-                      (constantly
-                       (-> default-checklist-state
-                           (assoc-in [:embedding :done?] true)))]
-          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
-            (is (partial= {:completed true} (get-embedding-step checklist)))))))
-
-    (testing "require superusers"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "setup/admin_checklist"))))))
-
-(deftest internal-content-setup-test
-  (testing "Internally created state like Metabase Analytics shouldn't affect the checklist"
-    (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? true)
-      (mbc/ensure-audit-db-installed!)
-      (testing "Sense check: internal content exists"
-        (is (true? (t2/exists? :model/User)))
-        (is (true? (t2/exists? :model/Database)))
-        (is (true? (t2/exists? :model/Table)))
-        (is (true? (t2/exists? :model/Field)))
-        (is (true? (t2/exists? :model/Collection)))
-        (is (true? (t2/exists? :model/Dashboard)))
-        (is (true? (t2/exists? :model/Card))))
-      (testing "All state should be empty"
-        (is (=? {:db-type    :h2
-                 :configured {:email false
-                              :slack false}
-                 :counts     {:user  0
-                              :card  0
-                              :table 0}
-                 :exists     {:non-sample-db false
-                              :dashboard     false
-                              :pulse         false
-                              :hidden-table  false
-                              :collection    false
-                              :model         false}}
-                (#'api.setup/state-for-checklist)))))))
-
-(deftest annotate-test
-  (testing "identifies next step"
-    (is (partial= [{:group "first"
-                    :tasks [{:title "t1", :is_next_step false}]}
-                   {:group "second"
-                    :tasks [{:title "t2", :is_next_step true}
-                            {:title "t3", :is_next_step false}]}]
-                  (#'api.setup/annotate
-                   [{:group "first"
-                     :tasks [{:title "t1" :triggered true :completed true}]}
-                    {:group "second"
-                     :tasks [{:title "t2" :triggered true :completed false}
-                             {:title "t3" :triggered true :completed false}]}]))))
-  (testing "If all steps are completed none are marked as next"
-    (is (every? false?
-                (->> (#'api.setup/annotate
-                      [{:group "first"
-                        :tasks [{:title "t1" :triggered true :completed true}]}
-                       {:group "second"
-                        :tasks [{:title "t2" :triggered true :completed true}
-                                {:title "t3" :triggered true :completed true}]}])
-                     (mapcat :tasks)
-                     (map :is_next_step)))))
-  (testing "First step is"
-    (letfn [(first-step [checklist]
-              (->> checklist
-                   (mapcat :tasks)
-                   (filter (every-pred :triggered (complement :completed)))
-                   first
-                   :title))]
-      (let [scenarios [{:update-fn identity
-                        :case      :default
-                        :expected  "Set Slack credentials"}
-                       {:update-fn #(update % :configured merge {:slack true})
-                        :case      :configure-slack
-                        :expected  "Switch to a production-ready app database"}
-                       {:update-fn #(assoc % :db-type :postgres)
-                        :case      :migrate-to-postgres
-                        :expected  nil}
-                       {:update-fn #(update % :counts merge {:table 25})
-                        :case      :add-more-tables
-                        :expected  "Hide irrelevant tables"}]]
-        (reduce (fn [checklist-state {:keys [update-fn expected] :as scenario}]
-                  (let [checklist-state' (update-fn checklist-state)]
-                    (testing (str "when " (:case scenario))
-                      (is (= expected
-                             (first-step (#'api.setup/admin-checklist checklist-state')))))
-                    checklist-state'))
-                default-checklist-state
-                scenarios)))))
 
 (deftest user-defaults-test
   (testing "with no user defaults configured"

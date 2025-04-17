@@ -1,13 +1,17 @@
 import type * as React from "react";
 import { useRef, useState } from "react";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
 import { updateSettings } from "metabase/admin/settings/settings";
-import { skipToken, useListSyncableDatabaseSchemasQuery } from "metabase/api";
+import {
+  skipToken,
+  useListDatabasesQuery,
+  useListSyncableDatabaseSchemasQuery,
+} from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import ActionButton from "metabase/components/ActionButton";
 import EmptyState from "metabase/components/EmptyState/EmptyState";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Alert from "metabase/core/components/Alert";
 import Input from "metabase/core/components/Input";
 import Link from "metabase/core/components/Link";
@@ -15,15 +19,13 @@ import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
-import { connect, useDispatch, useSelector } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsHosted } from "metabase/setup/selectors";
 import { Group, Stack, Text, Tooltip } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
+import type { Database } from "metabase-types/api";
 import type { UploadsSettings } from "metabase-types/api/settings";
-import type { State } from "metabase-types/store";
 
-import SettingHeader from "../SettingHeader";
+import { SettingHeader } from "../SettingHeader";
 
 import { ColorText, PaddedForm, SectionTitle } from "./UploadSetting.styled";
 import { dbHasSchema, getDatabaseOptions, getSchemaOptions } from "./utils";
@@ -31,6 +33,13 @@ import { dbHasSchema, getDatabaseOptions, getSchemaOptions } from "./utils";
 const FEEDBACK_TIMEOUT = 5000;
 const enableErrorMessage = t`There was a problem enabling uploads. Please try again shortly.`;
 const disableErrorMessage = t`There was a problem disabling uploads. Please try again shortly.`;
+
+export type SaveStatusRef = React.RefObject<{
+  setSaving: () => void;
+  setSaved: () => void;
+  setSaveError: (msg: string) => void;
+  clear: () => void;
+}>;
 
 interface UploadSettingProps {
   databases: Database[];
@@ -41,35 +50,20 @@ interface UploadSettingProps {
       string | number | boolean | UploadsSettings | null
     >,
   ) => Promise<void>;
-  saveStatusRef: React.RefObject<{
-    setSaving: () => void;
-    setSaved: () => void;
-    setSaveError: (msg: string) => void;
-    clear: () => void;
-  }>;
+  saveStatusRef: SaveStatusRef;
 }
-
-const mapStateToProps = (state: State) => ({
-  uploadsSettings: getSetting(state, "uploads-settings"),
-});
-
-const mapDispatchToProps = {
-  updateSettings,
-};
 
 const Header = () => (
   <SettingHeader
     id="upload-settings"
-    setting={{
-      display_name: t`Allow people to upload data to Collections`,
-      description: jt`People will be able to upload CSV files that will be stored in the ${(
-        <Link
-          className={CS.link}
-          key="db-link"
-          to="/admin/databases"
-        >{t`database`}</Link>
-      )} you choose and turned into models.`,
-    }}
+    title={t`Allow people to upload data to Collections`}
+    description={jt`People will be able to upload CSV files that will be stored in the ${(
+      <Link
+        className={CS.link}
+        key="db-link"
+        to="/admin/databases"
+      >{t`database`}</Link>
+    )} you choose and turned into models.`}
   />
 );
 
@@ -161,7 +155,7 @@ export function UploadSettingsFormView({
 
   const hasValidDatabases = databaseOptions.length > 0;
   const isH2db = Boolean(
-    dbId && databases.find(db => db.id === dbId)?.engine === "h2",
+    dbId && databases.find((db) => db.id === dbId)?.engine === "h2",
   );
 
   const {
@@ -229,7 +223,7 @@ export function UploadSettingsFormView({
             <Input
               value={tablePrefix ?? ""}
               placeholder={t`upload_`}
-              onChange={e => {
+              onChange={(e) => {
                 resetButtons();
                 setTablePrefix(e.target.value);
               }}
@@ -305,7 +299,11 @@ const H2PersistenceWarning = ({ isHosted }: { isHosted: boolean }) => (
           multiline
           maw="30rem"
         >
-          <Text span underline weight={700}>{t`Additional terms apply.`}</Text>
+          <Text
+            component="span"
+            td="underline"
+            fw={700}
+          >{t`Additional terms apply.`}</Text>
         </Tooltip>
       )}
     </Alert>
@@ -325,7 +323,29 @@ const NoValidDatabasesMessage = () => (
   </>
 );
 
-export const UploadSettingsForm = _.compose(
-  Databases.loadList({ query: { include_only_uploadable: true } }),
-  connect(mapStateToProps, mapDispatchToProps),
-)(UploadSettingsFormView);
+export const UploadSettingsForm = ({
+  saveStatusRef,
+}: {
+  saveStatusRef: SaveStatusRef;
+}) => {
+  const dispatch = useDispatch();
+  const { data, isLoading, error } = useListDatabasesQuery({
+    include_only_uploadable: true,
+  });
+
+  const databases = data?.data ?? [];
+  const uploadsSettings = useSetting("uploads-settings");
+
+  return (
+    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+      <UploadSettingsFormView
+        databases={databases}
+        uploadsSettings={uploadsSettings}
+        updateSettings={async (settings) => {
+          dispatch(updateSettings(settings));
+        }}
+        saveStatusRef={saveStatusRef}
+      />
+    </LoadingAndErrorWrapper>
+  );
+};

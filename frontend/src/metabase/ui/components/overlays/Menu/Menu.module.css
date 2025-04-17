@@ -1,0 +1,53 @@
+.dropdown {
+  padding: 0.75rem;
+  min-width: 11.5rem;
+  overflow: auto;
+  background-color: var(--mb-color-background);
+  border-color: var(--mb-color-border);
+}
+
+.item {
+  color: var(--mb-color-text-primary);
+  font-size: var(--mantine-font-size-md);
+  line-height: var(--mantine-line-height-lg);
+  padding: var(--mantine-spacing-sm);
+
+  &:disabled {
+    color: var(--mb-color-text-light);
+  }
+
+  &[data-hovered] {
+    color: var(--mb-color-text-hover);
+    background-color: var(--mb-color-background-hover);
+
+    .itemSection[data-position="right"] {
+      color: var(--mb-color-text-hover);
+    }
+  }
+}
+
+.itemSection {
+  &[data-position="left"] {
+    margin-right: var(--mantine-spacing-sm);
+  }
+
+  &[data-position="right"] {
+    color: var(--mb-color-text-light);
+    margin-left: var(--mantine-spacing-md);
+  }
+}
+
+.label {
+  color: var(--mb-color-text-light);
+  font-size: var(--mantine-font-size-sm);
+  line-height: var(--mantine-line-height);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+}
+
+.divider {
+  margin-top: calc(var(--mantine-spacing-xs) - 1px);
+  margin-bottom: var(--mantine-spacing-xs);
+  margin-left: var(--mantine-spacing-sm);
+  margin-right: var(--mantine-spacing-sm);
+  border-top-color: var(--mb-color-border);
+}

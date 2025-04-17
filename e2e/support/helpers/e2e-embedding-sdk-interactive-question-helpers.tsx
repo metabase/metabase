@@ -13,12 +13,13 @@ export function saveInteractiveQuestionAsNewQuestion(options: {
 
   cy.intercept("POST", "/api/card").as("createCard");
 
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByTestId("cell-data").last().click();
   popover().findByText(`See these ${entityName}`).click();
   cy.findByRole("button", { name: "Save" }).click();
 
   modal().within(() => {
-    cy.findByRole("radiogroup").findByText("Save as new question").click();
+    cy.findByText("Save as new question").click();
 
     cy.findByPlaceholderText("What is the name of your question?")
       .clear()
@@ -31,7 +32,7 @@ export function saveInteractiveQuestionAsNewQuestion(options: {
     entityPickerModal().within(() => {
       cy.findByText("Browse").click();
 
-      collectionPickerPath.forEach(collectionName =>
+      collectionPickerPath.forEach((collectionName) =>
         cy.findByText(collectionName).click(),
       );
 

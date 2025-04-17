@@ -59,24 +59,16 @@ export const InsightsLink = ({
     Urls.dashboard({ id: entityId, name: "" }) + `?${linkQueryParams}`;
 
   return (
-    <Flex
-      className={SidesheetS.InsightsTab}
-      p="11px 8px"
-      c="var(--mb-color-text-dark)"
-      fw="bold"
-      lh="1rem"
+    <Link
+      to={instanceAnalyticsUrl}
+      className={S.InsightsLink}
+      role="link"
+      {...linkProps}
     >
-      <Link
-        to={instanceAnalyticsUrl}
-        className={S.InsightsLink}
-        role="link"
-        {...linkProps}
-      >
-        <Flex gap="xs">
-          <Icon name="external" />
-          {t`Insights`}
-        </Flex>
-      </Link>
-    </Flex>
+      <Flex gap="xs" className={SidesheetS.TabSibling}>
+        <Icon name="external" />
+        {t`Insights`}
+      </Flex>
+    </Link>
   );
 };

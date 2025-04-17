@@ -1,0 +1,15 @@
+.ItemLink {
+  margin-bottom: 0.5rem;
+  display: block;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}
+
+.SuggestionsSidebarWrapper {
+  min-height: 100vh;
+  width: 346px;
+  background-color: var(--mb-color-bg-light);
+  border-left: 2px solid var(--mb-color-border);
+}

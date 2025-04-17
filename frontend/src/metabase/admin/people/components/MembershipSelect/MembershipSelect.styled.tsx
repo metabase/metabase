@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 export const MembershipSelectContainer = styled.ul`
@@ -15,13 +17,13 @@ export const MembershipSelectItem = styled.li<MembershipSelectItemProps>`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  cursor: ${props => (props.isDisabled ? "unset" : "pointer")};
+  cursor: ${(props) => (props.isDisabled ? "unset" : "pointer")};
   padding: 0.5rem 1.5rem;
   background-color: var(--mb-color-bg-white);
   color: var(--mb-color-text-medium);
   font-weight: 700;
 
-  ${props =>
+  ${(props) =>
     !props.isDisabled &&
     css`
       &:hover {

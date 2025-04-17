@@ -28,7 +28,7 @@ const DataSelectorSchemaPicker = ({
 }: DataSelectorSchemaPickerProps) => {
   const sections = [
     {
-      items: schemas.map(schema => ({
+      items: schemas.map((schema) => ({
         name: schema.displayName(),
         schema: schema,
       })),
@@ -50,6 +50,7 @@ const DataSelectorSchemaPicker = ({
         }
         renderItemIcon={() => <Icon name="folder" size={16} />}
         showItemArrows={hasNextStep}
+        maxHeight={Infinity}
       />
     </Box>
   );

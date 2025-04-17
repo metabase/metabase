@@ -11,6 +11,7 @@
                               :attached-dwh
                               :audit-app
                               :cache-granular-controls
+                              :cache-preemptive
                               :config-text-file
                               :content-verification
                               :dashboard-subscription-filters
@@ -36,11 +37,13 @@
                               :sso-saml
                               :upload_management
                               :whitelabel
-                              :collection-cleanup}
+                              :collection-cleanup
+                              :database-routing}
     (is (= {:advanced_permissions           true
             :attached_dwh                   true
             :audit_app                      true
             :cache_granular_controls        true
+            :cache_preemptive               true
             :config_text_file               true
             :content_verification           true
             :dashboard_subscription_filters true
@@ -65,5 +68,6 @@
             :sso_saml                       true
             :upload_management              false
             :whitelabel                     true
-            :collection_cleanup             true}
+            :collection_cleanup             true
+            :database_routing               true}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

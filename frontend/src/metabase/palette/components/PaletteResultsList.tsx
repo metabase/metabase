@@ -26,7 +26,7 @@ interface PaletteResultListProps {
   maxHeight?: number;
 }
 
-export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
+export const PaletteResultList: React.FC<PaletteResultListProps> = (props) => {
   const activeRef = React.useRef<HTMLDivElement>(null);
   const parentRef = React.useRef<HTMLDivElement>(null);
 
@@ -36,7 +36,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
   itemsRef.current = props.items;
 
   const { query, search, currentRootActionId, activeIndex, options } = useKBar(
-    state => ({
+    (state) => ({
       search: state.searchQuery,
       currentRootActionId: state.currentRootActionId,
       activeIndex: state.activeIndex,
@@ -52,7 +52,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
       if (event.key === "ArrowUp" || (event.ctrlKey && event.key === "p")) {
         event.preventDefault();
         event.stopPropagation();
-        query.setActiveIndex(index => {
+        query.setActiveIndex((index) => {
           return navigateActionIndex(itemsRef.current, index, -1);
         });
       } else if (
@@ -61,7 +61,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
       ) {
         event.preventDefault();
         event.stopPropagation();
-        query.setActiveIndex(index => {
+        query.setActiveIndex((index) => {
           return navigateActionIndex(itemsRef.current, index, 1);
         });
       } else if (event.key === "Enter") {
@@ -75,10 +75,19 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
         //If we have a link for a child, then click that instead
         const childAnchor = activeRef.current?.querySelector("a");
 
-        if (childAnchor) {
-          childAnchor.click();
+        const target = childAnchor || activeRef?.current;
+
+        if (!target) {
+          return;
+        } else if (event.ctrlKey || event.metaKey) {
+          target.dispatchEvent(
+            new MouseEvent("click", {
+              ctrlKey: event.ctrlKey,
+              metaKey: event.metaKey,
+            }),
+          );
         } else {
-          activeRef.current?.click();
+          target.click();
         }
       }
     };
@@ -113,13 +122,15 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
   }, [search, currentRootActionId, props.items, query]);
 
   const execute = React.useCallback(
-    (item: RenderParams["item"]) => {
+    (item: RenderParams["item"], e?: React.MouseEvent) => {
       if (typeof item === "string") {
         return;
       }
       if (item.command) {
         item.command.perform(item);
-        query.toggle();
+        if (!(e?.metaKey === true || e?.ctrlKey === true)) {
+          query.toggle();
+        }
       } else if (!item.extra?.href) {
         query.setSearch("");
         query.setCurrentRootAction(item.id);
@@ -151,7 +162,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
               onPointerMove: () =>
                 activeIndex !== index && query.setActiveIndex(index),
               onPointerDown: () => query.setActiveIndex(index),
-              onClick: () => execute(item),
+              onClick: (e: React.MouseEvent) => execute(item, e),
             };
           const active = index === activeIndex;
 

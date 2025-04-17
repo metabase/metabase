@@ -176,6 +176,10 @@
   "Should we allow admins to clean up tables created from uploads?"
   :upload-management)
 
+(define-premium-feature table-data-editing?
+  "Should we allow users to edit the data within tables?"
+  :table-data-editing)
+
 (define-premium-feature has-attached-dwh?
   "Does the Metabase Cloud instance have an internal data warehouse attached?"
   :attached-dwh)
@@ -201,3 +205,7 @@
 (define-premium-feature ^{:added "0.51.0"} enable-database-auth-providers?
   "Should we enable database auth-providers?"
   :database-auth-providers)
+
+(define-premium-feature ^{:added "0.54.0"} enable-database-routing?
+  "Should we enable database routing?"
+  :database-routing)

@@ -2,7 +2,7 @@ import type { FormikHelpers } from "formik";
 import { useCallback } from "react";
 
 import { skipToken, useGetActionQuery } from "metabase/api";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";

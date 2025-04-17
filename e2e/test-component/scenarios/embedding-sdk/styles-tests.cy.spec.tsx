@@ -3,10 +3,11 @@ import {
   InteractiveQuestion,
   MetabaseProvider,
   StaticQuestion,
+  defineMetabaseTheme,
 } from "@metabase/embedding-sdk-react";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { describeEE, modal, updateSetting } from "e2e/support/helpers";
+import { modal, updateSetting } from "e2e/support/helpers";
 import {
   DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
   mockAuthProviderAndJwtSignIn,
@@ -14,7 +15,7 @@ import {
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
-describeEE("scenarios > embedding-sdk > styles", () => {
+describe("scenarios > embedding-sdk > styles", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
@@ -23,6 +24,95 @@ describeEE("scenarios > embedding-sdk > styles", () => {
     mockAuthProviderAndJwtSignIn();
 
     cy.intercept("GET", "/api/user/current").as("getUser");
+  });
+
+  describe("common", () => {
+    it('PublicComponentStylesWrapper should have the `dir="ltr"` attribute (#54082)', () => {
+      cy.mount(
+        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <StaticQuestion questionId={ORDERS_QUESTION_ID} />
+        </MetabaseProvider>,
+      );
+
+      cy.wait("@getUser").then(({ response }) => {
+        expect(response?.statusCode).to.equal(200);
+      });
+
+      getSdkRoot().children().should("have.attr", "dir", "ltr");
+    });
+  });
+
+  describe("theming", () => {
+    const theme = defineMetabaseTheme({
+      colors: {
+        brand: "#FF0000",
+      },
+    });
+
+    it("should use the brand color from the theme", () => {
+      cy.mount(
+        <MetabaseProvider
+          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+          theme={theme}
+        >
+          <InteractiveQuestion questionId="new" />
+        </MetabaseProvider>,
+      );
+
+      getSdkRoot()
+        .findByText("Pick your starting data")
+        .invoke("css", "color")
+        .should("equal", "rgb(255, 0, 0)");
+    });
+
+    it("should use the brand color from the app settings as fallback if they're present", () => {
+      cy.signInAsAdmin();
+      updateSetting(
+        // @ts-expect-error -- that function doesn't understand enterprise settings _yet_
+        "application-colors",
+        {
+          brand: "#00FF00",
+        },
+      );
+      cy.signOut();
+
+      cy.mount(
+        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <InteractiveQuestion questionId="new" />
+        </MetabaseProvider>,
+      );
+
+      getSdkRoot()
+        .findByText("Pick your starting data")
+        .invoke("css", "color")
+        .should("equal", "rgb(0, 255, 0)");
+    });
+
+    it("but should prioritize the theme colors over the app settings", () => {
+      cy.signInAsAdmin();
+      updateSetting(
+        // @ts-expect-error -- that function doesn't understand enterprise settings _yet_
+        "application-colors",
+        {
+          brand: "#00FF00",
+        },
+      );
+      cy.signOut();
+
+      cy.mount(
+        <MetabaseProvider
+          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+          theme={theme}
+        >
+          <InteractiveQuestion questionId="new" />
+        </MetabaseProvider>,
+      );
+
+      getSdkRoot()
+        .findByText("Pick your starting data")
+        .invoke("css", "color")
+        .should("equal", "rgb(255, 0, 0)");
+    });
   });
 
   describe("style leaking", () => {
@@ -50,7 +140,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
         expect(response?.statusCode).to.equal(200);
       });
 
-      cy.get("@defaultBrowserFontFamily").then(defaultBrowserFontFamily => {
+      cy.get("@defaultBrowserFontFamily").then((defaultBrowserFontFamily) => {
         cy.findByText("This is outside of the provider").should(
           "have.css",
           "font-family",
@@ -92,7 +182,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
 
       cy.wait("@getUser");
 
-      cy.get("@defaultBrowserFontFamily").then(defaultBrowserFontFamily => {
+      cy.get("@defaultBrowserFontFamily").then((defaultBrowserFontFamily) => {
         cy.findByText("This is outside of the provider").should(
           "have.css",
           "font-family",
@@ -236,7 +326,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
       // TODO: good place for a visual regression test
     });
 
-    it.skip("mantine modals should render with our styles", () => {
+    it("mantine modals should render with our styles", () => {
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
@@ -282,7 +372,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
       { tag: "textarea", jsx: <textarea>textarea tag text</textarea> },
     ];
 
-    it(`no css rule should match ${elements.map(e => e.tag).join(", ")} outside of the provider`, () => {
+    it(`no css rule should match ${elements.map((e) => e.tag).join(", ")} outside of the provider`, () => {
       cy.mount(
         <div>
           {elements.map(({ jsx }) => jsx)}
@@ -303,7 +393,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
 });
 
 const expectElementToHaveNoAppliedCssRules = (selector: string) => {
-  cy.get(selector).then($el => {
+  cy.get(selector).then(($el) => {
     const rules = getCssRulesThatApplyToElement($el);
     if (rules.length > 0) {
       console.warn("rules matching", selector, rules);
@@ -316,12 +406,12 @@ const getCssRulesThatApplyToElement = ($element: JQuery<HTMLElement>) => {
   const element = $element[0];
   const rulesThatMatch: CSSStyleRule[] = Array.from(
     document.styleSheets,
-  ).flatMap(sheet => {
+  ).flatMap((sheet) => {
     const cssRules = Array.from(sheet.cssRules).filter(
-      rule => rule instanceof CSSStyleRule,
+      (rule) => rule instanceof CSSStyleRule,
     ) as CSSStyleRule[];
 
-    return cssRules.filter(rule => element.matches(rule.selectorText));
+    return cssRules.filter((rule) => element.matches(rule.selectorText));
   });
 
   return rulesThatMatch;
@@ -330,7 +420,7 @@ const getCssRulesThatApplyToElement = ($element: JQuery<HTMLElement>) => {
 function wrapBrowserDefaultFont() {
   cy.mount(<p>paragraph with default browser font</p>);
 
-  cy.findByText("paragraph with default browser font").then($element => {
+  cy.findByText("paragraph with default browser font").then(($element) => {
     const fontFamily = $element.css("font-family");
     cy.wrap(fontFamily).as("defaultBrowserFontFamily");
   });

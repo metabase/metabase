@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
@@ -11,7 +12,7 @@ export const SectionTitle = styled.h3`
 
 export const ColorText = styled.div<{ color: string }>`
   margin-top: 1rem;
-  color: ${props => color(props.color)};
+  color: ${(props) => color(props.color)};
 `;
 
 export const PaddedForm = styled.form`

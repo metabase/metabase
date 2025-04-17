@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
 
@@ -35,12 +37,12 @@ export const MaybeLink = styled(RawMaybeLink)`
   align-items: center;
   font-size: 0.875em;
   font-weight: bold;
-  ${props =>
+  ${(props) =>
     props.inactiveColor ? `color: ${color(props.inactiveColor)};` : ""}
-  min-width: ${props => (props.isSingleLine ? 0 : "")};
+  min-width: ${(props) => (props.isSingleLine ? 0 : "")};
 
   :hover {
-    ${props => (props.to || props.onClick) && hoverStyle(props)}
+    ${(props) => (props.to || props.onClick) && hoverStyle(props)}
   }
 `;
 
@@ -48,11 +50,11 @@ export const BadgeIcon = styled(
   Icon,
   doNotForwardProps("hasMargin", "targetOffsetX"),
 )<{ hasMargin: boolean }>`
-  margin-right: ${props => (props.hasMargin ? "5px" : 0)};
+  margin-right: ${(props) => (props.hasMargin ? "5px" : 0)};
 `;
 
 export const BadgeText = styled.span<{ isSingleLine: boolean }>`
-  overflow: ${props => (props.isSingleLine ? "hidden" : "")};
-  text-overflow: ${props => (props.isSingleLine ? "ellipsis" : "")};
-  white-space: ${props => (props.isSingleLine ? "nowrap" : "")};
+  overflow: ${(props) => (props.isSingleLine ? "hidden" : "")};
+  text-overflow: ${(props) => (props.isSingleLine ? "ellipsis" : "")};
+  white-space: ${(props) => (props.isSingleLine ? "nowrap" : "")};
 `;

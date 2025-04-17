@@ -1,4 +1,5 @@
 (ns metabase.lib.metadata.jvm-test
+  #_{:clj-kondo/ignore [:discouraged-namespace]}
   (:require
    [clojure.test :refer :all]
    [malli.error :as me]
@@ -11,11 +12,10 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.models.table :as table]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (deftest ^:parallel fetch-field-test
@@ -213,3 +213,27 @@
       (testing "2nd call, card shoudld should be cached by now, but invocation still keeping track of ids"
         (is (some? (lib.metadata/field mp (mt/id :orders :id))))
         (is (= [(mt/id :orders :id) (mt/id :orders :id)] (lib.metadata/invoked-ids mp :metadata/column)))))))
+
+(deftest ^:parallel tables-present-test
+  (testing "`tables` function returns visible tables (the call includes app db call)"
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          display-names ["Checkins" "Categories" "Orders" "People" "Products" "Reviews" "Users" "Venues"]
+          metadata-fns (for [expected-display-name display-names]
+                         (fn [{:keys [id display-name active visibility-type] :as _metadata}]
+                           (and (= display-name expected-display-name)
+                                (true? active)
+                                (nil? visibility-type)
+                                (pos-int? id))))
+          result (lib.metadata/tables mp)]
+      (is (every? #(some % result) metadata-fns)))))
+
+(deftest ^:synchronized tables-not-present-test
+  (testing "Non-visible tables are not returned from `tables` function (includes app db call)"
+    (doseq [visibility-type table/visibility-types]
+      (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:visibility_type visibility-type}
+        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+          (testing visibility-type
+            (is (not-any? (fn [{:keys [display-name] :as metadata}]
+                            (when (= "Orders" display-name)
+                              metadata))
+                          (lib.metadata/tables mp)))))))))

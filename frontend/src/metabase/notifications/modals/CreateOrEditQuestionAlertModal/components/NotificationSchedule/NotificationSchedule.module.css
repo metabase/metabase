@@ -1,0 +1,19 @@
+.scheduleContainer {
+  background-color: var(--mb-base-color-orion-5);
+  padding: var(
+    --notification-schedule-padding,
+    var(--mantine-spacing-lg) var(--mantine-spacing-xl)
+  );
+
+  &:has([data-error="true"]) {
+    .customScheduleExplainer {
+      display: none;
+    }
+  }
+}
+
+.schedule {
+  --schedule-grid-gap: 1.5rem;
+  --schedule-row-gap: 1rem;
+  --schedule-first-column-font-weight: bold;
+}

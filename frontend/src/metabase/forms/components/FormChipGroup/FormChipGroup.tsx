@@ -25,7 +25,7 @@ export const FormChipGroup = forwardRef(function FormChipGroup(
   }: FormChipGroupProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const [{ value }, _, { setValue }] = useField(name);
+  const [{ value }, _meta, { setValue }] = useField(name);
 
   const handleChange = useCallback(
     (newValue: string) => {

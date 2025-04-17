@@ -1,6 +1,7 @@
 // @ts-check
 
 const esmPackages = [
+  "ccount",
   "character-entities-html4",
   "comma-separated-tokens",
   "d3-*",
@@ -15,19 +16,21 @@ const esmPackages = [
   "screenfull",
   "space-separated-tokens",
   "stringify-entities",
+  "unist-util-visit-parents",
+  "unist-util-visit",
+  "vfile-location",
   "vfile-message",
   "vfile",
+  "web-namespaces",
   "zrender",
+  "zwitch",
 ];
 
-/** @type {import('jest').Config} */
-const config = {
+const baseConfig = {
   moduleNameMapper: {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
-    "ace/ext-searchbox":
-      "<rootDir>/frontend/test/__mocks__/aceSearchBoxExtMock.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
     "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
     "react-markdown":
@@ -38,6 +41,12 @@ const config = {
       "<rootDir>/node_modules/csv-parse/dist/cjs/sync",
     "csv-stringify/browser/esm/sync":
       "<rootDir>/node_modules/csv-stringify/dist/cjs/sync",
+    /**
+     * SDK components import root SDK folder (`embedding-sdk`) that contains the ee plugins.
+     * This isn't a problem in the core app because we seem to not import to entry file directly
+     * for any component under tests.
+     */
+    "ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.js",
   },
   transformIgnorePatterns: [
     `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,
@@ -67,12 +76,9 @@ const config = {
   ],
   setupFilesAfterEnv: ["<rootDir>/frontend/test/jest-setup-env.js"],
   globals: {
-    ace: {},
     ga: {},
   },
-  reporters: ["default", "jest-junit"],
   coverageDirectory: "./coverage",
-  coverageReporters: ["html", "lcov"],
   collectCoverageFrom: [
     "frontend/src/**/*.{js,jsx,ts,tsx}",
     "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}",
@@ -89,11 +95,36 @@ const config = {
     "/frontend/test/",
   ],
   testEnvironment: "jest-environment-jsdom",
+};
+
+/** @type {import('jest').Config} */
+const config = {
+  reporters: ["default", "jest-junit"],
+  coverageReporters: ["html", "lcov"],
   watchPlugins: [
     "jest-watch-typeahead/filename",
     "jest-watch-typeahead/testname",
   ],
   testTimeout: 30000,
+  projects: [
+    {
+      ...baseConfig,
+      displayName: "sdk",
+
+      testMatch: [
+        "<rootDir>/enterprise/frontend/src/embedding-sdk/**/*.unit.spec.{js,jsx,ts,tsx}",
+      ],
+
+      setupFilesAfterEnv: [
+        ...baseConfig.setupFilesAfterEnv,
+        "<rootDir>/enterprise/frontend/src/embedding-sdk/jest-console-restrictions.js",
+      ],
+    },
+    {
+      ...baseConfig,
+      displayName: "core",
+    },
+  ],
 };
 
 // eslint-disable-next-line import/no-commonjs

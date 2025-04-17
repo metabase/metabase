@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 export const CollectionRoot = styled.div`
@@ -18,7 +19,7 @@ interface CollectionTableProps {
 }
 
 export const CollectionTable = styled.div<CollectionTableProps>`
-  margin-top: ${props => (props.hasPinnedItems ? "2rem" : "")};
+  margin-top: ${(props) => (props.hasPinnedItems ? "2rem" : "")};
   container-name: ItemsTableContainer;
   container-type: inline-size;
 `;

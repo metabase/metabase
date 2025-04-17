@@ -143,12 +143,12 @@ export const SMTPConnectionForm = ({
   }, [dispatch, isHosted]);
 
   const allSetByEnvVars = useMemo(() => {
-    return elements.every(element => element.is_env_setting);
+    return elements.every((element) => element.is_env_setting);
   }, [elements]);
 
   return (
     <Flex justify="space-between">
-      <Stack spacing="sm" maw={600} style={{ paddingInlineStart: "0.5rem" }}>
+      <Stack gap="sm" maw={600} style={{ paddingInlineStart: "0.5rem" }}>
         {isEmailConfigured && (
           <Breadcrumbs crumbs={BREADCRUMBS} className={cx(CS.mb3)} />
         )}

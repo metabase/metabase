@@ -181,7 +181,7 @@ export const WebhookForm = ({
     }
   }, [error]);
 
-  const docsUrl = useSelector(state =>
+  const docsUrl = useSelector((state) =>
     getDocsUrl(state, { page: "questions/sharing/alerts" }),
   );
 
@@ -202,7 +202,7 @@ export const WebhookForm = ({
           setFieldError("url", undefined);
           setTestButtonLabel(t`Success`);
         },
-        e => {
+        (e) => {
           setTestButtonLabel(t`Test failed`);
           const message =
             typeof e === "string" ? e : getResponseErrorMessage(e);
@@ -252,7 +252,6 @@ export const WebhookForm = ({
               </Button>
             </Flex>
             {!!errorData && (
-              //@ts-expect-error - I think the typing for ScrollArea.Autosize is wrong. It seems to want every single style prop for Box
               <ScrollArea.Autosize mah={200} mt="0.75rem">
                 <Title order={6} mb="0.75rem" lh="1rem">
                   {c("The response returned by an API Request")
@@ -300,7 +299,7 @@ export const WebhookForm = ({
             name="fe-form-type"
             label={t`Authentication method`}
             groupProps={{ mb: "1.5rem", mt: "0.5rem" }}
-            onChange={val => {
+            onChange={(val) => {
               if (val === "none") {
                 setFieldValue("auth-method", "none");
               } else {
@@ -332,10 +331,10 @@ export const WebhookForm = ({
             {onDelete && (
               <Button
                 variant="subtle"
-                c="var(--mb-color-text-medium)"
-                compact
+                c="text-medium"
+                size="compact-md"
                 pl="0"
-                leftIcon={<Icon name="trash" />}
+                leftSection={<Icon name="trash" />}
                 onClick={onDelete}
               >{t`Delete this destination`}</Button>
             )}

@@ -1,11 +1,11 @@
 (ns metabase.sync.api
   "REST API routes related to sync."
   (:require
-   [metabase.sync.api.notify]
-   [potemkin.namespaces]))
+   [metabase.api.macros :as api.macros]
+   [metabase.sync.api.notify]))
 
-;; this actually does have a docstring but Kondo doesn't understand [[potemkin.namespaces/import-def]] 100% I guess.
-#_{:clj-kondo/ignore [:missing-docstring]}
-(potemkin.namespaces/import-def
- metabase.sync.api.notify/routes
- notify-routes)
+(comment metabase.sync.api.notify/keep-me)
+
+(def ^{:arglists '([request respond raise])} notify-routes
+  "/api/notify routes."
+  (api.macros/ns-handler 'metabase.sync.api.notify))

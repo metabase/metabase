@@ -1,9 +1,10 @@
 import cx from "classnames";
 import { assoc } from "icepick";
+import { useCallback } from "react";
 import type { HandleThunkActionCreator } from "react-redux";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ColorS from "metabase/css/core/colors.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -18,6 +19,7 @@ import { DashboardHeaderButtonRow } from "metabase/dashboard/components/Dashboar
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import type {
+  DashboardFooterControls,
   DashboardFullscreenControls,
   DashboardNightModeControls,
   DashboardRefreshPeriodControls,
@@ -26,9 +28,14 @@ import type {
 import { isActionDashCard } from "metabase/dashboard/utils";
 import { isWithinIframe } from "metabase/lib/dom";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
-import type { DisplayTheme } from "metabase/public/lib/types";
+import type {
+  DisplayTheme,
+  EmbedResourceDownloadOptions,
+} from "metabase/public/lib/types";
+import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
+import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Dashboard,
@@ -59,20 +66,22 @@ interface InnerPublicOrEmbeddedDashboardViewProps {
   bordered: boolean;
   titled: boolean;
   theme: DisplayTheme;
+  getClickActionMode?: ClickActionModeGetter;
   hideParameters: EmbedHideParameters;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
   slowCards: Record<number, boolean>;
   cardTitled: boolean;
-  downloadsEnabled: boolean;
+  downloadsEnabled: EmbedResourceDownloadOptions;
 }
 
 export type PublicOrEmbeddedDashboardViewProps =
   InnerPublicOrEmbeddedDashboardViewProps &
     DashboardRefreshPeriodControls &
     DashboardNightModeControls &
-    DashboardFullscreenControls;
+    DashboardFullscreenControls &
+    DashboardFooterControls;
 
 export function PublicOrEmbeddedDashboardView({
   dashboard,
@@ -95,15 +104,14 @@ export function PublicOrEmbeddedDashboardView({
   bordered,
   titled,
   theme,
+  getClickActionMode: externalGetClickActionMode,
   hideParameters,
+  withFooter,
   navigateToNewCardFromDashboard,
   slowCards,
   cardTitled,
   downloadsEnabled,
-}: InnerPublicOrEmbeddedDashboardViewProps &
-  DashboardRefreshPeriodControls &
-  DashboardNightModeControls &
-  DashboardFullscreenControls) {
+}: PublicOrEmbeddedDashboardViewProps) {
   const buttons = !isWithinIframe() ? (
     <DashboardHeaderButtonRow
       canResetFilters={false}
@@ -122,7 +130,7 @@ export function PublicOrEmbeddedDashboardView({
   ) : null;
 
   const visibleDashcards = (dashboard?.dashcards ?? []).filter(
-    dashcard => !isActionDashCard(dashcard),
+    (dashcard) => !isActionDashCard(dashcard),
   );
 
   const dashboardHasCards = dashboard && visibleDashcards.length > 0;
@@ -142,6 +150,18 @@ export function PublicOrEmbeddedDashboardView({
     theme,
     background,
   });
+
+  const getClickActionMode: ClickActionModeGetter = useCallback(
+    ({ question }) =>
+      externalGetClickActionMode?.({ question }) ??
+      getEmbeddingMode({
+        question,
+        queryMode: navigateToNewCardFromDashboard
+          ? EmbeddingSdkMode
+          : PublicMode,
+      }),
+    [externalGetClickActionMode, navigateToNewCardFromDashboard],
+  );
 
   return (
     <EmbedFrame
@@ -165,7 +185,8 @@ export function PublicOrEmbeddedDashboardView({
       titled={titled}
       theme={normalizedTheme}
       hide_parameters={hideParameters}
-      downloadsEnabled={downloadsEnabled}
+      pdfDownloadsEnabled={downloadsEnabled.pdf}
+      withFooter={withFooter}
     >
       <LoadingAndErrorWrapper
         className={cx({
@@ -181,9 +202,21 @@ export function PublicOrEmbeddedDashboardView({
             return null;
           }
 
-          if (!dashboardHasCards || !tabHasCards) {
+          if (!dashboardHasCards) {
             return (
-              <DashboardEmptyStateWithoutAddPrompt isNightMode={isNightMode} />
+              <DashboardEmptyStateWithoutAddPrompt
+                isNightMode={isNightMode}
+                isDashboardEmpty={true}
+              />
+            );
+          }
+
+          if (dashboardHasCards && !tabHasCards) {
+            return (
+              <DashboardEmptyStateWithoutAddPrompt
+                isNightMode={isNightMode}
+                isDashboardEmpty={false}
+              />
             );
           }
 
@@ -192,9 +225,7 @@ export function PublicOrEmbeddedDashboardView({
               <DashboardGridConnected
                 dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
                 isPublicOrEmbedded
-                mode={
-                  navigateToNewCardFromDashboard ? EmbeddingSdkMode : PublicMode
-                }
+                getClickActionMode={getClickActionMode}
                 selectedTabId={selectedTabId}
                 slowCards={slowCards}
                 isEditing={false}
@@ -205,7 +236,7 @@ export function PublicOrEmbeddedDashboardView({
                 withCardTitle={cardTitled}
                 clickBehaviorSidebarDashcard={null}
                 navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-                downloadsEnabled={downloadsEnabled}
+                downloadsEnabled={downloadsEnabled.results}
                 autoScrollToDashcardId={undefined}
                 reportAutoScrolledToDashcard={_.noop}
               />
@@ -228,13 +259,14 @@ function getTabHiddenParameterSlugs({
 }) {
   const currentTabParameterIds =
     getCurrentTabDashcards({ dashboard, selectedTabId })?.flatMap(
-      dashcard =>
-        dashcard.parameter_mappings?.map(mapping => mapping.parameter_id) ?? [],
+      (dashcard) =>
+        dashcard.parameter_mappings?.map((mapping) => mapping.parameter_id) ??
+        [],
     ) ?? [];
   const hiddenParameters = parameters.filter(
-    parameter => !currentTabParameterIds.includes(parameter.id),
+    (parameter) => !currentTabParameterIds.includes(parameter.id),
   );
-  return hiddenParameters.map(parameter => parameter.slug).join(",");
+  return hiddenParameters.map((parameter) => parameter.slug).join(",");
 }
 
 function getCurrentTabDashcards({
@@ -251,7 +283,7 @@ function getCurrentTabDashcards({
     return dashboard?.dashcards;
   }
   return dashboard?.dashcards.filter(
-    dashcard => dashcard.dashboard_tab_id === selectedTabId,
+    (dashcard) => dashcard.dashboard_tab_id === selectedTabId,
   );
 }
 

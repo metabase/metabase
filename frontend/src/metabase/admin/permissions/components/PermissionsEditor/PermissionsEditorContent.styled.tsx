@@ -1,9 +1,10 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 export const PermissionEditorContentRoot = styled.div`
   display: flex;
   flex-direction: column;
-  padding-left: 40px;
+  padding-left: 2rem;
   height: 100%;
 `;
 

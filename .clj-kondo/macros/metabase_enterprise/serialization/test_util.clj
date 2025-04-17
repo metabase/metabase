@@ -1,59 +1,112 @@
-(ns macros.metabase-enterprise.serialization.test-util
-  (:require [macros.common]))
+(ns macros.metabase-enterprise.serialization.test-util)
 
 (defmacro with-world [& body]
-  `(let [~(macros.common/ignore-unused 'db-id)                        nil
-         ~(macros.common/ignore-unused 'table-id)                     nil
-         ~(macros.common/ignore-unused 'table)                        nil
-         ~(macros.common/ignore-unused 'table-id-categories)          nil
-         ~(macros.common/ignore-unused 'table-id-users)               nil
-         ~(macros.common/ignore-unused 'table-id-checkins)            nil
-         ~(macros.common/ignore-unused 'venues-pk-field-id)           nil
-         ~(macros.common/ignore-unused 'numeric-field-id)             nil
-         ~(macros.common/ignore-unused 'name-field-id)                nil
-         ~(macros.common/ignore-unused 'latitude-field-id)            nil
-         ~(macros.common/ignore-unused 'longitude-field-id)           nil
-         ~(macros.common/ignore-unused 'category-field-id)            nil
-         ~(macros.common/ignore-unused 'category-pk-field-id)         nil
-         ~(macros.common/ignore-unused 'date-field-id)                nil
-         ~(macros.common/ignore-unused 'users-pk-field-id)            nil
-         ~(macros.common/ignore-unused 'user-id-field-id)             nil
-         ~(macros.common/ignore-unused 'checkins->venues-field-id)    nil
-         ~(macros.common/ignore-unused 'last-login-field-id)          nil
-         ~(macros.common/ignore-unused 'collection-id)                nil
-         ~(macros.common/ignore-unused 'collection-id-nested)         nil
-         ~(macros.common/ignore-unused 'user-id-temp)                 nil
-         ~(macros.common/ignore-unused 'personal-collection-id)       nil
-         ~(macros.common/ignore-unused 'pc-felicia-nested-id)         nil
-         ~(macros.common/ignore-unused 'pc-nested-id)                 nil
-         ~(macros.common/ignore-unused 'pc-deeply-nested-id)          nil
-         ~(macros.common/ignore-unused 'metric-id)                    nil
-         ~(macros.common/ignore-unused 'segment-id)                   nil
-         ~(macros.common/ignore-unused 'dashboard-id)                 nil
-         ~(macros.common/ignore-unused 'root-dashboard-id)            nil
-         ~(macros.common/ignore-unused 'card-id)                      nil
-         ~(macros.common/ignore-unused 'card-arch-id)                 nil
-         ~(macros.common/ignore-unused 'card-id-root)                 nil
-         ~(macros.common/ignore-unused 'card-id-nested)               nil
-         ~(macros.common/ignore-unused 'card-id-nested-query)         nil
-         ~(macros.common/ignore-unused 'card-id-native-query)         nil
-         ~(macros.common/ignore-unused 'card-id-pivot-table)          nil
-         ~(macros.common/ignore-unused 'dashcard-id)                  nil
-         ~(macros.common/ignore-unused 'dashcard-top-level-click-id)  nil
-         ~(macros.common/ignore-unused 'dashcard-with-click-actions)  nil
-         ~(macros.common/ignore-unused 'dashcard-with-textbox-id)     nil
-         ~(macros.common/ignore-unused 'card-id-root-to-collection)   nil
-         ~(macros.common/ignore-unused 'card-id-collection-to-root)   nil
-         ~(macros.common/ignore-unused 'pulse-id)                     nil
-         ~(macros.common/ignore-unused 'pulsecard-root-id)            nil
-         ~(macros.common/ignore-unused 'pulsecard-collection-id)      nil
-         ~(macros.common/ignore-unused 'card-id-template-tags)        nil
-         ~(macros.common/ignore-unused 'card-id-filter-agg)           nil
-         ~(macros.common/ignore-unused 'card-id-temporal-unit)        nil
-         ~(macros.common/ignore-unused 'snippet-id)                   nil
-         ~(macros.common/ignore-unused 'snippet-collection-id)        nil
-         ~(macros.common/ignore-unused 'snippet-nested-collection-id) nil
-         ~(macros.common/ignore-unused 'nested-snippet-id)            nil
-         ~(macros.common/ignore-unused 'card-id-with-native-snippet)  nil
-         ~(macros.common/ignore-unused 'card-join-card-id)            nil]
+  `(let [~'db-id                        nil
+         ~'table-id                     nil
+         ~'table                        nil
+         ~'table-id-categories          nil
+         ~'table-id-users               nil
+         ~'table-id-checkins            nil
+         ~'venues-pk-field-id           nil
+         ~'numeric-field-id             nil
+         ~'name-field-id                nil
+         ~'latitude-field-id            nil
+         ~'longitude-field-id           nil
+         ~'category-field-id            nil
+         ~'category-pk-field-id         nil
+         ~'date-field-id                nil
+         ~'users-pk-field-id            nil
+         ~'user-id-field-id             nil
+         ~'checkins->venues-field-id    nil
+         ~'last-login-field-id          nil
+         ~'collection-id                nil
+         ~'collection-id-nested         nil
+         ~'user-id-temp                 nil
+         ~'personal-collection-id       nil
+         ~'pc-felicia-nested-id         nil
+         ~'pc-nested-id                 nil
+         ~'pc-deeply-nested-id          nil
+         ~'metric-id                    nil
+         ~'segment-id                   nil
+         ~'dashboard-id                 nil
+         ~'root-dashboard-id            nil
+         ~'card-id                      nil
+         ~'card-arch-id                 nil
+         ~'card-id-root                 nil
+         ~'card-id-nested               nil
+         ~'card-id-nested-query         nil
+         ~'card-id-native-query         nil
+         ~'card-id-pivot-table          nil
+         ~'dashcard-id                  nil
+         ~'dashcard-top-level-click-id  nil
+         ~'dashcard-with-click-actions  nil
+         ~'dashcard-with-textbox-id     nil
+         ~'card-id-root-to-collection   nil
+         ~'card-id-collection-to-root   nil
+         ~'pulse-id                     nil
+         ~'pulsecard-root-id            nil
+         ~'pulsecard-collection-id      nil
+         ~'card-id-template-tags        nil
+         ~'card-id-filter-agg           nil
+         ~'card-id-temporal-unit        nil
+         ~'snippet-id                   nil
+         ~'snippet-collection-id        nil
+         ~'snippet-nested-collection-id nil
+         ~'nested-snippet-id            nil
+         ~'card-id-with-native-snippet  nil
+         ~'card-join-card-id            nil]
+     ~'db-id
+     ~'table-id
+     ~'table
+     ~'table-id-categories
+     ~'table-id-users
+     ~'table-id-checkins
+     ~'venues-pk-field-id
+     ~'numeric-field-id
+     ~'name-field-id
+     ~'latitude-field-id
+     ~'longitude-field-id
+     ~'category-field-id
+     ~'category-pk-field-id
+     ~'date-field-id
+     ~'users-pk-field-id
+     ~'user-id-field-id
+     ~'checkins->venues-field-id
+     ~'last-login-field-id
+     ~'collection-id
+     ~'collection-id-nested
+     ~'user-id-temp
+     ~'personal-collection-id
+     ~'pc-felicia-nested-id
+     ~'pc-nested-id
+     ~'pc-deeply-nested-id
+     ~'metric-id
+     ~'segment-id
+     ~'dashboard-id
+     ~'root-dashboard-id
+     ~'card-id
+     ~'card-arch-id
+     ~'card-id-root
+     ~'card-id-nested
+     ~'card-id-nested-query
+     ~'card-id-native-query
+     ~'card-id-pivot-table
+     ~'dashcard-id
+     ~'dashcard-top-level-click-id
+     ~'dashcard-with-click-actions
+     ~'dashcard-with-textbox-id
+     ~'card-id-root-to-collection
+     ~'card-id-collection-to-root
+     ~'pulse-id
+     ~'pulsecard-root-id
+     ~'pulsecard-collection-id
+     ~'card-id-template-tags
+     ~'card-id-filter-agg
+     ~'card-id-temporal-unit
+     ~'snippet-id
+     ~'snippet-collection-id
+     ~'snippet-nested-collection-id
+     ~'nested-snippet-id
+     ~'card-id-with-native-snippet
+     ~'card-join-card-id
      ~@body))

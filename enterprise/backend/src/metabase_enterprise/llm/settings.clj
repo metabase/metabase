@@ -4,7 +4,7 @@
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting ee-openai-model
-  (deferred-tru "The OpenAI Model (e.g. 'gpt-4', 'gpt-3.5-turbo')")
+  (deferred-tru "The OpenAI Model (e.g. ''gpt-4'', ''gpt-3.5-turbo'')")
   :encryption :no
   :visibility :settings-manager
   :default "gpt-4-turbo-preview"

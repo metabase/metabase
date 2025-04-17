@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Component } from "react";
+import { Component, forwardRef } from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -67,7 +67,7 @@ class ChartWithLegend extends Component {
       LegendComponent = LegendVertical;
 
       if (width < HIDE_SECONDARY_INFO_THRESHOLD) {
-        legendTitles = legendTitles.map(title =>
+        legendTitles = legendTitles.map((title) =>
           Array.isArray(title) ? title.slice(0, 1) : title,
         );
       }
@@ -81,7 +81,7 @@ class ChartWithLegend extends Component {
     } else if (!isHorizontal && gridSize.height > 3 && gridSize.width > 2) {
       type = "vertical";
       LegendComponent = LegendHorizontal;
-      legendTitles = legendTitles.map(title =>
+      legendTitles = legendTitles.map((title) =>
         Array.isArray(title) ? title.join(" ") : title,
       );
       const desiredHeight = width * (1 / aspectRatio);
@@ -126,6 +126,7 @@ class ChartWithLegend extends Component {
           paddingLeft: PADDING,
           paddingRight: PADDING,
         }}
+        ref={this.props.forwardedRef}
       >
         {legend && (
           <div className={cx(styles.LegendWrapper)} data-testid="chart-legend">
@@ -154,7 +155,13 @@ class ChartWithLegend extends Component {
   }
 }
 
+const ChartWithLegendRefWrapper = forwardRef(
+  function _ChartWithLegendRefWrapper(props, ref) {
+    return <ChartWithLegend {...props} forwardedRef={ref} />;
+  },
+);
+
 export default ExplicitSize({
   wrapped: true,
   refreshMode: "debounceLeading",
-})(ChartWithLegend);
+})(ChartWithLegendRefWrapper);

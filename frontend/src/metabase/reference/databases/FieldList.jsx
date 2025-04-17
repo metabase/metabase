@@ -8,7 +8,7 @@ import { t } from "ttag";
 import EmptyState from "metabase/components/EmptyState";
 import List from "metabase/components/List";
 import S from "metabase/components/List/List.module.css";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
@@ -73,7 +73,7 @@ const propTypes = {
   "data-testid": PropTypes.string,
 };
 
-const FieldList = props => {
+const FieldList = (props) => {
   const {
     style,
     entities,
@@ -96,17 +96,18 @@ const FieldList = props => {
     handleReset,
   } = useFormik({
     initialValues: {},
-    onSubmit: fields =>
+    onSubmit: (fields) =>
       onSubmit(entities, fields, { ...props, resetForm: handleReset }),
   });
 
-  const getFormField = name => ({
+  const getFormField = (name) => ({
     ...getFieldProps(name),
     ...getFieldMeta(name),
   });
 
-  const getNestedFormField = id => ({
+  const getNestedFormField = (id) => ({
     display_name: getFormField(`${id}.display_name`),
+    description: getFormField(`${id}.description`),
     semantic_type: getFormField(`${id}.semantic_type`),
     fk_target_field_id: getFormField(`${id}.fk_target_field_id`),
   });
@@ -142,7 +143,7 @@ const FieldList = props => {
             <div className={CS.wrapper}>
               <div
                 className={cx(
-                  CS.pl4,
+                  CS.px4,
                   CS.pb2,
                   CS.mb4,
                   CS.bgWhite,
@@ -168,12 +169,13 @@ const FieldList = props => {
                     // respect the column sort order
                     .sort((a, b) => a.position - b.position)
                     .map(
-                      entity =>
+                      (entity) =>
                         entity &&
                         entity.id &&
                         entity.name && (
                           <li key={entity.id}>
                             <Field
+                              databaseId={table.db_id}
                               field={entity}
                               foreignKeys={foreignKeys}
                               url={`/reference/databases/${table.db_id}/tables/${table.id}/fields/${entity.id}`}

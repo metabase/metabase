@@ -18,11 +18,11 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    [metabase.models.collection :as collection]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.query.permissions :as query-perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -979,6 +979,42 @@
                     (mt/run-mbql-query nil
                       {:source-table "card__1"}))))))))))
 
+(deftest ^:parallel expression-literals-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expression-literals)
+    (let [query (mt/mbql-query venues
+                  {:fields      [[:expression "one"]
+                                 [:expression "foo"]
+                                 [:expression "MyTrue"]
+                                 [:expression "MyFalse"]]
+                   :expressions {"one"     [:value 1     {:base_type :type/Integer}]
+                                 "foo"     [:value "foo" {:base_type :type/Text}]
+                                 "MyTrue"  [:value true  {:base_type :type/Boolean}]
+                                 "MyFalse" [:value false {:base_type :type/Boolean}]}
+                   :limit       1})]
+      (letfn [(check-result [rows]
+                (is (= [[1 "foo" true false]]
+                       (mt/formatted-rows
+                        [int str mt/boolish->bool mt/boolish->bool]
+                        rows))))]
+        (testing "can you use nested queries that have expression literals in them?"
+          (check-result (mt/run-mbql-query nil
+                          {:source-query (:query query)}))
+          (testing "if source query with expression literals is from a Card"
+            (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
+                                              [query])
+              (check-result (mt/run-mbql-query nil
+                              {:source-table "card__1"}))))
+          (testing "if source query with expression literals is from a Model"
+            (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                              (mt/application-database-metadata-provider (mt/id))
+                                              {:cards [{:id 1
+                                                        :type :model
+                                                        :name "Model 1"
+                                                        :database-id (mt/id)
+                                                        :dataset-query query}]})
+              (check-result (mt/run-mbql-query nil
+                              {:source-table "card__1"})))))))))
+
 (defmulti bucketing-already-bucketed-year-test-expected-rows
   {:arglists '([driver])}
   tx/dispatch-on-driver-with-test-extensions
@@ -1648,9 +1684,47 @@
                     (lib/breakout $q (m/find-first (every-pred (comp #{"Space Column"} :display-name) :source-alias)
                                                    (lib/breakoutable-columns $q)))
                     (lib/append-stage $q)
+                    (lib/breakout $q (first (lib/breakoutable-columns $q)))
                     (lib/aggregate $q (lib/max (first (lib/visible-columns $q)))))]
-        (is (= [[20]] (mt/formatted-rows
-                       [int] (qp/process-query query))))))))
+        (is (= [[10 10] [20 20]] (mt/formatted-rows
+                                  [int int] (qp/process-query query))))))))
+
+(deftest ^:parallel space-names-question-test
+  (mt/test-drivers (set/intersection
+                    (mt/normal-drivers-with-feature :identifiers-with-spaces)
+                    (mt/normal-drivers-with-feature :left-join))
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          card-query (-> (lib/query mp (lib.metadata/table mp (mt/id "orders")))
+                         (lib/order-by (lib.metadata/field mp (mt/id "orders" "created_at")))
+                         (lib/limit 1))
+          results (qp/process-query card-query)]
+      (mt/with-temp [:model/Card {card-id :id} {:type :question
+                                                :dataset_query {:native (get-in results [:data :native_form])
+                                                                :database (mt/id)
+                                                                :type :native}
+                                                :result_metadata (get-in results [:data :results_metadata :columns])
+                                                :name "Spaces in Name"}]
+        (let [created-at-pred (every-pred (comp #{"Created At"} :display-name) (comp #{"Spaces in Name"} :source-alias))
+              query (as-> (lib/query mp (lib.metadata/table mp (mt/id "products"))) $q
+                      (lib/join $q (lib/join-clause (lib.metadata/card mp card-id)))
+
+                      (lib/breakout $q (lib/with-temporal-bucket (m/find-first
+                                                                  created-at-pred
+                                                                  (lib/breakoutable-columns $q))
+                                         :month))
+                      (lib/breakout $q (lib/with-temporal-bucket (m/find-first
+                                                                  created-at-pred
+                                                                  (lib/breakoutable-columns $q))
+                                         :day))
+                      (lib/filter $q (lib/!= (m/find-first created-at-pred (lib/filterable-columns $q)) nil))
+                      (lib/append-stage $q)
+                      (lib/breakout $q (first (lib/breakoutable-columns $q)))
+                      (lib/breakout $q (last (lib/breakoutable-columns $q))))]
+          (is (= [[#t "2016-04-01" #t "2016-04-30"]]
+                 (mt/formatted-rows
+                  [(comp t/local-date u.date/parse)
+                   (comp t/local-date u.date/parse)]
+                  (qp/process-query query)))))))))
 
 (deftest ^:parallel multiple-bucketings-of-a-column-test
   (testing "Multiple bucketings of a column in a nested query should be returned (#46644)"

@@ -2,23 +2,19 @@
   "Main Compojure routes tables. See https://github.com/weavejester/compojure/wiki/Routes-In-Detail for details about
    how these work. `/api/` routes are in `metabase.api.routes`."
   (:require
-   [compojure.core :refer [context defroutes GET OPTIONS]]
+   [compojure.core :refer #_{:clj-kondo/ignore [:discouraged-var]} [context defroutes GET OPTIONS]]
    [compojure.route :as route]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.routes :as api]
-   [metabase.config :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
+   [metabase.server.auth-wrapper :as auth-wrapper]
    [metabase.server.routes.index :as index]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [ring.util.response :as response]))
-
-(when config/ee-available?
-  (classloader/require '[metabase-enterprise.sso.api.routes :as ee.sso.routes]))
 
 (defn- redirect-including-query-string
   "Like `response/redirect`, but passes along query string URL params as well. This is important because the public and
@@ -28,23 +24,24 @@
     (respond (response/redirect (str url "?" query-string)))))
 
 ;; /public routes. /public/question/:uuid.:export-format redirects to /api/public/card/:uuid/query/:export-format
-(defroutes ^:private public-routes
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defroutes ^:private ^{:arglists '([request respond raise])} public-routes
   (GET ["/question/:uuid.:export-format", :uuid u/uuid-regex, :export-format api.dataset/export-format-regex]
     [uuid export-format]
     (redirect-including-query-string (format "%s/api/public/card/%s/query/%s" (public-settings/site-url) uuid export-format)))
   (GET "*" [] index/public))
 
 ;; /embed routes. /embed/question/:token.:export-format redirects to /api/public/card/:token/query/:export-format
-(defroutes ^:private embed-routes
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defroutes ^:private ^{:arglists '([request respond raise])} embed-routes
   (GET ["/question/:token.:export-format", :export-format api.dataset/export-format-regex]
     [token export-format]
     (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (public-settings/site-url) token export-format)))
   (GET "*" [] index/embed))
 
-(defroutes ^{:doc "Top-level ring routes for Metabase.", :arglists '([request] [request respond raise])} routes
-  (or (some-> (resolve 'metabase-enterprise.sso.api.routes/routes) var-get)
-      (fn [_ respond _]
-        (respond nil)))
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defroutes ^{:doc "Top-level ring routes for Metabase.", :arglists '([request respond raise])} routes
+  auth-wrapper/routes
   ;; ^/$ -> index.html
   (GET "/" [] index/index)
   (GET "/favicon.ico" [] (response/resource-response (public-settings/application-favicon-url)))
@@ -63,14 +60,14 @@
   (OPTIONS "/api/*" [] {:status 200 :body ""})
 
   ;; ^/api/ -> All other API routes
-  (context "/api" [] (fn [& args]
+  (context "/api" [] (fn [request respond raise]
                        ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
                        ;;
                        ;; if Metabase is not finished initializing, return a generic error message rather than
                        ;; something potentially confusing like "DB is not set up"
                        (if-not (init-status/complete?)
-                         {:status 503, :body "Metabase is still initializing. Please sit tight..."}
-                         (apply api/routes args))))
+                         (respond {:status 503, :body "Metabase is still initializing. Please sit tight..."})
+                         (api/routes request respond raise))))
   ;; ^/app/ -> static files under frontend_client/app
   (context "/app" []
     (route/resources "/" {:root "frontend_client/app"})

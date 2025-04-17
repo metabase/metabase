@@ -21,6 +21,7 @@ import { MoveCollectionModal } from "metabase/collections/components/MoveCollect
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import { Unauthorized } from "metabase/components/ErrorPages";
+import { MoveQuestionsIntoDashboardsModal } from "metabase/components/MoveQuestionsIntoDashboardsModal";
 import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/containers/Unsubscribe";
 import { UserCollectionList } from "metabase/containers/UserCollectionList";
@@ -63,10 +64,11 @@ import {
   IsAuthenticated,
   IsNotAuthenticated,
 } from "./route-guards";
+import { createEntityIdRedirect } from "./routes-stable-id-aware";
 import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
 
-export const getRoutes = store => {
+export const getRoutes = (store) => {
   const applicationName = getApplicationName(store.getState());
   const hasUserSetup = getSetting(store.getState(), "has-user-setup");
 
@@ -85,6 +87,7 @@ export const getRoutes = store => {
         onChange={(prevState, nextState) => {
           trackPageView(nextState.location.pathname);
         }}
+        disableCommandPalette
       />
 
       {/* APP */}
@@ -119,10 +122,10 @@ export const getRoutes = store => {
             path="/"
             component={HomePage}
             onEnter={(nextState, replace) => {
-              const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
+              const page = PLUGIN_LANDING_PAGE.getLandingPage();
               if (page && page !== "/") {
                 replace({
-                  pathname: page[0] === "/" ? page : `/${page}`,
+                  pathname: page.startsWith("/") ? page : `/${page}`,
                   state: { preserveNavbarState: true },
                 });
               }
@@ -139,11 +142,24 @@ export const getRoutes = store => {
 
           <Route path="search" title={t`Search`} component={SearchApp} />
           {/* Send historical /archive route to trash - can remove in v52 */}
-          <Redirect path="archive" to="trash" replace />
+          <Redirect from="archive" to="trash" replace />
           <Route
             path="trash"
             title={t`Trash`}
             component={TrashCollectionLanding}
+          />
+
+          <Route
+            path="collection/entity/:entity_id(**)"
+            component={createEntityIdRedirect({
+              parametersToTranslate: [
+                {
+                  name: "entity_id",
+                  resourceType: "collection",
+                  type: "param",
+                },
+              ],
+            })}
           />
 
           <Route path="collection/users" component={IsAdmin}>
@@ -154,9 +170,31 @@ export const getRoutes = store => {
             <ModalRoute path="move" modal={MoveCollectionModal} noWrap />
             <ModalRoute path="archive" modal={ArchiveCollectionModal} />
             <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
+            <ModalRoute
+              path="move-questions-dashboard"
+              modal={MoveQuestionsIntoDashboardsModal}
+            />
             {PLUGIN_COLLECTIONS.cleanUpRoute}
             {getCollectionTimelineRoutes()}
           </Route>
+
+          <Route
+            path="dashboard/entity/:entity_id(**)"
+            component={createEntityIdRedirect({
+              parametersToTranslate: [
+                {
+                  name: "entity_id",
+                  resourceType: "dashboard",
+                  type: "param",
+                },
+                {
+                  name: "tab",
+                  resourceType: "dashboard-tab",
+                  type: "search",
+                },
+              ],
+            })}
+          />
 
           <Route
             path="dashboard/:slug"
@@ -173,6 +211,18 @@ export const getRoutes = store => {
           </Route>
 
           <Route path="/question">
+            <Route
+              path="/question/entity/:entity_id(**)"
+              component={createEntityIdRedirect({
+                parametersToTranslate: [
+                  {
+                    name: "entity_id",
+                    resourceType: "card",
+                    type: "param",
+                  },
+                ],
+              })}
+            />
             <IndexRoute component={QueryBuilder} />
             <Route path="notebook" component={QueryBuilder} />
             <Route path=":slug" component={QueryBuilder} />

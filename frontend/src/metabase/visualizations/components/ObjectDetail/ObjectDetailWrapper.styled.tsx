@@ -1,9 +1,8 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import Modal from "metabase/components/Modal";
 import { breakpointMinMedium } from "metabase/styled-components/theme/media-queries";
-
-import TableFooter from "../TableSimple/TableFooter";
 
 import { ObjectDetailBodyWrapper } from "./ObjectDetailBody.styled";
 import { ObjectDetailContainer } from "./ObjectDetailView.styled";
@@ -45,9 +44,4 @@ export const RootModal = styled(Modal)`
       max-height: calc(80vh - 4rem);
     }
   }
-`;
-
-export const PaginationFooter = styled(TableFooter)`
-  margin-top: 0.5rem;
-  text-align: right;
 `;

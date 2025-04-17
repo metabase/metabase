@@ -3,7 +3,8 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.test :refer :all]
-   [metabase.query-processor.util :as qp.util]))
+   [metabase.query-processor.util :as qp.util]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,17 +28,19 @@
              (query-hash-hex {:query :abc})))
       (is (= (query-hash-hex {:query :def})
              (query-hash-hex {:query :def})))
-      (let [q {:database 1,
-               :type :query,
-               :query {:source-table 8,
-                       :aggregation [[:count]],
-                       :breakout [[:field 58 {:base-type :type/Text}]],
-                       :order-by [[:asc [:aggregation 0]]],
-                       :aggregation-idents {:0 "TBwdYMnlfpE4wIW1QwtxZ"},
-                       :breakout-idents {:0 "_II7X6UsFBqw6sY3B3VIG"}},
-               :parameters []}]
+      (let [q (mt/mbql-query products
+                {:aggregation [[:count]]
+                 :breakout [$category]
+                 :order-by [[:asc [:aggregation 0]]]})]
         (is (= (query-hash-hex q)
-               (query-hash-hex q)))))))
+               (query-hash-hex q)))))
+    (testing "should handle parameter values that mix regular numbers with bigintegers stored as strings"
+      (let [q1 (-> (mt/mbql-query orders)
+                   (assoc :parameters [{:type :number, :name "p1", :value [1 "9223372036854775808"]}]))
+            q2 (-> (mt/mbql-query orders)
+                   (assoc :parameters [{:type :number, :name "p1", :value ["9223372036854775808" 1]}]))]
+        (is (some? (query-hash-hex q1)))
+        (is (= (query-hash-hex q1) (query-hash-hex q2)))))))
 
 (deftest ^:parallel ignore-lib-uuids-test
   (letfn [(query []
@@ -73,43 +76,23 @@
         {:lib/type :type/query, :constraints {:max-rows 1000}}
         {:lib/type :type/query, :constraints nil}
 
-        {:database 1,
-         :type :query,
-         :query {:source-table 8,
-                 :aggregation [[:count] [:cum-count]],
-                 :breakout [[:field 58 {:base-type :type/Text}]],
-                 :order-by [[:asc [:aggregation 0]]],
-                 :aggregation-idents {:0 "TBwdYMnlfpE4wIW1QwtxZ"},
-                 :breakout-idents {:0 "_II7X6UsFBqw6sY3B3VIG"}},
-         :parameters []}
-        {:database 1,
-         :type :query,
-         :query {:source-table 8,
-                 :aggregation [[:count] [:cum-count]],
-                 :breakout [[:field 58 {:base-type :type/Text}]],
-                 :order-by [[:asc [:aggregation 1]]],
-                 :aggregation-idents {:0 "TBwdYMnlfpE4wIW1QwtxZ"},
-                 :breakout-idents {:0 "_II7X6UsFBqw6sY3B3VIG"}},
-         :parameters []}
+        (mt/mbql-query products
+          {:aggregation [[:count] [:cum-count]]
+           :breakout [$category]
+           :order-by [[:asc [:aggregation 0]]]})
+        (mt/mbql-query products
+          {:aggregation [[:count] [:cum-count]]
+           :breakout [$category]
+           :order-by [[:asc [:aggregation 1]]]})
 
-        {:database 1,
-         :type :query,
-         :query {:source-table 8,
-                 :aggregation [[:count] [:cum-count]],
-                 :breakout [[:field 58 {:base-type :type/Text}]],
-                 :order-by [[:asc [:field 57 {:base-type :type/Text}]]],
-                 :aggregation-idents {:0 "TBwdYMnlfpE4wIW1QwtxZ"},
-                 :breakout-idents {:0 "_II7X6UsFBqw6sY3B3VIG"}},
-         :parameters []}
-        {:database 1,
-         :type :query,
-         :query {:source-table 8,
-                 :aggregation [[:count] [:cum-count]],
-                 :breakout [[:field 58 {:base-type :type/Text}]],
-                 :order-by [[:asc [:field 58 {:base-type :type/Text}]]],
-                 :aggregation-idents {:0 "TBwdYMnlfpE4wIW1QwtxZ"},
-                 :breakout-idents {:0 "_II7X6UsFBqw6sY3B3VIG"}},
-         :parameters []}))))
+        (mt/mbql-query products
+          {:aggregation [[:count] [:cum-count]],
+           :breakout [$category],
+           :order-by [[:asc $created_at]]})
+        (mt/mbql-query products
+          {:aggregation [[:count] [:cum-count]],
+           :breakout [$category],
+           :order-by [[:asc $rating]]})))))
 
 (deftest ^:parallel query-hash-test-3
   (testing "qp.util/query-hash"
@@ -152,10 +135,10 @@
 (deftest ^:parallel query-hash-test-8
   (testing "qp.util/query-hash"
     (testing "make sure two different native queries have different hashes!"
-      (is (not= (query-hash-hex {:database 2
+      (is (not= (query-hash-hex {:database (mt/id)
                                  :type     :native
                                  :native   {:query "SELECT pg_sleep(15), 1 AS one"}})
-                (query-hash-hex {:database 2
+                (query-hash-hex {:database (mt/id)
                                  :type     :native
                                  :native   {:query "SELECT pg_sleep(15), 2 AS two"}}))))))
 

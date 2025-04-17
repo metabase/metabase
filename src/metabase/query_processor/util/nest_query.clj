@@ -185,18 +185,19 @@
 
   1. there are some expression definitions in the inner query, AND
 
-  2. there are some breakouts OR some aggregations in the inner query
+  2. there are some breakouts OR aggregations OR order-by in the inner query
 
-  3. AND the breakouts/aggregations contain at least `:expression` reference."
-  [{:keys [expressions], breakouts :breakout, aggregations :aggregation, :as _inner-query}]
+  3. AND the breakouts/aggregations/order-bys contain at least one `:expression` reference."
+  [{:keys [expressions], breakouts :breakout, aggregations :aggregation, order-bys :order-by, :as _inner-query}]
   (and
    ;; 1. has some expression definitions
    (seq expressions)
-   ;; 2. has some breakouts or aggregations
+   ;; 2. has some breakouts or aggregations or order-by
    (or (seq breakouts)
-       (seq aggregations))
+       (seq aggregations)
+       (seq order-bys))
    ;; 3. contains an `:expression` ref
-   (lib.util.match/match-one (concat breakouts aggregations)
+   (lib.util.match/match-one (concat breakouts aggregations order-bys)
      :expression)))
 
 (defn nest-expressions

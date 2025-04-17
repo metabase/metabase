@@ -1,3 +1,6 @@
+import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css";
+
 import "regenerator-runtime/runtime";
 
 // This is conditionally aliased in the webpack config.
@@ -87,7 +90,7 @@ function _init(reducers, getRoutes, callback) {
 
   store.dispatch(refreshSiteSettings());
 
-  PLUGIN_APP_INIT_FUNCTIONS.forEach(init => init());
+  PLUGIN_APP_INIT_FUNCTIONS.forEach((init) => init());
 
   window.Metabase = window.Metabase || {};
   window.Metabase.store = store;

@@ -268,7 +268,7 @@
                 (substitute {:price (field-filter "price" :type/Integer :number/!= [1 2])}
                             ["[{$match: " (param :price) "}]"]))))))))
 
-(deftest ^:parallel ^:parallel substitute-native-query-snippets-test
+(deftest ^:parallel substitute-native-query-snippets-test
   (testing "Native query snippet substitution"
     (is (= (strip (to-bson [{:$match {"price" {:$gt 2}}}]))
            (strip (substitute {"snippet: high price" (params/->ReferencedQuerySnippet 123 (to-bson {"price" {:$gt 2}}))}

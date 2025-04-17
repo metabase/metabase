@@ -36,6 +36,7 @@
                               :standard-deviation-aggregations        false
                               :schemas                                false
                               :datetime-diff                          true
+                              :expression-literals                    true
                               :now                                    true
                               :identifiers-with-spaces                true
                               ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
@@ -200,7 +201,7 @@
 (defmethod sql.qp/date [:sqlite :week-of-year-iso]
   [driver _ expr]
   ;; Maybe we can follow the algorithm here https://en.wikipedia.org/wiki/ISO_week_date#Algorithms
-  (throw (ex-info (tru "Sqlite doesn't support extract isoweek")
+  (throw (ex-info (tru "Sqlite doesn''t support extract isoweek")
                   {:driver driver
                    :form   expr
                    :type   qp.error-type/invalid-query})))

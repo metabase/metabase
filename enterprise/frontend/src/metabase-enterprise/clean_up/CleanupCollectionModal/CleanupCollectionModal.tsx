@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { withRouter } from "react-router";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { skipToken } from "metabase/api";
 import { useUserSetting } from "metabase/common/hooks";
@@ -100,13 +99,13 @@ const _CleanupCollectionModal = ({
   const itemsData = staleItemsData?.data;
   const total = staleItemsData?.total ?? 0;
   const items: StaleCollectionItem[] = useMemo(() => {
-    return (itemsData ?? []).map(item => Search.wrapEntity(item, dispatch));
+    return (itemsData ?? []).map((item) => Search.wrapEntity(item, dispatch));
   }, [itemsData, dispatch]);
 
   // selection cont.
   const { getIsSelected } = selection;
   const hasUnselected = useMemo(() => {
-    return items.some(item => !getIsSelected(item));
+    return items.some((item) => !getIsSelected(item));
   }, [getIsSelected, items]);
 
   // pagination cont.
@@ -147,7 +146,7 @@ const _CleanupCollectionModal = ({
     >
       <Modal.Overlay />
       <Modal.Content
-        className={CS.modalContent}
+        classNames={{ content: CS.modalContent }}
         mih={isLoading ? `min(25rem, ${getModalHeightCalc("0px")})` : undefined}
       >
         <Modal.Header

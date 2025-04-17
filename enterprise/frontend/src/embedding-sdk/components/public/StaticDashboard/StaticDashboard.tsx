@@ -14,7 +14,6 @@ import {
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import CS from "metabase/css/core/index.css";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
-import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
@@ -23,6 +22,11 @@ import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { Box } from "metabase/ui";
 
+/**
+ * @interface
+ * @expand
+ * @category StaticDashboard
+ */
 export type StaticDashboardProps = SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
@@ -32,6 +36,7 @@ export const StaticDashboardInner = ({
   withTitle = true,
   withCardTitle = true,
   withDownloads = false,
+  withFooter = true,
   hiddenParameters = [],
   onLoad,
   onLoadWithoutCards,
@@ -51,12 +56,11 @@ export const StaticDashboardInner = ({
     initialParameters,
     withTitle,
     withDownloads,
+    withFooter,
     hiddenParameters,
   });
 
   const { theme } = useEmbedTheme();
-
-  const { font } = useEmbedFont();
 
   return (
     <Box
@@ -78,19 +82,25 @@ export const StaticDashboardInner = ({
         refreshPeriod={refreshPeriod}
         onRefreshPeriodChange={onRefreshPeriodChange}
         setRefreshElapsedHook={setRefreshElapsedHook}
-        font={font}
         bordered={displayOptions.bordered}
         onLoad={onLoad}
         onLoadWithoutCards={onLoadWithoutCards}
-        downloadsEnabled={withDownloads}
+        downloadsEnabled={{ pdf: withDownloads, results: withDownloads }}
         isNightMode={false}
         onNightModeChange={_.noop}
         hasNightModeToggle={false}
+        withFooter={displayOptions.withFooter}
       />
     </Box>
   );
 };
 
+/**
+ * A lightweight dashboard component.
+ *
+ * @function
+ * @category StaticDashboard
+ */
 const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
   ({ dashboardId: initialDashboardId, ...rest }) => {
     const { isLoading, id: resolvedDashboardId } = useValidatedEntityId({

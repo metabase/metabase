@@ -1,7 +1,6 @@
 import {
+  NativeEditor,
   filterWidget,
-  focusNativeEditor,
-  nativeEditor,
   selectDropdown,
 } from "e2e/support/helpers";
 
@@ -97,15 +96,15 @@ export function runQuery(xhrAlias = "dataset") {
  * @param {string} query
  */
 export function enterParameterizedQuery(query, options = {}) {
-  focusNativeEditor();
-  nativeEditor().type(query, {
-    parseSpecialCharSequences: false,
+  NativeEditor.focus().type(query, {
     ...options,
   });
 }
 
 export function getRunQueryButton() {
-  return cy.findByTestId("native-query-editor-sidebar").button("Get Answer");
+  return cy
+    .findByTestId("native-query-editor-sidebar")
+    .findByTestId("run-button");
 }
 
 export function getSaveQueryButton() {

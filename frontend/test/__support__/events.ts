@@ -20,6 +20,6 @@ export const callMockEvent: CallMockEventType = (
 
   mockEventListener.mock.calls
     .filter(([event]) => eventName === event)
-    .forEach(([_, callback]) => callback(mockEvent));
+    .forEach(([_event, callback]) => callback(mockEvent));
   return mockEvent;
 };

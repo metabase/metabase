@@ -77,6 +77,7 @@ export interface DatasetData {
   native_form: {
     query: string;
   };
+  is_sandboxed?: boolean;
 }
 
 export type JsonQuery = DatasetQuery & {
@@ -136,13 +137,12 @@ export interface ErrorEmbedDataset {
   status: string;
 }
 
-/**
- * This is the type of the `POST /api/dataset/native` response.
- * We're mostly ignoring the `params` on the FE. It's added to the type only for completeness.
- */
-export interface NativeQueryForm {
-  params: unknown;
+export interface NativeDatasetResponse {
   query: string;
+  // some engines, e.g. mongo, require a "collection", which is the name of the source table
+  collection?: string;
+  // not used, added to the type only for completeness
+  params: unknown;
 }
 
 export type SingleSeries = {

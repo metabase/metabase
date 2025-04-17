@@ -28,7 +28,8 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.build.api :as b])
+   [clojure.tools.build.api :as b]
+   [clojure.tools.deps.alpha.util.maven :as mvn])
   (:import
    (java.io FileReader)
    (java.nio.file Files FileSystem FileSystems FileVisitOption LinkOption OpenOption Path Paths)
@@ -122,32 +123,47 @@
                            :artifact artifact
                            :backfill license})))))))
 
+(defn coord->pom-path
+  "Convert dep coordinates into pom.xml path"
+  [lib-name info]
+  (Path/of @mvn/cached-local-repo
+           (into-array String [(.replace (str lib-name) "." "/")
+                               (str (:mvn/version info))
+                               (format "%s-%s.pom" (name lib-name) (:mvn/version info))])))
+
 (defn discern-license-and-coords
   "Returns a tuple of [jar-filename {:coords :license [:error]}. Error is optional. License will be a string of license
   text, coords a map with group and artifact."
   [[lib-name info] backfill]
-  (let [jar-filename (-> info :paths first)
-        jar-path (Paths/get ^String jar-filename path-options)
-        classloader (ClassLoader/getSystemClassLoader)]
-    (if-not (Files/exists jar-path link-options)
-      [lib-name {:error "Jar does not exist"}]
-      (try
-        (with-open [jar-fs (FileSystems/newFileSystem jar-path classloader)]
-          (let [license  (or (when-let [license-path (license-from-jar jar-fs)]
-                               (with-open [is (Files/newInputStream license-path open-options)]
-                                 (slurp is)))
-                             (when-let [pom-path (determine-pom jar-filename jar-fs)]
-                               (let [{:keys [name url]} (license-from-pom pom-path)]
-                                 (when name (str name ": " url))))
-                             (license-from-backfill lib-name backfill))]
-            [lib-name (cond-> {:coords {:group (namespace lib-name)
-                                        :artifact (name lib-name)
-                                        :version (:mvn/version info)}
-                               :license license}
-                        (not license)
-                        (assoc :error "Error determining license"))]))
-        (catch Exception e
-          [lib-name {:error e}])))))
+  (if (= (:extension info) "pom")
+    ;; GraalVM js is distributed like that now
+    (let [license (license-from-pom (coord->pom-path lib-name info))]
+      [lib-name {:coords  {:group    (namespace lib-name)
+                           :artifact (name lib-name)
+                           :version  (:mvn/version info)}
+                 :license (when (:name license) (str (:name license) ": " (:url license)))}])
+    (let [jar-filename (-> info :paths first)
+          jar-path     (Paths/get ^String jar-filename path-options)
+          classloader  (ClassLoader/getSystemClassLoader)]
+      (if-not (Files/exists jar-path link-options)
+        [lib-name {:error "Jar does not exist"}]
+        (try
+          (with-open [jar-fs (FileSystems/newFileSystem jar-path classloader)]
+            (let [license (or (when-let [license-path (license-from-jar jar-fs)]
+                                (with-open [is (Files/newInputStream license-path open-options)]
+                                  (slurp is)))
+                              (when-let [pom-path (when jar-filename (determine-pom jar-filename jar-fs))]
+                                (let [{:keys [name url]} (license-from-pom pom-path)]
+                                  (when name (str name ": " url))))
+                              (license-from-backfill lib-name backfill))]
+              [lib-name (cond-> {:coords {:group (namespace lib-name)
+                                          :artifact (name lib-name)
+                                          :version (:mvn/version info)}
+                                 :license license}
+                          (not license)
+                          (assoc :error "Error determining license"))]))
+          (catch Exception e
+            [lib-name {:error e}]))))))
 
 (defn- write-license [success-os [lib {:keys [coords license]}]]
   (binding [*out* success-os]

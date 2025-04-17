@@ -2,7 +2,6 @@ import { useInterval } from "@mantine/hooks";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMount, useUnmount } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { UtilApi } from "metabase/services";
 import type { Log } from "metabase-types/api";
@@ -29,7 +28,7 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
       if (isMountedRef.current) {
         setLoaded(true);
         setError(null);
-        setLogs(logs => maybeMergeLogs(logs, newLogs));
+        setLogs((logs) => maybeMergeLogs(logs, newLogs));
         isFetchingRef.current = false;
       }
     } catch (err: any) {

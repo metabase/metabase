@@ -5,7 +5,7 @@ import type { FormSubmitButtonProps } from "metabase/forms";
 import { FormSubmitButton } from "metabase/forms";
 
 export const ResetAllFormSubmitButton = styled(FormSubmitButton, {
-  shouldForwardProp: prop => prop !== "highlightOnHover",
+  shouldForwardProp: (prop) => prop !== "highlightOnHover",
 })<FormSubmitButtonProps & { highlightOnHover?: boolean }>`
   ${({ highlightOnHover }) =>
     highlightOnHover

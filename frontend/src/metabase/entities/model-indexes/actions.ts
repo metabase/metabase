@@ -60,7 +60,7 @@ export const updateModelIndexes =
 
       if (pkRef) {
         await Promise.all(
-          newFieldsToIndex.map(field => {
+          newFieldsToIndex.map((field) => {
             return dispatch(
               createModelIndex.initiate({
                 model_id: model.id(),
@@ -75,7 +75,7 @@ export const updateModelIndexes =
 
     if (indexIdsToRemove.length) {
       await Promise.all(
-        indexIdsToRemove.map(indexId =>
+        indexIdsToRemove.map((indexId) =>
           dispatch(deleteModelIndex.initiate({ id: indexId })),
         ),
       );
@@ -88,7 +88,7 @@ function getFieldsToIndex(
 ) {
   // make sure none of these fields are already indexed by this model
   const newFieldsToIndex = fieldsWithIndexFlags.filter(
-    field =>
+    (field) =>
       field.should_index &&
       !existingIndexes.some((index: ModelIndex) =>
         _.isEqual(index.value_ref, field.field_ref),

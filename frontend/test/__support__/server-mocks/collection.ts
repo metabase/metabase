@@ -12,6 +12,7 @@ import type {
   Collection,
   CollectionItem,
   Dashboard,
+  DashboardQuestionCandidate,
 } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
@@ -42,7 +43,7 @@ export function setupCollectionsEndpoints({
       query: { "exclude-archived": true },
       overwriteRoutes: false,
     },
-    collections.filter(collection => !collection.archived),
+    collections.filter((collection) => !collection.archived),
   );
   fetchMock.get(
     {
@@ -74,7 +75,10 @@ export function setupCollectionVirtualSchemaEndpoints(
 ) {
   const urls = getCollectionVirtualSchemaURLs(collection);
 
-  const [models, questions] = _.partition(cards, card => card.type === "model");
+  const [models, questions] = _.partition(
+    cards,
+    (card) => card.type === "model",
+  );
   const modelVirtualTables = models.map(convertSavedQuestionToVirtualTable);
   const questionVirtualTables = questions.map(
     convertSavedQuestionToVirtualTable,
@@ -93,7 +97,7 @@ export function setupCollectionItemsEndpoint({
   collectionItems: CollectionItem[];
   models?: string[];
 }) {
-  fetchMock.get(`path:/api/collection/${collection.id}/items`, uri => {
+  fetchMock.get(`path:/api/collection/${collection.id}/items`, (uri) => {
     const url = new URL(uri);
     const models = modelsParam ?? url.searchParams.getAll("models");
     const matchedItems = collectionItems.filter(({ model }) =>
@@ -122,7 +126,7 @@ export function setupDashboardItemsEndpoint({
   dashboardItems: CollectionItem[];
   models?: string[];
 }) {
-  fetchMock.get(`path:/api/dashboard/${dashboard.id}/items`, uri => {
+  fetchMock.get(`path:/api/dashboard/${dashboard.id}/items`, (uri) => {
     const url = new URL(uri);
     const models = modelsParam ?? url.searchParams.getAll("models") ?? ["card"];
     const limit =
@@ -181,12 +185,12 @@ export function setupCollectionByIdEndpoint({
     return;
   }
 
-  fetchMock.get(/api\/collection\/\d+$/, url => {
+  fetchMock.get(/api\/collection\/\d+$/, (url) => {
     const collectionIdParam = url.split("/")[5];
     const collectionId = Number(collectionIdParam);
 
     const collection = collections.find(
-      collection => collection.id === collectionId,
+      (collection) => collection.id === collectionId,
     );
 
     return collection;
@@ -207,18 +211,33 @@ function setupCollectionWithErrorById({
 }
 
 export function setupDashboardCollectionItemsEndpoint(dashboards: Dashboard[]) {
-  fetchMock.get(/api\/collection\/(\d+|root)\/items/, url => {
+  fetchMock.get(/api\/collection\/(\d+|root)\/items/, (url) => {
     const collectionIdParam = url.split("/")[5];
     const collectionId =
       collectionIdParam !== "root" ? Number(collectionIdParam) : null;
 
     const dashboardsOfCollection = dashboards.filter(
-      dashboard => dashboard.collection_id === collectionId,
+      (dashboard) => dashboard.collection_id === collectionId,
     );
 
     return {
       total: dashboardsOfCollection.length,
       data: dashboardsOfCollection,
     };
+  });
+}
+
+export function setupDashboardQuestionCandidatesEndpoint(
+  dashboardQuestionCandidates: DashboardQuestionCandidate[],
+) {
+  fetchMock.get("express:/api/collection/:id/dashboard-question-candidates", {
+    total: dashboardQuestionCandidates.length,
+    data: dashboardQuestionCandidates,
+  });
+}
+
+export function setupStaleItemsEndpoint(total: number) {
+  fetchMock.get("express:/api/ee/stale/:id", {
+    total,
   });
 }

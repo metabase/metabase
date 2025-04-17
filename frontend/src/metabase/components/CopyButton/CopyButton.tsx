@@ -1,6 +1,7 @@
 import cx from "classnames";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import CopyToClipboard from "react-copy-to-clipboard";
+import { useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { isPlainKey } from "metabase/common/utils/keyboard";
@@ -24,10 +25,17 @@ export const CopyButton = ({
   style,
 }: CopyButtonProps) => {
   const [copied, setCopied] = useState(false);
+  const timeoutIdRef = useRef<number>();
+
+  useUnmount(() => {
+    window.clearTimeout(timeoutIdRef.current);
+  });
 
   const onCopyValue = useCallback(() => {
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+
+    window.clearTimeout(timeoutIdRef.current);
+    timeoutIdRef.current = window.setTimeout(() => setCopied(false), 2000);
     onCopy?.();
   }, [onCopy]);
 
@@ -44,9 +52,7 @@ export const CopyButton = ({
     <CopyToClipboard text={value} onCopy={onCopyValue}>
       <div className={className} style={style} data-testid="copy-button">
         <Tooltip
-          label={
-            <Text fw={700} c="--var(mb-color-text-white)">{t`Copied!`}</Text>
-          }
+          label={<Text fw={700} c="white">{t`Copied!`}</Text>}
           opened={copied}
         >
           <Icon

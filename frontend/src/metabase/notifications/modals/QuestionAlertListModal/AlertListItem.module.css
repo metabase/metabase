@@ -1,0 +1,38 @@
+.notificationListItem {
+  position: relative;
+  border-radius: 0.5rem;
+  border: 1px solid var(--mb-color-border);
+
+  .itemTitle {
+    line-height: 1rem;
+    margin-bottom: 0.25rem;
+  }
+}
+
+.notificationListItemEditable {
+  &:hover {
+    background: var(--mb-base-color-brand-10);
+    cursor: pointer;
+    border-color: transparent;
+
+    .itemTitle {
+      color: var(--mb-color-brand);
+    }
+
+    .handlersContainer {
+      color: var(--mb-color-text-primary);
+    }
+  }
+}
+
+.handlersContainer {
+  color: var(--mb-color-text-secondary);
+}
+
+.actionButtonContainer {
+  position: absolute;
+
+  /* 1rem - 0.6875rem (small icon button paddings) */
+  right: 0.3125rem;
+  top: 0.3125rem;
+}

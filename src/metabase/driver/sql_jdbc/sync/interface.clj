@@ -54,7 +54,10 @@
 (defmulti database-type->base-type
   "Given a native DB column type (as a keyword), return the corresponding `Field` `base-type`, which should derive from
   `:type/*`. You can use `pattern-based-database-type->base-type` in this namespace to implement this using regex
-  patterns."
+  patterns.
+
+  If you need to get mapping for dynamic (eg. user defined), that could require database call, check out
+  the `driver/dynamic-database-types-lookup`."
   {:added "0.37.1" :arglists '([driver database-type])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -130,10 +133,34 @@
 
 (defmulti alter-columns-sql
   "Generate the query to be used with [[driver/alter-columns!]]."
-  {:added "0.49.0", :arglists '([driver db-id table-name column-definitions])}
+  {:added "0.49.0",
+   :arglists '([driver table-name column-definitions])
+   :deprecated "0.54.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmulti alter-table-columns-sql
+  "Generate the query to be used with [[driver/alter-table-columns!]].
+  Supersedes the deprecated [[alter-columns-sql]].
+  This version receives additional kw-args `opts` (as passed to [[driver/alter-table-columns!]])."
+  {:added "0.54.0"
+   :arglists '([driver table-name column-definitions & opts])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+;; used for compatibility with drivers only implementing alter-columns-sql
+;; remove when alter-columns-sql is deleted (v0.57+)
+#_{:clj-kondo/ignore [:deprecated-var]}
+(defmethod alter-table-columns-sql ::driver/driver
+  [driver table-name column-definitions & _opts]
+  (alter-columns-sql driver table-name column-definitions))
+
+;; default :sql-jdbc implementation kept here rather than on alter-table-columns-sql
+;; to maximize compatibility:
+;; a. get-method for superclass type calls still pick up this impl
+;; b. existing specialisation of sql-jdbc should remain preferred when alter-table-column-sql is called
+;; we can move this impl to alter-table-columns-sql when alter-columns-sql is deleted (v0.57+)
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod alter-columns-sql :sql-jdbc
   [driver table-name column-definitions]
   (with-quoting driver
@@ -144,5 +171,5 @@
                                                           [[:raw type-and-constraints]]
                                                           type-and-constraints))))
                                            column-definitions)}
-                       :quoted true
+                       :quoted  true
                        :dialect (sql.qp/quote-style driver)))))

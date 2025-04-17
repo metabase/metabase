@@ -66,7 +66,7 @@ export interface SpecificDatePickerValue {
 export interface RelativeDatePickerValue {
   type: "relative";
   unit: DatePickerTruncationUnit;
-  value: number | "current";
+  value: number;
   offsetUnit?: DatePickerTruncationUnit;
   offsetValue?: number;
   options?: RelativeDatePickerOptions;
@@ -101,13 +101,15 @@ export interface ShortcutOption {
 export type MonthYearPickerValue = {
   type: "month";
   year: number;
-  month: number; // 1-12
+  /** 1-12 */
+  month: number;
 };
 
 export type QuarterYearPickerValue = {
   type: "quarter";
   year: number;
-  quarter: number; // 1-4
+  /** 1-4 */
+  quarter: number;
 };
 
 export type DateFilterValue =

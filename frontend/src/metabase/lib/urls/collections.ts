@@ -39,7 +39,7 @@ function slugifyPersonalCollection(collection: Collection) {
 }
 
 export function collection(
-  collection?: Pick<Collection, "id" | "type" | "name">,
+  collection?: Pick<Collection, "id" | "type" | "name"> | null,
 ) {
   const isSystemCollection =
     !collection || collection.id === null || typeof collection.id === "string";

@@ -8,7 +8,7 @@ import * as Lib from "metabase-lib";
 
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { MIN_WIDTH } from "../constants";
+import { WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function BooleanFilterPicker({
@@ -54,7 +54,7 @@ export function BooleanFilterPicker({
   return (
     <Box
       component="form"
-      miw={MIN_WIDTH}
+      miw={WIDTH}
       data-testid="boolean-filter-picker"
       onSubmit={handleSubmit}
     >
@@ -66,8 +66,8 @@ export function BooleanFilterPicker({
       )}
       <div>
         <Radio.Group value={optionType} onChange={handleOptionChange}>
-          <Stack p="md" pb={isExpanded ? "md" : 0} spacing="sm">
-            {visibleOptions.map(option => (
+          <Stack p="md" pb={isExpanded ? "md" : 0} gap="sm">
+            {visibleOptions.map((option) => (
               <Radio
                 key={option.type}
                 value={option.type}
@@ -83,7 +83,7 @@ export function BooleanFilterPicker({
             c="text-medium"
             variant="subtle"
             aria-label={t`More options`}
-            rightIcon={<Icon name="chevrondown" />}
+            rightSection={<Icon name="chevrondown" />}
             onClick={() => setIsExpanded(true)}
           >
             {t`More options`}

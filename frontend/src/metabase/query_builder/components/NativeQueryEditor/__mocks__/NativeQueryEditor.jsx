@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import CS from "metabase/css/core/index.css";
-import { ACE_ELEMENT_ID } from "metabase/query_builder/components/NativeQueryEditor/AceEditor/constants";
 import DataSourceSelectors from "metabase/query_builder/components/NativeQueryEditor/DataSourceSelectors";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 
@@ -14,17 +13,17 @@ const MockNativeQueryEditor = ({
   setDatasetQuery,
   setParameterValue,
 }) => {
-  const onChange = evt => {
+  const onChange = (evt) => {
     setDatasetQuery(query.setQueryText(evt.target.value));
   };
 
-  const onDatabaseIdChange = databaseId => {
+  const onDatabaseIdChange = (databaseId) => {
     if (question.databaseId() !== databaseId) {
       setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
     }
   };
 
-  const onTableIdChange = tableId => {
+  const onTableIdChange = (tableId) => {
     const table = query.metadata().table(tableId);
     if (table && table.name !== query.collection()) {
       setDatasetQuery(query.setCollectionName(table.name));
@@ -32,7 +31,7 @@ const MockNativeQueryEditor = ({
   };
 
   return (
-    <div data-testid="mock-native-query-editor" id={ACE_ELEMENT_ID}>
+    <div data-testid="mock-native-query-editor">
       {canChangeDatabase && (
         <DataSourceSelectors
           isNativeEditorOpen={isNativeEditorOpen}

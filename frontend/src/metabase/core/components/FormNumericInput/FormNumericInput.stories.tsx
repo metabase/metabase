@@ -5,11 +5,11 @@ import { Form, FormProvider } from "metabase/forms";
 import FormNumericInput from "./FormNumericInput";
 
 export default {
-  title: "Core/FormNumericInput",
+  title: "Components/Ask Before Using/FormNumericInput",
   component: FormNumericInput,
 };
 
-const Template: StoryFn<typeof FormNumericInput> = args => {
+const Template: StoryFn<typeof FormNumericInput> = (args) => {
   const initialValues = { value: undefined };
   const handleSubmit = () => undefined;
 

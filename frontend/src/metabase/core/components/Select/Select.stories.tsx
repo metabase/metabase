@@ -3,11 +3,11 @@ import type { StoryFn } from "@storybook/react";
 import Select from "./Select";
 
 export default {
-  title: "Core/Select",
+  title: "Deprecated/Components/Select",
   component: Select,
 };
 
-const Template: StoryFn<typeof Select> = args => {
+const Template: StoryFn<typeof Select> = (args) => {
   return <Select {...args} />;
 };
 

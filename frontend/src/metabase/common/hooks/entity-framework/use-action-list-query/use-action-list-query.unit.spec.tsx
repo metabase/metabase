@@ -4,7 +4,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { createMockImplicitQueryAction } from "metabase-types/api/mocks";
 
 import { useActionListQuery } from "./use-action-list-query";
@@ -20,7 +20,7 @@ const TestComponent = () => {
 
   return (
     <div>
-      {data.map(action => (
+      {data.map((action) => (
         <div key={action.id}>{action.name}</div>
       ))}
     </div>

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 describe("scenarios > dashboard > filters > SQL > management", () => {
   beforeEach(() => {
@@ -25,7 +25,7 @@ describe("scenarios > dashboard > filters > SQL > management", () => {
     };
 
     beforeEach(() => {
-      cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+      H.createNativeQuestionAndDashboard({ questionDetails }).then(
         ({ body: { dashboard_id } }) => {
           H.visitDashboard(dashboard_id);
         },
@@ -48,7 +48,7 @@ describe("scenarios > dashboard > filters > SQL > management", () => {
       H.editDashboard();
 
       cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .contains("Equal to")
+        .contains("Number")
         .click();
 
       H.sidebar().findByText("Filter operator").next().click();

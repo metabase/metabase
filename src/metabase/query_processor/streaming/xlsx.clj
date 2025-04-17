@@ -1,6 +1,5 @@
 (ns metabase.query-processor.streaming.xlsx
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time.api :as t]
@@ -10,7 +9,7 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
-   [metabase.query-processor.streaming.common :as common]
+   [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.util :as u]
    [metabase.util.currency :as currency]
@@ -59,7 +58,7 @@
   prefix (for symbols or codes)."
   [base-string format-settings]
   (let [currency-code (::mb.viz/currency format-settings "USD")
-        currency-identifier (common/currency-identifier format-settings)]
+        currency-identifier (streaming.common/currency-identifier format-settings)]
     (condp = (::mb.viz/currency-style format-settings "symbol")
       "symbol"
       (if (currency/supports-symbol? currency-code)
@@ -222,7 +221,7 @@
                     unit           :unit :as col}
    format-rows?]
   (when format-rows?
-    (let [col-type (common/col-type col)]
+    (let [col-type (streaming.common/col-type col)]
       (u/one-or-many
        (cond
          ;; Primary key or foreign key
@@ -257,7 +256,7 @@
     :status                    200
     :headers                   {"Content-Disposition" (format "attachment; filename=\"%s_%s.xlsx\""
                                                               (or filename-prefix "query_result")
-                                                              (u.date/format (t/zoned-date-time)))}}))
+                                                              (streaming.common/export-filename-timestamp))}}))
 
 (defn- cell-string-format-style
   [^Workbook workbook ^DataFormat data-format format-string]
@@ -268,7 +267,7 @@
   "Compute a sequence of cell styles for each column"
   [^Workbook workbook ^DataFormat data-format viz-settings cols format-rows?]
   (for [col cols]
-    (let [settings       (common/viz-settings-for-col col viz-settings)
+    (let [settings       (streaming.common/viz-settings-for-col col viz-settings)
           format-strings (format-settings->format-strings settings col format-rows?)]
       (when (seq format-strings)
         (mapv
@@ -278,8 +277,8 @@
 (defn- default-format-strings
   "Default strings to use for datetime and number fields if custom format settings are not set."
   []
-  {:datetime (datetime-format-string (common/merge-global-settings {} :type/Temporal))
-   :date     (datetime-format-string (common/merge-global-settings {::mb.viz/time-enabled nil} :type/Temporal))
+  {:datetime (datetime-format-string (streaming.common/merge-global-settings {} :type/Temporal))
+   :date     (datetime-format-string (streaming.common/merge-global-settings {::mb.viz/time-enabled nil} :type/Temporal))
    ;; Use a fixed format for time fields since time formatting isn't currently supported (#17357)
    :time     "h:mm am/pm"
    :integer  "#,##0"
@@ -334,19 +333,24 @@
 
 (defmethod set-cell! OffsetTime
   [^Cell cell t styles typed-styles]
-  (set-cell! cell (t/local-time (common/in-result-time-zone t)) styles typed-styles))
+  (set-cell! cell (t/local-time (streaming.common/in-result-time-zone t)) styles typed-styles))
 
 (defmethod set-cell! OffsetDateTime
   [^Cell cell t styles typed-styles]
-  (set-cell! cell (t/local-date-time (common/in-result-time-zone t)) styles typed-styles))
+  (set-cell! cell (t/local-date-time (streaming.common/in-result-time-zone t)) styles typed-styles))
 
 (defmethod set-cell! ZonedDateTime
   [^Cell cell t styles typed-styles]
   (set-cell! cell (t/offset-date-time t) styles typed-styles))
 
+(def ^:dynamic *number-of-characters-cell*
+  "Total number of characters that a cell can contain, 32767 is the maximum number supported by the cell."
+  ;; See https://support.microsoft.com/en-us/office/excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3
+  32767)
+
 (defmethod set-cell! String
   [^Cell cell value _styles _typed-styles]
-  (.setCellValue cell ^String value))
+  (.setCellValue cell ^String (u/truncate value *number-of-characters-cell*)))
 
 (defmethod set-cell! Number
   [^Cell cell value styles typed-styles]
@@ -465,9 +469,8 @@
          (let [value (.next val-it)
                col (.next col-it)
                styles (.next sty-it)
-               id-or-name   (or (:id col) (:name col))
-               settings     (or (get col-settings {::mb.viz/field-id id-or-name})
-                                (get col-settings {::mb.viz/column-name id-or-name}))
+               settings     (or (get col-settings {::mb.viz/field-id (:id col)})
+                                (get col-settings {::mb.viz/column-name (:name col)}))
                ;; value can be a column header (a string), so if the column is scaled, it'll try to do (* "count" 7)
                scaled-val   (if (and (number? value) (::mb.viz/scale settings))
                               (* value (::mb.viz/scale settings))
@@ -603,7 +606,7 @@
         typed-cell-styles           (compute-typed-cell-styles wb data-format)
         data-sheet                  (spreadsheet/select-sheet "data" wb)
         pivot-sheet                 (spreadsheet/select-sheet "pivot" wb)
-        col-names                   (common/column-titles ordered-cols col-settings format-rows?)
+        col-names                   (streaming.common/column-titles ordered-cols col-settings format-rows?)
         _                           (add-row! data-sheet col-names ordered-cols col-settings cell-styles typed-cell-styles)
         ;; keep the initial area-ref small (only 2 rows) so that adding row and column labels keeps the pivot table
         ;; object small.
@@ -619,7 +622,11 @@
     (doseq [idx pivot-cols]
       (.addColLabel pivot-table idx))
     (doseq [idx pivot-measures]
-      (.addColumnLabel pivot-table DataConsolidateFunction/SUM #_(get aggregation-functions idx DataConsolidateFunction/SUM) idx))
+      ;; Really this should be doing (get _aggregation-functions idx) in place of the hard coded SUM function
+      ;; But since QP sends us pre-aggregated data we can't use excel's innate aggregation functions
+      (let [col-name (or (not-empty (nth col-names idx))
+                         (get-in ordered-cols [idx :display_name]))]
+        (.addColumnLabel pivot-table DataConsolidateFunction/SUM idx col-name)))
     (doseq [[idx sort-setting] column-sort-order]
       (let [setting (case sort-setting
                       :ascending  STFieldSortType/ASCENDING
@@ -653,17 +660,12 @@
     (doseq [i (range (count ordered-cols))]
       (.trackColumnForAutoSizing ^SXSSFSheet sheet i))
     (setup-header-row! sheet (count ordered-cols))
-    (spreadsheet/add-row! sheet (common/column-titles ordered-cols col-settings format-rows?))
+    (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols col-settings format-rows?))
     {:workbook workbook
      :sheet    sheet}))
 
 (defmethod qp.si/streaming-results-writer :xlsx
   [_ ^OutputStream os]
-  ;; working around a bug #41919. Will be fixed when we can get a release of apache poi 5.3.1. See
-  ;; https://bz.apache.org/bugzilla/show_bug.cgi?id=69323
-  (let [f (io/file (str (System/getProperty "java.io.tmpdir") "/poifiles"))]
-    (when-not (.exists f)
-      (.mkdirs f)))
   (let [workbook-data      (volatile! nil)
         cell-styles        (volatile! nil)
         typed-cell-styles  (volatile! nil)
@@ -677,7 +679,7 @@
                                    (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                                    :pivot-rows []}
                                                                   pivot-export-options) ordered-cols))
-              col-names          (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
+              col-names          (streaming.common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
               pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key col-names)]
           (when pivot-grouping-key (vreset! pivot-grouping-idx pivot-grouping-key))
           (if opts

@@ -17,32 +17,32 @@ import {
 } from "./tags";
 
 export const persistApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listPersistedInfo: builder.query<
       ListPersistedInfoResponse,
       ListPersistedInfoRequest | void
     >({
-      query: params => ({
+      query: (params) => ({
         method: "GET",
         url: "/api/persist",
         params,
       }),
-      providesTags: response =>
+      providesTags: (response) =>
         response ? providePersistedInfoListTags(response.data) : [],
     }),
     getPersistedInfo: builder.query<ModelCacheRefreshStatus, PersistedInfoId>({
-      query: id => ({
+      query: (id) => ({
         method: "GET",
         url: `/api/persist/${id}`,
       }),
-      providesTags: model => (model ? providePersistedInfoTags(model) : []),
+      providesTags: (model) => (model ? providePersistedInfoTags(model) : []),
     }),
     getPersistedInfoByCard: builder.query<ModelCacheRefreshStatus, CardId>({
-      query: id => ({
+      query: (id) => ({
         method: "GET",
         url: `/api/persist/card/${id}`,
       }),
-      providesTags: model => (model ? providePersistedModelTags(model) : []),
+      providesTags: (model) => (model ? providePersistedModelTags(model) : []),
     }),
     enablePersist: builder.mutation<void, void>({
       query: () => ({
@@ -61,7 +61,7 @@ export const persistApi = Api.injectEndpoints({
         invalidateTags(error, [listTag("persisted-info")]),
     }),
     setRefreshSchedule: builder.mutation<void, PersistedInfoRefreshSchedule>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/persist/set-refresh/schedule",
         body,

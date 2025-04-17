@@ -47,7 +47,7 @@ const StackedDataTooltip = ({
     sortedHeaderRows.length + sortedBodyRows.length > 1;
   const hasColorIndicators = useMemo(
     () =>
-      [...sortedBodyRows, ...sortedHeaderRows].some(row => row.color != null),
+      [...sortedBodyRows, ...sortedHeaderRows].some((row) => row.color != null),
     [sortedHeaderRows, sortedBodyRows],
   );
 

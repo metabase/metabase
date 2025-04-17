@@ -90,7 +90,7 @@ describe("SwitchWithSetByEnvVar", () => {
       setup({
         value: true,
       });
-      const switchElement = screen.getByRole("checkbox");
+      const switchElement = screen.getByRole("switch");
       expect(switchElement).toBeInTheDocument();
       expect(switchElement).toBeChecked();
       expect(screen.getByText("Enabled")).toBeInTheDocument();
@@ -100,7 +100,7 @@ describe("SwitchWithSetByEnvVar", () => {
       setup({
         value: false,
       });
-      const switchElement = screen.getByRole("checkbox");
+      const switchElement = screen.getByRole("switch");
       expect(switchElement).toBeInTheDocument();
       expect(switchElement).not.toBeChecked();
       expect(screen.getByText("Disabled")).toBeInTheDocument();
@@ -117,8 +117,8 @@ describe("SwitchWithSetByEnvVar", () => {
         value: false,
       });
 
-      expect(screen.getByRole("checkbox")).not.toBeChecked();
-      await userEvent.click(screen.getByRole("checkbox"));
+      expect(screen.getByRole("switch")).not.toBeChecked();
+      await userEvent.click(screen.getByRole("switch"));
 
       expect(onChange).toHaveBeenCalledWith(true);
     });
@@ -128,8 +128,8 @@ describe("SwitchWithSetByEnvVar", () => {
         value: true,
       });
 
-      expect(screen.getByRole("checkbox")).toBeChecked();
-      await userEvent.click(screen.getByRole("checkbox"));
+      expect(screen.getByRole("switch")).toBeChecked();
+      await userEvent.click(screen.getByRole("switch"));
 
       expect(onChange).toHaveBeenCalledWith(false);
     });
@@ -137,7 +137,7 @@ describe("SwitchWithSetByEnvVar", () => {
 
   it("should pass additional props to Switch component", () => {
     setup({ disabled: true });
-    const switchElement = screen.getByRole("checkbox");
+    const switchElement = screen.getByRole("switch");
     expect(switchElement).toBeDisabled();
   });
 });

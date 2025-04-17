@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, within } from "__support__/ui";
 
 import { type SetupProps, setup as baseSetup } from "./setup";
 
@@ -63,7 +63,7 @@ describe("Onboarding (EE with token)", () => {
       const progressCopy = within(alertItem).getByText(/Progress bar alerts/);
       const resultCopy = within(alertItem).getByText(/Results alerts/);
 
-      [goalCopy, progressCopy, resultCopy].forEach(copy => {
+      [goalCopy, progressCopy, resultCopy].forEach((copy) => {
         expect(copy).not.toHaveAttribute("href");
       });
     });

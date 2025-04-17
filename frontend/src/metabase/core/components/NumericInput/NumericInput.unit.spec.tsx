@@ -1,6 +1,7 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useCallback, useState } from "react";
+
+import { render, screen } from "__support__/ui";
 
 import type { NumericInputProps } from "./NumericInput";
 import NumericInput from "./NumericInput";
@@ -9,9 +10,9 @@ const NumericInputTest = ({ onChange, ...props }: NumericInputProps) => {
   const [value, setValue] = useState<number>();
 
   const handleChange = useCallback(
-    (value?: number) => {
+    (value: number | undefined, inputValue: string) => {
       setValue(value);
-      onChange?.(value);
+      onChange?.(value, inputValue);
     },
     [onChange],
   );
@@ -26,7 +27,7 @@ describe("NumericInput", () => {
     render(<NumericInputTest onChange={onChange} />);
     await userEvent.type(screen.getByRole("textbox"), "123");
 
-    expect(onChange).toHaveBeenLastCalledWith(123);
+    expect(onChange).toHaveBeenLastCalledWith(123, "123");
   });
 
   it("should clear number", async () => {
@@ -36,6 +37,6 @@ describe("NumericInput", () => {
     await userEvent.type(screen.getByRole("textbox"), "123");
     await userEvent.clear(screen.getByRole("textbox"));
 
-    expect(onChange).toHaveBeenLastCalledWith(undefined);
+    expect(onChange).toHaveBeenLastCalledWith(undefined, "");
   });
 });

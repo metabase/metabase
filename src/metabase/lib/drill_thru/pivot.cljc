@@ -129,8 +129,6 @@
                column
                (some? value)
                (lib.underlying/aggregation-sourced? query column)
-               ;; TODO fix this drill thru and remove this check (metabase#52236)
-               (not (lib.underlying/strictly-underlying-aggregation? query column))
                (-> (lib.aggregation/aggregations query stage-number) count pos?))
       (let [breakout-pivot-types (permitted-pivot-types query stage-number)
             pivots               (into {} (for [pivot-type breakout-pivot-types
@@ -139,17 +137,17 @@
                                                 :when (not-empty columns)]
                                             [pivot-type columns]))]
         (when-not (empty? pivots)
-          {:lib/type   :metabase.lib.drill-thru/drill-thru
-           :type       :drill-thru/pivot
-           :dimensions dimensions
-           :pivots     pivots})))))
+          {:lib/type     :metabase.lib.drill-thru/drill-thru
+           :type         :drill-thru/pivot
+           :dimensions   dimensions
+           :pivots       pivots
+           :stage-number stage-number})))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/pivot
   [_query _stage-number drill-thru]
   (select-keys drill-thru [:many-pks? :object-id :type]))
 
 ;; Note that pivot drills have specific public functions for accessing the nested pivoting options.
-;; Therefore the [[drill-thru-info-method]] is just the default `{:type :drill-thru/pivot}`.
 
 (mu/defn pivot-types :- [:sequential ::lib.schema.drill-thru/pivot-types]
   "A helper for the FE. Returns the set of pivot types (category, location, time) that apply to this drill-thru."
@@ -165,9 +163,10 @@
   (get-in drill-thru [:pivots pivot-type]))
 
 (defn- breakouts->filters [query stage-number {:keys [column value] :as _dimension}]
-  (-> query
-      (lib.breakout/remove-existing-breakouts-for-column stage-number column)
-      (lib.filter/filter stage-number (lib.filter/= column value))))
+  (let [resolved-column (lib.drill-thru.common/breakout->resolved-column query stage-number column)]
+    (-> query
+        (lib.breakout/remove-existing-breakouts-for-column stage-number column)
+        (lib.filter/filter stage-number (lib.filter/= resolved-column value)))))
 
 ;; Pivot drills are in play when clicking an aggregation cell. Pivoting is applied by:
 ;; 1. For each "dimension", ie. the specific values for all breakouts at the originally clicked cell:
@@ -175,7 +174,9 @@
 ;;     b. Go through the breakouts, and remove any that match this dimension from the query.
 ;; 2. Add a new breakout for the selected column.
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/pivot
-  [query _stage-number drill-thru & [column]]
-  (let [stage-number (lib.underlying/top-level-stage-number query)
-        filtered (reduce #(breakouts->filters %1 stage-number %2) query (:dimensions drill-thru))]
+  [query
+   _stage-number
+   {:keys [stage-number dimensions] :as _drill-thru}
+   & [column]]
+  (let [filtered (reduce #(breakouts->filters %1 stage-number %2) query dimensions)]
     (lib.breakout/breakout filtered stage-number column)))

@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+import { render, screen } from "__support__/ui";
 
 import type { FontWidgetProps } from "./FontWidget";
 import FontWidget from "./FontWidget";
@@ -74,7 +75,7 @@ const getSettingValues = (
 });
 
 async function clickSelect(text: string) {
-  const input = screen.getByRole("searchbox");
+  const input = screen.getByRole("textbox");
   expect(input).toHaveValue(text);
   await userEvent.click(input);
 }

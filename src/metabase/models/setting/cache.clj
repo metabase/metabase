@@ -10,6 +10,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
+   (java.util.concurrent.atomic AtomicLong)
    (java.util.concurrent.locks ReentrantLock)))
 
 (set! *warn-on-reflection* true)
@@ -123,12 +124,12 @@
   "How often we should check whether the Settings cache is out of date (which requires a DB call)?"
   (u/minutes->ms 1))
 
-(defonce ^:private last-update-check (atom 0))
+(defonce ^:private ^AtomicLong last-update-check (AtomicLong. 0))
 
 (defn- time-for-another-update-check?
   "Has it has been more than a minute since the last time we checked for updates?"
   []
-  (> (- (System/currentTimeMillis) @last-update-check)
+  (> (quot (- (System/nanoTime) (.get last-update-check)) 1000000)
      cache-update-check-interval-ms))
 
 (defn restore-cache!
@@ -158,7 +159,7 @@
       ;; attempt to acquire the lock. Returns immediately if lock is already held.
       (when (.tryLock restore-cache-lock)
         (try
-          (reset! last-update-check (System/currentTimeMillis))
+          (.set last-update-check (System/nanoTime))
           (when (cache-out-of-date?)
             (restore-cache!))
           (finally

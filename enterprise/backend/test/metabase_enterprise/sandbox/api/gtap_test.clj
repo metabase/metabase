@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.http-client :as client]
-   [metabase.models.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.test :as mt]
@@ -175,7 +175,7 @@
                    (mt/user-http-request :crowberto :get 404 (format "mt/gtap/%s" id))))))))))
 
 (deftest update-gtap-test
-  (testing "PUT /api/mt/gtap"
+  (testing "PUT /api/mt/gtap/:id"
     (mt/with-temp [:model/Table            {table-id :id} {}
                    :model/PermissionsGroup {group-id :id} {}
                    :model/Card             {card-id :id}  {}]

@@ -7,6 +7,7 @@ import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import CS from "metabase/css/core/index.css";
 import { isTableDisplay } from "metabase/lib/click-behavior";
+import { Box, Button, Icon } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { clickBehaviorIsValid } from "metabase-lib/v1/parameters/utils/click-behavior";
 import type {
@@ -15,15 +16,10 @@ import type {
   DashboardCard,
 } from "metabase-types/api";
 
+import LinkOptionsS from "../LinkOptions/LinkOptions.module.css";
 import { SidebarItem } from "../SidebarItem";
 
 import { CustomLinkText } from "./CustomLinkText";
-import {
-  DoneButton,
-  FormDescription,
-  PickerIcon,
-  PickerItemName,
-} from "./CustomURLPicker.styled";
 import { ValuesYouCanReference } from "./ValuesYouCanReference";
 
 interface Props {
@@ -72,15 +68,28 @@ export function CustomURLPicker({
     <ModalWithTrigger
       isInitiallyOpen={!hasLinkTemplate}
       triggerElement={
-        <SidebarItem.Selectable isSelected padded={false}>
-          <PickerIcon name="link" />
-          <SidebarItem.Content>
-            <PickerItemName>
+        <Button.Group>
+          <Button
+            justify="flex-start"
+            leftSection={<Icon name="link" />}
+            size="lg"
+            variant="filled"
+            classNames={{
+              root: LinkOptionsS.ButtonRoot,
+            }}
+          >
+            <SidebarItem.Name>
               {hasLinkTemplate ? clickBehavior.linkTemplate : t`URL`}
-            </PickerItemName>
-            <SidebarItem.CloseIcon onClick={handleReset} />
-          </SidebarItem.Content>
-        </SidebarItem.Selectable>
+            </SidebarItem.Name>
+          </Button>
+          <Button
+            onClick={handleReset}
+            miw="3rem"
+            size="lg"
+            variant="filled"
+            rightSection={<Icon name="close" />}
+          />
+        </Button.Group>
       }
     >
       {({ onClose }: { onClose: () => void }) => (
@@ -88,9 +97,9 @@ export function CustomURLPicker({
           title={t`Enter a URL to link to`}
           onClose={hasLinkTemplate ? onClose : undefined}
         >
-          <FormDescription>
+          <Box component="span" mb="md">
             {t`You can insert the value of a column or dashboard filter using its name, like this: {{some_column}}`}
-          </FormDescription>
+          </Box>
           <InputBlurChange
             autoFocus
             value={url}
@@ -105,15 +114,17 @@ export function CustomURLPicker({
             />
           )}
           <ValuesYouCanReference dashcard={dashcard} parameters={parameters} />
-          <DoneButton
-            primary
+          <Button
+            ml="auto"
+            mt="xl"
+            variant="filled"
             type="button"
             onClick={() => {
               handleSubmit();
               onClose();
             }}
             disabled={!canSelect}
-          >{t`Done`}</DoneButton>
+          >{t`Done`}</Button>
         </ModalContent>
       )}
     </ModalWithTrigger>

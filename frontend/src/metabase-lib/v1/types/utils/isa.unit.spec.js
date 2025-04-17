@@ -14,6 +14,7 @@ import {
   isDimension,
   isInteger,
   isMetric,
+  isNumber,
   isString,
 } from "metabase-lib/v1/types/utils/isa";
 import { createMockColumn } from "metabase-types/api/mocks";
@@ -39,7 +40,7 @@ describe("isa", () => {
       createMockColumn({ base_type: TYPE.Integer }),
       createMockColumn({ base_type: TYPE.BigInteger }),
       createMockColumn({ base_type: TYPE.BigInteger, name: "solid" }),
-    ])("should should return true for numeric columns", column => {
+    ])("should should return true for numeric columns", (column) => {
       expect(isMetric(column)).toBe(true);
     });
 
@@ -51,7 +52,7 @@ describe("isa", () => {
       createMockColumn({ base_type: TYPE.BigInteger, name: "orders-id" }),
     ])(
       "should should return false for breakout, ID, non-summable columns",
-      column => {
+      (column) => {
         expect(isMetric(column)).toBe(false);
       },
     );
@@ -169,6 +170,40 @@ describe("isa", () => {
 
     it("should know that booleans are not strings", () => {
       expect(isString({ base_type: TYPE.Boolean })).toEqual(false);
+    });
+  });
+
+  describe("isNumber", () => {
+    it("should identify numeric base types", () => {
+      expect(isNumber({ base_type: TYPE.Integer })).toBe(true);
+      expect(isNumber({ base_type: TYPE.Float })).toBe(true);
+      expect(isNumber({ base_type: TYPE.Decimal })).toBe(true);
+    });
+
+    it("should identify numeric types with category semantic type (metabase#46750) (metabase#30431)", () => {
+      expect(
+        isNumber({ base_type: TYPE.Integer, semantic_type: TYPE.Category }),
+      ).toBe(true);
+    });
+
+    it("should identify numeric types with number semantic type", () => {
+      expect(
+        isNumber({ base_type: TYPE.Float, semantic_type: TYPE.Number }),
+      ).toBe(true);
+    });
+
+    it("should return false for non-numeric types", () => {
+      expect(isNumber({ base_type: TYPE.Text })).toBe(false);
+      expect(isNumber({ base_type: TYPE.Boolean })).toBe(false);
+    });
+
+    it("should return false for numeric types with non-numeric/category semantic types", () => {
+      expect(
+        isNumber({ base_type: TYPE.Integer, semantic_type: TYPE.ZipCode }),
+      ).toBe(false);
+      expect(
+        isNumber({ base_type: TYPE.Integer, semantic_type: TYPE.PK }),
+      ).toBe(false);
     });
   });
 });

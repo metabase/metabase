@@ -5,13 +5,13 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useGetTasksInfoQuery } from "metabase/api";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 
-const renderTriggersTable = triggers => {
+const renderTriggersTable = (triggers) => {
   return (
     <table className={cx(AdminS.ContentTable, CS.mt2)}>
       <thead>
@@ -31,7 +31,7 @@ const renderTriggersTable = triggers => {
       </thead>
       <tbody>
         {triggers &&
-          triggers.map(trigger => (
+          triggers.map((trigger) => (
             <tr key={trigger.key}>
               <td className={CS.textBold}>{trigger.key}</td>
               <td>{trigger.description}</td>
@@ -51,7 +51,7 @@ const renderTriggersTable = triggers => {
   );
 };
 
-export const JobTriggersModal = props => {
+export const JobTriggersModal = (props) => {
   const dispatch = useDispatch();
   const { data, error, isFetching } = useGetTasksInfoQuery();
 

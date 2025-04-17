@@ -58,12 +58,12 @@ export function PermissionsEditorContent({
       return null;
     }
 
-    return entities.filter(entity =>
+    return entities.filter((entity) =>
       entity.name.toLowerCase().includes(trimmedFilter),
     );
   }, [entities, debouncedFilter]);
 
-  const handleFilterChange = e => setFilter(e.target.value);
+  const handleFilterChange = (e) => setFilter(e.target.value);
 
   return (
     <PermissionEditorContentRoot data-testid="permissions-editor">
@@ -89,7 +89,7 @@ export function PermissionsEditorContent({
           onChange={handleFilterChange}
           onResetClick={() => setFilter("")}
           value={filter}
-          leftIcon="search"
+          leftSection="search"
         />
       </EditorFilterContainer>
 

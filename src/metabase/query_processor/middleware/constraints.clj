@@ -34,9 +34,7 @@
   :type           :integer
   :database-local :allowed
   :audit          :getter
-  :doc "Must be less than 1048575, and less than the number configured in MB_AGGREGATED_QUERY_ROW_LIMIT.
-        This environment variable also affects how many rows Metabase returns in dashboard subscription attachments.
-        See also MB_AGGREGATED_QUERY_ROW_LIMIT.")
+  :doc "Must be less than 1048575, and less than the number configured in MB_AGGREGATED_QUERY_ROW_LIMIT. See also MB_AGGREGATED_QUERY_ROW_LIMIT.")
 
 (setting/defsetting aggregated-query-row-limit
   (deferred-tru "Maximum number of rows to return for aggregated queries via the API.")
@@ -45,9 +43,7 @@
   :type           :integer
   :database-local :allowed
   :audit          :getter
-  :doc "Must be less than 1048575. This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.
-  This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.
-  See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.")
+  :doc "Must be less than 1048575. See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.")
 
 (defn default-query-constraints
   "Default map of constraints that we apply on dataset queries executed by the api."

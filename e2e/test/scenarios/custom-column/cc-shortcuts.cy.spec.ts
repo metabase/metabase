@@ -1,26 +1,24 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 function selectExtractColumn() {
-  cy.findByTestId("expression-suggestions-list").within(() => {
-    cy.findByText("Extract columns").click();
-  });
+  H.popover().findByText("Extract columns").click();
 }
 
 function selectCombineColumns() {
-  cy.findByTestId("expression-suggestions-list").within(() => {
-    cy.findByText("Combine columns").click();
-  });
+  H.popover().findByText("Combine columns").click();
 }
 
 function selectColumn(index: number, table: string, name?: string) {
   H.expressionEditorWidget().within(() => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("column-input").eq(index).click();
   });
 
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.popover()
     .last()
     .within(() => {
@@ -137,10 +135,7 @@ describe("scenarios > question > custom column > expression shortcuts > extract"
         .click();
       H.popover().findAllByRole("button").contains(extraction.name).click();
 
-      cy.findByTestId("expression-editor-textfield").should(
-        "contain",
-        `${extraction.fn}(`,
-      );
+      H.CustomExpressionEditor.value().should("contain", `${extraction.fn}(`);
 
       H.expressionEditorWidget()
         .findByTestId("expression-name")
@@ -162,6 +157,7 @@ describe("scenarios > question > custom column > expression shortcuts > extract"
 
     H.expressionEditorWidget().button("Done").click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("notebook-cell-item").last().click();
     selectExtractColumn();
 
@@ -239,6 +235,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
   it("should be possible to select a combine columns shortcut", () => {
     H.openOrdersTable({ mode: "notebook", limit: 5 });
     H.addCustomColumn();
+
     selectCombineColumns();
 
     selectColumn(0, "Total");
@@ -265,8 +262,8 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
 
       cy.button("Done").click();
 
-      cy.findByTestId("expression-editor-textfield").should(
-        "contain",
+      H.CustomExpressionEditor.value().should(
+        "equal",
         'concat([Total], "__", [Product → Rating])',
       );
       cy.findByTestId("expression-name").should(
@@ -289,7 +286,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
       cy.findByText("Select columns to combine").click();
     });
 
-    cy.get(".ace_text-input").should("have.value", "\n\n");
+    H.CustomExpressionEditor.value().should("equal", "");
     cy.findByTestId("expression-name").should("have.value", "");
   });
 
@@ -308,6 +305,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
       "123.45678901234567 123.45678901234567 email@example.com",
     );
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByLabelText("Remove column").last().click();
 
     cy.findByTestId("combine-example").should(

@@ -2,8 +2,8 @@
   "Native query snippet (/api/native-query-snippet) endpoints."
   (:require
    [clojure.data :as data]
-   [compojure.core :refer [GET POST PUT]]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.models.native-query-snippet :as native-query-snippet]
    [metabase.util :as u]
@@ -19,21 +19,20 @@
   (-> (api/read-check (t2/select-one :model/NativeQuerySnippet :id id))
       (t2/hydrate :creator)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "Fetch all snippets"
-  [archived]
-  {archived [:maybe ms/BooleanValue]}
+  [_route-params
+   {:keys [archived]} :- [:map
+                          [:archived {:default false} [:maybe ms/BooleanValue]]]]
   (let [snippets (t2/select :model/NativeQuerySnippet
                             :archived archived
                             {:order-by [[:%lower.name :asc]]})]
     (t2/hydrate (filter mi/can-read? snippets) :creator)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id"
+(api.macros/defendpoint :get "/:id"
   "Fetch native query snippet with ID."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (hydrated-native-query-snippet id))
 
 (defn- check-snippet-name-is-unique [snippet-name]
@@ -41,14 +40,15 @@
     (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
                     {:status-code 400}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Create a new `NativeQuerySnippet`."
-  [:as {{:keys [content description name collection_id]} :body}]
-  {content       :string
-   description   [:maybe :string]
-   name          native-query-snippet/NativeQuerySnippetName
-   collection_id [:maybe ms/PositiveInt]}
+  [_route-params
+   _query-params
+   {:keys [content description name collection_id]} :- [:map
+                                                        [:content       :string]
+                                                        [:description   {:optional true} [:maybe :string]]
+                                                        [:name          native-query-snippet/NativeQuerySnippetName]
+                                                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
   (check-snippet-name-is-unique name)
   (let [snippet {:content       content
                  :creator_id    api/*current-user-id*
@@ -74,16 +74,15 @@
       (t2/update! :model/NativeQuerySnippet id changes))
     (hydrated-native-query-snippet id)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/:id"
+(api.macros/defendpoint :put "/:id"
   "Update an existing `NativeQuerySnippet`."
-  [id :as {{:keys [archived content description name collection_id] :as body} :body}]
-  {id            ms/PositiveInt
-   archived      [:maybe :boolean]
-   content       [:maybe :string]
-   description   [:maybe :string]
-   name          [:maybe native-query-snippet/NativeQuerySnippetName]
-   collection_id [:maybe ms/PositiveInt]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   body :- [:map
+            [:archived      {:optional true} [:maybe :boolean]]
+            [:content       {:optional true} [:maybe :string]]
+            [:description   {:optional true} [:maybe :string]]
+            [:name          {:optional true} [:maybe native-query-snippet/NativeQuerySnippetName]]
+            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
   (check-perms-and-update-snippet! id body))
-
-(api/define-routes)

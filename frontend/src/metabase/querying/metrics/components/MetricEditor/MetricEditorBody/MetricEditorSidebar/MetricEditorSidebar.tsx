@@ -8,9 +8,9 @@ import { Box, Button, Icon } from "metabase/ui";
 
 export function MetricEditorSidebar() {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-  const docsUrl = useSelector(state =>
+  const docsUrl = useSelector((state) =>
     getDocsUrl(state, {
-      page: "data-modeling/segments-and-metrics",
+      page: "data-modeling/metrics",
       anchor: "creating-a-metric",
     }),
   );
@@ -22,7 +22,7 @@ export function MetricEditorSidebar() {
           component={ExternalLink}
           href={docsUrl}
           variant="subtle"
-          rightIcon={<Icon name="external" size={16} />}
+          rightSection={<Icon name="external" size={16} />}
         >
           {t`Docs`}
         </Button>

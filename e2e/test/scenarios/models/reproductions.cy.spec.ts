@@ -1,8 +1,9 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_MODEL_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import type { CardId, FieldReference } from "metabase-types/api";
@@ -14,16 +15,7 @@ describe("issue 29943", () => {
     getHeaderCell(1, "Total").should("exist");
     getHeaderCell(2, "Custom").should("exist");
 
-    // drag & drop the Custom column 100 px to the left to switch it with Total column
-    cy.findAllByTestId("header-cell")
-      .contains("Custom")
-      .then(customColumn => {
-        const rect = customColumn[0].getBoundingClientRect();
-        cy.wrap(customColumn)
-          .trigger("mousedown")
-          .trigger("mousemove", { clientX: rect.x - 100, clientY: rect.y })
-          .trigger("mouseup");
-      });
+    H.moveDnDKitElement(H.tableHeaderColumn("Custom"), { horizontal: -100 });
 
     getHeaderCell(1, "Custom").should("exist");
     getHeaderCell(2, "Total").should("exist");
@@ -31,7 +23,7 @@ describe("issue 29943", () => {
 
   function assertColumnSelected(columnIndex: number, name: string) {
     getHeaderCell(columnIndex, name)
-      .find("div")
+      .closest("[data-testid=model-column-header-content]")
       .should("have.css", "background-color")
       .and("eq", "rgb(80, 158, 227)");
 
@@ -39,10 +31,9 @@ describe("issue 29943", () => {
   }
 
   function getHeaderCell(columnIndex: number, name: string) {
-    return cy
-      .findAllByTestId("header-cell")
-      .eq(columnIndex)
-      .should("have.text", name);
+    // eslint-disable-next-line no-unsafe-element-filtering
+    cy.findAllByTestId("header-cell").eq(columnIndex).should("have.text", name);
+    return H.tableHeaderColumn(name);
   }
 
   beforeEach(() => {
@@ -112,16 +103,8 @@ describe("issue 35711", () => {
     cy.findAllByTestId("header-cell").eq(4).should("have.text", "Tax");
     cy.findAllByTestId("header-cell").eq(5).should("have.text", "Total");
 
-    // drag & drop the Total column 100 px to the left to switch it with Tax column
-    cy.findAllByTestId("header-cell")
-      .contains("Total")
-      .then(totalColumn => {
-        const rect = totalColumn[0].getBoundingClientRect();
-        cy.wrap(totalColumn)
-          .trigger("mousedown")
-          .trigger("mousemove", { clientX: rect.x - 100, clientY: rect.y })
-          .trigger("mouseup");
-      });
+    // drag & drop the Total column 80 px to the left to switch it with Tax column
+    H.moveDnDKitElement(H.tableHeaderColumn("Total"), { horizontal: -80 });
 
     cy.findAllByTestId("header-cell").eq(4).should("have.text", "Total");
     cy.findAllByTestId("header-cell").eq(5).should("have.text", "Tax");
@@ -353,7 +336,7 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
     H.saveQuestion("Nested Model", { wrapId: true, idAlias: "nestedModelId" });
 
     cy.log("Make sure this works for the deeply nested models as well");
-    cy.get("@nestedModelId").then(nestedModelId => {
+    cy.get("@nestedModelId").then((nestedModelId) => {
       H.createQuestion(
         {
           type: "model",
@@ -460,7 +443,7 @@ describe.skip("issue 40635", () => {
     });
 
     H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText("Select none").click();
+    H.popover().findByText("Select all").click();
 
     H.join();
 
@@ -473,7 +456,7 @@ describe.skip("issue 40635", () => {
       .button("Pick columns")
       .click();
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByText("ID").click();
     });
 
@@ -488,7 +471,7 @@ describe.skip("issue 40635", () => {
       .button("Pick columns")
       .click();
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByText("ID").click();
     });
 
@@ -535,6 +518,7 @@ describe.skip("issue 40635", () => {
   }
 
   function assertTableHeader(index: number, name: string) {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
   }
 
@@ -766,7 +750,7 @@ describe("issue 33844", () => {
 
   function testModelMetadata(isNew: boolean) {
     cy.log("make a column visible only in detail views");
-    cy.findByTestId("detail-shortcut").should("not.exist");
+    cy.findAllByTestId("detail-shortcut").should("not.exist");
     H.tableHeaderClick("ID");
     cy.findByLabelText("Detail views only").click();
     cy.button(isNew ? "Save" : "Save changes").click();
@@ -779,7 +763,7 @@ describe("issue 33844", () => {
     }
     H.tableInteractive().findByText("User ID").should("be.visible");
     H.tableInteractive().findByText("ID").should("not.exist");
-    cy.findAllByTestId("detail-shortcut").first().click();
+    H.openObjectDetail(0);
     H.modal().within(() => {
       cy.findByText("Order").should("be.visible");
       cy.findByText("ID").should("be.visible");
@@ -854,7 +838,7 @@ describe("issue 45924", () => {
   });
 });
 
-H.describeEE("issue 43088", () => {
+describe("issue 43088", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -889,18 +873,6 @@ describe("issue 39993", () => {
     },
   };
 
-  function dragAndDrop(column: string, distance: number) {
-    cy.findAllByTestId("header-cell")
-      .contains(column)
-      .then(element => {
-        const rect = element[0].getBoundingClientRect();
-        cy.wrap(element)
-          .trigger("mousedown")
-          .trigger("mousemove", { clientX: rect.x + distance, clientY: rect.y })
-          .trigger("mouseup");
-      });
-  }
-
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -914,7 +886,7 @@ describe("issue 39993", () => {
     H.openQuestionActions();
     H.popover().findByText("Edit metadata").click();
     cy.log("drag & drop the custom column 100 px to the left");
-    dragAndDrop(columnName, -100);
+    H.moveDnDKitElement(H.tableHeaderColumn(columnName), { horizontal: -100 });
     cy.button("Save changes").click();
     cy.wait("@updateModel");
     cy.findAllByTestId("header-cell").eq(0).should("have.text", "Exp");
@@ -965,17 +937,8 @@ describe("issue 34574", () => {
       cy.log("Make sure we immediately render the proper markdown");
       cy.findByTestId("editable-text").get("textarea").should("not.exist");
       cy.findByTestId("editable-text").within(assertMarkdownPreview);
+      cy.findByLabelText("Close").click();
     });
-
-    cy.log(
-      "Make sure the markdown is properly preserved in the model details page",
-    );
-    // Let redux handle async actions so that they won't interfere with the action
-    // triggered by the next click. Test will flake without this due to wrong navigation.
-    cy.wait(1);
-    cy.findByRole("link", { name: "See more about this model" }).click();
-    cy.wait("@fks");
-    cy.findByLabelText("Description").within(assertMarkdownPreview);
 
     cy.log(
       "Make sure the description is present in the collection entry tooltip",
@@ -1149,9 +1112,7 @@ describe("issue 34514", () => {
     H.entityPickerModal().should("not.exist");
     cy.button("Save").should("be.enabled");
     H.getNotebookStep("data").findByText("Orders").should("be.visible");
-    cy.findByTestId("TableInteractive-root")
-      .findByText("39.72")
-      .should("be.visible");
+    H.tableInteractive().findByText("39.72").should("be.visible");
   }
 
   function assertMetadataTabState() {
@@ -1170,12 +1131,10 @@ describe("issue 34514", () => {
     H.getNotebookStep("data")
       .findByText("Pick your starting data")
       .should("be.visible");
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("We're experiencing server issues").should("not.exist");
-      cy.findByText("Here's where your results will appear").should(
-        "be.visible",
-      );
+      cy.findByText("Query results will appear here.").should("be.visible");
     });
   }
 });
@@ -1204,6 +1163,7 @@ describe.skip("issues 28270, 33708", () => {
     H.tableHeaderClick("Title");
     H.popover().findByText("Filter by this column").click();
     H.popover().findByLabelText("Filter operator").click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Contains").click();
     H.popover().findByLabelText("Filter value").type("a,");
     H.popover().button("Add filter").click();
@@ -1360,5 +1320,144 @@ describe("issue 37300", () => {
 
       cy.findByText("No results!").should("be.visible");
     });
+  });
+});
+
+describe("issue 32037", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    cy.visit("/browse/models");
+    cy.findByLabelText("Orders Model").click();
+    H.tableInteractive().should("be.visible");
+    cy.location("pathname").as("modelPathname");
+  });
+
+  it("should show unsaved changes modal and allow to discard changes when editing model's query (metabase#32037)", () => {
+    H.openQuestionActions("Edit query definition");
+    cy.button("Save changes").should("be.disabled");
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByText("ID").click();
+      cy.findByPlaceholderText("Enter an ID").type("1").blur();
+      cy.button("Add filter").click();
+    });
+    cy.button("Save changes").should("be.enabled");
+    cy.go("back");
+
+    verifyDiscardingChanges();
+  });
+
+  it("should show unsaved changes modal and allow to discard changes when editing model's metadata (metabase#32037)", () => {
+    H.openQuestionActions("Edit metadata");
+    cy.button("Save changes").should("be.disabled");
+    cy.findByLabelText("Description").type("123").blur();
+    cy.button("Save changes").should("be.enabled");
+    cy.go("back");
+
+    verifyDiscardingChanges();
+  });
+
+  function verifyDiscardingChanges() {
+    H.modal().within(() => {
+      cy.findByText("Discard your changes?").should("be.visible");
+      cy.findByText("Discard changes").click();
+    });
+
+    H.tableInteractive().should("be.visible");
+    cy.button("Save changes").should("not.exist");
+    cy.get("@modelPathname").then((modelPathname) => {
+      cy.location("pathname").should("eq", modelPathname);
+    });
+  }
+});
+
+describe("issue 51925", () => {
+  function setLinkDisplayType() {
+    cy.findByTestId("chart-settings-widget-view_as").findByText("Link").click();
+  }
+
+  function linkTextInput() {
+    return cy
+      .findByTestId("chart-settings-widget-link_text")
+      .findByRole("combobox");
+  }
+
+  function linkUrlInput() {
+    return cy
+      .findByTestId("chart-settings-widget-link_url")
+      .findByRole("combobox");
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it('should allow to set "Display as Link" options independently for each column (metabase#51925)', () => {
+    H.visitModel(ORDERS_MODEL_ID);
+    H.openQuestionActions("Edit metadata");
+    H.tableInteractive().findByText("User ID").click();
+    H.rightSidebar().within(() => {
+      setLinkDisplayType();
+      linkTextInput().type("User {{USER_ID}}", {
+        parseSpecialCharSequences: false,
+      });
+      linkUrlInput().type("https://example.com/{{USER_ID}}", {
+        parseSpecialCharSequences: false,
+      });
+    });
+    H.tableInteractive().findByText("Product ID").click();
+    H.rightSidebar().within(() => {
+      setLinkDisplayType();
+      linkTextInput().type("Product {{PRODUCT_ID}}", {
+        parseSpecialCharSequences: false,
+      });
+      linkUrlInput().type("https://example.com/{{PRODUCT_ID}}", {
+        parseSpecialCharSequences: false,
+      });
+    });
+    H.tableInteractive().findByText("User ID").click();
+    H.rightSidebar().within(() => {
+      linkTextInput().should("have.value", "User {{USER_ID}}");
+      linkUrlInput().should("have.value", "https://example.com/{{USER_ID}}");
+    });
+    H.saveMetadataChanges();
+    H.tableInteractive().within(() => {
+      cy.findAllByRole("link", { name: "User 1" })
+        .first()
+        .should("have.attr", "href", "https://example.com/1");
+      cy.findAllByRole("link", { name: "Product 6" })
+        .first()
+        .should("have.attr", "href", "https://example.com/6");
+    });
+  });
+});
+
+describe("issue 56698", () => {
+  beforeEach(() => {
+    H.restore();
+  });
+
+  it("should create an editable ad-hoc query based on a read-only native model (metabase#56698)", () => {
+    cy.log("create a native model");
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(
+      {
+        name: "Native model",
+        native: { query: "select 1 union all select 2" },
+        type: "model",
+      },
+      { wrapId: true, idAlias: "modelId" },
+    );
+
+    cy.log("verify that we create an editable ad-hoc query");
+    cy.signIn("readonlynosql");
+    cy.get("@modelId").then((modelId) => H.visitModel(Number(modelId)));
+    H.assertQueryBuilderRowCount(2);
+    H.summarize();
+    H.rightSidebar().button("Done").click();
+    H.assertQueryBuilderRowCount(1);
   });
 });

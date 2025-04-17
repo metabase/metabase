@@ -1,48 +1,74 @@
 (ns metabase.api.cache
   (:require
-   [clojure.walk :as walk]
-   [compojure.core :refer [GET]]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
+   [metabase.config :as config]
    [metabase.models.cache-config :as cache-config]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [tru trun]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 ;; Data shape
 
-(defn- drop-internal-fields
-  "See `metabase-enterprise.cache.strategies/CacheStrategy`"
-  [schema]
-  (walk/prewalk
-   (fn [x]
-     (if (and (vector? x) (= (first x) :map))
-       (into [] (remove #(:internal (meta %))) x)
-       x))
-   schema))
+(mr/def ::cache-strategy.base
+  [:map
+   [:type [:enum :nocache :ttl :duration :schedule]]])
 
-;; TODO: figure out how to combine `defenterprise` and `defendpoint` - right now OpenAPI only "sees" OSS version of
-;; the schema, so docs for enterprise version won't be correct until we figure out the way to support this
-(defenterprise CacheStrategy
-  "Schema for a caching strategy"
-  metabase-enterprise.cache.strategies
-  []
+(mr/def ::cache-strategy.nocache
+  [:map ; not closed due to a way it's used in tests for clarity
+   [:type [:= :nocache]]])
+
+(mr/def ::cache-strategy.ttl
+  [:map {:closed true}
+   [:type            [:= :ttl]]
+   [:multiplier      ms/PositiveInt]
+   [:min_duration_ms ms/IntGreaterThanOrEqualToZero]])
+
+(mr/def ::cache-strategy.oss
+  "Schema for a caching strategy (OSS)"
   [:and
-   [:map
-    [:type [:enum :nocache :ttl]]]
+   ::cache-strategy.base
    [:multi {:dispatch :type}
-    [:nocache  [:map ;; not closed due to a way it's used in tests for clarity
-                [:type keyword?]]]
-    [:ttl      [:map {:closed true}
-                [:type [:= :ttl]]
-                [:multiplier ms/PositiveInt]
-                [:min_duration_ms ms/IntGreaterThanOrEqualToZero]]]]])
+    [:nocache ::cache-strategy.nocache]
+    [:ttl     ::cache-strategy.ttl]]])
 
-(defn CacheStrategyAPI
-  "Schema for a caching strategy for the API"
-  []
-  (drop-internal-fields (CacheStrategy)))
+(mr/def ::cache-strategy.ee.duration
+  [:map {:closed true}
+   [:type                  [:= :duration]]
+   [:duration              ms/PositiveInt]
+   [:unit                  [:enum "hours" "minutes" "seconds" "days"]]
+   [:refresh_automatically {:optional true} [:maybe :boolean]]])
+
+(mr/def ::cache-strategy.ee.schedule
+  [:map {:closed true}
+   [:type                  [:= :schedule]]
+   [:schedule              u.cron/CronScheduleString]
+   [:refresh_automatically {:optional true} [:maybe :boolean]]])
+
+(mr/def ::cache-strategy.ee
+  "Schema for a caching strategy in EE when we have an premium token with `:cache-granular-controls`."
+  [:and
+   ::cache-strategy.base
+   [:multi {:dispatch :type}
+    [:nocache  ::cache-strategy.nocache]
+    [:ttl      ::cache-strategy.ttl]
+    [:duration ::cache-strategy.ee.duration]
+    [:schedule ::cache-strategy.ee.schedule]]])
+
+(mr/def ::cache-strategy
+  (if config/ee-available?
+    [:multi
+     {:dispatch (fn [_value]
+                  (if (premium-features/has-feature? :cache-granular-controls)
+                    :ee
+                    :oss))}
+     [:ee  ::cache-strategy.ee]
+     [:oss ::cache-strategy.oss]]
+    ::cache-strategy.oss))
 
 (defn- assert-valid-models [model ids premium?]
   (cond
@@ -74,48 +100,48 @@
                        "question" :model/Card)
                      id)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "Return cache configuration."
-  [:as {{:strs [model collection id]
-         :or   {model "root"}}
-        :query-params}]
-  {model      (mu/with (ms/QueryVectorOf cache-config/CachingModel)
-                       {:description "Type of model"})
-   collection (mu/with [:maybe ms/PositiveInt]
-                       {:description "Collection id to filter results. Returns everything if not supplied."})
-   id         (mu/with [:maybe ms/PositiveInt]
-                       {:description "Model id to get configuration for."})}
+  [_route-params
+   {:keys [model collection id]}
+   :- [:map
+       [:model      {:default ["root"]} (mu/with (ms/QueryVectorOf cache-config/CachingModel)
+                                                 {:description "Type of model"})]
+       [:collection {:optional true} (mu/with [:maybe ms/PositiveInt]
+                                              {:description "Collection id to filter results. Returns everything if not supplied."})]
+       [:id         {:optional true} (mu/with [:maybe ms/PositiveInt]
+                                              {:description "Model id to get configuration for."})]]]
   (when (and (not (premium-features/enable-cache-granular-controls?))
              (not= model ["root"]))
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
   (check-cache-access (first model) id)
   {:data (cache-config/get-list model collection id)})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/"
+(api.macros/defendpoint :put "/"
   "Store cache configuration."
-  [:as {{:keys [model model_id strategy] :as config} :body}]
-  {model    cache-config/CachingModel
-   model_id ms/IntGreaterThanOrEqualToZero
-   strategy (CacheStrategyAPI)}
+  [_route-params
+   _query-params
+   {:keys [model model_id] :as config} :- [:map
+                                           [:model    cache-config/CachingModel]
+                                           [:model_id ms/IntGreaterThanOrEqualToZero]
+                                           [:strategy ::cache-strategy]]]
   (assert-valid-models model [model_id] (premium-features/enable-cache-granular-controls?))
   (check-cache-access model model_id)
   {:id (cache-config/store! api/*current-user-id* config)})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/"
+(api.macros/defendpoint :delete "/"
   "Delete cache configurations."
-  [:as {{:keys [model model_id]} :body}]
-  {model    cache-config/CachingModel
-   model_id (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)}
+  [_route-params
+   _query-params
+   {:keys [model model_id]} :- [:map
+                                [:model    cache-config/CachingModel]
+                                [:model_id (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]
   (assert-valid-models model model_id (premium-features/enable-cache-granular-controls?))
   (doseq [id model_id] (check-cache-access model id))
   (cache-config/delete! api/*current-user-id* model model_id)
   nil)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/invalidate"
+(api.macros/defendpoint :post "/invalidate"
   "Invalidate cache entries.
 
   Use it like `/api/cache/invalidate?database=1&dashboard=15` (any number of database/dashboard/question can be
@@ -123,12 +149,17 @@
 
   `&include=overrides` controls whenever you want to invalidate cache for a specific cache configuration without
   touching all nested configurations, or you want your invalidation to trickle down to every card."
-  [include database dashboard question]
-  {include   [:maybe {:description "All cache configuration overrides should invalidate cache too"} [:= :overrides]]
-   database  [:maybe {:description "A list of database ids"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
-   dashboard [:maybe {:description "A list of dashboard ids"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
-   question  [:maybe {:description "A list of question ids"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]}
-
+  [_route-params
+   {:keys [include database dashboard question]}
+   :- [:map
+       [:include   {:optional true} [:maybe {:description "All cache configuration overrides should invalidate cache too"}
+                                     [:= :overrides]]]
+       [:database  {:optional true} [:maybe {:description "A list of database ids"}
+                                     (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+       [:dashboard {:optional true} [:maybe {:description "A list of dashboard ids"}
+                                     (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+       [:question  {:optional true} [:maybe {:description "A list of question ids"}
+                                     (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (when-not (premium-features/enable-cache-granular-controls?)
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
 
@@ -149,5 +180,3 @@
                          [false -1] (tru "Nothing to invalidate.")
                          [false 0]  (tru "No cache configuration to invalidate.")
                          [false 1]  (trun "Invalidated cache configuration." "Invalidated {0} cache configurations." cnt))}}))
-
-(api/define-routes)

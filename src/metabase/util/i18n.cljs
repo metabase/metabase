@@ -36,11 +36,11 @@
   [format-string format-string-pl n]
   (let [format-string-esc (escape-format-string format-string)
         strings           (str/split format-string-esc re-param-zero)
-        strings           (if (= (count strings) 1)
-                            [format-string-esc ""]
-                            strings)
-        has-n?            (re-find #".*\{0\}.*" format-string-esc)]
-    (ttag/ngettext (ttag/msgid (clj->js strings) (if has-n? n ""))
+        has-n?            (re-find #".*\{0\}.*" format-string-esc)
+        msg-id            (if has-n?
+                            (ttag/msgid (clj->js strings) n)
+                            (ttag/msgid (clj->js strings)))]
+    (ttag/ngettext msg-id
                    (-> format-string-pl
                        escape-format-string
                        (str/replace re-param-zero (str n)))

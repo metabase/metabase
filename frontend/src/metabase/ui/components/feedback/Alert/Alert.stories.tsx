@@ -35,7 +35,7 @@ const DefaultTemplate = (args: AlertProps) => {
 };
 
 export default {
-  title: "Feedback/Alert",
+  title: "Components/Feedback/Alert",
   component: Alert,
   args,
   argTypes,

@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+import { act, render, screen } from "__support__/ui";
 
 import ChartSettingLinkUrlInput from "./ChartSettingLinkUrlInput";
 
@@ -14,7 +15,9 @@ const OPTIONS = [
   "ZIP",
 ];
 
-const setup = ({ onChange = jest.fn(), value = "", ...props } = {}) => {
+const setup = ({ value = "", ...props } = {}) => {
+  const onChange = jest.fn();
+
   const { rerender } = render(
     <ChartSettingLinkUrlInput
       {...props}
@@ -27,14 +30,15 @@ const setup = ({ onChange = jest.fn(), value = "", ...props } = {}) => {
   const input = screen.getByRole("combobox");
   const getOptions = () => screen.findAllByRole("menuitem");
 
-  return { input, getOptions, rerender };
+  return { input, getOptions, rerender, onChange };
 };
 
 describe("ChartSettingLinkUrlInput", () => {
   it("Shows all options when {{ is typed", async () => {
     const { input, getOptions } = setup();
 
-    await userEvent.type(input, "USE - {{{{");
+    await userEvent.click(input);
+    await userEvent.paste("USE - {{");
 
     const options = await getOptions();
 
@@ -45,8 +49,8 @@ describe("ChartSettingLinkUrlInput", () => {
 
   it("shows filter options while typing", async () => {
     const { input, getOptions } = setup();
-
-    await userEvent.type(input, "USE - {{{{p");
+    await userEvent.click(input);
+    await userEvent.paste("USE - {{p");
 
     const options = await getOptions();
 
@@ -70,47 +74,48 @@ describe("ChartSettingLinkUrlInput", () => {
   });
 
   it("appends the column on selection", async () => {
-    const onChange = jest.fn();
-    const { input, getOptions } = setup({
-      onChange,
-    });
+    const { input, getOptions, onChange } = setup();
 
-    await userEvent.type(input, "Address - {{{{p");
+    await userEvent.click(input);
+    await userEvent.paste("Address - {{p");
 
     const options = await getOptions();
 
     await userEvent.click(options[1]);
-    input.blur();
+    act(() => {
+      input.blur();
+    });
 
     expect(onChange).toHaveBeenCalledWith("Address - {{ZIP}}");
   });
 
   it("supports keyboard navigation to choose selection", async () => {
-    const onChange = jest.fn();
-    const { input, getOptions } = setup({
-      onChange,
-    });
+    const { input, getOptions, onChange } = setup();
 
-    await userEvent.type(input, "Address - {{{{p");
+    await userEvent.click(input);
+    await userEvent.paste("Address - {{p");
 
     const options = await getOptions();
     expect(options).toHaveLength(2);
 
-    await userEvent.type(input, "{arrowdown}{arrowdown}{enter}");
-    input.blur();
+    await userEvent.keyboard("{arrowdown}");
+    await userEvent.keyboard("{arrowdown}");
+    await userEvent.keyboard("{enter}");
+
+    act(() => {
+      input.blur();
+    });
 
     expect(onChange).toHaveBeenCalledWith("Address - {{ZIP}}");
   });
 
   it("handles multiple variables in a single value", async () => {
-    const onChange = jest.fn();
-
-    const { input, getOptions } = setup({
+    const { input, getOptions, onChange } = setup({
       value: "{{STATE}} - ",
-      onChange,
     });
 
-    await userEvent.type(input, "{{{{c");
+    await userEvent.click(input);
+    await userEvent.paste("{{c");
 
     const options = await getOptions();
 
@@ -119,8 +124,30 @@ describe("ChartSettingLinkUrlInput", () => {
     expect(options[1]).toHaveTextContent("SOURCE");
 
     await userEvent.click(options[0]);
-    input.blur();
+    act(() => {
+      input.blur();
+    });
 
     expect(onChange).toHaveBeenCalledWith("{{STATE}} - {{CITY}}");
+  });
+
+  it("should correctly reset the input value when re-rendered with the same empty value", async () => {
+    const { input, rerender, onChange } = setup({
+      value: "",
+    });
+    await userEvent.type(input, "abc");
+    await userEvent.click(document.body);
+    expect(onChange).toHaveBeenCalledWith("abc");
+    expect(onChange).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <ChartSettingLinkUrlInput
+        value=""
+        options={OPTIONS}
+        onChange={onChange}
+      />,
+    );
+    expect(input).toHaveValue("");
+    expect(onChange).toHaveBeenCalledTimes(1);
   });
 });

@@ -4,13 +4,13 @@ import { t } from "ttag";
 
 import { useGetTasksInfoQuery } from "metabase/api";
 import AdminHeader from "metabase/components/AdminHeader";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex } from "metabase/ui";
 
-const renderSchedulerInfo = scheduler => {
+const renderSchedulerInfo = (scheduler) => {
   return (
     scheduler && (
       <Flex align="center">
@@ -20,7 +20,7 @@ const renderSchedulerInfo = scheduler => {
   );
 };
 
-const renderJobsTable = jobs => {
+const renderJobsTable = (jobs) => {
   return (
     jobs && (
       <table className={cx(AdminS.ContentTable, CS.mt2)}>
@@ -34,7 +34,7 @@ const renderJobsTable = jobs => {
         </thead>
         <tbody>
           {jobs &&
-            jobs.map(job => (
+            jobs.map((job) => (
               <tr key={job.key}>
                 <td className={CS.textBold}>{job.key}</td>
                 <td>{job.class}</td>

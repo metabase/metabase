@@ -96,6 +96,7 @@ const DataSelectorDatabasePicker = ({
         />
       )}
       showItemArrows={hasNextStep}
+      maxHeight={Infinity}
     />
   );
 };

@@ -1,8 +1,17 @@
-import { H } from "e2e/support";
+const { H } = cy;
+
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { PRODUCTS, PRODUCTS_ID, ORDERS_ID, ORDERS, PEOPLE } = SAMPLE_DATABASE;
+const {
+  ACCOUNTS,
+  ACCOUNTS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  ORDERS_ID,
+  ORDERS,
+  PEOPLE,
+} = SAMPLE_DATABASE;
 
 const testQuery = {
   type: "query",
@@ -107,13 +116,22 @@ describe("scenarios > visualizations > pie chart", () => {
       display: "pie",
     });
 
-    cy.findByTestId("chart-legend").findByText("Doohickey").realHover();
+    // flakiness prevention
+    cy.findByTestId("chart-container").findByText("TOTAL").should("be.visible");
+    cy.findByTestId("view-footer")
+      .findByText("Showing 4 rows")
+      .should("be.visible");
+
+    cy.findByTestId("chart-legend")
+      .findByText("Doohickey")
+      .trigger("mouseover");
+
     [
       ["Doohickey", "true"],
       ["Gadget", "false"],
       ["Gizmo", "false"],
       ["Widget", "false"],
-    ].map(args => checkLegendItemAriaCurrent(args[0], args[1]));
+    ].map((args) => checkLegendItemAriaCurrent(args[0], args[1]));
   });
 
   it("should not truncate legend titles when enabling percentages (metabase#48207)", () => {
@@ -307,6 +325,7 @@ describe("scenarios > visualizations > pie chart", () => {
 
     H.openVizSettingsSidebar();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("chartsettings-field-picker")
       .last()
       .within(() => {
@@ -318,6 +337,7 @@ describe("scenarios > visualizations > pie chart", () => {
       ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
     );
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("chartsettings-field-picker")
       .last()
       .within(() => {
@@ -484,6 +504,39 @@ describe("scenarios > visualizations > pie chart", () => {
     cy.findByTestId("qb-filters-panel").within(() => {
       cy.findByText("Count is equal to 606").should("be.visible");
     });
+  });
+
+  it("should apply correct filter when drilling through an 'empty' slice (VIZ-210)", () => {
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/table/${ACCOUNTS_ID}`, { visibility_type: null });
+    cy.signInAsNormalUser();
+
+    H.visitQuestionAdhoc({
+      display: "pie",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          aggregation: [["count"]],
+          breakout: [["field", ACCOUNTS.SOURCE, { "base-type": "type/Text" }]],
+          "source-table": ACCOUNTS_ID,
+        },
+      },
+      visualization_settings: {
+        "pie.show_labels": true,
+      },
+    });
+
+    H.echartsContainer().findByText("(empty)").click();
+
+    H.popover().findByText("See these Accounts").click();
+    cy.wait("@dataset");
+
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Source is empty")
+      .should("be.visible");
+
+    H.assertQueryBuilderRowCount(835);
   });
 
   it("should handle click behavior correctly", () => {
@@ -694,6 +747,7 @@ function confirmSliceClickBehavior(sliceLabel, value, elementIndex) {
     if (elementIndex == null) {
       cy.findByText(sliceLabel).click({ force: true });
     } else {
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByText(sliceLabel).eq(elementIndex).click({ force: true });
     }
   });

@@ -78,6 +78,6 @@ describe("PublicOrEmbeddedDashboardPage", () => {
 
     await waitForLoaderToBeRemoved();
 
-    expect(screen.getByText("There's nothing here, yet.")).toBeInTheDocument();
+    expect(screen.getByText("This dashboard is empty")).toBeInTheDocument();
   });
 });

@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
@@ -37,7 +38,7 @@ export const EngineCardRoot = styled.li<EngineCardRootProps>`
   border-radius: 0.375rem;
   background-color: var(--mb-color-bg-white);
   cursor: pointer;
-  outline: ${props => props.isActive && `2px solid var(--mb-color-focus)`};
+  outline: ${(props) => props.isActive && `2px solid var(--mb-color-focus)`};
 
   &:hover {
     border-color: var(--mb-color-brand);

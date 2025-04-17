@@ -7,10 +7,11 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.middleware.results-metadata :as middleware.results-metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -20,7 +21,7 @@
    [toucan2.core :as t2]))
 
 (defn- card-metadata [card]
-  (t2/select-one-fn :result_metadata :model/Card :id (u/the-id card)))
+  (:result_metadata (t2/select-one :model/Card :id (u/the-id card))))
 
 (defn- round-to-2-decimals
   "Defaults [[mt/round-all-decimals]] to 2 digits"
@@ -34,6 +35,7 @@
       :display_name   "ID"
       :base_type      :type/BigInteger
       :effective_type :type/BigInteger
+      :database_type  "BIGINT"
       :semantic_type  :type/PK
       :fingerprint    (name->fingerprint :id)
       :field_ref      [:field "ID" {:base-type :type/BigInteger}]}
@@ -41,6 +43,7 @@
       :display_name   "Name"
       :base_type      :type/Text
       :effective_type :type/Text
+      :database_type  "CHARACTER VARYING"
       :semantic_type  :type/Name
       :fingerprint    (name->fingerprint :name)
       :field_ref      [:field "NAME" {:base-type :type/Text}]}
@@ -48,6 +51,7 @@
       :display_name   "Price"
       :base_type      :type/Integer
       :effective_type :type/Integer
+      :database_type  "INTEGER"
       :semantic_type  nil
       :fingerprint    (name->fingerprint :price)
       :field_ref      [:field "PRICE" {:base-type :type/Integer}]}
@@ -55,6 +59,7 @@
       :display_name   "Category ID"
       :base_type      :type/Integer
       :effective_type :type/Integer
+      :database_type  "INTEGER"
       :semantic_type  nil
       :fingerprint    (name->fingerprint :category_id)
       :field_ref      [:field "CATEGORY_ID" {:base-type :type/Integer}]}
@@ -62,6 +67,7 @@
       :display_name   "Latitude"
       :base_type      :type/Float
       :effective_type :type/Float
+      :database_type  "DOUBLE PRECISION"
       :semantic_type  :type/Latitude
       :fingerprint    (name->fingerprint :latitude)
       :field_ref      [:field "LATITUDE" {:base-type :type/Float}]}
@@ -69,6 +75,7 @@
       :display_name   "Longitude"
       :base_type      :type/Float
       :effective_type :type/Float
+      :database_type  "DOUBLE PRECISION"
       :semantic_type  :type/Longitude
       :fingerprint    (name->fingerprint :longitude)
       :field_ref      [:field "LONGITUDE" {:base-type :type/Float}]}]))
@@ -130,6 +137,35 @@
                                                         :query    {:source-table (str "card__" (u/the-id card))}})
       (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
              (card-metadata card))))))
+
+(deftest save-result-metadata-test-4
+  (testing "test that card result metadata does not generate an UPDATE statement when unchanged"
+    (mt/with-temp [:model/Card card {:dataset_query   (mt/native-query {:query "SELECT NAME FROM VENUES"})}]
+      (is (nil? (card-metadata card)))
+      (mt/with-metadata-provider (mt/id)
+        (middleware.results-metadata/store-previous-result-metadata!
+         {:result_metadata
+          [{:base_type :type/Text
+            :database_type "CHARACTER VARYING"
+            :display_name "NAME"
+            :effective_type :type/Text
+            :field_ref [:field "NAME" {:base-type :type/Text}]
+            :fingerprint {:global {:distinct-count 100, :nil% 0.0}
+                          :type {:type/Text {:average-length 15.63
+                                             :percent-email 0.0
+                                             :percent-json 0.0
+                                             :percent-state 0.0
+                                             :percent-url 0.0}}}
+            :name "NAME"
+            :semantic_type :type/Name}]})
+        (let [result (qp/process-query
+                      (qp/userland-query
+                       (mt/native-query {:query "SELECT NAME FROM VENUES"})
+                       {:card-id    (u/the-id card)
+                        :query-hash (qp.util/query-hash {})}))]
+          (is (partial= {:status :completed}
+                        result))))
+      (is (nil? (card-metadata card))))))
 
 (deftest ^:parallel metadata-in-results-test
   (testing "make sure that queries come back with metadata"

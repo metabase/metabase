@@ -7,6 +7,7 @@ import {
   setUIControls,
 } from "metabase/query_builder/actions";
 import { trackNotebookNativePreviewShown } from "metabase/query_builder/analytics";
+import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
 import { getUiControls } from "metabase/query_builder/selectors";
 import { Button, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -34,6 +35,8 @@ export const ToggleNativeQueryPreview = ({
     isShowingNotebookNativePreview,
   }: { isShowingNotebookNativePreview: boolean } = useSelector(getUiControls);
 
+  const screenSize = useNotebookScreenSize();
+
   const engineType = getEngineNativeType(question.database()?.engine);
   const buttonText = isShowingNotebookNativePreview
     ? BUTTON_CLOSE_TEXT[engineType]
@@ -46,14 +49,17 @@ export const ToggleNativeQueryPreview = ({
       }),
     );
 
-    dispatch(setNotebookNativePreviewState(!isShowingNotebookNativePreview));
+    // the setting is intentionally remembered only for large screens
+    if (screenSize === "large") {
+      dispatch(setNotebookNativePreviewState(!isShowingNotebookNativePreview));
+    }
 
     trackNotebookNativePreviewShown(question, !isShowingNotebookNativePreview);
   };
 
   return (
     <Button
-      leftIcon={<Icon name="sql" />}
+      leftSection={<Icon name="sql" />}
       onClick={handleClick}
       aria-label={buttonText}
     >

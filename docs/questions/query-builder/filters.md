@@ -1,8 +1,8 @@
 ---
-title: Filters
+title: Filtering
 ---
 
-# Filters
+# Filtering
 
 Filtering just means narrowing things down based on certain criteria. You're probably already familiar with filtering when looking for something online, like when shopping. Maybe you only want to see olive-colored pants, or books where the author's last name is "Borges," or pictures of people wearing olive-colored pants reading Jorge Luis Borges.
 
@@ -24,6 +24,7 @@ Depending on the data type of the column, Metabase will present different filter
 - **Text or category columns** let you specify that you only want to include data where this column is or isn't a specific option, whether it contains, starts with, or ends with a substring, or whether the row is empty or not.
 - **Date columns** give you a lot of options to filter by specific date ranges, relative date ranges, and more.
 - **Structured data columns**, typically JSON or XML, can only be filtered by "Is empty" or "Not empty". Some databases, however, support [JSON unfolding](../../data-modeling/json-unfolding.md), which allows you to split up JSON data into separate columns, which you can then filter on.
+- **Latitude and longitude columns** will have the same options as numeric columns, but also a special "Inside" filter type that will let you filter on both latitude and longitude simultaneously.
 
 ## Filter multiple columns
 
@@ -53,4 +54,3 @@ Learn more about writing [expressions](./expressions.md) or skip right to the [l
 ## Filtering by a segment
 
 If your Metabase administrators have created special named filters for the table you're viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are called [**Segments**](../../data-modeling/segments.md), and they're shortcuts to a combination of filters that are commonly used in your organization. They might be called things like “Active Users,” or “Most Popular Products.”
-

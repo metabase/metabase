@@ -1,0 +1,162 @@
+:global {
+  :local(.editor) {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    flex-shrink: 1;
+    height: 100%;
+    color: var(--mb-color-text-dark);
+
+    .cm-focused {
+      outline: none;
+    }
+
+    .cm-scroller {
+      padding-top: 4px;
+      padding-bottom: 4px;
+      background-color: var(--mb-color-bg-light);
+    }
+
+    .cm-content {
+      color: var(--mb-color-text-dark);
+      background: none;
+    }
+
+    .cm-line {
+      background: none;
+    }
+
+    .cm-gutters {
+      background-color: var(--mb-color-bg-light);
+      border: none;
+    }
+
+    .cm-gutterElement {
+      font-weight: bold;
+      font-size: 10px;
+      color: var(--mb-color-text-light);
+      vertical-align: baseline;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+
+      span[title="Fold line"] {
+        position: relative;
+        top: -3px;
+      }
+    }
+
+    .cm-activeLineGutter {
+      background: none;
+    }
+
+    .cm-selectionBackground {
+      background: var(--mb-color-focus) !important;
+      border-radius: 1px;
+    }
+
+    .cm-selectionMatch {
+      background: none;
+    }
+
+    .cm-cursor {
+      border-left-width: 1.6px;
+    }
+
+    .cm-matchingBracket {
+      background: none !important;
+      outline: 0.5px solid var(--mb-color-text-light);
+      border-radius: 2px;
+    }
+
+    .cm-tag {
+      color: var(--mb-color-brand);
+
+      & * {
+        color: inherit;
+      }
+    }
+
+    .cm-tooltip-autocomplete {
+      box-shadow: 0 5px 14px rgba(0, 0, 0, 0.08);
+      border-radius: 4px;
+      background-color: white;
+      color: var(--mb-color-text-dark);
+      border: 1px solid var(--mb-color-border);
+      max-width: 520px;
+
+      ul li {
+        color: inherit;
+        padding: 0 8px !important;
+        display: flex;
+        justify-content: space-between;
+
+        &:first-child {
+          margin-top: 4px;
+        }
+
+        &:last-child {
+          margin-bottom: 4px;
+        }
+
+        &:hover,
+        &[aria-selected="true"] {
+          color: inherit;
+          background-color: var(--mb-color-focus);
+        }
+      }
+
+      @supports (grid-template-columns: subgrid) {
+        ul:has(.cm-completionLabel) {
+          display: grid;
+          gap: 0 1rem;
+          grid-template-columns: 1fr;
+
+          &:has(.cm-completionDetail) {
+            grid-template-columns: max-content 1fr;
+          }
+
+          li {
+            display: grid;
+            grid-column: 1 / span 2;
+            grid-template-columns: subgrid;
+          }
+
+          .cm-completionLabel {
+            grid-column: 1;
+          }
+
+          .cm-completionDetail {
+            grid-column: 2;
+          }
+        }
+      }
+
+      .cm-completionIcon {
+        display: none;
+      }
+
+      .cm-completionMatchedText {
+        text-decoration: none;
+        font-weight: bold;
+        color: var(--mb-color-brand);
+      }
+
+      .cm-completionLabel {
+        display: block;
+        max-width: 18rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-weight: bold;
+      }
+
+      .cm-completionDetail {
+        color: var(--mb-color-text-light);
+        font-style: normal;
+        text-align: right;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+  }
+}

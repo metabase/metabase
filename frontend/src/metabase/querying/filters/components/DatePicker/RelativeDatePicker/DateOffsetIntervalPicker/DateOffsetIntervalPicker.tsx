@@ -1,7 +1,10 @@
 import type { FormEvent } from "react";
 import { t } from "ttag";
 
-import type { DatePickerUnit } from "metabase/querying/filters/types";
+import type {
+  DatePickerUnit,
+  RelativeDatePickerValue,
+} from "metabase/querying/filters/types";
 import {
   Box,
   Button,
@@ -13,7 +16,6 @@ import {
   Text,
 } from "metabase/ui";
 
-import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
 import {
   formatDateRange,
   getInterval,
@@ -33,10 +35,10 @@ import {
 } from "./utils";
 
 interface DateOffsetIntervalPickerProps {
-  value: DateOffsetIntervalValue;
+  value: RelativeDatePickerValue;
   availableUnits: DatePickerUnit[];
   submitButtonLabel: string;
-  onChange: (value: DateIntervalValue) => void;
+  onChange: (value: RelativeDatePickerValue) => void;
   onSubmit: () => void;
 }
 
@@ -100,10 +102,17 @@ export function DateOffsetIntervalPicker({
           onChange={handleIntervalChange}
         />
         <Select
+          classNames={{
+            wrapper: S.selectWrapper,
+          }}
           data={unitOptions}
           value={value.unit}
           aria-label={t`Unit`}
           onChange={handleUnitChange}
+          comboboxProps={{
+            withinPortal: false,
+            floatingStrategy: "fixed",
+          }}
         />
         <div />
         <Text>{t`Starting from`}</Text>
@@ -114,22 +123,29 @@ export function DateOffsetIntervalPicker({
           onChange={handleOffsetIntervalChange}
         />
         <Select
+          classNames={{
+            wrapper: S.selectWrapper,
+          }}
           data={offsetUnitOptions}
           value={value.offsetUnit}
           aria-label={t`Starting from unit`}
           onChange={handleOffsetUnitChange}
+          comboboxProps={{
+            withinPortal: false,
+            floatingStrategy: "fixed",
+          }}
         />
         <Button
           c="text-medium"
           variant="subtle"
-          leftIcon={<Icon name="close" />}
+          leftSection={<Icon name="close" />}
           aria-label={t`Remove offset`}
           onClick={handleOffsetRemove}
         />
       </Box>
       <Divider />
-      <Group px="md" py="sm" spacing="sm" position="apart">
-        <Group c="text-medium" spacing="sm">
+      <Group px="md" py="sm" gap="sm" justify="space-between">
+        <Group c="text-medium" gap="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>

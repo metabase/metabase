@@ -46,7 +46,7 @@
 (defsetting slack-token-valid?
   (deferred-tru
    (str "Whether the current Slack app token, if set, is valid. "
-        "Set to 'false' if a Slack API request returns an auth error."))
+        "Set to ''false'' if a Slack API request returns an auth error."))
   :type       :boolean
   :visibility :settings-manager
   :doc        false
@@ -81,6 +81,7 @@
 
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
+  :deprecated "0.54.0"
   :default "metabase_files"
   :encryption :no
   :visibility :settings-manager
@@ -116,16 +117,15 @@
   true)
 
 (defn- handle-error [body]
-  (let [invalid-token? (slack-token-error-codes (:error body))
-        message        (if invalid-token?
-                         "Invalid token"
-                         (format "Slack API error: %s" (:error body)))
-        error          (if invalid-token?
-                         {:error-code (:error body)
-                          :errors     {:slack-token message}}
-                         {:error-code (:error body)
-                          :message    message
-                          :response   body})]
+  (let [invalid-token?   (slack-token-error-codes (:error body))
+        missing-channel? (= (:error body) "channel_not_found")
+        message          (format "Slack API error: %s" (:error body))
+        error-stub       {:error-code (:error body)
+                          :error-type :slack/unknown}
+        error            (cond
+                           invalid-token?   (assoc error-stub :error-type :slack/invalid-token)
+                           missing-channel? (assoc error-stub :error-type :slack/channel-not-found)
+                           :else            (assoc error-stub :response body))]
     (when (and invalid-token? *send-token-error-emails?*)
       ;; Check `slack-token-valid?` before sending emails to avoid sending repeat emails for the same invalid token.
       ;; We should send an email if `slack-token-valid?` is `true` or `nil` (i.e. a pre-existing bot integration is
@@ -138,11 +138,11 @@
                                       " update your integration in Admin Settings -> Slack."))))
     (throw (ex-info message error))))
 
-(defn- handle-response [{:keys [status body]}]
+(defn- handle-response [{:keys [headers status body]}]
   (with-open [reader (io/reader body)]
     (let [body (json/decode+kw reader)]
       (if (and (= 200 status) (:ok body))
-        body
+        (assoc body ::headers headers)
         (handle-error body)))))
 
 (defn- do-slack-request [request-fn endpoint request]
@@ -175,6 +175,13 @@
   "Make a POST request to the Slack API."
   [endpoint body]
   (do-slack-request http/post endpoint body))
+
+(defn- oauth-scopes
+  "Returns the set of scopes associated with the current token"
+  []
+  (let [{::keys [headers]} (GET "auth.test")
+        {:strs [x-oauth-scopes]} headers]
+    (set (str/split x-oauth-scopes #","))))
 
 (defn- next-cursor
   "Get a cursor for the next page of results in a Slack API response, if one exists."
@@ -216,9 +223,14 @@
 (defn conversations-list
   "Calls Slack API `conversations.list` and returns list of available 'conversations' (channels and direct messages).
   By default only fetches channels, and returns them with their # prefix. Note the call to [[paged-list-request]] will
-  only fetch the first [[max-list-results]] items."
-  [& {:as query-parameters}]
-  (let [params (merge {:exclude_archived true, :types "public_channel"} query-parameters)]
+  only fetch the first [[max-list-results]] items.
+
+  Pass :private-channels true to request private channels (requires the groups:read oauth-scope)."
+  [& {:keys [private-channels query-parameters]}]
+  (let [types  (if private-channels
+                 "public_channel,private_channel"
+                 "public_channel")
+        params (merge {:exclude_archived true, :types types} query-parameters)]
     (paged-list-request "conversations.list"
                         ;; response -> channel names
                         #(->> % :channels (map channel-transform))
@@ -285,7 +297,8 @@
   (when (slack-configured?)
     (log/info "Refreshing slack channels and usernames.")
     (let [users (future (vec (users-list)))
-          conversations (future (vec (conversations-list)))]
+          private-channels? #(contains? (oauth-scopes) "groups:read")
+          conversations (future (vec (conversations-list :private-channels (private-channels?))))]
       (slack-cached-channels-and-usernames! {:channels (concat @conversations @users)})
       (slack-channels-and-usernames-last-updated! (t/zoned-date-time)))))
 
@@ -296,22 +309,6 @@
     (locking refresh-lock
       (when (needs-refresh?)
         (refresh-channels-and-usernames!)))))
-
-(defn files-channel
-  "Looks in [[slack-cached-channels-and-usernames]] to check whether a channel exists with the expected name from the
-  [[slack-files-channel]] setting with an # prefix. If it does, returns the channel details as a map. If it doesn't,
-  throws an error that advises an admin to create it."
-  []
-  (let [channel-name (slack-files-channel)]
-    (if (channel-exists? channel-name)
-      channel-name
-      (let [message (str (tru "Slack channel named `{0}` is missing!" channel-name)
-                         " "
-                         (tru "Please create or unarchive the channel in order to complete the Slack integration.")
-                         " "
-                         (tru "The channel is used for storing images that are included in dashboard subscriptions."))]
-        (log/error (u/format-color 'red message))
-        (throw (ex-info message {:status-code 400}))))))
 
 (defn bug-report-channel
   "Looks in [[slack-cached-channels-and-usernames]] to check whether a channel exists with the expected name from the
@@ -334,24 +331,6 @@
    (ms/InstanceOfClass (Class/forName "[B"))
    [:fn not-empty]])
 
-(mu/defn join-channel!
-  "Given a channel ID, calls Slack API `conversations.join` endpoint to join the channel as the Metabase Slack app.
-  This must be done before uploading a file to the channel, if using a Slack app integration."
-  [channel-id :- ms/NonBlankString]
-  (POST "conversations.join" {:form-params {:channel channel-id}}))
-
-(defn- maybe-lookup-id
-  "Slack requires the slack app to be in the channel that we post all of our attachments to. Slack changed (around June
-  2022 #23229) the \"conversations.join\" api to require the internal slack id rather than the common name. This makes
-  a lot of sense to ensure we continue to operate despite channel renames. Attempt to look up the channel-id in the
-  list of channels to obtain the internal id. Fallback to using the current channel-id."
-  [channel-id cached-channels]
-  (let [name->id    (into {} (comp (filter (comp #{"channel"} :type))
-                                   (map (juxt :name :id)))
-                          (:channels cached-channels))
-        channel-id' (get name->id channel-id channel-id)]
-    channel-id'))
-
 (defn- poll
   "Returns `(thunk)` if the result satisfies the `done?` predicate within the timeout and nil otherwise."
   [{:keys [thunk done? timeout-ms ^long interval-ms]}]
@@ -371,34 +350,25 @@
 (defn complete!
   "Completes the file upload to a Slack channel by calling the `files.completeUploadExternal` endpoint, and polls the
    same endpoint until the file is uploaded to the channel. Returns the URL of the uploaded file."
-  [& {:keys [channel-id file-id filename]}]
+  [& {:keys [file-id filename]}]
   (let [complete! (fn []
                     (POST "files.completeUploadExternal"
-                      {:query-params {:files      (json/encode [{:id file-id, :title filename}])
-                                      :channel_id channel-id}}))
-        complete-response (try
-                            (complete!)
-                            (catch Throwable e
-                              ;; If file upload fails with a "not_in_channel" error, we join the channel and try again.
-                              ;; This is expected to happen the first time a Slack subscription is sent.
-                              (if (= "not_in_channel" (:error-code (ex-data e)))
-                                (do (join-channel! channel-id)
-                                    (complete!))
-                                (throw (ex-info (ex-message e)
-                                                (assoc (ex-data e) :channel-id channel-id, :filename filename))))))
-        ;; Step 4: Poll the endpoint to confirm the file is uploaded to the channel
-        uploaded-to-channel? (fn [response]
-                               (boolean (some-> response :files first :shares not-empty)))
-        _ (when-not (or
-                     (uploaded-to-channel? complete-response)
-                     (u/poll {:thunk       complete!
-                              :done?       uploaded-to-channel?
-                              ;; Cal 2024-04-30: this typically takes 1-2 seconds to succeed.
-                              ;; If it takes more than 20 seconds, something else is wrong and we should abort.
-                              :timeout-ms  20000
-                              :interval-ms 500}))
-            (throw (ex-info "Timed out waiting to confirm the file was uploaded to a Slack channel."
-                            {:channel-id channel-id, :filename filename})))]
+                      {:query-params {:files (json/encode [{:id file-id, :title filename}])}}))
+        complete-response
+        (try
+          (complete!)
+          (catch Throwable e
+            (throw (ex-info (ex-message e) (assoc (ex-data e) :filename filename)))))
+        uploaded? (fn [complete-response] (seq (get-in complete-response [:files 0 :filetype])))
+        _ (when-not (or (uploaded? complete-response)
+                        (u/poll {:thunk complete!
+                                 :done? uploaded?
+                                 ;; Cal 2024-04-30: this typically takes 1-2 seconds to succeed.
+                                 ;; If it takes more than 20 seconds, something else is wrong and we should abort.
+                                 :timeout-ms 20000
+                                 :interval-ms 500}))
+            (throw (ex-info "Timed out waiting to confirm the file was uploaded to Slack."
+                            {:filename filename})))]
     (get-in complete-response [:files 0 :url_private])))
 
 (defn- get-upload-url! [filename file]
@@ -415,8 +385,7 @@
   "Calls Slack API `files.getUploadURLExternal` and `files.completeUploadExternal` endpoints to upload a file and returns
    the URL of the uploaded file."
   [file       :- NonEmptyByteArray
-   filename   :- ms/NonBlankString
-   channel-id :- ms/NonBlankString]
+   filename   :- ms/NonBlankString]
   {:pre [(slack-configured?)]}
   ;; TODO: we could make uploading files a lot faster by uploading the files in parallel.
   ;; Steps 1 and 2 can be done for all files in parallel, and step 3 can be done once at the end.
@@ -425,15 +394,15 @@
         ;; Step 2: Upload the file to the obtained upload URL
         _ (upload-file-to-url! upload_url file)
         ;; Step 3: Complete the upload using files.completeUploadExternal
-        file-url (complete! {:channel-id (maybe-lookup-id channel-id (slack-cached-channels-and-usernames))
-                             :file-id    file_id
+        file-url (complete! {:file-id    file_id
                              :filename   filename})]
     (u/prog1 {:url file-url
               :id file_id}
       (log/debug "Uploaded image" (:url <>)))))
 
 (mu/defn post-chat-message!
-  "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel. `attachments` can be either serialized JSON for notification attachments or a map containing blocks."
+  "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel. message-content if provided should be a map containing :blocks
+  e.g {:blocks [{:type \"section\", :text {:type \"plain_text\", :text \"Hello, world!\"}}"
   [channel-id  :- ms/NonBlankString
    text-or-nil :- [:maybe :string]
    & [message-content]]
@@ -442,14 +411,15 @@
                      :username    "MetaBot"
                      :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
                      :text        text-or-nil}
-        message-params (cond
-                        ;; If message-content contains :blocks key, it's a new-style message
-                         (:blocks message-content)
-                         {:blocks (json/encode (:blocks message-content))}
-                        ;; Otherwise treat it as notification attachments
-                         (seq message-content)
-                         {:attachments (json/encode message-content)}
-                         :else
-                         {})]
+
+        message-content
+        (if (sequential? message-content)
+          {:blocks (mapcat :blocks message-content)}
+          message-content)
+
+        message-params
+        (if (seq (:blocks message-content))
+          {:blocks (json/encode (:blocks message-content))}
+          {})]
     (POST "chat.postMessage"
       {:form-params (merge base-params message-params)})))

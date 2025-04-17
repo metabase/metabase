@@ -170,6 +170,15 @@
                     :initial-op {:short :=}
                     :column     {:operators number-ops}}})))
 
+(deftest ^:parallel column-filter-not-returned-for-nil-dimension-test
+  (testing "column-filter should not be returned for nil dimension values (#49740, #51741)"
+    (lib.drill-thru.tu/test-drill-not-returned
+     {:drill-type  :drill-thru/column-filter
+      :click-type  :cell
+      :query-type  :aggregated
+      :column-name "max"
+      :custom-row  #(assoc % "CREATED_AT" nil)})))
+
 (deftest ^:parallel aggregation-adds-extra-stage-test
   (testing "filtering an aggregation column adds an extra stage"
     (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

@@ -1,7 +1,7 @@
 import { Card, Flex, Text } from "metabase/ui";
 
 export default {
-  title: "Design System/colors",
+  title: "Design System/Colors",
 };
 
 const COLOR_NAMES = [
@@ -51,7 +51,7 @@ const COLOR_NAMES = [
 export function Default() {
   return (
     <Flex gap="md" wrap="wrap">
-      {COLOR_NAMES.map(colorName => {
+      {COLOR_NAMES.map((colorName) => {
         return (
           <Card
             bg={`var(${colorName})`}

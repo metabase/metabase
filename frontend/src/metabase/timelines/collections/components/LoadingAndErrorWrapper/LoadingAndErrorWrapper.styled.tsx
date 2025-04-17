@@ -1,6 +1,7 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 
 export const LoadingAndErrorRoot = styled(LoadingAndErrorWrapper)`
   display: flex;

@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { render, screen } from "__support__/ui";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 import { StringInputWidget } from "./StringInputWidget";
@@ -98,10 +98,10 @@ describe("StringInputWidget", () => {
     it("should render a token field input", () => {
       render(
         <StringInputWidget
-          arity="n"
           value={["foo", "bar"]}
           setValue={mockSetValue}
           parameter={mockParameter}
+          isMultiSelect
         />,
       );
 
@@ -112,18 +112,15 @@ describe("StringInputWidget", () => {
     it("should correctly parse number inputs", async () => {
       render(
         <StringInputWidget
-          arity="n"
           value={undefined}
           setValue={mockSetValue}
           parameter={mockParameter}
+          isMultiSelect
         />,
       );
 
-      const input = screen.getByRole("textbox");
+      const input = screen.getByRole("combobox");
       await userEvent.type(input, "foo{enter}bar{enter}baz{enter}");
-
-      const values = screen.getAllByRole("list")[0];
-      expect(values).toHaveTextContent("foobarbaz");
 
       const button = screen.getByRole("button", { name: "Add filter" });
       await userEvent.click(button);
@@ -133,14 +130,14 @@ describe("StringInputWidget", () => {
     it("should be unsettable", async () => {
       render(
         <StringInputWidget
-          arity="n"
           value={["foo", "bar"]}
           setValue={mockSetValue}
           parameter={mockParameter}
+          isMultiSelect
         />,
       );
 
-      const input = screen.getByRole("textbox");
+      const input = screen.getByRole("combobox");
       await userEvent.type(input, "{backspace}{backspace}");
 
       const button = screen.getByRole("button", { name: "Update filter" });

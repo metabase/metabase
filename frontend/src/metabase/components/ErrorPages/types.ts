@@ -16,6 +16,11 @@ export type ReportableEntityName =
 
 export type ErrorPayload = {
   url: string;
+  reporter: {
+    name: string;
+    email: string;
+  };
+  description?: string;
   frontendErrors?: string[];
   backendErrors?: Log[];
   userLogs?: Log[];

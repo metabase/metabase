@@ -6,7 +6,6 @@ import { useAsyncFn } from "react-use";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
@@ -14,7 +13,7 @@ import { connect } from "metabase/lib/redux";
 import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Icon } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type {
@@ -60,14 +59,14 @@ interface DispatchProps {
 type MetadataTableListProps = OwnProps & TableLoaderProps & DispatchProps;
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
-  onSelectDatabase: databaseId =>
+  onSelectDatabase: (databaseId) =>
     dispatch(push(Urls.dataModelDatabase(databaseId))),
   onSelectTable: (databaseId, schemaId, tableId) =>
     dispatch(push(Urls.dataModelTable(databaseId, schemaId, tableId))),
   onUpdateTableVisibility: async (tables, visibility) =>
     dispatch(
       Tables.actions.bulkUpdate({
-        ids: tables.map(table => table.id),
+        ids: tables.map((table) => table.id),
         visibility_type: visibility,
       }),
     ),
@@ -89,9 +88,11 @@ const MetadataTableList = ({
     const searchValue = searchText.toLowerCase();
 
     return _.chain(allTables)
-      .filter(table => table.displayName().toLowerCase().includes(searchValue))
-      .sortBy(table => table.displayName())
-      .partition(table => table.visibility_type != null)
+      .filter((table) =>
+        table.displayName().toLowerCase().includes(searchValue),
+      )
+      .sortBy((table) => table.displayName())
+      .partition((table) => table.visibility_type != null)
       .value();
   }, [allTables, searchText]);
 
@@ -126,7 +127,7 @@ const MetadataTableList = ({
             onUpdateTableVisibility={onUpdateTableVisibility}
           />
         )}
-        {visibleTables.map(table => (
+        {visibleTables.map((table) => (
           <TableRow
             key={table.id}
             table={table}
@@ -142,7 +143,7 @@ const MetadataTableList = ({
             onUpdateTableVisibility={onUpdateTableVisibility}
           />
         )}
-        {hiddenTables.map(table => (
+        {hiddenTables.map((table) => (
           <TableRow
             key={table.id}
             table={table}
@@ -335,7 +336,7 @@ const ToggleVisibilityButton = ({
   );
 
   return (
-    <Tooltip tooltip={tooltip}>
+    <Tooltip label={tooltip}>
       <HideIconButton
         disabled={loading}
         aria-label={tooltip}
@@ -360,7 +361,7 @@ const getReloadInterval = (
   _props: TableLoaderProps,
   tables = [],
 ) => {
-  return tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
+  return tables.some((t) => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

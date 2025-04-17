@@ -102,9 +102,12 @@
                           {:database-id database-id
                            :raw-job-context job-context
                            :job-context (pr-str job-context)}))))
-      (sync-and-analyze-database*! database-id))))
+      (do (sync-and-analyze-database*! database-id)
+          ;; Re-kick off the backfill entity ids job on every sync
+          ;; if a previous run is already running, this is a noop
+          (task/init! :metabase.lib-be.task.backfill-entity-ids/BackfillEntityIds)))))
 
-(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
+(task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Sync and analyze the database"}
   SyncAndAnalyzeDatabase [job-context]
   (sync-and-analyze-database! job-context))
@@ -122,7 +125,7 @@
         (sync.field-values/update-field-values! database)
         (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id)))))
 
-(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
+(task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Update field values"}
   UpdateFieldValues [job-context]
   (update-field-values! job-context))
@@ -299,9 +302,10 @@
 (mu/defn check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- (ms/InstanceOf :model/Database)]
-  (if (= audit/audit-db-id (:id database))
-    (log/info (u/format-color :red "Not scheduling tasks for audit database"))
-    (doseq [task all-tasks]
+  (doseq [task all-tasks]
+    (if (and (= audit/audit-db-id (:id database))
+             (= task sync-analyze-task-info))
+      (log/info (u/format-color :red "Not scheduling sync task for audit database"))
       (update-db-trigger-if-needed! database task))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

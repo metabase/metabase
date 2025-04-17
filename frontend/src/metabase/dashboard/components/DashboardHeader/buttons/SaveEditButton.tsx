@@ -9,6 +9,7 @@ import {
 } from "metabase/dashboard/actions";
 import { getMissingRequiredParameters } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { Tooltip } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -36,6 +37,13 @@ export const SaveEditButton = (props: { onDoneEditing: () => void }) => {
 
     handleDoneEditing();
   };
+
+  useRegisterShortcut([
+    {
+      id: "dashboard-save",
+      perform: onSave,
+    },
+  ]);
 
   return (
     <Tooltip key="save" label={disabledSaveTooltip} disabled={!isSaveDisabled}>
@@ -66,7 +74,7 @@ function getDisabledSaveButtonTooltip(
   }
 
   const names = missingRequiredParams
-    .map(param => `"${param.name}"`)
+    .map((param) => `"${param.name}"`)
     .join(", ");
 
   return ngettext(

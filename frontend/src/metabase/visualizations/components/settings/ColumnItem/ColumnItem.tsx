@@ -66,7 +66,7 @@ export const ColumnItem = ({
     py="xs"
     my="sm"
   >
-    <Group noWrap spacing="xs" p="xs">
+    <Group wrap="nowrap" gap="xs" p="xs">
       {draggable && (
         <Icon
           className={cx(CS.flexNoShrink, ColumnItemS.ColumnItemDragHandle)}
@@ -82,38 +82,38 @@ export const ColumnItem = ({
         />
       )}
     </Group>
-    <Group className={CS.flex1} px="xs" noWrap>
+    <Group className={CS.flex1} px="xs" wrap="nowrap">
       {icon && <Icon name={icon} className={CS.flexNoShrink} />}
       <Text lh="normal" fw="bold" className={CS.textWrap}>
         {title}
       </Text>
     </Group>
-    <Group noWrap spacing="sm" p="xs">
+    <Group wrap="nowrap" gap="sm" p="xs">
       {onEdit && (
         <ChartSettingActionIcon
           icon="ellipsis"
-          onClick={e => onEdit(e.currentTarget)}
+          onClick={(e) => onEdit(e.currentTarget)}
           data-testid={`${title}-settings-button`}
         />
       )}
       {onAdd && (
         <ChartSettingActionIcon
           icon="add"
-          onClick={e => onAdd(e.currentTarget)}
+          onClick={(e) => onAdd(e.currentTarget)}
           data-testid={`${title}-add-button`}
         />
       )}
       {onRemove && (
         <ChartSettingActionIcon
           icon={removeIcon}
-          onClick={e => onRemove(e.currentTarget)}
+          onClick={(e) => onRemove(e.currentTarget)}
           data-testid={`${title}-hide-button`}
         />
       )}
       {onEnable && (
         <ChartSettingActionIcon
           icon="eye_crossed_out"
-          onClick={e => onEnable(e.currentTarget)}
+          onClick={(e) => onEnable(e.currentTarget)}
           data-testid={`${title}-show-button`}
         />
       )}

@@ -57,6 +57,12 @@
   {:arglists '([engine])}
   identity)
 
+(defn known-engines
+  "List the possible search engines defined for this version, whether this instance supports them or not."
+  []
+  ;; If we end up with more "abstract" nodes, we may want a better way to filter them out.
+  (keys (dissoc (methods supported-engine?) :default)))
+
 (defn active-engines
   "List the search engines that are supported. Does not mention the legacy in-place engine."
   []

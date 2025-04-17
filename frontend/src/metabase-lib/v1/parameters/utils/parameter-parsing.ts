@@ -1,5 +1,10 @@
 import type { Query } from "history";
 
+import {
+  deserializeBooleanParameterValue,
+  deserializeStringParameterValue,
+  normalizeNumberParameterValue,
+} from "metabase/querying/parameters/utils/parsing";
 import * as Lib from "metabase-lib";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
@@ -39,7 +44,7 @@ export function parseParameterValue(value: any, parameter: Parameter) {
   const type = getParameterType(parameter);
   if (type === "temporal-unit") {
     const availableUnits = Lib.availableTemporalUnits();
-    return availableUnits.some(unit => unit === value) ? value : null;
+    return availableUnits.some((unit) => unit === value) ? value : null;
   }
 
   const coercedValue =
@@ -58,51 +63,44 @@ export function parseParameterValue(value: any, parameter: Parameter) {
   return coercedValue;
 }
 
-function parseParameterValueForNumber(value: string | string[]) {
-  if (Array.isArray(value)) {
-    const numbers = value.map(number => parseFloat(number));
-    return numbers.every(number => !isNaN(number)) ? numbers : null;
-  }
-
-  // something like "1,2,3",  "1, 2,  3", ",,,1,2, 3"
-  const splitValues = value.split(",").filter(item => item.trim() !== "");
-  if (splitValues.length === 0) {
-    return null;
-  }
-
-  if (splitValues.length > 1) {
-    const numbers = splitValues.map(number => parseFloat(number));
-    if (numbers.every(number => !isNaN(number))) {
-      return numbers.join(",");
+function parseParameterValueForNumber(value: ParameterValueOrArray) {
+  // HACK to support multiple values for SQL parameters
+  // https://github.com/metabase/metabase/issues/25374#issuecomment-1272520560
+  if (typeof value === "string") {
+    // something like "1,2,3",  "1, 2,  3", ",,,1,2, 3"
+    const splitValues = value.split(",").filter((item) => item.trim() !== "");
+    if (splitValues.length === 0) {
+      return null;
     }
 
-    return null;
+    if (splitValues.length > 1) {
+      const numbers = splitValues.map((number) => parseFloat(number));
+      if (numbers.every((number) => !isNaN(number))) {
+        return numbers.join(",");
+      }
+
+      return null;
+    }
   }
 
-  const number = parseFloat(value);
-  return isNaN(number) ? null : number;
+  return normalizeNumberParameterValue(value);
 }
 
 function parseParameterValueForFields(
   value: ParameterValueOrArray,
   fields: Field[],
 ): ParameterValueOrArray {
-  if (Array.isArray(value)) {
-    return value.flatMap(v => parseParameterValueForFields(v, fields));
-  }
-
   // unix dates fields are numeric but query params shouldn't be parsed as numbers
-  if (fields.every(f => f.isNumeric() && !f.isDate())) {
-    const number = parseFloat(String(value));
-    return isNaN(number) ? [] : number;
+  if (fields.every((f) => f.isNumeric() && !f.isDate())) {
+    return normalizeNumberParameterValue(value);
   }
 
-  if (fields.every(f => f.isBoolean())) {
-    return value === "true" ? true : value === "false" ? false : [];
+  if (fields.every((f) => f.isBoolean())) {
+    return deserializeBooleanParameterValue(value);
   }
 
-  if (fields.every(f => f.isString() || f.isStringLike())) {
-    return String(value);
+  if (fields.every((f) => f.isString() || f.isStringLike())) {
+    return deserializeStringParameterValue(value);
   }
 
   return value;
@@ -131,7 +129,7 @@ export function getParameterValuesByIdFromQueryParams(
   lastUsedParametersValues?: Record<ParameterId, unknown>,
 ) {
   return Object.fromEntries(
-    parameters.map(parameter => [
+    parameters.map((parameter) => [
       parameter.id,
       getParameterValueFromQueryParams(
         parameter,

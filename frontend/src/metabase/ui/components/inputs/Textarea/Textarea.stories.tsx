@@ -72,7 +72,7 @@ const VariantTemplate = (args: TextareaProps) => (
 );
 
 export default {
-  title: "Inputs/Textarea",
+  title: "Components/Inputs/Textarea",
   component: Textarea,
   args,
   argTypes,

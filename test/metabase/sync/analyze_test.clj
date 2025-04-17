@@ -10,13 +10,13 @@
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.models.interface :as mi]
    [metabase.sync.analyze :as analyze]
-   [metabase.sync.concurrent :as sync.concurrent]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.sync :refer [sync-survives-crash?!]]
    [metabase.util :as u]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
 (deftest skip-analysis-of-fields-with-current-fingerprint-version-test
@@ -89,7 +89,7 @@
 (deftest survive-classify-fields-errors
   (testing "Make sure we survive field classification failing"
     (sync-survives-crash?! classifiers.name/semantic-type-for-name-and-base-type)
-    (sync-survives-crash?! classifiers.category/infer-is-category-or-list)
+    (sync-survives-crash?! classifiers.category/infer-is-category)
     (sync-survives-crash?! classifiers.no-preview-display/infer-no-preview-display)
     (sync-survives-crash?! classifiers.text-fingerprint/infer-semantic-type)))
 
@@ -232,7 +232,7 @@
 
 (deftest analyze-unhidden-tables-test
   (testing "un-hiding a table should cause it to be analyzed"
-    (with-redefs [sync.concurrent/submit-task! (fn [task] (task))]
+    (with-redefs [quick-task/submit-task! (fn [task] (task))]
       (mt/with-temp [:model/Table table (fake-table)
                      :model/Field field (fake-field table)]
         (set-table-visibility-type-via-api! table "hidden")

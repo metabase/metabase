@@ -82,20 +82,31 @@
    "multi-stage query"
    {:custom-query #(lib.drill-thru.tu/append-filter-stage % "count")}))
 
-(defn- orders-count-with-breakouts [breakout-values]
+(defn- orders-count-with-breakouts* [base-query breakout-values]
   {:drill-type   :drill-thru/pivot
    :click-type   :cell
    :query-type   :aggregated
    :query-table  "ORDERS"
    :column-name  "count"
    :custom-query (reduce #(lib/breakout %1 -1 %2)
-                         (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (-> base-query
                              (lib/aggregate (lib/count)))
                          (map first breakout-values))
    :custom-row   (->> (for [[col value] breakout-values]
                         [(:name col) value])
                       (into {})
                       (merge {"count" 77}))})
+
+(defn- orders-count-with-breakouts [breakout-values]
+  (orders-count-with-breakouts*
+   (lib/query meta/metadata-provider (meta/table-metadata :orders))
+   breakout-values))
+
+(defn- orders-count-with-breakouts-and-join [breakout-values]
+  (orders-count-with-breakouts*
+   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+       (lib/join (meta/table-metadata :products)))
+   breakout-values))
 
 (def ^:private bv-date
   [(meta/field-metadata :orders :created-at)
@@ -196,9 +207,8 @@
    "single-stage query"
    (merge (orders-count-with-breakouts [bv-date])
           (expecting ["CREATED_AT"] [:category :location]))
-   ;; TODO fix this drill thru and re-enable this check (metabase#52236)
-   #_"multi-stage query"
-   #_variant-with-count-filter-stage))
+   "multi-stage query"
+   variant-with-count-filter-stage))
 
 (deftest ^:parallel returns-pivot-test-2b-cat+loc-with-date+category
   (lib.drill-thru.tu/test-drill-variants-with-merged-args
@@ -206,9 +216,17 @@
    "single-stage query"
    (merge (orders-count-with-breakouts [bv-date bv-category1])
           (expecting ["CREATED_AT" "CATEGORY"] [:category :location]))
-   ;; TODO fix this drill thru and re-enable this check (metabase#52236)
-   #_"multi-stage query"
-   #_variant-with-count-filter-stage))
+   "multi-stage query"
+   variant-with-count-filter-stage))
+
+(deftest ^:parallel returns-pivot-test-2c-explicit-join-cat+loc-with-cat
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-returns-drill
+   "single-stage query"
+   (merge (orders-count-with-breakouts-and-join [bv-date bv-category1])
+          (expecting ["CREATED_AT" "CATEGORY"] [:category :location]))
+   "multi-stage-query"
+   variant-with-count-filter-stage))
 
 (deftest ^:parallel returns-pivot-test-3a-cat+time-with-address
   (lib.drill-thru.tu/test-drill-variants-with-merged-args
@@ -216,9 +234,8 @@
    "single-stage query"
    (merge (orders-count-with-breakouts [bv-address])
           (expecting ["STATE"] [:category :time]))
-   ;; TODO fix this drill thru and re-enable this check (metabase#52236)
-   #_"multi-stage query"
-   #_variant-with-count-filter-stage))
+   "multi-stage query"
+   variant-with-count-filter-stage))
 
 (deftest ^:parallel returns-pivot-test-3b-cat+time-with-category
   (lib.drill-thru.tu/test-drill-variants-with-merged-args
@@ -226,9 +243,8 @@
    "single-stage query"
    (merge (orders-count-with-breakouts [bv-category2])
           (expecting ["SOURCE"] [:category :time]))
-   ;; TODO fix this drill thru and re-enable this check (metabase#52236)
-   #_"multi-stage query"
-   #_variant-with-count-filter-stage))
+   "multi-stage query"
+   variant-with-count-filter-stage))
 
 (deftest ^:parallel returns-pivot-test-3c-cat+time-with-category+category
   (lib.drill-thru.tu/test-drill-variants-with-merged-args
@@ -236,9 +252,8 @@
    "single-stage query"
    (merge (orders-count-with-breakouts [bv-category2 bv-category1])
           (expecting ["SOURCE" "CATEGORY"] [:category :time]))
-   ;; TODO fix this drill thru and re-enable this check (metabase#52236)
-   #_"multi-stage query"
-   #_variant-with-count-filter-stage))
+   "multi-stage query"
+   variant-with-count-filter-stage))
 
 (deftest ^:parallel returns-pivot-test-4a-none-with-no-breakouts
   (lib.drill-thru.tu/test-drill-variants-with-merged-args
@@ -246,9 +261,8 @@
    "single-stage query"
    (merge (orders-count-with-breakouts [])
           (expecting [] [:category :location :time]))
-   ;; TODO fix this drill thru and re-enable this check (metabase#52236)
-   #_"multi-stage query"
-   #_variant-with-count-filter-stage))
+   "multi-stage query"
+   variant-with-count-filter-stage))
 
 (deftest ^:parallel pivot-application-test-1
   (lib.drill-thru.tu/test-drill-variants-with-merged-args
@@ -264,13 +278,12 @@
                                                   (get-in lib.drill-thru.tu/test-queries
                                                           ["ORDERS" :aggregated :row "CREATED_AT"])))
                                (lib/breakout (meta/field-metadata :products :category)))})
-   ;; TODO fix this drill thru and re-enable this check (metabase#52236)
-   #_"multi-stage query"
-   #_(fn [base-case]
-       {:custom-query (-> base-case
-                          :custom-query
-                          (lib.drill-thru.tu/append-filter-stage "count"))
-        :expected-query (-> base-case
-                            :expected-query
-                            (assoc-in [:stages 0 :filters 0 2 2] "CREATED_AT")
-                            (lib.drill-thru.tu/append-filter-stage-to-test-expectation "count"))})))
+   "multi-stage query"
+   (fn [base-case]
+     {:custom-query (-> base-case
+                        :custom-query
+                        (lib.drill-thru.tu/append-filter-stage "count"))
+      :expected-query (-> base-case
+                          :expected-query
+                          (assoc-in [:stages 0 :filters 0 2 2] "CREATED_AT")
+                          (lib.drill-thru.tu/append-filter-stage-to-test-expectation "count"))})))

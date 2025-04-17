@@ -43,7 +43,7 @@ export function ActionPicker({
 
   return (
     <div className={CS.scrollY}>
-      {sortedModels.map(model => (
+      {sortedModels.map((model) => (
         <ModelActionPicker
           key={model.id}
           model={model}
@@ -102,7 +102,7 @@ function ModelActionPicker({
       >
         {actions.length ? (
           <ActionsList>
-            {actions.map(action => (
+            {actions.map((action) => (
               <ActionItem
                 key={action.id}
                 role="button"
@@ -139,7 +139,7 @@ function ModelActionPicker({
         )}
       </ModelCollapseSection>
       {isActionCreatorOpen && (
-        <Modal wide onClose={closeModal} closeOnClickOutside>
+        <Modal wide onClose={closeModal}>
           <ActionCreator
             modelId={model.id}
             databaseId={model.database_id}

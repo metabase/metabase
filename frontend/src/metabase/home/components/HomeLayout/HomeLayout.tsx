@@ -2,10 +2,10 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip/Tooltip";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
+import { Tooltip } from "metabase/ui";
 
 import { CustomHomePageModal } from "../CustomHomePageModal";
 import { HomeGreeting } from "../HomeGreeting";
@@ -37,7 +37,7 @@ export const HomeLayout = ({ children }: HomeLayoutProps): JSX.Element => {
       )}
       <HomeGreeting />
       {isAdmin && (
-        <Tooltip tooltip={t`Pick a dashboard to serve as the homepage`}>
+        <Tooltip label={t`Pick a dashboard to serve as the homepage`}>
           <LayoutEditButton
             icon="pencil"
             borderless

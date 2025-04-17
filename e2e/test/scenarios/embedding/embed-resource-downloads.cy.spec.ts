@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -165,7 +165,7 @@ H.describeWithSnowplowEE(
         });
 
         it("should be able to download a static embedded dashcard as CSV", () => {
-          cy.get("@dashboardId").then(dashboardId => {
+          cy.get("@dashboardId").then((dashboardId) => {
             H.visitEmbeddedPage(
               {
                 resource: { dashboard: Number(dashboardId) },
@@ -339,7 +339,7 @@ H.describeWithSnowplowEE(
 
         it("should be able to download a static embedded dashcard as CSV", () => {
           const value = 9999;
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.visitEmbeddedPage(
               {
                 resource: { question: Number(questionId) },

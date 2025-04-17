@@ -4,16 +4,15 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { DATE_PICKER_UNITS } from "metabase/querying/filters/constants";
 import type {
   DatePickerUnit,
+  RelativeDatePickerValue,
   RelativeIntervalDirection,
 } from "metabase/querying/filters/types";
-
-import type { DateIntervalValue } from "../../types";
 
 import { SimpleDateIntervalPicker } from "./SimpleDateIntervalPicker";
 
 function getDefaultValue(
   direction: RelativeIntervalDirection,
-): DateIntervalValue {
+): RelativeDatePickerValue {
   return {
     type: "relative",
     value: direction === "last" ? -30 : 30,
@@ -22,7 +21,7 @@ function getDefaultValue(
 }
 
 interface SetupOpts {
-  value: DateIntervalValue;
+  value: RelativeDatePickerValue;
   availableUnits?: DatePickerUnit[];
 }
 
@@ -48,7 +47,7 @@ describe("SimpleDateIntervalPicker", () => {
 
   describe.each<RelativeIntervalDirection>(["last", "next"])(
     "%s",
-    direction => {
+    (direction) => {
       const defaultValue = getDefaultValue(direction);
 
       it("should change the interval", async () => {
@@ -129,7 +128,7 @@ describe("SimpleDateIntervalPicker", () => {
           value: defaultValue,
         });
 
-        await userEvent.click(screen.getByLabelText("Unit"));
+        await userEvent.click(screen.getByRole("textbox", { name: "Unit" }));
         await userEvent.click(screen.getByText("years"));
 
         expect(onChange).toHaveBeenCalledWith({

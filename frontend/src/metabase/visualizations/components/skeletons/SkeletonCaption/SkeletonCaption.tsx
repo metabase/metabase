@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from "react";
 
 import Markdown from "metabase/core/components/Markdown";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/ui";
 import {
   LegendDescriptionIcon,
   LegendRightContent,
@@ -38,8 +38,8 @@ const SkeletonCaption = ({
       <LegendRightContent>
         {description && (
           <Tooltip
-            maxWidth="22em"
-            tooltip={
+            maw="22em"
+            label={
               <Markdown dark disallowHeading unstyleLinks>
                 {description}
               </Markdown>

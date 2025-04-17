@@ -1,9 +1,9 @@
 (ns metabase-enterprise.scim.api
   "/api/ee/scim/ endpoints"
   (:require
-   [compojure.core :refer [POST]]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.models.api-key :as api-key]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
@@ -57,21 +57,17 @@
                                                      :updated_by_id user-id})
        (assoc :unmasked_key (u.secret/expose unhashed-key))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/api_key"
+(api.macros/defendpoint :get "/api_key"
   "Fetch the SCIM API key if one exists. Does *not* return an unmasked key, since we don't have access
   to that after it is created."
   []
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/ApiKey :scope :scim)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/api_key"
+(api.macros/defendpoint :post "/api_key"
   "Create a new SCIM API key, or refresh one that already exists. When called for the first time,
   this is equivalent to enabling SCIM."
   []
   (api/check-superuser)
   (backfill-required-entity-ids!)
   (refresh-scim-api-key! api/*current-user-id*))
-
-(api/define-routes)

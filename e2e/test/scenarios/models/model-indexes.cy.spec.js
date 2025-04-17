@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createModelIndex } from "e2e/support/helpers/e2e-model-index-helper";
 
@@ -17,7 +17,7 @@ describe("scenarios > model indexes", () => {
     cy.intercept("PUT", "/api/card/*").as("cardUpdate");
     cy.intercept("GET", "/api/card/*").as("cardGet");
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "Products Model",
         query: { "source-table": PRODUCTS_ID },
@@ -26,7 +26,7 @@ describe("scenarios > model indexes", () => {
       { wrapId: true, idAlias: "modelId" },
     );
 
-    cy.get("@modelId").then(_modelId => {
+    cy.get("@modelId").then((_modelId) => {
       modelId = _modelId;
     });
   });
@@ -104,7 +104,7 @@ describe("scenarios > model indexes", () => {
 
     // change the entity key to a foreign key so no key exists
     H.sidebar()
-      .findByText(/entity key/i)
+      .findByDisplayValue(/entity key/i)
       .click();
 
     H.popover()
@@ -143,7 +143,7 @@ describe("scenarios > model indexes", () => {
   });
 
   it("should be able to see details of a record outside the first 2000", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "People Model",
         query: { "source-table": PEOPLE_ID },
@@ -155,7 +155,7 @@ describe("scenarios > model indexes", () => {
       },
     );
 
-    cy.get("@people_model_id").then(peopleModelId => {
+    cy.get("@people_model_id").then((peopleModelId) => {
       createModelIndex({
         modelId: peopleModelId,
         pkName: "ID",
@@ -216,12 +216,12 @@ function editTitleMetadata() {
   H.openQuestionActions();
   H.popover().findByText("Edit metadata").click();
   cy.url().should("include", "/metadata");
-  cy.findByTestId("TableInteractive-root").findByTextEnsureVisible("Title");
+  H.tableInteractive().findByTextEnsureVisible("Title");
 
   H.openColumnOptions("Title");
 }
 
-const expectCardQueries = num =>
-  cy.get("@cardGet.all").then(interceptions => {
+const expectCardQueries = (num) =>
+  cy.get("@cardGet.all").then((interceptions) => {
     expect(interceptions).to.have.length(num);
   });

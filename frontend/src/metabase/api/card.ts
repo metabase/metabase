@@ -30,7 +30,7 @@ import {
 const PERSISTED_MODEL_REFRESH_DELAY = 200;
 
 export const cardApi = Api.injectEndpoints({
-  endpoints: builder => {
+  endpoints: (builder) => {
     const updateCardPropertyMutation = <
       PropertyKey extends keyof UpdateCardRequest,
     >() =>
@@ -50,7 +50,7 @@ export const cardApi = Api.injectEndpoints({
 
     return {
       listCards: builder.query<Card[], ListCardsRequest | void>({
-        query: params => ({
+        query: (params) => ({
           method: "GET",
           url: "/api/card",
           params,
@@ -64,10 +64,10 @@ export const cardApi = Api.injectEndpoints({
           params,
           noEvent: ignore_error,
         }),
-        providesTags: card => (card ? provideCardTags(card) : []),
+        providesTags: (card) => (card ? provideCardTags(card) : []),
       }),
       getCardQueryMetadata: builder.query<CardQueryMetadata, CardId>({
-        query: id => ({
+        query: (id) => ({
           method: "GET",
           url: `/api/card/${id}/query_metadata`,
         }),
@@ -84,7 +84,7 @@ export const cardApi = Api.injectEndpoints({
           provideCardQueryTags(cardId),
       }),
       createCard: builder.mutation<Card, CreateCardRequest>({
-        query: body => ({
+        query: (body) => ({
           method: "POST",
           url: "/api/card",
           body,
@@ -141,7 +141,7 @@ export const cardApi = Api.injectEndpoints({
         },
       }),
       deleteCard: builder.mutation<void, CardId>({
-        query: id => ({
+        query: (id) => ({
           method: "DELETE",
           url: `/api/card/${id}`,
         }),
@@ -153,16 +153,16 @@ export const cardApi = Api.injectEndpoints({
           ]),
       }),
       copyCard: builder.mutation<Card, CardId>({
-        query: id => ({
+        query: (id) => ({
           method: "POST",
           url: `/api/card/${id}/copy`,
         }),
         invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
       }),
       persistModel: builder.mutation<void, CardId>({
-        query: id => ({
+        query: (id) => ({
           method: "POST",
-          url: `/api/card/${id}/persist`,
+          url: `/api/persist/card/${id}/persist`,
         }),
         async onQueryStarted(id, { dispatch, queryFulfilled }) {
           await queryFulfilled;
@@ -179,9 +179,9 @@ export const cardApi = Api.injectEndpoints({
         },
       }),
       unpersistModel: builder.mutation<void, CardId>({
-        query: id => ({
+        query: (id) => ({
           method: "POST",
-          url: `/api/card/${id}/unpersist`,
+          url: `/api/persist/card/${id}/unpersist`,
         }),
         invalidatesTags: (_, error, id) =>
           invalidateTags(error, [
@@ -191,9 +191,9 @@ export const cardApi = Api.injectEndpoints({
           ]),
       }),
       refreshModelCache: builder.mutation<void, CardId>({
-        query: id => ({
+        query: (id) => ({
           method: "POST",
-          url: `/api/card/${id}/refresh`,
+          url: `/api/persist/card/${id}/refresh`,
         }),
         async onQueryStarted(id, { dispatch, queryFulfilled }) {
           await queryFulfilled;
@@ -210,24 +210,24 @@ export const cardApi = Api.injectEndpoints({
         },
       }),
       listEmbeddableCards: builder.query<GetEmbeddableCard[], void>({
-        query: params => ({
+        query: (params) => ({
           method: "GET",
           url: "/api/card/embeddable",
           params,
         }),
         providesTags: (result = []) => [
-          ...result.map(res => idTag("embed-card", res.id)),
+          ...result.map((res) => idTag("embed-card", res.id)),
           listTag("embed-card"),
         ],
       }),
       listPublicCards: builder.query<GetPublicCard[], void>({
-        query: params => ({
+        query: (params) => ({
           method: "GET",
           url: "/api/card/public",
           params,
         }),
         providesTags: (result = []) => [
-          ...result.map(res => idTag("public-card", res.id)),
+          ...result.map((res) => idTag("public-card", res.id)),
           listTag("public-card"),
         ],
       }),
@@ -276,7 +276,7 @@ export const cardApi = Api.injectEndpoints({
         }[],
         { card_ids: CollectionItem["id"][] }
       >({
-        query: body => ({
+        query: (body) => ({
           method: "POST",
           url: `/api/cards/dashboards`,
           body,
@@ -290,6 +290,7 @@ export const cardApi = Api.injectEndpoints({
 export const {
   useListCardsQuery,
   useGetCardQuery,
+  useLazyGetCardQuery,
   useGetCardQueryMetadataQuery,
   useGetCardQueryQuery,
   useCreateCardMutation,

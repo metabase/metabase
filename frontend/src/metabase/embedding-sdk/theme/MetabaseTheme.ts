@@ -118,11 +118,20 @@ export type MetabaseComponentTheme = {
   };
 
   question: {
+    /** Background color for all questions */
     backgroundColor: string;
+
+    /** Toolbar of the default interactive question layout */
+    toolbar?: {
+      backgroundColor?: string;
+    };
   };
 
   /** Data tables **/
   table: {
+    /** Background color of the table header that stays fixed while scrolling. Defaults to `white` if no cell background color is set */
+    stickyBackgroundColor?: string;
+
     cell: {
       /** Text color of cells, defaults to `text-primary`. */
       textColor: string;

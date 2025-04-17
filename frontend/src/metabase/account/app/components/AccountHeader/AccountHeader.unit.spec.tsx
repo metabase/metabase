@@ -1,5 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-
+import { fireEvent, render, screen } from "__support__/ui";
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -42,7 +41,7 @@ describe("AccountHeader", () => {
 
   it("should show the password tab if it is enabled by a plugin", () => {
     const user = getUser();
-    PLUGIN_IS_PASSWORD_USER.push(user => user.google_auth);
+    PLUGIN_IS_PASSWORD_USER.push((user) => user.google_auth);
 
     render(<AccountHeader user={user} />);
 
@@ -51,7 +50,7 @@ describe("AccountHeader", () => {
 
   it("should hide the password tab if it is disabled by a plugin", () => {
     const user = getUser();
-    PLUGIN_IS_PASSWORD_USER.push(user => !user.google_auth);
+    PLUGIN_IS_PASSWORD_USER.push((user) => !user.google_auth);
 
     render(<AccountHeader user={user} />);
 

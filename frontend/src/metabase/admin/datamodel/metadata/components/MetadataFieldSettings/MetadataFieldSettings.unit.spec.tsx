@@ -4,7 +4,7 @@ import { Route } from "react-router";
 
 import {
   setupDatabasesEndpoints,
-  setupFieldValuesEndpoints,
+  setupFieldValuesEndpoint,
   setupSearchEndpoints,
   setupUnauthorizedFieldEndpoint,
   setupUnauthorizedFieldValuesEndpoints,
@@ -134,7 +134,7 @@ const setup = async ({
     setupUnauthorizedFieldEndpoint(unauthorizedField);
   }
   if (hasFieldValuesAccess) {
-    setupFieldValuesEndpoints(fieldValues);
+    setupFieldValuesEndpoint(fieldValues);
   } else {
     setupUnauthorizedFieldValuesEndpoints(fieldValues);
   }
@@ -257,7 +257,9 @@ describe("MetadataFieldSettings", () => {
         field: ORDERS_USER_ID_FIELD,
         unauthorizedField: PEOPLE_ID_FIELD,
       });
-      expect(screen.getByText("Field access denied")).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText("Field access denied"),
+      ).toBeInTheDocument();
     });
 
     it("should show custom mapping if has data access", async () => {

@@ -244,6 +244,9 @@
                       {:type              qp.error-type/unsupported-feature
                        :coercion-strategy coercion}))
 
+      (isa? coercion :Coercion/String->Float)
+      {"$toDouble" field-name}
+
       :else field-name)))
 
 ;; Don't think this needs to implement `->lvalue` because you can't assign something to an aggregation e.g.
@@ -417,10 +420,14 @@
     (isa? base-type :type/MongoBSONID)
     (ObjectId. (str value))
 
-    (isa? base-type :type/UUID)
-    (-> (str value)
-        java.util.UUID/fromString
-        uuid->bsonbinary)
+    (isa? base-type :type/MongoBinData)
+    (try
+      (-> (str value)
+          java.util.UUID/fromString
+          uuid->bsonbinary)
+      (catch IllegalArgumentException _
+        ;; Allow comparison with non-UUID values for things like string search
+        value))
 
     :else value))
 
@@ -835,7 +842,7 @@
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod compile-cond :between [[_ field min-val max-val]]
-  (compile-cond [:and [:>= field min-val] [:< field max-val]]))
+  (compile-cond [:and [:>= field min-val] [:<= field max-val]]))
 
 (defn- index-of-code-point
   "See https://docs.mongodb.com/manual/reference/operator/aggregation/indexOfCP/"
@@ -932,7 +939,8 @@
         mapping (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue f))
                                              ;; ~ in let aliases provokes a parse error in Mongo. For correct function,
                                              ;; aliases should also contain no . characters (#32182).
-                                             (str/replace #"~|\." "_")
+                                             ;; - Spaces are allowed in columns and need to be replaced in let (#52807)
+                                             (str/replace #"[~\. -]" "_")
                                              (str "__" (next-alias-index)))]
                                {:field f, :rvalue (->rvalue f), :alias alias}))
                      own-fields)]

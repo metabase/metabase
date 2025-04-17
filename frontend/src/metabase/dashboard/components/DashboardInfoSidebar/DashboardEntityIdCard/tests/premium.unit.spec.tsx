@@ -45,6 +45,9 @@ describe("DashboardEntityIdCard (EE with token)", () => {
       ],
     });
     setup({ dashboard });
+    expect(
+      await screen.findByRole("heading", { name: /Entity ID/ }),
+    ).toBeInTheDocument();
 
     const firstClickOnSelect = await viewMantineSelectOptions();
     expect(firstClickOnSelect.displayedOption.value).toBe("Tab 1");

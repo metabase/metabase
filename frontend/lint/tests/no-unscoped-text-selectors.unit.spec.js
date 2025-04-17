@@ -30,6 +30,10 @@ const validCases = [
     cy.contains('my string of text').click();
   });`,
   `cy.get('#my-div').contains('my string of text').click();`,
+  `cy.contains('#my-div', 'foo')`,
+  `cy.get('#my-div').contains('foo')`,
+  `cy.get('#my-div').find('.elem').contains('foo')`,
+  `cy.get('#my-div').within(() => { cy.contains('foo') })`,
 ];
 
 const invalidCases = [
@@ -40,17 +44,18 @@ const invalidCases = [
   }).click().clack();`,
   "cy.contains('foobar');",
   "cy.contains('foobar').click();",
+  `cy.contains('#my-div', {timeout: 10000})`,
 ];
 
 ruleTester.run("no-unscoped-text-selectors", rule, {
-  valid: blockTypes.flatMap(blockType =>
-    validCases.map(testCase => ({
+  valid: blockTypes.flatMap((blockType) =>
+    validCases.map((testCase) => ({
       code: blockWrapper(testCase, blockType),
     })),
   ),
 
-  invalid: blockTypes.flatMap(blockType =>
-    invalidCases.map(testCase => ({
+  invalid: blockTypes.flatMap((blockType) =>
+    invalidCases.map((testCase) => ({
       code: blockWrapper(testCase, blockType),
       errors: [scopeError],
     })),
