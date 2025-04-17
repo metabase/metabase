@@ -1,8 +1,8 @@
-import process from "process";
-import _ from "underscore";
+import * as Lib from "metabase-lib";
 
 import { query } from "./__support__/shared";
 import { compileExpression } from "./compiler";
+import { fuzz } from "./test/fuzz";
 import { generateExpression } from "./test/generator";
 import type { StartRule } from "./types";
 
@@ -16,21 +16,30 @@ jest.mock("metabase-lib", () => {
   };
 });
 
-const fuzz = process.env.MB_FUZZ ? describe : _.noop;
 const MAX_SEED = 10_000;
 
 function compile(expression: string, startRule: StartRule = "expression") {
+  const stageIndex = -1;
+
+  const columns = Lib.expressionableColumns(query, stageIndex);
+
   const result = compileExpression({
     source: expression,
     query,
-    stageIndex: -1,
+    stageIndex,
     startRule,
-    resolve: false,
+    resolver() {
+      return columns[0];
+    },
   });
   if (result.error) {
     throw result.error;
   }
 }
+
+beforeAll(() => {
+  console.warn = jest.fn();
+});
 
 describe("metabase-lib/v1/expressions/compiler", () => {
   // quick sanity check before the real fuzzing
@@ -39,7 +48,7 @@ describe("metabase-lib/v1/expressions/compiler", () => {
   });
 });
 
-fuzz("FUZZING metabase-lib/v1/expressions/recursive-parser", () => {
+fuzz("FUZZING metabase-lib/v1/expressions/compiler", () => {
   for (let seed = 1; seed < MAX_SEED; ++seed) {
     it("should parse generated number expression from seed " + seed, () => {
       const { expression } = generateExpression(seed, "number");

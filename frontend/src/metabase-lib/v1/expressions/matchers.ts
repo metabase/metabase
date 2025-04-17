@@ -8,7 +8,6 @@ import type {
   FieldReference,
   MetricAgg,
   NumericLiteral,
-  OffsetExpression,
   SegmentFilter,
   StringLiteral,
   ValueExpression,
@@ -28,10 +27,6 @@ export function isExpression(expr: unknown): expr is Expression {
     isCaseOrIf(expr) ||
     isRawDimension(expr)
   );
-}
-
-export function isEmpty(expr: unknown): expr is [] {
-  return expr == null || (Array.isArray(expr) && expr.length === 0);
 }
 
 export function isLiteral(
@@ -60,6 +55,10 @@ export function isIntegerLiteral(expr: unknown): expr is NumericLiteral {
 
 export function isFloatLiteral(expr: unknown): expr is NumericLiteral {
   return typeof expr === "number" && !Number.isInteger(expr);
+}
+
+export function isBigIntLiteral(expr: unknown): expr is NumericLiteral {
+  return typeof expr === "bigint";
 }
 
 export function isValue(expr: unknown): expr is ValueExpression {
@@ -116,10 +115,6 @@ export function isCaseOrIfOperator(
 
 export function isCaseOrIf(expr: unknown): expr is CaseOrIfExpression {
   return Array.isArray(expr) && isCaseOrIfOperator(expr[0]); // && _.all(expr.slice(1), isValidArg)
-}
-
-export function isOffset(expr: unknown): expr is OffsetExpression {
-  return Array.isArray(expr) && expr[0] === "offset";
 }
 
 // RawDimension is only used internally while parsing an expression.

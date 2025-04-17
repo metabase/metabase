@@ -1434,3 +1434,30 @@ describe("issue 51925", () => {
     });
   });
 });
+
+describe("issue 56698", () => {
+  beforeEach(() => {
+    H.restore();
+  });
+
+  it("should create an editable ad-hoc query based on a read-only native model (metabase#56698)", () => {
+    cy.log("create a native model");
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(
+      {
+        name: "Native model",
+        native: { query: "select 1 union all select 2" },
+        type: "model",
+      },
+      { wrapId: true, idAlias: "modelId" },
+    );
+
+    cy.log("verify that we create an editable ad-hoc query");
+    cy.signIn("readonlynosql");
+    cy.get("@modelId").then((modelId) => H.visitModel(Number(modelId)));
+    H.assertQueryBuilderRowCount(2);
+    H.summarize();
+    H.rightSidebar().button("Done").click();
+    H.assertQueryBuilderRowCount(1);
+  });
+});

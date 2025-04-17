@@ -33,13 +33,14 @@ frontend_sources: &frontend_sources
   - ".nvmrc"
 
 frontend_embedding_sdk_sources:
-  - "enterprise/frontend/src/embedding-sdk/**"
+  - *frontend_sources
 
 frontend_specs: &frontend_specs
   - *shared_specs
   - "frontend/test/**"
   - "frontend/**/tests/**"
   - "frontend/**/*.unit.*"
+  - ".github/**/*.unit.spec.*"
   - "jest.config.js"
   - "jest.tz.unit.conf.json"
 

@@ -1,6 +1,6 @@
 import { KBarPortal, VisualState, useKBar } from "kbar";
 import { type HTMLAttributes, forwardRef, useEffect, useRef } from "react";
-import { withRouter } from "react-router";
+import { type PlainRoute, withRouter } from "react-router";
 import { t } from "ttag";
 
 import { useOnClickOutside } from "metabase/hooks/use-on-click-outside";
@@ -19,13 +19,20 @@ import { PaletteResults } from "./PaletteResults";
 export const Palette = withRouter((props) => {
   const isLoggedIn = useSelector((state) => !!getUser(state));
 
+  const disableCommandPaletteForRoute = props.routes.some(
+    (route: PlainRoute & { disableCommandPalette?: boolean }) =>
+      route.disableCommandPalette,
+  );
+
   useCommandPaletteBasicActions({ ...props, isLoggedIn });
 
   //Disable when iframed in
   const { query } = useKBar();
   useEffect(() => {
-    query.disable(isWithinIframe() || !isLoggedIn);
-  }, [isLoggedIn, query]);
+    query.disable(
+      isWithinIframe() || !isLoggedIn || disableCommandPaletteForRoute,
+    );
+  }, [isLoggedIn, query, disableCommandPaletteForRoute]);
 
   return (
     <KBarPortal>

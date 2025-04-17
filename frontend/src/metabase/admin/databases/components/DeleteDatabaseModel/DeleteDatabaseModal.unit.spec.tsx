@@ -1,11 +1,15 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { render, screen, waitForLoaderToBeRemoved } from "__support__/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
+import type { Database } from "metabase-types/api";
 
 import type { DeleteDatabaseModalProps } from "./DeleteDatabaseModal";
-import DeleteDatabaseModal from "./DeleteDatabaseModal";
+import { DeleteDatabaseModal } from "./DeleteDatabaseModal";
 
 const getUsageInfo = (hasContent: boolean) => ({
   question: hasContent ? 10 : 0,
@@ -24,8 +28,13 @@ const setup = async ({
   hasContent?: boolean;
 } = {}) => {
   fetchMock.get("path:/api/database/1/usage_info", getUsageInfo(hasContent));
-  render(
+  renderWithProviders(
     <DeleteDatabaseModal
+      opened
+      title={"Delete the destination database?"}
+      defaultDatabaseRemovalMessage={
+        "Users routed to this database will lose access to every question, model, metric, and segment if you continue."
+      }
       onClose={jest.fn()}
       onDelete={onDelete}
       database={database}
@@ -64,7 +73,7 @@ describe("DeleteDatabaseModal", () => {
 
     await userEvent.click(deleteButton);
 
-    expect(onDelete).toHaveBeenCalledWith(database);
+    expect(onDelete).toHaveBeenCalled();
   });
 
   it("should allow deleting database with content after confirming its name and its content removal", async () => {
@@ -92,7 +101,7 @@ describe("DeleteDatabaseModal", () => {
 
     await userEvent.click(deleteButton);
 
-    expect(onDelete).toHaveBeenCalledWith(database);
+    expect(onDelete).toHaveBeenCalled();
   });
 
   it("shows an error if removal failed", async () => {

@@ -7,16 +7,16 @@ import { quoteString } from "./string";
 // can be double-quoted, but are not by default unless they have non-word characters or are reserved
 export function formatIdentifier(
   name: string,
-  { quotes = EDITOR_QUOTES } = {},
+  { delimiters = EDITOR_QUOTES } = {},
 ) {
   if (
-    !quotes.identifierAlwaysQuoted &&
+    !delimiters.identifierAlwaysQuoted &&
     /^\w+$/.test(name) &&
     !isReservedWord(name)
   ) {
     return name;
   }
-  return quoteString(name, quotes.identifierQuoteDefault);
+  return quoteString(name, delimiters.identifierQuoteDefault);
 }
 
 function isReservedWord(word: string) {
@@ -89,7 +89,7 @@ export function formatSegmentName(
 // DIMENSIONS
 
 /**
- * Find dimension with matching `name` in query. TODO - How is this "parsing" a dimension? Not sure about this name.
+ * Find dimension with matching `name` in query.
  */
 export function parseDimension(
   name: string,

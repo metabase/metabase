@@ -56,6 +56,7 @@ import type {
   Dashboard,
   Database as DatabaseType,
   Dataset,
+  FieldId,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -610,4 +611,27 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
     hide_download_button?: boolean | null;
     downloads?: string | boolean | null;
   }) => ({ pdf: true, results: true }),
+};
+
+export const PLUGIN_DB_ROUTING = {
+  DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+  }>,
+  getDatabaseNameFieldProps: (_isSlug: boolean) => ({}),
+  getDestinationDatabaseRoutes: (_IsAdmin: any) =>
+    null as React.ReactElement | null,
+  useRedirectDestinationDatabase: (
+    _database: Pick<DatabaseType, "id" | "router_database_id"> | undefined,
+  ): void => {},
+  getPrimaryDBEngineFieldState: (
+    _database: Pick<Database, "router_user_attribute">,
+  ): "default" | "hidden" | "disabled" => "default",
+};
+
+export const PLUGIN_API = {
+  getFieldValuesUrl: (fieldId: FieldId) => `/api/field/${fieldId}/values`,
+  getRemappedFieldValueUrl: (fieldId: FieldId, remappedFieldId: FieldId) =>
+    `/api/field/${fieldId}/remapping/${remappedFieldId}`,
+  getSearchFieldValuesUrl: (fieldId: FieldId, searchFieldId: FieldId) =>
+    `/api/field/${fieldId}/search/${searchFieldId}`,
 };

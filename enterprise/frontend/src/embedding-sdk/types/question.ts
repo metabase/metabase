@@ -1,11 +1,10 @@
 import type { ReactNode } from "react";
 
-import type { ParameterValues } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import type { Deferred } from "metabase/lib/promise";
 import type { QueryParams } from "metabase/query_builder/actions";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type Question from "metabase-lib/v1/Question";
-import type { Card, CardId } from "metabase-types/api";
+import type { Card, CardId, ParameterId } from "metabase-types/api";
 
 import type { SdkEntityId } from "./entity-id";
 
@@ -18,10 +17,25 @@ export interface SdkQuestionState {
 }
 
 export interface LoadSdkQuestionParams {
+  /**
+   * For SQL questions only. A mapping of SQL parameter names to parameter values, such as `{ product_id: "42"}`
+   */
+  initialSqlParameters?: SqlParameterValues;
+
+  /**
+   * @internal
+   */
   options?: QueryParams;
+
+  /**
+   * @internal
+   */
   deserializedCard?: Card;
+
+  /**
+   * @internal
+   */
   questionId?: CardId | null;
-  initialSqlParameters?: ParameterValues;
 }
 
 export interface NavigateToNewCardParams {
@@ -42,3 +56,7 @@ export type SdkQuestionTitleProps =
   | ReactNode
   // TODO: turn this into (question: Question) => ReactNode once we have the public-facing question type (metabase#50487)
   | (() => ReactNode);
+
+export type EntityTypeFilterKeys = "table" | "question" | "model" | "metric";
+
+export type SqlParameterValues = Record<ParameterId, string | number>;
