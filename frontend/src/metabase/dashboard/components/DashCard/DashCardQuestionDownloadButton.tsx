@@ -51,7 +51,6 @@ export const DashCardQuestionDownloadButton = ({
       <Popover.Target>
         <Tooltip label={t`Download results`}>
           <ActionIcon
-            c="var(--mb-color-text-primary)"
             onClick={() => setIsPopoverOpen(!isPopoverOpen)}
             className={cx(
               SAVING_DOM_IMAGE_HIDDEN_CLASS,
