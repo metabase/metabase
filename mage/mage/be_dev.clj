@@ -208,6 +208,8 @@
                                      {:cause :line-number-too-high})))
 
                  {:keys [start end]} (line-bounds content line-number)
+                 start (min start line-number)
+                 end (max end line-number)
                  corpus (take (- end start) (drop (dec start) lines))]
              (report-chunk corpus line-number start end)
              (let [result (assoc
@@ -252,7 +254,7 @@
   (can-read-content? "1a")
   ;; => {:readable false, :reason "Invalid number: 1a", :data {:type :edamame/error, :line 1, :column 2}}
 
-  (readability-check "mage/mage/be_dev.clj" 220)
+  (readability-check "mage/mage/be_dev.clj" 234)
   ;; => {:readable true, :starting-at "\n(comment ;; hi self"}
 
                                         ;soo meta :) :| :(
