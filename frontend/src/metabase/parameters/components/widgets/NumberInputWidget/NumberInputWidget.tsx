@@ -70,10 +70,7 @@ export function NumberInputWidget({
   );
 
   const values = parameter?.values_source_config?.values ?? [];
-  const options =
-    values
-      .map(getOption)
-      .filter((item): item is ComboboxItem => item !== null) ?? [];
+  const options = values.map(getOption).filter(isNotNull);
   const labelByValue = Object.fromEntries(
     options.map((option) => [option.value, option.label]),
   );
@@ -147,8 +144,7 @@ function getOption(
 ): ComboboxItem | null {
   const value = getValue(entry);
   const label = getLabel(entry);
-
-  if (!value) {
+  if (value == null) {
     return null;
   }
 

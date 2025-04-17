@@ -49,10 +49,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
       continue;
     }
     if (token.type === BAD_TOKEN) {
-      const err = new CompileError(t`Unexpected token "${token.text}"`, {
-        node,
-        token,
-      });
+      const err = new CompileError(t`Unexpected token "${token.text}"`, node);
       hooks.onBadToken?.(token, node, err);
       if (throwOnError) {
         throw err;
@@ -109,7 +106,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
         // If the current token isn't in the list of the AST type's ignored
         // tokens and it's not the terminator the current node requires, we'll
         // throw an error
-        const err = new CompileError(t`Expected expression`, { node, token });
+        const err = new CompileError(t`Expected expression`, node);
         hooks.onUnexpectedTerminator?.(token, node, err);
         if (throwOnError) {
           throw err;
@@ -137,9 +134,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
         // ie. +42
         continue;
       } else {
-        const err = new CompileError(t`Expected expression`, {
-          token,
-        });
+        const err = new CompileError(t`Expected expression`, node);
         hooks.onMissinChildren?.(token, node, err);
         if (throwOnError) {
           throw err;
@@ -166,10 +161,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
 
   const childViolation = ROOT.checkChildConstraints(root);
   if (childViolation !== null) {
-    const err = new CompileError(t`Unexpected token`, {
-      node: root,
-      ...childViolation,
-    });
+    const err = new CompileError(t`Unexpected token`, node);
     hooks.onChildConstraintViolation?.(node, err);
     if (throwOnError) {
       throw err;
@@ -201,10 +193,7 @@ function place(node: Node, errors: CompileError[], opts: ParserOptions) {
 
   const childViolation = type.checkChildConstraints(node);
   if (childViolation !== null) {
-    const err = new CompileError(t`Unexpected token`, {
-      node,
-      ...childViolation,
-    });
+    const err = new CompileError(t`Unexpected token`, node);
     hooks.onChildConstraintViolation?.(node, err);
     if (throwOnError) {
       throw err;

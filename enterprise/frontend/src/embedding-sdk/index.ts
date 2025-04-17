@@ -19,7 +19,18 @@ export * from "./hooks/public";
 export * from "./components/public";
 export * from "metabase/embedding-sdk/types/plugins";
 
-export type { MetabaseAuthConfig, SdkDashboardLoadEvent } from "./types";
+export type {
+  CollectionItem,
+  EntityTypeFilterKeys,
+  MetabaseAuthConfig,
+  SdkCollectionId,
+  SdkDashboardId,
+  SdkDashboardLoadEvent,
+  SdkEventHandlersConfig,
+  SdkQuestionId,
+  SdkQuestionTitleProps,
+  SqlParameterValues,
+} from "./types";
 
 export type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
 
