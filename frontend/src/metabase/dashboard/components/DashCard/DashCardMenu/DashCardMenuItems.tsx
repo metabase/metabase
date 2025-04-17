@@ -8,11 +8,13 @@ import { useInteractiveDashboardContext } from "embedding-sdk/components/public/
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { editQuestion } from "metabase/dashboard/actions";
+import { showDashCardAnalysisSidebar } from "metabase/dashboard/actions/ui";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import { useDispatch } from "metabase/lib/redux";
+import { PLUGIN_AI_ANALYSIS } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type { Dataset } from "metabase-types/api";
+import type { DashCardId, Dataset } from "metabase-types/api";
 
 import { canDownloadResults, canEditQuestion } from "./utils";
 
@@ -21,12 +23,14 @@ type DashCardMenuItemsProps = {
   result: Dataset;
   isDownloadingData: boolean;
   onDownload: () => void;
+  dashcardId?: DashCardId;
 };
 export const DashCardMenuItems = ({
   question,
   result,
   isDownloadingData,
   onDownload,
+  dashcardId,
 }: DashCardMenuItemsProps) => {
   const dispatch = useDispatch();
 
@@ -90,6 +94,19 @@ export const DashCardMenuItems = ({
       });
     }
 
+    if (PLUGIN_AI_ANALYSIS.canAnalyzeQuestion(question)) {
+      items.push({
+        key: "MB_ANALYZE_CHART",
+        iconName: "metabot",
+        label: t`Analyze chart`,
+        onClick: () => {
+          if (dashcardId != null) {
+            dispatch(showDashCardAnalysisSidebar(dashcardId));
+          }
+        },
+      });
+    }
+
     if (customItems) {
       items.push(
         ...customItems.map((item) => {
@@ -116,6 +133,8 @@ export const DashCardMenuItems = ({
     result,
     withDownloads,
     withEditLink,
+    dashcardId,
+    dispatch,
   ]);
 
   return menuItems.map((item) => {

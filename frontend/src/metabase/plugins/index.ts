@@ -56,6 +56,7 @@ import type {
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
+  DashCardId,
   Dashboard,
   DatabaseId,
   Database as DatabaseType,
@@ -70,6 +71,7 @@ import type {
   Pulse,
   Revision,
   TableId,
+  Timeline,
   User,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
@@ -451,11 +453,13 @@ export const PLUGIN_REDUCERS: {
   sandboxingPlugin: any;
   shared: any;
   metabotPlugin: any;
+  aiAnalysisPlugin: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
   metabotPlugin: () => null,
+  aiAnalysisPlugin: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
@@ -655,6 +659,37 @@ export type PluginAiSqlGeneration = {
 
 export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
   GenerateSqlQueryButton: PluginPlaceholder,
+};
+
+export interface AIDashboardAnalysisSidebarProps {
+  dashboard: Dashboard;
+  onClose?: () => void;
+  dashcardId?: DashCardId;
+}
+
+export interface AIQuestionAnalysisSidebarProps {
+  question: Question;
+  className?: string;
+  onClose?: () => void;
+  timelines?: Timeline[];
+}
+
+export type PluginAiAnalysis = {
+  AIQuestionAnalysisButton: ComponentType<any>;
+  AIDashboardAnalysisButton: ComponentType<any>;
+  AIQuestionAnalysisSidebar: ComponentType<AIQuestionAnalysisSidebarProps>;
+  AIDashboardAnalysisSidebar: ComponentType<AIDashboardAnalysisSidebarProps>;
+  canAnalyzeDashboard: (dashboard: Dashboard) => boolean;
+  canAnalyzeQuestion: (question: Question) => boolean;
+};
+
+export const PLUGIN_AI_ANALYSIS: PluginAiAnalysis = {
+  AIQuestionAnalysisButton: PluginPlaceholder,
+  AIDashboardAnalysisButton: PluginPlaceholder,
+  AIQuestionAnalysisSidebar: PluginPlaceholder,
+  AIDashboardAnalysisSidebar: PluginPlaceholder,
+  canAnalyzeDashboard: () => false,
+  canAnalyzeQuestion: () => false,
 };
 
 export const PLUGIN_METABOT = {

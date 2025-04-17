@@ -27,6 +27,7 @@ type Props = {
   doneButtonText?: string;
   footer?: ReactNode;
   children?: ReactNode;
+  headerActions?: ReactNode;
   "data-testid"?: string;
 };
 
@@ -74,6 +75,7 @@ function SidebarContent({
     </ViewButton>
   ) : null,
   children,
+  headerActions,
   "data-testid": dataTestId,
 }: Props) {
   return (
@@ -86,6 +88,7 @@ function SidebarContent({
             icon={icon}
             onBack={onBack}
             onClose={onClose}
+            actions={headerActions}
           />
         )}
         {children}

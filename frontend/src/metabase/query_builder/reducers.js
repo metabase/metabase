@@ -51,6 +51,7 @@ import {
   TOGGLE_TEMPLATE_TAGS_EDITOR,
   UPDATE_QUESTION,
   ZOOM_IN_ROW,
+  onCloseAIQuestionAnalysisSidebar,
   onCloseChartSettings,
   onCloseChartType,
   onCloseQuestionInfo,
@@ -59,6 +60,7 @@ import {
   onCloseSummary,
   onCloseTimelines,
   onEditSummary,
+  onOpenAIQuestionAnalysisSidebar,
   onOpenChartSettings,
   onOpenChartType,
   onOpenQuestionInfo,
@@ -229,6 +231,15 @@ export const uiControls = handleActions(
       isShowingSummarySidebar: true,
     }),
     [onCloseSummary]: (state) => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
+    [onOpenAIQuestionAnalysisSidebar]: (state) => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingAIQuestionAnalysisSidebar: true,
+    }),
+    [onCloseAIQuestionAnalysisSidebar]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
