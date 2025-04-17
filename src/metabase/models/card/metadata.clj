@@ -145,13 +145,13 @@ saved later when it is ready."
   (u/minutes->ms 15))
 
 (defn- valid-ident?
-  "Validates that model columns have idents that always start with `model__CardEntityId__`, and that all idents are
+  "Validates that model columns have idents that always start with `model[CardEntityId]__`, and that all idents are
   nonempty strings.
 
   Note that this **does not** check that `:type :native` queries have native idents - SQL-based sandboxing stores
   `:native` queries but returns MBQL-like metadata with IDs and the Field `entity_id`s as idents."
   ;; TODO: That limitation that prevents checking native queries have native-looking :idents is unfortunate.
-  ;; At least this checks that we never store `native____`, ie. native queries without a card entity_id.
+  ;; At least this checks that we never store `native[]__`, ie. native queries without a card entity_id.
   ([column card]
    (valid-ident? column (= (:type card) :model) (:entity_id card)))
   ([column model? entity-id]

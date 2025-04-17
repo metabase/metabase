@@ -9,7 +9,7 @@
   "Returns the ident for an explicitly joined column, given the idents of the join clause and the target column.
   Remember that `:ident` strings should never be parsed - they are opaque, but should be legible during debugging."
   [target-ident join-ident]
-  (str "join__" join-ident "__" target-ident))
+  (str "join[" join-ident "]__" target-ident))
 
 (defn implicit-join-clause-ident
   "Returns the ident for an implicit join **clause**.
@@ -36,7 +36,7 @@
              (str/starts-with? target-ident (model-ident "" card-entity-id)))
     (throw (ex-info "Double-bagged!" {:ident target-ident
                                       :eid   card-entity-id})))
-  (str "model__" card-entity-id "__" target-ident))
+  (str "model[" card-entity-id "]__" target-ident))
 
 (defn add-model-ident
   "Given a column with a basic, \"inner\" `:ident` and the `card-entity-id`, returns the column with `:ident` for the
@@ -71,12 +71,12 @@
 
   Requires the `entity_id` of the card and the name of the column."
   [column-name card-entity-id]
-  (str "native__" card-entity-id "__" column-name))
+  (str "native[" card-entity-id "]__" column-name))
 
 (defn remap-ident
   "Returns the `:ident` for a \"remapped\" field."
   [target-ident source-ident]
-  (str "remapped__" source-ident "__to__" target-ident))
+  (str "remapped[" source-ident "]__to__" target-ident))
 
 ;; ## Placeholder :idents
 ;; We need the `:entity_id` of the card for native and model idents, but ad-hoc queries don't have an `:entity_id`
@@ -100,7 +100,8 @@
 
 (def ^:private illegal-substrings
   #{"$$ADHOC"      ; The tag used in placeholder idents, which should not survive to eg. `:result_metadata` on a Card.
-    "native____"}) ; A native column but generated without the containing Card's `entity_id`. This isn't unique!
+    "native[]"     ; A native column but generated without the containing Card's `entity_id`. This isn't unique!
+    "model[]"})    ; A model created without an `entity_id` properly defined.
 
 (def ^:private placeholder-regex
   #"\$\$ADHOC\[[A-Za-z0-9_-]{21}\]")
@@ -132,7 +133,7 @@
   "Validates a generic ident.
 
   An ident is a nonempty string which does not contain any of the [[illegal-substrings]]: placeholders or malformed
-  `native____` slugs.
+  `native[]` slugs.
 
   Accepts an optional second argument (a `card-entity-id`) for uniformity with the other validators, but it's unused."
   ([column-or-ident _card-entity-id]
@@ -166,7 +167,7 @@
 
 (defn valid-native-model-ident?
   "A special case that checks if a native model's ident is correctly formed:
-  `model__CardEntityId__native__CardEntityId__columnName`."
+  `model[CardEntityId]__native[CardEntityId]__columnName`."
   [column-or-ident card-entity-id]
   (let [prefix (-> ""
                    (native-ident card-entity-id)

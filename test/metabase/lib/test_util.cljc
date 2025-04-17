@@ -212,13 +212,13 @@
                    :lib/stage-metadata {:lib/type :metadata/results
                                         :columns  [{:lib/type      :metadata/column
                                                     :name          "abc"
-                                                    :ident         "native__zkZ11tfUHvSej1u4yPLjB__abc"
+                                                    :ident         "native[zkZ11tfUHvSej1u4yPLjB]__abc"
                                                     :display-name  "another Field"
                                                     :base-type     :type/Integer
                                                     :semantic-type :type/FK}
                                                    {:lib/type      :metadata/column
                                                     :name          "sum"
-                                                    :ident         "native__zkZ11tfUHvSej1u4yPLjB__sum"
+                                                    :ident         "native[zkZ11tfUHvSej1u4yPLjB]__sum"
                                                     :display-name  "sum of User ID"
                                                     :base-type     :type/Integer
                                                     :semantic-type :type/FK}]}
@@ -332,7 +332,7 @@
 (defn as-model
   "Given a mock card, make it a model.
 
-  This sets the `:type` of the card, and also adds `model__...` to the `:ident`s in its `:result-metadata`, if any.
+  This sets the `:type` of the card, and also adds `model[...]__...` to the `:ident`s in its `:result-metadata`, if any.
 
   If the `:type` is already `:model`, this does nothing. Randomizes an `:entity-id` if not provided."
   [card]

@@ -171,7 +171,7 @@
                                            (= (:type card) :model)
                                            (seq (remove #(lib.metadata.ident/valid-model-ident? % (:entity-id card))
                                                         cols)))]
-              (throw (ex-info "Model columns do not have model__ idents"
+              (throw (ex-info "Model columns do not have model[...]__ idents"
                               {:card       card
                                :bad-idents invalid-idents})))
             cols))))))

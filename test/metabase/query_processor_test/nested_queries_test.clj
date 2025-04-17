@@ -92,7 +92,7 @@
                                             (-> col
                                                 (dissoc :database_type)
                                                 ;; Overwrite the idents to make the card eid fixed.
-                                                (update :ident #(str "native__AAAAAAAAAAAAAAAAAAAAA__"
+                                                (update :ident #(str "native[AAAAAAAAAAAAAAAAAAAAA]__"
                                                                      (subs % 31)))))
                                           cols)))))))))))
 

@@ -824,7 +824,7 @@
                               {:display_name   column-name
                                :field_ref      [:field column-name {:base-type :type/Integer}]
                                :name           column-name
-                               ;; Yes, native models have model__card-eid__native__card-end__COLUMN_NAME idents.
+                               ;; Yes, native models have model[card-eid]__native[card-eid]__COLUMN_NAME idents.
                                :ident          (lib/model-ident
                                                 (lib/native-ident column-name card-eid)
                                                 card-eid)
