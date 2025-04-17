@@ -8,39 +8,74 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type Variable from "metabase-lib/v1/variables/Variable";
-import type { Parameter, TemplateTag } from "metabase-types/api";
+import type {
+  FieldValuesType,
+  Parameter,
+  TemplateTag,
+} from "metabase-types/api";
+
+type ColumnInfo = {
+  isString: boolean;
+  isNumeric: boolean;
+  isBoolean: boolean;
+  isTemporal: boolean;
+  isID: boolean;
+  isLocation: boolean;
+  isTemporalBucketable: boolean;
+  hasFieldValues: FieldValuesType | undefined;
+};
+
+function isColumnCompatibleWithParameter(
+  parameter: Parameter | string,
+  {
+    isString,
+    isNumeric,
+    isBoolean,
+    isTemporal,
+    isID,
+    isLocation,
+    isTemporalBucketable,
+    hasFieldValues,
+  }: ColumnInfo,
+) {
+  const type = getParameterType(parameter);
+  switch (type) {
+    case "date":
+      return isTemporal;
+    case "id":
+      return isID;
+    case "category":
+      return hasFieldValues === "list";
+    case "location":
+      return isLocation;
+    case "number":
+      return isNumeric && !isID && !isLocation;
+    case "string":
+      return (
+        (isString || ((isNumeric || isBoolean) && hasFieldValues === "list")) &&
+        !isLocation
+      );
+    case "temporal-unit":
+      return isTemporalBucketable;
+    default:
+      return false;
+  }
+}
 
 export function fieldFilterForParameter(
   parameter: Parameter | string,
 ): (field: Field) => boolean {
-  const type = getParameterType(parameter);
-  switch (type) {
-    case "date":
-      return (field) => field.isDate();
-    case "id":
-      return (field) => field.isID();
-    case "category":
-      return (field) => field.has_field_values === "list";
-    case "location":
-      return (field) => field.isLocation();
-    case "number":
-      return (field) =>
-        field.isNumeric() && !field.isID() && !field.isCoordinate();
-    case "string":
-      return (field) => {
-        const isString = field.isString();
-        const isNumeric = field.isNumeric();
-        const isBoolean = field.isBoolean();
-        const hasFieldValues = field.has_field_values === "list";
-        const isLocation = field.isLocation();
-        return (
-          (isString || ((isNumeric || isBoolean) && hasFieldValues)) &&
-          !isLocation
-        );
-      };
-  }
-
-  return () => false;
+  return (field) =>
+    isColumnCompatibleWithParameter(parameter, {
+      isString: field.isString(),
+      isNumeric: field.isNumeric(),
+      isBoolean: field.isBoolean(),
+      isTemporal: field.isDate(),
+      isID: field.isID(),
+      isLocation: field.isLocation(),
+      isTemporalBucketable: false,
+      hasFieldValues: field.has_field_values,
+    });
 }
 
 export function columnFilterForParameter(
@@ -48,42 +83,17 @@ export function columnFilterForParameter(
   stageIndex: number,
   parameter: Parameter | string,
 ): (column: Lib.ColumnMetadata) => boolean {
-  const type = getParameterType(parameter);
-
-  switch (type) {
-    case "date":
-      return (column) => Lib.isTemporal(column);
-    case "id":
-      return (column) => Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
-    case "category":
-      return (column) =>
-        Lib.fieldValuesSearchInfo(query, column).hasFieldValues === "list";
-    case "location":
-      return (column) => Lib.isLocation(column);
-    case "number":
-      return (column) =>
-        Lib.isNumeric(column) &&
-        !Lib.isPrimaryKey(column) &&
-        !Lib.isForeignKey(column) &&
-        !Lib.isLocation(column);
-    case "string":
-      return (column) => {
-        const isString = Lib.isStringOrStringLike(column);
-        const isNumeric = Lib.isNumeric(column);
-        const isBoolean = Lib.isBoolean(column);
-        const hasFieldValues =
-          Lib.fieldValuesSearchInfo(query, column).hasFieldValues === "list";
-        const isLocation = Lib.isLocation(column);
-        return (
-          (isString || ((isNumeric || isBoolean) && hasFieldValues)) &&
-          !isLocation
-        );
-      };
-    case "temporal-unit":
-      return (column) => Lib.isTemporalBucketable(query, stageIndex, column);
-  }
-
-  return () => false;
+  return (column) =>
+    isColumnCompatibleWithParameter(parameter, {
+      isString: Lib.isStringOrStringLike(column),
+      isNumeric: Lib.isNumeric(column),
+      isBoolean: Lib.isBoolean(column),
+      isTemporal: Lib.isTemporal(column),
+      isID: Lib.isID(column),
+      isLocation: Lib.isLocation(column),
+      isTemporalBucketable: Lib.isTemporalBucketable(query, stageIndex, column),
+      hasFieldValues: Lib.fieldValuesSearchInfo(query, column).hasFieldValues,
+    });
 }
 
 export function dimensionFilterForParameter(parameter: Parameter | string) {

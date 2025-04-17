@@ -119,7 +119,7 @@ describe("parameters/utils/field-filters", () => {
         field: () => ({
           ...field,
           isNumeric: () => true,
-          isCoordinate: () => true,
+          isLocation: () => true,
         }),
       });
 
