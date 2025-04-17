@@ -52,7 +52,6 @@ export const ExportAsPdfButton = ({
   return (
     <Tooltip label={t`Download as PDF`}>
       <ActionIcon
-        c="var(--mb-color-text-primary)"
         onClick={() => dispatch(saveAsPDF)}
         className={cx({
           [CS.CompactExportAsPdfButton]:

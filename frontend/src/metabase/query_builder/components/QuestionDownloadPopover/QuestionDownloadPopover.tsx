@@ -49,7 +49,6 @@ const QuestionDownloadPopover = ({
         <Flex className={cx(className, { [S.FloatingButton]: floating })}>
           <Tooltip label={t`Download results`} disabled={isPopoverOpen}>
             <ActionIcon
-              c="var(--mb-color-text-primary)"
               data-testid="question-results-download-button"
               onClick={() => setIsPopoverOpen(!isPopoverOpen)}
               aria-label={t`Download results`}
