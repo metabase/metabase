@@ -31,14 +31,14 @@ export const initAuth = createAsyncThunk(
       // JWT setup
       api.onBeforeRequest = async () => {
         const session = await dispatch(
-          getOrRefreshSession(authConfig.authProviderUri!),
+          getOrRefreshSession(authConfig),
         ).unwrap();
         if (session?.id) {
           api.sessionToken = session.id;
         }
       };
       // verify that the session is actually valid before proceeding
-      await dispatch(getOrRefreshSession(authConfig.authProviderUri!)).unwrap();
+      await dispatch(getOrRefreshSession(authConfig)).unwrap();
     } else if (isValidApiKeyConfig) {
       // API key setup
       api.apiKey = authConfig.apiKey;
@@ -89,7 +89,7 @@ export const initAuth = createAsyncThunk(
 export const refreshTokenAsync = createAsyncThunk(
   "sdk/token/REFRESH_TOKEN",
   async (
-    url: string,
+    authConfig: MetabaseAuthConfig,
     { getState },
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
     // The SDK user can provide a custom function to refresh the token.
@@ -97,7 +97,12 @@ export const refreshTokenAsync = createAsyncThunk(
       getState() as SdkStoreState,
     );
 
-    const getRefreshToken = customGetRefreshToken ?? defaultGetRefreshTokenFn;
+    const authUrl = `${authConfig.metabaseInstanceUrl}/auth/sso`;
+    const getRefreshToken = customGetRefreshToken
+      ? () => customGetRefreshToken(authConfig.authProviderUri!)
+      : authConfig.authMethod === "jwt"
+        ? () => jwtRefreshFunction(authUrl)
+        : () => popupRefreshTokenFn(authUrl);
 
     // # How does the error handling work?
     // This is an async thunk, thunks _by design_ can fail and no error will be shown on the console (it's the reducer that should handle the reject action)
@@ -105,7 +110,7 @@ export const refreshTokenAsync = createAsyncThunk(
     // In this way we also support standard thrown Errors in the custom fetchRequestToken user provided function
 
     try {
-      const session = await getRefreshToken(url);
+      const session = await getRefreshToken();
       const source = customGetRefreshToken
         ? '"fetchRequestToken"'
         : "authProviderUri endpoint";
@@ -156,27 +161,109 @@ const safeStringify = (value: unknown) => {
  * The default implementation of the function to get the refresh token.
  * Only supports sessions by default.
  */
-export const defaultGetRefreshTokenFn: MetabaseFetchRequestTokenFn = async (
-  url,
-) => {
-  const response = await fetch(url, {
+export const jwtRefreshFunction: MetabaseFetchRequestTokenFn = async (url) => {
+  const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
+  const fetchParams: RequestInit = {
+    method: "GET",
+    headers: {
+      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      "X-Metabase-Client": "embedding-sdk-react",
+      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      "X-Metabase-Client-Version": EMBEDDING_SDK_VERSION,
+    },
+  };
+
+  const response = await fetch(`${url}?method=jwt`, fetchParams);
+  const urlObj = await response.json();
+  const backendObj = urlObj.url;
+
+  const backendResponse = await fetch(backendObj, {
     method: "GET",
     credentials: "include",
   });
 
-  if (!response.ok) {
+  const urlObj2 = await backendResponse.json();
+  const backendObj2 = urlObj2.url;
+
+  const backToAuthResponse = await fetch(`${backendObj2}`, fetchParams);
+
+  if (!backToAuthResponse.ok) {
     throw new Error(
-      `Failed to fetch the session, HTTP status: ${response.status}`,
+      `Failed to fetch the session, HTTP status: ${backToAuthResponse.status}`,
     );
   }
+  const asText = await backToAuthResponse.text();
 
-  const asText = await response.text();
+  // if (!response.ok) {
+  //   throw new Error(
+  //     `Failed to fetch the session, HTTP status: ${response.status}`,
+  //   );
+  // }
 
   try {
     return JSON.parse(asText);
   } catch (ex) {
     return asText;
   }
+};
+
+export const popupRefreshTokenFn = async (url: string) => {
+  return new Promise((resolve, reject) => {
+    // Define popup dimensions
+    const width = 600;
+    const height = 700;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+    const testUrl = `${url}?token=true&method=saml`;
+    // Make sure token=true is included
+    // This is critical for triggering the postMessage flow
+    const tokenUrl = url.includes("?")
+      ? `${url}&redirect=${encodeURIComponent(testUrl)}`
+      : `${url}?redirect=${encodeURIComponent(testUrl)}`;
+
+    // Open popup
+    const popup = window.open(
+      tokenUrl,
+      "samlLoginPopup",
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`,
+    );
+
+    if (!popup) {
+      reject(new Error("Popup blocked. Please allow popups for this site."));
+      return;
+    }
+
+    const messageHandler = (event: MessageEvent) => {
+      if (event.data && event.data.type === "SAML_AUTH_COMPLETE") {
+        window.removeEventListener("message", messageHandler);
+        if (!popup.closed) {
+          popup.close();
+        }
+        resolve(event.data.authData);
+      }
+    };
+
+    window.addEventListener("message", messageHandler);
+
+    // Handle popup closing
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed);
+        window.removeEventListener("message", messageHandler);
+        reject(new Error("Authentication was canceled"));
+      }
+    }, 1000);
+
+    // Set timeout to prevent hanging indefinitely
+    setTimeout(() => {
+      clearInterval(checkClosed);
+      window.removeEventListener("message", messageHandler);
+      if (!popup.closed) {
+        popup.close();
+      }
+      reject(new Error("Authentication timed out"));
+    }, 60000); // 1 minute timeout
+  });
 };
 
 const sessionSchema = Yup.object({

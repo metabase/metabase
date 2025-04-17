@@ -1,10 +1,16 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
-import type { SdkState, SdkStoreState } from "embedding-sdk/store/types";
+import type {
+  MetabaseAuthConfig,
+  MetabaseFetchRequestTokenFn,
+} from "embedding-sdk";
+import type {
+  SdkErrorComponent,
+  SdkState,
+  SdkStoreState,
+} from "embedding-sdk/store/types";
 import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
-import type { MetabaseFetchRequestTokenFn } from "embedding-sdk/types/refresh-token";
-import type { SdkErrorComponent } from "embedding-sdk/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import { createAsyncThunk } from "metabase/lib/redux";
 
@@ -32,7 +38,7 @@ const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
-  async (url: string, { dispatch, getState }) => {
+  async (authConfig: MetabaseAuthConfig, { dispatch, getState }) => {
     const state = getSessionTokenState(getState() as SdkStoreState);
     const token = state?.token;
 
@@ -42,7 +48,7 @@ export const getOrRefreshSession = createAsyncThunk(
       return token;
     }
 
-    return dispatch(refreshTokenAsync(url)).unwrap();
+    return dispatch(refreshTokenAsync(authConfig)).unwrap();
   },
 );
 
