@@ -102,6 +102,9 @@ describe("TasksApp", () => {
       }),
     });
 
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0",
+    ]);
     await waitForLoaderToBeRemoved();
 
     const previousPage = screen.getByRole("button", { name: "Previous page" });
@@ -113,6 +116,10 @@ describe("TasksApp", () => {
 
     await userEvent.click(nextPage);
 
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0",
+      "http://localhost/api/task?limit=50&offset=50",
+    ]);
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     await waitForLoaderToBeRemoved();
 
@@ -122,6 +129,10 @@ describe("TasksApp", () => {
 
     await userEvent.click(previousPage);
 
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0",
+      "http://localhost/api/task?limit=50&offset=50",
+    ]);
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
 
     expect(previousPage).toBeDisabled();
@@ -132,6 +143,9 @@ describe("TasksApp", () => {
   it("should allow to filter tasks list", async () => {
     const { history } = setup();
 
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0",
+    ]);
     await waitForLoaderToBeRemoved();
 
     const taskPicker = screen.getByPlaceholderText("Filter by task");
@@ -152,7 +166,12 @@ describe("TasksApp", () => {
 
     await userEvent.click(within(taskPopover).getByText("task-b"));
 
+    expect(taskPicker).toHaveValue("task-b");
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0",
+      "http://localhost/api/task?limit=50&offset=0&task=task-b",
+    ]);
     await waitForLoaderToBeRemoved();
     expect(history?.getCurrentLocation().search).toEqual("?task=task-b");
 
@@ -168,7 +187,13 @@ describe("TasksApp", () => {
 
     await userEvent.click(within(taskStatusPopover).getByText("Success"));
 
+    expect(taskStatusPicker).toHaveValue("Success");
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0",
+      "http://localhost/api/task?limit=50&offset=0&task=task-b",
+      "http://localhost/api/task?limit=50&offset=0&task=task-b&status=success",
+    ]);
     await waitForLoaderToBeRemoved();
     expect(history?.getCurrentLocation().search).toEqual(
       "?status=success&task=task-b",
@@ -177,15 +202,67 @@ describe("TasksApp", () => {
     const clearTaskButton = screen.getAllByRole("button", { hidden: true })[0];
     await userEvent.click(clearTaskButton);
 
+    expect(taskPicker).toHaveValue("");
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0",
+      "http://localhost/api/task?limit=50&offset=0&task=task-b",
+      "http://localhost/api/task?limit=50&offset=0&task=task-b&status=success",
+      "http://localhost/api/task?limit=50&offset=0&status=success",
+    ]);
     await waitForLoaderToBeRemoved();
     expect(history?.getCurrentLocation().search).toEqual("?status=success");
 
     const clearTaskStatusButton = screen.getByRole("button", { hidden: true });
     await userEvent.click(clearTaskStatusButton);
 
+    expect(taskStatusPicker).toHaveValue("");
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0",
+      "http://localhost/api/task?limit=50&offset=0&task=task-b",
+      "http://localhost/api/task?limit=50&offset=0&task=task-b&status=success",
+      "http://localhost/api/task?limit=50&offset=0&status=success",
+    ]);
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
     expect(history?.getCurrentLocation().search).toEqual("");
+  });
+
+  it("accepts task query param", async () => {
+    setup({
+      location: createMockLocation({
+        pathname: PATHNAME,
+        search: "?task=task-b",
+      }),
+    });
+
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0&task=task-b",
+    ]);
+    await waitForLoaderToBeRemoved();
+
+    const taskPicker = screen.getByPlaceholderText("Filter by task");
+
+    expect(taskPicker).toBeInTheDocument();
+    expect(taskPicker).toHaveValue("task-b");
+  });
+
+  it("accepts status query param", async () => {
+    setup({
+      location: createMockLocation({
+        pathname: PATHNAME,
+        search: "?status=success",
+      }),
+    });
+
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0&status=success",
+    ]);
+    await waitForLoaderToBeRemoved();
+
+    const taskStatusPicker = screen.getByPlaceholderText("Filter by status");
+
+    expect(taskStatusPicker).toBeInTheDocument();
+    expect(taskStatusPicker).toHaveValue("Success");
   });
 });
 
