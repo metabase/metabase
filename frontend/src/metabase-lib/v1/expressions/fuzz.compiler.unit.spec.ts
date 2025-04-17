@@ -6,16 +6,6 @@ import { fuzz } from "./test/fuzz";
 import { generateExpression } from "./test/generator";
 import type { StartRule } from "./types";
 
-jest.mock("metabase-lib", () => {
-  const mod = jest.requireActual("metabase-lib");
-  return {
-    ...mod,
-    expressionClauseForLegacyExpression() {
-      return null;
-    },
-  };
-});
-
 const MAX_SEED = 10_000;
 
 function compile(expression: string, startRule: StartRule = "expression") {
