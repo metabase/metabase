@@ -1,10 +1,4 @@
-import {
-  type CompletionContext,
-  type CompletionResult,
-  type CompletionSource,
-  autocompletion,
-  completionKeymap,
-} from "@codemirror/autocomplete";
+import { autocompletion, completionKeymap } from "@codemirror/autocomplete";
 import {
   defaultHighlightStyle,
   syntaxHighlighting,
@@ -27,78 +21,10 @@ import { isNotNull } from "metabase/lib/types";
 import { Text } from "metabase/ui";
 
 import S from "./TemplateEditor.module.css";
-
-// Helper function to recursively find all leaf paths in an object
-function getAllPaths(obj: any, currentPath = ""): string[] {
-  let paths: string[] = [];
-  if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
-    return [];
-  }
-
-  for (const key in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, key)) {
-      const newPath = currentPath ? `${currentPath}.${key}` : key;
-      const value = obj[key];
-
-      if (
-        typeof value === "object" &&
-        value !== null &&
-        !Array.isArray(value) &&
-        value.constructor === Object
-      ) {
-        paths = paths.concat(getAllPaths(value, newPath));
-      } else {
-        paths.push(newPath);
-      }
-    }
-  }
-  return paths;
-}
-
-// Build a set of all possible paths for autocomplete from provided payload object.
-const createTemplateAutocompleteSource = (
-  context: Record<string, any>,
-): CompletionSource => {
-  const allSortedPaths = getAllPaths(context).sort();
-
-  return (completionContext: CompletionContext): CompletionResult | null => {
-    const word = completionContext.matchBefore(/{{\s*(?:[\w#-]+\s+)*([\w.]*)$/);
-
-    if (!word || word.text.startsWith("{{/")) {
-      return null;
-    }
-
-    const matchResult = word.text.match(/{{\s*(?:[\w#-]+\s+)*([\w.]*)$/);
-    const pathPrefix = matchResult ? matchResult[1] : "";
-
-    if (!matchResult) {
-      return null;
-    }
-
-    const from = word.to - pathPrefix.length;
-
-    const matchingPaths = allSortedPaths.filter((p) =>
-      p.startsWith(pathPrefix),
-    );
-
-    if (matchingPaths.length === 0) {
-      return null;
-    }
-
-    const options = matchingPaths.map((fullPath) => ({
-      label: fullPath,
-      apply: fullPath,
-      type: "variable",
-    }));
-
-    return {
-      from: from,
-      to: word.to,
-      options: options,
-      filter: false,
-    };
-  };
-};
+import {
+  createTemplateAutocompleteSource,
+  mustacheHelpersCompletionSource,
+} from "./autocomplete";
 
 export interface TemplateEditorProps
   extends Omit<
@@ -191,11 +117,16 @@ export const TemplateEditor = ({
   }, [onBlur]);
 
   const templateAutocompleteExtension = useMemo(() => {
-    return templateContext
-      ? autocompletion({
-          override: [createTemplateAutocompleteSource(templateContext)],
-        })
-      : [];
+    if (!templateContext) {
+      return [];
+    }
+    // Combine both Mustache helpers and context path completions
+    return autocompletion({
+      override: [
+        mustacheHelpersCompletionSource,
+        createTemplateAutocompleteSource(templateContext),
+      ],
+    });
   }, [templateContext]);
 
   const combinedExtensions = useMemo(() => {
