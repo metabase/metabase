@@ -73,7 +73,6 @@ export function useModelsAndOption(
       showWarning,
     );
 
-    model.xAxisModel.label = tc(model.xAxisModel.label);
     model.dimensionModel.column.display_name = tc(
       model.dimensionModel.column.display_name,
     );
@@ -177,7 +176,6 @@ export function useModelsAndOption(
           width,
           shouldAnimate,
           renderingContext,
-          tc,
         );
     }
 
@@ -196,7 +194,6 @@ export function useModelsAndOption(
     selectedOrHoveredTimelineEventIds,
     settings,
     renderingContext,
-    tc,
   ]);
 
   return { chartModel, timelineEventsModel, option };

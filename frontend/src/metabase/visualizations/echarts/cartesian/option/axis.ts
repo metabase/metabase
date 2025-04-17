@@ -1,7 +1,6 @@
 import type { XAXisOption, YAXisOption } from "echarts/types/dist/shared";
 import type { AxisBaseOptionCommon } from "echarts/types/src/coord/axisCommonTypes";
 
-import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { parseNumberValue } from "metabase/lib/number";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
@@ -210,7 +209,6 @@ export const buildDimensionAxis = (
   chartMeasurements: ChartMeasurements,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
-  tc?: ContentTranslationFunction,
 ): XAXisOption => {
   const xAxisModel = chartModel.xAxisModel;
 
@@ -239,7 +237,6 @@ export const buildDimensionAxis = (
     settings,
     chartMeasurements,
     renderingContext,
-    tc,
   );
 };
 
@@ -333,7 +330,6 @@ export const buildCategoricalDimensionAxis = (
   originalSettings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
-  tc?: ContentTranslationFunction,
 ): XAXisOption => {
   const {
     xAxisModel: { formatter },
@@ -368,8 +364,7 @@ export const buildCategoricalDimensionAxis = (
         if (isNumericBaseType(column) && numberValue !== null) {
           return ` ${formatter(numberValue)} `;
         }
-        const translatedValue = tc?.(value) || value;
-        return ` ${formatter(translatedValue)} `; // spaces force padding between ticks
+        return ` ${formatter(value)} `; // spaces force padding between ticks
       },
     },
   };
@@ -477,7 +472,6 @@ export const buildAxes = (
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
-  tc?: ContentTranslationFunction,
 ) => {
   return {
     xAxis: buildDimensionAxis(
@@ -487,7 +481,6 @@ export const buildAxes = (
       chartMeasurements,
       hasTimelineEvents,
       renderingContext,
-      tc,
     ),
     yAxis: buildMetricsAxes(
       chartModel,
