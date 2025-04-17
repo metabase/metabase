@@ -347,9 +347,9 @@
   (let [action             (-> (actions/select-action :id (parse-long action-id) :archived false)
                                (t2/hydrate :creator)
                                api/read-check)
-        {:keys [card_id]}  (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
-        {:keys [table_id]} (api/check-404 (t2/select-one :model/Card card_id))
-        fields             (t2/select [:model/Field :name] :table_id table_id)
+        card-id            (api/check-404 (t2/select-one-fn :card_id [:model/DashboardCard :card_id] dashcard-id))
+        table-id           (api/check-404 (t2/select-one-fn :table_id [:model/Card :table_id] card-id))
+        fields             (t2/select [:model/Field :name] :table_id table-id)
         field-names        (set (map :name fields))
         include?           #(not (contains? field-names (:slug %)))]
     (update action :parameters #(some->> % (filterv include?)))))
