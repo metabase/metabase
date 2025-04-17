@@ -39,7 +39,7 @@
               (let [ns-sym (symbol \"" nns "\")]
                 (require ns-sym :reload)
                 (in-ns ns-sym)
-                (eval (read-string " (pr-str (or code "::no-op")) ")))"))
+                (eval (read-string " (pr-str (or code "::loaded")) ")))"))
 
 (defn nrepl-eval
   "Evaluate Clojure code in a running nREPL server. With one arg, reads port from .nrepl-port file.
