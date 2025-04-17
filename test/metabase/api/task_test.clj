@@ -402,3 +402,97 @@
           (is (= 2 (-> response :total)))
           (is (= 1 (-> response :data count)))
           (is (= "success" (-> response :data first :status))))))))
+
+(deftest sort-tasks-test
+  (t2/delete! :model/TaskHistory)
+  (let [now (t/zoned-date-time)]
+    (mt/with-temp
+      [;; task a
+       :model/TaskHistory
+       _
+       (let [start (t/minus now (t/days 8))
+             duration 10000
+             end (t/plus start (t/millis duration))]
+         {:status "success"
+          :task "a"
+          :duration duration
+          :started_at start
+          :ended_at end})
+       :model/TaskHistory
+       _
+       (let [start (t/minus now (t/days 5))
+             duration 5000
+             end (t/plus start (t/millis duration))]
+         {:status "failed"
+          :task "a"
+          :duration duration
+          :started_at start
+          :ended_at end})
+
+       ;; task b
+       :model/TaskHistory
+       _
+       (let [start (t/minus now (t/days 4))
+             duration 3000
+             end (t/plus start (t/millis duration))]
+         {:status :failed
+          :task "b"
+          :duration duration
+          :started_at start
+          :ended_at end})
+       :model/TaskHistory
+       _
+       (let [start (t/minus now (t/days 3))
+             duration 300
+             end (t/plus start (t/millis duration))]
+         {:status :success
+          :task "b"
+          :duration duration
+          :started_at start
+          :ended_at  end})]
+      (doseq [sort-column [:started_at :ended_at :duration]
+              sort-direction [:asc :desc]
+              :let [expected-data (cond (and (= :ended_at sort-column)
+                                             (= :desc sort-direction))
+                                        (mapv #(hash-map :task  %)
+                                              ["b" "b" "a" "a"])
+
+                                        (and (= :started_at sort-column)
+                                             (= :desc sort-direction))
+                                        (mapv #(hash-map :task  %)
+                                              ["b" "b" "a" "a"])
+
+                                        (and (= :ended_at sort-column)
+                                             (= :asc sort-direction))
+                                        (mapv #(hash-map :task  %)
+                                              ["a" "a" "b" "b"])
+
+                                        (and (= :started_at sort-column)
+                                             (= :asc sort-direction))
+                                        (mapv #(hash-map :task  %)
+                                              ["a" "a" "b" "b"])
+
+                                        (and (= :duration sort-column)
+                                             (= :asc sort-direction))
+                                        (mapv #(hash-map :duration %)
+                                              [300 3000 5000 10000])
+
+                                        (and (= :duration sort-column)
+                                             (= :desc sort-direction))
+                                        (mapv #(hash-map :duration %)
+                                              [10000 5000 3000 300]))]]
+        (testing (format "Sorting works correctly for %s %s" sort-column sort-direction)
+          (let [response (mt/user-http-request :crowberto :get 200 "task/"
+                                               :sort_column sort-column :sort_direction sort-direction)]
+            (is (= 4 (-> response :total)))
+            (is (=? expected-data
+                    (-> response :data vec))))))
+      (testing "Sorting works with filtering and pagination"
+        (let [response (mt/user-http-request :crowberto :get 200 "task/"
+                                             :sort_column :duration :sort_direction :desc
+                                             :offset 0 :limit 1
+                                             :status :success)]
+          (is (= 2 (-> response :total)))
+          (is (= 1 (-> response :data count)))
+          (is [{:duration 10000}]
+              (-> response :data vec)))))))

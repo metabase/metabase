@@ -64,25 +64,40 @@
   {:task_details mi/transform-json-eliding
    :status       mi/transform-keyword})
 
-(defn- filter->where
-  [{:keys [status task] :as filter}]
-  (when (not-empty filter)
+(defn- params->where
+  [{:keys [status task]}]
+  (when (or status task)
     {:where (cond-> [:and]
               task   (conj [:= :task task])
               status (conj [:= :status (name status)]))}))
 
-(def Filter
+(def FilterParams
   "Schema for filter for task history."
-  [:maybe [:map [:status {:optional true} (into [:enum] task-history-status)
-                 :task   {:optional true} [:string {:min 1}]]]])
+  [:map
+   [:status {:optional true} (into [:enum] task-history-status)]
+   [:task {:optional true} [:string {:min 1}]]])
+
+(defn- params->order-by
+  [{col :sort_column
+    dir :sort_direction}]
+  {:order-by [[col dir]]})
+
+(def ^:private avaialble-sort-columns
+  #{:duration :ended_at :started_at})
+
+(def SortParams
+  "Sorting map schema."
+  [:map
+   [:sort_column    {:default :started_at} (into [:enum] avaialble-sort-columns)]
+   [:sort_direction {:default :desc}       [:enum :asc :desc]]])
 
 (mu/defn all
   "Return all TaskHistory entries, filtered if `filter` is provided, applying `limit` and `offset` if not nil."
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]
-   filter :- Filter]
-  (t2/select :model/TaskHistory (merge {:order-by [[:started_at :desc]]}
-                                       (filter->where filter)
+   params :- [:maybe [:merge FilterParams SortParams]]]
+  (t2/select :model/TaskHistory (merge (params->where params)
+                                       (params->order-by params)
                                        (when limit
                                          {:limit limit})
                                        (when offset
@@ -90,8 +105,8 @@
 
 (mu/defn total
   "Return count of all, or filtered if `filter` is provided, task history entries."
-  [filter :- Filter]
-  (t2/count :model/TaskHistory ((fnil identity {}) (filter->where filter))))
+  [params :- FilterParams]
+  (t2/count :model/TaskHistory ((fnil identity {}) (params->where params))))
 
 (defn unique-tasks
   "Return _vector_ of all unique tasks' names in alphabetical order."
