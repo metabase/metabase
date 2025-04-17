@@ -13,7 +13,6 @@ on:
         default: ee
       specs:
         required: false
-        default: ./e2e/test/scenarios/**/*.cy.spec.*
         type: string
       tags:
         required: false

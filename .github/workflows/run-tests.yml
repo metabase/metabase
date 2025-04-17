@@ -89,4 +89,6 @@ jobs:
     secrets: inherit
     with:
       skip: ${{ needs.files-changed.outputs.e2e_all != 'true' }}
+      # here we pass result from files-changed, which is a list of files, comma separated
+      # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
       specs: ${{ needs.files-changed.outputs.e2e_specs }}

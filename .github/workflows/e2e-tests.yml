@@ -8,7 +8,8 @@ on:
         default: false
       specs:
         type: string
-        default: "./e2e/test/scenarios/**/*.cy.spec.*"
+        required: false
+        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-e2e
@@ -150,7 +151,6 @@ jobs:
     with:
       name: Flaky
       tags: "@flaky"
-      specs: "./e2e/test/scenarios/**/*.cy.spec.*"
 
   e2e-tests-result:
     needs:

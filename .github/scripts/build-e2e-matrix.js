@@ -2,6 +2,12 @@ const glob = require("glob");
 
 const DEFAULT_SPEC_PATTERN = "./e2e/test/scenarios/**/*.cy.spec.*";
 
+/**
+ *
+ * @param {*} inputSpecs - specs, which were changed in the PR, separated by comma
+ * .e.g e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
+ * or a pattern like DEFAULT_SPEC_PATTERN
+ */
 function buildMatrix(inputSpecs, inputChunks) {
   const java = 21;
   const defaultRunner = "ubuntu-22.04";
@@ -49,8 +55,9 @@ function buildMatrix(inputSpecs, inputChunks) {
   if (isDefaultSpecPattern) {
     regularChunks = inputChunks - specialTests.length;
   } else {
-    // For specific specs, calculate based on number of matching files
-    const matchingSpecsCount = getMatchingSpecsCount(allSpecs);
+    // not default pattern, then it's a list of specs separated by comma
+    // so we wrap it in curly braces to make it a pattern for glob
+    const matchingSpecsCount = getMatchingSpecsCount(`{${allSpecs}}`);
     regularChunks = Math.max(
       1,
       Math.ceil(matchingSpecsCount / SPECS_PER_CHUNK),
