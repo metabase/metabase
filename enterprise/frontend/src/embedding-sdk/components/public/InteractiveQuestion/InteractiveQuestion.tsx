@@ -56,6 +56,19 @@ export type BaseInteractiveQuestionProps =
     >;
 
 /**
+ * Props for the drill-through question
+ *
+ * @interface
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type DrillThroughQuestionProps = Omit<
+  BaseInteractiveQuestionProps,
+  "questionId"
+> &
+  InteractiveQuestionDefaultViewProps;
+
+/**
  * @interface
  * @expand
  * @category InteractiveQuestion

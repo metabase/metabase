@@ -5,6 +5,7 @@ import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
+import type { EntityTypeFilterKeys } from "embedding-sdk/types/question";
 import type { DataPickerValue } from "metabase/common/components/DataPicker";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
@@ -14,7 +15,6 @@ import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/Em
 import type Question from "metabase-lib/v1/Question";
 
 import type {
-  EntityTypeFilterKeys,
   InteractiveQuestionContextType,
   InteractiveQuestionProviderProps,
 } from "./types";

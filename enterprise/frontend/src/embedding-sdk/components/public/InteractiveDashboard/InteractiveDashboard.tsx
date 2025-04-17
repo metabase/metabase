@@ -2,7 +2,6 @@ import { type ReactNode, useCallback, useEffect } from "react";
 import _ from "underscore";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
-import type { InteractiveQuestionDefaultViewProps } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import {
   DashboardNotFoundError,
   SdkLoader,
@@ -25,7 +24,7 @@ import { getErrorPage } from "metabase/selectors/app";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
-import type { BaseInteractiveQuestionProps } from "../InteractiveQuestion";
+import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
 
 import { InteractiveDashboardProvider } from "./context";
 
@@ -56,8 +55,7 @@ export type InteractiveDashboardProps = {
   /**
    * Props of a question component when drilled from the dashboard to a question level.
    */
-  drillThroughQuestionProps?: Omit<BaseInteractiveQuestionProps, "questionId"> &
-    InteractiveQuestionDefaultViewProps;
+  drillThroughQuestionProps?: DrillThroughQuestionProps;
 } & SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
