@@ -68,7 +68,8 @@
                 (is (= (biginteger (case db-type
                                      "TEXT" (Long/parseLong uncasted-value)
                                      (Math/round (double uncasted-value))))
-                       (biginteger casted-value)))))))))))
+                       (biginteger casted-value))
+                    (str "Casting " (pr-str uncasted-value)))))))))))
 
 (deftest ^:parallel integer-cast-nested-native-query
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
@@ -99,7 +100,8 @@
                     (is (= (biginteger (case db-type
                                          "TEXT" (Long/parseLong uncasted-value)
                                          (Math/round (double uncasted-value))))
-                           (biginteger casted-value)))))))))))))
+                           (biginteger casted-value))
+                        (str "Casting " (pr-str uncasted-value)))))))))))))
 
 (deftest ^:parallel integer-cast-nested-query
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
@@ -128,7 +130,8 @@
                     (is (= (biginteger (case db-type
                                          "TEXT" (Long/parseLong uncasted-value)
                                          (Math/round (double uncasted-value))))
-                           (biginteger casted-value)))))))))))))
+                           (biginteger casted-value))
+                        (str "Casting " (pr-str uncasted-value)))))))))))))
 
 (deftest ^:parallel integer-cast-nested-query-custom-expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
@@ -166,7 +169,8 @@
                     (is (= (biginteger (case db-type
                                          "TEXT" (Long/parseLong uncasted-value)
                                          (Math/round (double uncasted-value))))
-                           (biginteger casted-value)))))))))))))
+                           (biginteger casted-value))
+                        (str "Casting " (pr-str uncasted-value)))))))))))))
 
 (deftest ^:parallel integer-cast-nested-custom-expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
@@ -195,7 +199,8 @@
               (is (= (biginteger (case db-type
                                    "TEXT" (Long/parseLong uncasted-value)
                                    (Math/round (double uncasted-value))))
-                     (biginteger casted-value))))))))))
+                     (biginteger casted-value))
+                  (str "Casting " (pr-str uncasted-value))))))))))
 
 (deftest ^:parallel integer-cast-aggregations
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
@@ -217,7 +222,8 @@
                 (is (= (biginteger (case db-type
                                      "TEXT" (Long/parseLong uncasted-value)
                                      (Math/round (double uncasted-value))))
-                       (biginteger casted-value)))))))))))
+                       (biginteger casted-value))
+                    (str "Casting " (pr-str uncasted-value)))))))))))
 
 (deftest ^:parallel integer-cast-examples
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
@@ -245,7 +251,7 @@
               (doseq [[_id casted-value] rows]
                 (is (= (biginteger value)
                        (biginteger casted-value))
-                    msg)))))))))
+                    (str "Casting " (pr-str original) " " msg))))))))))
 
 ;; date()
 
