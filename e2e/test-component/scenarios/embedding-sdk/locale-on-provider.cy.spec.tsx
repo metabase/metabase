@@ -4,6 +4,7 @@ import {
 } from "@metabase/embedding-sdk-react";
 
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import { updateSetting } from "e2e/support/helpers/api";
 import {
   AUTH_PROVIDER_URL,
   METABASE_INSTANCE_URL,
@@ -12,7 +13,23 @@ import {
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
-function setup({ locale }: { locale: string }) {
+function setup({
+  locale,
+  instanceLocale,
+}: {
+  locale?: string;
+  instanceLocale?: string;
+}) {
+  signInAsAdminAndEnableEmbeddingSdk();
+
+  if (instanceLocale) {
+    updateSetting("site-locale", instanceLocale);
+  }
+
+  cy.signOut();
+
+  mockAuthProviderAndJwtSignIn();
+
   cy.mount(
     <MetabaseProvider
       authConfig={{
@@ -32,13 +49,17 @@ function setup({ locale }: { locale: string }) {
 
 describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
   beforeEach(() => {
-    signInAsAdminAndEnableEmbeddingSdk();
-
-    cy.signOut();
-
-    mockAuthProviderAndJwtSignIn();
-
     cy.intercept("GET", "/api/user/current").as("getUser");
+  });
+
+  it("when no locale is set, it should use the instance locale", () => {
+    setup({ locale: undefined, instanceLocale: "de" });
+
+    cy.request("/app/locales/de.json").then((response) => {
+      expect(response.status).to.eq(200);
+    });
+
+    getSdkRoot().findByText("Als PDF exportieren").should("exist");
   });
 
   it("when locale=de it should display german text", () => {
