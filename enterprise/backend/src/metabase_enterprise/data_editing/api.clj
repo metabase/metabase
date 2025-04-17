@@ -78,26 +78,7 @@
           pks->db-row  (data-editing/query-db-rows table-id pk-fields rows')
           updated-rows (volatile! [])
           user-id      api/*current-user-id*]
-      ;; TODO this publishing needs to move down the stack and be generic all :row/delete invocations
-      ;; https://linear.app/metabase/issue/WRK-228/publish-events-when-modified-by-action-execution
-      (doseq [row rows']
-        ;; TODO fix this to use bulk action properly
-        (let [;; well, this is a trick, but I haven't figured out how to do single row update
-              result     (:rows-updated (data-editing/perform-bulk-action! :bulk/update table-id [row]))
-              after-row  (-> (data-editing/query-db-rows table-id pk-fields [row]) vals first)
-              row-before (get pks->db-row (data-editing/get-row-pks pk-fields row))]
-          (vswap! updated-rows conj after-row)
-          (when (pos-int? result)
-            (actions/publish-action-success!
-             (nano-id/nano-id)
-             user-id
-             :row/update
-             {:table_id table-id
-              :row row}
-             {:after      after-row
-              :before     row-before
-              :raw_update row}))))
-      ;; TODO this should also become a subscription to the above action's success, e.g. via the system event
+      ;; TODO this should also become a subscription to the "data written" system event
       (let [row-pk->old-new-values (->> (for [row rows']
                                           (let [pks (data-editing/get-row-pks pk-fields row)]
                                             [pks [(get pks->db-row pks)
@@ -114,27 +95,16 @@
    {}
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (check-permissions)
-  ;; TODO fix for composite keys here too
-  (let [pk-fields    (data-editing/select-table-pk-fields table-id)
-        pks->db-rows (data-editing/query-db-rows table-id pk-fields rows)
-        res          (data-editing/perform-bulk-action! :bulk/delete table-id rows)
-        user-id      api/*current-user-id*]
-    ;; TODO this publishing needs to move down the stack and be generic all :row/delete invocations
-    ;; https://linear.app/metabase/issue/WRK-228/publish-events-when-modified-by-action-execution
-    (doseq [row rows]
-      (actions/publish-action-success!
-       (nano-id/nano-id)
-       user-id
-       :row/delete
-       {:table_id table-id
-        :row      row}
-       {:deleted_row (get pks->db-rows (data-editing/get-row-pks pk-fields row))}))
-    ;; TODO this should also become a subscription to the above action's success, e.g. via the system event
-    (let [row-pk->old-new-values (->> (for [row rows]
-                                        (let [pks  (data-editing/get-row-pks pk-fields row)]
-                                          [pks [(get pks->db-rows pks) nil]]))
-                                      (into {}))]
-      (undo/track-change! user-id {table-id row-pk->old-new-values}))
+  (let [pk-fields              (data-editing/select-table-pk-fields table-id)
+        pks->db-rows           (data-editing/query-db-rows table-id pk-fields rows)
+        res                    (data-editing/perform-bulk-action! :bulk/delete table-id rows)
+        user-id                api/*current-user-id*
+        row-pk->old-new-values (->> (for [row rows]
+                                      (let [pks (data-editing/get-row-pks pk-fields row)]
+                                        [pks [(get pks->db-rows pks) nil]]))
+                                    (into {}))]
+    ;; TODO this should also become a subscription to the "data written" system event
+    (undo/track-change! user-id {table-id row-pk->old-new-values})
     res))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust
