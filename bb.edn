@@ -126,14 +126,27 @@
   ;; - hidden from `./bin/mage` listing and `bb tasks`
   ;; - start with a `-`
 
-  -eval
+  -repl
   {:doc      "Eval a string of clojure code in the backend dev server"
    :requires [[babashka.process :as process]
+              [mage.color :as c]
               [mage.be-dev :refer [nrepl-eval]]]
-
-   :examples [["./bin/mage -eval" "Eval a form in the backend dev server"]]
-   :task     (let [args (:arguments (cli/parse! (current-task)))]
-               (nrepl-eval (first args)))}
+   :examples [["./bin/mage -repl '(+ 1 1)'"
+               "Eval a form in the backend dev server in the user namespace"]
+              ["./bin/mage -repl --namespace metabase.db.connection @application-db-counter"
+               "Eval a form in the backend dev server in the 'metabase.db.connection' namespace"]
+              ["mage -repl --port 59498 --namespace metabase.db.connection '(read-string \"::hello\")'"
+               "Evaluate a keyword inside a namespace"]]
+   :options [["-n" "--namespace NAMESPACE" "Namespace to use for the task"]
+             ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
+   :task     (let [parsed (cli/parse! (current-task))
+                   code (first (:arguments parsed))
+                   port (or (:port (:options parsed))
+                            (slurp ".nrepl-port")
+                            (println (c/red "No port specified, and no .nrepl-port file found."))
+                            (System/exit 1))
+                   nns (or (:namespace (:options parsed)) "user")]
+               (nrepl-eval nns code port))}
 
   -code-is-readable
   {:doc      "Check for unbalanced parens in the current file, given a starting line and ending line"
@@ -142,7 +155,7 @@
                 [:tuple
                  [:string {:description "File to check"}]
                  [:int {:description "A line in the file" :min 1}]]]
-   :examples [["./bin/mage -balance-parens-check yourfile.clj 1" "Check for unbalanced parens"]]
+   :examples [["./bin/mage -code-is-readable yourfile.clj 1" "Check for unbalanced parens"]]
    :task     (apply balanced-parens? (:arguments (cli/parse! (current-task))))}
 
   -example-calculator

@@ -1,5 +1,6 @@
 (ns mage.be-dev
   (:require
+   [babashka.fs :as fs]
    [bencode.core :as bencode]
    [clojure.string :as str]
    [edamame.core :as edamame]
@@ -19,19 +20,7 @@
         (catch Exception _ nil)))
     s-or-i))
 
-(defn- nrepl-port
-  "Get the nREPL port from the .nrepl-port file. Throws an ex-info with friendly error message if file not found."
-  []
-  (try
-    (safe-parse-int (slurp ".nrepl-port"))
-    (catch java.io.FileNotFoundException _
-      (throw (ex-info (str "Metabase backend is not running. To start it, run:\n\n"
-                           (c/green "  clj -M:dev:ee:ee-dev:drivers:drivers-dev:dev-start\n\n")
-                           "If you prefer a different way to start the backend, please use that instead.\n"
-                           "The REPL server creates a .nrepl-port file when it starts.")
-                      {:cause :backend-not-running})))))
-
-(defn- bootstrap-code
+(defn- print-capture-code
   "Capture output and return it as strings along with the value from the orignal code."
   [code-string]
   (str "
@@ -39,49 +28,78 @@
       e# (new java.io.StringWriter)]
   (binding [*out* o#
             *err* e#]
-    {:value (do " code-string ")
+    {:value (do" code-string ")
      :stdout (str o#)
      :stderr (str e#)}))"))
+
+(defn eval-in-ns
+  "This insane code evals the code in the proper namespace.
+  It's basically a repl inside a repl."
+  [nns code]
+  (str "
+              (let [ns-sym (symbol \"" nns "\")]
+                (require ns-sym :reload)
+                (in-ns ns-sym)
+                (eval (read-string " (pr-str (or code "::no-op")) ")))"))
 
 (defn nrepl-eval
   "Evaluate Clojure code in a running nREPL server. With one arg, reads port from .nrepl-port file.
    With two args, uses the provided port number. Returns and formats the evaluation results."
-  ([code]
-   (try
-     (let [port (nrepl-port)]
-       (u/debug [port code])
-       (nrepl-eval port code))
-     (catch clojure.lang.ExceptionInfo e
-       (if (= :backend-not-running (:cause (ex-data e)))
-         (println (.getMessage e))
-         (throw e)))))
-  ([port code]
-   (try
-     (let [port (safe-parse-int port)
-           s (java.net.Socket. "localhost" port)
-           out (.getOutputStream s)
-           in (java.io.PushbackInputStream. (.getInputStream s))
-           _ (bencode/write-bencode out {"op" "eval"
-                                         "code" (bootstrap-code code)})
-           return (update-vals (bencode/read-bencode in) slurp)]
-       #_:clj-kondo/ignore
-       ;; (prn ["Repl Response:" output])
-       (doseq [[k v] return]
-         (if (= k "value")
-           ;; try to read v, which is a map but comes back as a string:
-           (if-let [v (read-string v)]
-             (do
-               (println "value: " (pr-str (:value v)))
-               (println "stdout: " (str/trim (:stdout v)))
-               (println "stderr: " (str/trim (:stderr v))))
-             (println "value: " v))
-           (println (str k ":") v))))
-     (catch java.net.ConnectException _
-       (println (str "Could not connect to the REPL server on port: " (c/red port) " (found port number in .nrepl-port).\n"
-                     "Is the Metabase backend running?\n\n"
-                     "To start it, run:\n"
-                     (c/green "  clj -M:dev:ee:ee-dev:drivers:drivers-dev:dev-start\n\n")
-                     "If you prefer a different way to start the backend, please use that instead."))))))
+  ([nns code]
+   (nrepl-eval (or nns "user") code (slurp ".nrepl-port")))
+  ([nns code port]
+   (try (let [port (safe-parse-int port)
+              s (java.net.Socket. "localhost" port)
+              out (.getOutputStream s)
+              in (java.io.PushbackInputStream. (.getInputStream s))
+              code-str (->> code
+                            (eval-in-ns nns)
+                            print-capture-code)
+              _ (u/debug "Code: ----- \n" code-str "\n -----")
+              _ (bencode/write-bencode out {"op" "eval" "code" code-str})
+              return (update-vals (bencode/read-bencode in) slurp)]
+          (doseq [[k v] return]
+            (if (= k "value")
+              (if-let [v (try (read-string v)
+                              ;; try to read v, which is a map but comes back as a string:
+                              (catch Exception _ nil))]
+                (do
+                  (println "value: " (pr-str (:value v)))
+                  (when-not (str/blank? (:stdout v))
+                    (println "stdout: ")
+                    (doseq [out (str/split-lines (:stdout v))]
+                      (println "  " out)))
+                  (when-not (str/blank? (:stderr v))
+                    (println "stderr: ")
+                    (doseq [err (str/split-lines (:stderr v))]
+                      (println "  " err))))
+                (println "value: " v))
+              (println (str k ":") v))))
+        (catch java.net.ConnectException _
+          (println (str "Could not connect to the REPL server on port: " (c/red port) " (found port number in .nrepl-port).\n"
+                        "Is the Metabase backend running?\n\n"
+                        "To start it, run:\n"
+                        (c/green "  clj -M:dev:ee:ee-dev:drivers:drivers-dev:dev-start\n\n")
+                        "If you prefer a different way to start the backend, please use that instead.")))
+        (catch Exception e
+          (if (= "No matching ctor found for class java.net.Socket" (ex-message e))
+            (println (str "Unable to connect to nREPL server. Is it running on port " (c/yellow port) "?"))
+            (do
+              (println "message: " (ex-message e))
+              (println "data:    " (pr-str (ex-data e)))
+              {:exception true
+               :message (ex-message e)
+               :data (ex-data e)}))))))
+
+(comment
+
+  (nrepl-eval "metabase.logger-test" "(do (println :!! hi) hi)" 59498)
+
+  (nrepl-eval "metabase.logger-test" "*ns*" 59498)
+
+  (println code-str))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Readability check
 
 (defn- find-data-readers []
   (let [reader-tags (conj (keys (read-string
