@@ -1,12 +1,9 @@
 (ns mage.be-dev
   (:require
-   [babashka.fs :as fs]
    [bencode.core :as bencode]
    #_:clj-kondo/ignore
    [clojure.pprint :as pp]
    [clojure.string :as str]
-   [edamame.core :as edamame]
-   [flatland.ordered.map :as m]
    [mage.color :as c]
    [mage.util :as u]))
 
