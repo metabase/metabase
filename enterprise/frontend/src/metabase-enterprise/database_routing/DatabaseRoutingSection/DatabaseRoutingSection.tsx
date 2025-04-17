@@ -100,7 +100,7 @@ export const DatabaseRoutingSection = ({
     >
       <Flex justify="space-between" align="center">
         <Stack>
-          <Label>
+          <Label htmlFor="database-routing-toggle">
             <Text lh="lg">{t`Enable database routing`}</Text>
           </Label>
           {error ? (
