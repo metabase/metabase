@@ -226,8 +226,6 @@ describe("format", () => {
   });
 
   describe("formats unknown references", () => {
-    const stageIndex = -1;
-
     const otherQuery = createQuery({
       metadata: createMockMetadata({
         databases: [
