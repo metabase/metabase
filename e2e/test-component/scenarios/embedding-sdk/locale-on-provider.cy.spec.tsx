@@ -59,7 +59,11 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
       expect(response.status).to.eq(200);
     });
 
-    getSdkRoot().findByText("Als PDF exportieren").should("exist");
+    getSdkRoot().within(() => {
+      cy.findByRole("button", {
+        name: "Automatische Aktualisierung",
+      }).should("exist");
+    });
   });
 
   it("when locale=de it should display german text", () => {
