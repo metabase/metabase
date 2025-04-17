@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 import { createMockTask } from "metabase-types/api/mocks";
 
 const { H } = cy;
@@ -339,6 +341,62 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
       task.task_details,
     );
   });
+});
+
+describe("scenarios > admin > troubleshooting > logs", () => {
+  const log1 = {
+    timestamp: "2024-01-10T21:21:58.597Z",
+    level: "DEBUG",
+    fqns: "metabase.server.middleware.log",
+    msg: "message",
+    exception: null,
+    process_uuid: "e7774ef2-42ab-43de-89f7-d6de9fdc624f",
+  };
+  const log2 = {
+    ...log1,
+    timestamp: "2024-01-10T21:21:58.598Z",
+    level: "ERROR",
+  };
+
+  beforeEach(() => {
+    cy.intercept("GET", "/api/util/logs", (request) => {
+      request.reply([log1, log2]);
+    }).as("getLogs");
+
+    H.restore();
+    cy.signInAsAdmin();
+
+    cy.visit("/admin/troubleshooting/logs");
+    cy.wait("@getLogs");
+  });
+
+  it("should allow to download logs", () => {
+    cy.button(/Download/).click();
+    cy.readFile("cypress/downloads/logs.txt").should(
+      "equal",
+      [
+        `[e7774ef2-42ab-43de-89f7-d6de9fdc624f] ${formatTimestamp(log1.timestamp)} DEBUG metabase.server.middleware.log message`,
+        `[e7774ef2-42ab-43de-89f7-d6de9fdc624f] ${formatTimestamp(log2.timestamp)} ERROR metabase.server.middleware.log message`,
+      ].join("\n"),
+    );
+  });
+
+  it("should allow to download filtered logs", () => {
+    cy.findByPlaceholderText("Filter logs").type("error");
+    cy.button(/Download/).click();
+    cy.readFile("cypress/downloads/logs.txt").should(
+      "equal",
+      `[e7774ef2-42ab-43de-89f7-d6de9fdc624f] ${formatTimestamp(log2.timestamp)} ERROR metabase.server.middleware.log message`,
+    );
+  });
+
+  /**
+   * The formatted timestamp may vary depending on the timezone in which the test is run.
+   * This function makes test assertions timezone-agnostic.
+   */
+  function formatTimestamp(timestamp) {
+    return dayjs(timestamp).format();
+  }
 });
 
 // Quarantine the whole spec because it is most likely causing the H2 timeouts and the chained failures!
