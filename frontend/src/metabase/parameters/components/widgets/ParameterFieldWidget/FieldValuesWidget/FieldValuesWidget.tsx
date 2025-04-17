@@ -218,6 +218,50 @@ export const FieldValuesWidgetInner = forwardRef<
     }
   };
 
+  const fetchFieldValues = async (query?: string): Promise<FieldValue[]> => {
+    if (query == null) {
+      const nonVirtualFields = getNonVirtualFields(fields);
+
+      const results = await Promise.all(
+        nonVirtualFields.map((field) =>
+          dispatch(Fields.objectActions.fetchFieldValues(field)),
+        ),
+      );
+
+      // extract the field values from the API response(s)
+      // the entity loader has inconsistent return structure, so we have to handle both
+      const fieldValues: FieldValue[][] = nonVirtualFields.map(
+        (field, index) =>
+          results[index]?.payload?.values ??
+          Fields.selectors.getFieldValues(results[index]?.payload, {
+            entityId: field.getUniqueId(),
+          }),
+      );
+
+      return dedupeValues(fieldValues);
+    } else {
+      const cancelDeferred = defer();
+      const cancelled: Promise<unknown> = cancelDeferred.promise;
+      _cancel.current = () => {
+        _cancel.current = null;
+        cancelDeferred.resolve();
+      };
+
+      const options = await searchFieldValues(
+        {
+          value: query,
+          fields,
+          disablePKRemappingForSearch,
+          maxResults,
+        },
+        cancelled,
+      );
+
+      _cancel.current = null;
+      return options;
+    }
+  };
+
   const dispatchFetchParameterValues = async (query?: string) => {
     if (!parameter) {
       return { has_more_values: false, values: [] };
