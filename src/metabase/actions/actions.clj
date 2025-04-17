@@ -262,7 +262,7 @@
       (catch Exception e
         (let [msg  (ex-message e)
               info (ex-data e)
-              info (with-meta info (merge (meta info) {:exception #p e}))]
+              info (with-meta info (merge (meta info) {:exception e}))]
           (publish-action-failure! invocation-id user-id action-kw msg info)
           (throw e))))))
 
