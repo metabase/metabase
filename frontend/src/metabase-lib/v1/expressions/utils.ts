@@ -24,7 +24,11 @@ export function getExpressionMode(startRule: string): Lib.ExpressionMode {
   throw new Error(`Unknown start rule: ${startRule}`);
 }
 
-type Nodable = string | number | boolean | bigint | unknown[] | { node?: Node };
+type Nodable =
+  | unknown[]
+  | Lib.ExpressionParts
+  | Lib.ExpressionArg
+  | { node?: Node };
 
 export function getNode(item?: Nodable): Node | undefined {
   if (typeof item === "object" && item !== null && "node" in item) {
