@@ -64,12 +64,52 @@ describe("useUrlState", () => {
     expect(state).toEqual({ name: "abc", score: 123 });
   });
 
-  it("replaces unparsable query params", async () => {
+  it("parses partial query params", () => {
+    const location = createLocation("?score=123");
+    const { result } = setup({ location });
+    const [state] = result.current;
+    expect(state).toEqual({ name: null, score: 123 });
+  });
+
+  it("replaces unparsable query params", () => {
     const location = createLocation("?name=abc&score=abc");
     const { result, history } = setup({ location });
     const [state] = result.current;
     expect(state).toEqual({ name: "abc", score: null });
     expect(history?.getCurrentLocation().search).toEqual("?name=abc");
+  });
+
+  it("patches query params", () => {
+    const location = createLocation("?name=abc&score=123");
+    const { result, history } = setup({ location });
+    const [_state, { patchUrlState }] = result.current;
+    patchUrlState({ score: 456 });
+    // TODO: uncomment this in #56772
+    // const [state] = result.current;
+    // expect(state).toEqual({ name: "abc", score: 456 });
+    expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=456");
+  });
+
+  it("patches partial query params", () => {
+    const location = createLocation("?name=abc&score=123");
+    const { result, history } = setup({ location });
+    const [_state, { patchUrlState }] = result.current;
+    patchUrlState({ name: "xyz", score: 456 });
+    // TODO: uncomment this in #56772
+    // const [state] = result.current;
+    // expect(state).toEqual({ name: "xyz", score: 456 });
+    expect(history?.getCurrentLocation().search).toEqual("?name=xyz&score=456");
+  });
+
+  it("removes query params", () => {
+    const location = createLocation("?name=abc&score=123");
+    const { result, history } = setup({ location });
+    const [_state, { patchUrlState }] = result.current;
+    patchUrlState({ name: null, score: null });
+    // TODO: uncomment this in #56772
+    // const [state] = result.current;
+    // expect(state).toEqual({ name: null, score: null });
+    expect(history?.getCurrentLocation().search).toEqual("");
   });
 });
 
