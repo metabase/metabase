@@ -157,8 +157,8 @@
   (can-read-content? "1a")
   ;; => {:readable false, :reason "Invalid number: 1a", :data {:type :edamame/error, :line 1, :column 2}}
 
-  (check "mage/mage/be_dev.clj" 234)
-  ;; => {:readable true, :starting-at "\n(comment ;; hi self"}
+  (check "mage/mage/readability_check.clj" 160)
+  ;; => {:readable true, :starting-at "(comment ;; hi self", :ending-at "  (= (read-all-files) #{{:readable true}}))"}
 
                                         ;soo meta :) :| :(
   ;; these cannot trip it up:
