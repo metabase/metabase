@@ -923,27 +923,29 @@
 
   Filters out tables that are link-tables"
   [clauses]
-  (t2/select [:model/Table :id :schema :display_name :entity_type :db_id
-              [:ts.count :num-fields]
-              [[:and
-                [:>= :ts.count 2]
-                [:= :ts.count_non_pks 1]] :list-like?]]
-             {:inner-join [[{:select   [:f.table_id
-                                        [:%count.* "count"]
-                                        [[:count [:case [:or [:not= :semantic_type "type/PK"]
-                                                         [:= :f.semantic_type nil]]
-                                                  [:inline 1] :else [:inline nil]]]
-                                         :count_non_pks]
-                                        [[:count [:case [:in :f.semantic_type ["type/PK" "type/FK"]]
-                                                  [:inline 1] :else [:inline nil]]]
-                                         :count_pks_and_fks]]
-                             :from     [[:metabase_field :f]]
-                             :where    [:= :f.active true]
-                             :group-by [:f.table_id]} :ts]
-                           [:and [:= :ts.table_id :id]
-                            [:> :ts.count 0]
-                            [:!= :ts.count :ts.count_pks_and_fks]]]
-              :where (into [:and] clauses)}))
+  (->>
+   (t2/select [:model/Table :id :schema :display_name :entity_type :db_id
+               [:ts.count :num-fields]
+               [[:and
+                 [:>= :ts.count 2]
+                 [:= :ts.count_non_pks 1]] :list-like?]]
+              {:inner-join [[{:select   [:f.table_id
+                                         [:%count.* "count"]
+                                         [[:count [:case [:or [:not= :semantic_type "type/PK"]
+                                                          [:= :f.semantic_type nil]]
+                                                   [:inline 1] :else [:inline nil]]]
+                                          :count_non_pks]
+                                         [[:count [:case [:in :f.semantic_type ["type/PK" "type/FK"]]
+                                                   [:inline 1] :else [:inline nil]]]
+                                          :count_pks_and_fks]]
+                              :from     [[:metabase_field :f]]
+                              :where    [:= :f.active true]
+                              :group-by [:f.table_id]} :ts]
+                            [:and [:= :ts.table_id :id]
+                             [:> :ts.count 0]
+                             [:!= :ts.count :ts.count_pks_and_fks]]]
+               :where (into [:and] clauses)})
+   (map #(update % :list-like? (fn [val] (if (int? val) (= val 1) val)))))) ;; handle mysql returning the predicate value as an int
 
 (def ^:private ^:const ^Long max-candidate-tables
   "Maximal number of tables per schema shown in `candidate-tables`."
