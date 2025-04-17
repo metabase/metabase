@@ -22,3 +22,17 @@ export function opt(
     args,
   };
 }
+
+export function value(
+  x: number | string | boolean | bigint,
+  type: string,
+): Lib.ExpressionParts {
+  return opt(
+    "value",
+    {
+      "base-type": type,
+      "effective-type": type,
+    },
+    x,
+  );
+}
