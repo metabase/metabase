@@ -14,13 +14,13 @@ describe("parameters/utils/field-filters", () => {
     const field = createMockField({
       isDate: () => false,
       isID: () => false,
-      isCategory: () => false,
       isCity: () => false,
       isState: () => false,
       isZipCode: () => false,
       isCountry: () => false,
-      isNumber: () => false,
+      isNumeric: () => false,
       isString: () => false,
+      isBoolean: () => false,
       isLocation: () => false,
     });
 
@@ -47,7 +47,7 @@ describe("parameters/utils/field-filters", () => {
         { type: "category" },
         {
           type: "category",
-          field: () => ({ ...field, isCategory: () => true }),
+          field: () => ({ ...field, has_field_values: "list" }),
         },
       ],
       [
@@ -67,7 +67,7 @@ describe("parameters/utils/field-filters", () => {
           type: "number",
           field: () => ({
             ...field,
-            isNumber: () => true,
+            isNumeric: () => true,
             isCoordinate: () => false,
           }),
         },
@@ -79,7 +79,7 @@ describe("parameters/utils/field-filters", () => {
           field: () => ({
             ...field,
             isString: () => true,
-            isCategory: () => true,
+            has_field_values: "list",
           }),
         },
       ],
@@ -90,7 +90,7 @@ describe("parameters/utils/field-filters", () => {
           field: () => ({
             ...field,
             isString: () => true,
-            isCategory: () => true,
+            has_field_values: "list",
           }),
         },
       ],
@@ -118,7 +118,7 @@ describe("parameters/utils/field-filters", () => {
       const coordinateDimension = createMockDimension({
         field: () => ({
           ...field,
-          isNumber: () => true,
+          isNumeric: () => true,
           isCoordinate: () => true,
         }),
       });

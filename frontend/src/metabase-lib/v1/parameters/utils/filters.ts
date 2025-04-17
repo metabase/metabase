@@ -25,10 +25,7 @@ export function fieldFilterForParameter(
       return (field) => field.isLocation();
     case "number":
       return (field) =>
-        field.isNumeric() &&
-        !field.isPK() &&
-        !field.isFK() &&
-        !field.isCoordinate();
+        field.isNumeric() && !field.isID() && !field.isCoordinate();
     case "string":
       return (field) => {
         const isString = field.isString();
