@@ -13,6 +13,7 @@
    [metabase-enterprise.api.routes.common :as ee.api.common]
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
+   [metabase-enterprise.content-translation.api.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.data-editing.api]
    [metabase-enterprise.database-routing.api]
@@ -37,10 +38,11 @@
   {:advanced-permissions       (deferred-tru "Advanced Permissions")
    :attached-dwh               (deferred-tru "Attached DWH")
    :audit-app                  (deferred-tru "Audit app")
-   :collection-cleanup         (deferred-tru "Collection Cleanup")
    :ai-sql-fixer               (deferred-tru "AI SQL Fixer")
    :ai-sql-generation          (deferred-tru "AI SQL Generation")
    :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
+   :collection-cleanup         (deferred-tru "Collection Cleanup")
+   :content-translation        (deferred-tru "Content translation")
    :etl-connections            (deferred-tru "ETL Connections")
    :table-data-editing         (deferred-tru "Editing Table Data")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
@@ -78,6 +80,7 @@
    "/autodescribe"               (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                    metabase-enterprise.billing.api.routes/routes
    "/data-editing"               (premium-handler metabase-enterprise.data-editing.api/routes :table-data-editing)
+   "/content-translation"        (premium-handler metabase-enterprise.content-translation.api.routes/routes :content-translation)
    "/gsheets"                    (-> gsheets.api/routes ;; gsheets requires both features.
                                      (premium-handler :attached-dwh)
                                      (premium-handler :etl-connections))

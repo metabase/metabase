@@ -1,7 +1,9 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { useSetting } from "metabase/common/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Box, Stack } from "metabase/ui";
 
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
@@ -21,6 +23,11 @@ export function LocalizationSettingsPage() {
           )}
           inputType="select"
         />
+        {PLUGIN_CONTENT_TRANSLATION.isEnabled && (
+          <ErrorBoundary>
+            <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
+          </ErrorBoundary>
+        )}
         <AdminSettingInput
           name="report-timezone"
           searchable
