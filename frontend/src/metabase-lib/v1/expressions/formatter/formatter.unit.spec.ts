@@ -5,6 +5,7 @@ import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 
+import { compileExpression } from "../compiler";
 import {
   expressions,
   fields,
@@ -12,8 +13,7 @@ import {
   query,
   segments,
   stageIndex,
-} from "../__support__/shared";
-import { compileExpression } from "../compiler";
+} from "../test/shared";
 import { op, opt } from "../test/util";
 import type { StartRule } from "../types";
 

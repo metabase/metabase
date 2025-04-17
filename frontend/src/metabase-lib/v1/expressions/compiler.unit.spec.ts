@@ -1,11 +1,11 @@
+import { compileExpression } from "./compiler";
 import {
   expressions,
   fields,
   query,
   segments,
   stageIndex,
-} from "./__support__/shared";
-import { compileExpression } from "./compiler";
+} from "./test/shared";
 import { op, opt, value } from "./test/util";
 import type { StartRule } from "./types";
 
