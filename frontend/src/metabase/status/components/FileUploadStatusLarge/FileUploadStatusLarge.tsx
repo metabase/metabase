@@ -109,10 +109,15 @@ const getTitle = (
 };
 
 const loadingMessages = [
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   t`Getting our ducks in a row`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   t`Still working`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   t`Arranging bits and bytes`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   t`Doing the heavy lifting`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   t`Pushing some pixels`,
 ];
 

@@ -2,8 +2,11 @@ import { t } from "ttag";
 
 import { areParameterValuesIdentical } from "metabase-lib/v1/parameters/utils/parameter-values";
 
+// eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
 const UPDATE = t`Update filter`;
+// eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
 const ADD = t`Add filter`;
+// eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
 const RESET = t`Set to default`;
 
 /**

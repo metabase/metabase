@@ -19,6 +19,7 @@ const INVITE_USER_SCHEMA = Yup.object({
     .email(Errors.email)
     .notOneOf(
       [Yup.ref("$email")],
+      // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
       t`must be different from the email address you used in setup`,
     ),
 });

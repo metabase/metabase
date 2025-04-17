@@ -61,8 +61,11 @@ function DimensionPicker({
   );
 }
 
+// eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
 const INNER_RING_TITLE = t`Inner Ring`;
+// eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
 const MIDDLE_RING_TITLE = t`Middle Ring`;
+// eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
 const OUTER_RING_TITLE = t`Outer Ring`;
 
 const TWO_RING_SETTING_TITLES = [INNER_RING_TITLE, OUTER_RING_TITLE];

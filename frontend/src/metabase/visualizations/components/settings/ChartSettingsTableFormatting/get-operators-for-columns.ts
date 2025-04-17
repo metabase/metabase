@@ -13,30 +13,46 @@ import type {
 } from "metabase-types/api";
 
 const COMMON_OPERATOR_NAMES = {
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   "is-null": t`is null`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   "not-null": t`is not null`,
 };
 
 const NUMBER_OPERATOR_NAMES = {
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   "=": t`is equal to`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   "!=": t`is not equal to`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   "<": t`is less than`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   ">": t`is greater than`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   "<=": t`is less than or equal to`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   ">=": t`is greater than or equal to`,
 };
 
 const STRING_OPERATOR_NAMES = {
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   "=": t`is equal to`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   "!=": t`is not equal to`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   contains: t`contains`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   "does-not-contain": t`does not contain`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   "starts-with": t`starts with`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   "ends-with": t`ends with`,
 };
 
 const BOOLEAN_OPERATOR_NAMES = {
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   "is-true": t`is true`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   "is-false": t`is false`,
 };
 

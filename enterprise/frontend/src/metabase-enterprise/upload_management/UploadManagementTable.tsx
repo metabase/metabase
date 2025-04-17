@@ -23,8 +23,11 @@ import { getDateDisplay } from "./utils";
 
 const columns = [
   { key: "checkbox", name: "", sortable: false },
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   { key: "name", name: t`Table name` },
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   { key: "created_at", name: t`Created at` },
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   { key: "schema", name: t`Schema` },
   { key: "actions", name: "", sortable: false },
 ];

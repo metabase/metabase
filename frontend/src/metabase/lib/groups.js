@@ -3,7 +3,9 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 
 const SPECIAL_GROUP_NAMES = new Map([
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   ["All Users", t`All Users`],
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   ["Administrators", t`Administrators`],
 ]);
 
