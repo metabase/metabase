@@ -218,8 +218,8 @@ export const popupRefreshTokenFn = async (url: string) => {
     // Make sure token=true is included
     // This is critical for triggering the postMessage flow
     const tokenUrl = url.includes("?")
-      ? `${url}&redirect=${encodeURIComponent(testUrl)}`
-      : `${url}?redirect=${encodeURIComponent(testUrl)}`;
+      ? `${url}&redirect=${encodeURIComponent(testUrl)}&origin=${encodeURIComponent(window.location.origin)}`
+      : `${url}?redirect=${encodeURIComponent(testUrl)}&origin=${encodeURIComponent(window.location.origin)}`;
 
     // Open popup
     const popup = window.open(
