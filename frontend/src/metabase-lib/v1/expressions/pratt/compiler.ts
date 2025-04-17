@@ -4,6 +4,7 @@ import { type NumberValue, parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
 
 import { getClauseDefinition, getMBQLName, isDefinedClause } from "../config";
+import type { Kind } from "../field-resolver";
 import {
   isBigIntLiteral,
   isBooleanLiteral,
@@ -106,15 +107,19 @@ function compileValue(
   };
 }
 
-const MAP_TYPE = {
-  boolean: "segment",
-  aggregation: "metric",
-} as const;
+function getKindForType(type: ExpressionType): Kind {
+  switch (type) {
+    case "boolean":
+      return "segment";
+    case "aggregation":
+      return "metric";
+    default:
+      return "field";
+  }
+}
 
-function getDimension(name: string, node: Node, ctx: Context) {
+function compileDimension(name: string, node: Node, ctx: Context) {
   assert(typeof name === "string", t`Invalid dimension name: ${name}`);
-
-  const kind = MAP_TYPE[ctx.type as keyof typeof MAP_TYPE] ?? "field";
 
   if (!ctx.resolver) {
     return {
@@ -125,6 +130,7 @@ function getDimension(name: string, node: Node, ctx: Context) {
   }
 
   try {
+    const kind = getKindForType(ctx.type);
     const dimension = ctx.resolver(kind, name, node);
     return withNode(node, dimension);
   } catch (err) {
@@ -148,7 +154,7 @@ function compileField(
   assert(node.type === FIELD, t`Invalid node type`);
   assert(node.token?.value, t`Empty field value`);
 
-  return getDimension(node.token.value, node, ctx);
+  return compileDimension(node.token.value, node, ctx);
 }
 
 function compileIdentifier(
@@ -159,7 +165,7 @@ function compileIdentifier(
   assert(node.token?.text, t`Empty token text`);
 
   const name = node.token.text;
-  return getDimension(name, node, ctx);
+  return compileDimension(name, node, ctx);
 }
 
 function compileGroup(
