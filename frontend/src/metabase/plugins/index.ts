@@ -56,6 +56,7 @@ import type {
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
+  DashCardId,
   Dashboard,
   DatabaseId,
   Database as DatabaseType,
@@ -663,6 +664,7 @@ export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
 export interface AIDashboardAnalysisSidebarProps {
   dashboard: Dashboard;
   onClose?: () => void;
+  dashcardId?: DashCardId;
 }
 
 export interface AIQuestionAnalysisSidebarProps {

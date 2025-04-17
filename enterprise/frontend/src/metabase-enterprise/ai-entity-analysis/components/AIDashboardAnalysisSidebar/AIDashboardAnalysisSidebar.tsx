@@ -1,50 +1,69 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
+import _ from "underscore";
 
-import { CopyButton } from "metabase/components/CopyButton";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
-import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import {
   getIsDashCardsLoadingComplete,
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
 import type { AIDashboardAnalysisSidebarProps } from "metabase/plugins";
-import { Icon } from "metabase/ui";
-import { getDashboardImage } from "metabase/visualizations/lib/image-exports";
 
-import { useAnalyzeDashboardMutation } from "../../../api/ai-entity-analysis";
-import { AIAnalysisContent } from "../AIAnalysisContent";
-
-import styles from "./AIDashboardAnalysisSidebar.module.css";
-
-// TODO: This is a hack to ensure visualizations have rendered after data loading, as they can render asynchronously.
-// We should find a better way to do this.
-const RENDER_DELAY_MS = 200;
+import { useDashCardAnalysis } from "../../hooks/useDashCardAnalysis";
+import { useDashboardAnalysis } from "../../hooks/useDashboardAnalysis";
+import { AIAnalysisContentWrapper } from "../AIAnalysisContentWrapper/AIAnalysisContentWrapper";
 
 export function AIDashboardAnalysisSidebar({
   dashboard,
   onClose,
+  dashcardId,
 }: AIDashboardAnalysisSidebarProps) {
-  const [analyzeDashboard, { data: analysisData }] =
-    useAnalyzeDashboardMutation();
   const isDashCardsLoadingComplete = useSelector(getIsDashCardsLoadingComplete);
   const parameterValues = useSelector(getParameterValues);
   const selectedTabId = useSelector((state) => state.dashboard.selectedTabId);
   const previousParameterValues = usePrevious(parameterValues);
   const previousTabId = usePrevious(selectedTabId);
-  const pendingAnalysisRef = useRef(true);
-  const analysisTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const dashcards = useSelector((state) => state.dashboard.dashcards);
+  const dashcard = dashcardId ? dashcards[dashcardId] : null;
+  const card = dashcard?.card;
+
+  const isDashboardMode = !dashcardId || !dashcard || !card;
+
+  const {
+    analysisData: dashboardAnalysisData,
+    isLoading: isDashboardLoading,
+    reloadAnalysis: reloadDashboardAnalysis,
+  } = useDashboardAnalysis({
+    dashboard,
+    isDashCardsLoadingComplete,
+    selectedTabId: selectedTabId || undefined,
+    isEnabled: isDashboardMode,
+  });
+
+  const { analysisData: dashcardAnalysisData, isLoading: isDashcardLoading } =
+    useDashCardAnalysis({
+      dashcardId: dashcardId || 0,
+      card: card || { name: "", description: "" },
+      isLoadingComplete: isDashCardsLoadingComplete,
+      isEnabled: !isDashboardMode,
+    });
+
+  // Parameter and tab change handling for dashboard mode
   useEffect(() => {
-    if (previousTabId !== undefined && selectedTabId !== previousTabId) {
-      pendingAnalysisRef.current = true;
+    if (!isDashboardMode) {
+      return;
     }
-  }, [selectedTabId, previousTabId]);
+
+    if (previousTabId !== undefined && selectedTabId !== previousTabId) {
+      reloadDashboardAnalysis();
+    }
+  }, [isDashboardMode, selectedTabId, previousTabId, reloadDashboardAnalysis]);
 
   useEffect(() => {
-    if (!previousParameterValues) {
+    if (!isDashboardMode || !previousParameterValues) {
       return;
     }
 
@@ -54,68 +73,33 @@ export function AIDashboardAnalysisSidebar({
     );
 
     if (hasParameterValuesChanged) {
-      pendingAnalysisRef.current = true;
+      reloadDashboardAnalysis();
     }
-  }, [parameterValues, previousParameterValues]);
+  }, [
+    isDashboardMode,
+    parameterValues,
+    previousParameterValues,
+    reloadDashboardAnalysis,
+  ]);
 
-  useEffect(() => {
-    if (!pendingAnalysisRef.current || !isDashCardsLoadingComplete) {
-      return;
-    }
+  const analysisData = isDashboardMode
+    ? dashboardAnalysisData
+    : dashcardAnalysisData;
 
-    analysisTimeoutRef.current = setTimeout(async () => {
-      const dashboardSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
-      const imageBase64 = await getDashboardImage(dashboardSelector);
+  const isLoading = isDashboardMode ? isDashboardLoading : isDashcardLoading;
 
-      if (imageBase64) {
-        await analyzeDashboard({
-          imageBase64,
-          name: dashboard.name,
-          description: dashboard.description ?? undefined,
-          tabName:
-            dashboard.tabs?.find((tab) => tab.id === selectedTabId)?.name ??
-            undefined,
-        });
-      }
-
-      pendingAnalysisRef.current = false;
-      analysisTimeoutRef.current = null;
-    }, RENDER_DELAY_MS);
-
-    return () => {
-      if (analysisTimeoutRef.current) {
-        clearTimeout(analysisTimeoutRef.current);
-        analysisTimeoutRef.current = null;
-      }
-    };
-  }, [analyzeDashboard, dashboard, isDashCardsLoadingComplete, selectedTabId]);
+  const title = isDashboardMode
+    ? t`Explain this dashboard`
+    : t`Explain this chart`;
 
   return (
     <Sidebar data-testid="dashboard-analysis-sidebar">
-      <div className={styles.contentWrapper}>
-        <div className={styles.header}>
-          <h3 className={styles.title}>{t`Explain this dashboard`}</h3>
-          <div className={styles.actions}>
-            {analysisData?.summary && (
-              <CopyButton
-                value={analysisData.summary}
-                className={styles.copyButton}
-                aria-label={t`Copy summary`}
-              />
-            )}
-            {onClose && (
-              <button
-                className={styles.closeButton}
-                onClick={onClose}
-                aria-label={t`Close`}
-              >
-                <Icon name="close" size={16} />
-              </button>
-            )}
-          </div>
-        </div>
-        <AIAnalysisContent explanation={analysisData?.summary} />
-      </div>
+      <AIAnalysisContentWrapper
+        title={title}
+        explanation={analysisData}
+        isLoading={isLoading}
+        onClose={onClose}
+      />
     </Sidebar>
   );
 }

@@ -234,6 +234,7 @@ export function DashboardSidebars({
     case SIDEBAR_NAME.analyze:
       return (
         <PLUGIN_AI_ANALYSIS.AIDashboardAnalysisSidebar
+          dashcardId={sidebar.props?.dashcardId}
           dashboard={dashboard}
           onClose={closeSidebar}
         />
