@@ -344,7 +344,6 @@
           (and table-names (empty? table-names)))
     []
     (let [sql (describe-fields-sql driver (assoc args :details (:details db)))]
-      (def sss sql)
       (try
         (log/debugf "`describe-fields` sql query:\n```\n%s\n```\n`describe-fields` args:\n```\n%s\n```"
                     (driver/prettify-native-form driver (first sql))
@@ -357,10 +356,6 @@
         (m/mapply describe-fields-pre-process-xf driver db args)
         (describe-fields-xf driver db))
        (sql-jdbc.execute/reducible-query db sql)))))
-
-(comment
-
-  (filter (complement :table-schema) ahoj))
 
 (defmulti describe-indexes-sql
   "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-indexes]],
