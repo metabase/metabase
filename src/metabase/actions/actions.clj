@@ -225,10 +225,11 @@
         :info          info}
        (events/publish-event! :event/action.failure)))
 
+;; TODO will fix requiring-resolve when we remove all this table-action specific stuff, which has NO place here
+#_{:clj-kondo/ignore [:metabase/modules]}
 (defn perform-with-system-events!
   "Eventually, all calls to perform-action! should go through this... Proceeding with caution."
   [action-kw args-map & {:as opts}]
-  ;; TODO will fix requiring-resolve when we remove all this table-action specific stuff, which has NO place here
   (let [qry-context       ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/qry-context) args-map)
         pk->db-row-before ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/query-previous-rows) action-kw qry-context)
         invocation-id     (nano-id/nano-id)

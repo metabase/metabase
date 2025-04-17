@@ -19,6 +19,7 @@
     (api/check-500 (pos? (count <>)))))
 
 (defn get-row-pks
+  "Given a row, strip it down to just its primary keys."
   [pk-fields row]
   (select-keys row (map (comp keyword :name) pk-fields)))
 
