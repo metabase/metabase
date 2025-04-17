@@ -44,6 +44,7 @@
   enable-cache-granular-controls?
   enable-collection-cleanup?
   enable-config-text-file?
+  enable-content-translation?
   enable-content-verification?
   enable-dashboard-subscription-filters?
   enable-database-auth-providers?
