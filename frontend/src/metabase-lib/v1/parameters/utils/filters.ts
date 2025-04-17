@@ -25,7 +25,7 @@ type ColumnInfo = {
   hasFieldValues: FieldValuesType | undefined;
 };
 
-function isColumnCompatibleWithParameter(
+function isParameterCompatibleWithColumn(
   parameter: Parameter | string,
   {
     isString,
@@ -52,8 +52,7 @@ function isColumnCompatibleWithParameter(
       return isNumeric && !isID && !isLocation;
     case "string":
       return (
-        (isString || ((isNumeric || isBoolean) && hasFieldValues === "list")) &&
-        !isLocation
+        (isString || (isBoolean && hasFieldValues === "list")) && !isLocation
       );
     case "temporal-unit":
       return isTemporalBucketable;
@@ -66,7 +65,7 @@ export function fieldFilterForParameter(
   parameter: Parameter | string,
 ): (field: Field) => boolean {
   return (field) =>
-    isColumnCompatibleWithParameter(parameter, {
+    isParameterCompatibleWithColumn(parameter, {
       isString: field.isString(),
       isNumeric: field.isNumeric(),
       isBoolean: field.isBoolean(),
@@ -84,7 +83,7 @@ export function columnFilterForParameter(
   parameter: Parameter | string,
 ): (column: Lib.ColumnMetadata) => boolean {
   return (column) =>
-    isColumnCompatibleWithParameter(parameter, {
+    isParameterCompatibleWithColumn(parameter, {
       isString: Lib.isStringOrStringLike(column),
       isNumeric: Lib.isNumeric(column),
       isBoolean: Lib.isBoolean(column),
