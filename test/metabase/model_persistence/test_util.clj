@@ -13,12 +13,9 @@
       (ddl.i/check-can-persist (data/db))
       (persisted-info/ready-database! (data/id))
       (let [persist-fn (fn persist-fn []
-                         #_(doseq [model-id model-ids]
-                           (persisted-info/turn-on-model!)
-                           )
                          (#'task.persist-refresh/refresh-tables!
-                           (data/id)
-                           (var-get #'task.persist-refresh/dispatching-refresher)))]
+                          (data/id)
+                          (var-get #'task.persist-refresh/dispatching-refresher)))]
         (f persist-fn)))))
 
 (defmacro with-persistence-enabled!

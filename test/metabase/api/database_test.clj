@@ -1133,11 +1133,11 @@
 (deftest ^:parallel db-metadata-saved-questions-db-test
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
     (mt/with-temp [:model/Card card (card-with-native-query
-                                      "Birthday Card"
-                                      :entity_id       "M6W4CLdyJxiW-DyzDbGl4"
-                                      :result_metadata [{:name "age_in_bird_years"
-                                                         :ident (lib/native-ident "age_in_bird_years"
-                                                                                  "M6W4CLdyJxiW-DyzDbGl4")}])]
+                                     "Birthday Card"
+                                     :entity_id       "M6W4CLdyJxiW-DyzDbGl4"
+                                     :result_metadata [{:name "age_in_bird_years"
+                                                        :ident (lib/native-ident "age_in_bird_years"
+                                                                                 "M6W4CLdyJxiW-DyzDbGl4")}])]
       (let [response (mt/user-http-request :crowberto :get 200
                                            (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))]
         (is (malli= SavedQuestionsDB
@@ -1864,9 +1864,9 @@
 (deftest get-schema-tables-unreadable-metrics-are-not-returned-test
   (mt/with-temp [:model/Collection model-coll   {:name "Model Collection"}
                  :model/Card       card         (card-with-native-query
-                                                  "Card 1"
-                                                  :collection_id (:id model-coll)
-                                                  :type :model)
+                                                 "Card 1"
+                                                 :collection_id (:id model-coll)
+                                                 :type :model)
                  :model/Collection metric-coll {:name "Metric Collection"}
                  :model/Card       metric      {:type          :metric
                                                 :name          "Metric"

@@ -51,10 +51,10 @@
                                                                 :type :model)
                                                          (update :result_metadata
                                                                  ~(fn [metadata]
-                                                                   (mapv #(cond-> %
-                                                                            (= (:name %) "Tax Rate")
-                                                                            (assoc :semantic_type :type/Percentage))
-                                                                         metadata))))
+                                                                    (mapv #(cond-> %
+                                                                             (= (:name %) "Tax Rate")
+                                                                             (assoc :semantic_type :type/Percentage))
+                                                                          metadata))))
                     :model/Card {~question-card-id :id} {:name          "Query based on model"
                                                          :dataset_query {:type     :query
                                                                          :database (mt/id)
@@ -352,19 +352,19 @@
                   (cond-> col
                     settings (assoc :settings settings))))]
         (mt/with-temp [:model/Card {native-card-id :id} (-> (mt/card-with-source-metadata-for-query
-                                                                         (mt/native-query {:query q}))
-                                                                       (assoc :name "NATIVE"))
+                                                             (mt/native-query {:query q}))
+                                                            (assoc :name "NATIVE"))
                        :model/Card {model-card-id  :id} (-> (mt/card-with-source-metadata-for-query
-                                                                           {:database (mt/id)
-                                                                            :type     :query
-                                                                            :query    (model-query native-card-id)})
-                                                                         (merge {:name "MODEL"
-                                                                                 :type :model})
-                                                                         (update :result_metadata
-                                                                                 #(mapv model-metadata-fn %)))
+                                                             {:database (mt/id)
+                                                              :type     :query
+                                                              :query    (model-query native-card-id)})
+                                                            (merge {:name "MODEL"
+                                                                    :type :model})
+                                                            (update :result_metadata
+                                                                    #(mapv model-metadata-fn %)))
                        :model/Card {meta-model-card-id :id} (-> (mt/card-with-source-metadata-for-query
-                                                                  (mt/mbql-query nil
-                                                                    {:source-table (format "card__%s" model-card-id)}))
+                                                                 (mt/mbql-query nil
+                                                                   {:source-table (format "card__%s" model-card-id)}))
                                                                 (assoc :name                   "METAMODEL"
                                                                        :type                   :model
                                                                        :visualization_settings
@@ -871,8 +871,7 @@
                        :entity_id       model-eid
                        :result_metadata [{:name  "ID"
                                           :id    (mt/id :airport :id)
-                                          :ident (lib/model-ident (mt/ident :airport :id) model-eid)
-                                          }
+                                          :ident (lib/model-ident (mt/ident :airport :id) model-eid)}
                                          {:semantic_type :type/Longitude
                                           :name          "LONGITUDE"
                                           :ident         (lib/model-ident (mt/ident :airport :longitude) model-eid)}

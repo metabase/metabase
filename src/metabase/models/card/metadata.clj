@@ -89,10 +89,6 @@ saved later when it is ready."
     (lib/normalize dataset-query)
     (mbql.normalize/normalize dataset-query)))
 
-(defn- maybe-validate-model-idents [metadata model? entity-id]
-  (or (not model?)
-      (every? #(valid-ident? % model? entity-id) metadata)))
-
 (mu/defn maybe-async-result-metadata :- ::maybe-async-result-metadata
   "Return result metadata for the passed in `query`. If metadata needs to be recalculated, waits up to
   [[metadata-sync-wait-ms]] for it to be recalcuated; if not recalculated by then, returns a map with
@@ -108,11 +104,7 @@ saved later when it is ready."
   might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
   [{:keys [original-query query metadata original-metadata model? entity-id], :as options}]
   (let [valid-metadata? (and metadata
-                             (mr/validate analyze/ResultsMetadata metadata)
-                             ;; FIXME: Breadcrumb: This check breaks the logic here because newly created MBQL models
-                             ;; come in with _inner_ query idents, and that's correct behaviour.
-                             ;; Probably this can just be deleted.
-                             #_(maybe-validate-model-idents metadata model? entity-id))]
+                             (mr/validate analyze/ResultsMetadata metadata))]
     (cond
       (or
        ;; query didn't change, preserve existing metadata

@@ -80,11 +80,11 @@
                                        first
                                        (assoc :ident brk-ident))
                                    {:name          "count"
-                                     :display_name  "Count"
-                                     :ident         agg-ident
-                                     :base_type     :type/Integer
-                                     :semantic_type :type/Quantity
-                                     :field_ref     [:aggregation 0]}]})
+                                    :display_name  "Count"
+                                    :ident         agg-ident
+                                    :base_type     :type/Integer
+                                    :semantic_type :type/Quantity
+                                    :field_ref     [:aggregation 0]}]})
               (add-source-metadata
                (lib.tu.macros/mbql-query venues
                  {:source-query {:source-table       $$venues
@@ -107,12 +107,12 @@
                                        first
                                        (assoc :ident brk-ident))
                                    {:name          "avg"
-                                     :display_name  "Average of ID"
-                                     :base_type     :type/Float
-                                     :ident         agg-ident
-                                     :semantic_type :type/PK
-                                     :settings      nil
-                                     :field_ref     [:aggregation 0]}]})
+                                    :display_name  "Average of ID"
+                                    :base_type     :type/Float
+                                    :ident         agg-ident
+                                    :semantic_type :type/PK
+                                    :settings      nil
+                                    :field_ref     [:aggregation 0]}]})
               (add-source-metadata
                (lib.tu.macros/mbql-query venues
                  {:source-query {:source-table       $$venues

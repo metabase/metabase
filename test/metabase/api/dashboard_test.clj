@@ -4904,19 +4904,19 @@
                                              :id        "p3"
                                              :type      "text"}]}
      :model/Card          c1  (mt/card-with-updated-metadata
-                                {:name          "C1"
-                                 :type          :model
-                                 :dataset_query (mt/native-query {:query "select * from people"})}
-                                (fn [{col-name :name :as meta} _card]
-                                  ;; Map model's metadata to corresponding field id
-                                  (assoc meta :id  (mt/id :people (keyword (u/lower-case-en col-name))))))
+                               {:name          "C1"
+                                :type          :model
+                                :dataset_query (mt/native-query {:query "select * from people"})}
+                               (fn [{col-name :name :as meta} _card]
+                                 ;; Map model's metadata to corresponding field id
+                                 (assoc meta :id  (mt/id :people (keyword (u/lower-case-en col-name))))))
 
      :model/Card          c2 (let [query (mt/mbql-query nil
                                            {:source-table (str "card__" (:id c1))
                                             :aggregation [[:distinct [:field "STATE" {:base-type :type/Text}]]]})]
                                (mt/card-with-metadata
-                                 {:name "C2"
-                                  :dataset_query query}))
+                                {:name "C2"
+                                 :dataset_query query}))
      :model/DashboardCard _dc1 {:dashboard_id       (:id d)
                                 :card_id            (:id c2)
                                 :parameter_mappings

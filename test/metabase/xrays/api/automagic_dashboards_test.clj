@@ -214,9 +214,9 @@
       (let [card-query (mt/native-query {:query "select * from people"})]
         (mt/with-temp [:model/Collection {collection-id :id} {}
                        :model/Card       {card-id :id} (merge
-                                                         (mt/card-with-source-metadata-for-query card-query)
-                                                         {:name            "15655_Q1"
-                                                          :collection_id   collection-id})]
+                                                        (mt/card-with-source-metadata-for-query card-query)
+                                                        {:name            "15655_Q1"
+                                                         :collection_id   collection-id})]
           (let [query      {:database (mt/id)
                             :type     :query
                             :query    {:source-table (format "card__%d" card-id)
