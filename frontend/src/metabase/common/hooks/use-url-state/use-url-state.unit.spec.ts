@@ -1,6 +1,6 @@
 import type { Location } from "history";
 
-import { renderHookWithProviders } from "__support__/ui";
+import { renderHookWithProviders, waitFor } from "__support__/ui";
 import { createMockLocation } from "metabase-types/store/mocks";
 
 import {
@@ -79,37 +79,47 @@ describe("useUrlState", () => {
     expect(history?.getCurrentLocation().search).toEqual("?name=abc");
   });
 
-  it("patches query params", () => {
+  it("patches query params", async () => {
     const location = createLocation("?name=abc&score=123");
     const { result, history } = setup({ location });
     const [_state, { patchUrlState }] = result.current;
     patchUrlState({ score: 456 });
-    // TODO: uncomment this in #56772
-    // const [state] = result.current;
-    // expect(state).toEqual({ name: "abc", score: 456 });
-    expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=456");
+    const [state] = result.current;
+    expect(state).toEqual({ name: "abc", score: 456 });
+    expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=123");
+    await waitFor(() => {
+      expect(history?.getCurrentLocation().search).toEqual(
+        "?name=abc&score=456",
+      );
+    });
   });
 
-  it("patches partial query params", () => {
+  it("patches partial query params", async () => {
     const location = createLocation("?name=abc&score=123");
     const { result, history } = setup({ location });
     const [_state, { patchUrlState }] = result.current;
     patchUrlState({ name: "xyz", score: 456 });
-    // TODO: uncomment this in #56772
-    // const [state] = result.current;
-    // expect(state).toEqual({ name: "xyz", score: 456 });
-    expect(history?.getCurrentLocation().search).toEqual("?name=xyz&score=456");
+    const [state] = result.current;
+    expect(state).toEqual({ name: "xyz", score: 456 });
+    expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=123");
+    await waitFor(() => {
+      expect(history?.getCurrentLocation().search).toEqual(
+        "?name=xyz&score=456",
+      );
+    });
   });
 
-  it("removes query params", () => {
+  it("removes query params", async () => {
     const location = createLocation("?name=abc&score=123");
     const { result, history } = setup({ location });
     const [_state, { patchUrlState }] = result.current;
     patchUrlState({ name: null, score: null });
-    // TODO: uncomment this in #56772
-    // const [state] = result.current;
-    // expect(state).toEqual({ name: null, score: null });
-    expect(history?.getCurrentLocation().search).toEqual("");
+    const [state] = result.current;
+    expect(state).toEqual({ name: null, score: null });
+    expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=123");
+    await waitFor(() => {
+      expect(history?.getCurrentLocation().search).toEqual("");
+    });
   });
 });
 
