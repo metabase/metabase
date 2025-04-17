@@ -29,6 +29,8 @@ export type {
   IconName,
   LoginStatus,
   MetabaseAuthConfig,
+  MetabaseAuthConfigWithApiKey,
+  MetabaseAuthConfigWithProvider,
   MetabaseClickActionPluginsConfig,
   MetabaseColors,
   MetabaseClickAction,
