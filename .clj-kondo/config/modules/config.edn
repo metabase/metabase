@@ -66,6 +66,7 @@
           metabase.api.card
           metabase.api.collection
           metabase.api.common
+          metabase.api.content-translation
           metabase.api.common.validation
           metabase.api.dashboard
           metabase.api.database
@@ -307,6 +308,7 @@
           metabase.models.collection-permission-graph-revision
           metabase.models.collection.graph
           metabase.models.collection.root
+          metabase.models.content-translation
           metabase.models.dashboard
           metabase.models.dashboard-card
           metabase.models.dashboard-tab
