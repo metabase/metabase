@@ -402,7 +402,7 @@
   :export?    false
   :cache?     false
   :getter     (fn []
-                (when-let [timestamp (some-> (setting/get-value-of-type :string :notification-cutoff-timestamp)
+                (when-let [timestamp (some-> (setting/get-value-of-type :string :notification-suppression-cutoff)
                                              u.date/parse ;; expects ISO 8601 format
                                              (#(.toOffsetDateTime ^ZonedDateTime %)))]
                   (assert (t/< timestamp (t/offset-date-time)) "Cutoff timestamp must be in the past")
