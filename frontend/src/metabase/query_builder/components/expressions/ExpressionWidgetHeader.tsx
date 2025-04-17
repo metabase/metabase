@@ -5,6 +5,7 @@ import { Flex } from "metabase/ui";
 
 import ExpressionWidgetHeaderS from "./ExpressionWidgetHeader.module.css";
 
+// eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
 const DEFAULT_SECTION_NAME = t`Custom Expression`;
 
 interface Props {

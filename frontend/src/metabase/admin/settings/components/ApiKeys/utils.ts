@@ -10,6 +10,7 @@ export function formatMaskedKey(maskedKey: string) {
 export const API_KEY_VALIDATION_SCHEMA = Yup.object({
   name: Yup.string().required(),
   group_id: Yup.number()
+    // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
     .typeError(t`Select a group`)
     .required(),
 });

@@ -148,10 +148,15 @@ export const FIELD_FILTER_OPERATORS = {
       numberArgument,
     ],
     placeholders: [
+      // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
       t`Select longitude field`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
       t`Enter upper latitude`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
       t`Enter left longitude`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
       t`Enter lower latitude`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
       t`Enter right longitude`,
     ],
     formatOptions: [

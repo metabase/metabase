@@ -38,9 +38,13 @@ import { buildAuthInfo } from "./utils";
 
 const validationSchema = Yup.object({
   url: Yup.string()
+    // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
     .url(t`Please enter a correctly formatted URL`)
+    // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
     .required(t`Please enter a correctly formatted URL`),
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   name: Yup.string().required(t`Please add a name`),
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   description: Yup.string().required(t`Please add a description`),
   "auth-method": Yup.string()
     .required()

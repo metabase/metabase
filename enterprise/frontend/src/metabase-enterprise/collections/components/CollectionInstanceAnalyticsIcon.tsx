@@ -12,10 +12,15 @@ interface Props extends Omit<IconProps, "name" | "tooltip"> {
 }
 
 const collectionIconTooltipNameMap = {
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   collection: t`collection`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   question: t`question`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   model: t`model`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   dashboard: t`dashboard`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
   metric: t`metric`,
 };
 
