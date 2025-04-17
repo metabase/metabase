@@ -170,8 +170,12 @@
                 [:tuple
                  [:string {:description "File to check"}]
                  [:int {:description "A line in the file" :min 1}]]]
-   :examples [["./bin/mage -code-is-readable yourfile.clj 1" "Check for unbalanced parens"]]
-   :task     (apply balanced-parens? (:arguments (cli/parse! (current-task))))}
+   :examples [["./bin/mage -check-readable dev/src/dev.clj"
+               "Check file for readability"]
+              ["./bin/mage -check-readable dev/src/dev.clj 300"
+               "Check top level form containing line 300 for readability"]]
+   :task     (let [{:keys [arguments]} (cli/parse! (current-task))]
+               (apply readability-check arguments))}
 
   -example-calculator
   {;; `:doc` is a short docstring for the task, will be listed in `./bin/mage -h` and other help info
