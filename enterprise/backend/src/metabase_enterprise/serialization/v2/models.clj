@@ -52,6 +52,7 @@
    "CollectionBookmark"
    "CollectionPermissionGraphRevision"
    "ConnectionImpersonation"
+   "ContentTranslation"
    "DatabaseRouter"
    "DashboardBookmark"
    "DataPermissions"
