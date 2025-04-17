@@ -1,3 +1,5 @@
+import type { JSX, ReactNode } from "react";
+
 import type { IconName as InternalIconName } from "metabase/ui";
 
 export type { ButtonProps } from "metabase/ui";
@@ -18,3 +20,11 @@ export type { MetabaseFontFamily } from "metabase/embedding-sdk/theme/fonts";
 type _IconName = InternalIconName;
 
 export type IconName = _IconName;
+
+export type SdkErrorComponentProps = {
+  message: ReactNode;
+};
+
+export type SdkErrorComponent = ({
+  message,
+}: SdkErrorComponentProps) => JSX.Element;

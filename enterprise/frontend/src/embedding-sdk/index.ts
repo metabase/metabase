@@ -49,6 +49,8 @@ export type {
   SdkDashboardId,
   SdkDashboardLoadEvent,
   SdkEntityId,
+  SdkErrorComponent,
+  SdkErrorComponentProps,
   SdkEventHandlersConfig,
   SdkQuestionId,
   SdkQuestionTitleProps,
