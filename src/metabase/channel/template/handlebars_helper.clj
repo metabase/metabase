@@ -95,6 +95,92 @@
   [x [y] _kparams _options]
   (= x y))
 
+(defhelper ne
+  "Checks if two values are not equal.
+
+   Example:
+   ```
+   {{#if (ne status \"cancelled\")}}
+     <p>Order is still active</p>
+   {{/if}}
+   ```
+
+   Arguments:
+   - x: First value to compare
+   - y: Second value to compare"
+  [x [y] _kparams _options]
+  (not= x y))
+
+(defhelper gt
+  "Checks if first value is greater than second value.
+
+   Example:
+   ```
+   {{#if (gt price 100)}}
+     <span class=\"expensive\">{{price}}</span>
+   {{else}}
+     <span>{{price}}</span>
+   {{/if}}
+   ```
+
+   Arguments:
+   - x: First value to compare
+   - y: Second value to compare"
+  [x [y] _kparams _options]
+  (> x y))
+
+(defhelper ge
+  "Checks if first value is greater than or equal to second value.
+
+   Example:
+   ```
+   {{#if (ge stock 10)}}
+     <span class=\"in-stock\">In Stock</span>
+   {{else}}
+     <span class=\"low-stock\">Low Stock</span>
+   {{/if}}
+   ```
+
+   Arguments:
+   - x: First value to compare
+   - y: Second value to compare"
+  [x [y] _kparams _options]
+  (>= x y))
+
+(defhelper lt
+  "Checks if first value is less than second value.
+
+   Example:
+   ```
+   {{#if (lt temperature 0)}}
+     <span class=\"freezing\">{{temperature}}°C</span>
+   {{else}}
+     <span>{{temperature}}°C</span>
+   {{/if}}
+   ```
+
+   Arguments:
+   - x: First value to compare
+   - y: Second value to compare"
+  [x [y] _kparams _options]
+  (< x y))
+
+(defhelper le
+  "Checks if first value is less than or equal to second value.
+
+   Example:
+   ```
+   {{#if (le remaining 5)}}
+     <span class=\"warning\">Only {{remaining}} left!</span>
+   {{/if}}
+   ```
+
+   Arguments:
+   - x: First value to compare
+   - y: Second value to compare"
+  [x [y] _kparams _options]
+  (<= x y))
+
 (defhelper format-date
   "Formats a date according to specified pattern.
 
@@ -177,6 +263,11 @@
   "A list of default helpers."
   {"count"         #'count
    "eq"            #'eq
+   "ne"            #'ne
+   "gt"            #'gt
+   "ge"            #'ge
+   "lt"            #'lt
+   "le"            #'le
    "format-date"   #'format-date
    "now"           #'now
    "card-url"      #'card-url
