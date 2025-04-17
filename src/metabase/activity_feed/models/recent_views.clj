@@ -250,6 +250,8 @@
                          :card.database_id
                          :card.display
                          :card.card_schema
+                         :card.result_metadata
+                         :card.visualization_settings
                          [:dashboard.id :dashboard_id]
                          [:dashboard.name :dashboard_name]
                          [:card.collection_id :entity-coll-id]
@@ -301,6 +303,8 @@
      :database_id (:database_id card)
      :description (:description card)
      :display (some-> card :display name)
+     :result_metadata (:result_metadata card)
+     :visualization_settings (:visualization_settings card)
      :model :card
      :can_write (mi/can-write? card)
      :timestamp (str timestamp)

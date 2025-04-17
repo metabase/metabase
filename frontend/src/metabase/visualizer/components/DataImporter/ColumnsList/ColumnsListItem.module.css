@@ -1,0 +1,20 @@
+.grabber {
+  visibility: hidden;
+  color: var(--mb-color-text-medium);
+}
+
+.parent {
+  border: 1px solid transparent;
+  border-radius: var(--default-border-radius);
+  min-height: 38px;
+}
+
+.parent:hover .grabber {
+  visibility: visible;
+}
+
+.parent:hover {
+  background-color: var(--mb-color-bg-light);
+  cursor: grab;
+  border-color: var(--mb-color-border);
+}

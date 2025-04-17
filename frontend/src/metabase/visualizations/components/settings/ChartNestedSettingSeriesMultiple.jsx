@@ -58,7 +58,6 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                     className={cx(CS.flexFull, CS.ml1, CS.alignSelfStretch)}
                     // set vertical padding to 0 and use align-self-stretch to match siblings
                     style={{ paddingTop: 0, paddingBottom: 0 }}
-                    aria-label="series-name-input"
                     value={settings.title}
                     subtitle={
                       seriesCardName === settings.title ? "" : seriesCardName
@@ -66,6 +65,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                     onBlurChange={(e) =>
                       onChangeObjectSettings(single, { title: e.target.value })
                     }
+                    data-testid="series-name-input"
                   />
                   {objects.length > 1 ? (
                     <IconWrapper className={cx(CS.ml1, CS.p1)}>

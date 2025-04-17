@@ -17,7 +17,6 @@ const HeadingWrapper = Object.assign(Heading, {
   hidden: true,
   disableSettingsConfig: true,
   supportPreviewing: false,
-  supportsSeries: false,
 
   minSize: getMinSize("heading"),
   defaultSize: getDefaultSize("heading"),

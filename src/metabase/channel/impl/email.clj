@@ -105,8 +105,12 @@
 
 (defn- assoc-attachment-booleans [part-configs parts]
   (for [{{result-card-id :id} :card :as result} parts
-       ;; TODO: check if does this match by dashboard_card_id or card_id?
-        :let [noti-dashcard (m/find-first #(= (:card_id %) result-card-id) part-configs)]]
+        :let [result-dashboard-card-id (:id (:dashcard result))
+              ;; We match on both the card id and the dashboard card id to support visualizer dashcards
+              noti-dashcard (m/find-first (fn [config]
+                                            (and (= (:card_id config) result-card-id)
+                                                 (= (:dashboard_card_id config) result-dashboard-card-id)))
+                                          part-configs)]]
     (if result-card-id
       (update result :card merge (select-keys noti-dashcard [:include_csv :include_xls :format_rows :pivot_results]))
       result)))

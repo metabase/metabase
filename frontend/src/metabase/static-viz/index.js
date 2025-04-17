@@ -13,8 +13,14 @@ import MetabaseSettings from "metabase/lib/settings";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
-import { extractRemappings } from "metabase/visualizations";
+import { extractRemappings, isCartesianChart } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+import {
+  createDataSource,
+  mergeVisualizerData,
+  shouldSplitVisualizerSeries,
+  splitVisualizerSeries,
+} from "metabase/visualizer/utils";
 
 import { LegacyStaticChart } from "./containers/LegacyStaticChart";
 
@@ -46,6 +52,38 @@ function getRawSeriesWithDashcardSettings(rawSeries, dashcardSettings) {
   });
 }
 
+function getVisualizerRawSeries(rawSeries, dashcardSettings) {
+  const { columns, columnValuesMapping } = dashcardSettings.visualization;
+  const datasets = rawSeries.reduce((acc, series) => {
+    if (series.card.id) {
+      acc[`card:${series.card.id}`] = series;
+    }
+    return acc;
+  }, {});
+
+  const dataSources = rawSeries.map((series) =>
+    createDataSource("card", series.card.id, series.card.name),
+  );
+
+  const mergedData = mergeVisualizerData({
+    columns,
+    columnValuesMapping,
+    datasets,
+    dataSources,
+  });
+
+  const { display, settings } = dashcardSettings.visualization;
+  return [
+    {
+      card: {
+        display,
+        visualization_settings: settings,
+      },
+      data: mergedData,
+    },
+  ];
+}
+
 export function RenderChart(rawSeries, dashcardSettings, options) {
   MetabaseSettings.set("token-features", options.tokenFeatures);
   MetabaseSettings.set("application-colors", options.applicationColors);
@@ -60,8 +98,21 @@ export function RenderChart(rawSeries, dashcardSettings, options) {
     options.applicationColors,
   );
 
-  updateStartOfWeek(options.startOfWeek);
+  // If this is a visualizer card, we need to merge the data and split the series if needed
+  if ("visualization" in dashcardSettings) {
+    rawSeries = getVisualizerRawSeries(rawSeries, dashcardSettings);
+    const { display, columnValuesMapping, settings } =
+      dashcardSettings.visualization;
+    if (
+      display &&
+      isCartesianChart(display) &&
+      shouldSplitVisualizerSeries(columnValuesMapping, settings)
+    ) {
+      rawSeries = splitVisualizerSeries(rawSeries, columnValuesMapping);
+    }
+  }
 
+  updateStartOfWeek(options.startOfWeek);
   const rawSeriesWithDashcardSettings = getRawSeriesWithDashcardSettings(
     rawSeries,
     dashcardSettings,
@@ -69,7 +120,6 @@ export function RenderChart(rawSeries, dashcardSettings, options) {
   const rawSeriesWithRemappings = extractRemappings(
     rawSeriesWithDashcardSettings,
   );
-
   return ReactDOMServer.renderToStaticMarkup(
     <StaticVisualization
       rawSeries={rawSeriesWithRemappings}

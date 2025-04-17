@@ -16,7 +16,6 @@ import type {
 } from "metabase-types/api";
 
 import { ActionSettingsButtonConnected } from "./ActionSettingsButton/ActionSettingsButton";
-import { AddSeriesButton } from "./AddSeriesButton/AddSeriesButton";
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
 import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButton";
 import S from "./DashCardActionsPanel.module.css";
@@ -33,7 +32,6 @@ interface Props {
   hasError: boolean;
   isTrashedOnRemove: boolean;
   onRemove: (dashcard: DashboardCard) => void;
-  onAddSeries: (dashcard: DashboardCard) => void;
   onReplaceCard: (dashcard: DashboardCard) => void;
   onReplaceAllDashCardVisualizationSettings: (
     dashcardId: DashCardId,
@@ -48,6 +46,7 @@ interface Props {
   onLeftEdge: boolean;
   onMouseDown: (event: MouseEvent) => void;
   className?: string;
+  onEditVisualization?: () => void;
 }
 
 function DashCardActionsPanelInner({
@@ -59,7 +58,6 @@ function DashCardActionsPanelInner({
   hasError,
   isTrashedOnRemove,
   onRemove,
-  onAddSeries,
   onReplaceCard,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateVisualizationSettings,
@@ -68,13 +66,10 @@ function DashCardActionsPanelInner({
   onLeftEdge,
   onMouseDown,
   className,
+  onEditVisualization,
 }: Props) {
-  const {
-    disableSettingsConfig,
-    supportPreviewing,
-    supportsSeries,
-    disableClickBehavior,
-  } = getVisualizationRaw(series) ?? {};
+  const { disableSettingsConfig, supportPreviewing, disableClickBehavior } =
+    getVisualizationRaw(series) ?? {};
 
   const buttons = [];
 
@@ -110,14 +105,6 @@ function DashCardActionsPanelInner({
     onReplaceCard(dashcard);
   }, [dashcard, onReplaceCard]);
 
-  const handleAddSeries = useCallback(() => {
-    if (!dashcard) {
-      return;
-    }
-
-    onAddSeries(dashcard);
-  }, [dashcard, onAddSeries]);
-
   const handleRemoveCard = useCallback(() => {
     if (!dashcard) {
       return;
@@ -151,7 +138,18 @@ function DashCardActionsPanelInner({
   }
 
   if (!isLoading && !hasError) {
-    if (!disableSettingsConfig) {
+    if (onEditVisualization) {
+      buttons.push(
+        <DashCardActionButton
+          key="visualizer-button"
+          tooltip={t`Edit visualization`}
+          aria-label={t`Edit visualization`}
+          onClick={onEditVisualization}
+        >
+          <DashCardActionButton.Icon name="pencil" />
+        </DashCardActionButton>,
+      );
+    } else if (!disableSettingsConfig) {
       buttons.push(
         <ChartSettingsButton
           key="chart-settings-button"
@@ -207,16 +205,6 @@ function DashCardActionsPanelInner({
   }
 
   if (!isLoading && !hasError) {
-    if (supportsSeries) {
-      buttons.push(
-        <AddSeriesButton
-          key="add-series-button"
-          series={series}
-          onClick={handleAddSeries}
-        />,
-      );
-    }
-
     if (dashcard && isActionDashCard(dashcard)) {
       buttons.push(
         <ActionSettingsButtonConnected

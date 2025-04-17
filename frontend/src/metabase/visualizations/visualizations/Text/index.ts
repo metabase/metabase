@@ -15,7 +15,6 @@ const TextWrapper = Object.assign(Text, {
 
   disableSettingsConfig: false,
   noHeader: true,
-  supportsSeries: false,
   hidden: true,
   supportPreviewing: false,
 

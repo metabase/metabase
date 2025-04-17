@@ -31,6 +31,7 @@ Object.assign(
     defaultSize: getDefaultSize("waterfall"),
     maxMetricsSupported: 1,
     maxDimensionsSupported: 1,
+    supportsVisualizer: false,
     settings: {
       ...GRAPH_AXIS_SETTINGS,
       "waterfall.increase_color": {

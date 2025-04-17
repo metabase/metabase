@@ -12,7 +12,6 @@ export const settings = {
   iconName: "link",
   disableSettingsConfig: true,
   noHeader: true,
-  supportsSeries: false,
   hidden: true,
   supportPreviewing: false,
   minSize: getMinSize("link"),

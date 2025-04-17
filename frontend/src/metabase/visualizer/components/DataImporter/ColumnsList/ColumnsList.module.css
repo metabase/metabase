@@ -1,0 +1,12 @@
+.parent {
+  border: 1px solid transparent;
+  border-radius: var(--default-border-radius);
+}
+
+.close {
+  visibility: hidden;
+}
+
+.parent:hover .close {
+  visibility: visible;
+}

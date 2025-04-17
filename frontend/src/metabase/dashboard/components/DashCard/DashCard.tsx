@@ -24,6 +24,12 @@ import { Box } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
+import {
+  getInitialStateForCardDataSource,
+  isVisualizerDashboardCard,
+  isVisualizerSupportedVisualization,
+} from "metabase/visualizer/utils";
+import { getInitialStateForMultipleSeries } from "metabase/visualizer/utils/get-initial-state-for-multiple-series";
 import type {
   Card,
   CardId,
@@ -34,6 +40,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import type { StoreDashcard } from "metabase-types/store";
+import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
@@ -71,7 +78,6 @@ export interface DashCardProps {
   /** Bool if removing the dashcard will queue the card to be trashed on dashboard save */
   isTrashedOnRemove: boolean;
   onRemove: (dashcard: StoreDashcard) => void;
-  onAddSeries: (dashcard: StoreDashcard) => void;
   onReplaceCard: (dashcard: StoreDashcard) => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
   navigateToNewCardFromDashboard?: (
@@ -96,6 +102,11 @@ export interface DashCardProps {
   reportAutoScrolledToDashcard: () => void;
 
   className?: string;
+
+  onEditVisualization?: (
+    dashcard: StoreDashcard,
+    initialState: Partial<VisualizerHistoryItem>,
+  ) => void;
 }
 
 function DashCardInner({
@@ -116,7 +127,6 @@ function DashCardInner({
   withTitle = true,
   isTrashedOnRemove,
   onRemove,
-  onAddSeries,
   onReplaceCard,
   navigateToNewCardFromDashboard,
   markNewCardSeen,
@@ -128,6 +138,7 @@ function DashCardInner({
   autoScroll,
   reportAutoScrolledToDashcard,
   className,
+  onEditVisualization,
 }: DashCardProps) {
   const dashcardData = useSelector((state) =>
     getDashcardData(state, dashcard.id),
@@ -304,6 +315,33 @@ function DashCardInner({
       [dashcard, navigateToNewCardFromDashboard],
     );
 
+  const onEditVisualizationClick = useMemo(() => {
+    if (
+      !isVisualizerDashboardCard(dashcard) &&
+      !isVisualizerSupportedVisualization(dashcard.card.display)
+    ) {
+      return;
+    }
+
+    return () => {
+      let initialState: Partial<VisualizerHistoryItem>;
+
+      if (isVisualizerDashboardCard(dashcard)) {
+        initialState = dashcard.visualization_settings
+          ?.visualization as Partial<VisualizerHistoryItem>;
+      } else if (series.length > 1) {
+        initialState = getInitialStateForMultipleSeries(series);
+      } else {
+        initialState = getInitialStateForCardDataSource(
+          series[0].card,
+          series[0],
+        );
+      }
+
+      onEditVisualization?.(dashcard, initialState);
+    };
+  }, [dashcard, series, onEditVisualization]);
+
   return (
     <ErrorBoundary>
       <Box
@@ -353,7 +391,6 @@ function DashCardInner({
             isLoading={isLoading}
             isPreviewing={isPreviewingCard}
             hasError={hasError}
-            onAddSeries={onAddSeries}
             onRemove={onRemove}
             onReplaceCard={onReplaceCard}
             onUpdateVisualizationSettings={onUpdateVisualizationSettings}
@@ -363,6 +400,7 @@ function DashCardInner({
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
             isTrashedOnRemove={isTrashedOnRemove}
+            onEditVisualization={onEditVisualizationClick}
           />
         )}
         <DashCardVisualization
@@ -399,6 +437,7 @@ function DashCardInner({
           onChangeLocation={onChangeLocation}
           onTogglePreviewing={handlePreviewToggle}
           downloadsEnabled={downloadsEnabled}
+          onEditVisualization={onEditVisualizationClick}
         />
       </Box>
     </ErrorBoundary>

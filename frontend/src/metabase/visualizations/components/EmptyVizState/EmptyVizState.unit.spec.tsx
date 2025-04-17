@@ -55,7 +55,8 @@ describe("EmptyVizState", () => {
   it.each(docsCTAChartTypes)(
     "should render the documentation CTA for %s visualization",
     (chartType) => {
-      setup({ chartType });
+      const onEditSummary = jest.fn();
+      setup({ chartType, onEditSummary });
 
       const { primaryText, secondaryText, docsLink } =
         getEmptyVizConfig(chartType);
@@ -77,7 +78,8 @@ describe("EmptyVizState", () => {
   it.each(summarizeCTAChartTypes)(
     "should prompt to open the summarize sidebar for %s visualization",
     (chartType) => {
-      setup({ chartType });
+      const onEditSummary = jest.fn();
+      setup({ chartType, onEditSummary });
 
       const { secondaryText } = getEmptyVizConfig(chartType);
 
@@ -114,6 +116,14 @@ describe("EmptyVizState", () => {
 
     await userEvent.click(screen.getByText("Summarize"));
     expect(onEditSummary).not.toHaveBeenCalled();
+  });
+
+  it("should not render the summarize CTA button if onEditSummary is undefined", async () => {
+    setup({ chartType: "line", onEditSummary: undefined });
+
+    expect(
+      screen.queryByLabelText("Open summarize sidebar"),
+    ).not.toBeInTheDocument();
   });
 });
 

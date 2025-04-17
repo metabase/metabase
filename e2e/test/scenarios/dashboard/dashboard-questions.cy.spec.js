@@ -750,7 +750,8 @@ describe("Dashboard > Dashboard Questions", () => {
       H.dashboardCards().findByText("Total Orders");
     });
 
-    it("notifies the user about dashboards and dashcard series that a question will be removed from", () => {
+    // TODO: implement this using the visualizer
+    it.skip("notifies the user about dashboards and dashcard series that a question will be removed from", () => {
       H.createQuestion(
         {
           name: "Average Quantity by Month Question",

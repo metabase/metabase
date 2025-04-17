@@ -1,0 +1,18 @@
+.ListItem[aria-selected="true"] {
+  background-color: var(--mb-color-brand);
+  color: var(--mb-color-text-white);
+
+  .ListItemLabel {
+    color: var(--mb-color-text-white);
+  }
+
+  &:hover {
+    .ListItemLabel {
+      color: var(--mb-color-text-primary);
+    }
+  }
+}
+
+.SegmentedControlLabel {
+  padding: 0;
+}
