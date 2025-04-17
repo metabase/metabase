@@ -8,11 +8,13 @@ import {
   setupUniqueTasksEndpoint,
 } from "__support__/server-mocks";
 import {
+  act,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { Route } from "metabase/hoc/Title";
 import type { ListTasksResponse } from "metabase-types/api";
 import { createMockTask } from "metabase-types/api/mocks";
@@ -52,6 +54,14 @@ const setup = ({
 };
 
 describe("TasksApp", () => {
+  beforeEach(() => {
+    jest.useFakeTimers({ advanceTimers: true });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it("should show loading and empty state", async () => {
     setup();
 
@@ -122,6 +132,9 @@ describe("TasksApp", () => {
     ]);
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     await waitForLoaderToBeRemoved();
+    act(() => {
+      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
+    });
 
     expect(previousPage).toBeEnabled();
     expect(nextPage).toBeDisabled();
@@ -134,6 +147,9 @@ describe("TasksApp", () => {
       "http://localhost/api/task?limit=50&offset=50",
     ]);
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+    act(() => {
+      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
+    });
 
     expect(previousPage).toBeDisabled();
     expect(nextPage).toBeEnabled();
@@ -173,6 +189,9 @@ describe("TasksApp", () => {
       "http://localhost/api/task?limit=50&offset=0&task=task-b",
     ]);
     await waitForLoaderToBeRemoved();
+    act(() => {
+      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
+    });
     expect(history?.getCurrentLocation().search).toEqual("?task=task-b");
 
     await userEvent.click(taskStatusPicker);
@@ -195,6 +214,9 @@ describe("TasksApp", () => {
       "http://localhost/api/task?limit=50&offset=0&task=task-b&status=success",
     ]);
     await waitForLoaderToBeRemoved();
+    act(() => {
+      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
+    });
     expect(history?.getCurrentLocation().search).toEqual(
       "?status=success&task=task-b",
     );
@@ -211,6 +233,9 @@ describe("TasksApp", () => {
       "http://localhost/api/task?limit=50&offset=0&status=success",
     ]);
     await waitForLoaderToBeRemoved();
+    act(() => {
+      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
+    });
     expect(history?.getCurrentLocation().search).toEqual("?status=success");
 
     const clearTaskStatusButton = screen.getByRole("button", { hidden: true });
@@ -224,6 +249,9 @@ describe("TasksApp", () => {
       "http://localhost/api/task?limit=50&offset=0&status=success",
     ]);
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+    act(() => {
+      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
+    });
     expect(history?.getCurrentLocation().search).toEqual("");
   });
 

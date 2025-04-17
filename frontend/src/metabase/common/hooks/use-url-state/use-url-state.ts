@@ -19,7 +19,7 @@ type UrlStateActions<State extends BaseState> = {
   patchUrlState: (patch: Partial<State>) => void;
 };
 
-const URL_UPDATE_DEBOUNCE_DELAY = 300;
+export const URL_UPDATE_DEBOUNCE_DELAY = 300;
 
 /**
  * Once we migrate to react-router 6 we should be able to replace this custom hook
