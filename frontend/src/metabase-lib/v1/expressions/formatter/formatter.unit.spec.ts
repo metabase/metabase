@@ -12,6 +12,7 @@ import {
   stageIndex,
 } from "../__support__/shared";
 import { compileExpression } from "../compiler";
+import { op, opt } from "../test/util";
 import type { StartRule } from "../types";
 
 import { format, formatExpressionParts } from "./formatter";
@@ -247,29 +248,6 @@ describe("format", () => {
     );
   });
 });
-
-function op(
-  operator: string,
-  ...args: (Lib.ExpressionParts | Lib.ExpressionArg)[]
-): Lib.ExpressionParts {
-  return {
-    operator: operator as Lib.ExpressionOperator,
-    options: {},
-    args,
-  };
-}
-
-function opt(
-  operator: string,
-  options: Lib.ExpressionOptions,
-  ...args: (Lib.ExpressionParts | Lib.ExpressionArg)[]
-): Lib.ExpressionParts {
-  return {
-    operator: operator as Lib.ExpressionOperator,
-    options,
-    args,
-  };
-}
 
 describe("if printWidth = Infinity, it should return the same results as the single-line formatter", () => {
   async function all(cases: {
