@@ -3,8 +3,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
-import Input from "metabase/core/components/Input";
-import { Stack, Text } from "metabase/ui";
+import { Stack, Text, TextInput } from "metabase/ui";
 import type { FontFile } from "metabase-types/api";
 
 import {
@@ -31,10 +30,18 @@ export const FontFilesWidget = () => {
     updateSetting,
     description: fontFilesDescription,
   } = useAdminSetting("application-font-files");
+
   const urls = useMemo(() => getFontUrls(files ?? []), [files]);
 
   const handleChange = useCallback(
     async (option: FontFileOption, url: string) => {
+      if (
+        urls[option.fontWeight] === url ||
+        (!urls[option.fontWeight] && !url)
+      ) {
+        return;
+      }
+
       await updateSetting({
         key: "application-font-files",
         value: getFontFiles({ ...urls, [option.fontWeight]: url }),
@@ -61,7 +68,7 @@ const FontFilesTable = ({
   onChange,
 }: FontFilesTableProps): JSX.Element => {
   return (
-    <TableRoot>
+    <TableRoot data-testid="font-files-widget">
       <TableHeader>
         <TableHeaderRow>
           <TableHeaderCell>{t`Font weight`}</TableHeaderCell>
@@ -107,10 +114,9 @@ const FontFileRow = ({
         <TableBodyCellLabel>{option.fontWeight}</TableBodyCellLabel>
       </TableBodyCell>
       <TableBodyCell>
-        <Input
+        <TextInput
           defaultValue={url}
           placeholder="https://some.trusted.location/font-file.woff2"
-          fullWidth
           onBlur={handleBlur}
           aria-label={option.name}
         />

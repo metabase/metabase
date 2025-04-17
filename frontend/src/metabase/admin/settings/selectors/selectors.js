@@ -341,16 +341,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
     ],
   },
-  cloud: {
-    name: t`Cloud`,
-    getHidden: (settings) =>
-      settings["token-features"]?.hosting === true ||
-      settings["airgap-enabled"],
-    order: 132,
-    component: CloudPanel,
-    settings: [],
-    isUpsell: true,
-  },
   appearance: {
     // OSS Version
     name: t`Appearance`,
@@ -377,6 +367,16 @@ export const ADMIN_SETTINGS_SECTIONS = {
     name: t`Appearance`,
     component: () => <AppearanceSettingsPage />,
     settings: [],
+  },
+  cloud: {
+    name: t`Cloud`,
+    getHidden: (settings) =>
+      settings["token-features"]?.hosting === true ||
+      settings["airgap-enabled"],
+    order: 140,
+    component: CloudPanel,
+    settings: [],
+    isUpsell: true,
   },
 };
 

@@ -1,4 +1,4 @@
-import { useDebouncedCallback } from "use-debounce";
+import { useDebouncedCallback } from "@mantine/hooks";
 
 import { useAdminSetting } from "metabase/api/utils";
 import { originalColors } from "metabase/lib/colors/palette";

@@ -74,19 +74,38 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
 };
 
 export const getErrorMessage = (
-  error: { data: string } | { data: { message: string } } | string,
-  fallback = t`Something went wrong`,
-) => {
-  if (typeof error !== "object") {
+  payload:
+    | unknown
+    | string
+    | { data: { message: string } | string }
+    | { message: string },
+  fallback: string = t`Something went wrong`,
+): string => {
+  if (!payload || typeof payload !== "object") {
     return fallback;
   }
 
-  if (typeof error?.data === "string") {
-    return error.data;
+  if (typeof payload === "string") {
+    return payload;
   }
 
-  if (typeof error?.data?.message === "string") {
-    return error.data.message;
+  if ("message" in payload && typeof payload.message === "string") {
+    return payload.message;
+  }
+
+  if ("data" in payload) {
+    const data = payload.data;
+    if (typeof data === "string") {
+      return data;
+    }
+    if (
+      typeof data === "object" &&
+      data &&
+      "message" in data &&
+      typeof data.message === "string"
+    ) {
+      return data.message;
+    }
   }
 
   return fallback;
