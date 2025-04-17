@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 
 import type { DragEndEvent } from "metabase/core/components/Sortable";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Box } from "metabase/ui";
 import type {
   DatasetColumn,
@@ -33,15 +34,16 @@ export const TableColumnPanel = ({
   onChange,
   onShowWidget,
 }: TableColumnPanelProps) => {
+  const tc = useTranslateContent();
   const columnItems = useMemo(() => {
-    return getColumnItems(columns, columnSettings);
-  }, [columns, columnSettings]);
+    return getColumnItems(columns, columnSettings, tc);
+  }, [columns, columnSettings, tc]);
 
   const getItemName = useCallback(
     (columnItem: ColumnItem) => {
-      return getColumnName(columnItem.column);
+      return tc(getColumnName(columnItem.column));
     },
-    [getColumnName],
+    [getColumnName, tc],
   );
 
   const handleEnableColumn = useCallback(
