@@ -1,18 +1,31 @@
 import type { ReactNode } from "react";
 
+import type { MetabaseQuestion as InternalMetabaseQuestion } from "metabase/embedding-sdk/types/question";
 import type { Deferred } from "metabase/lib/promise";
 import type { QueryParams } from "metabase/query_builder/actions";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
-import type Question from "metabase-lib/v1/Question";
+import type InternalQuestion from "metabase-lib/v1/Question";
 import type { Card, CardId, ParameterId } from "metabase-types/api";
 
 import type { SdkEntityId } from "./entity-id";
 
 export type SdkQuestionId = number | "new" | SdkEntityId;
 
+/**
+ * Inline wrapper to properly display the `MetabaseQuestion` type without referencing the `internal` type
+ *
+ * @inline
+ */
+type _MetabaseQuestion = InternalMetabaseQuestion;
+
+/**
+ * The Question entity
+ */
+export type MetabaseQuestion = _MetabaseQuestion;
+
 export interface SdkQuestionState {
-  question?: Question;
-  originalQuestion?: Question;
+  question?: InternalQuestion;
+  originalQuestion?: InternalQuestion;
   queryResults?: any[];
 }
 
@@ -46,8 +59,8 @@ export interface NavigateToNewCardParams {
 }
 
 export interface QuestionStateParams {
-  question: Question;
-  updateQuestion: (question: Question, opts: { run: boolean }) => void;
+  question: InternalQuestion;
+  updateQuestion: (question: InternalQuestion, opts: { run: boolean }) => void;
 }
 
 export type SdkQuestionTitleProps =

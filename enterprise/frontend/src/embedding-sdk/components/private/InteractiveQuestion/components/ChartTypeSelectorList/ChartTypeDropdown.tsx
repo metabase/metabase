@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { IconName } from "embedding-sdk/types/ui";
 import { isNotNull } from "metabase/lib/types";
 import { Icon, Menu, type MenuProps } from "metabase/ui";
 import visualizations from "metabase/visualizations";
@@ -40,7 +41,7 @@ export const ChartTypeDropdown = ({
   ): {
     value: CardDisplayType;
     label: Visualization["uiName"];
-    iconName: Visualization["iconName"];
+    iconName: IconName;
   } | null => {
     const visualization = visualizations.get(visualizationType);
     if (!visualization) {

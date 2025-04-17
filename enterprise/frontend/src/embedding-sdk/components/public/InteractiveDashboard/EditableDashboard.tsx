@@ -11,12 +11,12 @@ import {
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import {
   DASHBOARD_EDITING_ACTIONS,
   SDK_DASHBOARD_VIEW_ACTIONS,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { getIsEditing } from "metabase/dashboard/selectors";
-import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";

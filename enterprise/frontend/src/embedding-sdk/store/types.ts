@@ -5,14 +5,14 @@ import type {
 } from "@reduxjs/toolkit";
 import type { JSX, ReactNode } from "react";
 
+import type { MetabaseAuthConfig } from "embedding-sdk/types/auth-config";
+import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
+import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type {
-  MetabaseAuthConfig,
   MetabaseEmbeddingSessionToken,
   MetabaseFetchRequestTokenFn,
-} from "embedding-sdk";
-import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
+} from "embedding-sdk/types/refresh-token";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
-import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import type { State } from "metabase-types/store";
 
 export type EmbeddingSessionTokenState = {
