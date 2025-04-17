@@ -1,18 +1,18 @@
-import type { DictionaryArrayRow } from "metabase/i18n/types";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
-import { getCSV } from "./helpers/e2e-content-translation-helpers";
+import {
+  columnNamesWithTypeText,
+  translationsOfColumnNames,
+} from "./constants";
+import {
+  getCSV,
+  openDashCardCardParameterMapper,
+} from "./helpers/e2e-content-translation-helpers";
+
+const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
-
-const translationsOfColumnNames: [DictionaryArrayRow, ...DictionaryArrayRow[]] =
-  [
-    { locale: "de", msgid: "Title", msgstr: "Titel" },
-    { locale: "de", msgid: "Vendor", msgstr: "Anbieter" },
-    { locale: "de", msgid: "Rating", msgstr: "Bewertung" },
-    { locale: "de", msgid: "Category", msgstr: "Kategorie" },
-    { locale: "de", msgid: "Created At", msgstr: "Erstellt am" },
-    { locale: "de", msgid: "Price", msgstr: "Preis" },
-  ];
 
 describe("scenarios > admin > localization > content translation", () => {
   describe("ee", () => {
