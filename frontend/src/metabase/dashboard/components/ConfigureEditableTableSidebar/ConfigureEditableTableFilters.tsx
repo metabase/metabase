@@ -1,17 +1,20 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import { updateEditableTableCardQueryInEditMode } from "metabase/dashboard/actions";
 import { isQuestionCard } from "metabase/dashboard/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { FilterPanelPopover } from "metabase/querying/filters/components/FilterPanel/FilterPanelPopover";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
 import { getMetadata } from "metabase/selectors/metadata";
-import { ActionIcon, Box, Flex, Icon, Popover } from "metabase/ui";
+import { Button, Flex, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card, DashboardCard } from "metabase-types/api";
+
+import S from "./ConfigureEditableTableFilters.module.css";
+import { FilterItem } from "./FilterItem";
 
 export function ConfigureEditableTableFilters({
   dashcard,
@@ -34,6 +37,8 @@ export function ConfigureEditableTableFilters({
     () => (query ? getFilterItems(query) : []),
     [query],
   );
+
+  const hasFilters = filterItems.length > 0;
 
   const handleQueryChange = async (newQuery: Lib.Query) => {
     const legacyQuery = Lib.toLegacyQuery(newQuery);
@@ -60,27 +65,34 @@ export function ConfigureEditableTableFilters({
   }
 
   return (
-    <Box>
-      <Flex align="center" wrap="wrap" gap="sm" py="sm">
-        {filterItems.map(({ filter, filterIndex, stageIndex }, itemIndex) => (
-          <FilterPanelPopover
-            key={itemIndex}
-            query={query}
-            stageIndex={stageIndex}
-            filter={filter}
-            filterIndex={filterIndex}
-            onChange={handleQueryChange}
-          />
-        ))}
-      </Flex>
+    <Flex className={S.filtersContainer} align="center" wrap="wrap" gap="sm">
+      {filterItems.map(({ filter, filterIndex, stageIndex }, itemIndex) => (
+        <FilterItem
+          key={itemIndex}
+          query={query}
+          stageIndex={stageIndex}
+          filter={filter}
+          filterIndex={filterIndex}
+          onChange={handleQueryChange}
+        />
+      ))}
+
       <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
         <Popover.Target>
-          <ActionIcon
-            bg="color-mix(in srgb, var(--mb-color-filter) 20%, transparent)"
-            onClick={toggle}
-          >
-            <Icon c="var(--mb-color-filter)" name="add" />
-          </ActionIcon>
+          {hasFilters ? (
+            <Button
+              variant="filled"
+              color="filter"
+              leftSection={<Icon name="add" />}
+              onClick={toggle}
+            />
+          ) : (
+            <Button
+              variant="outline"
+              color="filter"
+              onClick={toggle}
+            >{t`Add filters to filter your table`}</Button>
+          )}
         </Popover.Target>
         <Popover.Dropdown>
           <MultiStageFilterPicker
@@ -91,6 +103,6 @@ export function ConfigureEditableTableFilters({
           />
         </Popover.Dropdown>
       </Popover>
-    </Box>
+    </Flex>
   );
 }

@@ -15,7 +15,6 @@ import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { ChartSettingActionIcon } from "metabase/visualizations/components/settings/ChartSettingActionIcon";
-import { ColumnItem } from "metabase/visualizations/components/settings/ColumnItem";
 import { mergeSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import type { OrderByDirection } from "metabase-lib";
 import * as Lib from "metabase-lib";
@@ -28,6 +27,7 @@ import type {
   TableColumnOrderSetting,
 } from "metabase-types/api";
 
+import { ColumnItem } from "./ColumnItem";
 import { ColumnSortingActionMenu } from "./ColumnSortingActionMenu";
 import type { EditableTableColumnSettingItem } from "./types";
 import { useTableSorting } from "./use-table-sorting";
@@ -164,27 +164,31 @@ export function ConfigureEditableTableColumns({
       >
         <ColumnItem
           title={item.title}
-          onRemove={
-            item.enabled ? () => handleShowHide(item.name, false) : undefined
-          }
-          onEnable={
-            !item.enabled ? () => handleShowHide(item.name, true) : undefined
-          }
           draggable={!isDragDisabled}
           icon={item.icon}
-          additionalActions={
-            <>
-              <ColumnSortingActionMenu
-                columnSettings={item}
-                onSort={handleUpdateColumnSorting}
-              />
-              <ChartSettingActionIcon
-                icon={item.editable ? "pencil" : "edit_disabled"}
-                onClick={() => handleUpdateEditable(item.name, !item.editable)}
-              />
-            </>
-          }
-        />
+        >
+          <ColumnSortingActionMenu
+            columnSettings={item}
+            onSort={handleUpdateColumnSorting}
+          />
+          {item.enabled ? (
+            <ChartSettingActionIcon
+              icon="eye_outline"
+              onClick={() => handleShowHide(item.name, false)}
+              data-testid={`${item.title}-hide-button`}
+            />
+          ) : (
+            <ChartSettingActionIcon
+              icon="eye_crossed_out"
+              onClick={() => handleShowHide(item.name, true)}
+              data-testid={`${item.title}-hide-button`}
+            />
+          )}
+          <ChartSettingActionIcon
+            icon={item.enabled && item.editable ? "pencil" : "edit_disabled"}
+            onClick={() => handleUpdateEditable(item.name, !item.editable)}
+          />
+        </ColumnItem>
       </Sortable>
     ),
     [
