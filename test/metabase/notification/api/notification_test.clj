@@ -1080,3 +1080,10 @@
                             {:payload_type :notification/card
                              :payload      {:card_id card-id}
                              :creator_id   (mt/user->id :crowberto)})))
+
+(deftest get-default-template-test
+  (mt/user-http-request :crowberto :post 200 "notification/default_template"
+                        {:notification {:payload_type :notification/system-event
+                                        :payload      {:event_name :event/action.success
+                                                       :action     :bulk/create}}
+                         :channel_types ["channel/email" "channel/slack"]}))
