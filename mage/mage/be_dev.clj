@@ -1,5 +1,6 @@
 (ns mage.be-dev
   (:require
+   [babashka.fs :as fs]
    [bencode.core :as bencode]
    #_:clj-kondo/ignore
    [clojure.pprint :as pp]
@@ -51,9 +52,19 @@
       e# (new java.io.StringWriter)]
   (binding [*out* o#
             *err* e#]
-    {:value (do " code-string ")
+    {:value (do" code-string ")
      :stdout (str o#)
      :stderr (str e#)}))"))
+
+(defn eval-in-ns
+  "This insane code evals the code in the proper namespace.
+  It's basically a repl inside a repl."
+  [nns code]
+  (str "
+              (let [ns-sym (symbol \"" nns "\")]
+                (require ns-sym :reload)
+                (in-ns ns-sym)
+                (eval (read-string " (pr-str (or code "::no-op")) ")))"))
 
 (defn nrepl-eval
   "Evaluate Clojure code in a running nREPL server. With one arg, reads port from .nrepl-port file.

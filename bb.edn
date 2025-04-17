@@ -170,7 +170,7 @@
                 [:tuple
                  [:string {:description "File to check"}]
                  [:int {:description "A line in the file" :min 1}]]]
-   :examples [["./bin/mage -balance-parens-check yourfile.clj 1" "Check for unbalanced parens"]]
+   :examples [["./bin/mage -code-is-readable yourfile.clj 1" "Check for unbalanced parens"]]
    :task     (apply balanced-parens? (:arguments (cli/parse! (current-task))))}
 
   -example-calculator
