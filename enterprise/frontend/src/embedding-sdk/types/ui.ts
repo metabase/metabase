@@ -1,9 +1,10 @@
 import type { Icons } from "metabase/ui";
 
 /**
- * Needed to properly unwrap all values of the `IconName` type in documentation
+ * Inline wrapper to properly display the `IconName` type without referencing the `internal` type
+ *
  * @inline
  */
-type IconNameValues = keyof typeof Icons;
+type _IconName = keyof typeof Icons;
 
-export type IconName = IconNameValues;
+export type IconName = _IconName;

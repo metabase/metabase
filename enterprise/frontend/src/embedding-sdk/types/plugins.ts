@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { DashCardMenuItem } from "./dashboard";
-import type { Question } from "./question";
+import type { MetabaseQuestion } from "./question";
 
 export type MetabaseClickAction = {
   name: string;
@@ -25,13 +25,13 @@ export type MetabaseClickActionPluginsConfig = (
 export type DashboardCardMenuCustomElement = ({
   question,
 }: {
-  question: Question;
+  question: MetabaseQuestion;
 }) => ReactNode;
 
 export type CustomDashboardCardMenuItem = ({
   question,
 }: {
-  question?: Question;
+  question?: MetabaseQuestion;
 }) => DashCardMenuItem;
 
 export type DashboardCardCustomMenuItem = {

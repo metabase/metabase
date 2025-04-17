@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import type { MetabaseQuestion as InternalMetabaseQuestion } from "metabase/embedding-sdk/types/question";
 import type { Deferred } from "metabase/lib/promise";
 import type { QueryParams } from "metabase/query_builder/actions";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
@@ -10,13 +11,17 @@ import type { SdkEntityId } from "./entity-id";
 
 export type SdkQuestionId = number | "new" | SdkEntityId;
 
-export interface Question {
-  id: number;
-  name: string;
-  description: string | null;
-  entityId: string;
-  isSavedQuestion: boolean;
-}
+/**
+ * Inline wrapper to properly display the `MetabaseQuestion` type without referencing the `internal` type
+ *
+ * @inline
+ */
+type _MetabaseQuestion = InternalMetabaseQuestion;
+
+/**
+ * The Question entity
+ */
+export type MetabaseQuestion = _MetabaseQuestion;
 
 export interface SdkQuestionState {
   question?: InternalQuestion;
