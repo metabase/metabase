@@ -368,8 +368,8 @@ describe("admin > database > database routing", () => {
         .click();
       H.popover()
         .findByText("Writable Postgres12 (DB Routing Enabled)")
-        .closest('[data-element-id="list-item"]')
-        .should("have.attr", "aria-disabled", "true");
+        .closest('[data-combobox-option="true"]')
+        .should("have.attr", "data-combobox-disabled", "true");
     });
 
     describe("feature visibility", () => {

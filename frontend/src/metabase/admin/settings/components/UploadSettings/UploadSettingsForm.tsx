@@ -39,20 +39,6 @@ const FEEDBACK_TIMEOUT = 5000;
 const enableErrorMessage = t`There was a problem enabling uploads. Please try again shortly.`;
 const disableErrorMessage = t`There was a problem disabling uploads. Please try again shortly.`;
 
-const Header = () => (
-  <SettingHeader
-    id="upload-settings"
-    title={t`Allow people to upload data to Collections`}
-    description={jt`People will be able to upload CSV files that will be stored in the ${(
-      <Link
-        className={CS.link}
-        key="db-link"
-        to="/admin/databases"
-      >{t`database`}</Link>
-    )} you choose and turned into models.`}
-  />
-);
-
 const getErrorMessage = (
   payload: { data?: string; message?: string; error?: string } | string,
 ) => {
@@ -175,7 +161,17 @@ export function UploadSettingsFormView({
 
   return (
     <Box component="form" aria-label={t`Upload Settings Form`} px="md">
-      <Header />
+      <SettingHeader
+        id="upload-settings"
+        title={t`Allow people to upload data to Collections`}
+        description={jt`People will be able to upload CSV files that will be stored in the ${(
+          <Link
+            className={CS.link}
+            key="db-link"
+            to="/admin/databases"
+          >{t`database`}</Link>
+        )} you choose and turned into models.`}
+      />
       {isH2db && <H2PersistenceWarning isHosted={isHosted} />}
       <Group align="flex-start">
         <Select
