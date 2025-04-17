@@ -22,10 +22,10 @@
 ### Clojure
 
 - **Lint PR:** `./bin/mage kondo-updated master` (or whatever target branch)
-  - Call the command one time at the beginning, record the results, then work through the problems one by one.
+  - Call the command one time at the beginning, record the results, then work through the problems one at a time.
   - If the solution is obvious, then please apply the fix. Otherwise skip it.
-  - If you fix all the issues (and verify by rerunning the kondo-updated command), commit the change with a succinct
-    and descriptive commit message.
+  - If you fix all the issues (and verify by rerunning the kondo-updated command):
+    - commit the change with a succinct and descriptive commit message
 - **Lint File:** `./bin/mage kondo <file or files>` (or whatever target branch)
   - Use the linter as a way to know that you are adhering to conventions in place in the codebase
 - **Lint Changes:** `./bin/mage kondo-updated HEAD`
@@ -74,9 +74,10 @@ The `./bin/mage -check-readable <file> <optional: line-number>` command checks i
 This ensures your changes maintain valid syntax and structure.
 
 - Edit Clojure files one step at a time.
-- After EVERY change to a Clojure form, call `mage -check-readable src/metabase/thefile.clj <line-number>`. 
-- Then call `mage -check-readable dev/src/dev.clj` without the line number to check the entire file.
+- After EVERY change to a Clojure form, call `mage -check-readable src/metabase/thefile.clj <line-number>` with the line number. 
+- If it's readable then call `mage -check-readable dev/src/dev.clj` without the line number to check the entire file.
 - If the change results in unreadable code, try again until it is readable.
+- To overcome errors about parens, pay close attention to them. Count opening/closing parens you add/remove. 
 
 #### Bottom-up dev loop
 
@@ -106,6 +107,8 @@ To call `your.namespace/your-function` on `arg1` and `arg2`:
    ```
    ./bin/mage -repl --namespace your.namespace (your-function arg1 arg2)'
    ```
+
+DO NOT use "require", "load-file" etc in the code string argument.
 
 ##### Understanding the response
 
@@ -141,3 +144,8 @@ For effective REPL usage:
 
 - End all files with a newline.
 - When editing tabular code, where the columns line up, try to keep them aligned.
+
+## Critical REPL Usage Rules
+
+- Be careful with parentheses counts when editing Clojure code
+- After EVERY change to Clojure code, verify readability with `-check-readable`
