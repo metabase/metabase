@@ -55,9 +55,19 @@ export function columnFilterForParameter(
         !Lib.isForeignKey(column) &&
         !Lib.isLocation(column);
     case "string":
-      return (column) =>
-        (Lib.isStringOrStringLike(column) || Lib.isCategory(column)) &&
-        !Lib.isLocation(column);
+      return (column) => {
+        const isString = Lib.isStringOrStringLike(column);
+        const isNumeric = Lib.isNumeric(column);
+        const isBoolean = Lib.isBoolean(column);
+        const hasFieldValues =
+          Lib.fieldValuesSearchInfo(query, column).hasFieldValues === "list";
+        const isLocation = Lib.isLocation(column);
+
+        return (
+          (isString || ((isNumeric || isBoolean) && hasFieldValues)) &&
+          !isLocation
+        );
+      };
     case "temporal-unit":
       return (column) => Lib.isTemporalBucketable(query, stageIndex, column);
   }
