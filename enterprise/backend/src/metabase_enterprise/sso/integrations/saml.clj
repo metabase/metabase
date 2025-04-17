@@ -132,6 +132,7 @@
   (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
   (let [redirect (get-in req [:params :redirect])
+        origin (get-in req [:params :origin])
         token-requested? (sso-utils/is-token-requested? req)
         redirect-url (if (nil? redirect)
                        (do
@@ -140,11 +141,17 @@
                        (if (sso-utils/relative-uri? redirect)
                          (str (public-settings/site-url) redirect)
                          redirect))
+        ;; Add origin as query param if it exists
+        redirect-with-origin (if origin
+                               (str redirect-url
+                                    (if (.contains redirect-url "?") "&" "?")
+                                    "origin=" (java.net.URLEncoder/encode origin "UTF-8"))
+                               redirect-url)
         redirect-with-token (if token-requested?
-                              (str redirect-url
-                                   (if (.contains redirect-url "?") "&" "?")
+                              (str redirect-with-origin
+                                   (if (.contains redirect-with-origin "?") "&" "?")
                                    "token=true")
-                              redirect-url)]
+                              redirect-with-origin)]
     (sso-utils/check-sso-redirect redirect-url)
     (try
       (let [idp-url      (sso-settings/saml-identity-provider-uri)
@@ -201,7 +208,20 @@
                               (re-find #"[?&]token=true" continue-url))
         clean-continue-url (if token-requested?
                              (str/replace continue-url #"[?&]token=true(&|$)" "$1")
-                             continue-url)]
+                             continue-url)
+        ;; Extract origin from query parameter
+        origin-param (when clean-continue-url
+                       (second (re-find #"[?&]origin=([^&]+)" clean-continue-url)))
+        origin (if origin-param
+                 (try
+                   (java.net.URLDecoder/decode origin-param "UTF-8")
+                   (catch Exception _
+                     "*"))
+                 "*")
+        ;; Remove origin from clean-continue-url
+        final-continue-url (if origin-param
+                             (str/replace clean-continue-url #"[?&]origin=[^&]+(&|$)" "$1")
+                             clean-continue-url)]
     (sso-utils/check-sso-redirect continue-url)
     (try
       (let [saml-response (saml/validate-response request
@@ -236,7 +256,7 @@
         (if token-requested?
           (let [;; Current time in seconds since epoch
                 current-time (quot (System/currentTimeMillis) 1000)
-        ;; Expiration time - 24 hours from now (86400 seconds)
+                ;; Expiration time - 24 hours from now (86400 seconds)
                 expiration-time (+ current-time 86400)]
             {:status 200
              :headers {"Content-Type" "text/html"}
@@ -245,43 +265,28 @@
 <head>
   <title>Authentication Complete</title>
   <script>
-    console.log('Authentication complete, token flow activated');
-    // Log debug information
-    console.log('Opener exists:', !!window.opener);
-
-    // The authentication data in the required shape
     const authData = {
       id: \"" (:key session) "\",
       exp: " expiration-time ",
       iat: " current-time ",
       status: \"ok\"
     };
-
-    console.log('Auth data prepared:', authData);
-
-    // Send message to opening window
     if (window.opener) {
-      console.log('Sending postMessage to opener');
       try {
         window.opener.postMessage({
           type: 'SAML_AUTH_COMPLETE',
           authData: authData
-        }, '*');
-        console.log('Message sent successfully');
+        }, '" origin "');
 
-        // Add a delay before closing
         setTimeout(function() {
-          console.log('Closing popup window');
           window.close();
-        }, 1000);
+        }, 500);
       } catch(e) {
         console.error('Error sending message:', e);
         document.body.innerHTML += '<p>Error: ' + e.message + '</p>';
       }
     } else {
-      console.log('No window.opener found, redirecting to:', '" clean-continue-url "');
-      // If there's no opener (direct navigation), redirect
-      window.location.href = '" clean-continue-url "';
+      window.location.href = '" final-continue-url "';
     }
   </script>
 </head>
@@ -290,15 +295,6 @@
   <p>This window should close automatically.</p>
   <p>If it doesn't close, please click the button below:</p>
   <button onclick=\"window.close()\">Close Window</button>
-  <hr>
-  <div id=\"debug\"></div>
-  <script>
-    // Add some debug info to the page
-    document.getElementById('debug').innerHTML =
-      '<p>Debug info:</p>' +
-      '<p>Opener exists: ' + !!window.opener + '</p>' +
-      '<p>Session ID: ' + authData.id + '</p>';
-  </script>
 </body>
 </html>")})
           (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
@@ -306,7 +302,7 @@
         (log/error e "SAML response validation failed")
         (throw (ex-info (tru "Unable to log in: SAML response validation failed")
                         {:status-code 401}
-                        e))))))
+                        e)))))))
 
 (defmethod sso.i/sso-handle-slo :saml
   [{:keys [cookies] :as req}]
