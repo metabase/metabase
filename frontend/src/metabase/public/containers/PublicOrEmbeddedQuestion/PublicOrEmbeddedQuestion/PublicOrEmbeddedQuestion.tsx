@@ -40,6 +40,7 @@ export const PublicOrEmbeddedQuestion = ({
 }) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
+  // we cannot use `metadata` directly otherwise hooks will re-run on every metadata change
   const metadataRef = useLatest(metadata);
 
   const [initialized, setInitialized] = useState(false);
