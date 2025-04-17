@@ -26,7 +26,8 @@ jobs:
         id: changes
         with:
           token: ${{ github.token }}
-          list-files: shell
+          # comma separated list of files
+          list-files: csv
           filters: .github/file-paths.yaml
 
   static-viz-files-changed:
