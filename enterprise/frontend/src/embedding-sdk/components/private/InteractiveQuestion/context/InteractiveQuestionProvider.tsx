@@ -5,8 +5,10 @@ import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
+import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { EntityTypeFilterKeys } from "embedding-sdk/types/question";
 import type { DataPickerValue } from "metabase/common/components/DataPicker";
+import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
@@ -127,7 +129,7 @@ export const InteractiveQuestionProvider = ({
 
   const globalPlugins = useSdkSelector(getPlugins);
 
-  const combinedPlugins = useMemo(() => {
+  const plugins: MetabasePluginsConfig = useMemo(() => {
     return { ...globalPlugins, ...componentPlugins };
   }, [globalPlugins, componentPlugins]);
 
@@ -138,10 +140,10 @@ export const InteractiveQuestionProvider = ({
         question,
         queryMode:
           variant === "static" ? StaticQuestionSdkMode : EmbeddingSdkMode,
-        plugins: combinedPlugins ?? undefined,
+        plugins: plugins as InternalMetabasePluginsConfig,
       })
     );
-  }, [question, variant, combinedPlugins]);
+  }, [question, variant, plugins]);
 
   const questionContext: InteractiveQuestionContextType = {
     originalId: initialQuestionId,
@@ -154,7 +156,7 @@ export const InteractiveQuestionProvider = ({
     replaceQuestion,
     updateQuestion,
     navigateToNewCard,
-    plugins: combinedPlugins,
+    plugins,
     question,
     originalQuestion,
     queryResults,

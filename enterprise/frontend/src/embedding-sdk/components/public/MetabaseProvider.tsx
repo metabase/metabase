@@ -16,12 +16,12 @@ import type {
   SdkErrorComponent,
   SdkStoreState,
 } from "embedding-sdk/store/types";
-import type { MetabaseAuthConfig } from "embedding-sdk/types";
+import type { MetabaseAuthConfig } from "embedding-sdk/types/auth-config";
 import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
+import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
-import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
