@@ -414,11 +414,6 @@ function formatValueExpression(
 }
 
 function formatCallExpression(callee: string, args: Doc[]): Doc {
-  // If there are no arguments, render just the name
-  if (args.length === 0) {
-    return displayName(callee);
-  }
-
   // render a call expression as
   //
   //   callee(arg1, arg2, ...)
