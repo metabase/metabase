@@ -72,7 +72,11 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
       expect(response.status).to.eq(200);
     });
 
-    getSdkRoot().findByText("Exportar como PDF").should("exist");
+    getSdkRoot().within(() => {
+      cy.findByRole("button", {
+        name: "Atualização automática",
+      }).should("exist");
+    });
   });
 
   it("when locale=zh-TW it use it as it's available", () => {
@@ -82,16 +86,21 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
       expect(response.status).to.eq(200);
     });
 
-    getSdkRoot().findByText("導出為 PDF").should("exist");
+    getSdkRoot().within(() => {
+      cy.findByRole("button", {
+        name: "自動刷新",
+      }).should("exist");
+    });
   });
 
   it("when invalid locale, it should fallback to en", () => {
     setup({ locale: "XY" });
 
     // should not do any request, as `en` doesn't need loading
-
-    getSdkRoot()
-      .findByRole("button", { name: "Download as PDF" })
-      .should("exist");
+    getSdkRoot().within(() => {
+      cy.findByRole("button", {
+        name: "Auto Refresh",
+      }).should("exist");
+    });
   });
 });
