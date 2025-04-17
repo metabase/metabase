@@ -11,6 +11,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { Route } from "metabase/hoc/Title";
 import type { ListTasksResponse } from "metabase-types/api";
@@ -41,7 +42,7 @@ const setup = ({
   if (error) {
     fetchMock.get("path:/api/task", { status: 500 });
   } else {
-    setupTasksEndpoints(tasksResponse);
+    setupTasksEndpoints(tasksResponse, { delay: 10 });
   }
 
   return renderWithProviders(<Route path={PATHNAME} component={TasksApp} />, {
@@ -112,14 +113,78 @@ describe("TasksApp", () => {
 
     await userEvent.click(nextPage);
 
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    await waitForLoaderToBeRemoved();
+
     expect(previousPage).toBeEnabled();
     expect(nextPage).toBeDisabled();
     expect(history?.getCurrentLocation().search).toEqual("?page=1");
 
     await userEvent.click(previousPage);
 
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+
     expect(previousPage).toBeDisabled();
     expect(nextPage).toBeEnabled();
+    expect(history?.getCurrentLocation().search).toEqual("");
+  });
+
+  it("should allow to filter tasks list", async () => {
+    const { history } = setup();
+
+    await waitForLoaderToBeRemoved();
+
+    const taskPicker = screen.getByPlaceholderText("Filter by task");
+    const taskStatusPicker = screen.getByPlaceholderText("Filter by status");
+
+    expect(taskPicker).toBeInTheDocument();
+    expect(taskPicker).toHaveValue("");
+    expect(taskStatusPicker).toBeInTheDocument();
+    expect(taskStatusPicker).toHaveValue("");
+
+    await userEvent.click(taskPicker);
+
+    const taskPopover = screen.getByRole("listbox");
+
+    expect(taskPopover).toBeInTheDocument();
+    expect(within(taskPopover).getByText("task-a")).toBeInTheDocument();
+    expect(within(taskPopover).getByText("task-b")).toBeInTheDocument();
+
+    await userEvent.click(within(taskPopover).getByText("task-b"));
+
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    await waitForLoaderToBeRemoved();
+    expect(history?.getCurrentLocation().search).toEqual("?task=task-b");
+
+    await userEvent.click(taskStatusPicker);
+
+    const taskStatusPopover = screen.getByRole("listbox");
+
+    expect(taskStatusPopover).toBeInTheDocument();
+    expect(within(taskStatusPopover).getByText("Failed")).toBeInTheDocument();
+    expect(within(taskStatusPopover).getByText("Started")).toBeInTheDocument();
+    expect(within(taskStatusPopover).getByText("Success")).toBeInTheDocument();
+    expect(within(taskStatusPopover).getByText("Unknown")).toBeInTheDocument();
+
+    await userEvent.click(within(taskStatusPopover).getByText("Success"));
+
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    await waitForLoaderToBeRemoved();
+    expect(history?.getCurrentLocation().search).toEqual(
+      "?status=success&task=task-b",
+    );
+
+    const clearTaskButton = screen.getAllByRole("button", { hidden: true })[0];
+    await userEvent.click(clearTaskButton);
+
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    await waitForLoaderToBeRemoved();
+    expect(history?.getCurrentLocation().search).toEqual("?status=success");
+
+    const clearTaskStatusButton = screen.getByRole("button", { hidden: true });
+    await userEvent.click(clearTaskStatusButton);
+
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
     expect(history?.getCurrentLocation().search).toEqual("");
   });
 });
