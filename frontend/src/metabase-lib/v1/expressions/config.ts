@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { OPERATOR } from "./tokenizer";
-import type { MBQLClauseMap } from "./types";
+import type { MBQLClauseFunctionConfig } from "./types";
 
 export const EDITOR_QUOTES = {
   // specifies where different quoting is used:
@@ -35,8 +35,21 @@ export const OPERATOR_PRECEDENCE: Record<string, number> = {
   or: 5,
 };
 
+function defineClauses<
+  const T extends Record<
+    string,
+    Omit<MBQLClauseFunctionConfig, "name"> & { name?: never }
+  >,
+>(clauses: T): Record<keyof T, MBQLClauseFunctionConfig> {
+  const result = {} as Record<keyof T, MBQLClauseFunctionConfig>;
+  for (const name in clauses) {
+    result[name] = { ...clauses[name], name };
+  }
+  return result;
+}
+
 // `type` and `args` types have no effect. Type checking is done by MBQL lib.
-export const MBQL_CLAUSES: MBQLClauseMap = {
+export const MBQL_CLAUSES = defineClauses({
   // aggregation functions
   count: { displayName: `Count`, type: "aggregation", args: [] },
   "cum-count": {
@@ -572,13 +585,27 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     hasOptions: true,
     requiresFeature: "convert-timezone",
   },
-};
+});
 
-for (const [name, clause] of Object.entries(MBQL_CLAUSES)) {
-  if (clause.name !== undefined && clause.name !== name) {
-    console.warn("Mismatched name for MBQL_CLAUSES " + name);
+export type DefinedClauseName = keyof typeof MBQL_CLAUSES;
+
+export function isDefinedClause(name: string): name is DefinedClauseName {
+  return name in MBQL_CLAUSES;
+}
+
+export function getClauseDefinition(
+  name: DefinedClauseName,
+): MBQLClauseFunctionConfig;
+export function getClauseDefinition(
+  name: string,
+): MBQLClauseFunctionConfig | undefined;
+export function getClauseDefinition(
+  name: string,
+): MBQLClauseFunctionConfig | undefined {
+  if (isDefinedClause(name)) {
+    return MBQL_CLAUSES[name];
   }
-  clause.name = name;
+  return undefined;
 }
 
 // Reserved token names
@@ -592,13 +619,15 @@ const EXPRESSION_TO_MBQL_NAME = new Map(
   Object.entries(MBQL_CLAUSES).map(([mbql, { displayName }]) => [
     // case-insensitive
     displayName.toLowerCase(),
-    mbql,
+    mbql as DefinedClauseName,
   ]),
 );
 export function getExpressionName(mbqlName: string) {
   return MBQL_TO_EXPRESSION_NAME.get(mbqlName);
 }
-export function getMBQLName(expressionName: string) {
+export function getMBQLName(
+  expressionName: string,
+): DefinedClauseName | undefined {
   // case-insensitive
   return EXPRESSION_TO_MBQL_NAME.get(expressionName.trim().toLowerCase());
 }

@@ -691,6 +691,31 @@
           (testing "no messages received when condition returns false"
             (is (empty? channel-messages))))))))
 
+(deftest cutoff-notification-env-test
+  (let [send-went-through? (fn [notification]
+                             (let [yes (atom false)]
+                               (with-redefs [notification.send/send-notification-sync! (fn [_notification]
+                                                                                         (reset! yes true))]
+                                 (#'notification.send/send-notification! notification :notification/sync? true))
+                               @yes))]
+    (testing "if not set, send any notifications"
+      (mt/with-temporary-setting-values [notification-suppression-cutoff nil]
+        (doseq [updated-at [(t/zoned-date-time)
+                            (t/plus (t/zoned-date-time) (t/days 1))
+                            (t/minus (t/zoned-date-time) (t/days 1))
+                            nil]]
+          (is (true? (send-went-through? {:updated_at updated-at}))))))
+    (testing "if set"
+      (let [cutoff (t/offset-date-time)]
+        (mt/with-temporary-setting-values [notification-suppression-cutoff (str cutoff)]
+          (doseq [[went-through? updated-at context]
+                  [[false (t/minus cutoff (t/seconds 1)) "skip if notifications were updated before cut off"]
+                   [true  (t/plus cutoff (t/seconds 1)) "send if notifications were updated after cut off"]
+                   ;; for unsaved notifications
+                   [true  nil "send if no updated_at"]]]
+            (testing context
+              (is (= went-through? (send-went-through? {:updated_at updated-at}))))))))))
+
 (deftest no-pool-exhasution-test
   (testing "if there are failure inside the notification thread pool, it should not exhaust the pool (#56379)"
     (let [noti-count (atom 0)
