@@ -25,6 +25,7 @@ import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
+import { getSetting } from "metabase/selectors/settings";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { Box } from "metabase/ui";
 
@@ -73,7 +74,7 @@ export interface MetabaseProviderProps
 
   /**
    * Defines the display language. Accepts an ISO language code such as `en` or `de`.
-   * Defaults to `en`. Does not support country code suffixes (i.e. `en-US`)
+   * Defaults to the instance locale.
    **/
   locale?: string;
 
@@ -105,7 +106,7 @@ export const MetabaseProviderInternal = ({
   theme,
   store,
   className,
-  locale = "en",
+  locale,
   errorComponent,
   loaderComponent,
   allowConsoleLog,
@@ -139,6 +140,8 @@ export const MetabaseProviderInternal = ({
     store.dispatch(setMetabaseClientUrl(authConfig.metabaseInstanceUrl));
   }, [store, authConfig.metabaseInstanceUrl]);
 
+  const instanceLocale = getSetting(store.getState(), "site-locale");
+
   return (
     <SdkContextProvider>
       <EmotionCacheProvider>
@@ -146,7 +149,9 @@ export const MetabaseProviderInternal = ({
         <SdkThemeProvider theme={theme}>
           <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
           <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
-            <LocaleProvider locale={locale}>{children}</LocaleProvider>
+            <LocaleProvider locale={locale || instanceLocale}>
+              {children}
+            </LocaleProvider>
             <SdkUsageProblemDisplay
               authConfig={authConfig}
               allowConsoleLog={allowConsoleLog}
