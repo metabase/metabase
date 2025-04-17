@@ -132,17 +132,23 @@
   (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
   (let [redirect (get-in req [:params :redirect])
+        token-requested? (sso-utils/is-token-requested? req)
         redirect-url (if (nil? redirect)
                        (do
                          (log/warn "Warning: expected `redirect` param, but none is present")
                          (public-settings/site-url))
                        (if (sso-utils/relative-uri? redirect)
                          (str (public-settings/site-url) redirect)
-                         redirect))]
+                         redirect))
+        redirect-with-token (if token-requested?
+                              (str redirect-url
+                                   (if (.contains redirect-url "?") "&" "?")
+                                   "token=true")
+                              redirect-url)]
     (sso-utils/check-sso-redirect redirect-url)
     (try
       (let [idp-url      (sso-settings/saml-identity-provider-uri)
-            relay-state  (u/encode-base64 redirect-url)]
+            relay-state  (u/encode-base64 redirect-with-token)]
         (saml/idp-redirect-response {:request-id       (str "id-" (random-uuid))
                                      :sp-name          (sso-settings/saml-application-name)
                                      :issuer           (sso-settings/saml-application-name)
@@ -163,8 +169,8 @@
                       {:status-code 500}))))
 
 (defn- unwrap-user-attributes
-  "For some reason all of the user attributes coming back from the saml library are wrapped in a list, instead of 'Ryan',
-  it's ('Ryan'). This function discards the list if there's just a single item in it."
+  "For some reason all of the user attributes coming back from the saml library are wrapped in a list, instead of 'Oisin',
+  it's ('Oisin'). This function discards the list if there's just a single item in it."
   [m]
   (m/map-vals (fn [maybe-coll]
                 (if (and (coll? maybe-coll)
@@ -190,7 +196,12 @@
   (let [continue-url  (u/ignore-exceptions
                         (when-let [s (some-> (:RelayState params) u/decode-base64)]
                           (when-not (str/blank? s)
-                            s)))]
+                            s)))
+        token-requested? (and continue-url
+                              (re-find #"[?&]token=true" continue-url))
+        clean-continue-url (if token-requested?
+                             (str/replace continue-url #"[?&]token=true(&|$)" "$1")
+                             continue-url)]
     (sso-utils/check-sso-redirect continue-url)
     (try
       (let [saml-response (saml/validate-response request
@@ -222,7 +233,75 @@
                             :user-attributes attrs
                             :device-info     (request/device-info request)})
             response      (response/redirect (or continue-url (public-settings/site-url)))]
-        (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))
+        (if token-requested?
+          (let [;; Current time in seconds since epoch
+                current-time (quot (System/currentTimeMillis) 1000)
+        ;; Expiration time - 24 hours from now (86400 seconds)
+                expiration-time (+ current-time 86400)]
+            {:status 200
+             :headers {"Content-Type" "text/html"}
+             :body (str "<!DOCTYPE html>
+<html>
+<head>
+  <title>Authentication Complete</title>
+  <script>
+    console.log('Authentication complete, token flow activated');
+    // Log debug information
+    console.log('Opener exists:', !!window.opener);
+
+    // The authentication data in the required shape
+    const authData = {
+      id: \"" (:key session) "\",
+      exp: " expiration-time ",
+      iat: " current-time ",
+      status: \"ok\"
+    };
+
+    console.log('Auth data prepared:', authData);
+
+    // Send message to opening window
+    if (window.opener) {
+      console.log('Sending postMessage to opener');
+      try {
+        window.opener.postMessage({
+          type: 'SAML_AUTH_COMPLETE',
+          authData: authData
+        }, '*');
+        console.log('Message sent successfully');
+
+        // Add a delay before closing
+        setTimeout(function() {
+          console.log('Closing popup window');
+          window.close();
+        }, 1000);
+      } catch(e) {
+        console.error('Error sending message:', e);
+        document.body.innerHTML += '<p>Error: ' + e.message + '</p>';
+      }
+    } else {
+      console.log('No window.opener found, redirecting to:', '" clean-continue-url "');
+      // If there's no opener (direct navigation), redirect
+      window.location.href = '" clean-continue-url "';
+    }
+  </script>
+</head>
+<body style=\"background-color: white; margin: 20px; padding: 20px;\">
+  <h3>Authentication complete</h3>
+  <p>This window should close automatically.</p>
+  <p>If it doesn't close, please click the button below:</p>
+  <button onclick=\"window.close()\">Close Window</button>
+  <hr>
+  <div id=\"debug\"></div>
+  <script>
+    // Add some debug info to the page
+    document.getElementById('debug').innerHTML =
+      '<p>Debug info:</p>' +
+      '<p>Opener exists: ' + !!window.opener + '</p>' +
+      '<p>Session ID: ' + authData.id + '</p>';
+  </script>
+</body>
+</html>")})
+          (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
       (catch Throwable e
         (log/error e "SAML response validation failed")
         (throw (ex-info (tru "Unable to log in: SAML response validation failed")

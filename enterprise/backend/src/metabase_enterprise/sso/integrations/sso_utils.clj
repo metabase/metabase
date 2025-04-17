@@ -114,3 +114,7 @@
       (throw (ex-info (tru "Invalid redirect URL")
                       {:status-code  400
                        :redirect-url redirect-url})))))
+
+(defn is-token-requested?
+  [request]
+  (= (get (:headers request) "x-metabase-client") "embedding-sdk-react"))
