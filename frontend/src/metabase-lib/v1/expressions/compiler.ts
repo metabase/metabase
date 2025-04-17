@@ -11,11 +11,13 @@ export type CompileResult =
   | {
       error: ExpressionError;
       expression: null;
+      expressionParts: null;
       expressionClause: null;
     }
   | {
       error: null;
       expression: Expression;
+      expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
       expressionClause: Lib.ExpressionClause;
     };
 
@@ -57,12 +59,14 @@ export function compileExpression({
 
     return {
       expression,
+      expressionParts: resolved,
       expressionClause,
       error: null,
     };
   } catch (error) {
     return {
       expression: null,
+      expressionParts: null,
       expressionClause: null,
       error: renderError(error),
     };
