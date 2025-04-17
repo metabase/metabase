@@ -32,7 +32,7 @@ frontend_sources: &frontend_sources
   - ".nvmrc"
 
 frontend_embedding_sdk_sources:
-  - "enterprise/frontend/src/embedding-sdk/**"
+  - *frontend_sources
 
 frontend_specs: &frontend_specs
   - *shared_specs
