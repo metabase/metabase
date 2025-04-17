@@ -22,6 +22,7 @@ describe("parameters/utils/field-filters", () => {
       isString: () => false,
       isBoolean: () => false,
       isLocation: () => false,
+      isCoordinate: () => false,
     });
 
     const typelessDimension = createMockDimension({
@@ -119,7 +120,7 @@ describe("parameters/utils/field-filters", () => {
         field: () => ({
           ...field,
           isNumeric: () => true,
-          isLocation: () => true,
+          isCoordinate: () => true,
         }),
       });
 
