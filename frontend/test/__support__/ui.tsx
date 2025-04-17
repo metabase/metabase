@@ -111,7 +111,11 @@ export function renderHookWithProviders<TProps, TResult>(
     ...renderHookOptions
   }: Omit<RenderHookOptions<TProps>, "wrapper"> & RenderWithProvidersOptions,
 ) {
-  const { wrapper, store, history } = getTestStoreAndWrapper({
+  const {
+    wrapper: Wrapper,
+    store,
+    history,
+  } = getTestStoreAndWrapper({
     mode,
     initialRoute,
     storeInitialState,
@@ -122,6 +126,16 @@ export function renderHookWithProviders<TProps, TResult>(
     customReducers,
     theme,
   });
+
+  const WrapperWithRoute = ({ children, ...props }: any) => {
+    return (
+      <Wrapper {...props}>
+        <Route path="/" component={() => <>{children}</>} />
+      </Wrapper>
+    );
+  };
+
+  const wrapper = withRouter ? WrapperWithRoute : Wrapper;
 
   const renderHookReturn = renderHook(hook, { wrapper, ...renderHookOptions });
 
@@ -262,11 +276,7 @@ function MaybeRouter({
     return children;
   }
 
-  return (
-    <Router history={history}>
-      <Route path="/" component={() => <>{children}</>} />
-    </Router>
-  );
+  return <Router history={history}>{children}</Router>;
 }
 
 function MaybeKBar({
