@@ -17,7 +17,7 @@ function setup({
   locale,
   instanceLocale,
 }: {
-  locale: string | undefined;
+  locale?: string;
   instanceLocale?: string;
 }) {
   signInAsAdminAndEnableEmbeddingSdk();
