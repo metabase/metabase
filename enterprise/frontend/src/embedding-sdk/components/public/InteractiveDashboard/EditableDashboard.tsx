@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
-import type { InteractiveQuestionDefaultViewProps } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import {
   DashboardNotFoundError,
   SdkLoader,
@@ -22,7 +21,7 @@ import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/publi
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 
-import type { BaseInteractiveQuestionProps } from "../InteractiveQuestion";
+import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
 
 import { ConnectedDashboard } from "./ConnectedDashboard";
 import { InteractiveDashboardProvider } from "./context";
@@ -47,8 +46,7 @@ export type EditableDashboardProps = {
   /**
    * Props for the drill-through question
    */
-  drillThroughQuestionProps?: Omit<BaseInteractiveQuestionProps, "questionId"> &
-    InteractiveQuestionDefaultViewProps;
+  drillThroughQuestionProps?: DrillThroughQuestionProps;
 } & Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
