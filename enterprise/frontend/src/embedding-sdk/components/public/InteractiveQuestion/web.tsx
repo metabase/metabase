@@ -136,6 +136,7 @@ const MbQuestion = (shadow) =>
             authProviderUri,
             fetchRequestToken,
           }}
+          theme={{ fontFamily: "Lato" }}
         >
           <InteractiveQuestion questionId={questionId} />
         </MetabaseProvider>
@@ -168,6 +169,7 @@ const MbDashboard = (shadow) =>
           authProviderUri,
           fetchRequestToken,
         }}
+        theme={{ fontFamily: "Lato" }}
       >
         <InteractiveDashboard dashboardId={dashboardId} />
       </MetabaseProvider>
