@@ -23,6 +23,10 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: 'kondo'
+      - name: What is in that file?? (fixme)
+        run: |
+          sed -n '429,434p' test/metabase/query_processor/middleware/cache_test.clj
+          sed -n '524,529p' test/metabase/query_processor/middleware/cache_test.clj
       - name: Run clj-kondo
         run: ./bin/mage kondo
 
