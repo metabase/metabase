@@ -1,30 +1,37 @@
 import type { ReactNode } from "react";
 
-import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
-import type { ClickAction, ClickObject } from "metabase/visualizations/types";
+import type { DashCardMenuItem } from "./dashboard";
+import type { Question } from "./question";
 
-import type { MetabaseQuestion } from "./question";
+export type MetabaseClickAction = {
+  name: string;
+} & Record<string, any>;
 
-export type MetabaseDataPointObject = Pick<
-  ClickObject,
-  "value" | "column" | "data" | "event"
->;
+export type MetabaseDataPointObject = {
+  value?: string | number | null | boolean;
+  column?: Record<string, any>;
+  event?: MouseEvent;
+  data?: {
+    col: Record<string, any> | null;
+    value: string | number | null | boolean;
+  }[];
+};
 
 export type MetabaseClickActionPluginsConfig = (
-  clickActions: ClickAction[],
+  clickActions: MetabaseClickAction[],
   clickedDataPoint: MetabaseDataPointObject,
-) => ClickAction[];
+) => MetabaseClickAction[];
 
 export type DashboardCardMenuCustomElement = ({
   question,
 }: {
-  question: MetabaseQuestion;
+  question: Question;
 }) => ReactNode;
 
 export type CustomDashboardCardMenuItem = ({
   question,
 }: {
-  question?: MetabaseQuestion;
+  question?: Question;
 }) => DashCardMenuItem;
 
 export type DashboardCardCustomMenuItem = {

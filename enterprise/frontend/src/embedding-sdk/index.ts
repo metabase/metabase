@@ -17,12 +17,21 @@ import "jspdf";
 
 export * from "./hooks/public";
 export * from "./components/public";
-export * from "metabase/embedding-sdk/types/plugins";
 
 export type {
   CollectionItem,
+  CustomDashboardCardMenuItem,
+  DashCardMenuItem,
+  DashboardCardCustomMenuItem,
+  DashboardCardMenuCustomElement,
   EntityTypeFilterKeys,
+  IconName,
   MetabaseAuthConfig,
+  MetabaseClickActionPluginsConfig,
+  MetabaseClickAction,
+  MetabaseDataPointObject,
+  MetabaseDashboardPluginsConfig,
+  MetabasePluginsConfig,
   SdkCollectionId,
   SdkDashboardId,
   SdkDashboardLoadEvent,
