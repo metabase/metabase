@@ -14,6 +14,7 @@ import type Question from "metabase-lib/v1/Question";
 
 /**
  * @interface
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionEditorProps = {

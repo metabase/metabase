@@ -381,6 +381,16 @@ export function provideFieldValuesTags(id: FieldId): TagDescription<TagType>[] {
   return [idTag("field-values", id)];
 }
 
+export function provideRemappedFieldValuesTags(
+  id: FieldId,
+  searchFieldId: FieldId,
+): TagDescription<TagType>[] {
+  return [
+    ...provideFieldValuesTags(id),
+    ...provideFieldValuesTags(searchFieldId),
+  ];
+}
+
 export function provideNotificationListTags(
   notifications: Notification[],
 ): TagDescription<TagType>[] {
@@ -545,6 +555,10 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
 
 export function provideTaskListTags(tasks: Task[]): TagDescription<TagType>[] {
   return [listTag("task"), ...tasks.flatMap(provideTaskTags)];
+}
+
+export function provideUniqueTasksListTags(): TagDescription<TagType>[] {
+  return [listTag("unique-tasks")];
 }
 
 export function provideTaskTags(task: Task): TagDescription<TagType>[] {

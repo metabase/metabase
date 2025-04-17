@@ -5,6 +5,7 @@ import _ from "underscore";
 import Button from "metabase/core/components/Button";
 import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 import { useDispatch } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   onOpenQuestionSettings,
@@ -204,6 +205,17 @@ export const QuestionMoreActionsMenu = ({
       </Fragment>
     ),
   ].filter(Boolean);
+
+  useRegisterShortcut(
+    hasCollectionPermissions
+      ? [
+          {
+            id: "query-builder-send-to-trash",
+            perform: () => onOpenModal(MODAL_TYPES.ARCHIVE),
+          },
+        ]
+      : [],
+  );
 
   if (!menuItems.length) {
     return null;

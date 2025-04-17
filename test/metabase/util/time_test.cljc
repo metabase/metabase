@@ -232,13 +232,57 @@
     "Q1" :quarter-of-year
     "Feb 8, 2023" nil)
 
+  (are [exp u] (= exp (shared.ut/format-unit "2023-02-08" u "fr"))
+    "mercredi" :day-of-week
+    "févr." :month-of-year
+    "8" :day-of-month
+    "39" :day-of-year
+    "6" :week-of-year
+    "Q1" :quarter-of-year
+    "Feb 8, 2023" nil) ;; no locale for default formats
+
+  (are [exp u] (= exp (shared.ut/format-unit (from-local-date "2023-02-08") u))
+    "Wednesday" :day-of-week
+    "Feb" :month-of-year
+    "8" :day-of-month
+    "39" :day-of-year
+    "6" :week-of-year
+    "Q1" :quarter-of-year
+    "Feb 8, 2023" nil)
+
+  (are [exp u] (= exp (shared.ut/format-unit (from-local-date "2023-02-08") u "fr"))
+    "mercredi" :day-of-week
+    "févr." :month-of-year
+    "8" :day-of-month
+    "39" :day-of-year
+    "6" :week-of-year
+    "Q1" :quarter-of-year
+    "Feb 8, 2023" nil)
+
   (is (= "12:00 PM" (shared.ut/format-unit "12:00:00.000" nil)))
+  (is (= "12:00 PM" (shared.ut/format-unit (from-local-time "12:00:00.000") nil)))
+
   (is (= "Oct 3, 2023, 1:30 PM" (shared.ut/format-unit "2023-10-03T13:30:00" nil)))
+  (is (= "Oct 3, 2023, 1:30 PM" (shared.ut/format-unit (from-local "2023-10-03T13:30:00") nil)))
+
   (is (= "30" (shared.ut/format-unit "2023-10-03T13:30:00" :minute-of-hour)))
   (is (= "1 PM" (shared.ut/format-unit "2023-10-03T13:30:00" :hour-of-day)))
   (is (= "30" (shared.ut/format-unit 30 :minute-of-hour)))
   (is (= "1 PM" (shared.ut/format-unit 13 :hour-of-day)))
   (is (= "12 AM" (shared.ut/format-unit 0 :hour-of-day))))
+
+(deftest parse-unit-test
+  (are [exp input unit-in unit-out locale-in locale-out]
+       (= exp (-> (shared.ut/parse-unit input unit-in  locale-in)
+                  (shared.ut/format-unit      unit-out locale-out)))
+    "Wednesday" "Wed" :day-of-week-abbrev :day-of-week   "en" "en"
+    "lundi"     "Mon" :day-of-week-abbrev :day-of-week   "en" "fr"
+
+    "January"   "Jan" :month-of-year :month-of-year-full "en" "en"
+    "janvier"   "Jan" :month-of-year :month-of-year-full "en" "fr"
+
+    "1 PM"      "13"  :hour-of-day-24 :hour-of-day       "en" "en"
+    "12 AM"     "0"   :hour-of-day-24 :hour-of-day       "en" "en"))
 
 (deftest format-diff-test
   (are [exp a b] (= exp (shared.ut/format-diff a b))
