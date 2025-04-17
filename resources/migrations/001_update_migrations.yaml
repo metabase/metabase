@@ -11157,7 +11157,7 @@ databaseChangeLog:
                   remarks: The translation
                   type: varchar(255)
                   constraints:
-                    nullable: true
+                    nullable: false
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
