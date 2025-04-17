@@ -432,7 +432,7 @@
                                                     (m/distinct-by #(get-in % [:card :id])))
         viz-settings                           (or (get dashcard :visualization_settings)
                                                    (get card :visualization_settings))
-        {rendered-type :type content :content} (js.svg/javascript-visualization cards-with-data viz-settings)]
+        {rendered-type :type content :content} (js.svg/*javascript-visualization* cards-with-data viz-settings)]
     (case rendered-type
       :svg
       (let [image-bundle (image-bundle/make-image-bundle
