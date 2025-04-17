@@ -193,6 +193,8 @@ export const fields = {
 export const expressions = {
   BOOL: findField("bool"),
   FOO: findField("foo"),
+  NAME_WITH_BRACKETS: findField("name with [brackets]"),
+  NAME_WITH_SLASH: findField("name with \\ slash"),
 };
 
 export const segments = {
