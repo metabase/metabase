@@ -26,7 +26,7 @@ import {
 import SettingsLicense from "../components/SettingsLicense";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
 import { UpdatesSettingsPage } from "../components/SettingsPages/UpdatesSettingsPage";
-import { UploadSettings } from "../components/UploadSettings";
+import { UploadSettingsPage } from "../components/SettingsPages/UploadSettingsPage";
 import CustomGeoJSONWidget from "../components/widgets/CustomGeoJSONWidget";
 import FormattingWidget from "../components/widgets/FormattingWidget";
 import {
@@ -289,12 +289,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
     name: t`Uploads`,
     order: 85,
     adminOnly: false,
-    component: UploadSettings,
-    settings: [
-      {
-        key: "uploads-settings",
-      },
-    ],
+    component: UploadSettingsPage,
+    settings: [],
   },
 
   "public-sharing": {
