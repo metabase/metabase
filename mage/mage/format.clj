@@ -24,7 +24,9 @@
 (defn updated
   "Formats or checks all updated clojure files with cljfmt."
   [parsed]
-  (files (assoc parsed :arguments (u/updated-files))))
+  (let [target-branch (or (first (:arguments parsed)) "HEAD")]
+    (println (str "Checking for updated files against " (c/green target-branch)))
+    (files (assoc parsed :arguments (u/updated-files target-branch)))))
 
 (defn staged
   "Formats or checks all staged clojure files with cljfmt."
