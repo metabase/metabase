@@ -1,17 +1,13 @@
 import fetchMock, { type MockOptionsMethodGet } from "fetch-mock";
 
-import type { Task } from "metabase-types/api";
+import type { ListTasksResponse, Task } from "metabase-types/api";
 
 export function setupTasksEndpoints(
-  tasks: Task[],
+  response: ListTasksResponse,
   options?: MockOptionsMethodGet,
 ) {
-  fetchMock.get(
-    "path:/api/task",
-    { data: tasks, limit: 0, offset: 0, total: 0 },
-    options,
-  );
-  tasks.forEach((task) => setupTaskEndpoint(task));
+  fetchMock.get("path:/api/task", response, options);
+  response.data.forEach((task) => setupTaskEndpoint(task));
 }
 
 export function setupTaskEndpoint(task: Task, options?: MockOptionsMethodGet) {

@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { Location } from "history";
 
@@ -12,7 +13,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { Route } from "metabase/hoc/Title";
-import type { Task } from "metabase-types/api";
+import type { ListTasksResponse } from "metabase-types/api";
 import { createMockTask } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockLocation } from "metabase-types/store/mocks";
@@ -22,7 +23,7 @@ import { TasksApp } from "./TasksApp";
 interface SetupOpts {
   error?: boolean;
   location?: Location;
-  tasks?: Task[];
+  tasksResponse?: ListTasksResponse;
 }
 
 const PATHNAME = "/admin/troubleshooting/tasks";
@@ -32,7 +33,7 @@ const setup = ({
   location = createMockLocation({
     pathname: PATHNAME,
   }),
-  tasks = [],
+  tasksResponse = createMockTasksResponse(),
 }: SetupOpts = {}) => {
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupUniqueTasksEndpoint(["task-a", "task-b"]);
@@ -40,7 +41,7 @@ const setup = ({
   if (error) {
     fetchMock.get("path:/api/task", { status: 500 });
   } else {
-    setupTasksEndpoints(tasks);
+    setupTasksEndpoints(tasksResponse);
   }
 
   return renderWithProviders(<Route path={PATHNAME} component={TasksApp} />, {
@@ -51,7 +52,7 @@ const setup = ({
 
 describe("TasksApp", () => {
   it("should show loading and empty state", async () => {
-    setup({ tasks: [] });
+    setup();
 
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     await waitForLoaderToBeRemoved();
@@ -59,7 +60,9 @@ describe("TasksApp", () => {
   });
 
   it("should show loading and results state", async () => {
-    setup({ tasks: [createMockTask()] });
+    setup({
+      tasksResponse: createMockTasksResponse({ data: [createMockTask()] }),
+    });
 
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     await waitForLoaderToBeRemoved();
@@ -76,4 +79,59 @@ describe("TasksApp", () => {
     expect(screen.queryByText("A task")).not.toBeInTheDocument();
     expect(screen.getByText("An error occurred")).toBeInTheDocument();
   });
+
+  it("should not show pagination controls if there's only 1 page", async () => {
+    setup();
+
+    await waitForLoaderToBeRemoved();
+    expect(
+      screen.queryByRole("button", { name: "Previous page" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Next page" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should have working pagination controls if there's more than 1 page", async () => {
+    const { history } = setup({
+      tasksResponse: createMockTasksResponse({
+        total: 75,
+        limit: 50,
+        offset: 0,
+      }),
+    });
+
+    await waitForLoaderToBeRemoved();
+
+    const previousPage = screen.getByRole("button", { name: "Previous page" });
+    const nextPage = screen.getByRole("button", { name: "Next page" });
+
+    expect(previousPage).toBeDisabled();
+    expect(nextPage).toBeEnabled();
+    expect(history?.getCurrentLocation().search).toEqual("");
+
+    await userEvent.click(nextPage);
+
+    expect(previousPage).toBeEnabled();
+    expect(nextPage).toBeDisabled();
+    expect(history?.getCurrentLocation().search).toEqual("?page=1");
+
+    await userEvent.click(previousPage);
+
+    expect(previousPage).toBeDisabled();
+    expect(nextPage).toBeEnabled();
+    expect(history?.getCurrentLocation().search).toEqual("");
+  });
 });
+
+function createMockTasksResponse(
+  response?: Partial<ListTasksResponse>,
+): ListTasksResponse {
+  return {
+    data: [],
+    limit: 0,
+    offset: 0,
+    total: 0,
+    ...response,
+  };
+}
