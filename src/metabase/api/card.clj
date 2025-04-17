@@ -641,7 +641,7 @@
         ;; Ideally this would be DRY with the actual specification some way, but since this is a stop-gap solution, we
         ;; decided not to complicate the solution further to accomplish this.
         (search/bulk-ingest! (for [search-model ["card" "dataset" "metric"]]
-                               [search-model [:= :this.id id]]) false))
+                               [search-model [:= :this.id id]])))
       (when metadata-future
         (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
         (card.metadata/save-metadata-async! metadata-future card))

@@ -29,10 +29,10 @@
   {:result (dissoc result :score)
    :score  (:score result)})
 
-(defmulti consume!
+(defmulti update!
   "Updates the search index by consuming the documents from the given reducible."
-  {:arglists '([search-engine document-reducible re-indexing?])}
-  (fn [search-engine _document-reducible _re-indexing?]
+  {:arglists '([search-engine document-reducible])}
+  (fn [search-engine _document-reducible]
     search-engine))
 
 (defmulti delete!

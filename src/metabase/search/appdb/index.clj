@@ -40,9 +40,7 @@
 
 (defonce ^:dynamic ^:private *indexes* (atom {:active nil, :pending nil}))
 
-(def ^:dynamic *temp-index-tables*
-  "Set to true when we are using a temporary index table for testing."
-  false)
+(def ^:private ^:dynamic *mocking-tables* false)
 
 (defmethod search.engine/reset-tracking! :search.engine/appdb [_]
   (reset! *indexes* nil))
@@ -61,7 +59,7 @@
 (defn- now [] (System/nanoTime))
 
 (defn- sync-tracking-atoms-if-stale! []
-  (when-not *temp-index-tables*
+  (when-not *mocking-tables*
     (when (or (not @next-sync-at) (> (now) @next-sync-at))
       (reset! next-sync-at (+ (now) sync-tracking-period))
       (sync-tracking-atoms!))))
@@ -180,7 +178,7 @@
 (defn maybe-create-pending!
   "Create a search index table if one doesn't exist. Record and return the name of the table, regardless."
   []
-  (if *temp-index-tables*
+  (if *mocking-tables*
     ;; The atoms are the only source of truth, create a new table if necessary.
     (or (pending-table)
         (let [table-name (gen-table-name)]
@@ -198,7 +196,7 @@
 (defn activate-table!
   "Make the pending index active if it exists. Returns true if it did so."
   []
-  (if *temp-index-tables*
+  (if *mocking-tables*
     ;; The atoms are the only source of truth, we must not update the metadata.
     (boolean
      (when-let [pending (:pending @*indexes*)]
@@ -244,8 +242,8 @@
           (throw e))))))
 
 (defn- batch-update!
-  "Create the given search index entries in bulk. Set re-indexing?=true when this is called from a process that is doing a full re-index"
-  [documents re-indexing?]
+  "Create the given search index entries in bulk. Context should be :search/updating or :search/reindexing"
+  [context documents]
   ;; Protect against tests that nuke the appdb
   (when config/is-test?
     (when-let [table (active-table)]
@@ -259,17 +257,22 @@
 
   (let [entries          (map document->entry documents)
         ;; No need to update the active index if we are doing a full index and it will be swapped out soon. Most updates are no-ops anyway.
-        active-updated?  (if re-indexing? false (safe-batch-upsert! (active-table) entries))
+        active-updated?  (when-not (= context :search/reindexing) (safe-batch-upsert! (active-table) entries))
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
       (u/prog1 (->> entries (map :model) frequencies)
-        (log/trace "indexed documents" <>)))))
+        (log/trace "indexed documents for " <>)))))
 
-(defmethod search.engine/consume! :search.engine/appdb [_engine document-reducible re-indexing?]
+(defn index-docs!
+  "Indexes the documents. The context should be :search/updating or :search/reindexing."
+  [context document-reducible]
   (transduce (comp (partition-all insert-batch-size)
-                   (map #(batch-update! % re-indexing?)))
+                   (map #(batch-update! context %)))
              (partial merge-with +)
              document-reducible))
+
+(defmethod search.engine/update! :search.engine/appdb [_engine document-reducible]
+  (index-docs! :search/updating document-reducible))
 
 (defmethod search.engine/delete! :search.engine/appdb [_engine search-model ids]
   (doseq [table-name [(active-table) (pending-table)] :when table-name]
@@ -294,7 +297,7 @@
   []
   ;; stop tracking any pending table
   (when-let [table-name (pending-table)]
-    (when-not *temp-index-tables*
+    (when-not *mocking-tables*
       (search-index-metadata/delete-index! :appdb *index-version-id* table-name))
     (swap! *indexes* assoc :pending nil))
   (maybe-create-pending!)
@@ -305,7 +308,7 @@
   [& {:keys [force-reset?]}]
   ;; Be extra careful against races on initializing the setting
   (locking *indexes*
-    (when-not *temp-index-tables*
+    (when-not *mocking-tables*
       (when (nil? (active-table))
         (sync-tracking-atoms!)))
 
@@ -316,10 +319,10 @@
 (defmacro with-temp-index-table
   "Create a temporary index table for the duration of the body. Uses the existing index if we're already mocking."
   [& body]
-  `(if @#'*temp-index-tables*
+  `(if @#'*mocking-tables*
      ~@body
      (let [table-name# (gen-table-name)]
-       (binding [*temp-index-tables* true
+       (binding [*mocking-tables* true
                  *indexes*        (atom {:active table-name#})]
          (try
            (create-table! table-name#)

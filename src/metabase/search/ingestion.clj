@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.search.appdb.index :as search.index]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -102,10 +101,10 @@
          (m/distinct-by (juxt :id :model))
          (map ->document)))))
 
-(defn populate-index!
-  "Go over all searchable items and populate the index with them."
-  [engine]
-  (search.engine/consume! engine (query->documents (search-items-reducible)) (not search.index/*temp-index-tables*)))
+(defn searchable-documents
+  "Get all searchable documents from the database."
+  []
+  (query->documents (search-items-reducible)))
 
 (def ^:dynamic *force-sync*
   "Force ingestion to happen immediately, on the same thread."
@@ -115,26 +114,26 @@
   "Used by tests to disable updates, for example when testing migrations, where the schema is wrong."
   false)
 
-(defn consume!
+(defn update!
   "Update all active engines' indexes with the given documents"
-  [documents-reducible re-indexing?]
+  [documents-reducible]
   (when-let [engines (seq (search.engine/active-engines))]
     (if (= 1 (count engines))
-      (search.engine/consume! (first engines) documents-reducible re-indexing?)
-      ;; TODO um, multiplexing over the reducible awkwardly feels strange. We at least use a magic number for now.
+      (search.engine/update! (first engines) documents-reducible)
+       ;; TODO um, multiplexing over the reducible awkwardly feels strange. We at least use a magic number for now.
       (doseq [batch (eduction (partition-all 150) documents-reducible)
-              e     engines]
-        (search.engine/consume! e batch re-indexing?)))))
+              e engines]
+        (search.engine/update! e batch)))))
 
 (defn bulk-ingest!
   "Process the given search model updates. Returns the number of search index entries that get updated as a result."
-  [updates re-indexing?]
+  [updates]
   (->> (for [[search-model where-clauses] (u/group-by first second updates)]
          (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
-       ;; init collection is only for clj-kondo, as we know that the list is non-empty
+    ;; init collection is only for clj-kondo, as we know that the list is non-empty
        (reduce u/rconcat [])
        query->documents
-       (#(consume! % re-indexing?))))
+       update!))
 
 (defn- track-queue-size! []
   (analytics/set! :metabase-search/queue-size (.size queue)))
@@ -146,12 +145,12 @@
   "Update or create any search index entries related to the given updates.
   Will be async if the worker exists, otherwise it will be done synchronously on the calling thread.
   Can also be forced to run synchronously for testing."
-  ([updates re-indexing?]
-   (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?))) re-indexing?))
-  ([updates sync? re-indexing?]
+  ([updates]
+   (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?)))))
+  ([updates sync?]
    (when-not *disable-updates*
      (if sync?
-       (bulk-ingest! updates re-indexing?)
+       (bulk-ingest! updates)
        (do
          (doseq [update updates]
            (log/trace "Queuing update" update)
@@ -170,7 +169,7 @@
 (defn start-listener!
   "Starts the ingestion listener on the queue"
   []
-  (queue/listen! listener-name queue #(bulk-ingest! % false)
+  (queue/listen! listener-name queue bulk-ingest!
                  {:success-handler     (fn [result duration _]
                                          (report->prometheus! duration result)
                                          (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) result))

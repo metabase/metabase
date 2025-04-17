@@ -53,15 +53,14 @@
                         :model/Card       {}            {:name "Projected Satisfaction"         :collection_id col-id#}
                         :model/Database   {db-id# :id}  {:name "Indexed Database"}
                         :model/Table      {}            {:name "Indexed Table", :db_id db-id#}]
-           (search.index/reset-index!)
-           (search.ingestion/populate-index! :search.engine/appdb)
+           (search.engine/reindex! :search.engine/appdb {})
            ~@body)))))
 
 (deftest idempotent-test
   (with-index
     (let [count-rows  (fn [] (t2/count (search.index/active-table)))
           rows-before (count-rows)]
-      (search.ingestion/populate-index! :search.engine/appdb)
+      (search.engine/reindex! :search.engine/appdb {})
       (is (= rows-before (count-rows))))))
 
 (deftest incremental-update-test
@@ -153,11 +152,10 @@
 
 (defn ingest!
   [model where-clause]
-  (#'search.engine/consume!
+  (#'search.engine/update!
    :search.engine/appdb
    (#'search.ingestion/query->documents
-    (#'search.ingestion/spec-index-reducible model where-clause))
-   false))
+    (#'search.ingestion/spec-index-reducible model where-clause))))
 
 (defn fetch [model & clauses]
   (apply t2/select (search.index/active-table) :model model clauses))
