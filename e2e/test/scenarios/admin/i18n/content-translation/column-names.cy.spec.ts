@@ -177,44 +177,54 @@ describe("scenarios > admin > localization > content translation", () => {
               cy.log("Column names should be searchable");
               H.popover().within(() => {
                 cy.findByPlaceholderText(/Finden/).type("er");
-                cy.findByText(/Kategorie/).should("not.exist");
-                cy.findByText(/Preis/).should("not.exist");
-                cy.findByText(/Titel/).should("not.exist");
-                cy.findByText(/ID/).should("not.exist");
+                const translatedColumnNames = translationsOfColumnNames.map(
+                  (n) => n.msgstr,
+                );
+                const nonMatches = translatedColumnNames.filter(
+                  (n) => !/er/i.test(n),
+                );
+                const matches = translatedColumnNames.filter((n) =>
+                  /er/i.test(n),
+                );
+                expect(nonMatches).to.have.length.greaterThan(0);
+                expect(matches).to.have.length.greaterThan(0);
+                nonMatches.forEach((n) =>
+                  cy.findByText(new RegExp(n)).should("not.exist"),
+                );
+                matches.forEach((n) =>
+                  cy.findByText(new RegExp(n)).should("be.visible"),
+                );
               });
             });
-
-            cy.findByText(/Ean/).should("not.exist");
-            cy.findByText(/Anbieter/).should("be.visible");
-            cy.findByText(/Bewertung/).should("be.visible");
-            cy.findByText(/Erstellt am/).should("be.visible");
           });
         });
 
         it("summarize sidebar", () => {
-          H.visitQuestion(productsQuestionId);
-          cy.log("Open summarize sidebar");
-          H.initiateAction("Zusammenfassen" as "Summarize");
-          H.rightSidebar().within(() => {
-            cy.log("Summarize sidebar includes all column names in German");
-            Object.values(translationsOfColumnNames).forEach((row) => {
-              cy.findByText(row.msgid).should("not.exist");
-              cy.findByText(row.msgstr).should("be.visible");
-            });
+          cy.get<number>("@productsQuestionId").then((productsQuestionId) => {
+            H.visitQuestion(productsQuestionId);
+            cy.log("Open summarize sidebar");
+            H.initiateAction("Zusammenfassen" as "Summarize");
+            H.rightSidebar().within(() => {
+              cy.log("Summarize sidebar includes all column names in German");
+              Object.values(translationsOfColumnNames).forEach((row) => {
+                cy.findByText(row.msgid).should("not.exist");
+                cy.findByText(row.msgstr).should("be.visible");
+              });
 
-            cy.log("Column names should be sorted in German");
-            cy.findAllByTestId("dimension-list-item").then(($elements) => {
-              const itemNames = $elements.map((_i, el) => el.innerText).get();
-              expect(
-                itemNames.indexOf("Kategorie"),
-                "Kategorie should be sorted after Erstellt am",
-              ).to.be.greaterThan(itemNames.indexOf("Erstellt am"));
-            });
+              cy.log("Column names should be sorted in German");
+              cy.findAllByTestId("dimension-list-item").then(($elements) => {
+                const itemNames = $elements.map((_i, el) => el.innerText).get();
+                expect(
+                  itemNames.indexOf("Kategorie"),
+                  "Kategorie should be sorted after Erstellt am",
+                ).to.be.greaterThan(itemNames.indexOf("Erstellt am"));
+              });
 
-            cy.log("Column names should be searchable");
-            cy.findByPlaceholderText(/Finden/).type("kat");
-            cy.findByText("Erstellt am").should("not.exist");
-            cy.findByText("Kategorie").should("be.visible");
+              cy.log("Column names should be searchable");
+              cy.findByPlaceholderText(/Finden/).type("kat");
+              cy.findByText("Erstellt am").should("not.exist");
+              cy.findByText("Kategorie").should("be.visible");
+            });
           });
         });
 
