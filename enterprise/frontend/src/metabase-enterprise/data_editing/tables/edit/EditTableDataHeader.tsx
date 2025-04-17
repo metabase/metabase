@@ -96,6 +96,7 @@ export const EditTableDataHeader = ({
             <TableNotificationsTrigger tableId={table.id} />
             <ActionIcon
               onClick={onUndo}
+              size="lg"
               disabled={isUndoLoading || isRedoLoading}
             >
               {isUndoLoading ? (
@@ -106,6 +107,7 @@ export const EditTableDataHeader = ({
             </ActionIcon>
             <ActionIcon
               onClick={onRedo}
+              size="lg"
               disabled={isUndoLoading || isRedoLoading}
             >
               {isRedoLoading ? (
