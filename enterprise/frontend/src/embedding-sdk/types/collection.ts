@@ -1,4 +1,4 @@
-import type { CollectionItem as InternalCollectionItem } from "metabase-types/api";
+import type { SdkUserId } from "embedding-sdk/types/user";
 
 import type { SdkEntityId } from "./entity-id";
 
@@ -8,6 +8,37 @@ import type { SdkEntityId } from "./entity-id";
 export type SdkCollectionId = number | "personal" | "root" | SdkEntityId;
 
 /**
- * TODO: replace the internal type with a proper one
+ * The Collection entity
  */
-export type CollectionItem = InternalCollectionItem;
+export type MetabaseCollection = {
+  id: SdkCollectionId;
+  name: string;
+  slug?: string;
+  entity_id?: SdkEntityId;
+  description: string | null;
+};
+
+/**
+ * The CollectionItem entity
+ */
+export type MetabaseCollectionItem = {
+  id: SdkCollectionId;
+  entity_id?: SdkEntityId;
+  model: string;
+  name: string;
+  description: string | null;
+  type?:
+    | "instance-analytics"
+    | "trash"
+    | "model"
+    | "question"
+    | "metric"
+    | null;
+  "last-edit-info"?: {
+    email: string;
+    first_name: string;
+    last_name: string;
+    id: SdkUserId;
+    timestamp: string;
+  };
+};

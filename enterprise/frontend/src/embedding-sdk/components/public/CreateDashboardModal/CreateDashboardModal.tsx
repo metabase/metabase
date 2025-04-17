@@ -3,12 +3,12 @@ import _ from "underscore";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import type { SdkCollectionId } from "embedding-sdk/types/collection";
+import type { MetabaseDashboard } from "embedding-sdk/types/dashboard";
 import {
   CreateDashboardModal as CreateDashboardModalCore,
   type CreateDashboardModalProps as CreateDashboardModalCoreProps,
 } from "metabase/dashboard/containers/CreateDashboardModal";
 import Collections from "metabase/entities/collections";
-import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 /**
@@ -29,7 +29,7 @@ export interface CreateDashboardModalProps {
   /**
    * Handler to react on dashboard creation.
    */
-  onCreate: (dashboard: Dashboard) => void;
+  onCreate: (dashboard: MetabaseDashboard) => void;
 
   /**
    * Handler to close modal component
