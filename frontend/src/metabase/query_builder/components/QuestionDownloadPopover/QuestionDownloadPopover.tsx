@@ -1,9 +1,9 @@
+import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { ViewFooterButton } from "metabase/components/ViewFooterButton";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Flex, Popover } from "metabase/ui";
+import { ActionIcon, Flex, Icon, Popover, Tooltip } from "metabase/ui";
 import type { Dataset } from "metabase-types/api";
 
 import { QuestionDownloadWidget } from "../QuestionDownloadWidget";
@@ -12,8 +12,11 @@ import {
   useDownloadData,
 } from "../QuestionDownloadWidget/use-download-data";
 
+import S from "./QuestionDownloadPopover.module.css";
+
 export type QuestionDownloadPopoverProps = {
   className?: string;
+  floating?: boolean;
 } & Pick<UseDownloadDataParams, "question" | "result"> &
   Partial<Omit<UseDownloadDataParams, "question" | "result">>;
 
@@ -26,6 +29,7 @@ const QuestionDownloadPopover = ({
   uuid,
   token,
   visualizationSettings,
+  floating,
 }: QuestionDownloadPopoverProps) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
@@ -42,14 +46,16 @@ const QuestionDownloadPopover = ({
   return (
     <Popover opened={isPopoverOpen} onChange={setIsPopoverOpen}>
       <Popover.Target>
-        <Flex className={className}>
-          <ViewFooterButton
-            icon="download"
-            data-testid="download-button"
-            tooltipLabel={t`Download full results`}
-            onClick={() => setIsPopoverOpen(!isPopoverOpen)}
-            disableTooltip={isPopoverOpen}
-          />
+        <Flex className={cx(className, { [S.FloatingButton]: floating })}>
+          <Tooltip label={t`Download results`} disabled={isPopoverOpen}>
+            <ActionIcon
+              data-testid="question-results-download-button"
+              onClick={() => setIsPopoverOpen(!isPopoverOpen)}
+              aria-label={t`Download results`}
+            >
+              <Icon name="download" />
+            </ActionIcon>
+          </Tooltip>
         </Flex>
       </Popover.Target>
       <Popover.Dropdown p="0.75rem">

@@ -248,9 +248,7 @@ describe("scenarios [EE] > embedding > questions", () => {
     cy.wait("@deLocale");
 
     H.main().findByText("Februar 11, 2025, 9:40 PM");
-    cy.findByTestId("download-button").realHover();
-    H.tooltip().findByText("Lade alle Ergebnisse herunter", { exact: false });
-
+    cy.findByRole("button", { name: "Ergebnis downloaden" }).should("exist");
     cy.url().should("include", "locale=de");
   });
 
@@ -346,7 +344,8 @@ describe("scenarios > embedding > questions > downloads", () => {
         });
 
         cy.findByRole("gridcell").should("have.text", "Foo");
-        cy.findByRole("contentinfo").icon("download").click();
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).click();
 
         H.popover().within(() => {
           cy.findAllByText("Download").should("have.length", 2);
@@ -363,7 +362,8 @@ describe("scenarios > embedding > questions > downloads", () => {
         });
 
         cy.findByRole("gridcell").should("have.text", "Foo");
-        cy.findByRole("contentinfo").icon("download");
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).should("exist");
       });
     });
   });
