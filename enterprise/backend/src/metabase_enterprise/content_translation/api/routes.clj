@@ -1,12 +1,13 @@
-(ns metabase.api.content-translation
+(ns metabase-enterprise.content-translation.api.routes
   "Endpoints relating to the translation of user-generated content"
   (:require
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.content-translation.models :as ct]
    [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common :refer [+auth]]
    [metabase.db.query :as mdb.query]
-   [metabase.models.content-translation :as ct]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
@@ -125,5 +126,9 @@
     (if locale
       {:data (ct/get-translations locale)}
       {:data (ct/get-translations)})))
+
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/content-translation` routes."
+  (api.macros/ns-handler *ns* +auth))
 
 (set! *warn-on-reflection* true)

@@ -21,7 +21,7 @@ export const contentTranslationApi = Api.injectEndpoints({
       >({
         query: (params) => ({
           method: "GET",
-          url: "/api/content-translation/dictionary",
+          url: "/api/ee/content-translation/dictionary",
           params,
         }),
 
@@ -56,7 +56,7 @@ export const contentTranslationApi = Api.injectEndpoints({
 
           return {
             method: "POST",
-            url: "/api/content-translation/upload-dictionary",
+            url: "/api/ee/content-translation/upload-dictionary",
             body: { formData },
             formData: true,
             fetch: true,

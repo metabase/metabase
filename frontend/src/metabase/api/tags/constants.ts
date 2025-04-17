@@ -9,6 +9,7 @@ export const TAG_TYPES = [
   "channel",
   "cloud-migration",
   "collection",
+  "content-translation",
   "dashboard",
   "dashboard-question-candidates",
   "database",
@@ -44,6 +45,7 @@ export const TAG_TYPES = [
 
 export const TAG_TYPE_MAPPING = {
   collection: "collection",
+  "content-translation": "content-translation",
   card: "card",
   dashboard: "dashboard",
   database: "database",
