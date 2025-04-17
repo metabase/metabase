@@ -29,7 +29,7 @@ export function BccToggleWidget() {
   };
 
   return (
-    <Stack>
+    <Stack data-testid="bcc-enabled?-setting">
       <SettingHeader
         id="bcc-enabled?"
         title={t`Add Recipients as CC or BCC`}
