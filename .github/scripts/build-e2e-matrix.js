@@ -1,5 +1,7 @@
 const glob = require("glob");
 
+const DEFAULT_SPEC_PATTERN = "./e2e/test/scenarios/**/*.cy.spec.*";
+
 function buildMatrix(inputSpecs, inputChunks) {
   const java = 21;
   const defaultRunner = "ubuntu-22.04";
@@ -12,10 +14,8 @@ function buildMatrix(inputSpecs, inputChunks) {
     edition: "ee",
   };
 
-  const allSpecs = inputSpecs || "./e2e/test/scenarios/**/*.cy.spec.*";
-
-  const isDefaultSpecPattern =
-    allSpecs === "./e2e/test/scenarios/**/*.cy.spec.*";
+  const allSpecs = inputSpecs || DEFAULT_SPEC_PATTERN;
+  const isDefaultSpecPattern = allSpecs === DEFAULT_SPEC_PATTERN;
 
   console.log("Processed specs value:", allSpecs);
   console.log("Is default pattern:", isDefaultSpecPattern);
