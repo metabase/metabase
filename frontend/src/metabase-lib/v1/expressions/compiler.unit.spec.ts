@@ -396,12 +396,12 @@ describe("old recursive-parser tests", () => {
     expect(aggregation("Average(Subtotal)")).toEqual(["avg", subtotal]);
 
     // functions without argument, hence no "()"
-    expect(aggregation("Count")).toEqual(["count"]);
-    expect(aggregation("CumulativeCount")).toEqual(["cum-count"]);
+    expect(aggregation("Count()")).toEqual(["count"]);
+    expect(aggregation("CumulativeCount()")).toEqual(["cum-count"]);
 
     // mixed them in some arithmetic
-    expect(aggregation("COUNT / 2")).toEqual(["/", ["count"], 2]);
-    expect(aggregation("1+CumulativeCount")).toEqual(["+", 1, ["cum-count"]]);
+    expect(aggregation("COUNT() / 2")).toEqual(["/", ["count"], 2]);
+    expect(aggregation("1+CumulativeCount()")).toEqual(["+", 1, ["cum-count"]]);
   });
 
   it("should handle aggregation with another function", () => {
