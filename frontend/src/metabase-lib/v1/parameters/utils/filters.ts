@@ -20,13 +20,27 @@ export function fieldFilterForParameter(
     case "id":
       return (field) => field.isID();
     case "category":
-      return (field) => field.isCategory();
+      return (field) => field.has_field_values === "list";
     case "location":
       return (field) => field.isLocation();
     case "number":
-      return (field) => field.isNumber() && !field.isCoordinate();
+      return (field) =>
+        field.isNumeric() &&
+        !field.isPK() &&
+        !field.isFK() &&
+        !field.isCoordinate();
     case "string":
-      return (field) => field.isString() && !field.isLocation();
+      return (field) => {
+        const isString = field.isString();
+        const isNumeric = field.isNumeric();
+        const isBoolean = field.isBoolean();
+        const hasFieldValues = field.has_field_values === "list";
+        const isLocation = field.isLocation();
+        return (
+          (isString || ((isNumeric || isBoolean) && hasFieldValues)) &&
+          !isLocation
+        );
+      };
   }
 
   return () => false;
@@ -45,7 +59,8 @@ export function columnFilterForParameter(
     case "id":
       return (column) => Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
     case "category":
-      return (column) => Lib.isCategory(column) || Lib.isBoolean(column);
+      return (column) =>
+        Lib.fieldValuesSearchInfo(query, column).hasFieldValues === "list";
     case "location":
       return (column) => Lib.isLocation(column);
     case "number":
@@ -62,7 +77,6 @@ export function columnFilterForParameter(
         const hasFieldValues =
           Lib.fieldValuesSearchInfo(query, column).hasFieldValues === "list";
         const isLocation = Lib.isLocation(column);
-
         return (
           (isString || ((isNumeric || isBoolean) && hasFieldValues)) &&
           !isLocation
