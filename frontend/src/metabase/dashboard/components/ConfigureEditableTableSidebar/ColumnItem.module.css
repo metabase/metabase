@@ -1,0 +1,8 @@
+.ColumnItemRoot.dragging {
+  cursor: grabbing;
+  pointer-events: auto !important;
+}
+
+.ColumnItemRoot.Draggable:hover .ColumnItemDragHandle {
+  color: var(--mb-color-brand);
+}
