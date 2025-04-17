@@ -1,19 +1,21 @@
 (ns metabase.actions.actions
   "Code related to the new writeback Actions."
   (:require
+   [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.models.setting :as setting]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
 (setting/defsetting database-enable-actions
@@ -22,6 +24,14 @@
   :type :boolean
   :visibility :public
   :database-local :only)
+
+(setting/defsetting database-enable-table-editing
+  (i18n/deferred-tru "Whether to enable table data editing for a specific Database.")
+  :default false
+  :type :boolean
+  :visibility :public
+  :database-local :only
+  :export? true)
 
 (defmulti normalize-action-arg-map
   "Normalize the `arg-map` passed to [[perform-action!]] for a specific `action`."
@@ -131,6 +141,23 @@
 
   nil)
 
+(defn check-data-editing-enabled-for-database!
+  "Throws an appropriate error if editing is unsupported or disabled for a database, otherwise returns nil."
+  [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
+  ;; for now we reuse the :actions driver feature, but specialise the message
+  (when-not (driver.u/supports? driver :actions db)
+    (throw (ex-info (i18n/tru "{0} Database {1} does not support data editing."
+                              (u/qualified-name driver)
+                              (format "%d %s" db-id (pr-str db-name)))
+                    {:status-code 400, :database-id db-id})))
+
+  (binding [setting/*database-local-values* db-settings]
+    (when-not (database-enable-table-editing)
+      (throw (ex-info (i18n/tru "Data editing is not enabled.")
+                      {:status-code 400, :database-id db-id}))))
+
+  nil)
+
 (defn- database-for-action [action-or-id]
   (t2/select-one :model/Database {:select [:db.*]
                                   :from   :action
@@ -150,9 +177,9 @@
   `action` being performed. [[action-arg-map-spec]] returns the specific spec used to validate `arg-map` for a given
   `action`."
   [action
-   arg-map :- [:map
-               [:create-row {:optional true} [:maybe ::lib.schema.actions/row]]
-               [:update-row {:optional true} [:maybe ::lib.schema.actions/row]]]]
+   arg-map
+   & {:keys [policy]
+      :or   {policy :model-action}}]
   (let [action  (keyword action)
         spec    (action-arg-map-spec action)
         arg-map (normalize-action-arg-map action arg-map)] ; is arg-map always just a regular query?
@@ -161,11 +188,73 @@
                       (s/explain-data spec arg-map))))
     (let [{driver :engine :as db} (api/check-404 (qp.store/with-metadata-provider (:database arg-map)
                                                    (lib.metadata/database (qp.store/metadata-provider))))]
-      (check-actions-enabled-for-database! db)
+      (case policy
+        :model-action
+        (check-actions-enabled-for-database! db)
+        :data-editing
+        (check-data-editing-enabled-for-database! db))
       (binding [*misc-value-cache* (atom {})]
-        (qp.perms/check-query-action-permissions* arg-map)
+        (when (= :model-action policy)
+          (qp.perms/check-query-action-permissions* arg-map))
         (driver/with-driver driver
           (perform-action!* driver action db arg-map))))))
+
+(defn- publish-action-invocation! [invocation-id user-id action-kw args-map]
+  (->> {:action        action-kw
+        :invocation_id invocation-id
+        :actor_id      user-id
+        :args          args-map}
+       (events/publish-event! :event/action.invoked)))
+
+(defn publish-action-success!
+  "Publish an action success event. This is a success event for the action that was invoked."
+  [invocation-id user-id action-kw args-map result]
+  (->> {:action        action-kw
+        :invocation_id invocation-id
+        :actor_id      user-id
+        :result        result
+        :args          (u/snake-keys args-map)}
+       (events/publish-event! :event/action.success)))
+
+(defn- publish-action-failure! [invocation-id user-id action-kw msg info]
+  (->> {:action        action-kw
+        :invocation_id invocation-id
+        :actor_id      user-id
+        :error         (:error info)
+        :message       msg
+        :info          info}
+       (events/publish-event! :event/action.failure)))
+
+;; TODO will fix requiring-resolve when we remove all this table-action specific stuff, which has NO place here
+#_{:clj-kondo/ignore [:metabase/modules]}
+(defn perform-with-system-events!
+  "Eventually, all calls to perform-action! should go through this... Proceeding with caution."
+  [action-kw args-map & {:as opts}]
+  (let [qry-context       ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/qry-context) args-map)
+        pk->db-row-before ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/query-previous-rows) action-kw qry-context)
+        invocation-id     (nano-id/nano-id)
+        user-id           api/*current-user-id*]
+    (publish-action-invocation! invocation-id user-id action-kw args-map)
+    (try
+      (let [result           (perform-action! action-kw args-map opts)
+            pk->db-row-after ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/query-latest-rows) action-kw qry-context result)
+            all-pks          (set/union (set (keys pk->db-row-before))
+                                        (set (keys pk->db-row-after)))
+            row-changes      (for [pk all-pks
+                                   :let [before (get pk->db-row-before pk)
+                                         after (get pk->db-row-after pk)]
+                                   :when (not= before after)]
+                               {:pk     pk
+                                :before before
+                                :after  after})]
+        (publish-action-success! invocation-id user-id action-kw args-map row-changes)
+        result)
+      (catch Exception e
+        (let [msg  (ex-message e)
+              info (ex-data e)
+              info (with-meta info (merge (meta info) {:exception e}))]
+          (publish-action-failure! invocation-id user-id action-kw msg info)
+          (throw e))))))
 
 ;;;; Action definitions.
 

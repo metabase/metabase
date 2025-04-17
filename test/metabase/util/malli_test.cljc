@@ -83,3 +83,17 @@
                  b :- :int
                  & more]
                 (reduce + (list* a b more)))))))))
+
+#?(:clj
+   (do
+     (defmulti ^:private my-multifn2
+       {:arglists '([x])}
+       identity)
+
+     (mu/defmethod my-multifn2 :foo :- :int
+       [x :- :int]
+       (inc x))
+
+     (deftest ^:parallel defmethod-metadata-test
+       (is (= {:schema [:=> [:cat :int] :int]}
+              (meta (get-method my-multifn2 :foo)))))))

@@ -137,6 +137,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...chipOverrides,
     ...comboboxOverrides,
     ...codeOverrides,
+    ...comboboxOverrides,
     ...dateInputOverrides,
     ...datePickerOverrides,
     ...dividerOverrides,

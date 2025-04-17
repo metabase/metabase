@@ -34,7 +34,7 @@
 {:metabase/modules
  {actions
   {:api  #{metabase.actions.api metabase.actions.core}
-   :uses #{analytics api driver legacy-mbql lib model-persistence models query-processor search util}}
+   :uses #{analytics api driver events legacy-mbql lib model-persistence models query-processor search util}}
 
   activity-feed
   {:api  #{metabase.activity-feed.api metabase.activity-feed.init}
@@ -211,7 +211,7 @@
 
   events
   {:api  #{metabase.events metabase.events.init metabase.events.notification}
-   :uses #{api channel driver models notification premium-features util}}
+   :uses #{api config channel driver models notification premium-features util}}
 
   formatter
   {:api  #{metabase.formatter}
@@ -392,6 +392,7 @@
            driver
            events
            models
+           lib
            permissions
            premium-features
            public-settings
@@ -681,7 +682,7 @@
 
   enterprise/core
   {:api  #{metabase-enterprise.core.init}
-   :uses #{enterprise/enhancements}}
+   :uses #{enterprise/enhancements enterprise/data-editing}}
 
   enterprise/dashboard-subscription-filters
   {:api  #{}
@@ -772,7 +773,11 @@
 
   enterprise/data-editing
   {:api #{}
-   :uses #{api actions util}}
+   :uses #{api actions driver events lib models query-processor upload util}}
+
+  enterprise/data-editing-public
+  {:api #{}
+   :uses #{api actions enterprise/data-editing driver events lib query-processor upload util}}
 
   enterprise/task
   {:api  #{metabase-enterprise.task.truncate-audit-tables}

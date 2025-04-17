@@ -8,6 +8,7 @@ export const createMockDashboardState = (
   dashboards: {},
   dashcards: {},
   dashcardData: {},
+  editingDashcardDataOverride: {},
   parameterValues: {},
   draftParameterValues: {},
   loadingDashCards: {

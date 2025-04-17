@@ -6,6 +6,7 @@ import { ExtraEditButtonsMenu } from "../../ExtraEditButtonsMenu";
 import { RefreshWidget } from "../../RefreshWidget";
 import {
   AddActionElementButton,
+  AddEditableTableButton,
   AddFilterParameterButton,
   AddHeadingOrTextButton,
   AddQuestionButton,
@@ -29,6 +30,7 @@ export const DASHBOARD_ACTION = {
   ADD_SECTION: "ADD_SECTION",
   ADD_FILTER_PARAMETER: "ADD_FILTER_PARAMETER",
   ADD_ACTION_ELEMENT: "ADD_ACTION_ELEMENT",
+  ADD_EDITABLE_TABLE: "ADD_EDITABLE_TABLE",
   EXTRA_EDIT_BUTTONS_MENU: "EXTRA_EDIT_BUTTONS_MENU",
   COPY_ANALYTICS_DASHBOARD: "COPY_ANALYTICS_DASHBOARD",
   EDIT_DASHBOARD: "EDIT_DASHBOARD",
@@ -66,6 +68,10 @@ export const dashboardActionButtons: Record<
   },
   [DASHBOARD_ACTION.ADD_FILTER_PARAMETER]: {
     component: AddFilterParameterButton,
+    enabled: ({ isEditing }) => isEditing,
+  },
+  [DASHBOARD_ACTION.ADD_EDITABLE_TABLE]: {
+    component: AddEditableTableButton,
     enabled: ({ isEditing }) => isEditing,
   },
   [DASHBOARD_ACTION.ADD_ACTION_ELEMENT]: {

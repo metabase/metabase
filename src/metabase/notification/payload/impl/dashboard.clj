@@ -25,24 +25,28 @@
    shared.params/param-val-or-default
    (the-parameters dashboard-subscription-params dashboard-params)))
 
-(mu/defmethod notification.payload/payload :notification/dashboard
-  [{:keys [creator_id dashboard_subscription] :as _notification-info} :- ::notification.payload/Notification]
+(mu/defmethod notification.payload/notification-payload :notification/dashboard
+  [{:keys [creator_id dashboard_subscription] :as notification-info} :- ::notification.payload/Notification]
   (log/with-context {:dashboard_id (:dashboard_id dashboard_subscription)}
     (let [dashboard-id (:dashboard_id dashboard_subscription)
           dashboard    (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :tabs)
           parameters   (parameters (:parameters dashboard_subscription) (:parameters dashboard))]
-      {:dashboard_parts        (cond->> (notification.execute/execute-dashboard dashboard-id creator_id parameters)
-                                 (:skip_if_empty dashboard_subscription)
-                                 (remove (fn [{part-type :type :as part}]
-                                           (and
-                                            (= part-type :card)
-                                            (zero? (get-in part [:result :row_count] 0))))))
-       :dashboard              dashboard
-       :style                  {:color_text_dark   channel.render/color-text-dark
-                                :color_text_light  channel.render/color-text-light
-                                :color_text_medium channel.render/color-text-medium}
-       :parameters             parameters
-       :dashboard_subscription dashboard_subscription})))
+      {:payload_type :notification/dashboard
+       :condition    (:condition notification-info)
+       :creator      (t2/select-one [:model/User :id :first_name :last_name :email] creator_id)
+       :context      (notification.payload/default-settings)
+       :payload      {:dashboard_parts        (cond->> (notification.execute/execute-dashboard dashboard-id creator_id parameters)
+                                                (:skip_if_empty dashboard_subscription)
+                                                (remove (fn [{part-type :type :as part}]
+                                                          (and
+                                                           (= part-type :card)
+                                                           (zero? (get-in part [:result :row_count] 0))))))
+                      :dashboard              dashboard
+                      :style                  {:color_text_dark   channel.render/color-text-dark
+                                               :color_text_light  channel.render/color-text-light
+                                               :color_text_medium channel.render/color-text-medium}
+                      :parameters             parameters
+                      :dashboard_subscription dashboard_subscription}})))
 
 (mu/defmethod notification.payload/skip-reason :notification/dashboard
   [{:keys [payload] :as _noti-payload}]

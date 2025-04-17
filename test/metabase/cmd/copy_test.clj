@@ -42,6 +42,7 @@
     :model/QueryTable
     :model/SearchIndexMetadata
     :model/TaskHistory
+    :model/Undo
     :model/UserKeyValue})
 
 (defn- all-model-names []

@@ -11,5 +11,6 @@ export * from "./misc";
 export * from "./models";
 export * from "./pulses";
 export * from "./questions";
+export * from "./tables";
 export * from "./timelines";
 export * from "./utils";

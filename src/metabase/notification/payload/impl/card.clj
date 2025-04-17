@@ -10,8 +10,8 @@
    [metabase.util.ui-logic :as ui-logic]
    [toucan2.core :as t2]))
 
-(mu/defmethod notification.payload/payload :notification/card
-  [{:keys [creator_id payload subscriptions] :as _notification-info} :- ::notification.payload/Notification]
+(mu/defmethod notification.payload/notification-payload :notification/card
+  [{:keys [creator_id payload subscriptions] :as notification-info} :- ::notification.payload/Notification]
   (log/with-context {:card_id (:card_id payload)}
     (let [card-id     (:card_id payload)
           part        (notification.execute/execute-card creator_id card-id)
@@ -21,13 +21,17 @@
                         {:card_id card-id
                          :status (:status card-result)
                          :error  (:error card-result)})))
-      {:card_part        part
-       :card             (t2/select-one :model/Card card-id)
-       :style            {:color_text_dark   channel.render/color-text-dark
-                          :color_text_light  channel.render/color-text-light
-                          :color_text_medium channel.render/color-text-medium}
-       :notification_card payload
-       :subscriptions     subscriptions})))
+      {:payload_type :notification/card
+       :condition    (:condition notification-info)
+       :creator      (t2/select-one [:model/User :id :first_name :last_name :email] creator_id)
+       :context      (notification.payload/default-settings)
+       :payload      {:card_part        part
+                      :card             (t2/select-one :model/Card card-id)
+                      :style            {:color_text_dark   channel.render/color-text-dark
+                                         :color_text_light  channel.render/color-text-light
+                                         :color_text_medium channel.render/color-text-medium}
+                      :notification_card payload
+                      :subscriptions     subscriptions}})))
 
 (defn- goal-met? [{:keys [send_condition], :as notification_card} card_part]
   (let [goal-comparison      (if (= :goal_above (keyword send_condition)) >= <)

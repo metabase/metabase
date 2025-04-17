@@ -1,6 +1,7 @@
 (ns metabase.driver.h2-test
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -415,3 +416,62 @@
            (sql-jdbc.actions/maybe-parse-sql-error
             :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/update
             "Referential integrity constraint violation: \"USER_GROUP-ID_GROUP_-159406530: PUBLIC.\"\"USER\"\" FOREIGN KEY(\"\"GROUP-ID\"\") REFERENCES PUBLIC.\"\"GROUP\"\"(ID) (CAST(999 AS BIGINT))\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"USER\" (\"NAME\", \"GROUP-ID\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23506-214]")))))
+
+(deftest column-attributes-test
+  (mt/test-driver :h2
+    (mt/with-empty-db
+      (let [spec       (mdb/spec :h2 (:details (mt/db)))
+            table-name (str "COLUMN_ATTRIBUTES_TEST_" (System/currentTimeMillis))
+
+            drop-table!
+            (fn []
+              (jdbc/execute! spec [(format "DROP TABLE IF EXISTS %s" table-name)]))
+
+            create-table!
+            (fn [column-defs]
+              (jdbc/execute! spec [(->> (map #(format "col%d %s" %1 %2) (range) column-defs)
+                                        (str/join ",")
+                                        (format "CREATE TABLE %s (%s)" table-name))]))
+
+            describe
+            (fn [column-defs]
+              (try
+                (create-table! column-defs)
+                (->> (driver/describe-table :h2 (mt/db) {:name table-name})
+                     :fields
+                     (sort-by :database-position)
+                     (mapv #(-> (select-keys % [:database-is-generated :database-is-nullable :database-default])
+                                ;; shorthand
+                                (set/rename-keys {:database-is-generated :g
+                                                  :database-is-nullable  :n
+                                                  :database-default      :d}))))
+                (finally
+                  (drop-table!))))
+
+            do-test
+            (fn [& test-cases]
+              (let [test-cases' (partition 2 test-cases)
+                    results (describe (map first test-cases'))]
+                (is (= (count test-cases) (* 2 (count results))))
+                (doseq [[[col-def expected] result] (map vector test-cases' results)]
+                  (testing col-def
+                    (is (= expected result))))))]
+        (do-test
+         "SERIAL"
+         {:g false, :n false}
+
+         "INT"
+         {:g false, :n true}
+
+         "INT AS (col0 + 1)"
+         {:g true,  :n true}
+
+         ;; note, like postgres - h2 rewrites the expression supplied by the user.
+         "INT DEFAULT EXTRACT(EPOCH FROM NOW())"
+         {:g false, :n true, :d "EXTRACT(EPOCH FROM LOCALTIMESTAMP)"}
+
+         "INT NULL"
+         {:g false, :n true}
+
+         "INT NOT NULL"
+         {:g false, :n false})))))

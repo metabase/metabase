@@ -18,7 +18,9 @@ export type DashboardSidebarName =
   | "editParameter"
   | "settings"
   | "sharing"
-  | "info";
+  | "info"
+  | "addEditableTable"
+  | "configureEditableTable";
 
 interface BaseSidebarState {
   name?: DashboardSidebarName;
@@ -99,6 +101,7 @@ export interface DashboardState {
 
   dashcards: Record<DashCardId, StoreDashcard>;
   dashcardData: DashCardDataMap;
+  editingDashcardDataOverride: DashCardDataMap;
 
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   draftParameterValues: Record<ParameterId, ParameterValueOrArray | null>;
@@ -107,6 +110,7 @@ export interface DashboardState {
   loadingControls: DashboardLoadingControls;
 
   editingDashboard: Dashboard | null;
+
   isAddParameterPopoverOpen: boolean;
   isNavigatingBackToDashboard: boolean;
 

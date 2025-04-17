@@ -1,8 +1,11 @@
 import type {
   Field,
+  FieldWithMetadata,
+  GetTableDataRequest,
   GetTableQueryMetadataRequest,
   GetTableRequest,
   Table,
+  TableData,
   TableId,
   TableListQuery,
   UpdateTableFieldsOrderRequest,
@@ -19,6 +22,10 @@ import {
   provideTableTags,
   tag,
 } from "./tags";
+
+interface TableWithFieldMetadata extends Table {
+  fields: FieldWithMetadata[];
+}
 
 export const tableApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -37,7 +44,10 @@ export const tableApi = Api.injectEndpoints({
       }),
       providesTags: (table) => (table ? provideTableTags(table) : []),
     }),
-    getTableQueryMetadata: builder.query<Table, GetTableQueryMetadataRequest>({
+    getTableQueryMetadata: builder.query<
+      TableWithFieldMetadata,
+      GetTableQueryMetadataRequest
+    >({
       query: ({ id, ...params }) => ({
         method: "GET",
         url: `/api/table/${id}/query_metadata`,
@@ -51,6 +61,12 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}/fks`,
       }),
       providesTags: [listTag("field")],
+    }),
+    getTableData: builder.query<TableData, GetTableDataRequest>({
+      query: ({ tableId }) => ({
+        method: "GET",
+        url: `/api/table/${tableId}/data`,
+      }),
     }),
     updateTable: builder.mutation<Table, UpdateTableRequest>({
       query: ({ id, ...body }) => ({
@@ -115,6 +131,7 @@ export const {
   useGetTableQuery,
   useGetTableQueryMetadataQuery,
   useLazyListTableForeignKeysQuery,
+  useGetTableDataQuery,
   useUpdateTableMutation,
   useUpdateTableListMutation,
   useUpdateTableFieldsOrderMutation,

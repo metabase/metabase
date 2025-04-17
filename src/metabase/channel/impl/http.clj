@@ -104,3 +104,11 @@
                                            :raw_data      (qp-result->raw-data (:result card_part))}
                       :sent_at            (t/offset-date-time)}]
     [{:body request-body}]))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                           System Event                                          ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(mu/defmethod channel/render-notification [:channel/http :notification/system-event]
+  [_channel-type notification-payload _template _recipients]
+  [{:body notification-payload}])

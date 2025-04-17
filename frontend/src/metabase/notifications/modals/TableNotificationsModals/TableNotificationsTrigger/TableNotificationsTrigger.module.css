@@ -1,0 +1,6 @@
+/* Specificity to override already overridden custom styling without !important */
+.alertIcon[data-variant="subtle"] {
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}

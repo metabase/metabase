@@ -253,11 +253,14 @@ export const CombinedFeatures: Story = () => {
   const handleBodyCellClick = useCallback(
     (
       _: React.MouseEvent<HTMLDivElement>,
-      rowIndex: number,
-      columnId: string,
+      cellProps: {
+        rowIndex: number;
+        columnId: string;
+        cellId: string;
+      },
     ) => {
       // eslint-disable-next-line no-console
-      console.log(`Clicked cell at row ${rowIndex}, column ${columnId}`);
+      console.log(`Clicked cell`, cellProps);
     },
     [],
   );

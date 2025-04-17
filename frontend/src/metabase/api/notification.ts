@@ -1,8 +1,14 @@
+import { useMemo } from "react";
+
 import type {
+  AlertNotification,
   CreateNotificationRequest,
+  GetNotificationPayloadExampleRequest,
+  GetNotificationPayloadExampleResponse,
   ListNotificationsRequest,
   Notification,
   NotificationId,
+  TableNotification,
   UpdateNotificationRequest,
 } from "metabase-types/api/notification";
 
@@ -87,6 +93,16 @@ export const notificationApi = Api.injectEndpoints({
         body,
       }),
     }),
+    getNotificationPayloadExample: builder.mutation<
+      GetNotificationPayloadExampleResponse,
+      GetNotificationPayloadExampleRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/notification/payload`,
+        body,
+      }),
+    }),
   }),
 });
 
@@ -101,4 +117,37 @@ export const {
   useUpdateNotificationMutation,
   useUnsubscribeFromNotificationMutation,
   useSendUnsavedNotificationMutation,
+  useGetNotificationPayloadExampleMutation,
 } = notificationApi;
+
+export const useTableNotificationsQuery = (
+  params: Parameters<typeof useListNotificationsQuery>[0],
+) => {
+  const { data, ...rest } = useListNotificationsQuery(params);
+  return {
+    data: useMemo(() => data?.filter(isTableNotification), [data]),
+    ...rest,
+  };
+};
+
+export const useAlertNotificationsQuery = (
+  params: Parameters<typeof useListNotificationsQuery>[0],
+) => {
+  const { data, ...rest } = useListNotificationsQuery(params);
+  return {
+    data: useMemo(() => data?.filter(isAlertNotification), [data]),
+    ...rest,
+  };
+};
+
+export const isTableNotification = (
+  notification: Notification,
+): notification is TableNotification => {
+  return notification.payload_type === "notification/system-event";
+};
+
+export const isAlertNotification = (
+  notification: Notification,
+): notification is AlertNotification => {
+  return notification.payload_type === "notification/card";
+};

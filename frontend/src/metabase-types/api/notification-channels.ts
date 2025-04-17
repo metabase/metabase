@@ -80,6 +80,7 @@ export type EmailChannelSpec = ChannelSpec & {
   recipients: ChannelSpecRecipients;
 };
 
+export type NotificationChannelKey = "email" | "slack" | "http";
 export interface ChannelApiResponse {
   channels: {
     email?: EmailChannelSpec;

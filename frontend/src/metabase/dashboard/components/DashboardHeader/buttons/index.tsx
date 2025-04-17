@@ -1,4 +1,5 @@
 export * from "./AddActionElementButton";
+export * from "./AddEditableTableButton";
 export * from "./AddFilterParameterButton";
 export * from "./AddHeadingOrTextButton";
 export * from "./AddQuestionButton";

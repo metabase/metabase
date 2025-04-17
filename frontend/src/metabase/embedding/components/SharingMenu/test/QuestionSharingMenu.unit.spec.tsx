@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
-import { createMockNotification } from "metabase-types/api/mocks";
+import { createMockAlertNotification } from "metabase-types/api/mocks";
 
 import { openMenu, setupQuestionSharingMenu } from "./setup";
 
@@ -60,7 +60,7 @@ describe("QuestionSharingMenu", () => {
         setupQuestionSharingMenu({
           isAdmin: true,
           isEmailSetup: true,
-          alerts: [createMockNotification()],
+          alerts: [createMockAlertNotification()],
         });
         await openMenu();
         expect(await screen.findByText("Edit alerts")).toBeInTheDocument();
@@ -70,7 +70,7 @@ describe("QuestionSharingMenu", () => {
         setupQuestionSharingMenu({
           isAdmin: true,
           isEmailSetup: true,
-          alerts: [createMockNotification()],
+          alerts: [createMockAlertNotification()],
         });
         await openMenu();
         await userEvent.click(screen.getByText("Edit alerts"));
@@ -96,7 +96,7 @@ describe("QuestionSharingMenu", () => {
         setupQuestionSharingMenu({
           isAdmin: false,
           isEmailSetup: true,
-          alerts: [createMockNotification()],
+          alerts: [createMockAlertNotification()],
         });
         await openMenu();
         expect(screen.getByText("Edit alerts")).toBeInTheDocument();
@@ -106,7 +106,7 @@ describe("QuestionSharingMenu", () => {
         setupQuestionSharingMenu({
           isAdmin: false,
           isEmailSetup: true,
-          alerts: [createMockNotification()],
+          alerts: [createMockAlertNotification()],
         });
         await openMenu();
         await userEvent.click(screen.getByText("Edit alerts"));

@@ -23,6 +23,7 @@ import { DataGridThemeProvider } from "metabase/data-grid/hooks/use-table-theme"
 import type { DataGridInstance, DataGridTheme } from "metabase/data-grid/types";
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { getScrollBarSize } from "metabase/lib/dom";
+import { Box } from "metabase/ui";
 
 import { Footer } from "../Footer/Footer";
 
@@ -215,7 +216,12 @@ export const DataGrid = function DataGrid<TData>({
                           };
 
                       const headerContent = isPinned ? (
-                        headerCell
+                        <Box
+                          className={cx(S.headerCell, classNames?.headerCell)}
+                          style={styles?.headerCell}
+                        >
+                          {headerCell}
+                        </Box>
                       ) : (
                         <SortableHeader
                           className={cx(S.headerCell, classNames?.headerCell)}
@@ -331,7 +337,11 @@ export const DataGrid = function DataGrid<TData>({
                           data-column-id={cell.column.id}
                           className={cx(S.bodyCell, classNames?.bodyCell)}
                           onClick={(e) =>
-                            onBodyCellClick?.(e, cell.row.index, cell.column.id)
+                            onBodyCellClick?.(e, {
+                              rowIndex: cell.row.index,
+                              columnId: cell.column.id,
+                              cellId: cell.id,
+                            })
                           }
                           onMouseDown={(e) =>
                             selection.handlers.handleCellMouseDown(e, cell)

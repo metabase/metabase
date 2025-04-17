@@ -1,6 +1,5 @@
 (ns mage.kondo
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.shell :as shell]
    [mage.util :as u]))

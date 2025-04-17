@@ -16,7 +16,8 @@
                        :handlers [@notification.tu/default-email-handler]}]
         (let [send-alert-by-user! (fn [user-kw]
                                     (-> (assoc notification :creator_id (mt/user->id user-kw))
-                                        notification.payload/payload
+                                        notification.payload/notification-payload
+                                        :payload
                                         :card_part
                                         :result
                                         :data

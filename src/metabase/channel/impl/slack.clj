@@ -4,7 +4,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
-   ;; TODO: integrations.slack should be migrated to channel.slack
+   [metabase.channel.template.core :as channel.template]
    [metabase.integrations.slack :as slack]
    [metabase.models.params.shared :as shared.params]
    [metabase.public-settings :as public-settings]
@@ -189,3 +189,55 @@
        :attachments (doall (remove nil?
                                    (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
                                              (create-slack-attachment-data (:dashboard_parts payload))])))})))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                           System Event                                          ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(def ^:private action->template
+  {:bulk/create {:channel_type :channel/slack
+                 :details      {:type :slack/handlebars-text
+                                :body (str "# {{editor.first_name}} {{editor.last_name}} has created a row for {{table.name}}"
+                                           "\n\n"
+                                           "## Created row:"
+                                           "\n\n"
+                                           "{{#each records}}\n"
+                                           "{{#each this.row}}\n"
+                                           "- {{@key}} : {{@value}}\n"
+                                           "{{/each}}\n"
+                                           "{{/each}}")}}
+   :bulk/update {:channel_type :channel/slack
+                 :details      {:type :slack/handlebars-text
+                                :body (str "# {{editor.first_name}} {{editor.last_name}} has updated a row from {{table.name}}\n\n"
+                                           "\n\n"
+                                           "## Update:"
+                                           "\n\n"
+                                           "{{#each records}}\n"
+                                           "{{#each this.changes}}\n"
+                                           "- {{@key}} : {{@value.after}}\n"
+                                           "{{/each}}\n"
+                                           "{{/each}}")}}
+   :bulk/delete {:channel_type :channel/slack
+                 :details      {:type :slack/handlebars-text
+                                :body (str "# {{editor.first_name}} {{editor.last_name}} has deleted a row from {{table.name}}"
+                                           "\n\n"
+                                           "## Deleted row:"
+                                           "\n\n"
+                                           "{{#each records}}\n"
+                                           "{{#each this.row}}\n"
+                                           "- {{@key}} : {{@value}}\n"
+                                           "{{/each}}\n"
+                                           "{{/each}}")}}})
+
+(mu/defmethod channel/render-notification [:channel/slack :notification/system-event] :- [:sequential SlackMessage]
+  [_channel-type {:keys [context] :as notification-payload} template recipients]
+  (let [event-name (:event_name context)
+        template    (or template
+                        (when (= :event/action.success event-name)
+                          (get action->template (:action context))))]
+    (assert template (str "No template found for event " event-name))
+    (if-not template
+      []
+      (for [channel-id (map notification-recipient->channel-id recipients)]
+        {:channel-id  channel-id
+         :attachments [(text->markdown-block (channel.template/render-template template notification-payload))]}))))
