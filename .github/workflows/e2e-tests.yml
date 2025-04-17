@@ -150,7 +150,7 @@ jobs:
     with:
       name: Flaky
       tags: "@flaky"
-      specs: "./e2e/test/scenarios/**/*.cy.spec.*"
+      specs: ${{ inputs.specs }}
 
   e2e-tests-result:
     needs:
