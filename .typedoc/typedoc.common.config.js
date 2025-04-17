@@ -1,88 +1,18 @@
 const EMBEDDING_SDK_DOCS_MAIN_PAGE_URL =
   "/docs/latest/embedding/sdk/introduction";
 
-/** @type {Partial<import("typedoc").TypeDocOptions>} */
+/** @type {import("typedoc").TypeDocOptions} */
 const config = {
   name: "Embedded analytics SDK API",
   tsconfig: "./tsconfig.sdk-docs.json",
   plugin: [
-    "typedoc-plugin-markdown",
-    "typedoc-plugin-missing-exports",
     "typedoc-plugin-mdn-links",
     "typedoc-plugin-dt-links",
     "typedoc-plugin-redirect",
-    "./typedoc-plugin-markdown-prepare-for-embedding.js",
-    "./typedoc-plugin-frontmatter.js",
     "./typedoc-plugin-replace-text.js",
   ],
   entryPoints: ["../resources/embedding-sdk/dist/index.d.ts"],
   router: "structure",
-  internalModule: "internal",
-  outputs: [
-    {
-      name: "markdown",
-      path: "../docs/embedding/sdk/api/snippets",
-      options: {
-        cleanOutputDir: true,
-        entryFileName: "index",
-        publicPath: "./api/",
-        flattenOutputFiles: false,
-        hideBreadcrumbs: true,
-        useCodeBlocks: true,
-        expandObjects: true,
-        expandParameters: true,
-        formatWithPrettier: true,
-        prettierConfigFile: "../.prettierrc",
-        hidePageHeader: true,
-        hidePageTitle: true,
-        hideGroupHeadings: true,
-        indexFormat: "table",
-        parametersFormat: "table",
-        interfacePropertiesFormat: "table",
-        classPropertiesFormat: "table",
-        enumMembersFormat: "table",
-        propertyMembersFormat: "table",
-        typeAliasPropertiesFormat: "table",
-        typeDeclarationFormat: "table",
-        tableColumnSettings: {
-          hideDefaults: true,
-          hideInherited: true,
-          hideModifiers: true,
-          hideOverrides: true,
-          hideSources: true,
-          hideValues: false,
-          leftAlignHeaders: true,
-        },
-      },
-    },
-    {
-      name: "html",
-      path: "../docs/embedding/sdk/api",
-      options: {
-        // To prevent removal of generated `.md` files
-        cleanOutputDir: false,
-        favicon: "./resources/frontend_client/favicon.ico",
-        customJs: "./.typedoc/page-custom-logic.js",
-        customCss: "./.typedoc/page-custom-styles.css",
-        hideGenerator: true,
-        collapseInternalModule: true,
-        visibilityFilters: {},
-        frontmatterGlobals: {
-          title: "Embedded analytics SDK documentation",
-          layout: "docs-api",
-        },
-        pretty: true,
-        customFooterHtml:
-          '<script type="text/javascript" src="/gdpr-cookie-notice/dist/script.js"></script>' +
-          '<script type="text/javascript" src="/js/cookie-consent.js"></script>' +
-          '<link href="/gdpr-cookie-notice/dist/style.css" rel="stylesheet" />' +
-          '<link href="/css/gdpr.css" rel="stylesheet" />',
-      },
-    },
-  ],
-  redirects: {
-    "internal.html": "index.html",
-  },
   defaultCategory: "other",
   kindSortOrder: [
     "Reference",
@@ -173,4 +103,4 @@ const config = {
   },
 };
 
-export default config;
+module.exports = config;
