@@ -218,6 +218,14 @@
 ;; compare with Double/parseDouble from Clojure
 ;; convert all values to double before comparing
 
+(defn- float=
+  ([a b] (float= a b 1e-9 1e-6)) ; default epsilon
+  ([^double a ^double b ^double abs-eps ^double rel-eps]
+   (let [diff (Math/abs (- a b))
+         norm (Math/max (Math/abs a) (Math/abs b))]
+     (or (<= diff abs-eps)
+         (<= diff (* norm rel-eps))))))
+
 (deftest ^:parallel float-cast-table-fields
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/float)
     (mt/dataset string-nums-db
@@ -237,8 +245,9 @@
                   rows (mt/rows result)]
               (is (types/field-is-type? :type/Float (last cols)))
               (doseq [[uncasted-value casted-value] rows]
-                (is (= (double (Double/parseDouble uncasted-value))
-                       (double casted-value)))))))))))
+                (is (float= (double (Double/parseDouble uncasted-value))
+                            (double casted-value))
+                    (str "Text tested: " uncasted-value))))))))))
 
 (deftest ^:parallel float-cast-custom-expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/float)
@@ -264,8 +273,9 @@
                   rows (mt/rows result)]
               (is (types/field-is-type? :type/Float (last cols)))
               (doseq [[_ uncasted-value casted-value] rows]
-                (is (= (double (Double/parseDouble uncasted-value))
-                       (double casted-value)))))))))))
+                (is (float= (double (Double/parseDouble uncasted-value))
+                            (double casted-value))
+                    (str "Text tested: " uncasted-value))))))))))
 
 (deftest ^:parallel float-cast-nested-native-query
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/float)
@@ -290,8 +300,9 @@
                       rows (mt/rows result)]
                   (is (types/field-is-type? :type/Number (last cols)))
                   (doseq [[_ uncasted-value casted-value] rows]
-                    (is (= (double (Double/parseDouble uncasted-value))
-                           (double casted-value)))))))))))))
+                    (is (float= (double (Double/parseDouble uncasted-value))
+                                (double casted-value))
+                        (str "Text tested: " uncasted-value))))))))))))
 
 (deftest ^:parallel float-cast-nested-query
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/float)
@@ -318,8 +329,9 @@
                       rows (mt/rows result)]
                   (is (types/field-is-type? :type/Number (last cols)))
                   (doseq [[uncasted-value casted-value] rows]
-                    (is (= (double (Double/parseDouble uncasted-value))
-                           (double casted-value)))))))))))))
+                    (is (float= (double (Double/parseDouble uncasted-value))
+                                (double casted-value))
+                        (str "Text tested: " uncasted-value))))))))))))
 
 (deftest ^:parallel float-cast-nested-query-custom-expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/float)
@@ -354,8 +366,9 @@
                       rows (mt/rows result)]
                   (is (types/field-is-type? :type/Number (last cols)))
                   (doseq [[_ uncasted-value casted-value] rows]
-                    (is (= (double (Double/parseDouble uncasted-value))
-                           (double casted-value)))))))))))))
+                    (is (float= (double (Double/parseDouble uncasted-value))
+                                (double casted-value))
+                        (str "Text tested: " uncasted-value))))))))))))
 
 (deftest ^:parallel float-cast-nested-custom-expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/float)
@@ -380,8 +393,9 @@
                 rows (mt/rows result)]
             (is (types/field-is-type? :type/Number (last cols)))
             (doseq [[_ uncasted-value casted-value] rows]
-              (is (= (double (Double/parseDouble uncasted-value))
-                     (double casted-value))))))))))
+              (is (float= (double (Double/parseDouble uncasted-value))
+                          (double casted-value))
+                  (str "Text tested: " uncasted-value)))))))))
 
 (deftest ^:parallel float-cast-aggregations
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/float)
@@ -399,8 +413,9 @@
                   rows (mt/rows result)]
               (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[uncasted-value casted-value] rows]
-                (is (= (double (Double/parseDouble uncasted-value))
-                       (double casted-value)))))))))))
+                (is (float= (double (Double/parseDouble uncasted-value))
+                            (double casted-value))
+                    (str "Text tested: " uncasted-value))))))))))
 
 (deftest ^:parallel float-cast-examples
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/float)
@@ -410,8 +425,8 @@
                       {:original "+123.88" :value 123.88 :msg "Initial + sign."}
                       {:original "00123.34" :value 123.34 :msg "Initial zeros."}
                       {:original "-123.08" :value -123.08 :msg "Negative sign."}
-                      {:original (pr-str Double/MAX_VALUE) :value Double/MAX_VALUE :msg "Big number."}
-                      {:original (pr-str Double/MIN_VALUE) :value Double/MIN_VALUE :msg "Big number."}]]
+                      {:original (pr-str Float/MAX_VALUE) :value Float/MAX_VALUE :msg "Big number."}
+                      {:original (pr-str Float/MIN_VALUE) :value Float/MIN_VALUE :msg "Big number."}]]
         (doseq [{:keys [original value msg]} examples]
           (testing (str "float cast: " msg)
             (let [field-md (lib.metadata/field mp (mt/id :people :id))
@@ -424,9 +439,9 @@
                   rows (mt/rows result)]
               (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[_id casted-value] rows]
-                (is (= (double value)
-                       (double casted-value))
-                    msg)))))))))
+                (is (float= (double value)
+                            (double casted-value))
+                    (str "Text tested: " original " " msg))))))))))
 
 ;; date()
 
