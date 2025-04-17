@@ -24,7 +24,7 @@ import {
   Menu,
   type MenuItemProps,
 } from "metabase/ui";
-import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
+import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/image-exports";
 import type Question from "metabase-lib/v1/Question";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
 import type {

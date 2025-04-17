@@ -5,8 +5,6 @@ import { setSidebar } from "metabase/dashboard/actions/ui";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { useDispatch } from "metabase/lib/redux";
 
-import { toggleAIQuestionAnalysisSidebar } from "../state";
-
 export const AIDashboardAnalysisButton = () => {
   const dispatch = useDispatch();
 
@@ -16,7 +14,6 @@ export const AIDashboardAnalysisButton = () => {
         name: SIDEBAR_NAME.analyze,
       }),
     );
-    dispatch(toggleAIQuestionAnalysisSidebar());
   };
 
   const tooltipLabel = t`Explain this dashboard`;

@@ -8,10 +8,8 @@ import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
   getChartSelector,
-  queryChartSelector,
   saveChartImage,
-} from "metabase/visualizations/lib/save-chart-image";
-import { getCardKey } from "metabase/visualizations/lib/utils";
+} from "metabase/visualizations/lib/image-exports";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,

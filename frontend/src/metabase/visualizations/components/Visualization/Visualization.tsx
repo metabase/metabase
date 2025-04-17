@@ -744,7 +744,6 @@ class Visualization extends PureComponent<
           ) : (
             series && (
               <div
-                id="chart-image"
                 data-card-key={getCardKey(series[0].card?.id)}
                 className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
               >

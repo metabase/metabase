@@ -12,48 +12,53 @@
 
 (api.macros/defendpoint :post "/analyze-chart"
   "Analyze a chart image using an AI vision model."
-  {:multipart true}
   [_route-params
    {model :model
     focus-instructions :focus_instructions
     extra-context :extra_context
     :as _query-params}
-   _body
-   {{:strs [image]} :multipart-params, :as request} :- [:map
-                                                        [:multipart-params [:map
-                                                                            ["image" [:map
-                                                                                      [:filename :string]
-                                                                                      [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
-  (when-not (and image (:tempfile image))
-    (throw (ex-info (tru "No image file provided") {:status-code 400})))
+   {:keys [image_base64 name description timeline_events]} :- [:map
+                                                              [:image_base64 :string]
+                                                              [:name {:optional true} [:maybe :string]]
+                                                              [:description {:optional true} [:maybe :string]]
+                                                              [:timeline_events {:optional true} [:maybe [:sequential [:map
+                                                                                                                      [:name :string]
+                                                                                                                      [:description {:optional true} [:maybe :string]]
+                                                                                                                      [:timestamp :string]]]]]]]
+
+  (when-not image_base64
+    (throw (ex-info (tru "No image data provided") {:status-code 400})))
 
   (premium-features/assert-has-feature :metabot-v3 "chart analysis")
-  (let [resp (metabot-client/analyze-chart image)]
+  (let [chart-data {:image_base64 image_base64
+                    :chart {:name name
+                            :description description}
+                    :timeline_events timeline_events}
+        resp (metabot-client/analyze-chart chart-data)]
     {:summary (:analysis resp)}))
 
 (api.macros/defendpoint :post "/analyze-dashboard"
   "Analyze a dashboard image using an AI vision model."
-  {:multipart true}
   [_route-params
    {model :model
     focus-instructions :focus_instructions
     extra-context :extra_context
     :as _query-params}
-   _body
-   {{:strs [image name description tab_name]} :multipart-params, :as request} :- [:map
-                                                                                  [:multipart-params [:map
-                                                                                                      ["image" [:map
-                                                                                                                [:filename :string]
-                                                                                                                [:tempfile (ms/InstanceOfClass java.io.File)]]]
-                                                                                                      ["name" :string]
-                                                                                                      ["description" {:optional true} :string]
-                                                                                                      ["tab_name" {:optional true} :string]]]]]
+   {:keys [image_base64 name description tab_name]} :- [:map
+                                                        [:image_base64 :string]
+                                                        [:name {:optional true} [:maybe :string]]
+                                                        [:description {:optional true} [:maybe :string]]
+                                                        [:tab_name {:optional true} [:maybe :string]]]]
 
-  (when-not (and image (:tempfile image))
-    (throw (ex-info (tru "No image file provided") {:status-code 400})))
+  (when-not image_base64
+    (throw (ex-info (tru "No image data provided") {:status-code 400})))
 
   (premium-features/assert-has-feature :metabot-v3 "dashboard analysis")
-  (let [resp (metabot-client/analyze-dashboard image)]
+  (let [dashboard-data {:image_base64 image_base64
+                        :dashboard {:name name
+                                    :description description
+                                    :tab_name tab_name}}
+        resp (metabot-client/analyze-dashboard dashboard-data)]
     {:summary (:analysis resp)}))
 
 (def ^{:arglists '([request respond raise])} routes

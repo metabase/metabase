@@ -224,12 +224,18 @@
 
 (mu/defn analyze-chart
   "Ask the AI service to analyze a chart image."
-  [image :- [:map
-             [:filename :string]
-             [:tempfile :any]]]
+  [chart-data :- [:map
+                 [:image_base64 :string]
+                 [:chart {:optional true} [:map
+                          [:name {:optional true} [:maybe :string]]
+                          [:description {:optional true} [:maybe :string]]]]
+                 [:timeline_events {:optional true} [:sequential [:map
+                                                                 [:name :string]
+                                                                 [:description {:optional true} [:maybe :string]]
+                                                                 [:timestamp :string]]]]]]
   (premium-features/assert-has-feature :metabot-v3 "chart analysis")
   (let [url (analyze-chart-endpoint)
-        options (build-multipart-request-options image)
+        options (build-request-options chart-data)
         response (post! url options)]
     (if (= (:status response) 200)
       (:body response)
@@ -240,12 +246,15 @@
 
 (mu/defn analyze-dashboard
   "Ask the AI service to analyze a dashboard image."
-  [image :- [:map
-             [:filename :string]
-             [:tempfile :any]]]
+  [dashboard-data :- [:map
+                     [:image_base64 :string]
+                     [:dashboard {:optional true} [:map
+                                  [:name {:optional true} [:maybe :string]]
+                                  [:description {:optional true} [:maybe :string]]
+                                  [:tab_name {:optional true} [:maybe :string]]]]]]
   (premium-features/assert-has-feature :metabot-v3 "dashboard analysis")
   (let [url (analyze-dashboard-endpoint)
-        options (build-multipart-request-options image)
+        options (build-request-options dashboard-data)
         response (post! url options)]
     (if (= (:status response) 200)
       (:body response)

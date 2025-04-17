@@ -1,26 +1,26 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import { CopyButton } from "metabase/components/CopyButton";
+import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
+import type { AIQuestionAnalysisSidebarProps } from "metabase/plugins";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { getIsLoadingComplete } from "metabase/query_builder/selectors";
 import {
-  getChartImage,
+  getBase64ChartImage,
   getChartSelector,
-} from "metabase/visualizations/lib/save-chart-image";
-import type Question from "metabase-lib/v1/Question";
-import type { Timeline } from "metabase-types/api";
+} from "metabase/visualizations/lib/image-exports";
 
 import { useAnalyzeChartMutation } from "../../../api/ai-entity-analysis";
 import { AIAnalysisContent } from "../AIAnalysisContent";
 
 import styles from "./AIQuestionAnalysisSidebar.module.css";
 
-export interface AIQuestionAnalysisSidebarProps {
-  question: Question;
-  className?: string;
-  onClose?: () => void;
-  timelines?: Timeline[];
-}
+// TODO: This is a hack to ensure visualizations have rendered after data loading, as they can render asynchronously.
+// We should find a better way to do this.
+const RENDER_DELAY_MS = 100;
 
 export function AIQuestionAnalysisSidebar({
   question,
@@ -28,9 +28,27 @@ export function AIQuestionAnalysisSidebar({
   className,
   onClose,
 }: AIQuestionAnalysisSidebarProps) {
+  const previousQuestion = usePrevious(question);
   const [analyzeChart, { data: analysisData }] = useAnalyzeChartMutation();
+  const isLoadingComplete = useSelector(getIsLoadingComplete);
+  const pendingAnalysisRef = useRef(false);
+  const analysisTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    const isQueryDirty = previousQuestion
+      ? question.isQueryDirtyComparedTo(previousQuestion)
+      : true;
+
+    if (isQueryDirty) {
+      pendingAnalysisRef.current = true;
+    }
+  }, [previousQuestion, question]);
+
+  useEffect(() => {
+    if (!pendingAnalysisRef.current || !isLoadingComplete) {
+      return;
+    }
+
     const timelineEvents =
       timelines
         ?.flatMap((timeline) =>
@@ -42,22 +60,45 @@ export function AIQuestionAnalysisSidebar({
         )
         ?.filter(isNotNull) ?? [];
 
-    const fetchData = async () => {
-      const imageFile = await getChartImage(
+    analysisTimeoutRef.current = setTimeout(async () => {
+      const imageBase64 = await getBase64ChartImage(
         getChartSelector({ cardId: question.id() }),
       );
-      if (imageFile) {
+
+      if (imageBase64) {
         await analyzeChart({
-          image: imageFile,
+          imageBase64,
           name: question.card().name,
           description: question.card().description ?? undefined,
           timelineEvents,
         });
       }
-    };
 
-    fetchData();
-  }, []);
+      pendingAnalysisRef.current = false;
+      analysisTimeoutRef.current = null;
+    }, RENDER_DELAY_MS);
+
+    return () => {
+      if (analysisTimeoutRef.current) {
+        clearTimeout(analysisTimeoutRef.current);
+        analysisTimeoutRef.current = null;
+      }
+    };
+  }, [analyzeChart, isLoadingComplete, question, timelines]);
+
+  const renderCopyButton = () => {
+    if (!analysisData?.summary) {
+      return null;
+    }
+
+    return (
+      <CopyButton
+        value={analysisData.summary}
+        className={styles.copyButton}
+        aria-label={t`Copy summary`}
+      />
+    );
+  };
 
   return (
     <SidebarContent
@@ -65,6 +106,7 @@ export function AIQuestionAnalysisSidebar({
       title={t`Explain these results`}
       onClose={onClose}
       icon="metabot"
+      headerActions={renderCopyButton()}
     >
       <div className={styles.contentWrapper}>
         <AIAnalysisContent explanation={analysisData?.summary} />

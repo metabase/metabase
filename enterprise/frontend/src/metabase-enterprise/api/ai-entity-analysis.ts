@@ -1,69 +1,63 @@
 import { EnterpriseApi } from "./api";
 
-export interface AnalysisResponse {
+export interface AIEntityAnalysisResponse {
   summary: string;
 }
 
-export interface AnalysisParams {
-  image: File;
+export interface TimelineEvent {
   name: string;
   description?: string;
-  timelineEvents?: {
-    name: string;
-    description?: string;
-    timestamp: string;
-  }[];
+  timestamp: string;
 }
 
-export interface AnalysisDashboardParams extends AnalysisParams {
+export interface AIQuestionAnalysisParams {
+  imageBase64: string;
+  name?: string;
+  description?: string;
+  timelineEvents?: TimelineEvent[];
+}
+
+export interface AIDashboardAnalysisParams {
+  imageBase64: string;
+  name?: string;
+  description?: string;
   tabName?: string;
 }
 
 export const aiAnalysisApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    analyzeChart: builder.mutation<AnalysisResponse, AnalysisParams>({
-      query: ({ image, name, description, timelineEvents }) => {
-        const formData = new FormData();
-        formData.append("image", image);
-        formData.append("name", name);
-        if (description) {
-          formData.append("description", description);
-        }
-        if (timelineEvents && timelineEvents.length > 0) {
-          formData.append("timeline_events", JSON.stringify(timelineEvents));
-        }
-
+    analyzeChart: builder.mutation<
+      AIEntityAnalysisResponse,
+      AIQuestionAnalysisParams
+    >({
+      query: ({ imageBase64, name, description, timelineEvents }) => {
         return {
           url: "/api/ee/ai-analysis/analyze-chart",
           method: "POST",
-          body: { formData },
-          formData: true,
-          fetch: true,
+          body: {
+            image_base64: imageBase64,
+            name,
+            description,
+            timeline_events: timelineEvents,
+          },
         };
       },
     }),
 
     analyzeDashboard: builder.mutation<
-      AnalysisResponse,
-      AnalysisDashboardParams
+      AIEntityAnalysisResponse,
+      AIDashboardAnalysisParams
     >({
-      query: ({ image, name, description, tabName }) => {
-        const formData = new FormData();
-        formData.append("image", image);
-        formData.append("name", name);
-        if (description) {
-          formData.append("description", description);
-        }
-        if (tabName) {
-          formData.append("tab_name", tabName);
-        }
-
+      query: ({ imageBase64, name, description, tabName }) => {
         return {
           url: "/api/ee/ai-analysis/analyze-dashboard",
           method: "POST",
-          body: { formData },
-          formData: true,
-          fetch: true,
+          body: {
+            image_base64: imageBase64,
+            name,
+            description,
+            tab_name: tabName,
+          },
         };
       },
     }),

@@ -8,6 +8,7 @@ import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/cons
 import { isEmbeddingSdk, isStorybookActive } from "metabase/env";
 import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+
 import { getCardKey } from "./utils";
 
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
@@ -87,29 +88,18 @@ export const blobToFile = (
   return new File([blob], filename, { type });
 };
 
-export const getChartImage = async (
+export interface DashboardRenderSetup {
+  gridNode: HTMLElement;
+  contentWidth: number;
+  contentHeight: number;
+  parametersNode: HTMLElement | null;
+  parametersHeight: number;
+  backgroundColor: string;
+}
+
+export const setupDashboardForRendering = (
   selector: string,
-): Promise<File | undefined> => {
-  const chartRoot = document.querySelector(selector);
-
-  if (!chartRoot || !(chartRoot instanceof HTMLElement)) {
-    console.warn("No chart element found", selector);
-    return undefined;
-  }
-
-  const canvas = await getDomToCanvas(chartRoot, {
-    onclone: (_doc: Document, node: HTMLElement) => {
-      node.classList.add(SAVING_DOM_IMAGE_CLASS);
-    },
-  });
-
-  const blob = await canvasToBlob(canvas);
-  return blob ? blobToFile(blob, "chart.png") : undefined;
-};
-
-export const getDashboardImage = async (
-  selector: string,
-): Promise<File | undefined> => {
+): DashboardRenderSetup | undefined => {
   const dashboardRoot = document.querySelector(selector);
   const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
 
@@ -131,13 +121,39 @@ export const getDashboardImage = async (
     gridNode.removeChild(parametersNode);
   }
 
-  const verticalOffset = parametersHeight;
   const contentWidth = gridNode.offsetWidth;
-  const contentHeight = gridNode.offsetHeight + verticalOffset;
+  const contentHeight = gridNode.offsetHeight + parametersHeight;
 
   const backgroundColor = getComputedStyle(document.documentElement)
     .getPropertyValue("--mb-color-bg-dashboard")
     .trim();
+
+  return {
+    gridNode,
+    contentWidth,
+    contentHeight,
+    parametersNode:
+      parametersNode instanceof HTMLElement ? parametersNode : null,
+    parametersHeight,
+    backgroundColor,
+  };
+};
+
+export const getDashboardImage = async (
+  selector: string,
+): Promise<string | undefined> => {
+  const setup = setupDashboardForRendering(selector);
+  if (!setup) {
+    return undefined;
+  }
+
+  const {
+    gridNode,
+    contentWidth,
+    contentHeight,
+    parametersNode,
+    backgroundColor,
+  } = setup;
 
   const canvas = await getDomToCanvas(gridNode, {
     height: contentHeight,
@@ -146,14 +162,13 @@ export const getDashboardImage = async (
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.style.height = `${contentHeight}px`;
       node.style.backgroundColor = backgroundColor;
-      if (parametersNode instanceof HTMLElement) {
+      if (parametersNode) {
         node.insertBefore(parametersNode, node.firstChild);
       }
     },
   });
 
-  const blob = await canvasToBlob(canvas);
-  return blob ? blobToFile(blob, "dashboard.png") : undefined;
+  return canvas.toDataURL("image/png").split(",")[1];
 };
 
 export const getChartSelector = (
@@ -164,6 +179,25 @@ export const getChartSelector = (
   } else {
     return `[data-card-key='${getCardKey(input.cardId)}']`;
   }
+};
+
+export const getBase64ChartImage = async (
+  selector: string,
+): Promise<string | undefined> => {
+  const chartRoot = document.querySelector(selector);
+
+  if (!chartRoot || !(chartRoot instanceof HTMLElement)) {
+    console.warn("No chart element found", selector);
+    return undefined;
+  }
+
+  const canvas = await getDomToCanvas(chartRoot, {
+    onclone: (_doc: Document, node: HTMLElement) => {
+      node.classList.add(SAVING_DOM_IMAGE_CLASS);
+    },
+  });
+
+  return canvas.toDataURL("image/png").split(",")[1];
 };
 
 export const saveChartImage = async (selector: string, fileName: string) => {

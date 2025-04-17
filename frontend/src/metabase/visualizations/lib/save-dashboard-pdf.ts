@@ -1,13 +1,12 @@
 import { t } from "ttag";
 
-import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import type { Dashboard } from "metabase-types/api";
 
 import {
-  PARAMETERS_MARGIN_BOTTOM,
   SAVING_DOM_IMAGE_CLASS,
   getDomToCanvas,
-} from "./save-chart-image";
+  setupDashboardForRendering,
+} from "./image-exports";
 
 const TARGET_ASPECT_RATIO = 21 / 17;
 
@@ -153,28 +152,22 @@ export const saveDashboardPdf = async (
   dashboardName: string,
 ) => {
   const fileName = `${dashboardName}.pdf`;
-  const dashboardRoot = document.querySelector(selector);
-  const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
 
-  if (!gridNode || !(gridNode instanceof HTMLElement)) {
-    console.warn("No dashboard content found", selector);
+  const setup = setupDashboardForRendering(selector);
+  if (!setup) {
     return;
   }
+
+  const {
+    gridNode,
+    contentWidth,
+    parametersNode,
+    parametersHeight,
+    backgroundColor,
+  } = setup;
   const cardsBounds = getSortedDashCardBounds(gridNode);
 
   const pdfHeader = createHeaderElement(dashboardName, HEADER_MARGIN_BOTTOM);
-  const parametersNode = dashboardRoot
-    ?.querySelector(`#${DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}`)
-    ?.cloneNode(true);
-
-  let parametersHeight = 0;
-  if (parametersNode instanceof HTMLElement) {
-    gridNode.append(parametersNode);
-    parametersNode.style.cssText = `margin-bottom: ${PARAMETERS_MARGIN_BOTTOM}px`;
-    parametersHeight =
-      parametersNode.getBoundingClientRect().height + PARAMETERS_MARGIN_BOTTOM;
-    gridNode.removeChild(parametersNode);
-  }
 
   gridNode.appendChild(pdfHeader);
   const headerHeight =
@@ -182,13 +175,8 @@ export const saveDashboardPdf = async (
   gridNode.removeChild(pdfHeader);
 
   const verticalOffset = headerHeight + parametersHeight;
-  const contentWidth = gridNode.offsetWidth;
   const contentHeight = gridNode.offsetHeight + verticalOffset;
   const width = contentWidth + PAGE_PADDING * 2;
-
-  const backgroundColor = getComputedStyle(document.documentElement)
-    .getPropertyValue("--mb-color-bg-dashboard")
-    .trim();
 
   const image = await getDomToCanvas(gridNode, {
     height: contentHeight,
@@ -197,7 +185,7 @@ export const saveDashboardPdf = async (
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.style.height = `${contentHeight}px`;
       node.style.backgroundColor = backgroundColor;
-      if (parametersNode instanceof HTMLElement) {
+      if (parametersNode) {
         node.insertBefore(parametersNode, node.firstChild);
       }
       node.insertBefore(pdfHeader, node.firstChild);

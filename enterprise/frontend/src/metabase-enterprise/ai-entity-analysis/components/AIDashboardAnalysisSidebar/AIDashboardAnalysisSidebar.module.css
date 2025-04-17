@@ -1,39 +1,40 @@
 .header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  padding: 16px 40px 16px 16px;
-  margin-bottom: 16px;
-  position: sticky;
-  top: 0;
-  background: white;
-  z-index: 2;
-  width: 100%;
-  box-sizing: border-box;
+  position: relative;
+  margin-bottom: 1rem;
 }
 
 .title {
+  font-size: 1.25rem;
   font-weight: bold;
-  font-size: 18px;
-  margin: 0;
   color: var(--color-text-dark);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: calc(100% - 40px);
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.copyButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-medium);
 }
 
 .closeButton {
   cursor: pointer;
   color: var(--color-text-medium);
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 24px;
-  height: 24px;
+  background: none;
+  border: none;
+  padding: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 3;
 }
 
 .closeButton:hover {
@@ -41,8 +42,9 @@
 }
 
 .contentWrapper {
-  padding: 0 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  height: 100%;
   overflow-y: auto;
-  width: 100%;
-  max-width: 100%;
 }

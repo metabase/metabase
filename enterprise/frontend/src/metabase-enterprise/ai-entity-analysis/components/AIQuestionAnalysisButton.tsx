@@ -4,8 +4,6 @@ import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { useDispatch } from "metabase/lib/redux";
 import { onOpenAIQuestionAnalysisSidebar } from "metabase/query_builder/actions";
 
-import { toggleAIQuestionAnalysisSidebar } from "../state";
-
 export const AIQuestionAnalysisButton = () => {
   const dispatch = useDispatch();
 
