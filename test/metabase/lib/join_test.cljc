@@ -1029,6 +1029,10 @@
           contact-f-organization-id 130
           account-card-id 1000
           contact-card-id 1100
+
+          account-f-ident              (lib/random-ident)
+          contact-f-organization-ident (lib/random-ident)
+
           metadata-provider (lib.tu/mock-metadata-provider
                              {:database meta/database
                               :tables   [{:id   account-tab-id
@@ -1039,50 +1043,56 @@
                                           :name "contact"}]
                               :fields   [{:id account-f-id
                                           :name "account__id"
+                                          :ident account-f-ident
                                           :table-id account-tab-id
                                           :base-type :type/Integer}
                                          {:id organization-f-id
                                           :name "organization__id"
+                                          :ident (lib/random-ident)
                                           :table-id organization-tab-id
                                           :base-type :type/Integer}
                                          {:id organization-f-account-id
                                           :name "organization__account_id"
+                                          :ident (lib/random-ident)
                                           :table-id organization-tab-id
                                           :base-type :type/Integer
                                           :semantic-type :type/FK
                                           :fk-target-field-id account-f-id}
                                          {:id contact-f-organization-id
                                           :name "contact__organization_id"
+                                          :ident contact-f-organization-ident
                                           :table-id contact-tab-id
                                           :base-type :type/Integer
                                           :semantic-type :type/FK
                                           :fk-target-field-id organization-f-id}]
-                              :cards [{:id account-card-id
-                                       :name "Account Model"
-                                       :type :model
-                                       :lib/type :metadata/card
-                                       :database-id (:id meta/database)
-                                       :result-metadata [{:id account-f-id
-                                                          :name "account__id"
-                                                          :table-id account-tab-id
-                                                          :base-type :type/Integer}]
-                                       :dataset-query {:lib/type :mbql.stage/mbql
-                                                       :database (:id meta/database)
-                                                       :source-table account-tab-id}}
-                                      {:id contact-card-id
-                                       :name "Contact Model"
-                                       :type :model
-                                       :lib/type :metadata/card
-                                       :database-id (:id meta/database)
-                                       :result-metadata [{:id contact-f-organization-id
-                                                          :name "contact__organization_id"
-                                                          :table-id contact-tab-id
-                                                          :base-type :type/Integer
-                                                          :semantic-type :type/FK
-                                                          :fk-target-field-id organization-f-id}]
-                                       :dataset-query {:lib/type :mbql.stage/mbql
-                                                       :database (:id meta/database)
-                                                       :source-table contact-tab-id}}]})
+                              :cards [(lib.tu/as-model
+                                       {:id account-card-id
+                                        :name "Account Model"
+                                        :lib/type :metadata/card
+                                        :database-id (:id meta/database)
+                                        :result-metadata [{:id account-f-id
+                                                           :name "account__id"
+                                                           :ident account-f-ident
+                                                           :table-id account-tab-id
+                                                           :base-type :type/Integer}]
+                                        :dataset-query {:lib/type :mbql.stage/mbql
+                                                        :database (:id meta/database)
+                                                        :source-table account-tab-id}})
+                                      (lib.tu/as-model
+                                       {:id contact-card-id
+                                        :name "Contact Model"
+                                        :lib/type :metadata/card
+                                        :database-id (:id meta/database)
+                                        :result-metadata [{:id contact-f-organization-id
+                                                           :name "contact__organization_id"
+                                                           :ident contact-f-organization-ident
+                                                           :table-id contact-tab-id
+                                                           :base-type :type/Integer
+                                                           :semantic-type :type/FK
+                                                           :fk-target-field-id organization-f-id}]
+                                        :dataset-query {:lib/type :mbql.stage/mbql
+                                                        :database (:id meta/database)
+                                                        :source-table contact-tab-id}})]})
           account-card (lib.metadata/card metadata-provider account-card-id)
           contact-card (lib.metadata/card metadata-provider contact-card-id)
           query (lib/query metadata-provider account-card)]

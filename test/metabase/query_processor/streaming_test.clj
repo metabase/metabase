@@ -141,8 +141,9 @@
                                             :limit    5})))
         (testing "A query with emoji and other fancy unicode"
           (let [[sql & args] (t2.pipeline/compile* {:select [["Cam 𝌆 Saul 💩" :cam]]})]
-            (compare-results export-format (mt/native-query {:query  sql
-                                                             :params args}))))))))
+            (compare-results export-format (assoc-in (mt/native-query {:query  sql
+                                                                       :params args})
+                                                     [:info :card-entity-id] (u/generate-nano-id)))))))))
 
 (def ^:private ^:dynamic *number-of-cans* nil)
 

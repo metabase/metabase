@@ -484,6 +484,7 @@
                        (-> result
                            (dissoc :running_time :average_execution_time :started_at :cached)
                            (update-in [:data :cols] #(mapv clean-col %))
+                           (update-in [:data :results_metadata :columns] #(mapv clean-col %))
                            (m/dissoc-in [:json_query :cache-strategy])))]
     (is (= (clean-result original-result)
            (clean-result cached-result)))))

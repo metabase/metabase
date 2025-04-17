@@ -211,13 +211,12 @@
 (deftest compare-nested-query-test
   (testing "Ad-hoc X-Rays should work for queries have Card source queries (#15655)"
     (mt/dataset test-data
-      (let [card-query      (mt/native-query {:query "select * from people"})
-            result-metadata (get-in (qp/process-query card-query) [:data :results_metadata :columns])]
+      (let [card-query (mt/native-query {:query "select * from people"})]
         (mt/with-temp [:model/Collection {collection-id :id} {}
-                       :model/Card       {card-id :id} {:name            "15655_Q1"
-                                                        :collection_id   collection-id
-                                                        :dataset_query   card-query
-                                                        :result_metadata result-metadata}]
+                       :model/Card       {card-id :id} (merge
+                                                        (mt/card-with-source-metadata-for-query card-query)
+                                                        {:name            "15655_Q1"
+                                                         :collection_id   collection-id})]
           (let [query      {:database (mt/id)
                             :type     :query
                             :query    {:source-table (format "card__%d" card-id)
@@ -404,9 +403,9 @@
                 (map (fn [{:keys [field_ref] :as col}]
                        (if (= ref field_ref) (f col) col))
                      cols))]
-        (let [query           (mt/native-query {:query "select * from products"})
-              results-meta    (->> (qp/process-query (qp/userland-query query))
-                                   :data :results_metadata :columns)
+        (let [results-meta    (-> (mt/native-query {:query "select * from products"})
+                                  mt/card-with-source-metadata-for-query
+                                  :result_metadata)
               id-field-ref    (:field_ref (by-id results-meta "id"))
               title-field-ref (:field_ref (by-id results-meta "title"))
               id-field-id     (mt/id :products :id)]

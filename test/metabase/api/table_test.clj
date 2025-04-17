@@ -10,6 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.http-client :as client]
+   [metabase.lib.core :as lib]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -724,6 +725,7 @@
                                               :database_type  "CHARACTER VARYING"
                                               :semantic_type  "type/Name"
                                               :fingerprint    (name->fingerprint :name)
+                                              :ident          (lib/native-ident "NAME" (:entity_id card))
                                               :field_ref      ["field" "NAME" {:base-type "type/Text"}]}
                                              {:name           "ID"
                                               :display_name   "ID"
@@ -732,6 +734,7 @@
                                               :database_type  "BIGINT"
                                               :semantic_type  nil
                                               :fingerprint    (name->fingerprint :id)
+                                              :ident          (lib/native-ident "ID" (:entity_id card))
                                               :field_ref      ["field" "ID" {:base-type "type/BigInteger"}]}
                                              (with-numeric-dimension-options
                                                {:name           "PRICE"
@@ -741,6 +744,7 @@
                                                 :database_type  "INTEGER"
                                                 :semantic_type  nil
                                                 :fingerprint    (name->fingerprint :price)
+                                                :ident          (lib/native-ident "PRICE" (:entity_id card))
                                                 :field_ref      ["field" "PRICE" {:base-type "type/Integer"}]})
                                              (with-coordinate-dimension-options
                                                {:name           "LATITUDE"
@@ -750,6 +754,7 @@
                                                 :database_type  "DOUBLE PRECISION"
                                                 :semantic_type  "type/Latitude"
                                                 :fingerprint    (name->fingerprint :latitude)
+                                                :ident          (lib/native-ident "LATITUDE" (:entity_id card))
                                                 :field_ref      ["field" "LATITUDE" {:base-type "type/Float"}]})]))})
                (->> card
                     u/the-id
@@ -807,6 +812,7 @@
                                          :database_type            "CHARACTER VARYING"
                                          :table_id                 card-virtual-table-id
                                          :id                       ["field" "NAME" {:base-type "type/Text"}]
+                                         :ident                    (lib/native-ident "NAME" (:entity_id card))
                                          :semantic_type            "type/Name"
                                          :default_dimension_option nil
                                          :dimension_options        []
@@ -819,6 +825,7 @@
                                          :database_type            "TIMESTAMP"
                                          :table_id                 card-virtual-table-id
                                          :id                       ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]
+                                         :ident                    (lib/native-ident "LAST_LOGIN" (:entity_id card))
                                          :semantic_type            nil
                                          :default_dimension_option (var-get #'api.table/datetime-default-index)
                                          :dimension_options        (var-get #'api.table/datetime-dimension-indexes)

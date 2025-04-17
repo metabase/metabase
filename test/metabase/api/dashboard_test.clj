@@ -3092,13 +3092,13 @@
                                                                  :dataset_query (mt/native-query
                                                                                   {:query "SELECT category FROM products LIMIT 10;"})
                                                                  :type          :model}]
-        (let [metadata (-> (qp/process-query (:dataset_query native-card))
-                           :data :results_metadata :columns)]
+        (let [metadata (-> (:dataset_query native-card)
+                           (assoc-in [:info :card-entity-id] (:entity_id native-card))
+                           qp/process-query :data :results_metadata :columns)]
           (is (seq metadata) "Did not get metadata")
           (t2/update! 'Card {:id model-id}
-                      {:result_metadata (json/encode
-                                         (assoc-in metadata [0 :id]
-                                                   (mt/id :products :category)))}))
+                      {:result_metadata (assoc-in metadata [0 :id]
+                                                  (mt/id :products :category))}))
         ;; ...so instead we create a question on top of this model (note that
         ;; metadata must be present on the model) and use the question on the
         ;; dashboard.
@@ -4903,28 +4903,20 @@
                                              :slug      "p3"
                                              :id        "p3"
                                              :type      "text"}]}
-     :model/Card          c1  (let [query {:database (mt/id)
-                                           :type     :native
-                                           :native   {:query "select * from people"}}]
-                                {:name "C1"
-                                 :type :model
-                                 :database_id (mt/id)
-                                 :dataset_query query
-                                 :result_metadata
-                                 (mapv (fn [{col-name :name :as meta}]
-                                         ;; Map model's metadata to corresponding field id
-                                         (assoc meta :id  (mt/id :people (keyword (u/lower-case-en col-name)))))
-                                       (-> (qp/process-query query)
-                                           :data :results_metadata :columns))})
+     :model/Card          c1  (mt/card-with-updated-metadata
+                               {:name          "C1"
+                                :type          :model
+                                :dataset_query (mt/native-query {:query "select * from people"})}
+                               (fn [{col-name :name :as meta} _card]
+                                 ;; Map model's metadata to corresponding field id
+                                 (assoc meta :id  (mt/id :people (keyword (u/lower-case-en col-name))))))
 
      :model/Card          c2 (let [query (mt/mbql-query nil
                                            {:source-table (str "card__" (:id c1))
                                             :aggregation [[:distinct [:field "STATE" {:base-type :type/Text}]]]})]
-                               {:name "C2"
-                                :database_id (mt/id)
-                                :dataset_query query
-                                :result_metadata (-> (qp/process-query query)
-                                                     :data :results_metadata :columns)})
+                               (mt/card-with-metadata
+                                {:name "C2"
+                                 :dataset_query query}))
      :model/DashboardCard _dc1 {:dashboard_id       (:id d)
                                 :card_id            (:id c2)
                                 :parameter_mappings

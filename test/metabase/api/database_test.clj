@@ -14,6 +14,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.secret :as secret]
@@ -1131,8 +1132,12 @@
 
 (deftest ^:parallel db-metadata-saved-questions-db-test
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
-    (mt/with-temp [:model/Card card (assoc (card-with-native-query "Birthday Card")
-                                           :result_metadata [{:name "age_in_bird_years"}])]
+    (mt/with-temp [:model/Card card (card-with-native-query
+                                     "Birthday Card"
+                                     :entity_id       "M6W4CLdyJxiW-DyzDbGl4"
+                                     :result_metadata [{:name "age_in_bird_years"
+                                                        :ident (lib/native-ident "age_in_bird_years"
+                                                                                 "M6W4CLdyJxiW-DyzDbGl4")}])]
       (let [response (mt/user-http-request :crowberto :get 200
                                            (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))]
         (is (malli= SavedQuestionsDB
@@ -1143,6 +1148,7 @@
                 :fields [{:name                     "age_in_bird_years"
                           :table_id                 (str "card__" (u/the-id card))
                           :id                       ["field" "age_in_bird_years" {:base-type "type/*"}]
+                          :ident                    (lib/native-ident "age_in_bird_years" "M6W4CLdyJxiW-DyzDbGl4")
                           :semantic_type            nil
                           :base_type                nil
                           :default_dimension_option nil
@@ -1857,9 +1863,10 @@
 
 (deftest get-schema-tables-unreadable-metrics-are-not-returned-test
   (mt/with-temp [:model/Collection model-coll   {:name "Model Collection"}
-                 :model/Card       card         (assoc (card-with-native-query "Card 1")
-                                                       :collection_id (:id model-coll)
-                                                       :type :model)
+                 :model/Card       card         (card-with-native-query
+                                                 "Card 1"
+                                                 :collection_id (:id model-coll)
+                                                 :type :model)
                  :model/Collection metric-coll {:name "Metric Collection"}
                  :model/Card       metric      {:type          :metric
                                                 :name          "Metric"
@@ -1869,6 +1876,8 @@
                                                                 :database (mt/id)
                                                                 :query    {:source-table (str "card__" (:id card))
                                                                            :aggregation  [[:count]]}}}]
+    (is (=? nil (:result_metadata card)))
+    (is (=? nil (:result_metadata (t2/select-one :model/Card :id (:id card)))))
     (is (=? {:status "completed"}
             (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card)))))
     (let [virtual-table {:id           (format "card__%d" (:id card))
