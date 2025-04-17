@@ -20,6 +20,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.memory :as u.mem]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
@@ -129,11 +130,12 @@
   {:style/indent [:form]}
   [log-fn message f]
   (let [start-time (System/nanoTime)
-        _          (log-fn (u/format-color 'magenta "STARTING: %s" message))
+        _          (log-fn (u/format-color 'magenta "STARTING: %s (%s)" message (u.mem/pretty-usage-str)))
         result     (f)]
-    (log-fn (u/format-color 'magenta "FINISHED: %s (%s)"
+    (log-fn (u/format-color 'magenta "FINISHED: %s (%s) (%s)"
                             message
-                            (u/format-nanoseconds (- (System/nanoTime) start-time))))
+                            (u/format-nanoseconds (- (System/nanoTime) start-time))
+                            (u.mem/pretty-usage-str)))
     result))
 
 (defn- with-start-and-finish-logging
