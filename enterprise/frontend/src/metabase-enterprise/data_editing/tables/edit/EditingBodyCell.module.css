@@ -7,6 +7,9 @@
   font-weight: 700;
   background-color: var(--mb-base-color-white);
   border-radius: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
 
   /* Should be in sync with DEFAULT_FONT_SIZE */
   font-size: 12.5px;
