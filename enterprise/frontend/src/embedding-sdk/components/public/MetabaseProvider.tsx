@@ -148,7 +148,7 @@ export const MetabaseProviderInternal = ({
         <SdkThemeProvider theme={theme}>
           <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
           <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
-            <LocaleProvider locale={locale || instanceLocale || "en"}>
+            <LocaleProvider locale={locale || instanceLocale}>
               {children}
             </LocaleProvider>
             <SdkUsageProblemDisplay
