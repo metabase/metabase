@@ -31,7 +31,7 @@
 - **Lint Changes:** `./bin/mage kondo-updated HEAD`
 - **Format:** `./bin/mage cljfmt-files [path]`
 - **Test file:** `clojure -X:dev:test :only namespace/test-name`
-- **Check Code Readability** `./bin/mage -code-is-readable` with optional line-number
+- **Check Code Readability** `./bin/mage -check-readable` with optional line-number
   - Run this after every change to Clojure code, only accept readable code
 - **Evaluating Clojure Code** `./bin/mage -repl '<code>'`
   - See `Sending code to the REPL` for more details
@@ -70,24 +70,13 @@
 
 #### Keeping Code Readable
 
-The `-code-is-readable` command checks if your code can be properly parsed by Clojure. 
+The `./bin/mage -check-readable <file> <optional: line-number>` command checks if your Clojure code can be properly parsed.
 This ensures your changes maintain valid syntax and structure.
 
 - Edit Clojure files one step at a time.
-- After every change to a Clojure form, call `mage -code-is-readable thefile.clj <line-number>`.
+- After EVERY change to a Clojure form, call `mage -check-readable src/metabase/thefile.clj <line-number>`. 
+- Then call `mage -check-readable dev/src/dev.clj` without the line number to check the entire file.
 - If the change results in unreadable code, try again until it is readable.
-
-So if you change this file (line numbers on the left) in `yourfile.clj`:
-
-```
-11| +(defn square [x]
-12| -  (* x))
-12| +  (* x x))
-```
-
-After EVERY change: call `mage -code-is-readable yourfile.clj 12`, which checks if the entire square function is readable. Always pay close attention to the results: Unreadable Code Is Unacceptable!
-
-You can also call `mage -code-is-readable yourfile.clj` without the line number to check the entire file.
 
 #### Bottom-up dev loop
 

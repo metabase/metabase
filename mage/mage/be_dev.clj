@@ -2,6 +2,8 @@
   (:require
    [babashka.fs :as fs]
    [bencode.core :as bencode]
+   #_:clj-kondo/ignore
+   [clojure.pprint :as pp]
    [clojure.string :as str]
    [edamame.core :as edamame]
    [flatland.ordered.map :as m]
@@ -143,8 +145,7 @@
   (let [top-level-chunks (top-level-form-chunk content)]
     (if-let [hit (first (filter (fn [chunk] (<= (first chunk) line-number (last chunk)))
                                 top-level-chunks))]
-      {:start (first hit)
-       ;; end is exclusive, so add 1:
+      {:start (inc (first hit))
        :end (inc (last hit))}
       (throw (ex-info "Line number not found in any top-level form." {:cause :line-number-not-found})))))
 
@@ -170,14 +171,19 @@
 ;;     [5 {:start 4, :end 7}]]
   )
 
-(defn- rc-usage [reason]
+(defn- read-check-problem [reason]
   (println "There was a problem with the command: " reason)
-  (println)
-  (println "Usage: bb be-dev/balanced-parens file-path starting-line-number ending-line-number")
-  (println "  file-path:            path to the file to check")
-  (println "  line-number: line number to start checking from (inclusive)")
-  (println)
-  (throw (ex-info "Usage error" {:cause :usage :reason reason})))
+  (System/exit 0))
+
+(defn- report-chunk
+  [corpus line-number start end]
+  (let [linums (map str (range start (inc end)))
+        maxline-len (apply max (map count linums))
+        divider (str (str/join (repeat (inc maxline-len) "-")) "+")]
+    (println (str "Checking chunk containing line " line-number ": \n" divider))
+    (doseq [[linum line] (map vector linums corpus)]
+      (println (format (str "%-" maxline-len "s") linum) "|" line))
+    (println divider)))
 
 (defn readability-check
   "Check if the file has balanced parens, and can be read by the Clojure reader.
@@ -187,14 +193,14 @@
   If line-number is not provided, checks the whole file.
   If line-number is provided, checks the top level form file which contains line-number."
   [file & [line-number]]
-  (let [content (try (slurp file) (catch Exception _ (rc-usage :missing-file)))]
+  (let [content (try (slurp file) (catch Exception _ (read-check-problem :missing-file)))]
     (if-not line-number
       #_:clj-kondo/ignore
       (let [result (can-read-content? content)]
         (prn result)
         result)
       (try (let [line-number (try (if (int? line-number) line-number (Integer/parseInt line-number))
-                                  (catch Exception _ (rc-usage :invalid-line-number)))
+                                  (catch Exception _ (read-check-problem :invalid-line-number)))
                  lines (str/split-lines content)
                  line-count (count lines)
                  _ (when (> line-number line-count)
@@ -202,25 +208,26 @@
                                      {:cause :line-number-too-high})))
 
                  {:keys [start end]} (line-bounds content line-number)
-                 corpus (str/join "\n" (take
-                                        (- end start)
-                                        (drop (dec start) lines)))]
-             (println (str "Checking chunk containing line " line-number ": \n----"))
-             (println corpus)
-             (println "----")
+                 corpus (take (- end start) (drop (dec start) lines))]
+             (report-chunk corpus line-number start end)
              (let [result (assoc
-                           (can-read-content? corpus)
-                           :starting-at (str/join "\n" [(nth lines (dec start)) (nth lines start)]))]
+                           (can-read-content? (str/join "\n" (concat
+                                                              ;; fix edamame reporting by padding missing lines:
+                                                              (repeat (dec start) "")
+                                                              corpus)))
+                           :starting-at (nth lines (dec start))
+                           :ending-at (nth lines (dec (dec end))))]
                #_:clj-kondo/ignore
-               (prn result)
+               (pp/pprint result)
                result))
            (catch Exception e
-             (println "message: " (ex-message e))
-             (println "data:    " (pr-str (ex-data e)))
-             {:readable false
-              :exception true
-              :message (ex-message e)
-              :data (ex-data e)})))))
+             (let [data (ex-data e)]
+               (println "message: " (ex-message e))
+               (println "data:    " (pr-str data))
+               {:readable false
+                :exception true
+                :message (ex-message e)
+                :data data}))))))
 
 (comment ;; hi self
 
