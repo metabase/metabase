@@ -1082,8 +1082,10 @@
                              :creator_id   (mt/user->id :crowberto)})))
 
 (deftest get-default-template-test
-  (mt/user-http-request :crowberto :post 200 "notification/default_template"
-                        {:notification {:payload_type :notification/system-event
-                                        :payload      {:event_name :event/action.success
-                                                       :action     :bulk/create}}
-                         :channel_types ["channel/email" "channel/slack"]}))
+  (is (=? {:channel/email (mt/malli=? :map)
+           :channel/slack (mt/malli=? :map)}
+          (mt/user-http-request :crowberto :post 200 "notification/default_template"
+                                {:notification {:payload_type :notification/system-event
+                                                :payload      {:event_name :event/action.success
+                                                               :action     :bulk/create}}
+                                 :channel_types ["channel/email" "channel/slack"]}))))
