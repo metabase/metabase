@@ -40,8 +40,8 @@
     (is (= "Not Hot Dog" (hot-dog-not-hot-dog "Pho")))))
 
 ;; predefined helper tests
-(deftest equals-test
-  (let [hot-dog-not-hot-dog #(handlebars/render-string "{{#if (equals product.name \"Hot Dog\")}}Hot Dog{{else}}Not Hot Dog{{/if}}" {:product %})]
+(deftest eq-test
+  (let [hot-dog-not-hot-dog #(handlebars/render-string "{{#if (eq product.name \"Hot Dog\")}}Hot Dog{{else}}Not Hot Dog{{/if}}" {:product %})]
     (is (= "Hot Dog" (hot-dog-not-hot-dog {:name "Hot Dog"})))
     (is (= "Not Hot Dog" (hot-dog-not-hot-dog {:name "Pho"})))))
 
