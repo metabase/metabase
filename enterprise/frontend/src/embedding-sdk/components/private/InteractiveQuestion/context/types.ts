@@ -1,8 +1,8 @@
 import type { PropsWithChildren } from "react";
 
-import type { MetabasePluginsConfig } from "embedding-sdk";
 import type { LoadQuestionHookResult } from "embedding-sdk/hooks/private/use-load-question";
 import type { SdkCollectionId } from "embedding-sdk/types/collection";
+import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type {
   EntityTypeFilterKeys,
   LoadSdkQuestionParams,
