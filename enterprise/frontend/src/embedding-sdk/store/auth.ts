@@ -3,7 +3,6 @@ import * as Yup from "yup";
 import type {
   MetabaseAuthConfig,
   MetabaseEmbeddingSessionToken,
-  MetabaseFetchRequestTokenFn,
 } from "embedding-sdk";
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
@@ -17,7 +16,7 @@ import { refreshCurrentUser } from "metabase/redux/user";
 import type { Settings } from "metabase-types/api";
 
 import { getOrRefreshSession } from "./reducer";
-import { getFetchRefreshTokenFn } from "./selectors";
+import { getAuthInterface, getFetchRefreshTokenFn } from "./selectors";
 
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
@@ -97,7 +96,9 @@ export const refreshTokenAsync = createAsyncThunk(
       getState() as SdkStoreState,
     );
 
-    const getRefreshToken = customGetRefreshToken ?? defaultGetRefreshTokenFn;
+    const authInterface = getAuthInterface(getState() as SdkStoreState)
+
+    const getRefreshToken = customGetRefreshToken ?? getRefreshFunction({ authInterface });
 
     // # How does the error handling work?
     // This is an async thunk, thunks _by design_ can fail and no error will be shown on the console (it's the reducer that should handle the reject action)
@@ -152,31 +153,142 @@ const safeStringify = (value: unknown) => {
   }
 };
 
-/**
- * The default implementation of the function to get the refresh token.
- * Only supports sessions by default.
- */
-export const defaultGetRefreshTokenFn: MetabaseFetchRequestTokenFn = async (
-  url,
-) => {
-  const response = await fetch(url, {
-    method: "GET",
-    credentials: "include",
-  });
+export const getRefreshFunction = ({ authInterface }: Pick<SdkStoreState['sdk'], "authInterface">) => {
+  console.log({ authInterface })
+  if (authInterface === "popup") {
+    return popupRefreshTokenFn
+  }
 
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch the session, HTTP status: ${response.status}`,
+  return silentIframeRefreshFunction
+
+}
+
+
+export const silentIframeRefreshFunction = async (url: string): Promise<MetabaseEmbeddingSessionToken> => {
+  // This function is only for token refreshes where the user is already authenticated
+  return new Promise((resolve, reject) => {
+    // Add parameters to indicate this is a token refresh
+    const tokenUrl = url.includes("?")
+      ? `${url}&token=true&origin=${encodeURIComponent(window.location.origin)}&refresh=true`
+      : `${url}?token=true&origin=${encodeURIComponent(window.location.origin)}&refresh=true`;
+
+    // Open a minimal popup window for token refresh
+    // Make it tiny and position in corner to minimize visibility
+    const width = 1;
+    const height = 1;
+    const left = window.screen.width - width;
+    const top = 0;
+
+    const authWindow = window.open(
+      tokenUrl,
+      "samlRefresh",
+      `width=${width},height=${height},left=${left},top=${top},resizable=no,status=no,location=no,toolbar=no,menubar=no`
     );
-  }
 
-  const asText = await response.text();
+    if (!authWindow) {
+      reject(new Error("Auth window was blocked. Please allow popups for this site."));
+      return;
+    }
 
-  try {
-    return JSON.parse(asText);
-  } catch (ex) {
-    return asText;
-  }
+    // Listen for message from auth window
+    const messageHandler = (event: MessageEvent) => {
+      // Only accept messages with the correct type
+      if (event.data?.type === 'SAML_AUTH_COMPLETE' && event.data.authData) {
+        // Remove event listener
+        window.removeEventListener('message', messageHandler);
+
+        // Make sure window is closed
+        if (!authWindow.closed) {
+          authWindow.close();
+        }
+
+        // Resolve with auth data
+        resolve(event.data.authData);
+      }
+    };
+
+    window.addEventListener('message', messageHandler);
+
+    // Set timeout to prevent hanging indefinitely
+    const timeoutId = setTimeout(() => {
+      window.removeEventListener('message', messageHandler);
+
+      if (!authWindow.closed) {
+        authWindow.close();
+      }
+
+      reject(new Error("Authentication timed out"));
+    }, 30000); // 30 second timeout
+  });
+};
+
+export const popupRefreshTokenFn = async (url: string) => {
+  // For SAML authentication, use a popup approach
+  return new Promise((resolve, reject) => {
+    // Define popup dimensions
+    const width = 600;
+    const height = 700;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+
+    // Just use the token=true parameter to get the HTML response
+    const tokenUrl = url.includes("?")
+      ? `${url}&token=true&popup=true`
+      : `${url}?token=true&popup=true`;
+
+    // Open popup
+    const popup = window.open(
+      tokenUrl,
+      "samlLoginPopup",
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`,
+    );
+
+    if (!popup) {
+      reject(new Error("Popup blocked. Please allow popups for this site."));
+      return;
+    }
+
+    // Listen for message from the popup
+    const messageHandler = (event: MessageEvent) => {
+      // Security check - only accept messages from our popup
+      if (event.source !== popup) {
+        return;
+      }
+
+      // Check for our specific message type
+      if (event.data && event.data.type === "saml_auth_complete") {
+        // Remove the event listener
+        window.removeEventListener("message", messageHandler);
+
+        // Close the popup
+        popup.close();
+
+        // Resolve with the auth data
+        resolve(event.data.payload);
+      }
+    };
+
+    window.addEventListener("message", messageHandler);
+
+    // Handle popup closing
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed);
+        window.removeEventListener("message", messageHandler);
+        reject(new Error("Authentication was canceled"));
+      }
+    }, 1000);
+
+    // Set timeout to prevent hanging indefinitely
+    setTimeout(() => {
+      clearInterval(checkClosed);
+      window.removeEventListener("message", messageHandler);
+      if (!popup.closed) {
+        popup.close();
+      }
+      reject(new Error("Authentication timed out"));
+    }, 300000); // 5 minutes timeout
+  });
 };
 
 const sessionSchema = Yup.object({

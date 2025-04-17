@@ -36,7 +36,9 @@ const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
   async (url: string, { dispatch, getState }) => {
-    const state = getSessionTokenState(getState() as SdkStoreState);
+    const authToken = localStorage.getItem("metabaseAuthToken");
+    console.log({ authToken })
+    const state = authToken ?? getSessionTokenState(getState() as SdkStoreState);
     const token = state?.token;
 
     const isTokenValid = token && token.exp * 1000 >= Date.now();
@@ -64,6 +66,8 @@ export const setUsageProblem = createAction<SdkUsageProblem | null>(
   SET_USAGE_PROBLEM,
 );
 
+export const setAuthInterface = createAction<SdkState['authInterface']>("sdk/SET_AUTH_INTERFACE")
+
 const initialState: SdkState = {
   metabaseInstanceUrl: "",
   token: {
@@ -78,6 +82,7 @@ const initialState: SdkState = {
   loaderComponent: null,
   errorComponent: null,
   fetchRefreshTokenFn: null,
+  authInterface: "redirect"
 };
 
 export const sdk = createReducer(initialState, (builder) => {
@@ -132,6 +137,10 @@ export const sdk = createReducer(initialState, (builder) => {
 
   builder.addCase(setMetabaseClientUrl, (state, action) => {
     state.metabaseInstanceUrl = action.payload;
+  });
+
+  builder.addCase(setAuthInterface, (state, action) => {
+    state.authInterface = action.payload;
   });
 
   builder.addCase(setFetchRefreshTokenFn, (state, action) => {
