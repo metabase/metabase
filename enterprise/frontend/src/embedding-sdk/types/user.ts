@@ -15,18 +15,30 @@ export type MetabaseUser = {
   first_login: string;
 };
 
+/**
+ * @inline
+ */
 type LoginStatusUninitialized = {
   status: "uninitialized";
 };
 
+/**
+ * @inline
+ */
 type LoginStatusSuccess = {
   status: "success";
 };
 
+/**
+ * @inline
+ */
 type LoginStatusLoading = {
   status: "loading";
 };
 
+/**
+ * @inline
+ */
 export type LoginStatusError = {
   status: "error";
   error: Error;
