@@ -1,12 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
-import type {
-  LocalFieldReference,
-  MetricAgg,
-  ReferenceOptions,
-} from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
   createMockCard,
@@ -74,19 +68,6 @@ const metadata = createMockMetadata({
   ],
 });
 
-function ref(id: number, options?: ReferenceOptions): LocalFieldReference {
-  const field = metadata.field(id);
-  if (!field) {
-    return ["field", id, null];
-  }
-
-  const opts = { ...options };
-  if (field.base_type) {
-    opts["base-type"] = field.base_type;
-  }
-  return ["field", id, opts];
-}
-
 export const query = createQueryWithClauses({
   query: createQuery({ metadata }),
   expressions: [
@@ -113,26 +94,6 @@ export const query = createQueryWithClauses({
   ],
 });
 export const stageIndex = -1;
-
-export const id = ref(ORDERS.ID);
-export const created = ref(ORDERS.CREATED_AT);
-export const total = ref(ORDERS.TOTAL);
-export const subtotal = ref(ORDERS.SUBTOTAL);
-export const tax = ref(ORDERS.TAX);
-export const userId = ref(ORDERS.USER_ID);
-export const userName = ref(PEOPLE.NAME, { "source-field": ORDERS.USER_ID });
-export const price = ref(PRODUCTS.PRICE, { "source-field": ORDERS.PRODUCT_ID });
-export const ean = ref(PRODUCTS.EAN, { "source-field": ORDERS.PRODUCT_ID });
-export const name = ref(PEOPLE.NAME, { "source-field": ORDERS.USER_ID });
-export const category = ref(PRODUCTS.CATEGORY, {
-  "source-field": ORDERS.PRODUCT_ID,
-});
-export const email = ref(PEOPLE.EMAIL, { "source-field": ORDERS.USER_ID });
-export const bool = ["expression", "bool", { "base-type": "type/Boolean" }];
-export const segment = checkNotNull(
-  metadata.segment(SEGMENT_ID),
-).filterClause();
-export const metric: MetricAgg = ["metric", METRIC_ID];
 
 function findField(name: string) {
   const columns = Lib.expressionableColumns(query, stageIndex);
