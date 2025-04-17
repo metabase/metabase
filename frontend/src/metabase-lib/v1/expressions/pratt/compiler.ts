@@ -148,7 +148,6 @@ function compileField(
   assert(node.type === FIELD, t`Invalid node type`);
   assert(node.token?.value, t`Empty field value`);
 
-  // Slice off the leading and trailing brackets
   return getDimension(node.token.value, node, ctx);
 }
 
