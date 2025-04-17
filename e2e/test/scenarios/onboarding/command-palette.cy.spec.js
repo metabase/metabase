@@ -527,8 +527,7 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     // Sidesheet
     cy.realPress("]");
     cy.findByRole("dialog", { name: "Info" }).should("exist");
-    // Should be able to toggle again in ], but modals disable shortcuts
-    cy.realPress("Escape");
+    cy.realPress("]").wait(100);
     cy.findByRole("dialog", { name: "Info" }).should("not.exist");
 
     // Viz Settings
