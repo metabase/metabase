@@ -182,12 +182,100 @@
    "card-url"      #'card-url
    "dashboard-url" #'dashboard-url})
 
+(def ^:private built-in-helpers-info
+  (map
+   #(assoc % :type :built-in)
+   [{:name "if"
+     :doc  "Conditionally renders a block based on the truthiness of a value.
+
+   Example:
+   ```
+   {{#if author}}
+     <h1>{{firstName}} {{lastName}}</h1>
+   {{else}}
+     <h1>Unknown Author</h1>
+   {{/if}}
+   ```
+
+   Arguments:
+   - value: The value to test for truthiness
+   - options: Hash options including 'includeZero' to treat 0 as truthy"}
+    {:name "unless"
+     :doc  "Conditionally renders a block if the value is falsy.
+
+   Example:
+   ```
+   {{#unless license}}
+     <p>WARNING: This entry has no license!</p>
+   {{/unless}}
+   ```
+
+   Arguments:
+   - value: The value to test for falsiness"}
+    {:name "each"
+     :doc  "Iterates over a collection and renders a block for each item.
+
+   Example:
+   ```
+   {{#each people}}
+     <li>{{this}}</li>
+   {{else}}
+     <li>No people to display</li>
+   {{/each}}
+   ```
+
+   Special variables:
+   - @index: Current loop index for arrays
+   - @key: Current key name for objects
+   - @first: True on first iteration
+   - @last: True on last iteration"}
+    {:name "with"
+     :doc  "Changes the evaluation context for a block.
+
+   Example:
+   ```
+   {{#with person}}
+     {{firstName}} {{lastName}}
+   {{else}}
+     No person found
+   {{/with}}
+   ```
+
+   Arguments:
+   - context: The new context to use
+   - blockParam: Optional block parameter name to define reference"}
+    {:name "lookup"
+     :doc  "Looks up a value in an object or array using dynamic parameter resolution.
+
+   Example:
+   ```
+   {{lookup person age}}
+   ```
+
+   Arguments:
+   - object: The object or array to perform lookup on
+   - key: The property or index to look up"}
+    {:name "log"
+     :doc  "Logs a value to the console for debugging.
+
+   Example:
+   ```
+   {{log \"Current value:\" this}}
+   ```
+
+   Arguments:
+   - values: Any number of values to log
+   - level: Optional hash param for log level (debug, info, warn, error)"}]))
+
 (defn- helpers-info
   "Get a list of helpers with their names and docstrings."
   [helper-name->helper]
-  (for [[helper-name helper] helper-name->helper]
-    {:name helper-name
-     :doc  (-> helper meta :doc)}))
+  (concat
+   built-in-helpers-info
+   (for [[helper-name helper] helper-name->helper]
+     {:name helper-name
+      :doc  (-> helper meta :doc)
+      :type :custom})))
 
 ;; Exposing this via settings so FE can find it
 ;; TODO: the better way is to follow metabase.lib's steps by writing this as cljc so FE can access it directly.
