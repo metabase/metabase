@@ -182,7 +182,7 @@
    "card-url"      #'card-url
    "dashboard-url" #'dashboard-url})
 
-(defn helpers-info
+(defn- helpers-info
   "Get a list of helpers with their names and docstrings."
   [helper-name->helper]
   (for [[helper-name helper] helper-name->helper]
