@@ -50,7 +50,7 @@ export const EChartsTooltip = ({
   });
 
   return (
-    <div data-testid="echarts-tooltip">
+    <div data-testid="echarts-tooltip" role="tooltip">
       {header != null && (
         <div
           data-testid="echarts-tooltip-header"

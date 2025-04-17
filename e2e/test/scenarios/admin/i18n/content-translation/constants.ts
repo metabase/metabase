@@ -8,6 +8,17 @@ export const germanFieldNames: NonEmpty<DictionaryArray> = [
   { locale: "de", msgid: "Category", msgstr: "Kategorie" },
   { locale: "de", msgid: "Created At", msgstr: "Erstellt am" },
   { locale: "de", msgid: "Price", msgstr: "Preis" },
+  { locale: "de", msgid: "State", msgstr: "Staat" },
+  { locale: "de", msgid: "Average of Price", msgstr: "Durchschnittspreis" },
+
+  // There is a bug in the backend that causes the "Average of Price" to be
+  // translated as "Durchschnitt von Price" before content translation is
+  // applied, so we need to provide a translation for this macaronic phrase
+  {
+    locale: "de",
+    msgid: "Durchschnitt von Price",
+    msgstr: "Durchschnittspreis",
+  },
 ];
 
 export const germanFieldValues: NonEmpty<DictionaryArray> = [

@@ -9,7 +9,9 @@ import { useDatabaseListQuery } from "metabase/common/hooks";
 import { NotFound } from "metabase/components/ErrorPages";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch } from "metabase/lib/redux";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi, MetabaseApi } from "metabase/services";
 import * as Lib from "metabase-lib";
@@ -68,7 +70,7 @@ function filterByPk(
 }
 
 export function ObjectDetailView({
-  data: passedData,
+  data: untranslatedPassedData,
   question,
   table,
   zoomedRow: passedZoomedRow,
@@ -92,11 +94,18 @@ export function ObjectDetailView({
   closeObjectDetail,
   className,
 }: ObjectDetailProps): JSX.Element | null {
+  const tc = useTranslateContent();
+  const passedData = PLUGIN_CONTENT_TRANSLATION.translateDisplayNames(
+    untranslatedPassedData,
+    tc,
+  );
+
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
   const [maybeLoading, setMaybeLoading] = useState(false);
   const prevZoomedRowId = usePrevious(zoomedRowID);
   const prevData = usePrevious(passedData);
   const prevTableForeignKeys = usePrevious(tableForeignKeys);
+
   const [data, setData] = useState<DatasetData>(passedData);
   const [actionId, setActionId] = useState<WritebackActionId>();
   const [deleteActionId, setDeleteActionId] = useState<WritebackActionId>();

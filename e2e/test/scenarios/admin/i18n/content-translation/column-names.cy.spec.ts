@@ -45,29 +45,40 @@ describe("scenarios > content translation > column names", () => {
           });
         });
 
-        it("when locale is English, column names are NOT localized in column headers", () => {
-          H.snapshot("translations-uploaded");
-          cy.signInAsNormalUser();
-          H.visitQuestion(productsQuestionId);
-          cy.findByTestId("table-header").within(() => {
-            germanFieldNames.forEach((row) => {
-              cy.findByText(row.msgid).should("be.visible");
-              cy.findByText(row.msgstr).should("not.exist");
+        describe("when locale is English, column names are NOT localized in", () => {
+          beforeEach(() => {
+            H.restore("translations-uploaded" as any);
+            cy.signInAsNormalUser();
+          });
+
+          it("column headers", () => {
+            H.visitQuestion(productsQuestionId);
+            cy.findByTestId("table-header").within(() => {
+              germanFieldNames.forEach((row) => {
+                cy.findByText(row.msgid).should("be.visible");
+                cy.findByText(row.msgstr).should("not.exist");
+              });
             });
           });
         });
 
-        it("when locale is German, column names ARE localized in column headers", () => {
-          H.snapshot("translations-uploaded");
-          cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
-            locale: "de",
+        describe("when locale is German, column names ARE localized in", () => {
+          beforeEach(() => {
+            cy.signInAsAdmin();
+            H.restore("translations-uploaded" as any);
+            cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
+              locale: "de",
+            });
+            cy.signInAsNormalUser();
           });
-          cy.signInAsNormalUser();
-          H.visitQuestion(productsQuestionId);
-          cy.findByTestId("table-header").within(() => {
-            germanFieldNames.forEach((row) => {
-              cy.findByText(row.msgid).should("not.exist");
-              cy.findByText(row.msgstr).should("be.visible");
+
+          it("column headers", () => {
+            H.visitQuestion(productsQuestionId);
+            cy.findByTestId("table-header").within(() => {
+              germanFieldNames.forEach((row) => {
+                cy.findByText(row.msgid).should("not.exist");
+                cy.findByText(row.msgstr).should("be.visible");
+              });
             });
           });
         });
