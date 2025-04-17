@@ -105,7 +105,7 @@ mage -repl --namespace metabase.db.connection
 To call `your.namespace/your-function` on `arg1` and `arg2`:
 
    ```
-   ./bin/mage -repl --namespace your.namespace (your-function arg1 arg2)'
+   ./bin/mage -repl --namespace your.namespace '(your-function arg1 arg2)'
    ```
 
 DO NOT use "require", "load-file" etc in the code string argument.
