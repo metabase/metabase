@@ -56,10 +56,13 @@
 
 (defn- database-type->base-type-or-warn
   "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
-  [driver database-type]
-  (or (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))
-      (do (log/warnf "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*."
-                     database-type)
+  [driver col]
+  (or (sql-jdbc.sync.interface/database-type->base-type driver (keyword (:database-type col)))
+      (do (log/warnf "Don't know how to map column type '%s' to a Field base_type for '%s' '%s' '%s', falling back to :type/*."
+                     (:database-type col)
+                     (:table-schema col)
+                     (:table-name col)
+                     (:name col))
           :type/*)))
 
 (defn- calculated-semantic-type
@@ -173,8 +176,9 @@
 (defn describe-fields-xf
   "Returns a transducer for computing metadata about the fields in `db`."
   [driver db]
+  (def ddd db)
   (map (fn [col]
-         (let [base-type (or (:base-type col) (database-type->base-type-or-warn driver (:database-type col)))
+         (let [base-type (or (:base-type col) (database-type->base-type-or-warn driver col))
                semantic-type (calculated-semantic-type driver (:name col) (:database-type col))
                json? (isa? base-type :type/JSON)
                database-position (some-> (:database-position col) int)]
