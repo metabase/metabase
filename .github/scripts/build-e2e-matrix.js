@@ -26,10 +26,13 @@ function buildMatrix(inputSpecs, inputChunks) {
   console.log("Processed specs value:", allSpecs);
   console.log("Is default pattern:", isDefaultSpecPattern);
 
-  const getMatchingSpecsCount = (pattern) => glob.sync(pattern).length;
-  const hasMatchingSpecs = (pattern) => {
+  const getMatchingSpecsCount = (pattern) => {
     console.log("Checking specs for pattern:", pattern);
     console.log("Matching specs:", glob.sync(pattern));
+
+    return glob.sync(pattern).length;
+  };
+  const hasMatchingSpecs = (pattern) => {
     return getMatchingSpecsCount(pattern) > 0;
   };
 
