@@ -29,7 +29,7 @@
   (when-not image_base64
     (throw (ex-info (tru "No image data provided") {:status-code 400})))
 
-  (premium-features/assert-has-feature :metabot-v3 "chart analysis")
+  (premium-features/assert-has-feature :ai-entity-analysis "chart analysis")
   (let [chart-data {:image_base64 image_base64
                     :chart {:name name
                             :description description}
@@ -53,7 +53,7 @@
   (when-not image_base64
     (throw (ex-info (tru "No image data provided") {:status-code 400})))
 
-  (premium-features/assert-has-feature :metabot-v3 "dashboard analysis")
+  (premium-features/assert-has-feature :ai-entity-analysis "dashboard analysis")
   (let [dashboard-data {:image_base64 image_base64
                         :dashboard {:name name
                                     :description description

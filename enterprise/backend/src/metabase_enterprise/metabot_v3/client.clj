@@ -233,7 +233,6 @@
                                                                  [:name :string]
                                                                  [:description {:optional true} [:maybe :string]]
                                                                  [:timestamp :string]]]]]]
-  (premium-features/assert-has-feature :metabot-v3 "chart analysis")
   (let [url (analyze-chart-endpoint)
         options (build-request-options chart-data)
         response (post! url options)]
@@ -252,7 +251,6 @@
                                   [:name {:optional true} [:maybe :string]]
                                   [:description {:optional true} [:maybe :string]]
                                   [:tab_name {:optional true} [:maybe :string]]]]]]
-  (premium-features/assert-has-feature :metabot-v3 "dashboard analysis")
   (let [url (analyze-dashboard-endpoint)
         options (build-request-options dashboard-data)
         response (post! url options)]
