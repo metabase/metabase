@@ -70,7 +70,7 @@
           (m/dissoc-in [:details :path]))
       template)))
 
-;; we should rethink how this path, maybe we need to have some kind of template-id
+;; TODO: rethink this path, maybe we need to have some kind of template-id
 (defn- notification-info->path
   [payload-type payload]
   [payload-type (:event_name payload) (:action payload)])
