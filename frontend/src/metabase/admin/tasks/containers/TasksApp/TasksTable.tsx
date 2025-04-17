@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { match } from "ts-pattern";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
