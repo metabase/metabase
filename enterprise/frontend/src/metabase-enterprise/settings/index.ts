@@ -4,6 +4,7 @@ import type { TokenFeature } from "metabase-types/api";
 
 export function hasPremiumFeature(feature: TokenFeature) {
   const tokenFeatures = MetabaseSettings.get("token-features");
+
   if (tokenFeatures == null) {
     // This is the SDK, because settings are only loaded asynchronously after the SDK has run.
     return false;
