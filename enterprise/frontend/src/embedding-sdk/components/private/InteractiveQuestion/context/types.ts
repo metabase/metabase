@@ -6,10 +6,10 @@ import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type {
   EntityTypeFilterKeys,
   LoadSdkQuestionParams,
+  MetabaseQuestion,
   SdkQuestionId,
   SqlParameterValues,
 } from "embedding-sdk/types/question";
-import type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
 import type { NotebookProps as QBNotebookProps } from "metabase/querying/notebook/components/Notebook";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Question from "metabase-lib/v1/Question";

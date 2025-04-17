@@ -3,6 +3,7 @@ import type { ComponentType, FC } from "react";
 import type { ConnectedProps } from "react-redux";
 import _ from "underscore";
 
+import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
 import * as dashboardActions from "metabase/dashboard/actions";
@@ -36,7 +37,6 @@ import type {
   DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
 import { connect } from "metabase/lib/redux";
-import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { closeNavbar, setErrorPage } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
@@ -99,7 +99,7 @@ type ConnectedDashboardProps = {
   DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
   DashboardLoaderWrapperProps &
-  PublicOrEmbeddedDashboardEventHandlersProps;
+  DashboardEventHandlersProps;
 
 const ConnectedDashboardInner = ({
   dashboard,
