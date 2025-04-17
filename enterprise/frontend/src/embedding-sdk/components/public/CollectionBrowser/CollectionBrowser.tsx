@@ -31,7 +31,7 @@ const USER_FACING_ENTITY_NAMES = [
 
 type UserFacingEntityName = (typeof USER_FACING_ENTITY_NAMES)[number];
 
-type CollectionBrowserListColumns =
+export type CollectionBrowserListColumns =
   | "type"
   | "name"
   | "lastEditedBy"
