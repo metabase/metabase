@@ -9,7 +9,7 @@ export function setupContentTranslationEndpoints({
 }: {
   dictionary?: DictionaryResponse["data"];
   uploadSuccess?: boolean;
-}) {
+} = {}) {
   fetchMock.get(
     "path:/api/content-translation/dictionary",
     (url): DictionaryResponse => {
