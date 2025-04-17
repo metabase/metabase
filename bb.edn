@@ -150,7 +150,7 @@
 
   -check-readable
   {:doc      "Check that code is readable parens a file"
-   :requires [[mage.be-dev :refer [readability-check]]]
+   :requires [[mage.readability-check :as readability]]
    :arg-schema [:or
                 [:tuple [:string {:description "File to check"}]]
                 [:tuple
@@ -161,7 +161,7 @@
               ["./bin/mage -check-readable dev/src/dev.clj 300"
                "Check top level form containing line 300 for readability"]]
    :task     (let [{:keys [arguments]} (cli/parse! (current-task))]
-               (apply readability-check arguments))}
+               (apply readability/check arguments))}
 
   -example-calculator
   {;; `:doc` is a short docstring for the task, will be listed in `./bin/mage -h` and other help info
