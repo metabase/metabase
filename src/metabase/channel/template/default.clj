@@ -3,8 +3,6 @@
    [clojure.java.io :as io]
    [medley.core :as m]))
 
-(slurp (io/resource "metabase/channel/email/data_editing_row_create.hbs"))
-
 ;; email template
 
 (def ^:private template-lookup
