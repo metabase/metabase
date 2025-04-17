@@ -46,6 +46,7 @@ const setup = ({ location = createMockLocation() }: SetupOpts = {}) => {
 
   return renderHookWithProviders(() => useUrlState(location, config), {
     initialRoute: `${location.pathname}${location.search}`,
+    withRouter: true,
   });
 };
 
@@ -61,6 +62,14 @@ describe("useUrlState", () => {
     const { result } = setup({ location });
     const [state] = result.current;
     expect(state).toEqual({ name: "abc", score: 123 });
+  });
+
+  it("replaces unparsable query params", async () => {
+    const location = createLocation("?name=abc&score=abc");
+    const { result, history } = setup({ location });
+    const [state] = result.current;
+    expect(state).toEqual({ name: "abc", score: null });
+    expect(history?.getCurrentLocation().search).toEqual("?name=abc");
   });
 });
 
