@@ -1237,3 +1237,15 @@
           (is (= "bigquery.example.com"
                  (.getHost (.getOptions client)))
               "BigQuery client should be configured with alternate host"))))))
+
+(deftest timestamp-precision-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [sql (str "select"
+                   " timestamp '2024-12-11 16:23:55.123456 UTC' col_timestamp,"
+                   " datetime  '2024-12-11T16:23:55.123456' col_datetime")
+          query {:database (mt/id)
+                 :type :native
+                 :native {:query sql}}]
+      (is (=? [["2024-12-11T16:23:55.123456Z" #"2024-12-11T16:23:55.123456.*"]]
+              (-> (qp/process-query query)
+                  mt/rows))))))

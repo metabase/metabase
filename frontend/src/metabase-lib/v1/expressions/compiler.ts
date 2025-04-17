@@ -2,29 +2,22 @@ import * as Lib from "metabase-lib";
 import type { Expression } from "metabase-types/api";
 
 import { type ExpressionError, renderError } from "./errors";
-import { resolverPass } from "./field-resolver";
-import {
-  adjustBigIntLiteral,
-  adjustBooleans,
-  adjustCaseOrIf,
-  adjustMultiArgOptions,
-  adjustOffset,
-  adjustOptions,
-  adjustTopLevelLiteral,
-  applyPasses,
-} from "./passes";
+import { type Resolver, fieldResolver } from "./field-resolver";
 import { compile, lexify, parse } from "./pratt";
+import { resolve } from "./resolver";
 import type { StartRule } from "./types";
 
 export type CompileResult =
   | {
       error: ExpressionError;
       expression: null;
+      expressionParts: null;
       expressionClause: null;
     }
   | {
       error: null;
       expression: Expression;
+      expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
       expressionClause: Lib.ExpressionClause;
     };
 
@@ -33,48 +26,47 @@ export function compileExpression({
   startRule,
   query,
   stageIndex,
-  resolve: shouldResolve = true,
+  resolver = fieldResolver({
+    query,
+    stageIndex,
+    startRule,
+  }),
 }: {
   source: string;
   startRule: StartRule;
   query: Lib.Query;
   stageIndex: number;
-  resolve?: boolean;
+  resolver?: Resolver | null;
 }): CompileResult {
   try {
     const { tokens } = lexify(source);
     const { root } = parse(tokens, { throwOnError: true });
     const compiled = compile(root);
-    const expression = applyPasses(compiled, [
-      adjustOptions,
-      adjustOffset,
-      adjustMultiArgOptions,
-      adjustBigIntLiteral,
-      adjustTopLevelLiteral,
-      adjustCaseOrIf,
-      shouldResolve &&
-        resolverPass({
-          query,
-          stageIndex,
-          startRule,
-        }),
-      adjustBooleans,
-    ]);
+    const resolved = resolver
+      ? resolve({
+          expression: compiled,
+          type: startRule,
+          fn: resolver,
+        })
+      : compiled;
 
-    const expressionClause = Lib.expressionClauseForLegacyExpression(
+    const expressionClause = Lib.expressionClause(resolved);
+    const expression = Lib.legacyExpressionForExpressionClause(
       query,
       stageIndex,
-      expression,
+      expressionClause,
     );
 
     return {
       expression,
+      expressionParts: resolved,
       expressionClause,
       error: null,
     };
   } catch (error) {
     return {
       expression: null,
+      expressionParts: null,
       expressionClause: null,
       error: renderError(error),
     };

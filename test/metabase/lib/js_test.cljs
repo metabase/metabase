@@ -183,9 +183,9 @@
       (is (test.js/= (clj->js snippets)
                      (lib.js/template-tags query))))))
 
-(deftest ^:parallel is-column-metadata-test
-  (is (true? (lib.js/is-column-metadata (meta/field-metadata :venues :id))))
-  (is (false? (lib.js/is-column-metadata 1))))
+(deftest ^:parallel column-metadata?-test
+  (is (true? (lib.js/column-metadata? (meta/field-metadata :venues :id))))
+  (is (false? (lib.js/column-metadata? 1))))
 
 (deftest ^:parallel cljs-key->js-key-test
   (is (= "isManyPks"
@@ -614,18 +614,18 @@
                     (m/indexed (lib/expressions query)))]
     (testing "correct expression are accepted silently"
       (are [mode expr] (nil? (lib.js/diagnose-expression query 0 mode expr js/undefined))
-        "expression"  #js ["/"   #js ["field" 1 nil] 100]
-        "aggregation" #js ["sum" #js ["field" 1 #js {:base-type "type/Integer"}]]
-        "filter"      #js ["="   #js ["field" 1 #js {:base-type "type/Integer"}] 3]))
+        "expression"  (lib/* (meta/field-metadata :venues :price) 100)
+        "aggregation" (lib/sum (meta/field-metadata :venues :price))
+        "filter"      (lib/=  (meta/field-metadata :venues :price) 3)))
     (testing "type errors are reported"
       (are [mode expr] (-> (lib.js/diagnose-expression query 0 mode expr js/undefined)
                            .-message
                            string?)
-        "expression"  #js ["/"   #js ["field" 1 #js {:base-type "type/Address"}] 100]))
+        "expression"  (lib/* (meta/field-metadata :people :address) 100)))
     (testing "circular definition"
       (is (= "Cycle detected: c → x → b → c"
              (-> (lib.js/diagnose-expression
-                  query 0 "expression" #js ["+" #js ["expression" "x"] 1] c-pos)
+                  query 0 "expression"  (lib/+ (lib/expression-ref query "x") 1) c-pos)
                  .-message))))))
 
 ;; TODO: This wants `=?` to work on JS values. See https://github.com/metabase/hawk/issues/24

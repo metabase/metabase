@@ -15,6 +15,7 @@ import {
 } from "../../context";
 
 /**
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionQuestionSettingsProps = StackProps;
