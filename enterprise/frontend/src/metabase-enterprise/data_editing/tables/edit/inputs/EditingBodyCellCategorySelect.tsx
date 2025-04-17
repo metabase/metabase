@@ -34,6 +34,7 @@ export const EditingBodyCellCategorySelect = ({
   datasetColumn,
   withCreateNew = true,
   classNames,
+  field,
   getDropdownLabelText = DefaultItemLabelTextGetter,
   getSelectedLabelText = DefaultSelectedLabelTextGetter,
   onSubmit,
@@ -57,8 +58,8 @@ export const EditingBodyCellCategorySelect = ({
   });
 
   const handleOptionSubmit = useCallback(
-    (value: string) => {
-      setValue(value);
+    (value: string | null) => {
+      setValue(value ?? "");
       onSubmit(value);
       onChangeValue?.(value);
       combobox.toggleDropdown();
@@ -111,6 +112,9 @@ export const EditingBodyCellCategorySelect = ({
     getSelectedLabelText,
   ]);
 
+  const isNullable = field?.database_is_nullable;
+  const shouldDisplayClearButton = isNullable && !!value;
+
   return (
     <Combobox
       store={combobox}
@@ -128,6 +132,17 @@ export const EditingBodyCellCategorySelect = ({
             wrapper: classNames?.wrapper,
             input: classNames?.selectTextInputElement,
           }}
+          rightSectionPointerEvents="all"
+          rightSection={
+            shouldDisplayClearButton && (
+              <Icon
+                name="close"
+                color="var(--mb-color-text-light)"
+                onClick={() => handleOptionSubmit(null)}
+                onMouseDown={(event) => event.stopPropagation()}
+              />
+            )
+          }
         >
           {inputLabel}
         </Input>
