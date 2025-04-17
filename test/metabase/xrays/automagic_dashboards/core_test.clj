@@ -341,15 +341,20 @@
 (deftest native-query-with-cards-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-full-data-perms-for-all-users!
-      (let [source-query {:native   {:query "select * from venues limit 1"}
+      (let [source-eid   (u/generate-nano-id)
+            source-query {:native   {:query "select * from venues limit 1"}
                           :type     :native
                           :database (mt/id)}]
         (mt/with-temp [:model/Collection {collection-id :id} {}
                        :model/Card       {source-id :id}     {:table_id        nil
                                                               :collection_id   collection-id
                                                               :dataset_query   source-query
-                                                              :result_metadata (get-in (qp/process-query source-query)
-                                                                                       [:data :results_metadata :columns])}
+                                                              :entity_id       source-eid
+                                                              :result_metadata
+                                                              (-> source-query
+                                                                  (assoc-in [:info :card-entity-id] source-eid)
+                                                                  qp/process-query
+                                                                  (get-in [:data :results_metadata :columns]))}
                        :model/Card       {card-id :id}       {:table_id      nil
                                                               :collection_id collection-id
                                                               :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
@@ -1256,14 +1261,13 @@
       (let [source-query {:native   {:query "SELECT LATITUDE AS L1, LATITUDE AS L2, LATITUDE AS L3 FROM PEOPLE;"}
                           :type     :native
                           :database (mt/id)}]
-        (mt/with-temp [:model/Card card {:table_id        nil
-                                         :dataset_query   source-query
-                                         :result_metadata (->> (result-metadata-for-query source-query)
-                                                               (mt/with-test-user :crowberto)
-                                                               (mapv (fn [m]
-                                                                       (assoc m
-                                                                              :display_name "Frooby"
-                                                                              :semantic_type :type/Latitude))))}]
+        (mt/with-temp [:model/Card card (-> (mt/card-with-source-metadata-for-query source-query)
+                                            (assoc :table_id nil)
+                                            (update :result_metadata (fn [metadata]
+                                                                       (mapv #(assoc %
+                                                                                     :display_name "Frooby"
+                                                                                     :semantic_type :type/Latitude)
+                                                                             metadata))))]
           (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
                 base-context        (#'magic/make-base-context root)
                 dimensions          [{"Loc" {:field_type [:type/Location], :score 60}}
@@ -1730,12 +1734,9 @@
                             :type     :native
                             :database (mt/id)}]
           (mt/with-temp
-            [:model/Card {native-card-id :id :as native-card} {:table_id        nil
-                                                               :name            "15655"
-                                                               :dataset_query   native-query
-                                                               :result_metadata (get-in (qp/process-query native-query)
-                                                                                        [:data :results_metadata :columns])}
-                                        ;card__19169
+            [:model/Card {native-card-id :id :as native-card} (merge (mt/card-with-source-metadata-for-query native-query)
+                                                                     {:table_id        nil
+                                                                      :name            "15655"})
              :model/Card card {:table_id      (mt/id :orders)
                                :dataset_query {:query    {:source-table (format "card__%s" native-card-id)
                                                           :aggregation  [[:count]]
