@@ -33,7 +33,7 @@
   (classloader/require 'metabase.test-runner.assert-exprs))
 
 (u/ignore-exceptions
-  (classloader/require 'humane-are.core;;)
+  (classloader/require 'humane-are.core)
   ((resolve 'humane-are.core/install!)))
 
 (u/ignore-exceptions
