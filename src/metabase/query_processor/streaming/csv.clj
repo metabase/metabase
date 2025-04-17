@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
+   [metabase.pivot.core :as pivot]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming.common :as streaming.common]
@@ -57,6 +58,29 @@
                                 (.replace string "\"" "\"\"")
                                 string))
                (when must-quote (.write writer "\"")))))
+
+(defn- get-formatter
+  "Returns a memoized formatter for a column"
+  [timezone settings format-rows?]
+  (memoize
+   (fn [column]
+     (formatter/create-formatter timezone column settings format-rows?))))
+
+(defn- create-formatters
+  [columns indexes timezone settings format-rows?]
+  (let [formatter-fn (get-formatter timezone settings format-rows?)]
+    (mapv (fn [idx]
+            (let [column (nth columns idx)
+                  formatter (formatter-fn column)]
+              (fn [value]
+                (formatter (streaming.common/format-value value)))))
+          indexes)))
+
+(defn- make-formatters
+  [columns row-indexes col-indexes val-indexes settings timezone format-rows?]
+  {:row-formatters (create-formatters columns row-indexes timezone settings format-rows?)
+   :col-formatters (create-formatters columns col-indexes timezone settings format-rows?)
+   :val-formatters (create-formatters columns val-indexes timezone settings format-rows?)})
 
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
@@ -123,7 +147,22 @@
       (finish! [_ _]
         ;; TODO -- not sure we need to flush both
         (when (and (contains? @pivot-data :data) @pivoted-export?)
-          (let [output (qp.pivot.postprocess/build-pivot-output (assoc-in @pivot-data [:data :rows] @pivot-rows))]
+          (let [pivot-export-options (:pivot-export-options @pivot-data)
+                row-indexes (:pivot-rows pivot-export-options)
+                col-indexes (:pivot-cols pivot-export-options)
+                val-indexes (:pivot-measures pivot-export-options)
+                columns    (pivot/columns-without-pivot-group (-> @pivot-data :data :cols))
+                formatters (make-formatters
+                            columns
+                            row-indexes
+                            col-indexes
+                            val-indexes
+                            (:settings @pivot-data)
+                            (:timezone @pivot-data)
+                            (:format-rows? @pivot-data))
+                output     (qp.pivot.postprocess/build-pivot-output
+                            (assoc-in @pivot-data [:data :rows] @pivot-rows)
+                            formatters)]
             (doseq [xf-row output]
               (write-csv writer [xf-row]))))
         (.flush writer)

@@ -529,29 +529,16 @@
 
 (defn write-pivot-table!
   "Writes pivoted data to the provided sheet as-is, without additional formatting applied."
-  [^SXSSFSheet sheet pivot-output]
+  [^SXSSFSheet sheet pivot-output typed-styles]
   (doseq [[row-idx row] (map-indexed vector pivot-output)]
     (let [^SXSSFRow excel-row (.createRow ^SXSSFSheet sheet ^Integer row-idx)]
-      (doseq [[col-idx value] (map-indexed vector row)]
-        (let [^Cell cell (.createCell excel-row ^Integer col-idx)]
-          (cond
-            (instance? metabase.formatter.NumericWrapper value)
-            (.setCellValue cell (double (:num-value value)))
-
-            (instance? metabase.formatter.TextWrapper value)
-            (.setCellValue cell ^String (:text-str value))
-
-            (number? value)
-            (.setCellValue cell (double value))
-
-            (boolean? value)
-            (.setCellValue cell ^Boolean value)
-
-            (nil? value)
-            (.setBlank cell)
-
-            :else
-            (.setCellValue cell (str value))))))))
+      (doseq [[col-idx {:keys [style value]}] (map-indexed vector row)]
+        (let [^Cell cell (.createCell excel-row ^Integer col-idx)
+              parsed-value (or
+                            (maybe-parse-temporal-value value col)
+                            (maybe-parse-coordinate-value value col)
+                            scaled-val)]
+          (set-cell! cell value [style] typed-styles))))))
 
 (def ^:dynamic *auto-sizing-threshold*
   "The maximum number of rows we should use for auto-sizing. If this number is too large, exports
@@ -619,6 +606,20 @@
     (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols col-settings format-rows?))
     {:workbook workbook
      :sheet    sheet}))
+
+(defn- create-formatters
+  [cell-styles col-settings indexes]
+  (mapv (fn [idx]
+          (fn [value]
+            {:value value
+             :style (nth cell-styles idx)}))
+        indexes))
+
+(defn- make-formatters
+  [cell-styles col-settings row-indexes col-indexes val-indexes]
+  {:row-formatters (create-formatters cell-styles col-settings row-indexes)
+   :col-formatters (create-formatters cell-styles col-settings col-indexes)
+   :val-formatters (create-formatters cell-styles col-settings val-indexes)})
 
 (defmethod qp.si/streaming-results-writer :xlsx
   [_ ^OutputStream os]
@@ -697,8 +698,14 @@
           (when @pivot-data
             ;; For pivoted exports, we pivot in-memory (same as CSVs) and then write the results to the
             ;; document all at once
-            (let [output (qp.pivot.postprocess/build-pivot-output (assoc-in @pivot-data [:data :rows] @pivot-rows))]
-              (write-pivot-table! sheet output)))
+            (let [pivot-export-options (:pivot-export-options @pivot-data)
+                  formatters (make-formatters @cell-styles
+                                              (::mb.viz/column-settings (:settings @pivot-data))
+                                              (:pivot-rows pivot-export-options)
+                                              (:pivot-cols pivot-export-options)
+                                              (:pivot-measures pivot-export-options))
+                  output (qp.pivot.postprocess/build-pivot-output (assoc-in @pivot-data [:data :rows] @pivot-rows) formatters)]
+              (write-pivot-table! sheet output @typed-cell-styles)))
           (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
             ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
             (autosize-columns! sheet))
