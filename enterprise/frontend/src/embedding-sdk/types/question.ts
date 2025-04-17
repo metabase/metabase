@@ -15,8 +15,9 @@ export type SdkQuestionId = number | "new" | SdkEntityId;
  * Inline wrapper to properly display the `MetabaseQuestion` type without referencing the `internal` type
  *
  * @inline
+ * @interface
  */
-type _MetabaseQuestion = InternalMetabaseQuestion;
+interface _MetabaseQuestion extends InternalMetabaseQuestion {}
 
 /**
  * The Question entity
