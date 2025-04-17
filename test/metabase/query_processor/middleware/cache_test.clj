@@ -286,7 +286,7 @@
                  (run-query))))))))
 
 (deftest metadata-test
-  (testing "Verify that correct metadata about caching such as `:updated_at` and `:cached` come back with cached results."
+  (testing "Verify that correct metadata about caching such as `:updated_at` and `:cached` come back with cached results"
     (with-mock-cache! [save-chan]
       (mt/with-clock #t "2020-02-19T02:31:07.798Z[UTC]"
         (run-query)
