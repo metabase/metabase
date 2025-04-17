@@ -77,6 +77,7 @@ const base_question = new Question(card, metadata);
 
 const orders_raw_card = {
   id: 1,
+  entity_id: "XVpLtkhhE58O-8EyvMQd7",
   name: "Raw orders data",
   display: "table",
   visualization_settings: {},
@@ -588,7 +589,7 @@ describe("Question", () => {
 
   describe("URLs", () => {
     const adhocUrl =
-      "/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJxdWVyeSI6eyJzb3VyY2UtdGFibGUiOjJ9LCJ0eXBlIjoicXVlcnkifSwiZGlzcGxheSI6InRhYmxlIiwibmFtZSI6IlJhdyBvcmRlcnMgZGF0YSIsInZpc3VhbGl6YXRpb25fc2V0dGluZ3MiOnt9fQ==";
+      "/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJpbmZvIjp7ImNhcmQtZW50aXR5LWlkIjoiWFZwTHRraGhFNThPLThFeXZNUWQ3In0sInF1ZXJ5Ijp7InNvdXJjZS10YWJsZSI6Mn0sInR5cGUiOiJxdWVyeSJ9LCJkaXNwbGF5IjoidGFibGUiLCJlbnRpdHlfaWQiOiJYVnBMdGtoaEU1OE8tOEV5dk1RZDciLCJuYW1lIjoiUmF3IG9yZGVycyBkYXRhIiwidmlzdWFsaXphdGlvbl9zZXR0aW5ncyI6e319";
 
     // Covered a lot in query_builder/actions.spec.js, just very basic cases here
     // (currently getUrl has logic that is strongly tied to the logic query builder Redux actions)
@@ -866,8 +867,12 @@ describe("Question", () => {
 
     const card = {
       id: 1,
+      entity_id: "vcEFoKc3LfnRgNrdvHAx-",
       dataset_query: {
         type: "query",
+        info: {
+          "card-entity-id": "vcEFoKc3LfnRgNrdvHAx-",
+        },
         query: {
           "source-table": PRODUCTS_ID,
         },

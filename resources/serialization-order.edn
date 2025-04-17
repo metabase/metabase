@@ -25,7 +25,8 @@
                                   :result_metadata
                                   :visualization_settings
                                   :serdes/meta]
- [:Card :dataset_query]          []
+ [:Card :dataset_query]          [:info]
+ [:Card :dataset_query :info]    [:card-entity-id]
  [:Card :visualization_settings] []
  :Collection                     [:name
                                   :description

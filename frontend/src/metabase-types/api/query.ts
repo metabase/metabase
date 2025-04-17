@@ -1,5 +1,6 @@
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
+  BaseEntityId,
   CardId,
   DatabaseId,
   FieldId,
@@ -7,6 +8,10 @@ import type {
   TableId,
   TemplateTags,
 } from "metabase-types/api";
+
+export interface QueryInfo {
+  "card-entity-id"?: BaseEntityId;
+}
 
 export interface NativeQuery {
   query: string;
@@ -21,6 +26,7 @@ export interface StructuredDatasetQuery {
   // Database is null when missing data permissions to the database
   database: DatabaseId | null;
   parameters?: UiParameter[];
+  info?: QueryInfo;
 }
 
 export interface NativeDatasetQuery {
@@ -30,6 +36,7 @@ export interface NativeDatasetQuery {
   // Database is null when missing data permissions to the database
   database: DatabaseId | null;
   parameters?: UiParameter[];
+  info?: QueryInfo;
 }
 
 export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
