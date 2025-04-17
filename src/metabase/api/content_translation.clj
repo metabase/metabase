@@ -9,7 +9,6 @@
    [metabase.models.content-translation :as ct]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
@@ -19,7 +18,6 @@
 (def ^:private http-status-ok 200)
 (def ^:private http-status-unprocessable 422)
 (def ^:private http-status-unsupported-media-type 415)
-(def ^:private http-status-content-too-large 413)
 
 (def ^:private ^Tika tika (Tika.))
 
