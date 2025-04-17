@@ -93,7 +93,8 @@
 (doseq [feature [:actions
                  :actions/custom
                  :table-privileges
-                 :index-info]]
+                 ;; Index sync is turned off across the application as it is not used ATM.
+                 #_:index-info]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))
