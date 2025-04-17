@@ -3,7 +3,7 @@ import type { ComponentType, FC } from "react";
 import type { ConnectedProps } from "react-redux";
 import _ from "underscore";
 
-import type { MetabasePluginsConfig } from "embedding-sdk";
+import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
 import * as dashboardActions from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
