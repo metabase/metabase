@@ -16,12 +16,6 @@ export type MetabaseCollection = {
   slug?: string;
   entity_id?: SdkEntityId;
   description: string | null;
-  children?: MetabaseCollection[];
-  type?: "instance-analytics" | "trash" | null;
-
-  parent_id?: SdkCollectionId | null;
-  personal_owner_id?: SdkUserId;
-  location: string | null;
 };
 
 /**
@@ -33,14 +27,6 @@ export type MetabaseCollectionItem = {
   model: string;
   name: string;
   description: string | null;
-  archived: boolean;
-  copy?: boolean;
-  collection_position?: number | null;
-  collection_preview?: boolean | null;
-  fully_parameterized?: boolean | null;
-  collection?: MetabaseCollection | null;
-  collection_id: SdkCollectionId | null; // parent collection id
-  display?: string;
   type?:
     | "instance-analytics"
     | "trash"
@@ -55,7 +41,4 @@ export type MetabaseCollectionItem = {
     id: SdkUserId;
     timestamp: string;
   };
-  location?: string;
-  effective_location?: string;
-  dashboard_count?: number | null;
 };
