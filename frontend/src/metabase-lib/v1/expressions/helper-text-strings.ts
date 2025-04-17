@@ -39,6 +39,7 @@ const getNowAtTimezone = (
     ? moment().tz(reportTimezone).format("LT")
     : moment().format("LT");
 
+// some of the structure names below are duplicated in src/metabase/lib/expression.cljc
 const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "count",

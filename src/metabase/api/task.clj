@@ -7,19 +7,17 @@
    [metabase.models.task-history :as task-history]
    [metabase.request.core :as request]
    [metabase.task :as task]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (api.macros/defendpoint :get "/"
   "Fetch a list of recent tasks stored as Task History"
   [_
-   {:keys [_status _task]
-    :as filter} :- task-history/Filter]
+   params :- [:maybe [:merge task-history/FilterParams task-history/SortParams]]]
   (validation/check-has-application-permission :monitoring)
-  {:total  (t2/count :model/TaskHistory)
+  {:total  (task-history/total params)
    :limit  (request/limit)
    :offset (request/offset)
-   :data   (task-history/all (request/limit) (request/offset) filter)})
+   :data   (task-history/all (request/limit) (request/offset) params)})
 
 (api.macros/defendpoint :get "/:id"
   "Get `TaskHistory` entry with ID."
