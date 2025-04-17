@@ -1,6 +1,7 @@
 import type { SdkQuestionState } from "embedding-sdk/types/question";
 import type { Deferred } from "metabase/lib/promise";
 import { runQuestionQuery } from "metabase/services";
+import { getSensibleDisplays } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -35,6 +36,10 @@ export async function runQuestionQuerySdk(
       ignoreCache: false,
       isDirty: isQueryDirty,
     });
+
+    const [{ data }] = queryResults;
+    const sensibleDisplays = getSensibleDisplays(data);
+    question = question.maybeResetDisplay(data, sensibleDisplays, undefined);
   }
 
   // FIXME: this removes "You can also get an alert when there are some results." feature for question

@@ -19,6 +19,9 @@ import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import {
   createMockCard,
   createMockCardQueryMetadata,
+  createMockColumn,
+  createMockDataset,
+  createMockDatasetData,
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
@@ -35,6 +38,18 @@ const MOCK_SESSION = {
 };
 
 const MOCK_CARD = createMockCard({ id: 1 });
+
+const MOCK_COLUMN = createMockColumn({
+  display_name: "Test Column",
+  name: "Test Column",
+});
+
+const MOCK_DATASET = createMockDataset({
+  data: createMockDatasetData({
+    cols: [MOCK_COLUMN],
+    rows: [["Test Row"]],
+  }),
+});
 
 const setup = ({
   authConfig,
@@ -75,7 +90,7 @@ describe("SDK auth and init flow", () => {
     setupCurrentUserEndpoint(createMockUser({ id: 1 }));
 
     setupCardEndpoints(MOCK_CARD);
-    setupCardQueryEndpoints(MOCK_CARD, {} as any);
+    setupCardQueryEndpoints(MOCK_CARD, MOCK_DATASET);
     setupCardQueryMetadataEndpoint(MOCK_CARD, createMockCardQueryMetadata());
   });
 
