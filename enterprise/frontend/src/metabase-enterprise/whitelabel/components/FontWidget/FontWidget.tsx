@@ -5,11 +5,10 @@ import { BasicAdminSettingInput } from "metabase/admin/settings/components/widge
 import { useAdminSetting } from "metabase/api/utils";
 import { Box } from "metabase/ui";
 
-import { FontFilesWidget } from "../FontFilesWidget";
-
+import { FontFilesWidget } from "./FontFilesWidget";
 import { useGetFontOptions } from "./utils";
 
-export const FontWidget = (): JSX.Element => {
+export const FontWidget = () => {
   const fontOptions = useGetFontOptions();
   const {
     value: font,

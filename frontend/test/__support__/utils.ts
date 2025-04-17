@@ -1,4 +1,4 @@
-import type fetchMock from "fetch-mock";
+import fetchMock from "fetch-mock";
 
 import { act, waitFor } from "./ui";
 
@@ -35,3 +35,16 @@ export const waitForRequest = async (
     throw error;
   }
 };
+
+export async function findRequests(method: "PUT" | "POST" | "DELETE" | "GET") {
+  const calls = fetchMock.calls();
+  const data = calls.filter((call) => call[1]?.method === method) ?? [];
+
+  const puts = data.map(async ([putUrl, putDetails]) => {
+    const body = ((await putDetails?.body) as string) ?? "{}";
+
+    return { url: putUrl, body: JSON.parse(body ?? "{}") };
+  });
+
+  return Promise.all(puts);
+}

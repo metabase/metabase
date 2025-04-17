@@ -16,14 +16,19 @@ import { ImageUploadWidget } from "./IllustrationWidget/ImageUploadWidget";
 import { MetabaseLinksToggleDescription } from "./MetabaseLinksToggleDescription";
 import { MetabotToggleWidget } from "./MetabotToggleWidget";
 
-export function WhiteLabelSettingsPage() {
+export function WhiteLabelSettingsPage({
+  tabName,
+}: {
+  tabName?: "branding" | "conceal-metabase";
+}) {
   const location = useLocation();
   const dispatch = useDispatch();
 
   const tab =
-    location?.pathname?.split("/").pop() === "conceal-metabase"
+    tabName ??
+    (location?.pathname?.split("/").pop() === "conceal-metabase"
       ? "conceal-metabase"
-      : "branding";
+      : "branding");
 
   const handleTabChange = (newTab: "branding" | "conceal-metabase") => {
     dispatch(push(`/admin/settings/whitelabel/${newTab}`));
@@ -55,7 +60,7 @@ export function WhiteLabelSettingsPage() {
 
 function BrandingTab() {
   return (
-    <Stack gap="xl" py="lg">
+    <Stack gap="xl" py="lg" data-testid="branding-settings">
       <Text>
         {t`Configure your instance to match your brand visuals and voice`}
       </Text>
@@ -93,7 +98,7 @@ function BrandingTab() {
 
 function ConcealTab() {
   return (
-    <Stack gap="xl" maw="40rem" py="lg">
+    <Stack gap="xl" maw="40rem" py="lg" data-testid="conceal-metabase-settings">
       <Text>
         {t`Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs`}
       </Text>
