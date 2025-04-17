@@ -16,6 +16,15 @@
   margin-bottom: 1rem;
 }
 
+.analysisWrapper h1:first-child,
+.analysisWrapper h2:first-child,
+.analysisWrapper h3:first-child,
+.analysisWrapper h4:first-child,
+.analysisWrapper h5:first-child,
+.analysisWrapper h6:first-child {
+  margin-top: 0;
+}
+
 .analysisWrapper ul,
 .analysisWrapper ol {
   padding-left: 1.5rem;
