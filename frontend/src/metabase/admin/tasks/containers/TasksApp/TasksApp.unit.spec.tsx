@@ -132,6 +132,7 @@ describe("TasksApp", () => {
     ]);
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     await waitForLoaderToBeRemoved();
+    expect(history?.getCurrentLocation().search).toEqual("");
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
@@ -147,6 +148,7 @@ describe("TasksApp", () => {
       "http://localhost/api/task?limit=50&offset=50",
     ]);
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+    expect(history?.getCurrentLocation().search).toEqual("?page=1");
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
@@ -189,6 +191,7 @@ describe("TasksApp", () => {
       "http://localhost/api/task?limit=50&offset=0&task=task-b",
     ]);
     await waitForLoaderToBeRemoved();
+    expect(history?.getCurrentLocation().search).toEqual("");
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
@@ -214,6 +217,7 @@ describe("TasksApp", () => {
       "http://localhost/api/task?limit=50&offset=0&task=task-b&status=success",
     ]);
     await waitForLoaderToBeRemoved();
+    expect(history?.getCurrentLocation().search).toEqual("?task=task-b");
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
@@ -249,6 +253,7 @@ describe("TasksApp", () => {
       "http://localhost/api/task?limit=50&offset=0&status=success",
     ]);
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+    expect(history?.getCurrentLocation().search).toEqual("?status=success");
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
