@@ -16,7 +16,7 @@ export abstract class ExpressionError extends Error {
 export class CompileError extends ExpressionError {
   constructor(
     message: string,
-    private data: any,
+    private node: Node,
   ) {
     super(message);
   }
@@ -26,11 +26,11 @@ export class CompileError extends ExpressionError {
   }
 
   get pos(): number | null {
-    return this.data?.token?.pos ?? null;
+    return this.node?.token?.pos ?? null;
   }
 
   get len(): number | null {
-    return this.data?.token?.len ?? null;
+    return this.node?.token?.length ?? null;
   }
 }
 

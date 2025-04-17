@@ -6,13 +6,19 @@ import type { SdkCollectionId } from "embedding-sdk/types/collection";
 import { useCreateDashboardMutation } from "metabase/api";
 import type { CreateDashboardProperties } from "metabase/dashboard/containers/CreateDashboardForm";
 
-export interface CreateDashboardValues
-  extends Omit<CreateDashboardProperties, "collection_id"> {
+/**
+ * @interface
+ * @category CreateDashboardModal
+ */
+export type CreateDashboardValues = Omit<
+  CreateDashboardProperties,
+  "collection_id"
+> & {
   /**
    * Collection in which to create a new dashboard. You can use predefined system values like `root` or `personal`.
    */
   collectionId: SdkCollectionId;
-}
+};
 
 /**
  * Creates a dashboard
