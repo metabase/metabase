@@ -298,7 +298,7 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse :text]
   [driver [_ value]]
-  (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
+  (h2x/maybe-cast "Nullable(TEXT)" (sql.qp/->honeysql driver value)))
 
 (defmethod sql.qp/->honeysql [:clickhouse :date]
   [driver [_ value]]
@@ -447,11 +447,11 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse :integer]
   [driver [_ value]]
-  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
+  (h2x/maybe-cast "Nullable(BIGINT)" (sql.qp/->honeysql driver value)))
 
 (defmethod sql.qp/->honeysql [:clickhouse :float]
   [driver [_ value]]
-  (h2x/maybe-cast "DOUBLE" (sql.qp/->honeysql driver value)))
+  (h2x/maybe-cast "Nullable(DOUBLE)" (sql.qp/->honeysql driver value)))
 
 ;;; ------------------------------------------------------------------------------------
 ;;; JDBC-related functions
