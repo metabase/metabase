@@ -7,10 +7,8 @@
   (:refer-clojure :exclude [run!])
   (:require
    [clojure.set :as set]
-   [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot]
-   [metabase.query-processor.streaming.common :as common]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf]))
@@ -46,7 +44,7 @@
   Rows whose pivot-grouping values are greater than 0 represent subtotals, and should not be included in non-pivot result outputs."
   0)
 
-(defn pivot-grouping-key
+(defn pivot-grouping-index
   "Get the index into the raw pivot rows for the 'pivot-grouping' column."
   [column-titles]
   ;; A vector is kinda sorta a map of indices->values, so we can use map-invert to create the map
@@ -60,14 +58,14 @@
        (set (range (count column-titles)))
        ;; we exclude indices already used in pivot rows and cols, and the pivot-grouping key
        ;; recall that a raw pivot row will always contain this 'pivot-grouping' column, which we don't actually need to use.
-       (set (concat pivot-rows pivot-cols [(pivot-grouping-key column-titles)])))
+       (set (concat pivot-rows pivot-cols [(pivot-grouping-index column-titles)])))
       sort
       vec))
 
 (mu/defn add-pivot-measures :- ::pivot-spec
   "Given a pivot-spec map without the `:pivot-measures` key, determine what key(s) the measures will be and assoc that value into `:pivot-measures`."
   [{measure-indices :pivot-measures :as pivot-spec} :- ::pivot-spec]
-  (let [pivot-grouping-key (pivot-grouping-key (:column-titles pivot-spec))]
+  (let [pivot-grouping-key (pivot-grouping-index (:column-titles pivot-spec))]
     (cond-> pivot-spec
       ;; if pivot-measures don't already exist (from the pivot qp), we add them ourselves, assuming lowest ID -> highest ID sort order
       (not (seq measure-indices)) (assoc :pivot-measures (pivot-measures pivot-spec))
@@ -92,29 +90,6 @@
         {:column col}
         (get col-settings {::mb.viz/column-name (:name col)})))
      cols)))
-
-(defn- get-formatter
-  "Returns a memoized formatter for a column"
-  [timezone settings format-rows?]
-  (memoize
-   (fn [column]
-     (formatter/create-formatter timezone column settings format-rows?))))
-
-(defn- create-formatters
-  [columns indexes timezone settings format-rows?]
-  (let [formatter-fn (get-formatter timezone settings format-rows?)]
-    (mapv (fn [idx]
-            (let [column (nth columns idx)
-                  formatter (formatter-fn column)]
-              (fn [value]
-                (formatter (common/format-value value)))))
-          indexes)))
-
-(defn- make-formatters
-  [columns row-indexes col-indexes val-indexes settings timezone format-rows?]
-  {:row-formatters (create-formatters columns row-indexes timezone settings format-rows?)
-   :col-formatters (create-formatters columns col-indexes timezone settings format-rows?)
-   :val-formatters (create-formatters columns val-indexes timezone settings format-rows?)})
 
 (defn- build-top-headers
   [top-left-header top-header-items]
@@ -183,7 +158,7 @@
 (defn build-pivot-output
   "Processes pivot data into the final pivot structure for exports. Calls into metabase.pivot.core, which is the
   postprocessing code shared with the FE pivot table implementation."
-  [{:keys [data settings timezone format-rows? pivot-export-options]}]
+  [{:keys [data settings format-rows? pivot-export-options]} formatters]
   (let [columns                  (pivot/columns-without-pivot-group (:cols data))
         column-split             (:pivot_table.column_split settings)
         row-indexes              (:pivot-rows pivot-export-options)
@@ -192,7 +167,7 @@
         col-settings             (merge-column-settings columns settings)
         {:keys [row-formatters
                 col-formatters
-                val-formatters]} (make-formatters columns row-indexes col-indexes val-indexes settings timezone format-rows?)
+                val-formatters]} formatters
         {:keys [leftHeaderItems
                 topHeaderItems
                 getRowSection]}  (pivot/process-pivot-table data
