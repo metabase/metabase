@@ -13,13 +13,11 @@ type BaseMetabaseAuthConfig = {
 export type MetabaseAuthConfigWithProvider = BaseMetabaseAuthConfig & {
   authProviderUri: string;
   apiKey?: never;
-  authMethod?: "jwt" | "saml";
 };
 
 export type MetabaseAuthConfigWithApiKey = BaseMetabaseAuthConfig & {
   apiKey: string;
   authProviderUri?: never;
-  authMethod?: never;
 };
 
 /**

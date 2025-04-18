@@ -51,8 +51,7 @@ const TestComponent = ({ authConfig }: { authConfig: MetabaseAuthConfig }) => {
     } as MetabaseAuthConfig,
   });
 
-  const refreshToken = () =>
-    dispatch(refreshTokenAsync("http://TEST_URI/sso/metabase"));
+  const refreshToken = () => dispatch(refreshTokenAsync("http://localhost"));
 
   const handleClick = () => {
     GET("/api/some/url")();
