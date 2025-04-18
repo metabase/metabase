@@ -13,8 +13,8 @@
               "!metabase/env",
               "!metabase/lib",
               "!metabase/querying",
-              "!metabase/services",
-            ],
+              "!metabase/services"
+            ]
           },
           {
             "group": [
@@ -26,22 +26,22 @@
               "!metabase/lib/time",
               "!metabase/lib/types",
               "!metabase/lib/urls",
-              "!metabase/lib/utils",
-            ],
-          },
+              "!metabase/lib/utils"
+            ]
+          }
         ],
         "paths": [
           {
             "name": "moment",
-            "message": "Moment is deprecated, please use dayjs",
+            "message": "Moment is deprecated, please use dayjs"
           },
           {
             "name": "moment-timezone",
-            "message": "Moment is deprecated, please use dayjs",
-          },
-        ],
-      },
+            "message": "Moment is deprecated, please use dayjs"
+          }
+        ]
+      }
     ],
     "ttag/no-module-declaration": 2,
-  },
+  }
 }
