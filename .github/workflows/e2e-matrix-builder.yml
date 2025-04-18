@@ -26,6 +26,7 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.config }}
       regularChunks: ${{ steps.matrix.outputs.regularChunks }}
+      isDefaultSpecPattern: ${{ steps.matrix.outputs.isDefaultSpecPattern }}
     steps:
       - uses: actions/checkout@v4
         with:
