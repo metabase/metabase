@@ -39,8 +39,8 @@ export const TasksTable = ({
     <table className={cx(AdminS.ContentTable, CS.mt2)}>
       <thead>
         <tr>
-          {/* set miw to limit CLS when changing sort direction */}
-          <Box component="th" miw={300}>{t`Task`}</Box>
+          {/* set width to limit CLS when changing sort direction */}
+          <Box component="th" w={300}>{t`Task`}</Box>
           <th>{t`DB Name`}</th>
           <th>{t`DB Engine`}</th>
           <SortableColumnHeader
