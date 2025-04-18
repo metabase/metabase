@@ -241,7 +241,8 @@ export const CombinedFeatures: Story = () => {
     columnOrder,
     columnSizingMap: columnSizing,
     onColumnReorder: setColumnOrder,
-    onColumnResize: setColumnSizing,
+    onColumnResize: (columnName, width) =>
+      setColumnSizing((prev) => ({ ...prev, [columnName]: width })),
     rowId,
     enableSelection: true,
   });

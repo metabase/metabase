@@ -1293,3 +1293,33 @@ describe("issue 52339", () => {
     });
   });
 });
+
+describe("issue 56771", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should apply correct column widths after changing query (metabase#56771)", () => {
+    H.openOrdersTable();
+    cy.log(
+      "Resize a column first to make width stored in the visualization settings",
+    );
+    H.resizeTableColumn("ID", 100);
+
+    H.openNotebook();
+    H.join();
+    H.joinTable("Products");
+    H.visualize();
+
+    cy.wait(100); // wait for the column to be resized
+
+    cy.findAllByTestId("header-cell")
+      .filter(":contains(Products → Category)")
+      .as("headerCell")
+      .then(($cell) => {
+        const width = $cell[0].getBoundingClientRect().width;
+        expect(width).to.be.greaterThan(174);
+      });
+  });
+});

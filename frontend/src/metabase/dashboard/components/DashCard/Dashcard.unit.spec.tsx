@@ -7,6 +7,7 @@ import {
   queryIcon,
   renderWithProviders,
   screen,
+  within,
 } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import type { DashCardDataMap } from "metabase-types/api";
@@ -157,11 +158,14 @@ describe("DashCard", () => {
     act(() => {
       jest.runAllTimers();
     });
-    expect(screen.getByText("My Card")).toBeVisible();
-    expect(screen.getByRole("grid")).toBeVisible();
-    expect(screen.getByText("NAME")).toBeVisible();
-    expect(screen.getByText("Davy Crocket")).toBeVisible();
-    expect(screen.getByText("Daniel Boone")).toBeVisible();
+
+    // Scoping to visualization root because there can be other elements with the same text used for column widths measurements
+    const visualizationRoot = screen.getByTestId("visualization-root");
+    expect(within(visualizationRoot).getByText("My Card")).toBeVisible();
+    expect(within(visualizationRoot).getByRole("grid")).toBeVisible();
+    expect(within(visualizationRoot).getByText("NAME")).toBeVisible();
+    expect(within(visualizationRoot).getByText("Davy Crocket")).toBeVisible();
+    expect(within(visualizationRoot).getByText("Daniel Boone")).toBeVisible();
   });
 
   it("should show a text card", () => {
