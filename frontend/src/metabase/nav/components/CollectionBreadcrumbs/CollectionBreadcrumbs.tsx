@@ -23,6 +23,7 @@ import { getCollectionList } from "./utils";
 export interface CollectionBreadcrumbsProps {
   collection?: Collection;
   dashboard?: Dashboard;
+  originalDashboard?: Dashboard;
   onClick?: (collection: CollectionEssentials) => void;
   baseCollectionId: CollectionId | null;
   isModifiedQuestion?: boolean;
@@ -32,6 +33,7 @@ export interface CollectionBreadcrumbsProps {
 export const CollectionBreadcrumbs = ({
   collection,
   dashboard,
+  originalDashboard,
   onClick,
   baseCollectionId = null,
   isModifiedQuestion = false,
@@ -92,6 +94,19 @@ export const CollectionBreadcrumbs = ({
         />
         {isModifiedQuestion && originalQuestion && (
           <>
+            {originalDashboard && (
+              <>
+                {separator}
+                <Badge
+                  icon={{ name: "dashboard" }}
+                  inactiveColor="text-light"
+                  isSingleLine
+                  to={Urls.dashboard(originalDashboard)}
+                >
+                  {originalDashboard.name}
+                </Badge>
+              </>
+            )}
             {separator}
             <Badge isSingleLine to={Urls.question(originalQuestion.card())}>
               {originalQuestion.displayName()}

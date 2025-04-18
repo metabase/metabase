@@ -19,7 +19,11 @@ import {
 
 type CollectionBreadcrumbsProps = Omit<
   BreadcrumbsProps,
-  "collection" | "dashboard" | "baseCollectionId" | "originalQuestion"
+  | "collection"
+  | "dashboard"
+  | "baseCollectionId"
+  | "originalQuestion"
+  | "originalDashboard"
 > & {
   collectionId?: CollectionId;
   baseCollectionId?: CollectionId | null;
@@ -38,17 +42,23 @@ export const CollectionBreadcrumbs = (props: CollectionBreadcrumbsProps) => {
   const isOnQuestionPage = pathname && /\/question\//.test(pathname);
   const dashboard = isOnQuestionPage ? question?.dashboard() : undefined;
 
-  // If we're showing a modified question, use the original question's collection
+  // If we're showing a modified question, use the original question's collection and dashboard
   const effectiveCollection =
     isQuestionLineageVisible && originalQuestion
       ? originalQuestion.collection()
       : collection;
+
+  const originalDashboard =
+    isQuestionLineageVisible && originalQuestion
+      ? originalQuestion.dashboard()
+      : undefined;
 
   return (
     <Breadcrumbs
       {...props}
       collection={effectiveCollection}
       dashboard={dashboard}
+      originalDashboard={originalDashboard}
       baseCollectionId={props.baseCollectionId ?? null}
       isModifiedQuestion={isQuestionLineageVisible}
       originalQuestion={originalQuestion}
