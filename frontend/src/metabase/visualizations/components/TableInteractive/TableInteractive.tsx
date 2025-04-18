@@ -684,14 +684,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         "table.column_widths": undefined,
       });
     }
-  }, [
-    data,
-    question,
-    onUpdateVisualizationSettings,
-    settings,
-    prevData,
-    prevQuestion,
-  ]);
+  }, [data, question, onUpdateVisualizationSettings, prevData, prevQuestion]);
 
   const scrolledColumnRef = useRef<number | null>(null);
   useEffect(() => {
