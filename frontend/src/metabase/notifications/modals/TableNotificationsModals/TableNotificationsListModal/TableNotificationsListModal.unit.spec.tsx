@@ -140,9 +140,8 @@ describe("TableNotificationsListModal", () => {
     const currentUserId = 1;
     const notification = createNotificationForUser(currentUserId, 0, {
       payload: {
-        event_name: "event/action.success",
+        event_name: "event/rows.updated",
         table_id: 1,
-        action: "bulk/update",
       },
     });
     const onEdit = jest.fn();
@@ -168,9 +167,8 @@ describe("TableNotificationsListModal", () => {
     const currentUserId = 1;
     const notification = createNotificationForUser(currentUserId, 0, {
       payload: {
-        event_name: "event/action.success",
+        event_name: "event/rows.deleted",
         table_id: 1,
-        action: "bulk/delete",
       },
     });
     const onDelete = jest.fn();

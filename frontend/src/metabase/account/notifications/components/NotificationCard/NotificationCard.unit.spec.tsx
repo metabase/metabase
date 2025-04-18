@@ -256,7 +256,7 @@ describe("NotificationCard", () => {
   });
 
   it("should render a table notification with 'rows deleted' event", () => {
-    const tableNotification = getTableNotificationItem("event/rows.updated");
+    const tableNotification = getTableNotificationItem("event/rows.deleted");
     const user = createMockUser();
 
     renderWithTheme(
