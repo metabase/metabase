@@ -1,5 +1,6 @@
 import type { DatabaseId } from "./database";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
+import type { SortDirection } from "./sorting";
 
 // "unknown" status is only expected for historical tasks (before Task['status'] was introduced)
 export type TaskStatus = "success" | "started" | "failed" | "unknown";
@@ -7,15 +8,19 @@ export type TaskStatus = "success" | "started" | "failed" | "unknown";
 export interface Task {
   id: number;
   db_id: DatabaseId | null;
-  duration: number;
+  duration: number | null;
   started_at: string;
-  ended_at: string;
+  ended_at: string | null;
   task: string;
   task_details: Record<string, unknown> | null;
   status: TaskStatus;
 }
 
+export type ListTasksSortColumn = "started_at" | "ended_at" | "duration";
+
 export type ListTasksRequest = {
+  sort_column?: ListTasksSortColumn;
+  sort_direction?: SortDirection;
   status?: TaskStatus;
   task?: string;
 } & PaginationRequest;

@@ -23,25 +23,33 @@ type TasksAppProps = {
 const PAGE_SIZE = 50;
 
 const TasksAppBase = ({ children, location }: TasksAppProps) => {
-  const [{ page, task, status }, { patchUrlState }] = useUrlState(
-    location,
-    urlStateConfig,
-  );
+  const [
+    { page, sort_column, sort_direction, status, task },
+    { patchUrlState },
+  ] = useUrlState(location, urlStateConfig);
+  const sortingOptions = { sort_column, sort_direction };
 
   const {
     data: tasksData,
-    isFetching: isLoadingTasks,
+    isLoading: isLoadingTasks,
     error: tasksError,
-  } = useListTasksQuery({
-    limit: PAGE_SIZE,
-    offset: page * PAGE_SIZE,
-    task: task ?? undefined,
-    status: status ?? undefined,
-  });
+  } = useListTasksQuery(
+    {
+      limit: PAGE_SIZE,
+      offset: page * PAGE_SIZE,
+      sort_column,
+      sort_direction,
+      status: status ?? undefined,
+      task: task ?? undefined,
+    },
+    {
+      refetchOnMountOrArgChange: true,
+    },
+  );
 
   const {
     data: databasesData,
-    isFetching: isLoadingDatabases,
+    isLoading: isLoadingDatabases,
     error: databasesError,
   } = useListDatabasesQuery();
 
@@ -92,7 +100,11 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
         databases={databases}
         error={error}
         isLoading={isLoading}
+        sortingOptions={sortingOptions}
         tasks={tasks}
+        onSortingOptionsChange={(sortingOptions) =>
+          patchUrlState({ ...sortingOptions, page: 0 })
+        }
       />
 
       {
