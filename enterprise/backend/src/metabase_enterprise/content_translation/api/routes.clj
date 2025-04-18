@@ -113,11 +113,10 @@
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
   (import-translations! {:filename      (get-in multipart-params ["file" :filename])
                          :file          (get-in multipart-params ["file" :tempfile])})
-  (do
-    {:status http-status-ok
-     :headers {"Content-Type" "application/json"}
-     :body (json/encode {:success true
-                         :message "Import was successful"})}))
+  {:status http-status-ok
+   :headers {"Content-Type" "application/json"}
+   :body (json/encode {:success true
+                       :message "Import was successful"})})
 
 (api.macros/defendpoint :get "/dictionary"
   "Provides content translations stored in the content_translations table"
