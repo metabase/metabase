@@ -294,6 +294,10 @@
   [driver [_ value]]
   (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
 
+(defmethod sql.qp/->honeysql [:clickhouse :date]
+  [driver [_ value]]
+  [:str_to_date (sql.qp/->honeysql driver value) [:inline "YYYY-MM-DD"]])
+
 (defmethod sql.qp/->honeysql [:clickhouse :stddev]
   [driver [_ field]]
   [:'stddevPop (sql.qp/->honeysql driver field)])
