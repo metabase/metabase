@@ -394,6 +394,8 @@ export const useDataGridInstance = <TData, TValue>({
   useUpdateEffect(() => {
     if (Object.keys(controlledColumnSizingMap ?? {}).length === 0) {
       measureColumnWidths(controlledColumnSizingMap, true);
+    } else {
+      setColumnSizingMap((prev) => ({ ...prev, ...controlledColumnSizingMap }));
     }
   }, [controlledColumnSizingMap]);
 
