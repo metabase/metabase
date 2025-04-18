@@ -26,7 +26,8 @@ export const initAuth = createAsyncThunk(
   async (authConfig: MetabaseAuthConfig, { dispatch }) => {
     // Setup JWT or API key
     const isValidAuthProviderUri =
-      authConfig.authProviderUri && authConfig.authProviderUri?.length > 0;
+      authConfig.metabaseInstanceUrl &&
+      authConfig.metabaseInstanceUrl?.length > 0;
     const isValidApiKeyConfig = authConfig.apiKey && getIsLocalhost();
 
     if (isValidAuthProviderUri) {

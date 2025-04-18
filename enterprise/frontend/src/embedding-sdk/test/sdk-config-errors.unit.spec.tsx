@@ -27,7 +27,6 @@ const AUTH_PROVIDER_URL = "http://auth-provider/metabase-sso";
 
 const defaultAuthConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
-  authProviderUri: AUTH_PROVIDER_URL,
 });
 
 const MOCK_CARD = createMockCard({ id: 1 });

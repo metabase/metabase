@@ -21,7 +21,6 @@ export const getStorybookSdkAuthConfigForUser = (
   user: keyof typeof USERS = "normal",
 ): MetabaseAuthConfig => ({
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
-  authProviderUri: `${METABASE_INSTANCE_URL}/sso/metabase`,
   fetchRequestToken: async () => {
     try {
       const signedUserData = await new jose.SignJWT({
