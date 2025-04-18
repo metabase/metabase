@@ -198,7 +198,6 @@ export const useDataGridInstance = <TData, TValue>({
     onColumnOrderChange: setColumnOrder,
     onColumnSizingChange: setColumnSizingMap,
     onPaginationChange: setPagination,
-    autoResetPageIndex: false,
   });
 
   const measureRowHeight = useCallback(
