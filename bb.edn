@@ -1,7 +1,7 @@
 {:min-bb-version "1.12.197"
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
- :paths          ["mage" "test"]
+ :paths          ["mage" "test" "bin/lint-migrations-file/src"]
  :deps           {metosin/malli {:mvn/version "0.17.0"}
                   table/table   {:mvn/version "0.5.0"}}
  :tasks
@@ -89,6 +89,15 @@
                (spit ".nrepl-port" 1667)
                (nrepl.server/start-server!)
                (deref (promise)))}
+
+  lint-migrations
+  {:doc        "Lint migrations files"
+   :requires   [[lint-migrations-file]
+                [babashka.process :as p]]
+   :examples   [["./bin/mage lint-migrations" "Lint all migrations and print report"]]
+   :task       (do (cli/parse! (current-task))
+                   (p/shell "bin/pre-lint-migrations-file.sh")
+                   (lint-migrations-file/-main))}
 
   jar-download
   {:doc        "Given a version, downloads a metabase jar"

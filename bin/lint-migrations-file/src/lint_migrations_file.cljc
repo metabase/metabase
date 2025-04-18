@@ -22,10 +22,11 @@
 (defn- validation-error? [e]
   (::validation-error (ex-data e)))
 
-;; just print ordered maps like normal maps.
-(defmethod print-method flatland.ordered.map.OrderedMap
-  [m writer]
-  (print-method (into {} m) writer))
+#?(:bb :no-op
+   :clj ;; just print ordered maps like normal maps.
+   (defmethod print-method flatland.ordered.map.OrderedMap
+     [m writer]
+     (print-method (into {} m) writer)))
 
 (defn- require-database-change-log! [migrations]
   (when-not (contains? migrations :databaseChangeLog)
@@ -158,8 +159,11 @@
 (def ^:private filename
   "../../resources/migrations/001_update_migrations.yaml")
 
+(def ^:private bb-filename
+  "resources/migrations/001_update_migrations.yaml")
+
 (defn- migrations []
-  (let [file (io/file filename)]
+  (let [file (io/file #?(:bb bb-filename :clj filename))]
     (assert (.exists file) (format "%s does not exist" filename))
     (letfn [(fix-vals [x]
                       ;; convert any lazy seqs to regular vectors and maps
