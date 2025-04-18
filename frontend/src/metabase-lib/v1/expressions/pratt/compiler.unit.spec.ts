@@ -27,7 +27,9 @@ describe("pratt/compiler", () => {
       throwOnError: true,
     });
 
-    return compile(ast.root);
+    return compile(ast.root, {
+      startRule: "expression",
+    });
   }
 
   describe("(for an expression)", () => {
