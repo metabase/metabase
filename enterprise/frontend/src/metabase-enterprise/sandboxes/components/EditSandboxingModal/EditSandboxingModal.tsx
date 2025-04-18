@@ -36,7 +36,7 @@ import AttributeMappingEditor, {
   AttributeOptionsEmptyState,
 } from "../AttributeMappingEditor";
 
-// eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const ERROR_MESSAGE = t`An error occurred.`;
 
 const getNormalizedPolicy = (

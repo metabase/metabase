@@ -107,7 +107,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         placeholder: "metabase@yourcompany.com",
         type: "string",
         required: true,
-        // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         validations: [["email", t`That's not a valid email address`]],
       },
       {
@@ -119,7 +119,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         type: "string",
         required: false,
         widget: SettingCommaDelimitedInput,
-        // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         validations: [["email_list", t`That's not a valid email address`]],
       },
       {
@@ -170,7 +170,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         placeholder: "587",
         type: "number",
         required: true,
-        // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         validations: [["integer", t`That's not a valid port number`]],
       },
       {
@@ -315,9 +315,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
         ],
         description: (
           <>
-            {/* eslint-disable-next-line ttag/no-module-declaration -- see EMB-259 */}
+            {/* eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045 */}
             <div>{t`Connection timezone to use when executing queries. Defaults to system timezone.`}</div>
-            {/* eslint-disable-next-line ttag/no-module-declaration -- see EMB-259 */}
+            {/* eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045 */}
             <div>{t`Not all databases support timezones, in which case this setting won't take effect.`}</div>
           </>
         ),
@@ -491,9 +491,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
         },
         description: (
           <>
-            {/* eslint-disable-next-line ttag/no-module-declaration -- see EMB-259 */}
+            {/* eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045 */}
             <div>{t`Enable AI features.`}</div>
-            {/* eslint-disable-next-line ttag/no-module-declaration -- see EMB-259 */}
+            {/* eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045 */}
             <div>{t`You must supply an API key before AI features can be enabled.`}</div>
           </>
         ),
