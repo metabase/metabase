@@ -66,6 +66,7 @@ export type VisualizerCommonState = {
   loadingDatasets: Record<VisualizerDataSourceId, boolean>;
   isDataSidebarOpen: boolean;
   isVizSettingsSidebarOpen: boolean;
+  isSwapAffordanceVisible: boolean;
   error: string | null;
   draggedItem: DraggedItem | null;
 };
