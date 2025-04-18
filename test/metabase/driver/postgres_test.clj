@@ -42,6 +42,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.jdbc-exceptions :as jdbc-exceptions]
    [metabase.util.log :as log]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
@@ -1603,7 +1604,7 @@
                             "DROP ROLE privilege_rows_test_example_role;"]]
                 (jdbc/execute! conn-spec stmt)))))))))
 
-(deftest timeout-exception?-test
+(deftest query-canceled?-test
   (testing "Recognizes timeout exceptions from postgres"
     (mt/test-driver :postgres
       (mt/dataset test-data
@@ -1616,8 +1617,8 @@
                       (.setQueryTimeout 1)
                       (.execute))
                     (is false "Query successfully executed. Should sleep for 5s with a timeout of 1s")
-                    (catch Exception e
-                      (is (sql-jdbc.describe-database/timeout-exception? e))))))))))))
+                    (catch Throwable e
+                      (is (jdbc-exceptions/query-canceled? :postgres e))))))))))))
 
 (deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"

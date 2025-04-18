@@ -14,6 +14,7 @@
    [metabase.models.interface :as mi]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.jdbc-exceptions :as jdbc-exceptions]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
@@ -73,40 +74,6 @@
       (.setQueryTimeout 15)
       (.execute))))
 
-(defn timeout-exception?
-  "Is the error a timeout exception? Check if the error (or a parent) is a `java.sql.SQLTimeoutException`, and then try
-  to pattern match on the exception message. It seems most databases do not throw a nice `SQLTimeoutException` so the
-  string matching is the most important."
-  [e]
-  (let [msg (or (ex-message e) "")]
-    ;; hopefully dbs throw a nice java.sql.SQLTimeoutexception. But snowflake at least doesn't. Elsewhere it logs
-    ;; `WARN net.snowflake.client.core.StmtUtil Cancelling query` but the error _we_ get is
-    ;; `net.snowflake.client.jdbc.SnowflakeSQLException: SQL execution canceled`. Compared with lack of select
-    ;; privileges in snowflake: `net.snowflake.client.jdbc.SnowflakeSQLException: SQL compilation error:,Failure
-    ;; during expansion of`.
-    (or (instance? java.sql.SQLTimeoutException e)
-        (boolean (some (fn [re] (re-find re msg))
-                       ;; Common timeout-related messages across different DBs
-                       [#"(?i)timed?\s*(?:out|exceeded)"
-                        #"(?i)cancel(l)*(ed|ing|ation)"
-                        #"(?i)execution abort(ed)?"
-                        #"(?i)statement timeout"
-                        #"(?i)query (?:has been )?abort(?:ed)?"
-                        #"(?i)maximum statement time exceeded"
-                        ;; DB-specific timeout patterns
-                        ;; Snowflake
-                        #"(?i)SQL execution canceled"
-                        ;; PostgreSQL
-                        #"(?i)canceling statement due to user request"
-                        #"(?i)canceling statement due to statement timeout"
-                        ;; MySQL
-                        #"(?i)query execution was interrupted"
-                        ;; Redshift
-                        #"(?i)Query cancelled on user(?:\'s)? request"]))
-        (if-let [cause (ex-cause e)]
-          (recur cause)
-          false))))
-
 (defmethod sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc
   [driver ^Connection conn table-schema table-name]
   ;; Query completes = we have SELECT privileges
@@ -126,7 +93,7 @@
                       (pr-str table-name)))
       true
       (catch Throwable e
-        (let [allow? (timeout-exception? e)]
+        (let [allow? (jdbc-exceptions/query-canceled? driver e)]
           (log/info (if allow?
                       "%s: Assuming SELECT privileges: caught timeout exception"
                       "%s: Assuming no SELECT privileges: caught exception")
