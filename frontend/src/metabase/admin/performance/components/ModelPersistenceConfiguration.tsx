@@ -22,7 +22,7 @@ const modelCachingOptions = [
     value: "0 0 0/1 * * ? *",
     // this has to be plural because it's plural elsewhere and it cannot be both a singular message ID and a
     // plural message ID
-    // eslint-disable-next-line ttag/no-module-declaration -- see EMB-259
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: ngettext(msgid`Hour`, `Hours`, 1),
   },
   {
