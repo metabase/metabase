@@ -4,6 +4,20 @@ const DEFAULT_SPEC_PATTERN = "./e2e/test/scenarios/**/*.cy.spec.*";
 const EMBEDDING_SDK_SPEC_PATTERN =
   "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*";
 
+const specialTestConfigs = [
+  {
+    name: "embedding-sdk",
+    specs: EMBEDDING_SDK_SPEC_PATTERN,
+  },
+  {
+    name: "oss-subset",
+    edition: "oss",
+    tags: "@OSS @smoke+-@EE",
+    specs: DEFAULT_SPEC_PATTERN,
+  },
+  { name: "mongo", tags: "@mongo", specs: DEFAULT_SPEC_PATTERN },
+];
+
 /**
  *
  * @param {*} inputSpecs - specs, which were changed in the PR, separated by comma
@@ -34,23 +48,6 @@ function buildMatrix(inputSpecs, inputChunks) {
 
     return glob.sync(pattern).length;
   };
-  const hasMatchingSpecs = (pattern) => {
-    return getMatchingSpecsCount(pattern) > 0;
-  };
-
-  const specialTestConfigs = [
-    {
-      name: "embedding-sdk",
-      specs: EMBEDDING_SDK_SPEC_PATTERN,
-    },
-    {
-      name: "oss-subset",
-      edition: "oss",
-      tags: "@OSS @smoke+-@EE",
-      specs: DEFAULT_SPEC_PATTERN,
-    },
-    { name: "mongo", tags: "@mongo", specs: DEFAULT_SPEC_PATTERN },
-  ];
 
   let regularChunks;
   if (isDefaultSpecPattern) {
