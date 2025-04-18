@@ -104,7 +104,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
       .and("contain.text", "Products → ID")
       .and("contain.text", "Reviews → ID");
 
-    cy.log("should case-insensitive match field name");
+    cy.log("should case-insensitive match field display name");
     cy.findByPlaceholderText("Select a target").type("id");
     H.popover()
       .should("contain.text", "Orders → ID")
