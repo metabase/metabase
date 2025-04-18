@@ -12,14 +12,12 @@ import {
   setMetabaseClientUrl,
   setPlugins,
 } from "embedding-sdk/store/reducer";
-import type {
-  SdkErrorComponent,
-  SdkStoreState,
-} from "embedding-sdk/store/types";
+import type { SdkStoreState } from "embedding-sdk/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk/types/auth-config";
 import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
+import type { SdkErrorComponent } from "embedding-sdk/types/ui";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
