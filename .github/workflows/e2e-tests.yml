@@ -173,7 +173,7 @@ jobs:
           echo "Didn't run due to conditional filtering"
       - name: Test results
         if: ${{ needs.e2e-tests.result != 'skipped' }}
-        run: | # sh
+        run: |
           echo "E2E Tests: ${{ needs.e2e-tests.result }}"
           echo "Flaky E2E Tests: ${{ needs.flaky-e2e-tests.result }}"
 
