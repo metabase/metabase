@@ -16,6 +16,8 @@ on:
         value: ${{ jobs.build-matrix.outputs.matrix }}
       regularChunks:
         value: ${{ jobs.build-matrix.outputs.regularChunks }}
+      isDefaultSpecPattern:
+        value: ${{ jobs.build-matrix.outputs.isDefaultSpecPattern }}
 
 jobs:
   build-matrix:
@@ -45,10 +47,10 @@ jobs:
             const { buildMatrix } = require('${{ github.workspace }}/.github/scripts/build-e2e-matrix.js');
             const inputSpecs = "${{ inputs.specs }}";
             const inputChunks = Number(process.env.chunks);
-            const { config, regularChunks } = buildMatrix(inputSpecs, inputChunks);
+            const { config, regularChunks, isDefaultSpecPattern } = buildMatrix(inputSpecs, inputChunks);
 
             core.setOutput("regularChunks", JSON.stringify(regularChunks));
             core.setOutput("config", JSON.stringify({ include: config }));
-
+            core.setOutput("isDefaultSpecPattern", isDefaultSpecPattern);
             console.log({ regularChunks });
             console.log("matrix config", config);
