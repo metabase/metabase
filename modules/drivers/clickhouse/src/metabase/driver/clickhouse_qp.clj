@@ -290,6 +290,10 @@
   [driver [_ arg pattern]]
   [:'extract (sql.qp/->honeysql driver arg) pattern])
 
+(defmethod sql.qp/->honeysql [:clickhouse :text]
+  [driver [_ value]]
+  (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
+
 (defmethod sql.qp/->honeysql [:clickhouse :stddev]
   [driver [_ field]]
   [:'stddevPop (sql.qp/->honeysql driver field)])

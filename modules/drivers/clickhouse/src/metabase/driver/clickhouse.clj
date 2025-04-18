@@ -46,6 +46,7 @@
                               :expression-literals             true
                               :expressions/integer             true
                               :expressions/float               true
+                              :expressions/text                true
                               :upload-with-auto-pk             false
                               :window-functions/offset         false
                               :window-functions/cumulative     (not config/is-test?)
