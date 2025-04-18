@@ -210,56 +210,6 @@
                       {:status-code 401})))
     attrs))
 
-(defmethod sso.i/sso-post :saml
-  ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
-  ;; `(get-in saml-info [:assertions :attrs])
-  [{:keys [params], :as request}]
-  (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
-  (check-saml-enabled)
-
-  ;; Process continue URL and extract needed parameters
-  (let [{:keys [continue-url token-requested? clean-continue-url origin]} (process-relay-state-params (:RelayState params))
-
-    (sso-utils/check-sso-redirect continue-url)
-    (try
-      (let [saml-response (saml/validate-response request
-                                                  {:idp-cert (idp-cert)
-                                                   :sp-private-key (sp-cert-keystore-details)
-                                                   :acs-url (acs-url)
-                                                   ;; remove :in-response-to validation since we're not
-                                                   ;; tracking that in metabase
-                                                   :response-validators [:issuer
-                                                                         :signature
-                                                                         :require-authenticated]
-                                                   :assertion-validators [:signature
-                                                                          :recipient
-                                                                          :not-on-or-after
-                                                                          :not-before
-                                                                          :address
-                                                                          :issuer]
-                                                   :issuer (sso-settings/saml-identity-provider-issuer)})
-            attrs         (saml-response->attributes saml-response)
-            email         (get attrs (sso-settings/saml-attribute-email))
-            first-name    (get attrs (sso-settings/saml-attribute-firstname))
-            last-name     (get attrs (sso-settings/saml-attribute-lastname))
-            groups        (get attrs (sso-settings/saml-attribute-group))
-            session       (fetch-or-create-user!
-                           {:first-name      first-name
-                            :last-name       last-name
-                            :email           email
-                            :group-names     groups
-                            :user-attributes attrs
-                            :device-info     (request/device-info request)})
-            response      (response/redirect (or continue-url (public-settings/site-url)))]
-        (if token-requested?
-          (create-token-response session origin clean-continue-url)
-          (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
-      (catch Throwable e
-        (log/error e "SAML response validation failed")
-        (throw (ex-info (tru "Unable to log in: SAML response validation failed")
-                        {:status-code 401}
-                        e))))))
-
 (defn- process-relay-state-params
   "Process the RelayState to extract continue URL and related parameters"
   [relay-state]
@@ -335,6 +285,55 @@
   <button onclick=\"window.close()\">Close Window</button>
 </body>
 </html>")}))
+(defmethod sso.i/sso-post :saml
+  ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
+  ;; `(get-in saml-info [:assertions :attrs])
+  [{:keys [params], :as request}]
+  (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
+  (check-saml-enabled)
+
+  ;; Process continue URL and extract needed parameters
+  (let [{:keys [continue-url token-requested? clean-continue-url origin]} (process-relay-state-params (:RelayState params))]
+
+    (sso-utils/check-sso-redirect continue-url)
+    (try
+      (let [saml-response (saml/validate-response request
+                                                  {:idp-cert (idp-cert)
+                                                   :sp-private-key (sp-cert-keystore-details)
+                                                   :acs-url (acs-url)
+                                                   ;; remove :in-response-to validation since we're not
+                                                   ;; tracking that in metabase
+                                                   :response-validators [:issuer
+                                                                         :signature
+                                                                         :require-authenticated]
+                                                   :assertion-validators [:signature
+                                                                          :recipient
+                                                                          :not-on-or-after
+                                                                          :not-before
+                                                                          :address
+                                                                          :issuer]
+                                                   :issuer (sso-settings/saml-identity-provider-issuer)})
+            attrs         (saml-response->attributes saml-response)
+            email         (get attrs (sso-settings/saml-attribute-email))
+            first-name    (get attrs (sso-settings/saml-attribute-firstname))
+            last-name     (get attrs (sso-settings/saml-attribute-lastname))
+            groups        (get attrs (sso-settings/saml-attribute-group))
+            session       (fetch-or-create-user!
+                           {:first-name      first-name
+                            :last-name       last-name
+                            :email           email
+                            :group-names     groups
+                            :user-attributes attrs
+                            :device-info     (request/device-info request)})
+            response      (response/redirect (or continue-url (public-settings/site-url)))]
+        (if token-requested?
+          (create-token-response session origin clean-continue-url)
+          (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
+      (catch Throwable e
+        (log/error e "SAML response validation failed")
+        (throw (ex-info (tru "Unable to log in: SAML response validation failed")
+                        {:status-code 401}
+                        e))))))
 
 (defmethod sso.i/sso-handle-slo :saml
   [{:keys [cookies] :as req}]
