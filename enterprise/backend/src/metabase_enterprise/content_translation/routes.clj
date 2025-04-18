@@ -3,11 +3,13 @@
   (:require
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
+   [metabase-enterprise.api.routes.common :as ee.api.common]
    [metabase-enterprise.content-translation.dictionary :as dictionary]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.content-translation.api :as ct]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.content-translation.models :as ct]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
@@ -17,6 +19,23 @@
 ;; The maximum size of a content translation dictionary is 1.5MiB
 ;; This should equal the maxContentDictionarySizeInMiB variable in the frontend
 (def ^:private max-content-translation-dictionary-size (* 1.5 1024 1024))
+
+(api.macros/defendpoint :get "/csv"
+  "Provides content translation dictionary in CSV"
+  [_route-params
+   _query-params
+   _body]
+  (api/check-superuser)
+  (let [translations (ct/get-translations)
+        csv-data (cons ["Language" "String" "Translation"]
+                       (map (fn [{:keys [locale msgid msgstr]}]
+                              [locale msgid msgstr])
+                            translations))]
+    {:status 200
+     :headers {"Content-Type" "text/csv; charset=utf-8"
+               "Content-Disposition" "attachment; filename=\"metabase-content-translations.csv\""}
+     :body (with-out-str
+             (csv/write-csv *out* csv-data))}))
 
 (api.macros/defendpoint :post
   "/upload-dictionary"
@@ -32,6 +51,7 @@
                                                    [:map
                                                     [:filename :string]
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+  (api/check-superuser)
   (let [file (get-in multipart-params ["file" :tempfile])]
     (when (> (get-in multipart-params ["file" :size]) max-content-translation-dictionary-size)
       (throw (ex-info (tru "The dictionary should be less than {0}MB." (/ max-content-translation-dictionary-size (* 1024 1024)))
@@ -43,22 +63,9 @@
         (dictionary/import-translations! rows)))
     {:success true}))
 
-(api.macros/defendpoint :get "/csv"
-  "Provides content translation dictionary in CSV"
-  [_route-params
-   _query-params
-   _body]
-  (let [translations (ct/get-translations)
-        csv-data (cons ["Language" "String" "Translation"]
-                       (map (fn [{:keys [locale msgid msgstr]}]
-                              [locale msgid msgstr])
-                            translations))]
-    {:status 200
-     :headers {"Content-Type" "text/csv; charset=utf-8"
-               "Content-Disposition" "attachment; filename=\"metabase-content-translations.csv\""}
-     :body (with-out-str
-             (csv/write-csv *out* csv-data))}))
+(defn- +require-content-translation [handler]
+  (ee.api.common/+require-premium-feature :content-translation (deferred-tru "Content translation") handler))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/content-translation` routes."
-  (api.macros/ns-handler *ns* +auth))
+  (api.macros/ns-handler *ns* +auth +require-content-translation))
