@@ -25,9 +25,8 @@ export function useSdkInteractiveEmbedSettings(
 }
 
 function decodeBase64Json<T>(encodedString: string): T | null {
-  const jsonString = atob(encodedString);
-
   try {
+    const jsonString = atob(encodedString);
     const jsonObject = JSON.parse(jsonString);
 
     return jsonObject;
