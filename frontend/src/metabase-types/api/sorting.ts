@@ -1,5 +1,3 @@
-export type SortColumn = never; // TODO
-
 export enum SortDirection {
   Asc = "asc",
   Desc = "desc",
