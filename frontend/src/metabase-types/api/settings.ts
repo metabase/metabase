@@ -241,12 +241,14 @@ export type PasswordComplexity = {
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
 
-export interface SettingDefinition<Key extends SettingKey = SettingKey> {
+export interface SettingDefinition<
+  Key extends EnterpriseSettingKey = EnterpriseSettingKey,
+> {
   key: Key;
   env_name?: string;
   is_env_setting?: boolean;
-  value?: SettingValue<Key>;
-  default?: SettingValue<Key>;
+  value?: EnterpriseSettingValue<Key>;
+  default?: EnterpriseSettingValue<Key>;
   display_name?: string;
   description?: string | ReactNode | null;
   type?: InputSettingType;
@@ -352,7 +354,7 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 interface PublicSettings {
   "allowed-iframe-hosts": string;
   "anon-tracking-enabled": boolean;
-  "application-font": string;
+  "application-font": string | null;
   "application-font-files": FontFile[] | null;
   "application-name": string;
   "application-favicon-url": string;
@@ -472,9 +474,11 @@ export type SettingKey = keyof Settings;
 
 export type SettingValue<Key extends SettingKey = SettingKey> = Settings[Key];
 
+export type ColorSettings = Record<string, string>;
+
 export type IllustrationSettingValue = "default" | "none" | "custom";
 export interface EnterpriseSettings extends Settings {
-  "application-colors"?: Record<string, string>;
+  "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;

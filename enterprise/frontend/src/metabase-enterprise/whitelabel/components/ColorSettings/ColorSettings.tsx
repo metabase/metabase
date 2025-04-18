@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
+
 import BrandColorSettings from "../BrandColorSettings";
 import ChartColorPreview from "../ChartColorPreview";
 import ChartColorSettings from "../ChartColorSettings";
@@ -15,9 +17,9 @@ import {
 } from "./ColorSettings.styled";
 
 export interface ColorSettingsProps {
-  initialColors: Record<string, string> | null;
-  originalColors: Record<string, string>;
-  onChange?: (colors: Record<string, string>) => void;
+  initialColors: ColorSettingsType | null;
+  originalColors: ColorSettingsType;
+  onChange?: (colors: ColorSettingsType) => void;
 }
 
 export const ColorSettings = ({
@@ -32,7 +34,7 @@ export const ColorSettings = ({
   }, [colors, originalColors]);
 
   const handleChange = useCallback(
-    (colors: Record<string, string>) => {
+    (colors: ColorSettingsType) => {
       setColors(colors);
       onChange?.(colors);
     },
