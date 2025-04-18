@@ -15,6 +15,8 @@ jobs:
     timeout-minutes: 5
     outputs:
       e2e_all: ${{ steps.changes.outputs.e2e_all }}
+      e2e_without_specs: ${{ steps.changes.outputs.e2e_without_specs }}
+      e2e_specs_files: ${{ steps.changes.outputs.e2e_specs_files }}
       backend_all: ${{ steps.changes.outputs.backend_all }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
@@ -25,6 +27,8 @@ jobs:
         id: changes
         with:
           token: ${{ github.token }}
+          # comma separated list of files
+          list-files: csv
           filters: .github/file-paths.yaml
 
   static-viz-files-changed:
@@ -86,3 +90,7 @@ jobs:
     secrets: inherit
     with:
       skip: ${{ needs.files-changed.outputs.e2e_all != 'true' }}
+      # here we pass result from files-changed, which is a list of files, comma separated
+      # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
+      # but it is possible to change other files, not only specs, so we'll need to run all e2e and not only changed files
+      specs: ${{ needs.files-changed.outputs.e2e_without_specs != 'true' && needs.files-changed.outputs.e2e_specs_files || '' }}
