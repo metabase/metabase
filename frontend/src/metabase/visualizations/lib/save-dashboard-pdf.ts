@@ -192,10 +192,22 @@ export const saveDashboardPdf = async (
     height: contentHeight,
     width: contentWidth,
     useCORS: true,
+    backgroundColor: backgroundColor,
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.style.height = `${contentHeight}px`;
       node.style.backgroundColor = backgroundColor;
+
+      // Add specific styling for chart containers
+      const chartContainers = node.querySelectorAll(".Card, .Card--chart");
+      chartContainers.forEach((container) => {
+        if (container instanceof HTMLElement) {
+          container.style.backgroundColor = backgroundColor;
+          container.style.border = "1px solid var(--mb-color-border)";
+          container.style.boxShadow = "none";
+        }
+      });
+
       if (parametersNode instanceof HTMLElement) {
         node.insertBefore(parametersNode, node.firstChild);
       }
