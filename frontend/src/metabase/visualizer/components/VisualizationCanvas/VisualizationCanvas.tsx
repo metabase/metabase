@@ -17,6 +17,7 @@ import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import {
   getIsLoading,
+  getIsSwapAffordanceVisible,
   getVisualizationType,
   getVisualizerRawSeries,
 } from "metabase/visualizer/selectors";
@@ -46,17 +47,14 @@ function disableAxisLabels(rawSeries: RawSeries) {
 
 interface VisualizationCanvasProps {
   className?: string;
-  showSwapAffordance?: boolean;
 }
 
-export function VisualizationCanvas({
-  className,
-  showSwapAffordance,
-}: VisualizationCanvasProps) {
+export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
   const [isTabularPreviewOpen, setTabularPreviewOpen] = useState(false);
 
   const display = useSelector(getVisualizationType);
   const isLoading = useSelector(getIsLoading);
+  const isSwapAffordanceVisible = useSelector(getIsSwapAffordanceVisible);
 
   let rawSeries = useSelector(getVisualizerRawSeries);
   if (display && isCartesianChart(display)) {
@@ -123,7 +121,7 @@ export function VisualizationCanvas({
           </Box>
         )}
         <Center
-          className={`${S.SwapAffordance} ${showSwapAffordance ? S.visible : ""}`}
+          className={`${S.SwapAffordance} ${isSwapAffordanceVisible ? S.visible : ""}`}
         >
           <Center className={S.SwapAffordanceIcon}>
             <Icon name="sync" />

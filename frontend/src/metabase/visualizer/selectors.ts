@@ -84,6 +84,9 @@ export const getIsDataSidebarOpen = (state: State) =>
 export const getIsVizSettingsSidebarOpen = (state: State) =>
   state.visualizer.isVizSettingsSidebarOpen;
 
+export const getIsSwapAffordanceVisible = (state: State) =>
+  state.visualizer.isSwapAffordanceVisible;
+
 // #0 is state before its actually initialized, hence the > 1
 export const getCanUndo = (state: State) => state.visualizer.past.length > 1;
 export const getCanRedo = (state: State) => state.visualizer.future.length > 0;

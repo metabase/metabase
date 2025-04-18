@@ -71,6 +71,7 @@ const initialCommonState: VisualizerCommonState = {
   expandedDataSources: {},
   isDataSidebarOpen: true,
   isVizSettingsSidebarOpen: false,
+  isSwapAffordanceVisible: false,
   error: null,
   draggedItem: null,
 };
@@ -458,6 +459,9 @@ const visualizerSlice = createSlice({
     toggleVizSettingsSidebar: (state) => {
       state.isVizSettingsSidebarOpen = !state.isVizSettingsSidebarOpen;
     },
+    setSwapAffordanceVisible: (state, action: PayloadAction<boolean>) => {
+      state.isSwapAffordanceVisible = action.payload;
+    },
     closeVizSettingsSidebar: (state) => {
       state.isVizSettingsSidebarOpen = false;
     },
@@ -540,6 +544,7 @@ const visualizerSlice = createSlice({
           state.present = getInitialVisualizerHistoryItem();
           state.future = [];
           state.isVizSettingsSidebarOpen = false;
+          state.isSwapAffordanceVisible = false;
         } else {
           maybeUpdateHistory(state, action);
         }
@@ -665,6 +670,7 @@ export const {
   toggleDataSourceExpanded,
   toggleDataSideBar,
   toggleVizSettingsSidebar,
+  setSwapAffordanceVisible,
   closeVizSettingsSidebar,
   closeDataSidebar,
   undo,

@@ -6,7 +6,7 @@ import {
   PointerSensor,
   useSensor,
 } from "@dnd-kit/core";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { useUnmount } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -81,8 +81,6 @@ export const Visualizer = (props: VisualizerProps) => {
   const isDataSidebarOpen = useSelector(getIsDataSidebarOpen);
   const isVizSettingsSidebarOpen = useSelector(getIsVizSettingsSidebarOpen);
 
-  const [showSwapAffordance, setShowSwapAffordance] = useState(false);
-
   const dispatch = useDispatch();
 
   const canvasSensor = useSensor(PointerSensor, {
@@ -141,19 +139,6 @@ export const Visualizer = (props: VisualizerProps) => {
     [dispatch],
   );
 
-  const onDatasetMouseOver = useCallback(
-    (_datasetId: string, willAdd = false) => {
-      if (!willAdd) {
-        setShowSwapAffordance(true);
-      }
-    },
-    [],
-  );
-
-  const onDatasetMouseOut = useCallback((_datasetId: string) => {
-    setShowSwapAffordance(false);
-  }, []);
-
   const classNames = [
     S.Container,
     isDataSidebarOpen ? S.dataSidebarOpen : undefined,
@@ -180,11 +165,7 @@ export const Visualizer = (props: VisualizerProps) => {
       <Box className={classNames}>
         {/* left side bar */}
         <Box className={S.dataSidebar}>
-          <DataImporter
-            className={S.dataSidebarContent}
-            onDatasetMouseOver={onDatasetMouseOver}
-            onDatasetMouseOut={onDatasetMouseOut}
-          />
+          <DataImporter className={S.dataSidebarContent} />
         </Box>
 
         {/* top header bar */}
@@ -197,10 +178,7 @@ export const Visualizer = (props: VisualizerProps) => {
         />
 
         {/* main area */}
-        <VisualizationCanvas
-          showSwapAffordance={showSwapAffordance}
-          className={S.Canvas}
-        />
+        <VisualizationCanvas className={S.Canvas} />
 
         {/* footer */}
         <Footer className={S.Footer} />

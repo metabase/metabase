@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { type ComponentProps, useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
@@ -21,18 +21,7 @@ import { ColumnsList } from "./ColumnsList/ColumnsList";
 import S from "./DataImporter.module.css";
 import { DatasetsList } from "./DatasetsList/DatasetsList";
 
-interface DataImporterProps
-  extends Pick<
-    ComponentProps<typeof DatasetsList>,
-    "onDatasetMouseOut" | "onDatasetMouseOver"
-  > {
-  className?: string;
-}
-
-export const DataImporter = ({
-  className,
-  ...otherProps
-}: DataImporterProps) => {
+export const DataImporter = ({ className }: { className?: string }) => {
   const [search, setSearch] = useState("");
   const [showDatasets, handlers] = useDisclosure(false);
 
@@ -92,7 +81,7 @@ export const DataImporter = ({
               overflowY: "auto",
             }}
           >
-            <DatasetsList {...otherProps} search={debouncedSearch} />
+            <DatasetsList search={debouncedSearch} />
           </Flex>
         </Flex>
       ) : (

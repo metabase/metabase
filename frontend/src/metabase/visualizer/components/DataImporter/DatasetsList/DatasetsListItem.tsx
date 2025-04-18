@@ -3,13 +3,14 @@ import { useMemo } from "react";
 import { useGetCardQuery } from "metabase/api";
 import ButtonGroup from "metabase/core/components/ButtonGroup";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Button, Icon } from "metabase/ui";
 import {
   getVisualizationType,
   getVisualizerPrimaryColumn,
 } from "metabase/visualizer/selectors";
 import { parseDataSourceId } from "metabase/visualizer/utils";
+import { setSwapAffordanceVisible } from "metabase/visualizer/visualizer.slice";
 import type { VisualizerDataSource } from "metabase-types/store/visualizer";
 
 import S from "./DatasetsListItem.module.css";
@@ -21,30 +22,24 @@ interface DatasetsListItemProps {
   onAdd?: (item: VisualizerDataSource) => void;
   onRemove?: (item: VisualizerDataSource) => void;
   selected: boolean;
-  onMouseOver?: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  onMouseOut?: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  onAddMouseOver?: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  onAddMouseOut?: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 export const DatasetsListItem = (props: DatasetsListItemProps) => {
-  const {
-    selected,
-    item,
-    onSwap,
-    onAdd,
-    onRemove,
-    onAddMouseOut,
-    onAddMouseOver,
-    onMouseOut,
-    onMouseOver,
-  } = props;
+  const { selected, item, onSwap, onAdd, onRemove } = props;
 
   const currentDisplay = useSelector(getVisualizationType);
   const primaryColumn = useSelector(getVisualizerPrimaryColumn);
+  const dispatch = useDispatch();
 
   const { sourceId } = parseDataSourceId(item.id);
   const { data } = useGetCardQuery({ id: sourceId });
+
+  const showSwapAffordance = () => {
+    dispatch(setSwapAffordanceVisible(true));
+  };
+  const hideSwapAffordance = () => {
+    dispatch(setSwapAffordanceVisible(false));
+  };
 
   const metadata = useMemo(
     () => ({
@@ -79,8 +74,8 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
         onClick={() => {
           onSwap?.(item);
         }}
-        onMouseOver={onMouseOver}
-        onMouseOut={onMouseOut}
+        onMouseOver={showSwapAffordance}
+        onMouseOut={hideSwapAffordance}
         leftSection={
           <Icon color="inherit" className={S.TableIcon} name="table2" mr="xs" />
         }
@@ -106,8 +101,6 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
             size="xs"
             variant="visualizer"
             rightSection={<Icon name="add" />}
-            onMouseOver={onAddMouseOver}
-            onMouseOut={onAddMouseOut}
             onClick={(e) => {
               e.stopPropagation();
               onAdd?.(item);
