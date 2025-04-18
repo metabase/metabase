@@ -172,7 +172,7 @@ describe("CreateOrEditTableNotificationModal", () => {
       screen.getByRole("option", { name: /When any cell changes it's value/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("option", { name: /When a record is deleted/i }),
+      screen.getByRole("option", { name: /When a records are deleted/i }),
     ).toBeInTheDocument();
   });
 
