@@ -75,7 +75,10 @@ async function link_issues(github) {
 
     console.log('PR Info:\n' + JSON.stringify(prInfo, null, 2) + "\n");
 
-    const prUrl = prInfo.data.html_url;
+    // const prUrl = prInfo.data.html_url;
+    // FIXME: Use the PR URL from the PR info this is temporary to test the script
+    //        on the actual PRR
+    const prUrl = "https://github.com/metabase/metabase/pull/56793";
     console.log(`Processing PR: ${prUrl}`);
 
     // Query Linear API to find tasks linked to this PR
