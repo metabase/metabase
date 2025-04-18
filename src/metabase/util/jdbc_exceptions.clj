@@ -30,8 +30,12 @@
 (defmethod impl-query-canceled? :h2 [_ ^SQLException e]
   (= (.getErrorCode e) 57014))
 
+;; MariaDB jdbc uses its `max_statement_time` mechanism to timeout. It is unclear which of these
+;; codes should be returned. Hibernate expects 3024, but in testing 1969 was observed.
+;; https://mariadb.com/kb/en/e1969/
+;; https://mariadb.com/kb/en/e3024/
 (defmethod impl-query-canceled? :mariadb [_ ^SQLException e]
-  (= (.getErrorCode e) 3024))
+  (contains? #{1969 3024} (.getErrorCode e)))
 
 (defmethod impl-query-canceled? :mysql [_ ^SQLException e]
   (or (= (.getErrorCode e) 1317)
