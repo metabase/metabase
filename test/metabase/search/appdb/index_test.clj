@@ -53,14 +53,14 @@
                         :model/Card       {}            {:name "Projected Satisfaction"         :collection_id col-id#}
                         :model/Database   {db-id# :id}  {:name "Indexed Database"}
                         :model/Table      {}            {:name "Indexed Table", :db_id db-id#}]
-           (search.engine/reindex! :search.engine/appdb {})
+           (search.engine/reindex! :search.engine/appdb {:in-place? true})
            ~@body)))))
 
 (deftest idempotent-test
   (with-index
     (let [count-rows  (fn [] (t2/count (search.index/active-table)))
           rows-before (count-rows)]
-      (search.engine/reindex! :search.engine/appdb {})
+      (search.engine/reindex! :search.engine/appdb {:in-place? true})
       (is (= rows-before (count-rows))))))
 
 (deftest incremental-update-test

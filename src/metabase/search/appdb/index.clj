@@ -242,7 +242,7 @@
           (throw e))))))
 
 (defn- batch-update!
-  "Create the given search index entries in bulk. Context should be :search/updating or :search/reindexing"
+  "Create the given search index entries in bulk"
   [context documents]
   ;; Protect against tests that nuke the appdb
   (when config/is-test?
@@ -264,7 +264,8 @@
         (log/trace "indexed documents for " <>)))))
 
 (defn index-docs!
-  "Indexes the documents. The context should be :search/updating or :search/reindexing."
+  "Indexes the documents. The context should be :search/updating or :search/reindexing.
+   Context should be :search/updating or :search/reindexing to help control how to manage the updates"
   [context document-reducible]
   (transduce (comp (partition-all insert-batch-size)
                    (map #(batch-update! context %)))

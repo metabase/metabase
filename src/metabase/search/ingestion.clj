@@ -102,7 +102,7 @@
          (map ->document)))))
 
 (defn searchable-documents
-  "Get all searchable documents from the database."
+  "Return all existing searchable documents from the database."
   []
   (query->documents (search-items-reducible)))
 
@@ -115,14 +115,14 @@
   false)
 
 (defn update!
-  "Update all active engines' indexes with the given documents"
+  "Update all active engines' existing indexes with the given documents"
   [documents-reducible]
   (when-let [engines (seq (search.engine/active-engines))]
     (if (= 1 (count engines))
       (search.engine/update! (first engines) documents-reducible)
-       ;; TODO um, multiplexing over the reducible awkwardly feels strange. We at least use a magic number for now.
+      ;; TODO um, multiplexing over the reducible awkwardly feels strange. We at least use a magic number for now.
       (doseq [batch (eduction (partition-all 150) documents-reducible)
-              e engines]
+              e     engines]
         (search.engine/update! e batch)))))
 
 (defn bulk-ingest!
@@ -130,7 +130,7 @@
   [updates]
   (->> (for [[search-model where-clauses] (u/group-by first second updates)]
          (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
-    ;; init collection is only for clj-kondo, as we know that the list is non-empty
+       ;; init collection is only for clj-kondo, as we know that the list is non-empty
        (reduce u/rconcat [])
        query->documents
        update!))

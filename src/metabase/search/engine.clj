@@ -30,7 +30,7 @@
    :score  (:score result)})
 
 (defmulti update!
-  "Updates the search index by consuming the documents from the given reducible."
+  "Updates the existing search index by consuming the documents from the given reducible."
   {:arglists '([search-engine document-reducible])}
   (fn [search-engine _document-reducible]
     search-engine))
