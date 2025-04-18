@@ -24,7 +24,9 @@ const CLIENT_ID_KEY = "google-auth-client-id";
 const DOMAIN_KEY = "google-auth-auto-create-accounts-domain";
 
 const BREADCRUMBS = [
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   [t`Authentication`, "/admin/settings/authentication"],
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   [t`Google Sign-In`],
 ];
 

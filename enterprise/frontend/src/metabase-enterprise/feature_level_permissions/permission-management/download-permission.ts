@@ -24,6 +24,7 @@ import {
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 export const UNABLE_TO_DOWNLOAD_RESULTS = t`Groups with Block data access can't download results`;
 
 const getTooltipMessage = (isAdmin: boolean, isBlockedAccess: boolean) => {
@@ -40,24 +41,28 @@ const getTooltipMessage = (isAdmin: boolean, isBlockedAccess: boolean) => {
 
 export const DOWNLOAD_PERMISSION_OPTIONS = {
   none: {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`No`,
     value: DataPermissionValue.NONE,
     icon: "close",
     iconColor: "danger",
   },
   limited: {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`10 thousand rows`,
     value: DataPermissionValue.LIMITED,
     icon: "10k",
     iconColor: "accent7",
   },
   full: {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`1 million rows`,
     value: DataPermissionValue.FULL,
     icon: "1m",
     iconColor: "accent7",
   },
   controlled: {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`Granular`,
     value: DataPermissionValue.CONTROLLED,
     icon: "permissions_limited",
