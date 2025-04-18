@@ -1,6 +1,8 @@
 const glob = require("glob");
 
 const DEFAULT_SPEC_PATTERN = "./e2e/test/scenarios/**/*.cy.spec.*";
+const EMBEDDING_SDK_SPEC_PATTERN =
+  "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*";
 
 /**
  *
@@ -20,10 +22,10 @@ function buildMatrix(inputSpecs, inputChunks) {
     edition: "ee",
   };
 
-  const allSpecs = inputSpecs || DEFAULT_SPEC_PATTERN;
-  const isDefaultSpecPattern = allSpecs === DEFAULT_SPEC_PATTERN;
+  const isDefaultSpecPattern =
+    inputSpecs === "" || inputSpecs === DEFAULT_SPEC_PATTERN;
 
-  console.log("Processed specs value:", allSpecs);
+  console.log("Processed specs value:", inputSpecs);
   console.log("Is default pattern:", isDefaultSpecPattern);
 
   const getMatchingSpecsCount = (pattern) => {
@@ -39,28 +41,24 @@ function buildMatrix(inputSpecs, inputChunks) {
   const specialTestConfigs = [
     {
       name: "embedding-sdk",
-      specs: "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*",
+      specs: EMBEDDING_SDK_SPEC_PATTERN,
     },
     {
       name: "oss-subset",
       edition: "oss",
       tags: "@OSS @smoke+-@EE",
-      specs: allSpecs,
+      specs: DEFAULT_SPEC_PATTERN,
     },
-    { name: "mongo", tags: "@mongo", specs: allSpecs },
+    { name: "mongo", tags: "@mongo", specs: DEFAULT_SPEC_PATTERN },
   ];
-
-  const specialTests = specialTestConfigs.filter((test) =>
-    hasMatchingSpecs(test.specs),
-  );
 
   let regularChunks;
   if (isDefaultSpecPattern) {
-    regularChunks = inputChunks - specialTests.length;
+    regularChunks = inputChunks - specialTestConfigs.length;
   } else {
-    // not default pattern, then it's a list of specs separated by comma
-    // so we wrap it in curly braces to make it a pattern for glob
-    const matchingSpecsCount = getMatchingSpecsCount(`{${allSpecs}}`);
+    // when pattern is not default, it means we passed some custom list of the changed specs
+    // so we need to calculate how many chunks we need to run
+    const matchingSpecsCount = getMatchingSpecsCount(`{${inputSpecs}}`);
     regularChunks = Math.max(
       1,
       Math.ceil(matchingSpecsCount / SPECS_PER_CHUNK),
@@ -69,10 +67,19 @@ function buildMatrix(inputSpecs, inputChunks) {
 
   const regularTests = new Array(regularChunks).fill(1).map((files, index) => ({
     name: `e2e-group-${index + 1}`,
-    ...(!isDefaultSpecPattern && { specs: allSpecs }),
+    // works when specs less than 5, otherwise seems all chunks will contain
+    // same specs
+    ...(!isDefaultSpecPattern && {
+      specs: inputSpecs
+        .split(",")
+        .slice(SPECS_PER_CHUNK * index, SPECS_PER_CHUNK * (index + 1))
+        .join(","),
+    }),
   }));
 
-  const testSets = regularTests.concat(specialTests);
+  const testSets = isDefaultSpecPattern
+    ? regularTests.concat(specialTestConfigs)
+    : regularTests;
 
   const config = testSets.map((options) => ({
     ...defaultOptions,
@@ -81,5 +88,12 @@ function buildMatrix(inputSpecs, inputChunks) {
 
   return { config, regularChunks };
 }
+
+const res = buildMatrix(
+  "e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js",
+  1,
+);
+
+console.log(res);
 
 module.exports = { buildMatrix };
