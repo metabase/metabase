@@ -43,7 +43,9 @@ type Section = {
 const CUSTOM_EXPRESSION_SECTION: Section = {
   key: "custom-expression",
   type: "action",
-  name: t`Custom Expression`,
+  get name() {
+    return t`Custom Expression`;
+  },
   items: [],
   icon: "filter",
 };

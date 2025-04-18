@@ -71,7 +71,9 @@ export const settings = {
     },
   },
   [COLUMN_SPLIT_SETTING]: {
-    section: t`Columns`,
+    get section() {
+      return t`Columns`;
+    },
     widget: "fieldsPartition",
     persistDefault: true,
     getHidden: ([{ data }]: [{ data: DatasetData }]) =>
@@ -140,22 +142,32 @@ export const settings = {
     },
   },
   "pivot.show_row_totals": {
-    section: t`Columns`,
-    title: t`Show row totals`,
+    get section() {
+      return t`Columns`;
+    },
+    get title() {
+      return t`Show row totals`;
+    },
     widget: "toggle",
     default: true,
     inline: true,
   },
   "pivot.show_column_totals": {
-    section: t`Columns`,
-    title: t`Show column totals`,
+    get section() {
+      return t`Columns`;
+    },
+    get title() {
+      return t`Show column totals`;
+    },
     widget: "toggle",
     default: true,
     inline: true,
   },
   "pivot_table.column_widths": {},
   [COLUMN_FORMATTING_SETTING]: {
-    section: t`Conditional Formatting`,
+    get section() {
+      return t`Conditional Formatting`;
+    },
     widget: ChartSettingsTableFormatting,
     default: [],
     getDefault: (
@@ -222,7 +234,9 @@ export const settings = {
 
 export const _columnSettings = {
   [COLUMN_SORT_ORDER]: {
-    title: t`Sort order`,
+    get title() {
+      return t`Sort order`;
+    },
     widget: ChartSettingIconRadio,
     inline: true,
     borderBottom: true,
@@ -242,7 +256,9 @@ export const _columnSettings = {
       source === "aggregation",
   },
   [COLUMN_SHOW_TOTALS]: {
-    title: t`Show totals`,
+    get title() {
+      return t`Show totals`;
+    },
     widget: "toggle",
     inline: true,
     getDefault: (
@@ -277,7 +293,9 @@ export const _columnSettings = {
     },
   },
   column_title: {
-    title: t`Column title`,
+    get title() {
+      return t`Column title`;
+    },
     widget: "input",
     getDefault: displayNameForColumn,
   },

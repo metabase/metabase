@@ -8,10 +8,30 @@ import type { RecentItem } from "metabase-types/api";
 import type { SearchItem } from "../../types";
 
 const dateBuckets = [
-  { title: t`Today`, days: 1 },
-  { title: t`Yesterday`, days: 2 },
-  { title: t`Last week`, days: 7 },
-  { title: t`Earlier`, days: Infinity },
+  {
+    get title() {
+      return t`Today`;
+    },
+    days: 1,
+  },
+  {
+    get title() {
+      return t`Yesterday`;
+    },
+    days: 2,
+  },
+  {
+    get title() {
+      return t`Last week`;
+    },
+    days: 7,
+  },
+  {
+    get title() {
+      return t`Earlier`;
+    },
+    days: Infinity,
+  },
 ];
 
 type RecentsGroup = {

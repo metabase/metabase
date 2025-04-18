@@ -63,15 +63,21 @@ const ALERT_TRIGGER_OPTIONS_MAP: Record<
 > = {
   has_result: {
     value: "has_result" as const,
-    label: t`When this question has results`,
+    get label() {
+      return t`When this question has results`;
+    },
   },
   goal_above: {
     value: "goal_above" as const,
-    label: t`When results go above the goal line`,
+    get label() {
+      return t`When results go above the goal line`;
+    },
   },
   goal_below: {
     value: "goal_below" as const,
-    label: t`When results go below the goal line`,
+    get label() {
+      return t`When results go below the goal line`;
+    },
   },
 };
 

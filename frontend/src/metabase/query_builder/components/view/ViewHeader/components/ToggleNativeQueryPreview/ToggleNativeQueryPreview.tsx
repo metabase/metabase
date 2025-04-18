@@ -14,13 +14,21 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 const BUTTON_TEXT = {
-  sql: t`View SQL`,
-  json: t`View native query`,
+  get sql() {
+    return t`View SQL`;
+  },
+  get json() {
+    return t`View native query`;
+  },
 };
 
 const BUTTON_CLOSE_TEXT = {
-  sql: t`Hide SQL`,
-  json: t`Hide native query`,
+  get sql() {
+    return t`Hide SQL`;
+  },
+  get json() {
+    return t`Hide native query`;
+  },
 };
 
 interface ToggleNativeQueryPreviewProps {

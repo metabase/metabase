@@ -21,7 +21,9 @@ export const settings = {
   settings: {
     "card.title": {
       dashboard: false,
-      default: t`Link card`,
+      get default() {
+        return t`Link card`;
+      },
     },
     "card.description": {
       dashboard: false,
