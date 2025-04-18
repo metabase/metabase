@@ -298,13 +298,13 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse :text]
   [driver [_ value]]
-  (h2x/maybe-cast "Nullable(TEXT)" (sql.qp/->honeysql driver value)))
+  (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
 
 (defmethod sql.qp/->honeysql [:clickhouse :date]
   [driver [_ value]]
-  (h2x/maybe-cast "Nullable(Date32)"
-                  [:str_to_date (sql.qp/->honeysql driver value)
-                   [:inline "YYYY-MM-DD"]]))
+  (h2x/maybe-cast "Date32"
+                  [:parseDateTime (sql.qp/->honeysql driver value)
+                   [:inline "%Y-%m-%d"]]))
 
 (defmethod sql.qp/->honeysql [:clickhouse :stddev]
   [driver [_ field]]
