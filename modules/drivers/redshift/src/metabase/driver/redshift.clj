@@ -43,6 +43,7 @@
                               :describe-fields           true
                               :describe-fks              true
                               :expression-literals       true
+                              :expressions/integer       true
                               :identifiers-with-spaces   false
                               :uuid-type                 false
                               :nested-field-columns      false
@@ -296,6 +297,13 @@
 (defmethod sql.qp/->honeysql [:redshift :avg]
   [driver [_ field]]
   [:avg [:cast (sql.qp/->honeysql driver field) :float]])
+
+(defmethod sql.qp/->honeysql [:redshift :integer]
+  [driver [_ value]]
+  (->> (sql.qp/->honeysql driver value)
+       (h2x/maybe-cast "FLOAT8")
+       (vector :round)
+       (h2x/maybe-cast "BIGINT")))
 
 (defn- extract [unit temporal]
   [::h2x/extract (format "'%s'" (name unit)) temporal])
