@@ -134,10 +134,6 @@
   (let [redirect (get-in req [:params :redirect])
         origin (get-in req [:headers "origin"])
         embedding-sdk-header? (sso-utils/is-embedding-sdk-header? req)]
-    (println "construct-redirect-url" req)
-    (println (acs-url))
-    (println origin)
-    (println embedding-sdk-header?)
     (cond
       ;; Case 1: Embedding SDK header is present - use ACS URL with token and origin
       embedding-sdk-header?
@@ -188,15 +184,6 @@
         (let [msg (trs "Error generating SAML request")]
           (log/error e msg)
           (throw (ex-info msg {:status-code 500} e)))))))
-
-(defn- idp-cert
-  []
-  (or (sso-settings/saml-identity-provider-certificate)
-      (throw (ex-info (str (tru "Unable to log in: SAML IdP certificate is not set."))
-                      {:status-code 500}))))
-
-(defn- acs-url []
-  (str (public-settings/site-url) "/auth/sso"))
 
 (defn- idp-cert
   []

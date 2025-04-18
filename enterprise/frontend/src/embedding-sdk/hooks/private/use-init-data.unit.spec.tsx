@@ -16,7 +16,7 @@ import {
   useSdkDispatch,
   useSdkSelector,
 } from "embedding-sdk/store";
-import { refreshTokenAsync } from "embedding-sdk/store/auth";
+import { refreshTokenAsync } from "embedding-sdk/store/auth/auth";
 import { getIsLoggedIn, getLoginStatus } from "embedding-sdk/store/selectors";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import {

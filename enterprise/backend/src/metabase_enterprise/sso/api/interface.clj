@@ -14,8 +14,6 @@
   complex logic around this, but now it's just a simple priority. If SAML is configured use that otherwise JWT"
   [req]
   (cond
-    (= (:method (:params req)) "jwt")  :jwt
-    (= (:method (:params req)) "saml") :saml
     (and (sso-settings/saml-enabled) (sso-settings/jwt-enabled)) (select-sso-backend req)
     (sso-settings/saml-enabled) :saml
     (sso-settings/jwt-enabled)  :jwt
