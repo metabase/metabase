@@ -62,9 +62,9 @@
   "This will trigger an immediate reindexing, if we are using search index."
   []
   (api/check-superuser)
-  (if  (search/supports-index?)
+  (if (search/supports-index?)
     ;; The job appears to wait on the main thread when run from tests, so, unfortunately, testing this branch is hard.
-    (if (and (task/job-exists? task.search-index/reindex-job-key) ((not ingestion/*force-sync*) or (config/is-test?)))
+    (if (and (task/job-exists? task.search-index/reindex-job-key) (or (not ingestion/*force-sync*) (config/is-test?)))
       (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
       (do (task.search-index/reindex!) {:message "done"}))
 
