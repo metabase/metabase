@@ -73,10 +73,25 @@ export const EditTableDataGrid = ({
     [columnsConfig],
   );
 
+  // if columnsConfig is not provided, all columns are editable and columnsConfiguredForEditing is undefined
+  const columnsConfiguredForEditing = useMemo(() => {
+    if (!columnsConfig) {
+      return undefined;
+    }
+
+    return new Set(
+      columnsConfig.filter((it) => it.editable).map(({ name }) => name),
+    );
+  }, [columnsConfig]);
+
   const columnSizingMap = useMemo(() => ({}), []);
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
     return cols.map((column, columnIndex) => {
+      const isEditableColumn =
+        !columnsConfiguredForEditing ||
+        columnsConfiguredForEditing.has(column.name);
+
       const sortDirection = getColumnSortDirection?.(column);
 
       const options: ColumnOptions<RowValues, RowValue> = {
@@ -113,6 +128,10 @@ export const EditTableDataGrid = ({
         getIsCellEditing: (cellId: string) => editingCellId === cellId,
       };
 
+      if (!isEditableColumn) {
+        options.getCellClassName = () => S.readonlyCell;
+      }
+
       return options;
     });
   }, [
@@ -122,6 +141,7 @@ export const EditTableDataGrid = ({
     onCellValueUpdate,
     onCellEditCancel,
     editingCellId,
+    columnsConfiguredForEditing,
   ]);
 
   const rowId: RowIdColumnOptions = useMemo(
@@ -140,17 +160,6 @@ export const EditTableDataGrid = ({
     columnsOptions,
     columnVisibility,
   });
-
-  // Optional
-  const columnsConfiguredForEditing = useMemo(() => {
-    if (!columnsConfig) {
-      return undefined;
-    }
-
-    return new Set(
-      columnsConfig.filter((it) => it.editable).map(({ name }) => name),
-    );
-  }, [columnsConfig]);
 
   const handleCellClick = useCallback(
     (
