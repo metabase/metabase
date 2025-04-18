@@ -366,6 +366,7 @@
   [params-type :- ::param-type
    schema      :- some?
    params]
+  (log/info (str "params-type" params-type))
   (let [params  (or params {})
         decoded ((decoder schema) params)]
     (when-not (mr/validate schema decoded)
