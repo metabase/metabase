@@ -177,7 +177,7 @@ coalesce([Notes], [Comments] "No notes or comments.")
 [custom-expressions-learn]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions
 [data-types]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types
 [missing-dates]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-logic-missing-data#how-to-fill-in-data-for-missing-report-dates
-[notebook-editor-def]: https://www.metabase.com/glossary/notebook_editor
+[notebook-editor-def]: https://www.metabase.com/glossary/notebook-editor
 [numpy]: https://numpy.org/doc/
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/
 [sql-reference-guide]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-syntax#common-sql-reference-guides

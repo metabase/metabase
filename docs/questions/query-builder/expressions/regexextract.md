@@ -91,7 +91,7 @@ regexextract([URL], "^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/.\n]+)")
 
 ### SQL
 
-When you run a question using the [notebook editor](https://www.metabase.com/glossary/notebook_editor), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
+When you run a question using the [notebook editor](https://www.metabase.com/glossary/notebook-editor), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
 If our [sample data](#searching-and-cleaning-text) is stored in a PostgreSQL database:
 
