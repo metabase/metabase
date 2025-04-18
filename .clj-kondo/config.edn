@@ -11,9 +11,7 @@
   :def-fn                       {:level :warning}
   :dynamic-var-not-earmuffed    {:level :warning}
   :equals-expected-position     {:level :warning, :only-in-test-assertion true}
-  ;; TEMPORARY I'll re-enable this once we fix the issues with
-  ;; a mystery gh pr branch
-  ;; :equals-true                  {:level :warning}
+  :equals-true                  {:level :warning}
   :keyword-binding              {:level :warning}
   :main-without-gen-class       {:level :warning}
   :minus-one                    {:level :warning}
