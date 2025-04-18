@@ -44,8 +44,8 @@
              (.close ^LDAPConnectionPool (#'ldap/get-connection)))))
 
     (testing "login should succeed"
-      (is (= true
-             (ldap/verify-password "cn=Directory Manager" "password"))))
+      (is (true?
+           (ldap/verify-password "cn=Directory Manager" "password"))))
 
     (testing "wrong password"
       (is (= false
@@ -56,16 +56,16 @@
              (ldap/verify-password "cn=Nobody,ou=nowhere,dc=metabase,dc=com" "password"))))
 
     (testing "regular user login"
-      (is (= true
-             (ldap/verify-password "cn=Sally Brown,ou=People,dc=metabase,dc=com" "1234"))))
+      (is (true?
+           (ldap/verify-password "cn=Sally Brown,ou=People,dc=metabase,dc=com" "1234"))))
 
     (testing "fail regular user login with bad password"
       (is (= false
              (ldap/verify-password "cn=Sally Brown,ou=People,dc=metabase,dc=com" "password"))))
 
     (testing "password containing dollar signs succeeds (#15145)"
-      (is (= true
-             (ldap/verify-password "cn=Fred Taylor,ou=People,dc=metabase,dc=com", "pa$$word"))))))
+      (is (true?
+           (ldap/verify-password "cn=Fred Taylor,ou=People,dc=metabase,dc=com", "pa$$word"))))))
 
 (deftest find-test
   ;; there are EE-specific versions of this test in [[metabase-enterprise.enhancements.integrations.ldap-test]]

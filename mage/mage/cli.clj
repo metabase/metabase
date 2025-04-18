@@ -30,7 +30,8 @@
 (defn- coerce-arguments [arg-schema current-task arguments]
   (if-not arg-schema
     arguments
-    (let [decoded-args (mc/decode arg-schema arguments mtx/string-transformer)]
+    (let [decoded-args (try (mc/decode arg-schema arguments mtx/string-transformer)
+                            (catch Exception e arguments))]
       #_:clj-kondo/ignore ;; TODO: don't run all linters on these files
       (if (mc/validate arg-schema decoded-args)
         decoded-args
@@ -69,16 +70,20 @@
 
   See: https://clojure.github.io/tools.cli/index.html#clojure.tools.cli/parse-opts"
   [{:keys [options arg-schema] :as current-task}]
-  (check-print-help current-task)
-  (let [*error-hit? (atom false)
-        {:keys [summary]
-         option-errors :errors
-         :as parsed-opts} (tools.cli/parse-opts *command-line-args* options)
-        _ (check-option-errors option-errors *error-hit? summary)
-        parsed (update parsed-opts :arguments (partial coerce-arguments arg-schema current-task))]
-    (u/debug (c/green "UNPARSED: ") *command-line-args*)
-    (u/debug (c/green "PARSED:   ") parsed)
-    parsed))
+  (try
+    (check-print-help current-task)
+    (let [*error-hit? (atom false)
+          {:keys [summary]
+           option-errors :errors
+           :as parsed-opts} (tools.cli/parse-opts *command-line-args* options)
+          _ (check-option-errors option-errors *error-hit? summary)
+          parsed (update parsed-opts :arguments (partial coerce-arguments arg-schema current-task))]
+      (u/debug (c/green "UNPARSED: ") *command-line-args*)
+      (u/debug (c/green "PARSED:   ") parsed)
+      parsed)
+    (catch Exception e
+      (println (c/red "Error: " (.getMessage e)))
+      (System/exit 1))))
 
 (comment
 

@@ -332,14 +332,14 @@
       :assert
       {:email
        (fn [_ [email]]
-         (is (= true (some? email))
+         (is (true? (some? email))
              "Should have a message in the inbox")
          (when email
            (let [filename (-> email :message last :content)
                  exists?  (some-> filename io/file .exists)]
              (testing "File should exist"
-               (is (= true
-                      exists?)))
+               (is (true?
+                    exists?)))
              (testing (str "tmp file = %s" filename)
                (testing "Slurp in the generated CSV and count the lines found in the file"
                  (when exists?
@@ -558,22 +558,22 @@
         goal-met?           (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
     (testing "Progress bar"
       (testing "alert above"
-        (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (progress-result 4)))))
-        (testing "value equals goal" (is (=  true (goal-met? alert-above-pulse (progress-result 5)))))
-        (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (progress-result 6))))))
+        (testing "value below goal"  (is (false? (goal-met? alert-above-pulse (progress-result 4)))))
+        (testing "value equals goal" (is (true? (goal-met? alert-above-pulse (progress-result 5)))))
+        (testing "value above goal"  (is (true? (goal-met? alert-above-pulse (progress-result 6))))))
       (testing "alert below"
-        (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (progress-result 4)))))
-        (testing "value equals goal (#10899)" (is (= false (goal-met? alert-below-pulse (progress-result 5)))))
-        (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (progress-result 6)))))))
+        (testing "value below goal"  (is (true? (goal-met? alert-below-pulse (progress-result 4)))))
+        (testing "value equals goal (#10899)" (is (false? (goal-met? alert-below-pulse (progress-result 5)))))
+        (testing "value above goal"  (is (false? (goal-met? alert-below-pulse (progress-result 6)))))))
     (testing "Timeseries"
       (testing "alert above"
-        (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (=  true (goal-met? alert-above-pulse (timeseries-result 5)))))
-        (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (timeseries-result 6))))))
+        (testing "value below goal"  (is (false? (goal-met? alert-above-pulse (timeseries-result 4)))))
+        (testing "value equals goal" (is (true? (goal-met? alert-above-pulse (timeseries-result 5)))))
+        (testing "value above goal"  (is (true? (goal-met? alert-above-pulse (timeseries-result 6))))))
       (testing "alert below"
-        (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (= false (goal-met? alert-below-pulse (timeseries-result 5)))))
-        (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (timeseries-result 6)))))))))
+        (testing "value below goal"  (is (true? (goal-met? alert-below-pulse (timeseries-result 4)))))
+        (testing "value equals goal" (is (false? (goal-met? alert-below-pulse (timeseries-result 5)))))
+        (testing "value above goal"  (is (false? (goal-met? alert-below-pulse (timeseries-result 6)))))))))
 
 (deftest native-query-with-user-specified-axes-test
   (testing "Native query with user-specified x and y axis"

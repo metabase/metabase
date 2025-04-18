@@ -552,7 +552,7 @@
     (is (= source-database-id query-db-id))
     (is (= source-table-id magic-card-table-id))
     (is (= (format "card__%s" source-card-id) source-table))
-    (is (= true (every? (fn [[_ id]] (valid-source-ids id)) breakout)))))
+    (is (true? (every? (fn [[_ id]] (valid-source-ids id)) breakout)))))
 
 (defn- ensure-dashboard-sourcing [source-card dashboard]
   (doseq [magic-card (->> dashboard

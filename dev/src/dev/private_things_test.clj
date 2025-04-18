@@ -65,8 +65,7 @@
 (defn privatize-symbol! [[symb {:keys [analysis]}]]
   (lsp-cmd/call-command
    :cycle-privacy
-   {:loc "?"
-    :db}))
+   {:loc "?" :db "?"}))
 
 (comment
 

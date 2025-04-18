@@ -183,10 +183,10 @@
     (is (= nil
            (setting/user-facing-value :test-setting-2))))
   (testing "`user-facing-value` should work correctly for calculated Settings (no underlying value)"
-    (is (= true
-           (test-setting-calculated-getter)))
-    (is (= true
-           (setting/user-facing-value :test-setting-calculated-getter))))
+    (is (true?
+         (test-setting-calculated-getter)))
+    (is (true?
+         (setting/user-facing-value :test-setting-calculated-getter))))
 
   (testing "`user-facing-value` will initialize pending values"
     (mt/discard-setting-changes [:test-setting-custom-init]
@@ -324,8 +324,8 @@
       (test-setting-1! "COOL")
       (is (= "COOL"
              (test-setting-1)))
-      (is (= true
-             (setting-exists-in-db? :test-setting-1)))
+      (is (true?
+           (setting-exists-in-db? :test-setting-1)))
       (test-setting-1! nil)
       (is (= nil
              (test-setting-1)))
@@ -338,8 +338,8 @@
       (test-setting-2! "COOL")
       (is (= "COOL"
              (test-setting-2)))
-      (is (= true
-             (setting-exists-in-db? :test-setting-2)))
+      (is (true?
+           (setting-exists-in-db? :test-setting-2)))
       (test-setting-2! nil)
       (is (= "[Default Value]"
              (test-setting-2))
@@ -897,16 +897,16 @@
   (testing "Boolean Database-local Settings\n"
     (testing "Site-wide value is `true`"
       (test-boolean-database-local-setting! true)
-      (is (= true
-             (test-boolean-database-local-setting))))
+      (is (true?
+           (test-boolean-database-local-setting))))
     (testing "Site-wide value is `false`"
       (test-boolean-database-local-setting! false)
       (is (= false
              (test-boolean-database-local-setting)))
       (testing "Database-local value is `true`"
         (binding [setting/*database-local-values* {:test-boolean-database-local-setting "true"}]
-          (is (= true
-                 (test-boolean-database-local-setting)))))
+          (is (true?
+               (test-boolean-database-local-setting)))))
       (testing "Database-local value is explicitly set to `nil` -- fall back to site-wide value"
         (binding [setting/*database-local-values* {:test-boolean-database-local-setting nil}]
           (is (= false

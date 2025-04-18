@@ -468,8 +468,8 @@
                                  (ex-data e)))
                              (take-while some? (iterate ex-cause e)))]
           (testing "should be a card Query error"
-            (is (= true
-                   (boolean (:card-query-error? exc-data)))))
+            (is (true?
+                 (boolean (:card-query-error? exc-data)))))
           (testing "card-id"
             (is (= 1
                    (:card-id exc-data))))
