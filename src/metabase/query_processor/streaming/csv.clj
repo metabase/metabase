@@ -94,7 +94,7 @@
                    :or   {format-rows? true
                           pivot?       false}} :data} viz-settings]
         (let [col-names          (vec (streaming.common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
-              pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key col-names)]
+              pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-index col-names)]
           (cond
             (and pivot? pivot-export-options)
             (reset! pivot-data
