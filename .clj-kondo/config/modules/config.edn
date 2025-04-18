@@ -66,7 +66,6 @@
           metabase.api.card
           metabase.api.collection
           metabase.api.common
-          metabase.api.content-translation
           metabase.api.common.validation
           metabase.api.dashboard
           metabase.api.database
@@ -680,6 +679,10 @@
   enterprise/content-verification
   {:api  #{metabase-enterprise.content-verification.api.routes}
    :uses #{api models moderation util enterprise/api}}
+
+  enterprise/content-translation
+  {:api  #{metabase-enterprise.content-translation.api.routes}
+   :uses #{api models db util enterprise/api}}
 
   enterprise/core
   {:api  #{metabase-enterprise.core.init}
