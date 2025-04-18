@@ -36,6 +36,7 @@ import type { LinkProps } from "metabase/core/components/Link";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
+import type { SdkInteractiveEmbedRouteProps } from "metabase/embedding-sdk/types/iframe-interactive-embedding";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
 import type { PaletteAction } from "metabase/palette/types";
@@ -568,6 +569,8 @@ export const PLUGIN_EMBEDDING_SDK = {
 export const PLUGIN_EMBEDDING_IFRAME_SDK = {
   isEnabled: () => false,
   isInteractiveEmbeddingEnabled: (_state: State) => false,
+  InteractiveEmbedRoute: (_props: SdkInteractiveEmbedRouteProps): ReactNode =>
+    null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
