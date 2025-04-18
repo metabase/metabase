@@ -64,11 +64,9 @@ export function getColumnSections(
   return Lib.groupColumns(filteredColumns).map((group) => {
     const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
-    const items = Lib.getColumnsFromColumnGroup(group, tc)
-      .flatMap((column) =>
-        getColumnListItems(query, stageIndex, breakouts, column, tc),
-      )
-      .toSorted((a, b) => a.displayName.localeCompare(b.displayName));
+    const items = Lib.getColumnsFromColumnGroup(group).flatMap((column) =>
+      getColumnListItems(query, stageIndex, breakouts, column, tc),
+    );
 
     return {
       name: groupInfo.displayName,
