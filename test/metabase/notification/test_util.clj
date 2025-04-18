@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
+   [metabase.channel.render.js.svg :as js.svg]
    [metabase.events.notification :as events.notification]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
@@ -48,6 +49,15 @@
   "Notifications are sent async by default, wrap the body in this macro to send them synchronously."
   [& body]
   `(binding [notification.send/*default-options* {:notification/sync? true}]
+     ~@body))
+
+(defmacro with-javascript-visualization-stub
+  "Rebind `metabase.channel.render.js.svg/*javascript-visualization*` to a stub function. Used to speed up tests that don't require the correct visualization for cards."
+  [& body]
+  `(binding [js.svg/*javascript-visualization*
+             (fn [~'& ~'_]
+               {:type :svg
+                :content "<svg width=\"300\" height=\"130\" xmlns=\"http://www.w3.org/2000/svg\">\n  <rect width=\"200\" height=\"100\" x=\"10\" y=\"10\" rx=\"20\" ry=\"20\" fill=\"blue\" />\n</svg>"})]
      ~@body))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}

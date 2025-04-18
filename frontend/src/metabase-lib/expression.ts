@@ -112,14 +112,14 @@ export function diagnoseExpression(
   query: Query,
   stageIndex: number,
   expressionMode: ExpressionMode,
-  mbql: any,
+  expression: ExpressionClause,
   expressionIndex?: number,
 ): ErrorWithMessage | null {
   return ML.diagnose_expression(
     query,
     stageIndex,
     expressionMode,
-    mbql,
+    expression,
     expressionIndex,
   );
 }
