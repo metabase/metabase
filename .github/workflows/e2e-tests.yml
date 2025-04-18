@@ -143,6 +143,7 @@ jobs:
   # run this separately to make it non-blocking
   flaky-e2e-tests:
     name: Flaky e2e Tests
+    runs-on: ubuntu-22.04
     # uses: ./.github/workflows/e2e-test.yml
     needs:
       # - build
