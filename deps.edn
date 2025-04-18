@@ -109,7 +109,6 @@
   net.cgrand/macrovich                      {:mvn/version "0.2.2"}              ; utils for writing macros for both Clojure & ClojureScript
   net.clojars.wkok/openai-clojure           {:mvn/version "0.22.0"
                                              :exclusions  [lambdaisland/uri]}   ; OpenAI
-  net.i2p.crypto/eddsa                      {:mvn/version "0.3.0"}              ; ED25519 key support (optional dependency for org.apache.sshd/sshd-core)
   net.redhogs.cronparser/cron-parser-core   {:mvn/version "3.5"                 ; describe Cron schedule in human-readable language
                                              :exclusions  [org.slf4j/slf4j-api]}
   net.sf.cssbox/cssbox                      {:mvn/version "5.0.2"               ; HTML / CSS rendering
