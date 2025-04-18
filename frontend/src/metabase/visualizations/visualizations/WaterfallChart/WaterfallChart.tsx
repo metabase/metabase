@@ -23,10 +23,14 @@ import { getCartesianChartDefinition } from "../CartesianChart/chart-definition"
 Object.assign(
   WaterfallChart,
   getCartesianChartDefinition({
-    uiName: t`Waterfall`,
+    get uiName() {
+      return t`Waterfall`;
+    },
     identifier: "waterfall",
     iconName: "waterfall",
-    noun: t`waterfall chart`,
+    get noun() {
+      return t`waterfall chart`;
+    },
     minSize: getMinSize("waterfall"),
     defaultSize: getDefaultSize("waterfall"),
     maxMetricsSupported: 1,
@@ -34,27 +38,49 @@ Object.assign(
     settings: {
       ...GRAPH_AXIS_SETTINGS,
       "waterfall.increase_color": {
-        section: t`Display`,
-        props: { title: t`Increase color` },
+        get section() {
+          return t`Display`;
+        },
+        props: {
+          get title() {
+            return t`Increase color`;
+          },
+        },
         widget: "color",
         getDefault: () => color("accent1"),
       },
       "waterfall.decrease_color": {
-        section: t`Display`,
-        props: { title: t`Decrease color` },
+        get section() {
+          return t`Display`;
+        },
+        props: {
+          get title() {
+            return t`Decrease color`;
+          },
+        },
         widget: "color",
         getDefault: () => color("accent3"),
       },
       "waterfall.show_total": {
-        section: t`Display`,
-        title: t`Show total`,
+        get section() {
+          return t`Display`;
+        },
+        get title() {
+          return t`Show total`;
+        },
         widget: "toggle",
         default: true,
         inline: true,
       },
       "waterfall.total_color": {
-        section: t`Display`,
-        props: { title: t`Total color` },
+        get section() {
+          return t`Display`;
+        },
+        props: {
+          get title() {
+            return t`Total color`;
+          },
+        },
         widget: "color",
         getDefault: () => color("text-dark"),
         getHidden: (_series: any, vizSettings: ComputedVisualizationSettings) =>

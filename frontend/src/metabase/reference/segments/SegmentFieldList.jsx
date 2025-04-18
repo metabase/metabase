@@ -30,7 +30,9 @@ import {
 } from "../selectors";
 
 const emptyStateData = {
-  message: t`Fields in this table will appear here as they're added`,
+  get message() {
+    return t`Fields in this table will appear here as they're added`;
+  },
   icon: "fields",
 };
 

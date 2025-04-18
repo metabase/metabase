@@ -24,9 +24,24 @@ import {
 } from "./FieldRemappingSettings.styled";
 
 const MAP_OPTIONS = {
-  original: { type: "original", name: t`Use original value` },
-  foreign: { type: "foreign", name: t`Use foreign key` },
-  custom: { type: "custom", name: t`Custom mapping` },
+  original: {
+    type: "original",
+    get name() {
+      return t`Use original value`;
+    },
+  },
+  foreign: {
+    type: "foreign",
+    get name() {
+      return t`Use foreign key`;
+    },
+  },
+  custom: {
+    type: "custom",
+    get name() {
+      return t`Custom mapping`;
+    },
+  },
 };
 
 class FieldRemappingSettings extends Component {

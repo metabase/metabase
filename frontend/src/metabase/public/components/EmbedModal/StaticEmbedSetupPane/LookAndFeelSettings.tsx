@@ -30,8 +30,18 @@ import { DisplayOptionSection } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 
 const THEME_OPTIONS = [
-  { label: t`Light`, value: "light" as DisplayTheme },
-  { label: t`Dark`, value: "night" as DisplayTheme },
+  {
+    get label() {
+      return t`Light`;
+    },
+    value: "light" as DisplayTheme,
+  },
+  {
+    get label() {
+      return t`Dark`;
+    },
+    value: "night" as DisplayTheme,
+  },
 ] as const;
 type ThemeOptions = (typeof THEME_OPTIONS)[number]["value"];
 

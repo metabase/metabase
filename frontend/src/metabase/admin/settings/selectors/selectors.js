@@ -68,32 +68,42 @@ function updateSectionsWithPlugins(sections) {
 export const ADMIN_SETTINGS_SECTIONS = {
   general: {
     order: 20,
-    name: t`General`,
+    get name() {
+      return t`General`;
+    },
     component: GeneralSettingsPage,
     settings: [],
   },
   updates: {
-    name: t`Updates`,
+    get name() {
+      return t`Updates`;
+    },
     order: 30,
     component: UpdatesSettingsPage,
     settings: [],
     adminOnly: true,
   },
   email: {
-    name: t`Email`,
+    get name() {
+      return t`Email`;
+    },
     order: 40,
     component: SettingsEmailForm,
     settings: [
       {
         key: "email-from-name",
-        display_name: t`From Name`,
+        get display_name() {
+          return t`From Name`;
+        },
         placeholder: "Metabase",
         type: "string",
         required: false,
       },
       {
         key: "email-from-address",
-        display_name: t`From Address`,
+        get display_name() {
+          return t`From Address`;
+        },
         placeholder: "metabase@yourcompany.com",
         type: "string",
         required: true,
@@ -101,7 +111,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
       {
         key: "email-reply-to",
-        display_name: t`Reply-To Address`,
+        get display_name() {
+          return t`Reply-To Address`;
+        },
         placeholder: "metabase-replies@yourcompany.com",
         type: "string",
         required: false,
@@ -110,13 +122,24 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
       {
         key: "bcc-enabled?",
-        display_name: t`Add Recipients as CC or BCC`,
-        description: t`Control the visibility of alerts and subscriptions recipients.`,
+        get display_name() {
+          return t`Add Recipients as CC or BCC`;
+        },
+        get description() {
+          return t`Control the visibility of alerts and subscriptions recipients.`;
+        },
         options: [
-          { value: true, name: t`BCC - Hide recipients` },
+          {
+            value: true,
+            get name() {
+              return t`BCC - Hide recipients`;
+            },
+          },
           {
             value: false,
-            name: t`CC - Disclose recipients`,
+            get name() {
+              return t`CC - Disclose recipients`;
+            },
           },
         ],
         defaultValue: true,
@@ -129,7 +152,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
     settings: [
       {
         key: "email-smtp-host",
-        display_name: t`SMTP Host`,
+        get display_name() {
+          return t`SMTP Host`;
+        },
         placeholder: "smtp.yourservice.com",
         type: "string",
         required: true,
@@ -137,7 +162,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
       {
         key: "email-smtp-port",
-        display_name: t`SMTP Port`,
+        get display_name() {
+          return t`SMTP Port`;
+        },
         placeholder: "587",
         type: "number",
         required: true,
@@ -145,7 +172,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
       {
         key: "email-smtp-security",
-        display_name: t`SMTP Security`,
+        get display_name() {
+          return t`SMTP Security`;
+        },
         description: null,
         type: "radio",
         options: [
@@ -158,14 +187,18 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
       {
         key: "email-smtp-username",
-        display_name: t`SMTP Username`,
+        get display_name() {
+          return t`SMTP Username`;
+        },
         description: null,
         placeholder: "nicetoseeyou",
         type: "string",
       },
       {
         key: "email-smtp-password",
-        display_name: t`SMTP Password`,
+        get display_name() {
+          return t`SMTP Password`;
+        },
         description: null,
         placeholder: "Shhh...",
         type: "password",
@@ -180,13 +213,17 @@ export const ADMIN_SETTINGS_SECTIONS = {
     settings: [],
   },
   notifications: {
-    name: t`Notification channels`,
+    get name() {
+      return t`Notification channels`;
+    },
     order: 51,
     component: NotificationSettings,
     settings: [],
   },
   authentication: {
-    name: t`Authentication`,
+    get name() {
+      return t`Authentication`;
+    },
     order: 60,
     key: "authentication",
     tabs:
@@ -200,12 +237,16 @@ export const ADMIN_SETTINGS_SECTIONS = {
     adminOnly: true,
   },
   maps: {
-    name: t`Maps`,
+    get name() {
+      return t`Maps`;
+    },
     order: 70,
     settings: [
       {
         key: "map-tile-server-url",
-        display_name: t`Map tile server URL`,
+        get display_name() {
+          return t`Map tile server URL`;
+        },
         description: (
           <>
             <div>
@@ -218,19 +259,27 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
       {
         key: "custom-geojson",
-        display_name: t`Custom Maps`,
-        description: t`Add your own GeoJSON files to enable different region map visualizations`,
+        get display_name() {
+          return t`Custom Maps`;
+        },
+        get description() {
+          return t`Add your own GeoJSON files to enable different region map visualizations`;
+        },
         widget: CustomGeoJSONWidget,
         noHeader: true,
       },
     ],
   },
   localization: {
-    name: t`Localization`,
+    get name() {
+      return t`Localization`;
+    },
     order: 80,
     settings: [
       {
-        display_name: t`Instance language`,
+        get display_name() {
+          return t`Instance language`;
+        },
         key: "site-locale",
         type: "select",
         options: _.sortBy(
@@ -246,10 +295,17 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
       {
         key: "report-timezone",
-        display_name: t`Report Timezone`,
+        get display_name() {
+          return t`Report Timezone`;
+        },
         type: "select",
         options: [
-          { name: t`Database Default`, value: "" },
+          {
+            get name() {
+              return t`Database Default`;
+            },
+            value: "",
+          },
           ...(MetabaseSettings.get("available-timezones") || []),
         ],
         description: (
@@ -264,21 +320,60 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
       {
         key: "start-of-week",
-        display_name: t`First day of the week`,
+        get display_name() {
+          return t`First day of the week`;
+        },
         type: "select",
         options: [
-          { value: "sunday", name: t`Sunday` },
-          { value: "monday", name: t`Monday` },
-          { value: "tuesday", name: t`Tuesday` },
-          { value: "wednesday", name: t`Wednesday` },
-          { value: "thursday", name: t`Thursday` },
-          { value: "friday", name: t`Friday` },
-          { value: "saturday", name: t`Saturday` },
+          {
+            value: "sunday",
+            get name() {
+              return t`Sunday`;
+            },
+          },
+          {
+            value: "monday",
+            get name() {
+              return t`Monday`;
+            },
+          },
+          {
+            value: "tuesday",
+            get name() {
+              return t`Tuesday`;
+            },
+          },
+          {
+            value: "wednesday",
+            get name() {
+              return t`Wednesday`;
+            },
+          },
+          {
+            value: "thursday",
+            get name() {
+              return t`Thursday`;
+            },
+          },
+          {
+            value: "friday",
+            get name() {
+              return t`Friday`;
+            },
+          },
+          {
+            value: "saturday",
+            get name() {
+              return t`Saturday`;
+            },
+          },
         ],
         defaultValue: "sunday",
       },
       {
-        display_name: t`Localization options`,
+        get display_name() {
+          return t`Localization options`;
+        },
         description: "",
         key: "custom-formatting",
         widget: FormattingWidget,
@@ -286,7 +381,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
     ],
   },
   uploads: {
-    name: t`Uploads`,
+    get name() {
+      return t`Uploads`;
+    },
     order: 85,
     adminOnly: false,
     component: UploadSettingsPage,
@@ -294,32 +391,44 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
 
   "public-sharing": {
-    name: t`Public Sharing`,
+    get name() {
+      return t`Public Sharing`;
+    },
     order: 90,
     settings: [
       {
         key: "enable-public-sharing",
-        display_name: t`Enable Public Sharing`,
-        description: t`Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards.`,
+        get display_name() {
+          return t`Enable Public Sharing`;
+        },
+        get description() {
+          return t`Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards.`;
+        },
         type: "boolean",
       },
       {
         key: "-public-sharing-dashboards",
-        display_name: t`Shared Dashboards`,
+        get display_name() {
+          return t`Shared Dashboards`;
+        },
         widget: PublicLinksDashboardListing,
         getHidden: (_, derivedSettings) =>
           !derivedSettings["enable-public-sharing"],
       },
       {
         key: "-public-sharing-questions",
-        display_name: t`Shared Questions`,
+        get display_name() {
+          return t`Shared Questions`;
+        },
         widget: PublicLinksQuestionListing,
         getHidden: (_, derivedSettings) =>
           !derivedSettings["enable-public-sharing"],
       },
       {
         key: "-public-sharing-actions",
-        display_name: t`Shared Action Forms`,
+        get display_name() {
+          return t`Shared Action Forms`;
+        },
         widget: PublicLinksActionListing,
         getHidden: (_, derivedSettings) =>
           !derivedSettings["enable-public-sharing"],
@@ -328,7 +437,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   "embedding-in-other-applications": {
     key: "enable-embedding",
-    name: t`Embedding`,
+    get name() {
+      return t`Embedding`;
+    },
     order: 100,
     component: EmbeddingSettings,
     settings: [],
@@ -351,20 +462,26 @@ export const ADMIN_SETTINGS_SECTIONS = {
     settings: [],
   },
   license: {
-    name: t`License`,
+    get name() {
+      return t`License`;
+    },
     order: 110,
     component: SettingsLicense,
     settings: [],
   },
   llm: {
-    name: t`AI Features`,
+    get name() {
+      return t`AI Features`;
+    },
     getHidden: (settings) =>
       !PLUGIN_LLM_AUTODESCRIPTION.isEnabled() || settings["airgap-enabled"],
     order: 131,
     settings: [
       {
         key: "ee-ai-features-enabled",
-        display_name: t`AI features enabled`,
+        get display_name() {
+          return t`AI features enabled`;
+        },
         description: (
           <>
             <div>{t`Enable AI features.`}</div>
@@ -375,14 +492,20 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
       {
         key: "ee-openai-api-key",
-        display_name: t`EE OpenAI API Key`,
-        description: t`API key used for Enterprise AI features`,
+        get display_name() {
+          return t`EE OpenAI API Key`;
+        },
+        get description() {
+          return t`API key used for Enterprise AI features`;
+        },
         type: "string",
       },
     ],
   },
   cloud: {
-    name: t`Cloud`,
+    get name() {
+      return t`Cloud`;
+    },
     getHidden: (settings) =>
       settings["token-features"]?.hosting === true ||
       settings["airgap-enabled"],
@@ -392,7 +515,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
     isUpsell: true,
   },
   whitelabel: {
-    name: t`Appearance`,
+    get name() {
+      return t`Appearance`;
+    },
     getHidden: (settings) => settings["token-features"]?.whitelabel === true,
     order: 133,
     component: (props) => (

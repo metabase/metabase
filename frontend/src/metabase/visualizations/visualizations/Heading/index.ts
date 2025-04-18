@@ -8,7 +8,9 @@ import {
 import { Heading } from "./Heading";
 
 const HeadingWrapper = Object.assign(Heading, {
-  uiName: t`Heading`,
+  get uiName() {
+    return t`Heading`;
+  },
   identifier: "heading",
   iconName: "heading",
   canSavePng: false,
@@ -29,7 +31,9 @@ const HeadingWrapper = Object.assign(Heading, {
   settings: {
     "card.title": {
       dashboard: false,
-      default: t`Heading card`,
+      get default() {
+        return t`Heading card`;
+      },
     },
     "card.description": {
       dashboard: false,

@@ -71,8 +71,12 @@ const Collections = createEntity({
   path: "/api/collection",
   schema: CollectionSchema,
 
-  displayNameOne: t`collection`,
-  displayNameMany: t`collections`,
+  get displayNameOne() {
+    return t`collection`;
+  },
+  get displayNameMany() {
+    return t`collections`;
+  },
 
   rtk: {
     getUseGetQuery: () => ({

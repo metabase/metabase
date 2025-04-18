@@ -9,7 +9,9 @@ import { TYPE } from "metabase-lib/v1/types/constants";
 
 const SETTING_TYPES = [
   {
-    name: t`Dates and Times`,
+    get name() {
+      return t`Dates and Times`;
+    },
     type: TYPE.Temporal,
     settings: [
       "date_style",
@@ -23,7 +25,9 @@ const SETTING_TYPES = [
     },
   },
   {
-    name: t`Numbers`,
+    get name() {
+      return t`Numbers`;
+    },
     type: TYPE.Number,
     settings: ["number_separators"],
     column: {
@@ -32,7 +36,9 @@ const SETTING_TYPES = [
     },
   },
   {
-    name: t`Currency`,
+    get name() {
+      return t`Currency`;
+    },
     type: TYPE.Currency,
     settings: ["currency_style", "currency", "currency_in_header"],
     column: {

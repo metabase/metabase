@@ -7,7 +7,9 @@ import { PLUGIN_ADMIN_SETTINGS_AUTH_TABS } from "metabase/plugins";
 import { Tabs } from "metabase/ui";
 
 PLUGIN_ADMIN_SETTINGS_AUTH_TABS.push({
-  name: t`Authentication`,
+  get name() {
+    return t`Authentication`;
+  },
   key: "authentication",
   to: "/admin/settings/authentication",
 });

@@ -14,27 +14,43 @@ export const DATA_BUCKET: Record<string, DataPickerDataType> = {
 export const MODELS_INFO_ITEM: DataTypeInfoItem = {
   id: DATA_BUCKET.MODELS,
   icon: "model",
-  name: t`Models`,
-  description: t`The best starting place for new questions.`,
+  get name() {
+    return t`Models`;
+  },
+  get description() {
+    return t`The best starting place for new questions.`;
+  },
 };
 
 export const RAW_DATA_INFO_ITEM: DataTypeInfoItem = {
   id: DATA_BUCKET.RAW_DATA,
   icon: "database",
-  name: t`Raw Data`,
-  description: t`Unaltered tables in connected databases.`,
+  get name() {
+    return t`Raw Data`;
+  },
+  get description() {
+    return t`Unaltered tables in connected databases.`;
+  },
 };
 
 export const SAVED_QUESTIONS_INFO_ITEM: DataTypeInfoItem = {
   id: DATA_BUCKET.SAVED_QUESTIONS,
   icon: "folder",
-  name: t`Saved Questions`,
-  description: t`Use any question’s results to start a new question.`,
+  get name() {
+    return t`Saved Questions`;
+  },
+  get description() {
+    return t`Use any question’s results to start a new question.`;
+  },
 };
 
 export const METRICS_INFO_ITEM: DataTypeInfoItem = {
   id: DATA_BUCKET.METRICS,
   icon: "metric",
-  name: t`Metrics`,
-  description: t`Trustworthy definitions to start from.`,
+  get name() {
+    return t`Metrics`;
+  },
+  get description() {
+    return t`Trustworthy definitions to start from.`;
+  },
 };

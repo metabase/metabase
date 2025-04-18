@@ -83,7 +83,9 @@ function preventDragging(e: React.MouseEvent<HTMLButtonElement>) {
 }
 
 export const DashCardPlaceholder = Object.assign(DashCardPlaceholderInner, {
-  uiName: t`Empty card`,
+  get uiName() {
+    return t`Empty card`;
+  },
   identifier: "placeholder",
   iconName: "table_spaced", // TODO replace
 

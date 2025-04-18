@@ -26,8 +26,12 @@ const MAX_SANKEY_NODES = 150;
 export const SETTINGS_DEFINITIONS = {
   ...columnSettings({ hidden: true }),
   ...dimensionSetting("sankey.source", {
-    section: t`Data`,
-    title: t`Source`,
+    get section() {
+      return t`Data`;
+    },
+    get title() {
+      return t`Source`;
+    },
     showColumnSetting: true,
     persistDefault: true,
     dashboard: false,
@@ -36,8 +40,12 @@ export const SETTINGS_DEFINITIONS = {
       findSensibleSankeyColumns(series.data)?.source,
   }),
   ...dimensionSetting("sankey.target", {
-    section: t`Data`,
-    title: t`Target`,
+    get section() {
+      return t`Data`;
+    },
+    get title() {
+      return t`Target`;
+    },
     showColumnSetting: true,
     persistDefault: true,
     dashboard: false,
@@ -46,8 +54,12 @@ export const SETTINGS_DEFINITIONS = {
       findSensibleSankeyColumns(series.data)?.target,
   }),
   ...metricSetting("sankey.value", {
-    section: t`Data`,
-    title: t`Value`,
+    get section() {
+      return t`Data`;
+    },
+    get title() {
+      return t`Value`;
+    },
     showColumnSetting: true,
     persistDefault: true,
     dashboard: false,
@@ -56,43 +68,76 @@ export const SETTINGS_DEFINITIONS = {
       findSensibleSankeyColumns(series.data)?.metric,
   }),
   "sankey.node_align": {
-    section: t`Display`,
-    title: t`Align`,
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Align`;
+    },
     widget: "select",
     default: "left",
     props: {
       options: [
         {
-          name: t`Left`,
+          get name() {
+            return t`Left`;
+          },
           value: "left",
         },
         {
-          name: t`Right`,
+          get name() {
+            return t`Right`;
+          },
           value: "right",
         },
         {
-          name: t`Justify`,
+          get name() {
+            return t`Justify`;
+          },
           value: "justify",
         },
       ],
     },
   },
   "sankey.show_edge_labels": {
-    section: t`Display`,
-    title: t`Show edge labels`,
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Show edge labels`;
+    },
     widget: "toggle",
     default: false,
     inline: true,
   },
   "sankey.label_value_formatting": {
-    section: t`Display`,
-    title: t`Auto formatting`,
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Auto formatting`;
+    },
     widget: "segmentedControl",
     props: {
       options: [
-        { name: t`Auto`, value: "auto" },
-        { name: t`Compact`, value: "compact" },
-        { name: t`Full`, value: "full" },
+        {
+          get name() {
+            return t`Auto`;
+          },
+          value: "auto",
+        },
+        {
+          get name() {
+            return t`Compact`;
+          },
+          value: "compact",
+        },
+        {
+          get name() {
+            return t`Full`;
+          },
+          value: "full",
+        },
       ],
     },
     getHidden: (
@@ -104,25 +149,48 @@ export const SETTINGS_DEFINITIONS = {
     default: "auto",
   },
   "sankey.edge_color": {
-    section: t`Display`,
-    title: t`Edge color`,
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Edge color`;
+    },
     widget: "segmentedControl",
     default: "source",
     props: {
       options: [
-        { name: t`Gray`, value: "gray" },
-        { name: t`Source`, value: "source" },
-        { name: t`Target`, value: "target" },
+        {
+          get name() {
+            return t`Gray`;
+          },
+          value: "gray",
+        },
+        {
+          get name() {
+            return t`Source`;
+          },
+          value: "source",
+        },
+        {
+          get name() {
+            return t`Target`;
+          },
+          value: "target",
+        },
       ],
     },
   },
 };
 
 export const SANKEY_CHART_DEFINITION = {
-  uiName: t`Sankey`,
+  get uiName() {
+    return t`Sankey`;
+  },
   identifier: "sankey",
   iconName: "sankey",
-  noun: t`sankey chart`,
+  get noun() {
+    return t`sankey chart`;
+  },
   minSize: getMinSize("sankey"),
   defaultSize: getDefaultSize("sankey"),
   isSensible: (data: DatasetData) => {
