@@ -24,10 +24,36 @@ const MOCK_CONTEXT = {
   topLevelVar: "value",
 };
 
+const BLOCK_HELPERS = ["each", "if", "unless", "with", "lookup"].map(
+  (name) => ({ name, doc: "", type: "built-in" as const }),
+);
+const METABASE_BLOCK_HELPERS = [
+  "count",
+  "format-date",
+  "now",
+  "card-url",
+  "trash-url",
+  "dashboard-url",
+].map((name) => ({ name, doc: "", type: "custom-block" as const }));
+const METABASE_INLINE_HELPERS = [
+  "and",
+  "empty",
+  "else",
+  "eq",
+  "gt",
+  "gte",
+  "lt",
+  "lte",
+  "ne",
+  "or",
+  "not",
+].map((name) => ({ name, doc: "", type: "custom-inline" as const }));
+
+const helpers = [...BLOCK_HELPERS, ...METABASE_BLOCK_HELPERS];
 // Define the default sources
 const defaultSources = [
-  mustacheHelpersCompletionSource,
-  createTemplateAutocompleteSource(MOCK_CONTEXT),
+  mustacheHelpersCompletionSource(helpers),
+  createTemplateAutocompleteSource(MOCK_CONTEXT, METABASE_INLINE_HELPERS),
 ];
 
 // Updated helper to get completions, handling single or multiple sources
@@ -189,9 +215,10 @@ describe("Mustache Autocomplete Sources", () => {
       // Uses default sources (but createTemplateAutocompleteSource should return null here)
       const result = await getCompletionsHelper("{{#");
       expect(result).not.toBeNull();
-      expect(result?.options).toHaveLength(4); // only #each, #if, #unless, #with
       const labels = result?.options.map((o) => o.label);
-      expect(labels?.sort()).toEqual(["each", "if", "unless", "with"].sort());
+      expect(labels?.sort()).toEqual(
+        ["each", "if", "unless", "with", "lookup"].sort(),
+      );
     });
 
     it("should filter block helpers on {{# prefix", async () => {

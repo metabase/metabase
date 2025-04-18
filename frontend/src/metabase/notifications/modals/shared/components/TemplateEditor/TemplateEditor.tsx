@@ -25,6 +25,7 @@ import {
   createTemplateAutocompleteSource,
   mustacheHelpersCompletionSource,
 } from "./autocomplete";
+import { useSetting } from "metabase/common/hooks";
 
 export interface TemplateEditorProps
   extends Omit<
@@ -94,6 +95,8 @@ export const TemplateEditor = ({
   onBlur,
   ...rest
 }: TemplateEditorProps) => {
+  const helpers = useSetting("default-handlebars-helpers");
+  console.log({ helpers });
   const ref = useRef<ReactCodeMirrorRef>(null);
   const [internalValue, setInternalValue] = useState(defaultValue);
 
@@ -123,11 +126,11 @@ export const TemplateEditor = ({
     // Combine both Mustache helpers and context path completions
     return autocompletion({
       override: [
-        mustacheHelpersCompletionSource,
-        createTemplateAutocompleteSource(templateContext),
+        mustacheHelpersCompletionSource(helpers),
+        createTemplateAutocompleteSource(templateContext, helpers),
       ],
     });
-  }, [templateContext]);
+  }, [templateContext, helpers]);
 
   const combinedExtensions = useMemo(() => {
     return [

@@ -367,6 +367,11 @@ interface PublicSettings {
   "custom-homepage": boolean;
   "custom-homepage-dashboard": DashboardId | null;
   "ee-ai-features-enabled"?: boolean;
+  "default-handlebars-helpers"?: Array<{
+    name: string;
+    doc: string;
+    type: "built-in" | "custom-block" | "custom-inline";
+  }>;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
   "embedding-app-origins-sdk": string | null;
