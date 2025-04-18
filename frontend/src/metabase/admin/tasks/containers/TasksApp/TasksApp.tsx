@@ -33,14 +33,19 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
     data: tasksData,
     isLoading: isLoadingTasks,
     error: tasksError,
-  } = useListTasksQuery({
-    limit: PAGE_SIZE,
-    offset: page * PAGE_SIZE,
-    sort_column,
-    sort_direction,
-    status: status ?? undefined,
-    task: task ?? undefined,
-  });
+  } = useListTasksQuery(
+    {
+      limit: PAGE_SIZE,
+      offset: page * PAGE_SIZE,
+      sort_column,
+      sort_direction,
+      status: status ?? undefined,
+      task: task ?? undefined,
+    },
+    {
+      refetchOnMountOrArgChange: true,
+    },
+  );
 
   const {
     data: databasesData,
