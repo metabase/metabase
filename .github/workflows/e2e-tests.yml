@@ -146,7 +146,7 @@ jobs:
     uses: ./.github/workflows/e2e-test.yml
     needs: build
     if: |
-      !cancelled() && needs.build.result == 'success'
+      !cancelled() && needs.build.result == 'success' && ${{ inputs.specs }} == ''
     secrets: inherit
     with:
       name: Flaky
