@@ -20,7 +20,9 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.lib.core :as lib]
@@ -41,6 +43,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.jdbc-exceptions :as jdbc-exceptions]
    [metabase.util.log :as log]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
@@ -1604,6 +1607,22 @@
                             "DROP ROLE privilege_rows_test_example_role;"]]
                 (jdbc/execute! conn-spec stmt)))))))))
 
+(deftest query-canceled?-test
+  (testing "Recognizes timeout exceptions from postgres"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (let [long-sleep-sql "select pg_sleep(5)"]
+          (sql-jdbc.execute/do-with-connection-with-options
+           :postgres (mt/db) nil
+           (fn [conn]
+             (with-open [stmt (sql-jdbc.sync.common/prepare-statement :postgres conn long-sleep-sql [])]
+               (try (doto stmt
+                      (.setQueryTimeout 1)
+                      (.execute))
+                    (is false "Query successfully executed. Should sleep for 5s with a timeout of 1s")
+                    (catch Throwable e
+                      (is (jdbc-exceptions/query-canceled? :postgres e))))))))))))
+
 (deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"
     ;; No special characters
@@ -1715,3 +1734,17 @@
                                                                         nil))
                           (lib/limit 1))]
             (is (->> query qp/process-query mt/rows))))))))
+
+(deftest have-select-privelege?-timeout-test
+  (mt/test-driver :postgres
+    (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+      (qp.store/with-metadata-provider (mt/id)
+        (testing "checking select privilege defaults to allow on timeout (#56737)"
+          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT pg_sleep(16)"])]
+            (sql-jdbc.execute/do-with-connection-with-options
+             driver/*driver*
+             (mt/db)
+             nil
+             (fn [^java.sql.Connection conn]
+               (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                           driver/*driver* conn schema table-name)))))))))))

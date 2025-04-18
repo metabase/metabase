@@ -14,6 +14,7 @@
    [metabase.models.interface :as mi]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.jdbc-exceptions :as jdbc-exceptions]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
@@ -91,26 +92,20 @@
                         (str (pr-str table-schema) \.))
                       (pr-str table-name)))
       true
-      (catch java.sql.SQLTimeoutException _
-        (log/infof "%s: Assuming SELECT privileges: caught timeout exception"
-                   (str (when table-schema
-                          (str (pr-str table-schema) \.))
-                        (pr-str table-name)))
-        (try (when-not (.getAutoCommit conn)
-               (.rollback conn))
-             (catch Throwable _))
-        true)
       (catch Throwable e
-        (log/infof e "%s: Assuming no SELECT privileges: caught exception"
-                   (str (when table-schema
-                          (str (pr-str table-schema) \.))
-                        (pr-str table-name)))
-        ;; if the connection was closed this will throw an error and fail the sync loop so we prevent this error from
-        ;; affecting anything higher
-        (try (when-not (.getAutoCommit conn)
-               (.rollback conn))
-             (catch Throwable _))
-        false))))
+        (let [allow? (jdbc-exceptions/query-canceled? driver e)]
+          (log/info (if allow?
+                      "%s: Assuming SELECT privileges: caught timeout exception"
+                      "%s: Assuming no SELECT privileges: caught exception")
+                    (str (when table-schema
+                           (str (pr-str table-schema) \.))
+                         (pr-str table-name)))
+          ;; if the connection was closed this will throw an error and fail the sync loop so we prevent this error from
+          ;; affecting anything higher
+          (try (when-not (.getAutoCommit conn)
+                 (.rollback conn))
+               (catch Throwable _))
+          allow?)))))
 
 (defn- jdbc-get-tables
   [driver ^DatabaseMetaData metadata catalog schema-pattern tablename-pattern types]

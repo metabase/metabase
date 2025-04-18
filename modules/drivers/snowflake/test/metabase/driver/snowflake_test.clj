@@ -17,6 +17,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
@@ -1171,3 +1172,17 @@
                     (and private-key-path private-key-id))
             (is (= :private-key-id (m/find-first #{:private-key-path :private-key-value :private-key-id} (reverse result)))
                 [idxs result])))))))
+
+(deftest have-select-privelege?-timeout-test
+  (mt/test-driver :snowflake
+    (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+      (qp.store/with-metadata-provider (mt/id)
+        (testing "checking select privilege defaults to allow on timeout (#56737)"
+          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["CALL SYSTEM$WAIT(16, 'SECONDS');"])]
+            (sql-jdbc.execute/do-with-connection-with-options
+             driver/*driver*
+             (mt/db)
+             nil
+             (fn [^java.sql.Connection conn]
+               (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                           driver/*driver* conn schema table-name)))))))))))
