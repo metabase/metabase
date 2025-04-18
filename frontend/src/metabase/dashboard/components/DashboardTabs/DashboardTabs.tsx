@@ -5,6 +5,7 @@ import { Sortable } from "metabase/core/components/Sortable";
 import type { TabButtonMenuItem } from "metabase/core/components/TabButton";
 import { TabButton } from "metabase/core/components/TabButton";
 import { TabRow } from "metabase/core/components/TabRow";
+import { useRegisterDynamicShortcut } from "metabase/palette/hooks/useRegisterDynamicShortcut";
 import { Flex } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
@@ -36,6 +37,16 @@ export function DashboardTabs({
   const hasMultipleTabs = tabs.length > 1;
   const showTabs = hasMultipleTabs || isEditing;
   const showPlaceholder = tabs.length === 0 && isEditing;
+
+  useRegisterDynamicShortcut(
+    tabs.map((tab, index) => ({
+      shortcutId: "dashboard-change-tab",
+      id: `dashboard-change-tab-${index + 1}`,
+      perform: () => selectTab(tab.id),
+      shortcut: [`${index + 1}`],
+    })),
+    [...tabs],
+  );
 
   if (!showTabs) {
     return null;
