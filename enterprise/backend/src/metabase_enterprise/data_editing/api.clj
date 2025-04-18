@@ -69,6 +69,10 @@
           pk-fields    (data-editing/select-table-pk-fields table-id)
           pks->db-row  (data-editing/query-db-rows table-id pk-fields rows')
           user-id      api/*current-user-id*]
+      ;; If this fails, we probably have another bug like the type-mismatch issue we had here:
+      ;; https://linear.app/metabase/issue/WRK-281/undo-deletes-a-record-instead-of-reverting-the-edits
+      (assert (every? (fn [row] (get pks->db-row (data-editing/get-row-pks pk-fields row))) rows')
+              "Able to look up the existing values of these rows, for system events")
       (data-editing/perform-bulk-action! :bulk/update table-id rows')
       ;; TODO this should also become a subscription to the "data written" system event
       (let [row-pk->old-new-values (->> (for [row rows']
@@ -81,6 +85,7 @@
       (invalidate-field-values! table-id rows')
       {:updated (vals (data-editing/query-db-rows table-id pk-fields rows'))})))
 
+;; This is a POST instead of DELETE as not all web proxies pass on the body of DELETE requests.
 (api.macros/defendpoint :post "/table/:table-id/delete"
   "Delete row(s) from the given table"
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
@@ -89,6 +94,10 @@
   (check-permissions)
   (let [pk-fields              (data-editing/select-table-pk-fields table-id)
         pks->db-rows           (data-editing/query-db-rows table-id pk-fields rows)
+        ;; If this fails, we probably have another bug like the type-mismatch issue we had here:
+        ;; https://linear.app/metabase/issue/WRK-281/undo-deletes-a-record-instead-of-reverting-the-edits
+        _                      (assert (every? (fn [row] (get pks->db-rows (data-editing/get-row-pks pk-fields row))) rows)
+                                       "Able to look up the existing values of these rows, for system events")
         res                    (data-editing/perform-bulk-action! :bulk/delete table-id rows)
         user-id                api/*current-user-id*
         row-pk->old-new-values (->> (for [row rows]
