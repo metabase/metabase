@@ -1,27 +1,24 @@
-import { type ChangeEventHandler, forwardRef } from "react";
+import { forwardRef } from "react";
+
+import type { InputProps } from "metabase/core/components/Input";
 
 import { DEFAULT_UPLOAD_INPUT_ID } from "./constants";
 
-interface IUploadInputProps {
-  id?: string;
-  onChange: ChangeEventHandler<HTMLInputElement>;
-}
-
-export const UploadInput = forwardRef<HTMLInputElement, IUploadInputProps>(
-  function UploadInputRef(
-    { id = DEFAULT_UPLOAD_INPUT_ID, onChange }: IUploadInputProps,
-    ref,
-  ) {
-    return (
-      <input
-        style={{ display: "none" }}
-        data-testid={id}
-        id={id}
-        ref={ref}
-        type="file"
-        accept="text/csv"
-        onChange={onChange}
-      />
-    );
-  },
-);
+export const UploadInput = forwardRef<
+  HTMLInputElement,
+  Omit<InputProps, "size">
+>(function UploadInput(inputProps, ref) {
+  return (
+    <input
+      data-testid={inputProps.id}
+      ref={ref}
+      type="file"
+      style={{ display: "none" }}
+      {...{
+        id: DEFAULT_UPLOAD_INPUT_ID,
+        accept: "text/csv",
+        ...inputProps,
+      }}
+    />
+  );
+});
