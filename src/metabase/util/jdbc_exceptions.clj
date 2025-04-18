@@ -49,11 +49,8 @@
 (defmethod impl-query-canceled? :sqlserver [_ e]
   (= (get-sql-state e) "HY008"))
 
-;; https://github.com/snowflakedb/snowflake-jdbc/blob/master/src/main/java/net/snowflake/client/jdbc/ErrorCode.java#L18-L20
 (defmethod impl-query-canceled? :snowflake [_ e]
-  (prn (get-sql-state e))
-  (prn (.getErrorCode e))
-  (contains? #{"200003" "200005"} (get-sql-state e)))
+  (= (get-sql-state e) "42S02"))
 
 (defn- extract-sql-exception
   "Examines the chain of exceptions to find the first SQLException error. Returns nil if no SQLException is found"

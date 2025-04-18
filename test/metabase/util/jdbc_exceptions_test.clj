@@ -22,9 +22,9 @@
       (is (sut/query-canceled? nil e))))
   (when-class net.snowflake.client.jdbc.SnowflakeSQLException
               (testing "recognizes snowflake exception"
-                (let [e (net.snowflake.client.jdbc.SnowflakeSQLException. "SQL execution canceled" "200003")]
+                (let [e (net.snowflake.client.jdbc.SnowflakeSQLException. "SQL execution canceled" "42S02")]
                   (is (sut/query-canceled? :snowflake e)))
-                (let [e (net.snowflake.client.jdbc.SnowflakeSQLException. "SQL execution canceled" "200005")]
+                (let [e (net.snowflake.client.jdbc.SnowflakeSQLException. "SQL execution canceled" "42S02")]
                   (is (sut/query-canceled? :snowflake e)))))
   (when-class org.postgresql.util.PSQLException
               (testing "recognizes postgres exception"
