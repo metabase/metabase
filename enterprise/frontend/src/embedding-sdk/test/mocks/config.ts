@@ -4,10 +4,8 @@ import type {
 } from "embedding-sdk/types";
 
 export const createMockAuthProviderUriConfig = ({
-  authProviderUri = "http://TEST_URI/sso/metabase",
   ...opts
 }: Partial<MetabaseAuthConfigWithProvider> = {}): MetabaseAuthConfigWithProvider => ({
-  authProviderUri,
   metabaseInstanceUrl: "http://localhost",
   ...opts,
 });

@@ -121,8 +121,8 @@ const setup = ({
   setupPropertiesEndpoints(settingValuesWithToken);
 
   const authConfig = createMockAuthProviderUriConfig({
-    authProviderUri: isValidConfig ? "http://TEST_URI/sso/metabase" : "",
     ...configOpts,
+    metabaseInstanceUrl: isValidConfig ? "http://localhost" : "",
   });
 
   return renderWithProviders(<TestComponent authConfig={authConfig} />, {
@@ -228,7 +228,6 @@ describe("useInitData hook", () => {
       }));
 
       const authConfig = createMockAuthProviderUriConfig({
-        authProviderUri: "http://TEST_URI/sso/metabase",
         fetchRequestToken,
       });
 

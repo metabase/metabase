@@ -17,7 +17,6 @@ type BaseMetabaseAuthConfig = {
  * @category MetabaseProvider
  */
 export type MetabaseAuthConfigWithProvider = BaseMetabaseAuthConfig & {
-  authProviderUri: string;
   apiKey?: never;
 };
 
@@ -26,7 +25,6 @@ export type MetabaseAuthConfigWithProvider = BaseMetabaseAuthConfig & {
  */
 export type MetabaseAuthConfigWithApiKey = BaseMetabaseAuthConfig & {
   apiKey: string;
-  authProviderUri?: never;
 };
 
 /**

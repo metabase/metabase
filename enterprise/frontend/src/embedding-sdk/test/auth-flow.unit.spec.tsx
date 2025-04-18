@@ -97,7 +97,6 @@ describe("SDK auth and init flow", () => {
   it("should initialize the auth flow only once, not on rerenders", async () => {
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: METABASE_INSTANCE_URL,
-      authProviderUri: AUTH_PROVIDER_URL,
     });
 
     const { rerender } = setup({ authConfig });
@@ -122,11 +121,10 @@ describe("SDK auth and init flow", () => {
     ).toBeInTheDocument();
   });
 
-  describe("when using authProviderUri", () => {
-    it("should retrieve the session from the authProviderUri and send it as 'X-Metabase-Session' header", async () => {
+  describe("when using SSO", () => {
+    it("should retrieve the session and send it as 'X-Metabase-Session' header", async () => {
       const authConfig = defineMetabaseAuthConfig({
         metabaseInstanceUrl: METABASE_INSTANCE_URL,
-        authProviderUri: AUTH_PROVIDER_URL,
       });
 
       setup({ authConfig });
@@ -156,7 +154,6 @@ describe("SDK auth and init flow", () => {
 
       const authConfig = defineMetabaseAuthConfig({
         metabaseInstanceUrl: METABASE_INSTANCE_URL,
-        authProviderUri: AUTH_PROVIDER_URL,
         fetchRequestToken: customFetchFunction,
       });
 
