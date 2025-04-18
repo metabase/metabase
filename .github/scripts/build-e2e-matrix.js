@@ -86,7 +86,7 @@ function buildMatrix(inputSpecs, inputChunks) {
     ...options,
   }));
 
-  return { config, regularChunks };
+  return { config, regularChunks, isDefaultSpecPattern };
 }
 
 const res = buildMatrix(
