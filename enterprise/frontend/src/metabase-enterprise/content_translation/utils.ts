@@ -1,4 +1,4 @@
-import type { DictionaryMap } from "./types";
+import type { DictionaryMap } from "metabase/i18n/types";
 
 /** Translate a user-generated string
  *
