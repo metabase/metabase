@@ -40,7 +40,7 @@ type Resolver = (
   kind: "field" | "segment" | "metric",
   name: string,
   node?: Node,
-) => Lib.ColumnMetadata | Lib.SegmentMetadata | Lib.MetricMetadata;
+) => Lib.ExpressionParts | Lib.ExpressionArg;
 
 type CompileFn = (
   node: Node,
@@ -52,12 +52,24 @@ type Options = {
   startRule: StartRule;
 };
 
-type Context = Options & {
+type Context = {
   type: ExpressionType;
+  resolver: Resolver;
 };
 
 export function compile(node: Node, options: Options) {
-  return compileRoot(node, { ...options, type: options.startRule });
+  return compileRoot(node, {
+    type: options.startRule,
+    resolver: options.resolver ?? fallbackResolver,
+  });
+}
+
+function fallbackResolver(_kind: Kind, name: string, _node?: Node) {
+  return {
+    operator: "dimension" as Lib.ExpressionOperator,
+    options: {},
+    args: [name],
+  };
 }
 
 function compileNode(
@@ -120,14 +132,6 @@ function getKindForType(type: ExpressionType): Kind {
 
 function compileDimension(name: string, node: Node, ctx: Context) {
   assert(typeof name === "string", t`Invalid dimension name: ${name}`);
-
-  if (!ctx.resolver) {
-    return {
-      operator: "dimension" as Lib.ExpressionOperator,
-      options: {},
-      args: [name],
-    };
-  }
 
   try {
     const kind = getKindForType(ctx.type);
