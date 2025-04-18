@@ -294,7 +294,7 @@
   [driver [_ text divider position]]
   [:'arrayElement
    [:'splitByString (sql.qp/->honeysql driver divider) [:'assumeNotNull (sql.qp/->honeysql driver text)]]
-   (sql.qp/->honeysql driver position)])
+   [:'toInt64 (sql.qp/->honeysql driver position)]])
 
 (defmethod sql.qp/->honeysql [:clickhouse :text]
   [driver [_ value]]
