@@ -170,10 +170,7 @@ function getSections(
           ? getGroupName(groupInfo, stageIndex)
           : groupInfo.displayName,
         icon: withColumnGroupIcon ? getColumnGroupIcon(groupInfo) : null,
-        items: [
-          ...sortedByDisplayName(segmentItems),
-          ...sortedByDisplayName(columnItems),
-        ],
+        items: [...segmentItems, ...columnItems],
       };
     });
   });
@@ -213,9 +210,3 @@ function renderItemIcon(
 function renderItemWrapper(content: ReactNode) {
   return <HoverParent>{content}</HoverParent>;
 }
-
-const sortedByDisplayName = (arr: { displayName: string }[]) => {
-  return arr.toSorted((a, b) =>
-    (a.displayName || "").localeCompare(b.displayName),
-  );
-};
