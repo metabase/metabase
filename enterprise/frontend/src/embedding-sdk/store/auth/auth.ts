@@ -3,7 +3,6 @@ import * as Yup from "yup";
 import type {
   MetabaseAuthConfig,
   MetabaseEmbeddingSessionToken,
-  MetabaseFetchRequestTokenFn,
 } from "embedding-sdk";
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
@@ -16,8 +15,11 @@ import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import type { Settings } from "metabase-types/api";
 
-import { getOrRefreshSession } from "./reducer";
-import { getFetchRefreshTokenFn } from "./selectors";
+import { getOrRefreshSession } from "../reducer";
+import { getFetchRefreshTokenFn } from "../selectors";
+
+import { jwtRefreshFunction } from "./jwt";
+import { popupRefreshTokenFn } from "./popup";
 
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
@@ -99,9 +101,7 @@ export const refreshTokenAsync = createAsyncThunk(
       getState() as SdkStoreState,
     );
 
-    const getRefreshToken = customGetRefreshToken
-      ? () => customGetRefreshToken(url)
-      : () => runRefreshTokenFn(url);
+    const getRefreshToken = customGetRefreshToken ?? runRefreshTokenFn;
 
     // # How does the error handling work?
     // This is an async thunk, thunks _by design_ can fail and no error will be shown on the console (it's the reducer that should handle the reject action)
@@ -109,7 +109,7 @@ export const refreshTokenAsync = createAsyncThunk(
     // In this way we also support standard thrown Errors in the custom fetchRequestToken user provided function
 
     try {
-      const session = await getRefreshToken();
+      const session = await getRefreshToken(url);
       const source = customGetRefreshToken
         ? '"fetchRequestToken"'
         : "authProviderUri endpoint";
@@ -156,83 +156,6 @@ const safeStringify = (value: unknown) => {
   }
 };
 
-export const jwtRefreshFunction: MetabaseFetchRequestTokenFn = async (url) => {
-  const clientBackendResponse = await fetch(url, {
-    method: "GET",
-    credentials: "include",
-  });
-
-  // This should return {url: /auth/sso?jwt=[...]} with the signed token from the client backend
-  const clientBackendResponseJson = await clientBackendResponse.json();
-
-  // POST to /auth/sso?jwt=[...]
-  const authUrlWithJwtToken = clientBackendResponseJson.url;
-  const authSsoReponse = await fetch(authUrlWithJwtToken, getFetchParams());
-
-  if (!authSsoReponse.ok) {
-    throw new Error(
-      `Failed to fetch the session, HTTP status: ${authSsoReponse.status}`,
-    );
-  }
-  const asText = await authSsoReponse.text();
-
-  try {
-    return JSON.parse(asText);
-  } catch (ex) {
-    return asText;
-  }
-};
-
-export const popupRefreshTokenFn = async (url: string) => {
-  return new Promise((resolve, reject) => {
-    const width = 600;
-    const height = 700;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
-    const popup = window.open(
-      url,
-      "samlLoginPopup",
-      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`,
-    );
-
-    if (!popup) {
-      reject(new Error("Popup blocked. Please allow popups for this site."));
-      return;
-    }
-
-    const messageHandler = (event: MessageEvent) => {
-      if (event.data && event.data.type === "SAML_AUTH_COMPLETE") {
-        window.removeEventListener("message", messageHandler);
-        if (!popup.closed) {
-          popup.close();
-        }
-        resolve(event.data.authData);
-      }
-    };
-
-    window.addEventListener("message", messageHandler);
-
-    // Handle popup closing
-    const checkClosed = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(checkClosed);
-        window.removeEventListener("message", messageHandler);
-        reject(new Error("Authentication was canceled"));
-      }
-    }, 1000);
-
-    // Set timeout to prevent hanging indefinitely
-    setTimeout(() => {
-      clearInterval(checkClosed);
-      window.removeEventListener("message", messageHandler);
-      if (!popup.closed) {
-        popup.close();
-      }
-      reject(new Error("Authentication timed out"));
-    }, 60000); // 1 minute timeout
-  });
-};
-
 const runRefreshTokenFn = async (
   url: MetabaseAuthConfig["metabaseInstanceUrl"],
 ) => {
@@ -260,7 +183,7 @@ const sessionSchema = Yup.object({
   // as we don't use them, so we don't throw an error if they are missing
 });
 
-function getFetchParams() {
+export function getFetchParams() {
   const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
   const fetchParams: RequestInit = {
     method: "GET",
