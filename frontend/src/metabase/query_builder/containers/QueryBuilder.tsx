@@ -185,6 +185,8 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
 
     reportTimezone: getSetting(state, "report-timezone-long"),
 
+    didFirstNonTableChartGenerated: getSetting(state, "chart-generated"),
+
     getEmbeddedParameterVisibility: (slug: string) =>
       getEmbeddedParameterVisibility(state, slug),
   };
@@ -236,7 +238,15 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     closeQB,
     route,
     queryBuilderMode,
+    didFirstNonTableChartGenerated,
+    setDidFirstNonTableChartRender,
   } = props;
+
+  useEffect(() => {
+    if (!didFirstNonTableChartGenerated && card.display !== "table") {
+      setDidFirstNonTableChartRender(card);
+    }
+  }, [card, didFirstNonTableChartGenerated, setDidFirstNonTableChartRender]);
 
   const forceUpdate = useForceUpdate();
   const forceUpdateDebounced = useMemo(

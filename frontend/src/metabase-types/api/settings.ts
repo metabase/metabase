@@ -418,6 +418,7 @@ interface PublicSettings {
 }
 
 export type UserSettings = {
+  "chart-generated"?: boolean;
   "dismissed-collection-cleanup-banner"?: boolean;
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
