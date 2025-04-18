@@ -8,7 +8,7 @@ import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapp
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { Flex } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import type { Database, ListTasksSortColumn, Task } from "metabase-types/api";
 import type { SortingOptions } from "metabase-types/api/sorting";
 
@@ -39,7 +39,8 @@ export const TasksTable = ({
     <table className={cx(AdminS.ContentTable, CS.mt2)}>
       <thead>
         <tr>
-          <th>{t`Task`}</th>
+          {/* set miw to limit CLS when changing sort direction */}
+          <Box component="th" miw={300}>{t`Task`}</Box>
           <th>{t`DB Name`}</th>
           <th>{t`DB Engine`}</th>
           <SortableColumnHeader
