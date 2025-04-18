@@ -192,10 +192,44 @@ export const saveDashboardPdf = async (
     height: contentHeight,
     width: contentWidth,
     useCORS: true,
+    backgroundColor: backgroundColor,
+    scale: window.devicePixelRatio || 1,
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.style.height = `${contentHeight}px`;
       node.style.backgroundColor = backgroundColor;
+
+      // Handle all dashboard card containers and their children
+      const dashboardCards = node.querySelectorAll("[data-dashcard-key]");
+      dashboardCards.forEach((card) => {
+        if (card instanceof HTMLElement) {
+          // Set background color for the card container
+          card.style.backgroundColor = backgroundColor;
+
+          // Remove any box shadows that might cause grey borders
+          card.style.boxShadow = "none";
+
+          // Set a clean border if needed
+          card.style.border = "1px solid var(--mb-color-border)";
+
+          // Handle the actual chart/visualization container
+          const chartContainer = card.querySelector(".Card, .Card--chart");
+          if (chartContainer instanceof HTMLElement) {
+            chartContainer.style.backgroundColor = backgroundColor;
+            chartContainer.style.boxShadow = "none";
+            // Remove any margins that might cause gaps
+            chartContainer.style.margin = "0";
+          }
+
+          // Handle any inner visualization containers
+          const vizContainer = card.querySelector(".visualization-container");
+          if (vizContainer instanceof HTMLElement) {
+            vizContainer.style.backgroundColor = backgroundColor;
+            vizContainer.style.boxShadow = "none";
+          }
+        }
+      });
+
       if (parametersNode instanceof HTMLElement) {
         node.insertBefore(parametersNode, node.firstChild);
       }
