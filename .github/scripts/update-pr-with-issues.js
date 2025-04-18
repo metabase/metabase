@@ -76,7 +76,8 @@ async function link_issues(github) {
     console.log('PR Info:\n' + JSON.stringify(prInfo, null, 2) + "\n");
 
     if (prInfo &&
-        prInfo.status !== 200 &&
+        prInfo.data &&
+        prInfo.data.labels &&
         prInfo.data.labels.some(label => label.name === "no-issue-links")) {
       console.log('PR has "no-issue-links" label, skipping...');
       return;
