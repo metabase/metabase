@@ -103,7 +103,7 @@ Changes made in Table Metadata apply across your entire Metabase. Metabase curre
 
 ### Semantic types don't change the data types
 
-You can pick a semantic type compatible with the underlying data type in [table metadata settings](./metadata-editing.md#field-types)
+You can pick a semantic type compatible with the underlying data type in [table metadata settings](./metadata-editing.md#field-type)
 
 Semantic types only add meaning; they should NOT be used for type casting. For example, if you set a text field's semantic type to "Quantity", Metabase will still treat the field as a text field. Instead, apply semantic types to tell Metabase how to format or visualize the field (like telling Metabase that a numeric values represents a percentage).
 
