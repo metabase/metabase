@@ -44,7 +44,7 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
 
   const {
     data: databasesData,
-    isFetching: isLoadingDatabases,
+    isLoading: isLoadingDatabases,
     error: databasesError,
   } = useListDatabasesQuery();
 
