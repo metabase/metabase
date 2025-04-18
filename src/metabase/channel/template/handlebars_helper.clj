@@ -259,19 +259,27 @@
   [id [parameters] _kparams _options]
   (urls/dashboard-url id (map #(update-keys % keyword) parameters)))
 
-(def default-helpers
-  "A list of default helpers."
+;; Split helpers into block and inline helpers
+(def block-helpers
+  "A map of custom block helpers, used inside {{ }}"
   {"count"         #'count
-   "eq"            #'eq
-   "ne"            #'ne
-   "gt"            #'gt
-   "ge"            #'ge
-   "lt"            #'lt
-   "le"            #'le
    "format-date"   #'format-date
    "now"           #'now
    "card-url"      #'card-url
    "dashboard-url" #'dashboard-url})
+
+(def inline-helpers
+  "A map of custom inline helpers, used inside ( )."
+  {"eq"            #'eq
+   "ne"            #'ne
+   "gt"            #'gt
+   "ge"            #'ge
+   "lt"            #'lt
+   "le"            #'le})
+
+(def default-helpers
+  "A map of all custom helpers (block + inline), for backward compatibility."
+  (merge block-helpers inline-helpers))
 
 (def ^:private built-in-helpers-info
   (map
@@ -359,14 +367,18 @@
    - level: Optional hash param for log level (debug, info, warn, error)"}]))
 
 (defn- helpers-info
-  "Get a list of helpers with their names and docstrings."
-  [helper-name->helper]
+  "Get a list of helpers with their names, docstrings, and types."
+  [block-helpers inline-helpers]
   (concat
    built-in-helpers-info
-   (for [[helper-name helper] helper-name->helper]
+   (for [[helper-name helper] block-helpers]
      {:name helper-name
       :doc  (-> helper meta :doc)
-      :type :custom})))
+      :type :custom-block})
+   (for [[helper-name helper] inline-helpers]
+     {:name helper-name
+      :doc  (-> helper meta :doc)
+      :type :custom-inline})))
 
 ;; Exposing this via settings so FE can find it
 ;; TODO: the better way is to follow metabase.lib's steps by writing this as cljc so FE can access it directly.
@@ -375,7 +387,7 @@
   :type        :json
   :encryption  :no
   :export?     false
-  :getter      (fn [] (helpers-info default-helpers))
+  :getter      (fn [] (helpers-info block-helpers inline-helpers))
   :setter      :none
   :visibility  :public
   :description "A list of default handlebars helpers.")
