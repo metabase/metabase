@@ -1,9 +1,11 @@
 import { Fragment } from "react";
+import { t } from "ttag";
 
 import { Badge } from "metabase/components/Badge";
 import { useToggle } from "metabase/hooks/use-toggle";
 import * as Urls from "metabase/lib/urls";
 import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
+import type Question from "metabase-lib/v1/Question";
 import type {
   Collection,
   CollectionEssentials,
@@ -23,6 +25,8 @@ export interface CollectionBreadcrumbsProps {
   dashboard?: Dashboard;
   onClick?: (collection: CollectionEssentials) => void;
   baseCollectionId: CollectionId | null;
+  isModifiedQuestion?: boolean;
+  originalQuestion?: Question | null;
 }
 
 export const CollectionBreadcrumbs = ({
@@ -30,6 +34,8 @@ export const CollectionBreadcrumbs = ({
   dashboard,
   onClick,
   baseCollectionId = null,
+  isModifiedQuestion = false,
+  originalQuestion,
 }: CollectionBreadcrumbsProps): JSX.Element | null => {
   const [isExpanded, { toggle }] = useToggle(false);
 
@@ -84,6 +90,16 @@ export const CollectionBreadcrumbs = ({
           isSingleLine
           onClick={onClick ? () => onClick(collection) : undefined}
         />
+        {isModifiedQuestion && originalQuestion && (
+          <>
+            {separator}
+            <Badge isSingleLine to={Urls.question(originalQuestion.card())}>
+              {originalQuestion.displayName()}
+            </Badge>
+            {separator}
+            <Badge isSingleLine>{t`New exploration`}</Badge>
+          </>
+        )}
       </PathContainer>
       {dashboard && (
         <>

@@ -1,10 +1,6 @@
-import { useCallback, useState } from "react";
-
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
-import { Flex } from "metabase/ui";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
-import QuestionLineage from "../../containers/QuestionLineage";
 import { ProfileLink } from "../ProfileLink";
 import { SearchButton } from "../search/SearchButton";
 
@@ -45,75 +41,41 @@ const AppBarSmall = ({
   isCollectionPathVisible,
   isQuestionLineageVisible,
   onToggleNavbar,
-  onCloseNavbar,
   onLogout,
 }: AppBarSmallProps): JSX.Element => {
-  const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
-
-  const [isSearchActive, setSearchActive] = useState(false);
-  const isInfoVisible = isQuestionLineageVisible || isCollectionPathVisible;
-  const isHeaderVisible =
-    isLogoVisible || isNavBarEnabled || isSearchVisible || isProfileLinkVisible;
-  const isSubheaderVisible = !isNavBarVisible && isInfoVisible;
-
-  const handleSearchActive = useCallback(() => {
-    setSearchActive(true);
-    onCloseNavbar();
-  }, [onCloseNavbar]);
-
-  const handleSearchInactive = useCallback(() => {
-    setSearchActive(false);
-  }, []);
-
   return (
     <AppBarRoot>
-      {isHeaderVisible && (
-        <AppBarHeader isSubheaderVisible={isSubheaderVisible}>
-          <AppBarMainContainer>
-            <AppBarToggleContainer>
-              <AppBarToggle
-                isSmallAppBar
-                isNavBarEnabled={isNavBarEnabled}
-                isNavBarOpen={isNavBarVisible}
-                onToggleClick={onToggleNavbar}
-              />
-            </AppBarToggleContainer>
-            <AppBarSearchContainer>
-              {isSearchVisible &&
-                (isEmbeddingIframe ? (
-                  <SearchBar
-                    onSearchActive={handleSearchActive}
-                    onSearchInactive={handleSearchInactive}
-                  />
-                ) : (
-                  <Flex justify="end">
-                    <SearchButton />
-                  </Flex>
-                ))}
-            </AppBarSearchContainer>
-            {isProfileLinkVisible && (
-              <AppBarProfileLinkContainer>
-                <ProfileLink onLogout={onLogout} />
-              </AppBarProfileLinkContainer>
-            )}
-          </AppBarMainContainer>
-          <AppBarLogoContainer isVisible={isLogoVisible && !isSearchActive}>
+      <AppBarHeader>
+        <AppBarMainContainer>
+          <AppBarToggleContainer>
+            <AppBarToggle
+              isNavBarEnabled={isNavBarEnabled}
+              isNavBarOpen={isNavBarOpen}
+              onToggleClick={onToggleNavbar}
+            />
+          </AppBarToggleContainer>
+          <AppBarLogoContainer>
             <AppBarLogo
-              isSmallAppBar
               isLogoVisible={isLogoVisible}
               isNavBarEnabled={isNavBarEnabled}
-              onLogoClick={onCloseNavbar}
             />
           </AppBarLogoContainer>
-        </AppBarHeader>
-      )}
-      {isSubheaderVisible && (
-        <AppBarSubheader isNavBarOpen={isNavBarVisible}>
-          {isQuestionLineageVisible ? (
-            <QuestionLineage />
-          ) : isCollectionPathVisible ? (
-            <CollectionBreadcrumbs />
-          ) : null}
+          {(isSearchVisible || isProfileLinkVisible) && (
+            <AppBarSearchContainer>
+              {isSearchVisible &&
+                (isEmbeddingIframe ? <SearchBar /> : <SearchButton />)}
+              {isProfileLinkVisible && (
+                <AppBarProfileLinkContainer>
+                  <ProfileLink onLogout={onLogout} />
+                </AppBarProfileLinkContainer>
+              )}
+            </AppBarSearchContainer>
+          )}
+        </AppBarMainContainer>
+      </AppBarHeader>
+      {(isCollectionPathVisible || isQuestionLineageVisible) && (
+        <AppBarSubheader>
+          <CollectionBreadcrumbs />
         </AppBarSubheader>
       )}
     </AppBarRoot>
