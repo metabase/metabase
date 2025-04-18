@@ -31,7 +31,7 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
 
   const {
     data: tasksData,
-    isFetching: isLoadingTasks,
+    isLoading: isLoadingTasks,
     error: tasksError,
   } = useListTasksQuery({
     limit: PAGE_SIZE,
