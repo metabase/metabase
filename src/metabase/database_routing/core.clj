@@ -35,3 +35,9 @@
   metabase-enterprise.database-routing.common
   [_db-or-id-or-spec]
   nil)
+
+(defenterprise delete-associated-database-router!
+  "OSS version, does nothing"
+  metabase-enterprise.database-routing.model
+  [_db-id]
+  nil)

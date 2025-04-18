@@ -12,6 +12,8 @@
   [db-or-id]
   (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id (u/the-id db-or-id)))
 
+(def ^:dynamic ^:private *database-routing-on?* nil)
+
 (defn router-db-or-id->mirror-db-id
   "Given a user and a database (or id), returns the ID of the mirror database that the user's query should ultimately be
   routed to. If the database is not a Router Database, returns `nil`. If the database is a Router Database but no
@@ -22,16 +24,20 @@
    (when-let [attr-name (user-attribute db-or-id)]
      (let [database-name (get (:login_attributes user) attr-name)]
        (cond
+         ;; if database routing is EXPLICITLY off, e.g. in `POST /api/database/:id/sync_schema`, don't do any routing.
+         (false? *database-routing-on?*)
+         nil
+
          (nil? user)
          (throw (ex-info (tru "Anonymous users cannot access a database with routing enabled.") {:status-code 400}))
 
          (= database-name "__METABASE_ROUTER__")
-         (u/the-id db-or-id)
+         nil
 
          ;; superusers default to the Router Database
          (and (nil? database-name)
               api/*is-superuser?*)
-         (u/the-id db-or-id)
+         nil
 
          ;; non-superusers get an error
          (nil? database-name)
@@ -68,8 +74,6 @@
 ;; The latter looks like:
 ;; - I am looking at a Mirror Database,
 ;; - `*database-routing-on?*` is `false` or `nil` (unset)
-
-(def ^:dynamic ^:private *database-routing-on?* nil)
 
 (defenterprise with-database-routing-on-fn
   "Enterprise version. Calls the function with Database Routing allowed."
