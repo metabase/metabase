@@ -38,7 +38,10 @@ const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
-  async (authConfig: MetabaseAuthConfig, { dispatch, getState }) => {
+  async (
+    instanceUrl: MetabaseAuthConfig["metabaseInstanceUrl"],
+    { dispatch, getState },
+  ) => {
     const state = getSessionTokenState(getState() as SdkStoreState);
     const token = state?.token;
 
@@ -48,7 +51,7 @@ export const getOrRefreshSession = createAsyncThunk(
       return token;
     }
 
-    return dispatch(refreshTokenAsync(authConfig)).unwrap();
+    return dispatch(refreshTokenAsync(instanceUrl)).unwrap();
   },
 );
 

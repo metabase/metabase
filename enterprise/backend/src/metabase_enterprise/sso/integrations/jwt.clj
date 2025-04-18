@@ -153,13 +153,15 @@
   [{{:keys [jwt redirect token] :or {token nil}} :params, :as request}]
   (premium-features/assert-has-feature :sso-jwt (tru "JWT-based authentication"))
   (check-jwt-enabled)
-  (cond
-    (and (sso-utils/is-embedding-sdk-header? request) (not jwt))
-    (response/response {:url (str (sso-settings/jwt-identity-provider-uri)) :method "jwt"})
-    jwt
-    (handle-jwt-authentication (session-data jwt request) token request)
-    :else
-    (redirect-to-idp (sso-settings/jwt-identity-provider-uri) redirect)))
+
+  (let [is-sdk? (sso-utils/is-embedding-sdk-header? request)]
+    (cond
+      (and is-sdk? jwt)
+      (handle-jwt-authentication (session-data jwt request) token request)
+      is-sdk?
+      (response/response {:url (sso-settings/jwt-identity-provider-uri) :method "jwt"})
+      :else
+      (redirect-to-idp (sso-settings/jwt-identity-provider-uri) redirect))))
 
 (defmethod sso.i/sso-post :jwt
   [_]

@@ -31,14 +31,16 @@ export const initAuth = createAsyncThunk(
       // JWT setup
       api.onBeforeRequest = async () => {
         const session = await dispatch(
-          getOrRefreshSession(authConfig),
+          getOrRefreshSession(authConfig.metabaseInstanceUrl),
         ).unwrap();
         if (session?.id) {
           api.sessionToken = session.id;
         }
       };
       // verify that the session is actually valid before proceeding
-      await dispatch(getOrRefreshSession(authConfig)).unwrap();
+      await dispatch(
+        getOrRefreshSession(authConfig.metabaseInstanceUrl),
+      ).unwrap();
     } else if (isValidApiKeyConfig) {
       // API key setup
       api.apiKey = authConfig.apiKey;
@@ -89,7 +91,7 @@ export const initAuth = createAsyncThunk(
 export const refreshTokenAsync = createAsyncThunk(
   "sdk/token/REFRESH_TOKEN",
   async (
-    authConfig: MetabaseAuthConfig,
+    url: MetabaseAuthConfig["metabaseInstanceUrl"],
     { getState },
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
     // The SDK user can provide a custom function to refresh the token.
@@ -98,8 +100,8 @@ export const refreshTokenAsync = createAsyncThunk(
     );
 
     const getRefreshToken = customGetRefreshToken
-      ? () => customGetRefreshToken(authConfig.authProviderUri!)
-      : () => runRefreshTokenFn(authConfig);
+      ? () => customGetRefreshToken(url)
+      : () => runRefreshTokenFn(url);
 
     // # How does the error handling work?
     // This is an async thunk, thunks _by design_ can fail and no error will be shown on the console (it's the reducer that should handle the reject action)
@@ -231,25 +233,24 @@ export const popupRefreshTokenFn = async (url: string) => {
   });
 };
 
-const runRefreshTokenFn = async (authConfig: MetabaseAuthConfig) => {
+const runRefreshTokenFn = async (
+  url: MetabaseAuthConfig["metabaseInstanceUrl"],
+) => {
   // GET /auth/sso with headers
-  const urlResponse = await fetch(
-    `${authConfig.metabaseInstanceUrl}/auth/sso`,
-    getFetchParams(),
-  );
+  const urlResponse = await fetch(`${url}/auth/sso`, getFetchParams());
   const urlResponseJson = await urlResponse.json();
 
   // For the SDK, both SAML and JWT endpoints return {url: [...], method: "saml" | "jwt"}
   // when the headers are passed
-  const { method, url } = urlResponseJson;
+  const { method, url: responseUrl } = urlResponseJson;
 
   if (method === "saml") {
     // The URL should point to the SAML IDP
-    return popupRefreshTokenFn(url);
+    return popupRefreshTokenFn(responseUrl);
   }
 
   // Points to the JWT Auth endpoint on the client server
-  return jwtRefreshFunction(url);
+  return jwtRefreshFunction(responseUrl);
 };
 
 const sessionSchema = Yup.object({
