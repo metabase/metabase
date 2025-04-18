@@ -143,21 +143,16 @@ jobs:
   # run this separately to make it non-blocking
   flaky-e2e-tests:
     name: Flaky e2e Tests
-    runs-on: ubuntu-22.04
-    # uses: ./.github/workflows/e2e-test.yml
+    uses: ./.github/workflows/e2e-test.yml
     needs:
       # - build
       - e2e-matrix-builder
     if: |
-      !cancelled()
-    steps:
-      - name: Print e2e-matrix-builder output
-        run: |
-          echo "e2e-matrix-builder output: ${{ needs.e2e-matrix-builder.outputs.isDefaultSpecPattern }}"
-    # secrets: inherit
-    # with:
-    #   name: Flaky
-    #   tags: "@flaky"
+      !cancelled() && needs.e2e-matrix-builder.outputs.isDefaultSpecPattern == 'true'
+    secrets: inherit
+    with:
+      name: Flaky
+      tags: "@flaky"
 
   e2e-tests-result:
     needs:
