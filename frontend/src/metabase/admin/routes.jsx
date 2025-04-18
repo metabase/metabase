@@ -72,7 +72,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           </Route>
         </Route>
         <Route path=":databaseId" component={DatabaseEditApp}>
-          <ModalRoute path="edit" modal={DatabaseConnectionModal} noWrap />
+          <ModalRoute path="edit" modal={DatabaseConnectionModal} />
           {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
         </Route>
       </Route>
