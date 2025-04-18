@@ -18,14 +18,10 @@ import type {
 Object.assign(
   LineChart,
   getCartesianChartDefinition({
-    get uiName() {
-      return t`Line`;
-    },
+    uiName: t`Line`,
     identifier: "line",
     iconName: "line",
-    get noun() {
-      return t`line chart`;
-    },
+    noun: t`line chart`,
     minSize: getMinSize("line"),
     defaultSize: getDefaultSize("line"),
     settings: {

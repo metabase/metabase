@@ -27,18 +27,10 @@ interface MigrationInProgressProps {
 }
 
 const progressMessage: Record<InProgressStates, string> = {
-  get init() {
-    return t`Talking to Metabase Cloud...`;
-  },
-  get setup() {
-    return t`Talking to Metabase Cloud...`;
-  },
-  get dump() {
-    return t`Taking a snapshot of this instance...`;
-  },
-  get upload() {
-    return t`Uploading the snapshot to the cloud...`;
-  },
+  init: t`Talking to Metabase Cloud...`,
+  setup: t`Talking to Metabase Cloud...`,
+  dump: t`Taking a snapshot of this instance...`,
+  upload: t`Uploading the snapshot to the cloud...`,
 };
 
 export const MigrationInProgress = ({

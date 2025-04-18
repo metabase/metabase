@@ -609,9 +609,7 @@ const PivotTable = ExplicitSize<
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(connect(mapStateToProps)(PivotTable), {
-  get uiName() {
-    return t`Pivot Table`;
-  },
+  uiName: t`Pivot Table`,
   identifier: "pivot",
   iconName: "pivot_table",
   minSize: getMinSize("pivot"),

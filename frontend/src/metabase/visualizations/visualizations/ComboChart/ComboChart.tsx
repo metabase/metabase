@@ -18,14 +18,10 @@ import type {
 Object.assign(
   ComboChart,
   getCartesianChartDefinition({
-    get uiName() {
-      return t`Combo`;
-    },
+    uiName: t`Combo`,
     identifier: "combo",
     iconName: "lineandbar",
-    get noun() {
-      return t`line and bar chart`;
-    },
+    noun: t`line and bar chart`,
     minSize: getMinSize("combo"),
     defaultSize: getDefaultSize("combo"),
     settings: {

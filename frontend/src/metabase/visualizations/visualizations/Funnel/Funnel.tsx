@@ -39,9 +39,7 @@ const getUniqueFunnelRows = (rows: FunnelRow[]) => {
 };
 
 Object.assign(Funnel, {
-  get uiName() {
-    return t`Funnel`;
-  },
+  uiName: t`Funnel`,
   identifier: "funnel",
   iconName: "funnel",
   noHeader: true,
@@ -69,11 +67,7 @@ Object.assign(Funnel, {
     if (!settings["funnel.dimension"] || !settings["funnel.metric"]) {
       throw new ChartSettingsError(
         t`Which fields do you want to use?`,
-        {
-          get section() {
-            return t`Data`;
-          },
-        },
+        { section: t`Data` },
         t`Choose fields`,
       );
     }
@@ -84,12 +78,8 @@ Object.assign(Funnel, {
   settings: {
     ...columnSettings({ hidden: true }),
     ...dimensionSetting("funnel.dimension", {
-      get section() {
-        return t`Data`;
-      },
-      get title() {
-        return t`Column with steps`;
-      },
+      section: t`Data`,
+      title: t`Column with steps`,
       dashboard: false,
       useRawSeries: true,
       showColumnSetting: true,
@@ -101,9 +91,7 @@ Object.assign(Funnel, {
       readDependencies: ["funnel.rows"],
     },
     "funnel.rows": {
-      get section() {
-        return t`Data`;
-      },
+      section: t`Data`,
       widget: ChartSettingOrderedSimple,
       getValue: (
         [
@@ -159,38 +147,20 @@ Object.assign(Funnel, {
       dataTestId: "funnel-row-sort",
     },
     ...metricSetting("funnel.metric", {
-      get section() {
-        return t`Data`;
-      },
-      get title() {
-        return t`Measure`;
-      },
+      section: t`Data`,
+      title: t`Measure`,
       dashboard: false,
       useRawSeries: true,
       showColumnSetting: true,
     }),
     "funnel.type": {
-      get title() {
-        return t`Funnel type`;
-      },
-      get section() {
-        return t`Display`;
-      },
+      title: t`Funnel type`,
+      section: t`Display`,
       widget: "select",
       props: {
         options: [
-          {
-            get name() {
-              return t`Funnel`;
-            },
-            value: "funnel",
-          },
-          {
-            get name() {
-              return t`Bar chart`;
-            },
-            value: "bar",
-          },
+          { name: t`Funnel`, value: "funnel" },
+          { name: t`Bar chart`, value: "bar" },
         ],
       },
       // legacy "bar" funnel was only previously available via multiseries

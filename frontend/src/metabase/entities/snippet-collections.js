@@ -18,12 +18,8 @@ const SnippetCollections = createEntity({
   name: "snippetCollections",
   schema: SnippetCollectionSchema,
 
-  get displayNameOne() {
-    return t`snippet collection`;
-  },
-  get displayNameMany() {
-    return t`snippet collections`;
-  },
+  displayNameOne: t`snippet collection`,
+  displayNameMany: t`snippet collections`,
 
   rtk: {
     getUseGetQuery: () => ({

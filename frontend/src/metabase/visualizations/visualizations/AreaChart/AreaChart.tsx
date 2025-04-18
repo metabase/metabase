@@ -18,14 +18,10 @@ import type {
 Object.assign(
   AreaChart,
   getCartesianChartDefinition({
-    get uiName() {
-      return t`Area`;
-    },
+    uiName: t`Area`,
     identifier: "area",
     iconName: "area",
-    get noun() {
-      return t`area chart`;
-    },
+    noun: t`area chart`,
     minSize: getMinSize("area"),
     defaultSize: getDefaultSize("area"),
     settings: {

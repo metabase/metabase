@@ -16,12 +16,8 @@ import type { AdminSettingComponentProps } from "./types";
 
 const EMBEDDING_SECRET_KEY_SETTING: SettingElement<"embedding-secret-key"> = {
   key: "embedding-secret-key",
-  get display_name() {
-    return t`Embedding secret key`;
-  },
-  get description() {
-    return t`Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.`;
-  },
+  display_name: t`Embedding secret key`,
+  description: t`Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.`,
 } as const;
 
 export function StaticEmbeddingSettings({

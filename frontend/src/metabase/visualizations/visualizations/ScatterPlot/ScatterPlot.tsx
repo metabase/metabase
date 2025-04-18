@@ -24,14 +24,10 @@ import type {
 Object.assign(
   ScatterPlot,
   getCartesianChartDefinition({
-    get uiName() {
-      return t`Scatter`;
-    },
+    uiName: t`Scatter`,
     identifier: "scatter",
     iconName: "bubble",
-    get noun() {
-      return t`scatter plot`;
-    },
+    noun: t`scatter plot`,
     minSize: getMinSize("scatter"),
     defaultSize: getDefaultSize("scatter"),
     settings: {

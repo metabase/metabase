@@ -363,9 +363,7 @@ function PreviousValueComparison({
 }
 
 Object.assign(SmartScalar, {
-  get uiName() {
-    return t`Trend`;
-  },
+  uiName: t`Trend`,
   identifier: "smartscalar",
   iconName: "smartscalar",
   canSavePng: true,
@@ -375,21 +373,13 @@ Object.assign(SmartScalar, {
 
   settings: {
     ...fieldSetting("scalar.field", {
-      get section() {
-        return t`Data`;
-      },
-      get title() {
-        return t`Primary number`;
-      },
+      section: t`Data`,
+      title: t`Primary number`,
       fieldFilter: isSuitableScalarColumn,
     }),
     "scalar.comparisons": {
-      get section() {
-        return t`Data`;
-      },
-      get title() {
-        return t`Comparisons`;
-      },
+      section: t`Data`,
+      title: t`Comparisons`,
       widget: SmartScalarComparisonWidget,
       getValue: (series, vizSettings) => getComparisons(series, vizSettings),
       isValid: (series, vizSettings) =>
@@ -409,31 +399,21 @@ Object.assign(SmartScalar, {
       readDependencies: ["scalar.field"],
     },
     "scalar.switch_positive_negative": {
-      get section() {
-        return t`Display`;
-      },
-      get title() {
-        return t`Switch positive / negative colors?`;
-      },
+      section: t`Display`,
+      title: t`Switch positive / negative colors?`,
       widget: "toggle",
       inline: true,
       default: VIZ_SETTINGS_DEFAULTS["scalar.switch_positive_negative"],
     },
     "scalar.compact_primary_number": {
-      get section() {
-        return t`Display`;
-      },
-      get title() {
-        return t`Compact number`;
-      },
+      section: t`Display`,
+      title: t`Compact number`,
       widget: "toggle",
       inline: true,
       default: VIZ_SETTINGS_DEFAULTS["scalar.compact_primary_number"],
     },
     ...columnSettings({
-      get section() {
-        return t`Display`;
-      },
+      section: t`Display`,
       getColumns: (
         [
           {

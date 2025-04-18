@@ -177,18 +177,8 @@ const FieldTypeSection = ({
 };
 
 const JSON_OPTIONS = [
-  {
-    get name() {
-      return t`Yes`;
-    },
-    value: true,
-  },
-  {
-    get name() {
-      return t`No`;
-    },
-    value: false,
-  },
+  { name: t`Yes`, value: true },
+  { name: t`No`, value: false },
 ];
 
 interface FieldJsonUnfoldingSectionProps {

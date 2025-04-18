@@ -44,9 +44,7 @@ export const modalOverrides = {
 
   ModalCloseButton: Modal.CloseButton.extend({
     defaultProps: {
-      get "aria-label"() {
-        return t`Close`;
-      },
+      "aria-label": t`Close`,
     },
   }),
 };

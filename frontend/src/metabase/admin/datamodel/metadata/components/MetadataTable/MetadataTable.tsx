@@ -35,18 +35,8 @@ import {
 type MetadataTabType = "columns" | "original_schema";
 
 const METADATA_TAB_OPTIONS = [
-  {
-    get name() {
-      return t`Columns`;
-    },
-    value: "columns",
-  },
-  {
-    get name() {
-      return t`Original schema`;
-    },
-    value: "original_schema",
-  },
+  { name: t`Columns`, value: "columns" },
+  { name: t`Original schema`, value: "original_schema" },
 ];
 
 interface OwnProps {
