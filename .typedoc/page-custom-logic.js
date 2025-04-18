@@ -1,4 +1,3 @@
-const INTERNAL_MODULE_NAME = "internal";
 const GENERATED_DOC_RETURN_URL_LOCAL_STORAGE_KEY = "generatedDocReturnUrl";
 
 const isEmbeddingSdkApiDocsPage = (href) =>
@@ -86,64 +85,6 @@ const setupWordBreaks = () => {
     subtree: true,
   });
 };
-
-/**
- * Removes the "internal" kind item from the main content menu of a main page
- */
-const removeContentMenuInternalItem = () => {
-  const internalItem = document.querySelector(
-    `.col-content dt#${INTERNAL_MODULE_NAME}`,
-  );
-
-  if (!internalItem) {
-    return;
-  }
-
-  internalItem.remove();
-};
-
-/**
- * Removes the `internal` menu item from the site (left) menu
- */
-const removeSiteMenuInternalItems = () => {
-  const internalModuleItem = document.querySelector(
-    `.site-menu .tsd-accordion li:has(summary[data-key="other$${INTERNAL_MODULE_NAME}"])`,
-  );
-
-  if (!internalModuleItem) {
-    return;
-  }
-
-  internalModuleItem.remove();
-};
-
-/**
- * Removes the `internal` menu item from the page (right) menu
- */
-const removePageMenuInternalItems = () => {
-  const internalModuleItem = document.querySelector(
-    `.page-menu .tsd-accordion a[href="#${INTERNAL_MODULE_NAME}"]`,
-  );
-
-  if (!internalModuleItem) {
-    return;
-  }
-
-  internalModuleItem.remove();
-};
-
-const removePageElements = () => {
-  removeContentMenuInternalItem();
-  removeSiteMenuInternalItems();
-  removePageMenuInternalItems();
-};
-
-const observer = new MutationObserver(removePageElements);
-
-observer.observe(document.body, {
-  childList: true,
-  subtree: true,
-});
 
 const init = () => {
   storeReturnUrl();

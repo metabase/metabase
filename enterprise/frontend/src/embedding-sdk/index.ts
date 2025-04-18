@@ -19,6 +19,8 @@ export * from "./hooks/public";
 export * from "./components/public";
 
 export type {
+  ButtonProps,
+  ChartColor,
   CustomDashboardCardMenuItem,
   DashCardMenuItem,
   DashboardCardCustomMenuItem,
@@ -27,20 +29,28 @@ export type {
   IconName,
   LoginStatus,
   MetabaseAuthConfig,
+  MetabaseAuthConfigWithApiKey,
+  MetabaseAuthConfigWithProvider,
   MetabaseClickActionPluginsConfig,
+  MetabaseColors,
   MetabaseClickAction,
+  MetabaseComponentTheme,
   MetabaseCollection,
   MetabaseCollectionItem,
   MetabaseDataPointObject,
   MetabaseDashboard,
   MetabaseDashboardPluginsConfig,
+  MetabaseFontFamily,
   MetabasePluginsConfig,
   MetabaseQuestion,
+  MetabaseTheme,
   MetabaseUser,
   SdkCollectionId,
   SdkDashboardId,
   SdkDashboardLoadEvent,
   SdkEntityId,
+  SdkErrorComponent,
+  SdkErrorComponentProps,
   SdkEventHandlersConfig,
   SdkQuestionId,
   SdkQuestionTitleProps,
@@ -52,9 +62,3 @@ export type {
   MetabaseFetchRequestTokenFn,
   MetabaseEmbeddingSessionToken,
 } from "./types/refresh-token";
-
-export type {
-  MetabaseTheme,
-  MetabaseColors,
-  MetabaseComponentTheme,
-} from "metabase/embedding-sdk/theme";

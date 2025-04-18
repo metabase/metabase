@@ -1,7 +1,7 @@
-import {
-  DashboardBackButton,
-  type DashboardBackButtonProps,
-} from "metabase/query_builder/components/view/ViewHeader/components";
+import type { HTMLAttributes } from "react";
+
+import { DashboardBackButton } from "metabase/query_builder/components/view/ViewHeader/components";
+import type { ActionIconProps } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../../context";
 
@@ -10,7 +10,7 @@ import { useInteractiveQuestionContext } from "../../context";
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionBackButtonProps = Omit<
-  DashboardBackButtonProps,
+  ActionIconProps & HTMLAttributes<HTMLButtonElement>,
   "noLink" | "onClick"
 >;
 
