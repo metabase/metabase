@@ -476,7 +476,7 @@
   [driver [_ value]]
   [:to_date (sql.qp/->honeysql driver value) "YYYY-MM-DD"])
 
-(defmethod sql.qp/->honeysql [:snowflake :integer]
+(defmethod sql.qp/->honeysql [:snowflake :float]
   [driver [_ arg]]
   (h2x/maybe-cast "FLOAT" (sql.qp/->honeysql driver arg)))
 
