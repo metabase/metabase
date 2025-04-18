@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -48,7 +48,16 @@ export const DatabaseRoutingSection = ({
 
   const [tempEnabled, setTempEnabled] = useState(false);
   const enabled = tempEnabled || hasDbRoutingEnabled(database);
+
   const [isExpanded, setIsExpanded] = useState(false);
+  useEffect(
+    function expandIfEnabled() {
+      if (enabled) {
+        setIsExpanded(true);
+      }
+    },
+    [enabled],
+  );
 
   const [updateRouterDatabase, { error }] = useUpdateRouterDatabaseMutation();
   const userAttrsReq = useListUserAttributesQuery(
