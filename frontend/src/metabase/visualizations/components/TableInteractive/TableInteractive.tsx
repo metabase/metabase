@@ -14,6 +14,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -58,6 +59,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { ClickObject, OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
+import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
@@ -113,11 +115,15 @@ const getColumnOrder = (cols: DatasetColumn[], hasIndexColumn: boolean) => {
 
 const getColumnSizing = (
   cols: DatasetColumn[],
-  widths: number[] = [],
+  widths?: number[],
 ): ColumnSizingState => {
+  if (!widths) {
+    return {};
+  }
+
   return cols.reduce((acc: ColumnSizingState, column, index) => {
     const width = widths[index];
-    if (width != null) {
+    if (width != null && width > 0) {
       acc[column.name] = width;
     }
     return acc;
@@ -185,10 +191,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cols, settings["table.row_index"]]);
 
+  const columnWidths = settings["table.column_widths"];
   const columnSizingMap = useMemo(() => {
-    return getColumnSizing(cols, settings["table.column_widths"]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cols, settings["table.column_widths"]]);
+    return getColumnSizing(cols, columnWidths);
+  }, [cols, columnWidths]);
 
   const onOpenObjectDetail = useObjectDetail(data);
 
@@ -537,13 +543,22 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   ]);
 
   const handleColumnResize = useCallback(
-    (columnSizing: ColumnSizingState) => {
-      const newWidths = cols.map((col) => columnSizing[col.name] ?? 0);
+    (columnName: string, width: number) => {
+      const columnIndex = cols.findIndex((col) => col.name === columnName);
+      if (columnIndex == null) {
+        return;
+      }
+      const columnWidthsSetting = (
+        settings["table.column_widths"] ?? []
+      ).slice();
+
+      columnWidthsSetting[columnIndex] = width;
+
       onUpdateVisualizationSettings({
-        "table.column_widths": newWidths,
+        "table.column_widths": columnWidthsSetting,
       });
     },
-    [cols, onUpdateVisualizationSettings],
+    [cols, onUpdateVisualizationSettings, settings],
   );
 
   const rowId: RowIdColumnOptions | undefined = useMemo(() => {
@@ -650,13 +665,31 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onColumnReorder: handleColumnReordering,
     pageSize,
   });
-  const { measureColumnWidths, virtualGrid } = tableProps;
+  const { virtualGrid } = tableProps;
+
+  const prevData = usePrevious(data);
+  const prevQuestion = usePrevious(question);
 
   useEffect(() => {
-    if (Object.values(columnSizingMap).length === 0) {
-      measureColumnWidths();
+    const isDataChange =
+      prevData && data && !_.isEqual(prevData.cols, data.cols);
+    const isDatasetStatusChange =
+      isAdHocModelOrMetricQuestion(question, prevQuestion) ||
+      isAdHocModelOrMetricQuestion(prevQuestion, question);
+
+    if (isDataChange && !isDatasetStatusChange) {
+      onUpdateVisualizationSettings({
+        "table.column_widths": undefined,
+      });
     }
-  }, [cols, measureColumnWidths, columnSizingMap]);
+  }, [
+    data,
+    question,
+    onUpdateVisualizationSettings,
+    settings,
+    prevData,
+    prevQuestion,
+  ]);
 
   const scrolledColumnRef = useRef<number | null>(null);
   useEffect(() => {

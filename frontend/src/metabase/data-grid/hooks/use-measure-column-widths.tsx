@@ -37,6 +37,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
   truncateLongCellWidth: number,
   theme: DataGridTheme | undefined,
   setMeasuredColumnSizing: (columnSizingMap: ColumnSizingState) => void,
+  controlledColumnSizingMap?: ColumnSizingState,
   measurementRenderWrapper?: (
     children: React.ReactElement,
   ) => React.ReactElement,
@@ -45,7 +46,10 @@ export const useMeasureColumnWidths = <TData, TValue>(
   const measureRootTree = useRef<Root>();
 
   const measureColumnWidths = useCallback(
-    (updateCurrent: boolean = true, truncate: boolean = true) => {
+    (
+      preserveColumnSizingMap?: ColumnSizingState, // Preserve column widths, for example from saved settings
+      truncatePreserved?: boolean, // Allow truncation of preserved column widths
+    ) => {
       const onMeasureHeaderRender = (div: HTMLDivElement) => {
         if (div === null) {
           return;
@@ -62,47 +66,50 @@ export const useMeasureColumnWidths = <TData, TValue>(
               return null;
             }
 
+            if (preserveColumnSizingMap?.[columnId] != null) {
+              return null;
+            }
+
             const width = (element as HTMLElement).offsetWidth;
             return { columnId, width, type };
           })
           .filter(isNotNull);
 
-        const columnSizingMap = elementsMeasures.reduce<ColumnSizingState>(
-          (acc, { columnId, width, type }) => {
-            if (!acc[columnId]) {
-              acc[columnId] = 0;
-            }
+        const measuredColumnSizingMap =
+          elementsMeasures.reduce<ColumnSizingState>(
+            (acc, { columnId, width, type }) => {
+              if (!acc[columnId]) {
+                acc[columnId] = 0;
+              }
 
-            if (type === "header") {
-              const headerWidth = width + HEADER_SPACING;
-              acc[columnId] = Math.max(acc[columnId], headerWidth);
-            } else if (type === "body") {
-              const bodyWidth = width + BODY_SPACING;
-              acc[columnId] = Math.max(acc[columnId], bodyWidth);
-            }
+              if (type === "header") {
+                const headerWidth = width + HEADER_SPACING;
+                acc[columnId] = Math.max(acc[columnId], headerWidth);
+              } else if (type === "body") {
+                const bodyWidth = width + BODY_SPACING;
+                acc[columnId] = Math.max(acc[columnId], bodyWidth);
+              }
 
-            return acc;
-          },
-          {},
-        );
-
-        setMeasuredColumnSizing(columnSizingMap);
-
-        if (updateCurrent) {
-          table.setColumnSizing(
-            truncate
-              ? getTruncatedColumnSizing(columnSizingMap, truncateLongCellWidth)
-              : columnSizingMap,
+              return acc;
+            },
+            {},
           );
-        }
 
-        // Schedule unmounting asynchronously instead of doing it during render
-        setTimeout(() => {
-          if (measureRootTree.current) {
-            measureRootTree.current.unmount();
-            measureRootTree.current = undefined;
-          }
-        }, 0);
+        setMeasuredColumnSizing(measuredColumnSizingMap);
+        const columnSizingMap = truncatePreserved
+          ? getTruncatedColumnSizing(
+              { ...measuredColumnSizingMap, ...preserveColumnSizingMap },
+              truncateLongCellWidth,
+            )
+          : {
+              ...getTruncatedColumnSizing(
+                measuredColumnSizingMap,
+                truncateLongCellWidth,
+              ),
+              ...preserveColumnSizingMap,
+            };
+
+        table.setColumnSizing(columnSizingMap);
       };
 
       const rows = table.getRowModel().rows;
@@ -188,12 +195,12 @@ export const useMeasureColumnWidths = <TData, TValue>(
       }
     },
     [
-      columnsOptions,
-      setMeasuredColumnSizing,
       table,
+      columnsOptions,
       theme,
-      truncateLongCellWidth,
       measurementRenderWrapper,
+      setMeasuredColumnSizing,
+      truncateLongCellWidth,
     ],
   );
 
@@ -211,13 +218,9 @@ export const useMeasureColumnWidths = <TData, TValue>(
       measureRootRef.current = measureRoot;
     }
 
-    const columnSizingMap = table.getState().columnSizing;
-    const shouldUpdateCurrentWidths =
-      !columnSizingMap || Object.values(columnSizingMap).length === 0;
+    measureColumnWidths(controlledColumnSizingMap, true);
 
-    measureColumnWidths(shouldUpdateCurrentWidths);
-
-    // Cleanup function
+    // Cleanup measurement root
     return () => {
       if (measureRootTree.current) {
         measureRootTree.current.unmount();
