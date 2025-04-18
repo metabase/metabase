@@ -88,7 +88,18 @@ async function link_issues(github) {
                 id
                 identifier
                 attachments {
-                  nodes {url}}}}}}`});
+                  nodes {
+                    archivedAt
+                    bodyData
+                    createdAt
+                    id
+                    metadata
+                    source
+                    sourceType
+                    subtitle
+                    title
+                    updatedAt
+                    url}}}}}}`});
 
     const linearData = await httpsRequest({
       hostname: 'api.linear.app',
