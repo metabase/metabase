@@ -44,6 +44,7 @@
                               :schemas                         true
                               :datetime-diff                   true
                               :expression-literals             true
+                              :expressions/integer             true
                               :upload-with-auto-pk             false
                               :window-functions/offset         false
                               :window-functions/cumulative     (not config/is-test?)
