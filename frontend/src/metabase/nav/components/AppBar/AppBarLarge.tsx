@@ -5,6 +5,7 @@ import type { CollectionId } from "metabase-types/api";
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import NewItemButton from "../NewItemButton";
 import { ProfileLink } from "../ProfileLink";
+import { TableBreadcrumbs } from "../TableBreadcrumbs/TableBreadcrumbs";
 import { SearchBar } from "../search/SearchBar";
 import { SearchButton } from "../search/SearchButton";
 
@@ -29,6 +30,8 @@ export interface AppBarLargeProps {
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
+  isTableBreadcrumbsVisible?: boolean;
+  question?: any;
   onToggleNavbar: () => void;
   onLogout: () => void;
 }
@@ -44,10 +47,16 @@ const AppBarLarge = ({
   isProfileLinkVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
+  isTableBreadcrumbsVisible,
+  question,
   onToggleNavbar,
   onLogout,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
+  const showBreadcrumbs =
+    isCollectionPathVisible ||
+    isQuestionLineageVisible ||
+    isTableBreadcrumbsVisible;
 
   return (
     <AppBarRoot isNavBarOpen={isNavBarVisible}>
@@ -61,10 +70,12 @@ const AppBarLarge = ({
           isLogoVisible={isLogoVisible}
           isNavBarEnabled={isNavBarEnabled}
         />
-        <AppBarInfoContainer
-          isVisible={isCollectionPathVisible || isQuestionLineageVisible}
-        >
-          <CollectionBreadcrumbs />
+        <AppBarInfoContainer isVisible={showBreadcrumbs}>
+          {isCollectionPathVisible || isQuestionLineageVisible ? (
+            <CollectionBreadcrumbs />
+          ) : isTableBreadcrumbsVisible && question ? (
+            <TableBreadcrumbs table={question.legacyQueryTable()} />
+          ) : null}
         </AppBarInfoContainer>
       </AppBarLeftContainer>
       {(isSearchVisible || isNewButtonVisible || isProfileLinkVisible) && (

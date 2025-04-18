@@ -16,6 +16,7 @@ import {
   getIsEmbeddingIframe,
 } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
+import * as Lib from "metabase-lib";
 import type { State } from "metabase-types/store";
 
 import { getSetting } from "./settings";
@@ -82,6 +83,28 @@ export const getIsQuestionLineageVisible = createSelector(
   (isSavedQuestionChanged, path) =>
     isSavedQuestionChanged &&
     PATHS_WITH_QUESTION_LINEAGE.some((pattern) => pattern.test(path)),
+);
+
+export const getIsTableBreadcrumbsVisible = createSelector(
+  [getQuestion, getRouterPath],
+  (question, path) => {
+    if (!question) {
+      return false;
+    }
+
+    const query = question.query();
+    const { isNative } = Lib.queryDisplayInfo(query);
+    if (isNative) {
+      return false;
+    }
+
+    const sourceTableId = Lib.sourceTableOrCardId(query);
+    if (!sourceTableId) {
+      return false;
+    }
+
+    return PATHS_WITH_QUESTION_LINEAGE.some((pattern) => pattern.test(path));
+  },
 );
 
 export const getIsNavBarEnabled = createSelector(

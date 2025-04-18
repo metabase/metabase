@@ -27,7 +27,6 @@ export interface AppBarSmallProps {
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;
-  onCloseNavbar: () => void;
   onLogout: () => void;
 }
 

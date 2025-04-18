@@ -14,7 +14,7 @@ export interface AppBarToggleProps {
   isNavBarEnabled?: boolean;
   isLogoVisible?: boolean;
   isNavBarOpen?: boolean;
-  onToggleClick?: () => void;
+  onToggleClick: () => void;
 }
 
 export function AppBarToggle({
@@ -38,7 +38,7 @@ export function AppBarToggle({
 
   const handleToggleClick = () => {
     setDisableTooltip(true);
-    onToggleClick?.();
+    onToggleClick();
   };
 
   useRegisterShortcut([

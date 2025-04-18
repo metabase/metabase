@@ -4,6 +4,7 @@ import _ from "underscore";
 import { logout } from "metabase/auth/actions";
 import Collections from "metabase/entities/collections";
 import { connect } from "metabase/lib/redux";
+import { getQuestion } from "metabase/query_builder/selectors";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import type { RouterProps } from "metabase/selectors/app";
 import {
@@ -15,6 +16,7 @@ import {
   getIsProfileLinkVisible,
   getIsQuestionLineageVisible,
   getIsSearchVisible,
+  getIsTableBreadcrumbsVisible,
 } from "metabase/selectors/app";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
@@ -34,6 +36,8 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isProfileLinkVisible: getIsProfileLinkVisible(state),
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
   isQuestionLineageVisible: getIsQuestionLineageVisible(state, props),
+  isTableBreadcrumbsVisible: getIsTableBreadcrumbsVisible(state, props),
+  question: getQuestion(state),
 });
 
 const mapDispatchToProps = {
