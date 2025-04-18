@@ -1,18 +1,20 @@
 import type { ReactNode } from "react";
 
-import { Box, Stack, type StackProps, Text } from "metabase/ui";
+import { Box, type BoxProps, Stack, type StackProps, Text } from "metabase/ui";
 
 import styles from "./AlertModalSettingsBlock.module.css";
 
 type AlertModalSettingsBlockProps = {
   title: string;
   children: ReactNode;
+  contentProps?: BoxProps;
 } & StackProps;
 
 export const AlertModalSettingsBlock = ({
   title,
   children,
   className,
+  contentProps,
   ...stackProps
 }: AlertModalSettingsBlockProps) => {
   return (
@@ -20,7 +22,9 @@ export const AlertModalSettingsBlock = ({
       <Text size="lg" lineClamp={1}>
         {title}
       </Text>
-      <Box className={styles.contentContainer}>{children}</Box>
+      <Box className={styles.contentContainer} {...contentProps}>
+        {children}
+      </Box>
     </Stack>
   );
 };

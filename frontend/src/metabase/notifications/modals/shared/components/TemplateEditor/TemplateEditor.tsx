@@ -12,6 +12,7 @@ import CodeMirror, {
 import cx from "classnames";
 import React, { Fragment, useMemo, useRef, useState } from "react";
 
+import { useSetting } from "metabase/common/hooks";
 import type { CodeLanguage } from "metabase/components/CodeBlock/types";
 import {
   getLanguageExtension,
@@ -25,7 +26,6 @@ import {
   createTemplateAutocompleteSource,
   mustacheHelpersCompletionSource,
 } from "./autocomplete";
-import { useSetting } from "metabase/common/hooks";
 
 export interface TemplateEditorProps
   extends Omit<
@@ -96,7 +96,6 @@ export const TemplateEditor = ({
   ...rest
 }: TemplateEditorProps) => {
   const helpers = useSetting("default-handlebars-helpers");
-  console.log({ helpers });
   const ref = useRef<ReactCodeMirrorRef>(null);
   const [internalValue, setInternalValue] = useState(defaultValue);
 

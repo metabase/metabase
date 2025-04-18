@@ -261,7 +261,7 @@
 
 ;; Split helpers into block and inline helpers
 (def block-helpers
-  "A map of custom block helpers, used inside {{ }}"
+  "A list of custom block helpers, used inside {{ }}"
   {"count"         #'count
    "format-date"   #'format-date
    "now"           #'now
@@ -269,7 +269,7 @@
    "dashboard-url" #'dashboard-url})
 
 (def inline-helpers
-  "A map of custom inline helpers, used inside ( )."
+  "A list of custom inline helpers, used inside ( )."
   {"eq"            #'eq
    "ne"            #'ne
    "gt"            #'gt
@@ -278,7 +278,7 @@
    "le"            #'le})
 
 (def default-helpers
-  "A map of all custom helpers (block + inline), for backward compatibility."
+  "A list of all custom helpers combined."
   (merge block-helpers inline-helpers))
 
 (def ^:private built-in-helpers-info

@@ -83,12 +83,6 @@ async function getCompletionsHelper(
     }
     const from = match.index;
     const to = from + match[0].length;
-    // Ensure matchBefore respects the 'to' position if it's different from 'pos'
-    if (to !== pos) {
-      // This scenario might happen if matching something not directly ending at pos.
-      // Adjust behavior if needed, but for current tests, we assume match ends at pos.
-      // console.warn(`matchBefore found match not ending at pos: ${match[0]} at ${from}-${to} (pos=${pos})`);
-    }
     return { from, to, text: match[0] };
   });
 
@@ -109,7 +103,6 @@ async function getCompletionsHelper(
     if (result) {
       // Capture the structure (like span, validFor) from the first source that provides it
       if (overallResultStructure === null) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { options, ...structure } = result;
         overallResultStructure = structure;
       }
