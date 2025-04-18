@@ -58,6 +58,9 @@
                               :describe-fields                        true
                               :expression-literals                    true
                               :expressions/integer                    true
+                              :expressions/text                       true
+                              :expressions/float                      true
+                              :expressions/date                       true
                               :identifiers-with-spaces                true
                               :split-part                             true
                               :now                                    true}]
@@ -472,6 +475,10 @@
 (defmethod sql.qp/->honeysql [:snowflake :date]
   [driver [_ value]]
   [:to_date (sql.qp/->honeysql driver value) "YYYY-MM-DD"])
+
+(defmethod sql.qp/->honeysql [:snowflake :integer]
+  [driver [_ arg]]
+  (h2x/maybe-cast "FLOAT" (sql.qp/->honeysql driver arg)))
 
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but
