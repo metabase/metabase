@@ -1,95 +1,167 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
-import { getClauseDefinition, getMBQLName } from "./config";
+import { EDITOR_FK_SYMBOLS } from "./config";
 import { ResolverError } from "./errors";
-import type { ExpressionType } from "./types";
-import { getNode } from "./utils";
+import { getDisplayNameWithSeparator } from "./identifier";
+import type { Node } from "./pratt";
 
-const MAP_TYPE = {
-  boolean: "segment",
-  aggregation: "metric",
-} as const;
+export type Kind = "field" | "metric" | "segment";
 
-type ResolverFunction = (
-  kind: "field" | "segment" | "metric",
+export type Resolver = (
+  kind: Kind,
   name: string,
-  expression?: Lib.ExpressionParts,
+  node?: Node,
 ) => Lib.ColumnMetadata | Lib.SegmentMetadata | Lib.MetricMetadata;
 
-export function resolve({
-  expression,
-  type = "expression",
-  fn,
-}: {
-  expression:
-    | Lib.ExpressionParts
-    | Lib.ColumnMetadata
-    | Lib.MetricMetadata
-    | Lib.SegmentMetadata;
-  type: ExpressionType;
-  fn: ResolverFunction;
-}):
-  | Lib.ExpressionParts
-  | Lib.ColumnMetadata
-  | Lib.MetricMetadata
-  | Lib.SegmentMetadata {
-  if (!Lib.isExpressionParts(expression) || expression.operator === "value") {
-    return expression;
-  }
+export function resolver(options: {
+  query: Lib.Query;
+  stageIndex: number;
+  startRule: string;
+}): Resolver {
+  return function (kind, name, node) {
+    if (kind === "metric") {
+      const metric = parseMetric(name, options);
+      if (!metric) {
+        const dimension = parseDimension(name, options);
+        const isNameKnown = Boolean(dimension);
 
-  const { operator, options, args } = expression;
+        if (isNameKnown) {
+          const error = c(
+            "{0} is an identifier of the field provided by user in a custom expression",
+          )
+            .t`No aggregation found in: ${name}. Use functions like Sum() or custom Metrics`;
 
-  // @ts-expect-error: we use dimension internally
-  if (operator === "dimension") {
-    const kind = MAP_TYPE[type as keyof typeof MAP_TYPE] ?? "dimension";
-    const [name] = args;
-    if (typeof name !== "string") {
-      throw new ResolverError(t`Invalid field name`, getNode(expression));
+          throw new ResolverError(error, node);
+        }
+
+        throw new ResolverError(t`Unknown Metric: ${name}`, node);
+      }
+
+      return metric;
+    } else if (kind === "segment") {
+      const segment = parseSegment(name, options);
+      if (!segment) {
+        throw new ResolverError(t`Unknown Segment: ${name}`, node);
+      }
+
+      return segment;
+    } else {
+      // fallback
+      const dimension = parseDimension(name, options);
+      if (!dimension) {
+        throw new ResolverError(t`Unknown Field: ${name}`, node);
+      }
+
+      return dimension;
     }
-    try {
-      return fn(kind, name, expression);
-    } catch (err) {
-      // A second chance when field is not found:
-      // maybe it is a function with zero argument (e.g. Count, CumulativeCount)
-      const operator = getMBQLName(name);
-      const clause = operator && getClauseDefinition(operator);
-      if (clause && clause?.args.length === 0) {
-        return {
-          operator,
-          options: {},
-          args: [],
-        };
-      }
-      throw err;
-    }
-  }
-
-  const clause = getClauseDefinition(operator);
-  if (!clause) {
-    throw new ResolverError(
-      t`Unknown function ${operator}`,
-      getNode(expression),
-    );
-  }
-
-  return {
-    operator,
-    options,
-    args: args.map((operand, index, args) => {
-      if (index >= clause.args.length && !clause.multiple) {
-        // as-is, optional object for e.g. ends-with, time-interval, etc
-        return operand;
-      }
-      if (!Lib.isExpressionParts(operand)) {
-        return operand;
-      }
-      return resolve({
-        expression: operand,
-        type: clause.argType?.(index, args, type) ?? clause.args[index],
-        fn,
-      });
-    }),
   };
+}
+
+function parseMetric(
+  metricName: string,
+  { query, stageIndex }: { query: Lib.Query; stageIndex: number },
+) {
+  const metrics = Lib.availableMetrics(query, stageIndex);
+
+  const metric = metrics.find((metric) => {
+    const displayInfo = Lib.displayInfo(query, stageIndex, metric);
+
+    return displayInfo.displayName.toLowerCase() === metricName.toLowerCase();
+  });
+
+  if (metric) {
+    return metric;
+  }
+}
+
+function parseSegment(
+  segmentName: string,
+  {
+    query,
+    stageIndex,
+    expressionIndex,
+  }: { query: Lib.Query; stageIndex: number; expressionIndex?: number },
+) {
+  const segment = Lib.availableSegments(query, stageIndex).find((segment) => {
+    const displayInfo = Lib.displayInfo(query, stageIndex, segment);
+
+    return displayInfo.displayName.toLowerCase() === segmentName.toLowerCase();
+  });
+
+  if (segment) {
+    return segment;
+  }
+
+  const column = Lib.expressionableColumns(
+    query,
+    stageIndex,
+    expressionIndex,
+  ).find((field) => {
+    const displayInfo = Lib.displayInfo(query, stageIndex, field);
+    return displayInfo.displayName.toLowerCase() === segmentName.toLowerCase();
+  });
+
+  if (column && Lib.isBoolean(column)) {
+    return column;
+  }
+}
+
+export function parseDimension(
+  name: string,
+  options: {
+    query: Lib.Query;
+    stageIndex: number;
+    expressionIndex?: number | undefined;
+    startRule: string;
+  },
+) {
+  return getAvailableDimensions(options).find(({ info }) => {
+    return EDITOR_FK_SYMBOLS.symbols.some((separator) => {
+      const displayName = getDisplayNameWithSeparator(
+        info.longDisplayName,
+        separator,
+      );
+
+      return displayName === name;
+    });
+  })?.dimension;
+}
+
+function getAvailableDimensions({
+  query,
+  stageIndex,
+  expressionIndex,
+  startRule,
+}: {
+  query: Lib.Query;
+  stageIndex: number;
+  expressionIndex?: number | undefined;
+  startRule: string;
+}) {
+  const results = Lib.expressionableColumns(
+    query,
+    stageIndex,
+    expressionIndex,
+  ).map((dimension) => {
+    return {
+      dimension,
+      info: Lib.displayInfo(query, stageIndex, dimension),
+    };
+  });
+
+  if (startRule === "aggregation") {
+    return [
+      ...results,
+      ...Lib.availableMetrics(query, stageIndex).map((dimension) => {
+        return {
+          dimension,
+          info: Lib.displayInfo(query, stageIndex, dimension),
+        };
+      }),
+    ];
+  }
+
+  return results;
 }

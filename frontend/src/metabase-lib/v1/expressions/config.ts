@@ -35,15 +35,27 @@ export const OPERATOR_PRECEDENCE: Record<string, number> = {
   or: 5,
 };
 
-function defineClauses<
-  const T extends Record<
-    string,
-    Omit<MBQLClauseFunctionConfig, "name"> & { name?: never }
-  >,
->(clauses: T): Record<keyof T, MBQLClauseFunctionConfig> {
+type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
+type Forbidden<T, K extends keyof T> = Omit<T, K> & { [P in K]?: never };
+
+type ConfigInput = Forbidden<
+  Optional<MBQLClauseFunctionConfig, "argType">,
+  "name"
+>;
+
+function defineClauses<const T extends Record<string, ConfigInput>>(
+  clauses: T,
+): Record<keyof T, MBQLClauseFunctionConfig> {
   const result = {} as Record<keyof T, MBQLClauseFunctionConfig>;
   for (const name in clauses) {
-    result[name] = { ...clauses[name], name };
+    const defn = clauses[name];
+    result[name] = {
+      name,
+      argType(index) {
+        return defn.args[index];
+      },
+      ...defn,
+    };
   }
   return result;
 }
