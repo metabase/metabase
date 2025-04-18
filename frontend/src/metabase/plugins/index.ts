@@ -546,6 +546,11 @@ export const PLUGIN_EMBEDDING_SDK = {
   SimpleDataPicker: (_props: SimpleDataPickerProps) => null,
 };
 
+export const PLUGIN_EMBEDDING_IFRAME_SDK = {
+  isEnabled: () => false,
+  isInteractiveEmbeddingEnabled: (_state: State) => false,
+};
+
 export const PLUGIN_CONTENT_VERIFICATION = {
   contentVerificationEnabled: false,
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
