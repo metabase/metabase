@@ -117,4 +117,10 @@ export const globalShortcuts = {
     shortcut: ["g u"],
     shortcutGroup: "global",
   },
+
+  "navigate-home": {
+    name: t`Go to home`,
+    shortcut: ["g h"],
+    shortcutGroup: "global",
+  },
 };
