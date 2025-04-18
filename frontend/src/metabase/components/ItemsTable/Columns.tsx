@@ -31,7 +31,9 @@ import {
   TableColumn,
 } from "./BaseItemsTable.styled";
 
-type HeaderProps = Omit<SortableColumnHeaderProps, "name">;
+type SortColumn = "name" | "model" | "last_edited_at" | "last_edited_by";
+
+type HeaderProps = Omit<SortableColumnHeaderProps<SortColumn>, "name">;
 
 const ItemLinkComponent = ({
   onClick,

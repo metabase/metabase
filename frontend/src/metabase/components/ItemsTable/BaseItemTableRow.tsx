@@ -5,14 +5,14 @@ import { DefaultItemRenderer } from "metabase/components/ItemsTable/DefaultItemR
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import type { CollectionItem } from "metabase-types/api";
 
-type BaseItemTableRowProps = PropsWithChildren<
+type BaseItemTableRowProps<SortColumn extends string> = PropsWithChildren<
   {
     testIdPrefix: string;
     itemKey: string;
     item: CollectionItem;
     isSelected: boolean;
   } & Pick<
-    BaseItemsTableProps,
+    BaseItemsTableProps<SortColumn>,
     | "items"
     | "getIsSelected"
     | "isPinned"
@@ -32,7 +32,7 @@ type BaseItemTableRowProps = PropsWithChildren<
   >
 >;
 
-export const TableRow = ({
+export const TableRow = <SortColumn extends string>({
   testIdPrefix,
   databases,
   bookmarks,
@@ -49,7 +49,7 @@ export const TableRow = ({
   collection,
   onClick,
   visibleColumnsMap,
-}: BaseItemTableRowProps) => (
+}: BaseItemTableRowProps<SortColumn>) => (
   <tr key={itemKey} data-testid={testIdPrefix} style={{ height: 48 }}>
     <ItemComponent
       onClick={onClick}
@@ -70,7 +70,7 @@ export const TableRow = ({
   </tr>
 );
 
-export const ItemDragSourceTableRow = ({
+export const ItemDragSourceTableRow = <SortColumn extends string>({
   testIdPrefix,
   databases,
   bookmarks,
@@ -89,7 +89,7 @@ export const ItemDragSourceTableRow = ({
   selectedItems,
   onDrop,
   visibleColumnsMap,
-}: BaseItemTableRowProps) => {
+}: BaseItemTableRowProps<SortColumn>) => {
   return (
     <ItemDragSource
       item={item}

@@ -1,18 +1,11 @@
-export type SortColumn =
-  | "name"
-  | "last_edited_at"
-  | "last_edited_by"
-  | "last_used_at"
-  | "model"
-  | "collection"
-  | "description";
+export type SortColumn = never; // TODO
 
 export enum SortDirection {
   Asc = "asc",
   Desc = "desc",
 }
 
-export type SortingOptions = {
+export type SortingOptions<SortColumn extends string> = {
   sort_column: SortColumn;
   sort_direction: SortDirection;
 };

@@ -57,13 +57,17 @@ function getCollectionItem({
 
 const VISIBLE_COLUMNS_MAP = getVisibleColumnsMap(DEFAULT_VISIBLE_COLUMNS_LIST);
 
+type SortColumn = "name";
+
 describe("BaseItemsTable", () => {
   const ITEM = getCollectionItem();
 
   function setup({
     items = [ITEM],
     ...props
-  }: { items?: CollectionItem[] } & Partial<BaseItemsTableProps> = {}) {
+  }: { items?: CollectionItem[] } & Partial<
+    BaseItemsTableProps<SortColumn>
+  > = {}) {
     return renderWithProviders(
       <Route
         path="/"
