@@ -52,6 +52,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     structure: "CumulativeCount",
     category: "aggregation",
     description: () => t`The additive total of rows across a breakout.`,
+    docsPage: "cumulative",
   },
   {
     name: "sum",
@@ -86,6 +87,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: ["dimension", t`Subtotal`],
       },
     ],
+    docsPage: "cumulative",
   },
   {
     name: "distinct",
@@ -174,6 +176,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: -1,
       },
     ],
+    docsPage: "offset",
   },
   {
     name: "avg",
@@ -277,6 +280,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: [">", ["dimension", t`Subtotal`], 100],
       },
     ],
+    docsPage: "countif",
   },
   {
     name: "sum-where",
@@ -304,6 +308,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: ["=", ["dimension", t`Order Status`], "Valid"],
       },
     ],
+    docsPage: "sumif",
   },
   {
     name: "var",
@@ -1586,6 +1591,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: "Gadget",
       },
     ],
+    docsPage: "in",
   },
   {
     name: "not-in",
@@ -1706,6 +1712,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: "iso",
       },
     ],
+    docsPage: "week",
   },
   {
     name: "get-day",
@@ -1875,6 +1882,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     structure: "now",
     category: "date",
     description: getDescriptionForNow,
+    docsPage: "now",
   },
   {
     name: "convert-timezone",

@@ -7,6 +7,7 @@ export const dashboardShortcuts = {
     },
     shortcut: ["o"],
     shortcutGroup: "dashboard",
+    shortcutContext: t`When viewing`,
   },
   "add-filter": {
     get name() {
@@ -14,7 +15,7 @@ export const dashboardShortcuts = {
     },
     shortcut: ["f"],
     shortcutGroup: "dashboard",
-    shortcutContext: "When editing",
+    shortcutContext: t`When editing`,
   },
   "add-notebook-question": {
     get name() {
@@ -22,7 +23,7 @@ export const dashboardShortcuts = {
     },
     shortcut: ["a q"],
     shortcutGroup: "dashboard",
-    shortcutContext: "When editing",
+    shortcutContext: t`When editing`,
   },
   "add-native-question": {
     get name() {
@@ -30,7 +31,7 @@ export const dashboardShortcuts = {
     },
     shortcut: ["a n"],
     shortcutGroup: "dashboard",
-    shortcutContext: "When editing",
+    shortcutContext: t`When editing`,
   },
   "cancel-edit": {
     get name() {
@@ -38,7 +39,7 @@ export const dashboardShortcuts = {
     },
     shortcut: ["e"],
     shortcutGroup: "dashboard",
-    shortcutContext: "When editing",
+    shortcutContext: t`When editing`,
   },
   "trash-dashboard": {
     get name() {
@@ -46,6 +47,7 @@ export const dashboardShortcuts = {
     },
     shortcut: ["$mod+backspace"],
     shortcutGroup: "dashboard",
+    shortcutContext: t`When viewing`,
   },
   "info-dashboard": {
     get name() {
@@ -53,6 +55,7 @@ export const dashboardShortcuts = {
     },
     shortcut: ["]"],
     shortcutGroup: "dashboard",
+    shortcutContext: t`When viewing`,
   },
   "edit-dashboard": {
     get name() {
@@ -60,6 +63,7 @@ export const dashboardShortcuts = {
     },
     shortcutGroup: "dashboard",
     shortcut: ["e"],
+    shortcutContext: t`When viewing`,
   },
   "save-dashboard": {
     get name() {
@@ -67,6 +71,6 @@ export const dashboardShortcuts = {
     },
     shortcut: ["s"],
     shortcutGroup: "dashboard",
-    shortcutContext: "When editing",
+    shortcutContext: t`When editing`,
   },
 };

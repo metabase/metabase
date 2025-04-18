@@ -149,7 +149,6 @@
    [kixi.stats.math :as math]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
-   [metabase.db.query :as mdb.query]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.field :as field]
    [metabase.models.interface :as mi]
@@ -917,48 +916,36 @@
   [field opts]
   (automagic-dashboard (merge (->root field) opts)))
 
-(defn- enhance-table-stats
+(defn- load-tables-with-enhanced-table-stats
   "Add a stats field to each provided table with the following data:
   - num-fields: The number of Fields in each table
   - list-like?: Is this field 'list like'
-  - link-table?: Is every Field a foreign key to another table"
-  [tables]
-  (when (not-empty tables)
-    (let [field-count (->> (mdb.query/query {:select   [:table_id [:%count.* "count"]]
-                                             :from     [:metabase_field]
-                                             :where    [:and [:in :table_id (map u/the-id tables)]
-                                                        [:= :active true]]
-                                             :group-by [:table_id]})
-                           (into {} (map (juxt :table_id :count))))
-          list-like?  (->> (when-let [candidates (->> field-count
-                                                      (filter (comp (partial >= 2) val))
-                                                      (map key)
-                                                      not-empty)]
-                             (mdb.query/query {:select   [:table_id]
-                                               :from     [:metabase_field]
-                                               :where    [:and [:in :table_id candidates]
-                                                          [:= :active true]
-                                                          [:or [:not= :semantic_type "type/PK"]
-                                                           [:= :semantic_type nil]]]
-                                               :group-by [:table_id]
-                                               :having   [:= :%count.* 1]}))
-                           (into #{} (map :table_id)))
-          ;; Table comprised entierly of join keys
-          link-table? (when (seq field-count)
-                        (->> (mdb.query/query {:select   [:table_id [:%count.* "count"]]
-                                               :from     [:metabase_field]
-                                               :where    [:and [:in :table_id (keys field-count)]
-                                                          [:= :active true]
-                                                          [:in :semantic_type ["type/PK" "type/FK"]]]
-                                               :group-by [:table_id]})
-                             (filter (fn [{:keys [table_id count]}]
-                                       (= count (field-count table_id))))
-                             (into #{} (map :table_id))))]
-      (for [table tables]
-        (let [table-id (u/the-id table)]
-          (assoc table :stats {:num-fields  (field-count table-id 0)
-                               :list-like?  (boolean (contains? list-like? table-id))
-                               :link-table? (boolean (contains? link-table? table-id))}))))))
+
+  Filters out tables that are link-tables"
+  [clauses]
+  (->>
+   (t2/select [:model/Table :id :schema :display_name :entity_type :db_id
+               [:ts.count :num-fields]
+               [[:and
+                 [:>= :ts.count 2]
+                 [:= :ts.count_non_pks 1]] :list-like?]]
+              {:inner-join [[{:select   [:f.table_id
+                                         [:%count.* "count"]
+                                         [[:count [:case [:or [:not= :semantic_type "type/PK"]
+                                                          [:= :f.semantic_type nil]]
+                                                   [:inline 1] :else [:inline nil]]]
+                                          :count_non_pks]
+                                         [[:count [:case [:in :f.semantic_type ["type/PK" "type/FK"]]
+                                                   [:inline 1] :else [:inline nil]]]
+                                          :count_pks_and_fks]]
+                              :from     [[:metabase_field :f]]
+                              :where    [:= :f.active true]
+                              :group-by [:f.table_id]} :ts]
+                            [:and [:= :ts.table_id :id]
+                             [:> :ts.count 0]
+                             [:!= :ts.count :ts.count_pks_and_fks]]]
+               :where (into [:and] clauses)})
+   (map #(update % :list-like? (fn [val] (if (int? val) (= val 1) val)))))) ;; handle mysql returning the predicate value as an int
 
 (def ^:private ^:const ^Long max-candidate-tables
   "Maximal number of tables per schema shown in `candidate-tables`."
@@ -977,14 +964,12 @@
   ([database] (candidate-tables database nil))
   ([database schema]
    (let [dashboard-templates (dashboard-templates/get-dashboard-templates ["table"])]
-     (->> (apply t2/select [:model/Table :id :schema :display_name :entity_type :db_id]
-                 (cond-> [:db_id (u/the-id database)
-                          :visibility_type nil
-                          :active true]
-                   schema (concat [:schema schema])))
+     (->> (load-tables-with-enhanced-table-stats
+           (cond-> [[:= :db_id (u/the-id database)]
+                    [:= :visibility_type nil]
+                    [:= :active true]]
+             schema (conj [:= :schema schema])))
           (filter mi/can-read?)
-          enhance-table-stats
-          (remove (comp (some-fn :link-table? (comp zero? :num-fields)) :stats))
           (map (fn [table]
                  (let [root      (->root table)
                        {:keys [dashboard-template-name]
@@ -995,8 +980,8 @@
                    {:url                     (format "%stable/%s" public-endpoint (u/the-id table))
                     :title                   (:short-name root)
                     :score                   (+ (math/sq (:specificity dashboard-template))
-                                                (math/log (-> table :stats :num-fields))
-                                                (if (-> table :stats :list-like?)
+                                                (math/log (:num-fields table))
+                                                (if (:list-like? table)
                                                   -10
                                                   0))
                     :description             (:description dashboard)
