@@ -9,7 +9,6 @@ import type {
 import { t } from "ttag";
 import _ from "underscore";
 import type { AnySchema } from "yup";
-import _ from "underscore";
 
 import noResultsSource from "assets/img/no_results.svg";
 import {

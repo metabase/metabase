@@ -4,7 +4,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { ContentTranslationConfiguration } from "./components";
 import { useTranslateContent } from "./hooks";
 
-if (true || hasPremiumFeature("content_translation")) {
+if (hasPremiumFeature("content_translation")) {
   Object.assign(PLUGIN_CONTENT_TRANSLATION, {
     isEnabled: true,
     useTranslateContent,
