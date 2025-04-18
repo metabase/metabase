@@ -16,6 +16,7 @@ export const selectOverrides = {
         <DefaultSelectItem {...item.option} selected={item.checked} />
       ),
       clearButtonProps: {
+        // eslint-disable-next-line ttag/no-module-declaration
         "aria-label": t`Clear`,
         color: "text-dark",
         className: S.SelectClearButton,
