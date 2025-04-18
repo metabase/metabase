@@ -1,12 +1,6 @@
-// eslint-disable-next-line no-restricted-imports
-import styled from "@emotion/styled";
 import { type ChangeEventHandler, forwardRef } from "react";
 
 import { DEFAULT_UPLOAD_INPUT_ID } from "./constants";
-
-const StyledUploadInput = styled.input`
-  display: none;
-`;
 
 interface IUploadInputProps {
   id?: string;
@@ -19,7 +13,8 @@ export const UploadInput = forwardRef<HTMLInputElement, IUploadInputProps>(
     ref,
   ) {
     return (
-      <StyledUploadInput
+      <input
+        style={{ display: "none" }}
         data-testid={id}
         id={id}
         ref={ref}
