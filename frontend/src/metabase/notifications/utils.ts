@@ -124,7 +124,6 @@ export const getDefaultQuestionAlertRequest = ({
 export const getDefaultTableNotificationRequest = ({
   tableId,
   eventName,
-  action,
   currentUserId,
   channelSpec,
   hookChannels,
@@ -142,7 +141,6 @@ export const getDefaultTableNotificationRequest = ({
     payload: {
       event_name: eventName,
       table_id: tableId,
-      action,
     },
     payload_id: null,
     handlers: getDefaultChannelConfig({
