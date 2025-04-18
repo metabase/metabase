@@ -145,7 +145,7 @@
 
 (defn ^:private handle-jwt-authentication
   [{:keys [session redirect-url jwt-data]} token request]
-  (if (sso-utils/is-token-requested? request)
+  (if (sso-utils/is-embedding-sdk-header? request)
     (generate-response-token session jwt-data)
     (request/set-session-cookies request (response/redirect redirect-url) session (t/zoned-date-time (t/zone-id "GMT")))))
 
@@ -154,8 +154,8 @@
   (premium-features/assert-has-feature :sso-jwt (tru "JWT-based authentication"))
   (check-jwt-enabled)
   (cond
-    (and (sso-utils/is-token-requested? request) (not jwt))
-    (response/response {:url (str (sso-settings/jwt-identity-provider-uri))})
+    (and (sso-utils/is-embedding-sdk-header? request) (not jwt))
+    (response/response {:url (str (sso-settings/jwt-identity-provider-uri)) :method "jwt"})
     jwt
     (handle-jwt-authentication (session-data jwt request) token request)
     :else

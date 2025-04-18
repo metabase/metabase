@@ -115,6 +115,6 @@
                       {:status-code  400
                        :redirect-url redirect-url})))))
 
-(defn is-token-requested?
+(defn is-embedding-sdk-header?
   [request]
   (= (get (:headers request) "x-metabase-client") "embedding-sdk-react"))

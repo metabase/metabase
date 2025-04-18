@@ -97,12 +97,9 @@ export const refreshTokenAsync = createAsyncThunk(
       getState() as SdkStoreState,
     );
 
-    const authUrl = `${authConfig.metabaseInstanceUrl}/auth/sso`;
     const getRefreshToken = customGetRefreshToken
       ? () => customGetRefreshToken(authConfig.authProviderUri!)
-      : authConfig.authMethod === "jwt"
-        ? () => jwtRefreshFunction(authUrl)
-        : () => popupRefreshTokenFn(authUrl);
+      : () => runRefreshTokenFn(authConfig);
 
     // # How does the error handling work?
     // This is an async thunk, thunks _by design_ can fail and no error will be shown on the console (it's the reducer that should handle the reject action)
@@ -157,48 +154,25 @@ const safeStringify = (value: unknown) => {
   }
 };
 
-/**
- * The default implementation of the function to get the refresh token.
- * Only supports sessions by default.
- */
 export const jwtRefreshFunction: MetabaseFetchRequestTokenFn = async (url) => {
-  const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
-  const fetchParams: RequestInit = {
-    method: "GET",
-    headers: {
-      // eslint-disable-next-line no-literal-metabase-strings -- header name
-      "X-Metabase-Client": "embedding-sdk-react",
-      // eslint-disable-next-line no-literal-metabase-strings -- header name
-      "X-Metabase-Client-Version": EMBEDDING_SDK_VERSION,
-    },
-  };
-
-  const response = await fetch(`${url}?method=jwt`, fetchParams);
-  const urlObj = await response.json();
-  const backendObj = urlObj.url;
-
-  const backendResponse = await fetch(backendObj, {
+  const clientBackendResponse = await fetch(url, {
     method: "GET",
     credentials: "include",
   });
 
-  const urlObj2 = await backendResponse.json();
-  const backendObj2 = urlObj2.url;
+  // This should return {url: /auth/sso?jwt=[...]} with the signed token from the client backend
+  const clientBackendResponseJson = await clientBackendResponse.json();
 
-  const backToAuthResponse = await fetch(`${backendObj2}`, fetchParams);
+  // POST to /auth/sso?jwt=[...]
+  const authUrlWithJwtToken = clientBackendResponseJson.url;
+  const authSsoReponse = await fetch(authUrlWithJwtToken, getFetchParams());
 
-  if (!backToAuthResponse.ok) {
+  if (!authSsoReponse.ok) {
     throw new Error(
-      `Failed to fetch the session, HTTP status: ${backToAuthResponse.status}`,
+      `Failed to fetch the session, HTTP status: ${authSsoReponse.status}`,
     );
   }
-  const asText = await backToAuthResponse.text();
-
-  // if (!response.ok) {
-  //   throw new Error(
-  //     `Failed to fetch the session, HTTP status: ${response.status}`,
-  //   );
-  // }
+  const asText = await authSsoReponse.text();
 
   try {
     return JSON.parse(asText);
@@ -209,21 +183,12 @@ export const jwtRefreshFunction: MetabaseFetchRequestTokenFn = async (url) => {
 
 export const popupRefreshTokenFn = async (url: string) => {
   return new Promise((resolve, reject) => {
-    // Define popup dimensions
     const width = 600;
     const height = 700;
     const left = window.screenX + (window.outerWidth - width) / 2;
     const top = window.screenY + (window.outerHeight - height) / 2;
-    const testUrl = `${url}?token=true&method=saml`;
-    // Make sure token=true is included
-    // This is critical for triggering the postMessage flow
-    const tokenUrl = url.includes("?")
-      ? `${url}&redirect=${encodeURIComponent(testUrl)}&origin=${encodeURIComponent(window.location.origin)}`
-      : `${url}?redirect=${encodeURIComponent(testUrl)}&origin=${encodeURIComponent(window.location.origin)}`;
-
-    // Open popup
     const popup = window.open(
-      tokenUrl,
+      url,
       "samlLoginPopup",
       `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`,
     );
@@ -266,9 +231,44 @@ export const popupRefreshTokenFn = async (url: string) => {
   });
 };
 
+const runRefreshTokenFn = async (authConfig: MetabaseAuthConfig) => {
+  // GET /auth/sso with headers
+  const urlResponse = await fetch(
+    `${authConfig.metabaseInstanceUrl}/auth/sso`,
+    getFetchParams(),
+  );
+  const urlResponseJson = await urlResponse.json();
+
+  // For the SDK, both SAML and JWT endpoints return {url: [...], method: "saml" | "jwt"}
+  // when the headers are passed
+  const { method, url } = urlResponseJson;
+
+  if (method === "saml") {
+    // The URL should point to the SAML IDP
+    return popupRefreshTokenFn(url);
+  }
+
+  // Points to the JWT Auth endpoint on the client server
+  return jwtRefreshFunction(url);
+};
+
 const sessionSchema = Yup.object({
   id: Yup.string().required(),
   exp: Yup.number().required(),
   // We should also receive `iat` and `status` in the response, but we don't actually need them
   // as we don't use them, so we don't throw an error if they are missing
 });
+
+function getFetchParams() {
+  const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
+  const fetchParams: RequestInit = {
+    method: "GET",
+    headers: {
+      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      "X-Metabase-Client": "embedding-sdk-react",
+      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      "X-Metabase-Client-Version": EMBEDDING_SDK_VERSION,
+    },
+  };
+  return fetchParams;
+}
