@@ -821,6 +821,9 @@
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
     :enabled   (some? (get env/env :mb-config-file-path))}
+   {:name      :content-translation
+    :available (premium-features/enable-content-translation?)
+    :enabled   (premium-features/enable-content-translation?)}
    {:name      :content-verification
     :available (premium-features/enable-content-verification?)
     :enabled   (t2/exists? :model/ModerationReview)}

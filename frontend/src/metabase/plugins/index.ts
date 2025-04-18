@@ -7,6 +7,7 @@ import type {
   SetStateAction,
 } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 import type { AnySchema } from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
@@ -611,6 +612,14 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
     hide_download_button?: boolean | null;
     downloads?: string | boolean | null;
   }) => ({ pdf: true, results: true }),
+};
+
+export const PLUGIN_CONTENT_TRANSLATION = {
+  isEnabled: false,
+  ContentTranslationConfiguration: PluginPlaceholder,
+  // This hook returns a function that leaves the given string untranslated
+  // _.identity simply returns the argument it receives
+  useTranslateContent: () => _.identity,
 };
 
 export const PLUGIN_DB_ROUTING = {
