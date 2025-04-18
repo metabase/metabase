@@ -8,7 +8,7 @@ import type { SimpleDataPickerProps } from "metabase/plugins";
 import { Box, Popover } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { SearchModel, SearchResult, TableId } from "metabase-types/api";
-import { SortDirection } from "metabase-types/api/sorting";
+import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import { SimpleDataPickerView } from "./SimpleDataPickerView";
 
@@ -76,9 +76,11 @@ export function SimpleDataPicker({
   );
 }
 
+type SortColumn = keyof SearchResult;
+
 function sortEntities(
   entities: SearchResult<TableId>[],
-  sort: { sort_column: keyof SearchResult; sort_direction: SortDirection },
+  sort: SortingOptions<SortColumn>,
 ) {
   const { sort_column, sort_direction } = sort;
 
