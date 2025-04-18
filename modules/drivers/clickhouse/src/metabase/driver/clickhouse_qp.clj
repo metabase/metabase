@@ -433,6 +433,10 @@
   [driver [_ value]]
   (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
 
+(defmethod sql.qp/->honeysql [:clickhouse :float]
+  [driver [_ value]]
+  (h2x/maybe-cast "DOUBLE" (sql.qp/->honeysql driver value)))
+
 ;;; ------------------------------------------------------------------------------------
 ;;; JDBC-related functions
 ;;; ------------------------------------------------------------------------------------
