@@ -11,13 +11,11 @@ type BaseMetabaseAuthConfig = {
 };
 
 export type MetabaseAuthConfigWithProvider = BaseMetabaseAuthConfig & {
-  authProviderUri: string;
   apiKey?: never;
 };
 
 export type MetabaseAuthConfigWithApiKey = BaseMetabaseAuthConfig & {
   apiKey: string;
-  authProviderUri?: never;
 };
 
 /**
