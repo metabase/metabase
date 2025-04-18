@@ -35,6 +35,7 @@ import type {
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/core/components/Link";
 import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
+import type { SdkInteractiveEmbedRouteProps } from "metabase/embedding-sdk/types/iframe-interactive-embedding";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
@@ -549,6 +550,8 @@ export const PLUGIN_EMBEDDING_SDK = {
 export const PLUGIN_EMBEDDING_IFRAME_SDK = {
   isEnabled: () => false,
   isInteractiveEmbeddingEnabled: (_state: State) => false,
+  InteractiveEmbedRoute: (_props: SdkInteractiveEmbedRouteProps): ReactNode =>
+    null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
