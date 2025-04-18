@@ -268,7 +268,7 @@
    Context should be :search/updating or :search/reindexing to help control how to manage the updates"
   [context document-reducible]
   (transduce (comp (partition-all insert-batch-size)
-                   (map #(batch-update! context %)))
+                   (map (partial batch-update! context)))
              (partial merge-with +)
              document-reducible))
 
