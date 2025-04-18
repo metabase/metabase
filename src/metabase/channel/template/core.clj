@@ -1,5 +1,6 @@
 (ns metabase.channel.template.core
   (:require
+   [metabase.channel.template.default :as channel.default]
    [metabase.channel.template.handlebars :as channel.handlebars]
    [metabase.util.log :as log]
    [potemkin :as p]))
@@ -7,7 +8,9 @@
 (p/import-vars
  [channel.handlebars
   render-string
-  render])
+  render]
+ [channel.default
+  default-template])
 
 (defn render-template
   "Render a template with a payload."
