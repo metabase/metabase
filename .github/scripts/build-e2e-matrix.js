@@ -89,11 +89,4 @@ function buildMatrix(inputSpecs, inputChunks) {
   return { config, regularChunks, isDefaultSpecPattern };
 }
 
-const res = buildMatrix(
-  "e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js",
-  1,
-);
-
-console.log(res);
-
 module.exports = { buildMatrix };

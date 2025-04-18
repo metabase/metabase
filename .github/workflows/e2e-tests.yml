@@ -149,6 +149,10 @@ jobs:
       - e2e-matrix-builder
     if: |
       !cancelled()
+    steps:
+      - name: Print e2e-matrix-builder output
+        run: |
+          echo "e2e-matrix-builder output: ${{ needs.e2e-matrix-builder.outputs.isDefaultSpecPattern }}"
     secrets: inherit
     with:
       name: Flaky

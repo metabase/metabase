@@ -56,3 +56,4 @@ jobs:
 
             console.log({ regularChunks });
             console.log("matrix config", config);
+            console.log("isDefaultSpecPattern", isDefaultSpecPattern);
