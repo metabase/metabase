@@ -1,28 +1,16 @@
 import type { ReactNode } from "react";
 
-import type { MetabaseQuestion as InternalMetabaseQuestion } from "metabase/embedding-sdk/types/question";
 import type { Deferred } from "metabase/lib/promise";
 import type { QueryParams } from "metabase/query_builder/actions";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type InternalQuestion from "metabase-lib/v1/Question";
-import type { Card, CardId, ParameterId } from "metabase-types/api";
+import type { Card, CardId } from "metabase-types/api";
 
 import type { SdkEntityId } from "./entity-id";
 
+export type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
+
 export type SdkQuestionId = number | "new" | SdkEntityId;
-
-/**
- * Inline wrapper to properly display the `MetabaseQuestion` type without referencing the `internal` type
- *
- * @inline
- * @interface
- */
-interface _MetabaseQuestion extends InternalMetabaseQuestion {}
-
-/**
- * The Question entity
- */
-export type MetabaseQuestion = _MetabaseQuestion;
 
 export interface SdkQuestionState {
   question?: InternalQuestion;
@@ -73,4 +61,4 @@ export type SdkQuestionTitleProps =
 
 export type EntityTypeFilterKeys = "table" | "question" | "model" | "metric";
 
-export type SqlParameterValues = Record<ParameterId, string | number>;
+export type SqlParameterValues = Record<string, string | number>;
