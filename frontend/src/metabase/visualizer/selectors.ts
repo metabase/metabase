@@ -24,7 +24,6 @@ import type {
 import {
   createDataSource,
   extractReferencedColumns,
-  getDefaultVisualizationName,
   mergeVisualizerData,
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
@@ -51,7 +50,7 @@ export const getCards = (state: State) => state.visualizer.cards;
 
 export function getVisualizationTitle(state: State) {
   const settings = getVisualizerRawSettings(state);
-  return settings["card.title"] ?? getDefaultVisualizationName();
+  return settings["card.title"];
 }
 
 export function getVisualizationType(state: State) {

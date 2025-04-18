@@ -40,7 +40,6 @@ import {
   extractReferencedColumns,
   getColumnVizSettings,
   getDataSourceIdFromNameRef,
-  getDefaultVisualizationName,
   getInitialStateForCardDataSource,
   parseDataSourceId,
 } from "./utils";
@@ -84,9 +83,7 @@ function getInitialVisualizerHistoryItem(): VisualizerHistoryItem {
     display: null,
     columns: [],
     columnValuesMapping: {},
-    settings: {
-      "card.title": getDefaultVisualizationName(),
-    },
+    settings: {},
   };
 }
 
@@ -410,9 +407,6 @@ const visualizerHistoryItemSlice = createSlice({
         const initialState = action.payload;
         if (initialState) {
           Object.assign(state, initialState);
-        }
-        if (!state.settings?.["card.title"]) {
-          state.settings["card.title"] = getDefaultVisualizationName();
         }
       })
       .addCase(addDataSource.fulfilled, (state, action) => {

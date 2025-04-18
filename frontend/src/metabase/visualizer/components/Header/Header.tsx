@@ -73,6 +73,8 @@ export function Header({
         isOptional
         onChange={handleChangeTitle}
         className={S.title}
+        data-testid="visualizer-title"
+        placeholder={t`Add a title`}
       />
 
       {/* Spacer */}
