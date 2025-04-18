@@ -245,7 +245,7 @@ describe("admin > database > database routing", () => {
       cy.log("should not see destination databases in search");
       H.commandPaletteSearch(BASE_POSTGRES_MIRROR_DB_INFO.name, false);
       H.commandPalette()
-        .findByText("No results for “Destination DB”")
+        .findByText("No results for “DestinationDB”")
         .should("exist");
 
       cy.log("should not see database in table metadata db list");
