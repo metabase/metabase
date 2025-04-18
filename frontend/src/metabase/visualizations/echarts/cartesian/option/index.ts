@@ -66,6 +66,7 @@ export const getCartesianChartOption = (
     chartMeasurements,
     renderingContext,
   );
+
   const goalSeriesOption = getGoalLineSeriesOption(
     chartModel,
     settings,

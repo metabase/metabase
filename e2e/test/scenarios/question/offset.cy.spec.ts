@@ -584,7 +584,7 @@ describe("scenarios > question > offset", () => {
   });
 
   describe("explicit joins", () => {
-    it("offset expression not in the first place in aggregation", () => {
+    it.only("offset expression not in the first place in aggregation", () => {
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
         joins: [

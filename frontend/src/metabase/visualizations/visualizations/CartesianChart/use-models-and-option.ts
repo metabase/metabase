@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { extractRemappings } from "metabase/visualizations";
 import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
@@ -36,6 +37,8 @@ export function useModelsAndOption(
   }: VisualizationProps,
   containerRef: React.RefObject<HTMLDivElement>,
 ) {
+  const tc = useTranslateContent();
+
   const renderingContext = useBrowserRenderingContext({ fontFamily });
 
   const seriesToRender = useMemo(
@@ -62,13 +65,18 @@ export function useModelsAndOption(
       getModel = getScatterPlotModel;
     }
 
-    return getModel(
+    const model = getModel(
       seriesToRender,
       settings,
       Array.from(hiddenSeries),
       renderingContext,
       showWarning,
     );
+
+    model.dimensionModel.column.display_name = tc(
+      model.dimensionModel.column.display_name,
+    );
+    return model;
   }, [
     card.display,
     seriesToRender,
@@ -76,6 +84,7 @@ export function useModelsAndOption(
     hiddenSeries,
     renderingContext,
     showWarning,
+    tc,
   ]);
 
   const chartMeasurements = useMemo(

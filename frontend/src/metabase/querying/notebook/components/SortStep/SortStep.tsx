@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -19,6 +20,8 @@ export function SortStep({
   updateQuery,
 }: NotebookStepProps) {
   const { stageIndex } = step;
+
+  const tc = useTranslateContent();
 
   const clauses = useMemo(() => {
     return Lib.orderBys(query, stageIndex);
@@ -69,7 +72,7 @@ export function SortStep({
       isLastOpened={isLastOpened}
       renderName={(clause) => (
         <SortDisplayName
-          displayInfo={Lib.displayInfo(query, stageIndex, clause)}
+          displayInfo={Lib.displayInfo(query, stageIndex, clause, tc)}
           onToggleSortDirection={() => handleToggleOrderByDirection(clause)}
         />
       )}

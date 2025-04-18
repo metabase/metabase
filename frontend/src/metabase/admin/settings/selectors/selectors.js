@@ -39,6 +39,7 @@ import {
 import SettingCommaDelimitedInput from "../components/widgets/SettingCommaDelimitedInput";
 import { NotificationSettings } from "../notifications/NotificationSettings";
 import SlackSettings from "../slack/containers/SlackSettings";
+import { ContentTranslationConfiguration } from "metabase-enterprise/content_translation/components";
 
 import {
   getAdminSettingDefinitions,
@@ -255,7 +256,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         },
         widget: () => (
           <ErrorBoundary>
-            <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
+            <ContentTranslationConfiguration />
           </ErrorBoundary>
         ),
       },

@@ -364,7 +364,6 @@ export const buildCategoricalDimensionAxis = (
         if (isNumericBaseType(column) && numberValue !== null) {
           return ` ${formatter(numberValue)} `;
         }
-
         return ` ${formatter(value)} `; // spaces force padding between ticks
       },
     },

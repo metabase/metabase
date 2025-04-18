@@ -1,6 +1,7 @@
 import { type Ref, forwardRef, useState } from "react";
 import { t } from "ttag";
 
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { Button, Flex, Icon, Popover } from "metabase/ui";
@@ -64,9 +65,10 @@ function FilterPopover({
   hasFilters,
   onChange,
 }: FilterPopoverProps) {
+  const tc = useTranslateContent();
   const [isOpened, setIsOpened] = useState(false);
   const filterInfo = filter
-    ? Lib.displayInfo(query, stageIndex, filter)
+    ? Lib.displayInfo(query, stageIndex, filter, tc)
     : undefined;
 
   const handleSelect = (newFilter: Lib.Filterable) => {
@@ -92,7 +94,7 @@ function FilterPopover({
             onClick={() => setIsOpened(!isOpened)}
             onRemoveClick={handleRemove}
           >
-            {filterInfo.displayName}
+            {tc(filterInfo.displayName)}
           </FilterPill>
         ) : (
           <AddFilterButton
