@@ -22,9 +22,9 @@ export const FullPagePortalContainer = () => (
   </PublicComponentStylesWrapper>
 );
 
-export const PortalContainer = () => (
+export const PortalContainer = ({ className }: { className?: string }) => (
   <PublicComponentStylesWrapper>
-    <div id={EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}></div>
+    <div id={EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID} className={className}></div>
   </PublicComponentStylesWrapper>
 );
 
