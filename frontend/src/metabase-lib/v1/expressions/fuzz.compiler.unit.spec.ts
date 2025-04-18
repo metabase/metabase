@@ -1,26 +1,14 @@
 import * as Lib from "metabase-lib";
 
-import { query } from "./__support__/shared";
 import { compileExpression } from "./compiler";
 import { fuzz } from "./test/fuzz";
 import { generateExpression } from "./test/generator";
+import { query, stageIndex } from "./test/shared";
 import type { StartRule } from "./types";
-
-jest.mock("metabase-lib", () => {
-  const mod = jest.requireActual("metabase-lib");
-  return {
-    ...mod,
-    expressionClauseForLegacyExpression() {
-      return null;
-    },
-  };
-});
 
 const MAX_SEED = 10_000;
 
 function compile(expression: string, startRule: StartRule = "expression") {
-  const stageIndex = -1;
-
   const columns = Lib.expressionableColumns(query, stageIndex);
 
   const result = compileExpression({

@@ -1,5 +1,5 @@
-import { query } from "./__support__/shared";
 import { compileExpression } from "./compiler";
+import { query } from "./test/shared";
 import type { StartRule } from "./types";
 
 describe("resolve", () => {
