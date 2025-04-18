@@ -216,28 +216,10 @@
   [{:keys [params], :as request}]
   (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
-  (let [continue-url  (u/ignore-exceptions
-                        (when-let [s (some-> (:RelayState params) u/decode-base64)]
-                          (when-not (str/blank? s)
-                            s)))
-        token-requested? (and continue-url
-                              (re-find #"[?&]token=true" continue-url))
-        clean-continue-url (if token-requested?
-                             (str/replace continue-url #"[?&]token=true(&|$)" "$1")
-                             continue-url)
-        ;; Extract origin from query parameter
-        origin-param (when clean-continue-url
-                       (second (re-find #"[?&]origin=([^&]+)" clean-continue-url)))
-        origin (if origin-param
-                 (try
-                   (java.net.URLDecoder/decode origin-param "UTF-8")
-                   (catch Exception _
-                     "*"))
-                 "*")
-        ;; Remove origin from clean-continue-url
-        final-continue-url (if origin-param
-                             (str/replace clean-continue-url #"[?&]origin=[^&]+(&|$)" "$1")
-                             clean-continue-url)]
+
+  ;; Process continue URL and extract needed parameters
+  (let [{:keys [continue-url token-requested? clean-continue-url origin]} (process-relay-state-params (:RelayState params))
+
     (sso-utils/check-sso-redirect continue-url)
     (try
       (let [saml-response (saml/validate-response request
@@ -270,13 +252,53 @@
                             :device-info     (request/device-info request)})
             response      (response/redirect (or continue-url (public-settings/site-url)))]
         (if token-requested?
-          (let [;; Current time in seconds since epoch
-                current-time (quot (System/currentTimeMillis) 1000)
-                ;; Expiration time - 24 hours from now (86400 seconds)
-                expiration-time (+ current-time 86400)]
-            {:status 200
-             :headers {"Content-Type" "text/html"}
-             :body (str "<!DOCTYPE html>
+          (create-token-response session origin clean-continue-url)
+          (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
+      (catch Throwable e
+        (log/error e "SAML response validation failed")
+        (throw (ex-info (tru "Unable to log in: SAML response validation failed")
+                        {:status-code 401}
+                        e))))))
+
+(defn- process-relay-state-params
+  "Process the RelayState to extract continue URL and related parameters"
+  [relay-state]
+  (let [;; Extract and decode continue URL
+        continue-url (u/ignore-exceptions
+                       (when-let [s (some-> relay-state u/decode-base64)]
+                         (when-not (str/blank? s)
+                           s)))
+        ;; Check if token is requested and remove parameter
+        token-requested? (and continue-url
+                              (re-find #"[?&]token=true" continue-url))
+        url-without-token (when continue-url
+                            (str/replace continue-url #"[?&]token=true(&|$)" "$1"))
+        ;; Extract origin parameter
+        origin-param (when url-without-token
+                       (second (re-find #"[?&]origin=([^&]+)" url-without-token)))
+        origin (if origin-param
+                 (try
+                   (java.net.URLDecoder/decode origin-param "UTF-8")
+                   (catch Exception _
+                     "*"))
+                 "*")
+        ;; Remove origin parameter
+        clean-continue-url (if (and url-without-token origin-param)
+                             (str/replace url-without-token #"[?&]origin=[^&]+(&|$)" "$1")
+                             url-without-token)]
+    {:continue-url continue-url
+     :token-requested? token-requested?
+     :clean-continue-url clean-continue-url
+     :origin origin}))
+
+(defn- create-token-response
+  "Create a token response with HTML and JavaScript to post the auth message"
+  [session origin continue-url]
+  (let [current-time (quot (System/currentTimeMillis) 1000)
+        expiration-time (+ current-time 86400)]
+    {:status 200
+     :headers {"Content-Type" "text/html"}
+     :body (str "<!DOCTYPE html>
 <html>
 <head>
   <title>Authentication Complete</title>
@@ -302,7 +324,7 @@
         document.body.innerHTML += '<p>Error: ' + e.message + '</p>';
       }
     } else {
-      window.location.href = '" final-continue-url "';
+      window.location.href = '" continue-url "';
     }
   </script>
 </head>
@@ -312,13 +334,7 @@
   <p>If it doesn't close, please click the button below:</p>
   <button onclick=\"window.close()\">Close Window</button>
 </body>
-</html>")})
-          (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
-      (catch Throwable e
-        (log/error e "SAML response validation failed")
-        (throw (ex-info (tru "Unable to log in: SAML response validation failed")
-                        {:status-code 401}
-                        e))))))
+</html>")}))
 
 (defmethod sso.i/sso-handle-slo :saml
   [{:keys [cookies] :as req}]
