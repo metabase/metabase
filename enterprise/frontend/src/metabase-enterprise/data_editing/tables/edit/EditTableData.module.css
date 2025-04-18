@@ -42,7 +42,7 @@
   --cell-bg-color: var(--mb-base-color-orion-5);
   --cell-hover-bg-color: var(--mb-base-color-orion-5);
 
-  border-bottom: none;
+  background-color: var(--mb-base-color-orion-5);
 }
 
 .tableHeaderCell {
@@ -60,7 +60,6 @@
 
 .headerCellContainer {
   background-color: var(--cell-bg-color);
-  border-bottom: 1px solid var(--mb-color-border);
   height: 100%;
   display: flex;
   align-items: center;
@@ -70,4 +69,9 @@
 .sortIndicator {
   flex-shrink: 0;
   margin-left: 0.25rem;
+}
+
+.readonlyCell {
+  color: var(--mb-color-text-disabled);
+  cursor: not-allowed;
 }
