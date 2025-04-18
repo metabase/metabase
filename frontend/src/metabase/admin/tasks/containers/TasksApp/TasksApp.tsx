@@ -102,7 +102,9 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
         isLoading={isLoading}
         sortingOptions={sortingOptions}
         tasks={tasks}
-        onSortingOptionsChange={patchUrlState}
+        onSortingOptionsChange={(sortingOptions) =>
+          patchUrlState({ ...sortingOptions, page: 0 })
+        }
       />
 
       {
