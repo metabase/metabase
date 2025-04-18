@@ -143,8 +143,8 @@
                    code (first (:arguments parsed))
                    port (or (:port (:options parsed))
                             (slurp ".nrepl-port")
-                            (println (c/red "No port specified, and no .nrepl-port file found."))
-                            (System/exit 1))
+                            (do (println (c/red "No port specified, and no .nrepl-port file found."))
+                                (System/exit 1)))
                    nns (or (:namespace (:options parsed)) "user")]
                (nrepl-eval nns code port))}
 
