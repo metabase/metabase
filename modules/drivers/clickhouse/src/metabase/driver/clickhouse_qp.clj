@@ -292,9 +292,15 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse :split-part]
   [driver [_ text divider position]]
-  [:'arrayElement
-   [:'splitByString (sql.qp/->honeysql driver divider) [:'assumeNotNull (sql.qp/->honeysql driver text)]]
-   [:'toInt64 (sql.qp/->honeysql driver position)]])
+  (let [position (sql.qp/->honeysql driver position)]
+    [:case
+     [:< position 1]
+     ""
+
+     :else
+     [:'arrayElement
+      [:'splitByString (sql.qp/->honeysql driver divider) [:'assumeNotNull (sql.qp/->honeysql driver text)]]
+      [:'toInt64 position]]]))
 
 (defmethod sql.qp/->honeysql [:clickhouse :text]
   [driver [_ value]]
