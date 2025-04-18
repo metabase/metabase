@@ -187,7 +187,7 @@ export function getParameterMappingOptions(
             query,
             stageIndex,
             group,
-            Lib.getColumnsFromColumnGroup(group, tc),
+            Lib.getColumnsFromColumnGroup(group),
             tc,
           ),
         );
