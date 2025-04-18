@@ -147,8 +147,8 @@ jobs:
     needs:
       - build
       - e2e-matrix-builder
+    # skip flaky test run if only e2e specs changed as an optimization
     if: |
-      # skip flaky test run if only e2e specs changed as an optimization
       !cancelled() && needs.build.result == 'success' && needs.e2e-matrix-builder.outputs.isDefaultSpecPattern == 'true'
     secrets: inherit
     with:
