@@ -14,7 +14,7 @@ export type Resolver = (
   node?: Node,
 ) => Lib.ColumnMetadata | Lib.SegmentMetadata | Lib.MetricMetadata;
 
-export function fieldResolver(options: {
+export function resolver(options: {
   query: Lib.Query;
   stageIndex: number;
   startRule: string;

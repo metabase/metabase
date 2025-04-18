@@ -4,7 +4,6 @@ import { type NumberValue, parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
 
 import { getClauseDefinition, getMBQLName, isDefinedClause } from "../config";
-import type { Kind } from "../field-resolver";
 import {
   isBigIntLiteral,
   isBooleanLiteral,
@@ -12,6 +11,7 @@ import {
   isIntegerLiteral,
   isStringLiteral,
 } from "../matchers";
+import type { Kind } from "../resolver";
 import type { ExpressionType, StartRule } from "../types";
 
 import {

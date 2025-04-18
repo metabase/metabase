@@ -2,8 +2,8 @@ import * as Lib from "metabase-lib";
 import type { Expression } from "metabase-types/api";
 
 import { type ExpressionError, renderError } from "./errors";
-import { type Resolver, fieldResolver } from "./field-resolver";
 import { compile, lexify, parse } from "./pratt";
+import { type Resolver, resolver as defaultResolver } from "./resolver";
 import type { StartRule } from "./types";
 
 export type CompileResult =
@@ -25,7 +25,7 @@ export function compileExpression({
   startRule,
   query,
   stageIndex,
-  resolver = fieldResolver({
+  resolver = defaultResolver({
     query,
     stageIndex,
     startRule,
