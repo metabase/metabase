@@ -8,13 +8,11 @@ import { useUrlState } from "metabase/common/hooks/use-url-state";
 import AdminHeader from "metabase/components/AdminHeader";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
-import { SortDirection } from "metabase-types/api/sorting";
 
 import { TaskPicker } from "../../components/TaskPicker";
 import { TaskStatusPicker } from "../../components/TaskStatusPicker";
 
 import { TasksTable } from "./TasksTable";
-import type { SortColumn } from "./types";
 import { urlStateConfig } from "./utils";
 
 type TasksAppProps = {
@@ -29,6 +27,7 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
     { page, sort_column, sort_direction, status, task },
     { patchUrlState },
   ] = useUrlState(location, urlStateConfig);
+  const sortingOptions = { sort_column, sort_direction };
 
   const {
     data: tasksData,
@@ -54,16 +53,6 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
   const databases = databasesData?.data ?? [];
   const isLoading = isLoadingTasks || isLoadingDatabases;
   const error = tasksError || databasesError;
-
-  const handleSort = (column: SortColumn) => {
-    patchUrlState({
-      sort_column: column,
-      sort_direction:
-        sort_direction === SortDirection.Asc
-          ? SortDirection.Desc
-          : SortDirection.Asc,
-    });
-  };
 
   return (
     <Box pl="md">
@@ -106,10 +95,9 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
         databases={databases}
         error={error}
         isLoading={isLoading}
-        sortColumn={sort_column}
-        sortDirection={sort_direction}
+        sortingOptions={sortingOptions}
         tasks={tasks}
-        onSort={handleSort}
+        onSortingOptionsChange={patchUrlState}
       />
 
       {

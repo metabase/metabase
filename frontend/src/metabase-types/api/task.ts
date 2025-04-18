@@ -16,8 +16,10 @@ export interface Task {
   status: TaskStatus;
 }
 
+export type ListTasksSortColumn = "started_at" | "ended_at" | "duration";
+
 export type ListTasksRequest = {
-  sort_column?: "started_at" | "ended_at" | "duration";
+  sort_column?: ListTasksSortColumn;
   sort_direction?: SortDirection;
   status?: TaskStatus;
   task?: string;
