@@ -7,6 +7,7 @@ import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { QuestionMoreActionsMenu } from "metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
@@ -47,6 +48,20 @@ export const QuestionActions = ({
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.append);
 
   const dispatch = useDispatch();
+
+  useRegisterShortcut(
+    [
+      {
+        id: "query-builder-info-sidebar",
+        perform: onInfoClick,
+      },
+      {
+        id: "query-builder-bookmark",
+        perform: onToggleBookmark,
+      },
+    ],
+    [isShowingQuestionInfoSidebar, isBookmarked],
+  );
 
   const infoButtonColor = isShowingQuestionInfoSidebar
     ? color("brand")

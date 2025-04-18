@@ -237,6 +237,9 @@
     (let [q                 (str "SELECT 5 AS A, 5 AS B"
                                  " UNION ALL"
                                  " SELECT 10 AS A, 10 AS B")
+          q-zero            (str "SELECT 0 AS A"
+                                 " UNION ALL"
+                                 " SELECT 0 AS A")
           formatting-viz    {:column_settings
                              {"[\"name\",\"A\"]" {:show_mini_bar true}}}]
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
@@ -251,7 +254,13 @@
             ;; Verify that the first cell has a nested table
             (is (some? (hik.s/select (hik.s/tag :table) first-cell)))
             ;; Verify the width styling in the first minibar
-            (is (some? (hik.s/select (hik.s/attr :style #(when % (re-find #"width: 50%" %))) first-cell)))))))))
+            (is (some? (hik.s/select (hik.s/attr :style #(when % (re-find #"width: 50%" %))) first-cell))))))
+      (mt/with-temp [:model/Card {card-id2 :id} {:dataset_query {:database (mt/id)
+                                                                 :type     :native
+                                                                 :native   {:query q-zero}}
+                                                 :visualization_settings formatting-viz}]
+        (testing "Minibar handles 0 gracefully"
+          (is (some? (render.tu/render-card-as-hickory! card-id2))))))))
 
 (defn- render-table [dashcard results]
   (channel.render/render-pulse-card :attachment "America/Los_Angeles" render.tu/test-card dashcard results))
