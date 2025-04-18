@@ -22,9 +22,9 @@
 
 (def ^:private ^Tika tika (Tika.))
 
-(def ^:private allowed-extensions #{nil "csv" "txt"})
+(def ^:private allowed-extensions #{nil "csv"})
 
-(def ^:private allowed-mime-types #{"text/csv" "text/plain"})
+(def ^:private allowed-mime-types #{"text/csv"})
 
 (def ^:private max-string-length 255)
 

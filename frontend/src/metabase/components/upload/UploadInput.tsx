@@ -19,7 +19,7 @@ export const UploadInput = forwardRef<HTMLInputElement, IUploadInputProps>(
         id={id}
         ref={ref}
         type="file"
-        accept="text/csv,text/tab-separated-values"
+        accept="text/csv"
         onChange={onChange}
       />
     );
