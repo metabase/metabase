@@ -845,6 +845,14 @@ export const GRAPH_AXIS_SETTINGS = {
     getHidden: (series, vizSettings) =>
       vizSettings["graph.y_axis.auto_range"] !== false,
   },
+  "graph.y_axis.split_number": {
+    section: t`Axes`,
+    group: t`Y-axis`,
+    index: 7,
+    title: t`Number of intervals`,
+    widget: "number",
+    placeholder: "auto",
+  },
   "graph.y_axis.auto_split": {
     get section() {
       return t`Axes`;
