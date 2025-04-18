@@ -22,5 +22,10 @@ export const useQuestionSearch = (searchQuery?: string) => {
   return useSearchListQuery<MetabaseCollectionItem, null>({
     query,
     enabled: isLoggedIn,
-  });
+  }) as {
+    data?: MetabaseCollectionItem[];
+    isLoaded: boolean;
+    isLoading: boolean;
+    error: unknown;
+  };
 };
