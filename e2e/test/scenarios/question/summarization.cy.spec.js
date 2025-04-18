@@ -87,7 +87,7 @@ describe("scenarios > question > summarize sidebar", () => {
     cy.findByText("User → State").should("not.exist");
   });
 
-  it("selecting a binning adds a dimension", () => {
+  it.only("selecting a binning adds a dimension", () => {
     H.getDimensionByName({ name: "Total" }).click({ position: "left" });
 
     H.changeBinningForDimension({

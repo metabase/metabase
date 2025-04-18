@@ -10,7 +10,6 @@ import {
   QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import Button from "metabase/core/components/Button";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { Tooltip } from "metabase/ui";
 import { Box, type BoxProps, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -83,7 +82,6 @@ export function BreakoutColumnListItem({
   );
 
   const displayName = isPinned ? item.longDisplayName : item.displayName;
-  const tc = useTranslateContent();
 
   return (
     <HoverParent
@@ -116,7 +114,7 @@ export function BreakoutColumnListItem({
             className={BreakoutColumnListItemS.Title}
             data-testid="dimension-list-item-name"
           >
-            {tc(displayName)}
+            {displayName}
           </Box>
         </Flex>
         <BucketPickerPopover

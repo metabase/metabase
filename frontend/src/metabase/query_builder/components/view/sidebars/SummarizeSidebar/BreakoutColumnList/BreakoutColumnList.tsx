@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import {
   type UpdateQueryHookProps,
@@ -30,8 +29,6 @@ export function BreakoutColumnList({
     onReplaceBreakouts,
   } = useBreakoutQueryHandlers({ query, onQueryChange, stageIndex });
 
-  const tc = useTranslateContent();
-
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebouncedValue(
     searchQuery,
@@ -46,10 +43,8 @@ export function BreakoutColumnList({
     () =>
       breakouts
         .slice(0, pinnedItemCount)
-        .map((breakout) =>
-          getBreakoutListItem(query, stageIndex, breakout, tc),
-        ),
-    [query, stageIndex, breakouts, pinnedItemCount, tc],
+        .map((breakout) => getBreakoutListItem(query, stageIndex, breakout)),
+    [query, stageIndex, breakouts, pinnedItemCount],
   );
 
   const allColumns = useMemo(
@@ -72,7 +67,6 @@ export function BreakoutColumnList({
         stageIndex,
         isSearching ? allColumns : unpinnedColumns,
         debouncedSearchQuery,
-        tc,
       ),
     [
       query,
@@ -81,7 +75,6 @@ export function BreakoutColumnList({
       unpinnedColumns,
       isSearching,
       debouncedSearchQuery,
-      tc,
     ],
   );
 
