@@ -557,6 +557,10 @@ export function provideTaskListTags(tasks: Task[]): TagDescription<TagType>[] {
   return [listTag("task"), ...tasks.flatMap(provideTaskTags)];
 }
 
+export function provideUniqueTasksListTags(): TagDescription<TagType>[] {
+  return [listTag("unique-tasks")];
+}
+
 export function provideTaskTags(task: Task): TagDescription<TagType>[] {
   return [idTag("task", task.id)];
 }

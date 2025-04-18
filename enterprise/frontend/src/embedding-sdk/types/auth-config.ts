@@ -1,5 +1,8 @@
 import type { MetabaseFetchRequestTokenFn } from "embedding-sdk";
 
+/**
+ * @inline
+ */
 type BaseMetabaseAuthConfig = {
   metabaseInstanceUrl: string;
 
