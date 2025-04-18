@@ -101,16 +101,33 @@ function createCompletionOptions(
   return labels.map((label) => ({ label, type, boost }));
 }
 
+// Create options from helpers array, including doc as info
+function createCompletionOptionsFromHelpers(
+  helpers: { name: string; doc?: string }[],
+  type: "keyword" | "variable" | "function",
+  boost = 1,
+): MustacheCompletionOption[] {
+  return helpers.map((helper) => ({
+    label: helper.name,
+    type,
+    boost,
+    info: helper.doc,
+  }));
+}
+
 // Suggest block helpers, Metabase helpers, and closing tags based on context
 export const mustacheHelpersCompletionSource =
   (helpers: Settings["default-handlebars-helpers"] = []) =>
   (completionContext: CompletionContext): CompletionResult | null => {
-    const builtinBlockHelpers = helpers
-      .filter((helper) => helper.type === "built-in")
-      .map((helper) => helper.name);
-    const mbBlockHelpers = helpers
-      .filter((helper) => helper.type === "custom-block")
-      .map((helper) => helper.name);
+    const builtinBlockHelpersArr = helpers.filter(
+      (helper) => helper.type === "built-in",
+    );
+    const mbBlockHelpersArr = helpers.filter(
+      (helper) => helper.type === "custom-block",
+    );
+    const builtinBlockHelpers = builtinBlockHelpersArr.map(
+      (helper) => helper.name,
+    );
 
     const textBefore = completionContext.state.doc.sliceString(
       0,
@@ -160,21 +177,24 @@ export const mustacheHelpersCompletionSource =
         let options: MustacheCompletionOption[];
         if (startsWithHash) {
           const typedAfterHash = openMatch.text.match(/\s*#(\w*)$/)?.[1] || "";
-          options = createCompletionOptions(
-            builtinBlockHelpers.filter((helper) =>
-              helper.startsWith(typedAfterHash),
+          options = createCompletionOptionsFromHelpers(
+            builtinBlockHelpersArr.filter((helper) =>
+              helper.name.startsWith(typedAfterHash),
             ),
             "keyword",
             99,
           );
         } else {
-          const blockOptions = createCompletionOptions(
-            builtinBlockHelpers.map((helperName) => `#${helperName}`),
+          const blockOptions = createCompletionOptionsFromHelpers(
+            builtinBlockHelpersArr.map((helper) => ({
+              name: `#${helper.name}`,
+              doc: helper.doc,
+            })),
             "keyword",
             1,
           );
-          const metabaseOptions = createCompletionOptions(
-            mbBlockHelpers,
+          const metabaseOptions = createCompletionOptionsFromHelpers(
+            mbBlockHelpersArr,
             "function",
             1,
           );
@@ -202,7 +222,7 @@ export const mustacheHelpersCompletionSource =
           return {
             from: openMatch.from + afterHash,
             options: options,
-            filter: false,
+            filter: true,
           };
         } else {
           // Otherwise, use the old logic (after {{ and whitespace)
@@ -210,7 +230,7 @@ export const mustacheHelpersCompletionSource =
           return {
             from: openMatch.from + afterBraces,
             options: options,
-            filter: false,
+            filter: true,
           };
         }
       }
@@ -218,19 +238,18 @@ export const mustacheHelpersCompletionSource =
     return null; // No context matched
   };
 
-// Build suggestions for template variables AND helpers inside parentheses
 export const createTemplateAutocompleteSource = (
   context: Record<string, any>,
-  helpers: Settings["default-handlebars-helpers"],
+  helpers: Settings["default-handlebars-helpers"] = [],
 ): CompletionSource => {
-  const mbInlineHelpers = helpers
-    .filter((helper) => helper.type === "custom-inline")
-    .map((helper) => helper.name);
+  const mbInlineHelpersArr = helpers.filter(
+    (helper) => helper.type === "custom-inline",
+  );
   // Precompute all possible paths once
   const allVarPaths = getAllPaths(context);
   const baseVarOptions = createCompletionOptions(allVarPaths, "variable", -1);
-  const inlineHelperOptions = createCompletionOptions(
-    mbInlineHelpers,
+  const inlineHelperOptions = createCompletionOptionsFromHelpers(
+    mbInlineHelpersArr,
     "keyword",
     1,
   );

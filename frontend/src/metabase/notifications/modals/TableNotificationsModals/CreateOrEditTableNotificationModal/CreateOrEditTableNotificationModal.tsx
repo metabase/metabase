@@ -295,6 +295,7 @@ export const CreateOrEditTableNotificationModal = ({
         </AlertModalSettingsBlock>
         <AlertModalSettingsBlock
           title={t`Where do you want to send the alerts?`}
+          contentProps={{ style: { overflow: "visible" } }}
         >
           <NotificationChannelsPicker
             enableTemplates
