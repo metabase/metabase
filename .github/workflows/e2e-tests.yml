@@ -148,7 +148,7 @@ jobs:
       # - build
       - e2e-matrix-builder
     if: |
-      !cancelled() && needs.e2e-matrix-builder.outputs.isDefaultSpecPattern == 'true'
+      !cancelled()
     secrets: inherit
     with:
       name: Flaky

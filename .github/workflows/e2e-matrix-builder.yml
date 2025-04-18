@@ -38,7 +38,8 @@ jobs:
           node-version: lts/Jod # 22.x.x
       - name: Install glob package
         run: npm install glob micromatch
-      - uses: actions/github-script@v7
+      - name: Build e2e matrix
+        uses: actions/github-script@v7
         id: matrix
         env:
           chunks: ${{ inputs.chunks }}
