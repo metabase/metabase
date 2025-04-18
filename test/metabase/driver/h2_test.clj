@@ -220,6 +220,7 @@
 
 (deftest ^:parallel check-action-commands-test
   (mt/test-driver :h2
+    #_{:clj-kondo/ignore [:equals-true]}
     (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
       "select 1"
       "update venues set name = 'bill'"

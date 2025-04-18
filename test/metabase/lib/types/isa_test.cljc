@@ -192,17 +192,19 @@
       (testing pred
         (when positive
           (testing positive
-            (is (true?  (pred (column positive))))))
+            (is (true? (pred (column positive))))))
         (when negative
           (testing negative
             (is (false? (pred (column negative))))))))))
 
 (deftest ^:parallel string?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [exp column] (= exp (lib.types.isa/string? column))
     true  {:effective-type :type/Text :semantic-type :type/SerializedJSON}
     false {:effective-type :type/JSON :semantic-type :type/SerializedJSON}))
 
 (deftest ^:parallel valid-filter-for?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [exp base-lhs eff-lhs base-rhs eff-rhs] (= exp (lib.types.isa/valid-filter-for?
                                                        {:base-type      base-lhs
                                                         :effective-type eff-lhs}

@@ -250,7 +250,7 @@
                                           :value "True"}]}
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (malli= scim-api/SCIMUser response))
-            (is (= true (:active response)))))
+            (is (true? (:active response)))))
 
         (testing "Update family name of an existing user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
@@ -277,7 +277,7 @@
             (is (malli= scim-api/SCIMUser response))
             (is (= "UpdatedFirstName" (get-in response [:name :givenName])))
             (is (= "UpdatedLastName" (get-in response [:name :familyName])))
-            (is (= true (response :active)))))
+            (is (true? (response :active)))))
 
         (testing "Error when using unsupported path"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]

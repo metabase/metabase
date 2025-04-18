@@ -101,6 +101,7 @@
         :out
         (str/split-lines)
         ;; filter out any files that have been deleted/moved
+        (remove #{""})
         (filter (fn [filename]
                   (fs/exists? (str project-root-directory "/" filename)))))))
 

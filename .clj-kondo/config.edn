@@ -11,6 +11,7 @@
   :def-fn                       {:level :warning}
   :dynamic-var-not-earmuffed    {:level :warning}
   :equals-expected-position     {:level :warning, :only-in-test-assertion true}
+  :equals-true                  {:level :warning}
   :keyword-binding              {:level :warning}
   :main-without-gen-class       {:level :warning}
   :minus-one                    {:level :warning}
@@ -42,7 +43,6 @@
 
   #_:docstring-leading-trailing-whitespace
   #_:equals-false
-  #_:equals-true
   #_:used-underscored-binding
 
   ;;

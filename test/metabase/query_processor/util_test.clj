@@ -9,6 +9,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel query-without-aggregations-or-limits?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [x expected] (= expected
                        (qp.util/query-without-aggregations-or-limits? x))
     {:query {:aggregation [[:count]]}} false

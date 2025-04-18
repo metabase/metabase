@@ -237,8 +237,8 @@
                      :model/Field {field-id :id} {:semantic_type :type/FK :fk_target_field_id fk-field-id}]
         (let [original-val (boolean (t2/select-one-fn :fk_target_field_id :model/Field, :id field-id))]
           (testing "before API call"
-            (is (= true
-                   original-val)))
+            (is (true?
+                 original-val)))
           ;; unset the :type/FK semantic-type
           (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:semantic_type :type/Name})
           (testing "after API call"

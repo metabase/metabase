@@ -171,8 +171,8 @@
                                    :async-context (reify AsyncContext
                                                     (complete [_]
                                                       (deliver complete-promise true)))})
-        (is (= true
-               (deref complete-promise 1000 ::timed-out)))
+        (is (true?
+             (deref complete-promise 1000 ::timed-out)))
         (let [response-str (String. (.toByteArray os) "UTF-8")]
           (is (= "[{\"num_cans\":\"2\"}]"
                  (str/replace response-str #"\n+" "")))
