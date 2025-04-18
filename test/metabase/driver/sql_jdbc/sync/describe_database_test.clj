@@ -251,10 +251,10 @@
                      (is (false? (sql-jdbc.sync.interface/have-select-privilege?
                                   driver/*driver* conn schema (str table-name "_should_not_exist"))))
                      (is (true? (sql-jdbc.sync.interface/have-select-privilege?
-                                 driver/*driver* conn schema table-name)))))))))))))
+                                 driver/*driver* conn schema table-name))))))))))))))
 
 ;;; TODO: fix and change this to test on (mt/sql-jdbc-drivers)
-  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]})
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest sync-table-with-backslash-test
   (mt/test-drivers #{:postgres}
     (testing "table with backslash in name, PKs, FKS are correctly synced"

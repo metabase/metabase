@@ -51,6 +51,8 @@
 
 ;; https://github.com/snowflakedb/snowflake-jdbc/blob/master/src/main/java/net/snowflake/client/jdbc/ErrorCode.java#L18-L20
 (defmethod impl-query-canceled? :snowflake [_ e]
+  (prn (get-sql-state e))
+  (prn (.getErrorCode e))
   (contains? #{"200003" "200005"} (get-sql-state e)))
 
 (defn- extract-sql-exception

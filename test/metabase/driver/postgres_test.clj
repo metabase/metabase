@@ -22,6 +22,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.lib.core :as lib]
@@ -1731,3 +1732,17 @@
                                                                         nil))
                           (lib/limit 1))]
             (is (->> query qp/process-query mt/rows))))))))
+
+(deftest have-select-privelege?-timeout-test
+  (mt/test-driver :postgres
+    (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+      (qp.store/with-metadata-provider (mt/id)
+        (testing "checking select privilege defaults to allow on timeout (#56737)"
+          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT pg_sleep(16)"])]
+            (sql-jdbc.execute/do-with-connection-with-options
+             driver/*driver*
+             (mt/db)
+             nil
+             (fn [^java.sql.Connection conn]
+               (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                           driver/*driver* conn schema table-name)))))))))))
