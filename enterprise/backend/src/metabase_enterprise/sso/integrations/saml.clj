@@ -125,6 +125,38 @@
   (api/check (sso-settings/saml-enabled)
              [400 (tru "SAML has not been enabled and/or configured")]))
 
+(defn construct-redirect-url
+  "Constructs a redirect URL from request parameters.
+   Parameters:
+   - req: The request object containing params, headers, etc.
+   Returns: The constructed redirect URL with appropriate query parameters"
+  [req]
+  (let [redirect (get-in req [:params :redirect])
+        origin (get-in req [:headers "origin"])
+        embedding-sdk-header? (sso-utils/is-embedding-sdk-header? req)]
+    (println "construct-redirect-url" req)
+    (println (acs-url))
+    (println origin)
+    (println embedding-sdk-header?)
+    (cond
+      ;; Case 1: Embedding SDK header is present - use ACS URL with token and origin
+      embedding-sdk-header?
+      (str (acs-url) "?token=true&origin=" (java.net.URLEncoder/encode origin "UTF-8"))
+
+      ;; Case 2: No redirect parameter
+      (nil? redirect)
+      (do
+        (log/warn "Warning: expected `redirect` param, but none is present")
+        (public-settings/site-url))
+
+      ;; Case 3: Redirect is a relative URI
+      (sso-utils/relative-uri? redirect)
+      (str (public-settings/site-url) redirect)
+
+      ;; Case 4: Redirect is an absolute URI
+      :else
+      redirect)))
+
 (defmethod sso.i/sso-get :saml
   ;; Initial call that will result in a redirect to the IDP along with information about how the IDP can authenticate
   ;; and redirect them back to us
@@ -132,42 +164,39 @@
   (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
   (let [redirect (get-in req [:params :redirect])
-        origin (get-in req [:params :origin])
-        token-requested? (sso-utils/is-token-requested? req)
-        redirect-url (if (nil? redirect)
-                       (do
-                         (log/warn "Warning: expected `redirect` param, but none is present")
-                         (public-settings/site-url))
-                       (if (sso-utils/relative-uri? redirect)
-                         (str (public-settings/site-url) redirect)
-                         redirect))
-        ;; Add origin as query param if it exists
-        redirect-with-origin (if origin
-                               (str redirect-url
-                                    (if (.contains redirect-url "?") "&" "?")
-                                    "origin=" (java.net.URLEncoder/encode origin "UTF-8"))
-                               redirect-url)
-        redirect-with-token (if token-requested?
-                              (str redirect-with-origin
-                                   (if (.contains redirect-with-origin "?") "&" "?")
-                                   "token=true")
-                              redirect-with-origin)]
-    (sso-utils/check-sso-redirect redirect-url)
+        embedding-sdk-header? (sso-utils/is-embedding-sdk-header? req)
+        redirect-url (construct-redirect-url req)]
+    (sso-utils/check-sso-redirect redirect)
     (try
-      (let [idp-url      (sso-settings/saml-identity-provider-uri)
-            relay-state  (u/encode-base64 redirect-with-token)]
-        (saml/idp-redirect-response {:request-id       (str "id-" (random-uuid))
-                                     :sp-name          (sso-settings/saml-application-name)
-                                     :issuer           (sso-settings/saml-application-name)
-                                     :acs-url          (acs-url)
-                                     :idp-url          idp-url
-                                     :credential       (sp-cert-keystore-details)
-                                     :relay-state      relay-state
-                                     :protocol-binding :post}))
+      (let [idp-url     (sso-settings/saml-identity-provider-uri)
+            relay-state (u/encode-base64 redirect-url)
+            response    (saml/idp-redirect-response {:request-id       (str "id-" (random-uuid))
+                                                     :sp-name          (sso-settings/saml-application-name)
+                                                     :issuer           (sso-settings/saml-application-name)
+                                                     :acs-url          (acs-url)
+                                                     :idp-url          idp-url
+                                                     :credential       (sp-cert-keystore-details)
+                                                     :relay-state      relay-state
+                                                     :protocol-binding :post})]
+        (if embedding-sdk-header?
+          {:status 200
+           :body {:url (get-in response [:headers "location"])
+                  :method "saml"}
+           :headers {"Content-Type" "application/json"}}
+          response))
       (catch Throwable e
         (let [msg (trs "Error generating SAML request")]
           (log/error e msg)
           (throw (ex-info msg {:status-code 500} e)))))))
+
+(defn- idp-cert
+  []
+  (or (sso-settings/saml-identity-provider-certificate)
+      (throw (ex-info (str (tru "Unable to log in: SAML IdP certificate is not set."))
+                      {:status-code 500}))))
+
+(defn- acs-url []
+  (str (public-settings/site-url) "/auth/sso"))
 
 (defn- idp-cert
   []
@@ -302,7 +331,7 @@
         (log/error e "SAML response validation failed")
         (throw (ex-info (tru "Unable to log in: SAML response validation failed")
                         {:status-code 401}
-                        e)))))))
+                        e))))))
 
 (defmethod sso.i/sso-handle-slo :saml
   [{:keys [cookies] :as req}]
