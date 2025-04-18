@@ -11,9 +11,11 @@ export type NotificationCardSendCondition =
   | "goal_below"
   | "has_result";
 
-export type SystemEvent = "event/action.success";
-
-export type ActionType = "bulk/create" | "bulk/update" | "bulk/delete";
+// The SystemEvent values that can trigger notifications.
+export type NotificationTriggerEvent =
+  | "event/rows.created"
+  | "event/rows.updated"
+  | "event/rows.deleted";
 
 type NotificationPayloadType =
   | "notification/card"
@@ -38,9 +40,8 @@ type NotificationCardPayload = {
 type NotificationSystemEventPayload = {
   payload_type: "notification/system-event";
   payload: {
-    event_name: SystemEvent;
+    event_name: NotificationTriggerEvent;
     table_id: TableId;
-    action: ActionType;
     table?: Table; // hydrated on the BE
   };
   payload_id: null;
@@ -195,8 +196,7 @@ export type UpdateNotificationRequest =
 export type GetNotificationPayloadExampleRequest = {
   payload_type: NotificationPayloadType;
   payload: {
-    event_name: SystemEvent;
-    action: ActionType;
+    event_name: NotificationTriggerEvent;
   };
   creator_id: UserId;
 };

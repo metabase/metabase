@@ -96,9 +96,8 @@ export const createNotificationForUser = (
     creator_id: userId,
     // Use payload to make each notification unique for testing
     payload: {
-      event_name: "event/action.success",
+      event_name: "event/rows.created",
       table_id: index + 1,
-      action: "bulk/create",
     },
     payload_id: null,
   };

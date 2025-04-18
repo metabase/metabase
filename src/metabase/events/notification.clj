@@ -20,7 +20,9 @@
   #{:event/user-invited
     :event/notification-create
     :event/slack-token-invalid
-    :event/action.success})
+    :event/rows.created
+    :event/rows.updated
+    :event/rows.deleted})
 
 (def ^:private hydrate-transformer
   (mtx/transformer
@@ -117,46 +119,44 @@
                                   table-hydrate
                                   table-hydrate-schema))
 
+(def ^:private actor-schema
+  (events.schema/hydrated-schemas [:actor_id {:optional true} [:maybe pos-int?]]
+                                  :actor events.schema/user-hydrate
+                                  [:actor {:optional     true}
+                                   [:map
+                                    [:first_name [:maybe :string]]
+                                    [:last_name  [:maybe :string]]
+                                    [:email      [:maybe :string]]]]))
+
 (mr/def ::action-events
-  (-> [:map #_{:closed true}
-       [:action :keyword]
-       [:invocation_id  ::nano-id]]
-      (into (events.schema/hydrated-schemas [:actor_id {:optional true} [:maybe pos-int?]]
-                                            :actor events.schema/user-hydrate
-                                            [:actor {:optional     true}
-                                             [:map
-                                              [:first_name [:maybe :string]]
-                                              [:last_name  [:maybe :string]]
-                                              [:email      [:maybe :string]]]]))))
+  (into [:map #_{:closed true}
+         [:action :keyword]
+         [:invocation_id ::nano-id]]
+        actor-schema))
 
 (mr/def :event/action.invoked [:merge ::action-events [:map [:args :map]]])
 
-(def ^:private bulk-rows-arg [:args (-> [:map
-                                         [:arg [:sequential :map]]
-                                         [:database pos-int?]]
-                                        (into table-id-hydrate-schemas))])
+(def ^:private bulk-row-schema
+  [:map {:closed true}
+   [:args (-> [:map
+               [:arg      [:sequential :map]]
+               [:database pos-int?]]
+              (into table-id-hydrate-schemas))]
+   [:row-changes [:sequential [:map
+                               [:pk     :any]
+                               [:before [:maybe :map]]
+                               [:after  [:maybe :map]]]]]])
 
-(def ^:private bulk-row-result
-  [:result [:sequential [:map
-                         [:pk     :any]
-                         [:before [:maybe :map]]
-                         [:after  [:maybe :map]]]]])
+(def ^:private bulk-event (into bulk-row-schema actor-schema))
+
+(mr/def :event/rows.created bulk-event)
+(mr/def :event/rows.updated bulk-event)
+(mr/def :event/rows.deleted bulk-event)
 
 (mr/def :event/action.success
   [:merge ::action-events
-   [:multi {:dispatch :action}
-    [:bulk/create [:map
-                   [:action [:= :bulk/create]]
-                   bulk-rows-arg
-                   bulk-row-result]]
-    [:bulk/update [:map
-                   [:action [:= :bulk/update]]
-                   bulk-rows-arg
-                   bulk-row-result]]
-    [:bulk/delete [:map
-                   [:action [:= :bulk/delete]]
-                   bulk-rows-arg
-                   bulk-row-result]]
-    [::mc/default :map]]])
+   ;; No consumers of any events yet, so no need to specialize yet.
+   ;; In any case, this should just fetch the schema with the action definition itself, always matching exactly.
+   :map])
 
 (mr/def :event/action.failure [:merge ::action-events [:map [:info :map]]])

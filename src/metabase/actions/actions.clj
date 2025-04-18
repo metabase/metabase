@@ -208,12 +208,11 @@
 
 (defn publish-action-success!
   "Publish an action success event. This is a success event for the action that was invoked."
-  [invocation-id user-id action-kw args-map result]
+  [invocation-id user-id action-kw result]
   (->> {:action        action-kw
         :invocation_id invocation-id
         :actor_id      user-id
-        :result        result
-        :args          (u/snake-keys args-map)}
+        :result        result}
        (events/publish-event! :event/action.success)))
 
 (defn- publish-action-failure! [invocation-id user-id action-kw msg info]
@@ -231,24 +230,35 @@
   "Eventually, all calls to perform-action! should go through this... Proceeding with caution."
   [action-kw args-map & {:as opts}]
   (let [qry-context       ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/qry-context) args-map)
+        ;; TODO this is totally broken if you create more than 1 row, because we don't know the pk yet (it's just {})
         pk->db-row-before ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/query-previous-rows) action-kw qry-context)
         invocation-id     (nano-id/nano-id)
         user-id           api/*current-user-id*]
     (publish-action-invocation! invocation-id user-id action-kw args-map)
     (try
-      (let [result           (perform-action! action-kw args-map opts)
-            pk->db-row-after ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/query-latest-rows) action-kw qry-context result)
-            all-pks          (set/union (set (keys pk->db-row-before))
-                                        (set (keys pk->db-row-after)))
-            row-changes      (for [pk all-pks
-                                   :let [before (get pk->db-row-before pk)
-                                         after (get pk->db-row-after pk)]
-                                   :when (not= before after)]
-                               {:pk     pk
-                                :before before
-                                :after  after})]
-        (publish-action-success! invocation-id user-id action-kw args-map row-changes)
-        result)
+      (u/prog1 (perform-action! action-kw args-map opts)
+        (publish-action-success! invocation-id user-id action-kw <>)
+
+        ;; process the "data has changed" side effects
+        (let [pk->db-row-after ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/query-latest-rows) action-kw qry-context <>)
+              all-pks          (set/union (set (keys pk->db-row-before))
+                                          (set (keys pk->db-row-after)))
+              row-changes      (for [pk all-pks
+                                     :let [before (get pk->db-row-before pk)
+                                           after  (get pk->db-row-after pk)]
+                                     :when (not= before after)]
+                                 {:pk     pk
+                                  :before before
+                                  :after  after})]
+          (->> {:actor_id      user-id
+                :row-changes   row-changes
+                :args          (u/snake-keys args-map)}
+               (events/publish-event!
+                (case action-kw
+                  :bulk/create :event/rows.created
+                  :bulk/update :event/rows.updated
+                  :bulk/delete :event/rows.deleted)))))
+
       (catch Exception e
         (let [msg  (ex-message e)
               info (ex-data e)

@@ -35,7 +35,7 @@
   {:arglists '([notification-info])}
   dispatch-on-event-info)
 
-(mr/def ::action.success.bulk
+(mr/def ::rows.bulk
   [:map
    [:creator [:map {:gen/return {:first_name  "Meta"
                                  :last_name   "Bot"
@@ -72,45 +72,48 @@
 
 (defn- bulk-row-transformation
   [notification-info]
-  (lib.util.match/match-one
-    notification-info
-    {:payload    {:event_name ?event_name
-                  :action     ?action}
-     :creator    {:first_name  ?creator_first_name
-                  :last_name   ?creator_last_name
-                  :email       ?creator_email
-                  :common_name ?creator_common_name}
-     :event_info {:actor    {:first_name  ?first_name
-                             :last_name   ?last_name
-                             :email       ?email
-                             :common_name ?common_name}
-                  :args     {:table_id  ?table_id
-                             :table     {:name ?table_name}}
-                  :result   ?result}}
-    {:payload_type :notification/system-event
-     :context      {:action     ?action
-                    :event_name ?event_name}
-     :editor       {:first_name  ?first_name
-                    :last_name   ?last_name
-                    :email       ?email
-                    :common_name ?common_name}
-     :creator      {:first_name  ?creator_first_name
-                    :last_name   ?creator_last_name
-                    :email       ?creator_email
-                    :common_name ?creator_common_name}
-     :table        {:id   ?table_id
-                    :name ?table_name
-                    :url  (str (public-settings/site-url) "/table/" ?table_id)}
-     :records      (for [{:keys [before after]} ?result
-                         :let [changes-key (keys (second (diff before after)))]]
-                     {:row     (if (= ?action :bulk/delete) before after)
-                      :changes (into {} (for [k changes-key]
-                                          [k {:before (get before k)
-                                              :after  (get after k)}]))})
-     :settings     (notification.payload/default-settings)}))
+  (or (lib.util.match/match-one
+        notification-info
+        {:payload    {:event_name ?event_name}
+         :creator    {:first_name  ?creator_first_name
+                      :last_name   ?creator_last_name
+                      :email       ?creator_email
+                      :common_name ?creator_common_name}
+         :event_info {:actor       {:first_name  ?first_name
+                                    :last_name   ?last_name
+                                    :email       ?email
+                                    :common_name ?common_name}
+                      :args        {:table_id ?table_id
+                                    :table    {:name ?table_name}}
+                      :row-changes ?row-changes}}
+        {:payload_type :notification/system-event
+         :context      {:event_name ?event_name}
+         :editor       {:first_name  ?first_name
+                        :last_name   ?last_name
+                        :email       ?email
+                        :common_name ?common_name}
+         :creator      {:first_name  ?creator_first_name
+                        :last_name   ?creator_last_name
+                        :email       ?creator_email
+                        :common_name ?creator_common_name}
+         :table        {:id   ?table_id
+                        :name ?table_name
+                        :url  (str (public-settings/site-url) "/table/" ?table_id)}
+         :records      (for [{:keys [before after]} ?row-changes
+                             :let [changes-key (keys (second (diff before after)))]]
+                         {:row     (if (= ?event_name :event/rows.deleted) before after)
+                          :changes (into {} (for [k changes-key]
+                                              [k {:before (get before k)
+                                                  :after  (get after k)}]))})
+         :settings     (notification.payload/default-settings)})
+      (throw (ex-info "Unable to destructure notification-info, check that expected structure matches malli schema."
+                      {:notification-info notification-info}))))
 
-(doseq [event-name [:bulk/create :bulk/update :bulk/delete]]
-  (mu/defmethod transform-event-info [:event/action.success event-name] :- ::action.success.bulk
+;; TODO better to just handle all three cases by the same event
+(doseq [event-name [:event/rows.created
+                    :event/rows.updated
+                    :event/rows.deleted]]
+  (mu/defmethod transform-event-info event-name :- ::rows.bulk
     [notification-info]
     (bulk-row-transformation notification-info)))
 
