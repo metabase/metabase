@@ -3,7 +3,7 @@ import {
   type Table as ReactTable,
   flexRender,
 } from "@tanstack/react-table";
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect } from "react";
 import type { Root } from "react-dom/client";
 
 import type { ColumnOptions, DataGridTheme } from "metabase/data-grid/types";
@@ -42,14 +42,22 @@ export const useMeasureColumnWidths = <TData, TValue>(
     children: React.ReactElement,
   ) => React.ReactElement,
 ) => {
-  const measureRootRef = useRef<HTMLDivElement>();
-  const measureRootTree = useRef<Root>();
-
   const measureColumnWidths = useCallback(
     (
       preserveColumnSizingMap?: ColumnSizingState, // Preserve column widths, for example from saved settings
       truncatePreserved?: boolean, // Allow truncation of preserved column widths
     ) => {
+      const measureRoot = document.createElement("div");
+      let measureRootTree: Root | undefined = undefined;
+      measureRoot.style.position = "absolute";
+      measureRoot.style.top = "-9999px";
+      measureRoot.style.left = "-9999px";
+      measureRoot.style.visibility = "hidden";
+      measureRoot.style.pointerEvents = "none";
+      measureRoot.style.zIndex = "-999";
+      measureRoot.style.fontSize = DEFAULT_FONT_SIZE;
+      document.body.appendChild(measureRoot);
+
       const onMeasureHeaderRender = (div: HTMLDivElement) => {
         if (div === null) {
           return;
@@ -110,6 +118,12 @@ export const useMeasureColumnWidths = <TData, TValue>(
             };
 
         table.setColumnSizing(columnSizingMap);
+
+        // Asynchronously unmount the root after the current render has completed to avoid the race condition and an error thrown by React.
+        setTimeout(() => {
+          measureRootTree?.unmount();
+          document.body.removeChild(measureRoot);
+        }, 0);
       };
 
       const rows = table.getRowModel().rows;
@@ -183,16 +197,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
         ? measurementRenderWrapper(wrappedContent)
         : wrappedContent;
 
-      // Instead of unmounting and creating a new root, reuse the existing root when possible
-      if (measureRootRef.current) {
-        if (measureRootTree.current) {
-          // If a root already exists, just update it
-          measureRootTree.current.render(content);
-        } else {
-          // Only create a new root if one doesn't exist
-          measureRootTree.current = renderRoot(content, measureRootRef.current);
-        }
-      }
+      measureRootTree = renderRoot(content, measureRoot);
     },
     [
       table,
@@ -205,33 +210,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
   );
 
   useEffect(() => {
-    if (!measureRootRef.current) {
-      const measureRoot = document.createElement("div");
-      measureRoot.style.position = "absolute";
-      measureRoot.style.top = "-9999px";
-      measureRoot.style.left = "-9999px";
-      measureRoot.style.visibility = "hidden";
-      measureRoot.style.pointerEvents = "none";
-      measureRoot.style.zIndex = "-999";
-      measureRoot.style.fontSize = DEFAULT_FONT_SIZE;
-      document.body.appendChild(measureRoot);
-      measureRootRef.current = measureRoot;
-    }
-
     measureColumnWidths(controlledColumnSizingMap, true);
-
-    // Cleanup measurement root
-    return () => {
-      if (measureRootTree.current) {
-        measureRootTree.current.unmount();
-        measureRootTree.current = undefined;
-      }
-
-      if (measureRootRef.current) {
-        document.body.removeChild(measureRootRef.current);
-        measureRootRef.current = undefined;
-      }
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
