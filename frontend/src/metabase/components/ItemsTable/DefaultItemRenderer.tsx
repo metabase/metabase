@@ -8,7 +8,7 @@ import { color } from "metabase/lib/colors";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
-export type ItemRendererProps<SortColumn extends string> = {
+export type ItemRendererProps = {
   item: CollectionItem;
   isSelected?: boolean;
   isPinned?: boolean;
@@ -19,9 +19,9 @@ export type ItemRendererProps<SortColumn extends string> = {
   databases?: Database[];
   bookmarks?: Bookmark[];
 } & ActionMenuProps &
-  Pick<BaseItemsTableProps<SortColumn>, "onClick" | "visibleColumnsMap">;
+  Pick<BaseItemsTableProps, "onClick" | "visibleColumnsMap">;
 
-export const DefaultItemRenderer = <SortColumn extends string>({
+export const DefaultItemRenderer = ({
   item,
   isSelected,
   isPinned,
@@ -36,7 +36,7 @@ export const DefaultItemRenderer = <SortColumn extends string>({
   testIdPrefix = "item",
   onClick,
   visibleColumnsMap,
-}: ItemRendererProps<SortColumn>) => {
+}: ItemRendererProps) => {
   const canSelect =
     collection?.can_write && typeof onToggleSelected === "function";
 

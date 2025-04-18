@@ -7,12 +7,12 @@ import type { BaseItemsTableProps } from "./BaseItemsTable";
 import { BaseItemsTable } from "./BaseItemsTable";
 import { ItemsTableRoot } from "./ItemsTable.styled";
 
-const Item = <SortColumn extends string>({
+const Item = ({
   item,
   ...props
 }: {
   item: CollectionItem;
-} & ItemRendererProps<SortColumn>) => {
+} & ItemRendererProps) => {
   return (
     <BaseItemsTable.Item
       key={`${item.model}-${item.id}`}
@@ -22,14 +22,14 @@ const Item = <SortColumn extends string>({
   );
 };
 
-export const ItemsTable = <SortColumn extends string>({
+export const ItemsTable = ({
   items,
   ItemComponent = Item,
   ...props
 }: {
   items: CollectionItem[];
-  ItemComponent?: (props: ItemRendererProps<SortColumn>) => JSX.Element;
-} & BaseItemsTableProps<SortColumn>) => {
+  ItemComponent?: (props: ItemRendererProps) => JSX.Element;
+} & BaseItemsTableProps) => {
   if (items.length === 0) {
     return (
       <ItemsTableRoot>

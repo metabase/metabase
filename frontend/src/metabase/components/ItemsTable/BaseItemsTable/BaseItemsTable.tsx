@@ -14,7 +14,12 @@ import { BaseItemsTableBody } from "metabase/components/ItemsTable/BaseItemsTabl
 import type { ItemRendererProps } from "metabase/components/ItemsTable/DefaultItemRenderer";
 import { DefaultItemRenderer } from "metabase/components/ItemsTable/DefaultItemRenderer";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import type {
+  Bookmark,
+  Collection,
+  CollectionItem,
+  ListCollectionItemsSortColumn,
+} from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import {
@@ -93,7 +98,7 @@ export const SortableColumnHeader = <SortColumn extends string>({
   );
 };
 
-export type BaseItemsTableProps<SortColumn extends string> = {
+export type BaseItemsTableProps = {
   items: CollectionItem[];
   collection?: Collection;
   databases?: Database[];
@@ -103,9 +108,9 @@ export type BaseItemsTableProps<SortColumn extends string> = {
   selectedItems?: CollectionItem[];
   hasUnselected?: boolean;
   isPinned?: boolean;
-  sortingOptions?: SortingOptions<SortColumn>;
+  sortingOptions?: SortingOptions<ListCollectionItemsSortColumn>;
   onSortingOptionsChange?: (
-    newSortingOptions: SortingOptions<SortColumn>,
+    newSortingOptions: SortingOptions<ListCollectionItemsSortColumn>,
   ) => void;
   onToggleSelected?: OnToggleSelectedWithItem;
   onSelectAll?: () => void;
@@ -117,13 +122,13 @@ export type BaseItemsTableProps<SortColumn extends string> = {
   /** Used for dragging */
   headless?: boolean;
   isInDragLayer?: boolean;
-  ItemComponent?: (props: ItemRendererProps<SortColumn>) => JSX.Element;
+  ItemComponent?: (props: ItemRendererProps) => JSX.Element;
   includeColGroup?: boolean;
   onClick?: (item: CollectionItem) => void;
   visibleColumnsMap: CollectionContentTableColumnsMap;
 } & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy" | "onClick">>;
 
-export const BaseItemsTable = <SortColumn extends string>({
+export const BaseItemsTable = ({
   databases,
   bookmarks,
   createBookmark,
@@ -149,7 +154,7 @@ export const BaseItemsTable = <SortColumn extends string>({
   visibleColumnsMap,
   onClick,
   ...props
-}: BaseItemsTableProps<SortColumn>) => {
+}: BaseItemsTableProps) => {
   const canSelect =
     collection?.can_write && typeof onToggleSelected === "function";
   const isTrashed = !!collection && isTrashedCollection(collection);

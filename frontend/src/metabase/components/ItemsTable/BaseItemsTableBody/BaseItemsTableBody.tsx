@@ -10,7 +10,7 @@ import type { CollectionItem } from "metabase-types/api";
 
 import { TBody } from "../BaseItemsTable.styled";
 
-export const BaseItemsTableBody = <SortColumn extends string>({
+export const BaseItemsTableBody = ({
   items,
   getIsSelected = () => false,
   isPinned,
@@ -28,7 +28,7 @@ export const BaseItemsTableBody = <SortColumn extends string>({
   onClick,
   visibleColumnsMap,
 }: Pick<
-  BaseItemsTableProps<SortColumn>,
+  BaseItemsTableProps,
   | "onClick"
   | "items"
   | "getIsSelected"
