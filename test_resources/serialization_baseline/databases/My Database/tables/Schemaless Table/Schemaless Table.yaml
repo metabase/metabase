@@ -1,6 +1,7 @@
 name: Schemaless Table
 display_name: Schemaless Table
 description: null
+entity_id: KhHJ3brgFTO9CIBiZA4uE
 created_at: '2024-08-28T14:38:43.319867Z'
 db_id: My Database
 schema: null
@@ -19,4 +20,3 @@ serdes/meta:
 - id: Schemaless Table
   model: Table
 database_require_filter: null
-entity_id: KhHJ3brgFTO9CIBiZA4uE
