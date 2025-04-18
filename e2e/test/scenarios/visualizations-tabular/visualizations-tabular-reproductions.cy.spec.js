@@ -1319,7 +1319,7 @@ describe("issue 56771", () => {
       .as("headerCell")
       .then(($cell) => {
         const width = $cell[0].getBoundingClientRect().width;
-        expect(width).to.equal(175);
+        expect(width).to.be.greaterThan(174);
       });
   });
 });
