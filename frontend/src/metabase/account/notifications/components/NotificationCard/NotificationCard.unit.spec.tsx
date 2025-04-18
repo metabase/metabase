@@ -227,7 +227,7 @@ describe("NotificationCard", () => {
     );
 
     expect(
-      screen.getByText("Sample Table table - Row created"),
+      screen.getByText("Sample Table table - Rows created"),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("mail icon")).toBeInTheDocument();
     expect(
@@ -251,7 +251,7 @@ describe("NotificationCard", () => {
     );
 
     expect(
-      screen.getByText("Sample Table table - Row updated"),
+      screen.getByText("Sample Table table - Rows updated"),
     ).toBeInTheDocument();
   });
 
@@ -271,7 +271,7 @@ describe("NotificationCard", () => {
     );
 
     expect(
-      screen.getByText("Sample Table table - Row deleted"),
+      screen.getByText("Sample Table table - Rows deleted"),
     ).toBeInTheDocument();
   });
 
@@ -293,7 +293,7 @@ describe("NotificationCard", () => {
       />,
     );
 
-    expect(screen.getByText("Orders table - Row created")).toBeInTheDocument();
+    expect(screen.getByText("Orders table - Rows created")).toBeInTheDocument();
   });
 
   it("should unsubscribe when user is the creator and subscribed with another user", () => {
