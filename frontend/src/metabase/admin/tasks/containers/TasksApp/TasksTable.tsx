@@ -3,6 +3,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
@@ -11,7 +12,6 @@ import { Flex } from "metabase/ui";
 import type { Database, Task } from "metabase-types/api";
 import type { SortDirection } from "metabase-types/api/sorting";
 
-import { SortableColumnHeader } from "./SortableColumnHeader";
 import type { SortColumn } from "./types";
 
 interface Props {
@@ -21,7 +21,7 @@ interface Props {
   sortColumn: SortColumn;
   sortDirection: SortDirection;
   tasks: Task[];
-  onSort: (column: SortColumn) => void;
+  onSortingOptionsChange: (column: SortColumn) => void;
 }
 
 export const TasksTable = ({
@@ -36,6 +36,10 @@ export const TasksTable = ({
   // index databases by id for lookup
   const databaseByID: Record<number, Database> = _.indexBy(databases, "id");
   const showLoadingAndErrorWrapper = isLoading || error != null;
+  const sortingOptions = {
+    sort_column: sortColumn,
+    sort_direction: sortDirection,
+  };
 
   return (
     <table className={cx(AdminS.ContentTable, CS.mt2)}>
@@ -46,26 +50,23 @@ export const TasksTable = ({
           <th>{t`DB Engine`}</th>
           <th>
             <SortableColumnHeader
-              column="started_at"
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={onSort}
+              name="started_at"
+              sortingOptions={sortingOptions}
+              onSortingOptionsChange={onSort}
             >{t`Started at`}</SortableColumnHeader>
           </th>
           <th>
             <SortableColumnHeader
-              column="ended_at"
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={onSort}
+              name="ended_at"
+              sortingOptions={sortingOptions}
+              onSortingOptionsChange={onSort}
             >{t`Ended at`}</SortableColumnHeader>
           </th>
           <th>
             <SortableColumnHeader
-              column="duration"
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={onSort}
+              name="duration"
+              sortingOptions={sortingOptions}
+              onSortingOptionsChange={onSort}
             >{t`Duration (ms)`}</SortableColumnHeader>
           </th>
           <th>{t`Status`}</th>
