@@ -1,6 +1,6 @@
 import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
-import { useMount } from "react-use";
+import { useLatest, useMount } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
@@ -39,8 +39,9 @@ export const PublicOrEmbeddedQuestion = ({
   params: { uuid: string; token: string };
 }) => {
   const dispatch = useDispatch();
-
   const metadata = useSelector(getMetadata);
+  // we cannot use `metadata` directly otherwise hooks will re-run on every metadata change
+  const metadataRef = useLatest(metadata);
 
   const [initialized, setInitialized] = useState(false);
 
@@ -83,7 +84,7 @@ export const PublicOrEmbeddedQuestion = ({
 
       const parameters = getCardUiParameters(
         card,
-        metadata,
+        metadataRef.current,
         {},
         card.parameters || undefined,
       );
@@ -132,6 +133,7 @@ export const PublicOrEmbeddedQuestion = ({
         newResult = await maybeUsePivotEndpoint(
           EmbedApi.cardQuery,
           card,
+          metadataRef.current,
         )({
           token,
           parameters: JSON.stringify(
@@ -144,6 +146,7 @@ export const PublicOrEmbeddedQuestion = ({
         newResult = await maybeUsePivotEndpoint(
           PublicApi.cardQuery,
           card,
+          metadataRef.current,
         )({
           uuid,
           parameters: JSON.stringify(datasetQuery.parameters),
@@ -157,7 +160,7 @@ export const PublicOrEmbeddedQuestion = ({
       console.error("error", error);
       dispatch(setErrorPage(error));
     }
-  }, [card, dispatch, parameterValues, token, uuid]);
+  }, [card, metadataRef, dispatch, parameterValues, token, uuid]);
 
   useEffect(() => {
     run();
@@ -170,7 +173,7 @@ export const PublicOrEmbeddedQuestion = ({
 
     return getCardUiParameters(
       card,
-      metadata,
+      metadataRef.current,
       {},
       card.parameters || undefined,
     );
