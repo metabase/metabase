@@ -533,7 +533,8 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals :nested-queries)
       (is (= [[29 1 "20th Century Cafe"]
               [8  1 "25°"]]
-             (mt/rows
+             (mt/formatted-rows
+              [int int str]
               (mt/run-mbql-query venues
                 {:expressions {"One" [:value 1 {:base_type :type/Integer}]}
                  :fields      [$id [:expression "One"] $name]
