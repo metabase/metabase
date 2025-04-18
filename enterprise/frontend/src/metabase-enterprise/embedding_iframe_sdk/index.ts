@@ -1,4 +1,7 @@
+import { sdk } from "embedding-sdk/store/reducer";
+import { combineReducers } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
+import * as qb from "metabase/query_builder/reducers";
 import { isInteractiveEmbeddingEnabled } from "metabase-enterprise/embedding/selectors";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
@@ -12,4 +15,10 @@ if (hasPremiumFeature("embedding_iframe_sdk")) {
     isInteractiveEmbeddingEnabled;
 
   PLUGIN_EMBEDDING_IFRAME_SDK.InteractiveEmbedRoute = SdkInteractiveEmbedRoute;
+
+  // Reducers needed for embedding the SDK in an iframe
+  PLUGIN_EMBEDDING_IFRAME_SDK.additionalPublicReducerPlugins = {
+    sdk,
+    qb: combineReducers(qb),
+  };
 }
