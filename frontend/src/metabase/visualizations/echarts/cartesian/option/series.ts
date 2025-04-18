@@ -91,7 +91,7 @@ export const getBarLabelLayout =
       CHART_STYLE.seriesLabels.offset;
     return {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
-      dy: labelValue < 0 ? labelOffset : -labelOffset,
+      dy: labelValue < 0 ? labelOffset + 1 : -labelOffset - 1,
     };
   };
 
