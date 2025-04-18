@@ -427,11 +427,11 @@
                            (assoc :cache-strategy (ttl-strategy))
                            (assoc-in [:info :card-entity-id] (:entity_id model2)))]
             (testing (format "\ninner1 = %s\ninner2 = %s" (pr-str inner1) (pr-str inner2))
-              (is (= true
-                     (boolean (#'cache/is-cacheable? inner1)))
+              (is (true?
+                   (boolean (#'cache/is-cacheable? inner1)))
                   "Query should be cacheable")
-              (is (= true
-                     (boolean (#'cache/is-cacheable? inner2)))
+              (is (true?
+                   (boolean (#'cache/is-cacheable? inner2)))
                   "Query should be cacheable")
 
               (mt/with-clock #t "2020-02-19T04:44:26.056Z[UTC]"
@@ -522,11 +522,11 @@
                            (assoc :cache-strategy (ttl-strategy))
                            (assoc-in [:info :card-entity-id] (:entity_id card2)))]
             (testing (format "\nquery1 = %s\nquery2 = %s" (pr-str query1) (pr-str query2))
-              (is (= true
-                     (boolean (#'cache/is-cacheable? query1)))
+              (is (true?
+                   (boolean (#'cache/is-cacheable? query1)))
                   "Query should be cacheable")
-              (is (= true
-                     (boolean (#'cache/is-cacheable? query2)))
+              (is (true?
+                   (boolean (#'cache/is-cacheable? query2)))
                   "Query should be cacheable")
 
               (mt/with-clock #t "2020-02-19T04:44:26.056Z[UTC]"
