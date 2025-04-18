@@ -1,13 +1,12 @@
 import type {
-  ActionType,
   CardId,
   ChannelApiResponse,
   CreateAlertNotificationRequest,
   CreateTableNotificationRequest,
   NotificationChannel,
   NotificationHandler,
+  NotificationTriggerEvent,
   ScheduleSettings,
-  SystemEvent,
   TableId,
   UserId,
 } from "metabase-types/api";
@@ -125,15 +124,13 @@ export const getDefaultQuestionAlertRequest = ({
 export const getDefaultTableNotificationRequest = ({
   tableId,
   eventName,
-  action,
   currentUserId,
   channelSpec,
   hookChannels,
   userCanAccessSettings,
 }: {
   tableId: TableId;
-  eventName: SystemEvent;
-  action: ActionType;
+  eventName: NotificationTriggerEvent;
   currentUserId: UserId;
   channelSpec: ChannelApiResponse;
   hookChannels: NotificationChannel[];
@@ -144,7 +141,6 @@ export const getDefaultTableNotificationRequest = ({
     payload: {
       event_name: eventName,
       table_id: tableId,
-      action,
     },
     payload_id: null,
     handlers: getDefaultChannelConfig({
