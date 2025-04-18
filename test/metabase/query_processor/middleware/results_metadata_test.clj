@@ -198,6 +198,7 @@
             :database_type "CHARACTER VARYING"
             :display_name "NAME"
             :effective_type :type/Text
+            :ident "native[]__NAME"
             :field_ref [:field "NAME" {:base-type :type/Text}]
             :fingerprint {:global {:distinct-count 100, :nil% 0.0}
                           :type {:type/Text {:average-length 15.63
