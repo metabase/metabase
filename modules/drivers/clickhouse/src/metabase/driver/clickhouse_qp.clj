@@ -292,8 +292,8 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse :split-part]
   [driver [_ text divider position]]
-  [:arrayElement
-   [:splitByString (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider)]
+  [:'arrayElement
+   [:'splitByString (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider)]
    (sql.qp/->honeysql driver position)])
 
 (defmethod sql.qp/->honeysql [:clickhouse :text]
@@ -303,7 +303,7 @@
 (defmethod sql.qp/->honeysql [:clickhouse :date]
   [driver [_ value]]
   (h2x/maybe-cast "Date32"
-                  [:parseDateTime (sql.qp/->honeysql driver value)
+                  [:'parseDateTime64 (sql.qp/->honeysql driver value)
                    [:inline "%Y-%m-%d"]]))
 
 (defmethod sql.qp/->honeysql [:clickhouse :stddev]
