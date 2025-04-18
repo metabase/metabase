@@ -69,6 +69,9 @@ const interactiveEmbedSlice = createSlice({
         ...action.payload,
       };
     },
+    setIsEmbeddingSdk: (state, action: PayloadAction<boolean>) => {
+      state.isEmbeddingSdk = action.payload;
+    },
   },
 });
 
@@ -145,7 +148,7 @@ function normalizeEntityTypes(
   return searchOptions;
 }
 
-export const { setInitialUrlOptions, setOptions } =
+export const { setInitialUrlOptions, setOptions, setIsEmbeddingSdk } =
   interactiveEmbedSlice.actions;
 
 export const embed = interactiveEmbedSlice.reducer;

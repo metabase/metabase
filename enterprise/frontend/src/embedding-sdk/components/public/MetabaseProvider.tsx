@@ -94,6 +94,7 @@ export interface MetabaseProviderProps
 
 interface InternalMetabaseProviderProps extends MetabaseProviderProps {
   store: Store<SdkStoreState, Action>;
+  classNames?: { portalContainer?: string };
 }
 
 export const MetabaseProviderInternal = ({
@@ -104,6 +105,7 @@ export const MetabaseProviderInternal = ({
   theme,
   store,
   className,
+  classNames,
   locale,
   errorComponent,
   loaderComponent,
@@ -154,7 +156,7 @@ export const MetabaseProviderInternal = ({
               authConfig={authConfig}
               allowConsoleLog={allowConsoleLog}
             />
-            <PortalContainer />
+            <PortalContainer className={classNames?.portalContainer} />
             <FullPagePortalContainer />
           </Box>
         </SdkThemeProvider>
