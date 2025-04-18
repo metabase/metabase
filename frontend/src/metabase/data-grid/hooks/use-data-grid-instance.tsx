@@ -391,13 +391,15 @@ export const useDataGridInstance = <TData, TValue>({
     previousPagination,
   ]);
 
+  // If the column widths are not provided anymore, measure the column widths.
   useUpdateEffect(() => {
-    // If the column widths are not provided anymore, measure the column widths.
     if (Object.keys(controlledColumnSizingMap ?? {}).length === 0) {
       measureColumnWidths(controlledColumnSizingMap, true);
     }
   }, [controlledColumnSizingMap]);
 
+  // When the column widths are not provided for all columns, measure the column widths.
+  // This can happen when new columns are added to the table.
   useUpdateEffect(() => {
     const hasSizingForAllColumns = columnsOptions.every((column) => {
       return columnSizingMap[column.id] != null;

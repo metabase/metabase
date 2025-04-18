@@ -670,6 +670,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const prevData = usePrevious(data);
   const prevQuestion = usePrevious(question);
 
+  // If the data changes we reset saved column widths as it is no longer relevant
+  // except for the case where question is converted from a model to a question and back.
   useEffect(() => {
     const isDataChange =
       prevData && data && !_.isEqual(prevData.cols, data.cols);
