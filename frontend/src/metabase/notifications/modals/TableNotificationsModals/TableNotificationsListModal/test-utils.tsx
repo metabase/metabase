@@ -88,6 +88,7 @@ export const setup = ({
 export const createNotificationForUser = (
   userId: number,
   index = 0,
+  extra?: Partial<TableNotification>,
 ): TableNotification => {
   return {
     ...createMockTableNotification(),
@@ -100,5 +101,6 @@ export const createNotificationForUser = (
       table_id: index + 1,
     },
     payload_id: null,
+    ...extra,
   };
 };
