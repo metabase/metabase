@@ -1,9 +1,9 @@
-import type { Action, Location, Query } from "history";
-import { useCallback, useMemo } from "react";
+import type { Location, Query } from "history";
+import { useCallback, useEffect, useState } from "react";
 import { push, replace } from "react-router-redux";
-import { useEffectOnce } from "react-use";
-import { match } from "ts-pattern";
+import { useEffectOnce, useLatest } from "react-use";
 
+import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { useDispatch } from "metabase/lib/redux";
 
 export type QueryParam = Query[keyof Query];
@@ -16,11 +16,10 @@ export type UrlStateConfig<State extends BaseState> = {
 };
 
 type UrlStateActions<State extends BaseState> = {
-  patchUrlState: (
-    patch: Partial<State>,
-    action?: Extract<Action, "PUSH" | "REPLACE">,
-  ) => void;
+  patchUrlState: (patch: Partial<State>) => void;
 };
+
+export const URL_UPDATE_DEBOUNCE_DELAY = 300;
 
 /**
  * Once we migrate to react-router 6 we should be able to replace this custom hook
@@ -31,28 +30,31 @@ export function useUrlState<State extends BaseState>(
   { parse, serialize }: UrlStateConfig<State>,
 ): [State, UrlStateActions<State>] {
   const dispatch = useDispatch();
-  const state = useMemo(() => parse(location.query), [parse, location.query]);
+  const [state, setState] = useState(parse(location.query));
+  const urlState = useDebouncedValue(state, URL_UPDATE_DEBOUNCE_DELAY);
 
-  const patchUrlState: UrlStateActions<State>["patchUrlState"] = useCallback(
-    (patch, action = "PUSH") => {
-      const newState = { ...state, ...patch };
-      const newLocation = { ...location, query: serialize(newState) };
+  const patchUrlState = useCallback((patch: Partial<State>) => {
+    setState((state) => ({ ...state, ...patch }));
+  }, []);
 
-      match(action)
-        .with("PUSH", () => {
-          dispatch(push(newLocation));
-        })
-        .with("REPLACE", () => {
-          dispatch(replace(newLocation));
-        })
-        .exhaustive();
+  const updateUrl = useCallback(
+    (state: State) => {
+      const newLocation = { ...location, query: serialize(state) };
+      dispatch(push(newLocation));
     },
-    [dispatch, location, serialize, state],
+    [dispatch, location, serialize],
   );
 
+  const updateUrlRef = useLatest(updateUrl);
+
   useEffectOnce(function cleanInvalidQueryParams() {
-    patchUrlState(state, "REPLACE");
+    const newLocation = { ...location, query: serialize(urlState) };
+    dispatch(replace(newLocation));
   });
+
+  useEffect(() => {
+    updateUrlRef.current(urlState);
+  }, [updateUrlRef, urlState]);
 
   return [state, { patchUrlState }];
 }

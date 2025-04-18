@@ -606,7 +606,9 @@
                                                :query             dataset_query
                                                :metadata          result_metadata
                                                :original-metadata (:result_metadata card-before-update)
-                                               :model?            is-model-after-update?})
+                                               :model?            is-model-after-update?
+                                               :entity-id         (or (:entity_id card-updates)
+                                                                      (:entity_id card-before-update))})
           card-updates                       (merge card-updates
                                                     (when (and (some? type)
                                                                is-model-after-update?)

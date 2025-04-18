@@ -1,6 +1,6 @@
 (ns metabase.util.performance
   "Functions and utilities for faster processing."
-  (:refer-clojure :exclude [reduce mapv run! some concat])
+  (:refer-clojure :exclude [reduce mapv run! some concat select-keys])
   (:import (clojure.lang LazilyPersistentVector RT)
            java.util.Iterator))
 
@@ -275,3 +275,14 @@
            (with-meta (meta form)))
        form))
    m))
+
+(defn select-keys
+  "Like `clojure.walk/select-keys`, but much more efficient."
+  [m keyseq]
+  (let [absent (Object.)]
+    (persistent! (reduce (fn [acc k]
+                           (let [v (get m k absent)]
+                             (if (identical? v absent)
+                               acc
+                               (assoc! acc k v))))
+                         (transient {}) keyseq))))

@@ -145,10 +145,10 @@ jobs:
     name: Flaky e2e Tests
     uses: ./.github/workflows/e2e-test.yml
     needs:
-      - build
+      # - build
       - e2e-matrix-builder
     if: |
-      !cancelled() && needs.build.result == 'success' && needs.e2e-matrix-builder.outputs.isDefaultSpecPattern == 'true'
+      !cancelled() && needs.e2e-matrix-builder.outputs.isDefaultSpecPattern == 'true'
     secrets: inherit
     with:
       name: Flaky
