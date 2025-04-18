@@ -555,7 +555,6 @@ export const NotificationChannelsPicker = ({
                         variant="textinput"
                         placeholder={t`Alert from {{payload.result.table.name}} table`}
                         templateContext={parsedTemplateContext} // Pass parsed context
-                        minHeight="auto"
                         defaultValue={getTemplateValue("email", "subject")}
                         onBlur={(newValue) => {
                           handleTemplateBlur("email", "subject", newValue);

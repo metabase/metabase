@@ -32,6 +32,10 @@
     color: var(--mb-color-text-light);
   }
 
+  :global(.cm-tooltip .cm-completionInfo) {
+    line-height: 1.2;
+  }
+
   &.textInputVariant {
     :global(.cm-editor) {
       padding: 0 var(--mantine-spacing-sm);
