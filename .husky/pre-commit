@@ -9,4 +9,7 @@ yarn precommit
 # ATM, you can manually run ./bin/cljfmt_staged.sh if you want to format locally staged files and inspect after.
 # ./bin/cljfmt_staged.sh
 
+# Check for empty files
+./bin/check-empty-files.sh
+
 ./hooks/pre-commit.nocommit
