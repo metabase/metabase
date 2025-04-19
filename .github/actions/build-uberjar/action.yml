@@ -1,0 +1,84 @@
+name: Build Metabase Uberjar
+description: Build Metabase uberjar (metabase.jar) with configurable edition and version parameters
+
+inputs:
+  edition:
+    description: "Metabase edition (ee or oss)"
+    required: false
+    default: "oss"
+  version:
+    description: "Metabase version for the build"
+    required: false
+  java-version:
+    description: "Java version to use for the build"
+    required: false
+    default: "21"
+  node-version:
+    description: "Node version to use for the build (defaults to .nvmrc)"
+    required: false
+  m2-cache-key:
+    description: "Key to cache M2 packages from Maven Central"
+    required: false
+    default: "uberjar"
+  artifact-name:
+    description: "Name of the artifact to upload"
+    required: false
+  upload-artifact:
+    description: "Whether to upload the built uberjar as an artifact"
+    required: false
+    default: "true"
+  build-process:
+    description: "Build process to use (legacy or new)"
+    required: false
+    default: "new"
+  skip-licenses:
+    description: "Whether to skip license generation"
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set environment variables
+      shell: bash
+      run: |
+        echo "MB_EDITION=${{ inputs.edition }}" >> $GITHUB_ENV
+        echo "INTERACTIVE=false" >> $GITHUB_ENV
+
+        if [[ "${{ inputs.skip-licenses }}" == "true" ]]; then
+          echo "SKIP_LICENSES=true" >> $GITHUB_ENV
+        fi
+
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        java-version: ${{ inputs.java-version }}
+        m2-cache-key: ${{ inputs.m2-cache-key }}
+
+    - name: Build uberjar
+      if: ${{ inputs.build-process != 'legacy' }}
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.version }}" ]; then
+          ./bin/build.sh :edition :${{ inputs.edition }} :version ${{ inputs.version }}
+        else
+          ./bin/build.sh
+        fi
+
+    - name: Build uberjar (legacy)
+      if: ${{ inputs.build-process == 'legacy' }}
+      shell: bash
+      run: |
+        cd ./bin/build-mb && clojure -X build/build! :edition :${{ inputs.edition }} :version ${{ inputs.version }}
+
+    # Prepare artifact if needed
+    - name: Prepare uberjar artifact
+      if: ${{ inputs.upload-artifact == 'true' && inputs.artifact-name != '' }}
+      uses: ./.github/actions/prepare-uberjar-artifact
+      with:
+        name: ${{ inputs.artifact-name }}
