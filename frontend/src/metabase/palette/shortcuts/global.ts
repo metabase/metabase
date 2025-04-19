@@ -1,49 +1,49 @@
 import { t } from "ttag";
 
 export const globalShortcuts = {
-  "create-question": {
+  "create-new-question": {
     name: t`Create a question`,
-    shortcut: ["q"],
+    shortcut: ["c q"],
     shortcutGroup: "global",
   },
-  "create-native-query": {
+  "create-new-native-query": {
     name: t`Create a native query`,
-    shortcut: ["n"],
+    shortcut: ["c n"],
     shortcutGroup: "global",
   },
-  "create-dashboard": {
+  "create-new-dashboard": {
     name: t`Create a dashboard`,
-    shortcut: ["d"],
+    shortcut: ["c d"],
     shortcutGroup: "global",
   },
-  "create-collection": {
+  "create-new-collection": {
     name: t`Create a collection`,
-    shortcut: ["c"],
+    shortcut: ["c f"],
     shortcutGroup: "global",
   },
-  "create-model": {
+  "create-new-model": {
     name: t`Create a model`,
-    shortcut: ["m"],
+    shortcut: ["c m"],
     shortcutGroup: "global",
   },
-  "create-metric": {
+  "create-new-metric": {
     name: t`Create a metric`,
-    shortcut: ["k"],
+    shortcut: ["c k"],
     shortcutGroup: "global",
   },
-  "browse-database": {
+  "navigate-browse-database": {
     name: t`Browse databases`,
-    shortcut: ["b d"],
+    shortcut: ["g d"],
     shortcutGroup: "global",
   },
-  "browse-model": {
+  "navigate-browse-model": {
     name: t`Browse models`,
-    shortcut: ["b m"],
+    shortcut: ["g m"],
     shortcutGroup: "global",
   },
-  "browse-metric": {
+  "navigate-browse-metric": {
     name: t`Browse metrics`,
-    shortcut: ["b k"],
+    shortcut: ["g k"],
     shortcutGroup: "global",
   },
 
@@ -60,12 +60,12 @@ export const globalShortcuts = {
 
   "navigate-trash": {
     name: t`Open trash`,
-    shortcut: ["t"],
+    shortcut: ["g t"],
     shortcutGroup: "global",
   },
   "navigate-personal-collection": {
     name: t`Open personal collection`,
-    shortcut: ["p"],
+    shortcut: ["g p"],
     shortcutGroup: "global",
   },
 
@@ -83,6 +83,12 @@ export const globalShortcuts = {
   "navigate-user-settings": {
     name: t`Go to user settings`,
     shortcut: ["g u"],
+    shortcutGroup: "global",
+  },
+
+  "navigate-home": {
+    name: t`Go to home`,
+    shortcut: ["g h"],
     shortcutGroup: "global",
   },
 };

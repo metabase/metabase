@@ -1,6 +1,8 @@
-import type { Dashboard } from "metabase-types/api";
+import type { MetabaseDashboard } from "embedding-sdk/types/dashboard";
 
-export type SdkDashboardLoadEvent = (dashboard: Dashboard | null) => void;
+export type SdkDashboardLoadEvent = (
+  dashboard: MetabaseDashboard | null,
+) => void;
 
 export type SdkEventHandlersConfig = {
   /**
