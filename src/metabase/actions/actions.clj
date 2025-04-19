@@ -96,6 +96,8 @@
   [driver action database context arg-maps]
   [context (mapv (partial perform-action!* driver action database) arg-maps)])
 
+(def blah 1)
+
 (defn- known-actions
   "Set of all known actions."
   []
