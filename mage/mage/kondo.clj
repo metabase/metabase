@@ -61,6 +61,7 @@
         _ (u/debug "command: " command)]
     (println "Running Kondo on:" args)
     (apply shell/sh* "clojure" command)
+    (println "wutup")
     (System/exit 0)))
 
 (defn kondo
