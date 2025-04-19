@@ -6,7 +6,7 @@ title: Actions on dashboards
 
 ![Dashboard with filter, action button, and detail card view](./images/dashboard-filter-action.png)
 
-To put [actions](../actions/start.md) in action, you can combine them with a [model](../data-modeling/models.md) and a [filter](./filters.md) on a dashboard.
+To put [actions](../actions/start.md) into action, you can combine them with a [model](../data-modeling/models.md) and a [filter](./filters.md) on a dashboard.
 
 ## Adding an action to a dashboard
 
