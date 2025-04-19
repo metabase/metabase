@@ -1,10 +1,15 @@
 (ns i18n.create-artifacts
   (:require
    [clojure.pprint :as pprint]
+   [environ.core :as env]
    [i18n.common :as i18n]
    [i18n.create-artifacts.backend :as backend]
    [i18n.create-artifacts.frontend :as frontend]
    [metabuild-common.core :as u]))
+
+;; Set INTERACTIVE=false in CI to reduce verbosity
+(when (env/env :ci)
+  (System/setProperty "INTERACTIVE" "false"))
 
 (defn- locales-dot-edn []
   {:locales  (conj (i18n/locales) "en")
@@ -23,10 +28,13 @@
       (u/assert-file-exists file))))
 
 (defn- create-artifacts-for-locale! [locale]
-  (u/step (format "Create artifacts for locale %s" (pr-str locale))
+  (let [ci? (env/env :ci)]
+    (when-not ci?
+      (u/step (format "Create artifacts for locale %s" (pr-str locale))))
     (frontend/create-artifact-for-locale! locale)
     (backend/create-artifact-for-locale! locale)
-    (u/announce "Artifacts for locale %s created successfully." (pr-str locale))))
+    (when-not ci?
+      (u/announce "Artifacts for locale %s created successfully." (pr-str locale)))))
 
 (defn- create-artifacts-for-all-locales! []
   ;; Empty directory in case some locales were removed
@@ -40,7 +48,10 @@
    (create-all-artifacts! nil))
 
   ([_options]
-   (u/step "Create i18n artifacts"
+   (let [ci? (env/env :ci)]
+     (when-not ci?
+       (u/step "Create i18n artifacts"))
      (generate-locales-dot-edn!)
      (create-artifacts-for-all-locales!)
-     (u/announce "Translation resources built successfully."))))
+     (when-not ci?
+       (u/announce "Translation resources built successfully.")))))
