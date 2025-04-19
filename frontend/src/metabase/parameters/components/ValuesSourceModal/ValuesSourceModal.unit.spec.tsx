@@ -625,7 +625,7 @@ describe("ValuesSourceModal", () => {
     });
 
     describe("card source", () => {
-      it("should not should the card source for number parameters", async () => {
+      it("should show the card source for number parameters", async () => {
         await setup({
           parameter: createMockUiParameter({
             type: "number/=",
@@ -635,8 +635,8 @@ describe("ValuesSourceModal", () => {
         });
 
         expect(
-          screen.queryByText("From another model or question"),
-        ).not.toBeInTheDocument();
+          screen.getByText("From another model or question"),
+        ).toBeInTheDocument();
       });
     });
 

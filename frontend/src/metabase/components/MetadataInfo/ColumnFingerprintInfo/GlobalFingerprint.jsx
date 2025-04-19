@@ -3,7 +3,7 @@ import { msgid, ngettext, t } from "ttag";
 
 import { useGetFieldValuesQuery } from "metabase/api";
 import { formatNumber } from "metabase/lib/formatting";
-import { connect } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import {
@@ -14,37 +14,20 @@ import {
   LoadingSpinner,
   NoWrap,
   RelativeContainer,
-} from "./CategoryFingerprint.styled";
+} from "./GlobalFingerprint.styled";
 
 const propTypes = {
   className: PropTypes.string,
-  field: PropTypes.object,
   fieldId: PropTypes.number,
-  fieldValues: PropTypes.array,
-  hasListValues: PropTypes.bool,
   showAllFieldValues: PropTypes.bool,
 };
 
 const FIELD_VALUES_SHOW_LIMIT = 35;
 
-const mapStateToProps = (state, props) => {
-  const { fieldId } = props;
-  const metadata = getMetadata(state);
+export function GlobalFingerprint({ className, fieldId, showAllFieldValues }) {
+  const metadata = useSelector(getMetadata);
   const field = metadata.field(fieldId);
-
-  return {
-    field,
-    hasListValues: field?.has_field_values === "list",
-  };
-};
-
-export function CategoryFingerprint({
-  className,
-  field,
-  fieldId,
-  hasListValues,
-  showAllFieldValues,
-}) {
+  const hasListValues = field?.has_field_values === "list";
   const { data: fieldData, isLoading } = useGetFieldValuesQuery(fieldId, {
     skip: !hasListValues,
   });
@@ -131,6 +114,4 @@ function ShortenedFieldValuesList({ isLoading, fieldValues }) {
   );
 }
 
-CategoryFingerprint.propTypes = propTypes;
-
-export default connect(mapStateToProps)(CategoryFingerprint);
+GlobalFingerprint.propTypes = propTypes;

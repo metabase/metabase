@@ -126,55 +126,6 @@ describe("scenarios > filters > sql filters > field filter", () => {
     });
   });
 
-  context("None", () => {
-    beforeEach(() => {
-      H.startNewNativeQuestion({ display: "table" });
-      SQLFilter.enterParameterizedQuery(
-        "SELECT * FROM people WHERE {{filter}}",
-      );
-
-      SQLFilter.openTypePickerFromDefaultFilterType();
-      SQLFilter.chooseType("Field Filter");
-
-      FieldFilter.mapTo({
-        table: "People",
-        field: "Longitude",
-      });
-
-      cy.findByTestId("filter-widget-type-select")
-        .should("have.value", "None")
-        .should("be.disabled");
-
-      H.filterWidget().should("not.exist");
-    });
-
-    it("should be runnable with the None filter being ignored (metabase#20643)", () => {
-      cy.findAllByTestId("run-button").first().click();
-
-      cy.wait("@dataset");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Hudson Borer");
-    });
-
-    it("should let you change the field filter type to something else and restore the filter widget (metabase#13825)", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Longitude").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Address").click();
-
-      FieldFilter.setWidgetType("String contains");
-
-      FieldFilter.openEntryForm();
-      FieldFilter.addWidgetStringFilter("111 L");
-
-      SQLFilter.runQuery();
-
-      cy.findByTestId("query-visualization-root").within(() => {
-        cy.findByText("111 Leupp Road");
-      });
-    });
-  });
-
   // Deprecated field filter types
   context("Category", () => {
     const questionDetails = {

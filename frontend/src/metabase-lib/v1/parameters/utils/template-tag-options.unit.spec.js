@@ -48,8 +48,9 @@ describe("parameters/utils/template-tag-options", () => {
       isState: () => false,
       isZipCode: () => false,
       isCountry: () => false,
-      isNumber: () => false,
+      isNumeric: () => false,
       isString: () => false,
+      isBoolean: () => false,
       isLocation: () => false,
     };
 

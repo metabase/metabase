@@ -45,6 +45,7 @@ const FLOAT_CATEGORY_FIELD = createMockField({
   semantic_type: "type/Category",
   name: "FLOAT_CATEGORY",
   display_name: "Float Category",
+  has_field_values: "list",
 });
 
 const metadata = createMockMetadata({
