@@ -16,6 +16,8 @@ import { displayNameForColumn } from "metabase/lib/formatting";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
+import { getDefaultDimensionFilter } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -23,6 +25,7 @@ import type {
   DatasetColumn,
   DatasetData,
   PivotTableColumnSplitSetting,
+  RawSeries,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -70,73 +73,115 @@ export const settings = {
       return { rows, value };
     },
   },
-  [COLUMN_SPLIT_SETTING]: {
+  // [COLUMN_SPLIT_SETTING]: {
+  //   section: t`Columns`,
+  //   widget: "fieldsPartition",
+  //   persistDefault: true,
+  //   getHidden: ([{ data }]: [{ data: DatasetData }]) =>
+  //     // hide the setting widget if there are invalid columns
+  //     !data || data.cols.some((col) => !isColumnValid(col)),
+  //   getProps: (
+  //     [{ data }]: [{ data: DatasetData }],
+  //     settings: VisualizationSettings,
+  //   ) => ({
+  //     value: migratePivotColumnSplitSetting(
+  //       settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
+  //       data?.cols ?? [],
+  //     ),
+  //     partitions,
+  //     columns: data == null ? [] : data.cols,
+  //     settings,
+  //     getColumnTitle: (column: DatasetColumn) => {
+  //       return getTitleForColumn(column, settings);
+  //     },
+  //   }),
+  //   getValue: (
+  //     [{ data }]: [{ data: DatasetData; card: Card }],
+  //     settings: Partial<VisualizationSettings> = {},
+  //   ) => {
+  //     const storedValue = settings[COLUMN_SPLIT_SETTING];
+  //     if (data == null) {
+  //       return undefined;
+  //     }
+  //     const columnsToPartition = data.cols.filter(
+  //       (col) => !isPivotGroupColumn(col),
+  //     );
+  //     let setting: PivotTableColumnSplitSetting;
+  //     if (storedValue == null) {
+  //       const [dimensions, values] = _.partition(
+  //         columnsToPartition,
+  //         isDimension,
+  //       );
+  //       const [first, second, ...rest] = _.sortBy(dimensions, (col) =>
+  //         getIn(col, ["fingerprint", "global", "distinct-count"]),
+  //       );
+  //
+  //       let rows;
+  //       let columns: DatasetColumn[];
+  //
+  //       if (dimensions.length < 2) {
+  //         columns = [];
+  //         rows = [first];
+  //       } else if (dimensions.length <= 3) {
+  //         columns = [first];
+  //         rows = [second, ...rest];
+  //       } else {
+  //         columns = [first, second];
+  //         rows = rest;
+  //       }
+  //       setting = _.mapObject({ rows, columns, values }, (cols) =>
+  //         cols.map((col) => col.name),
+  //       );
+  //     } else {
+  //       setting = updateValueWithCurrentColumns(
+  //         storedValue,
+  //         columnsToPartition,
+  //       );
+  //     }
+  //
+  //     return addMissingCardBreakouts(setting, columnsToPartition);
+  //   },
+  // },
+  "pivot.rows": {
     section: t`Columns`,
-    widget: "fieldsPartition",
-    persistDefault: true,
-    getHidden: ([{ data }]: [{ data: DatasetData }]) =>
-      // hide the setting widget if there are invalid columns
-      !data || data.cols.some((col) => !isColumnValid(col)),
-    getProps: (
-      [{ data }]: [{ data: DatasetData }],
-      settings: VisualizationSettings,
-    ) => ({
-      value: migratePivotColumnSplitSetting(
-        settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
-        data?.cols ?? [],
-      ),
-      partitions,
-      columns: data == null ? [] : data.cols,
-      settings,
-      getColumnTitle: (column: DatasetColumn) => {
-        return getTitleForColumn(column, settings);
-      },
-    }),
-    getValue: (
-      [{ data }]: [{ data: DatasetData; card: Card }],
-      settings: Partial<VisualizationSettings> = {},
-    ) => {
-      const storedValue = settings[COLUMN_SPLIT_SETTING];
-      if (data == null) {
-        return undefined;
-      }
-      const columnsToPartition = data.cols.filter(
-        (col) => !isPivotGroupColumn(col),
-      );
-      let setting: PivotTableColumnSplitSetting;
-      if (storedValue == null) {
-        const [dimensions, values] = _.partition(
-          columnsToPartition,
-          isDimension,
-        );
-        const [first, second, ...rest] = _.sortBy(dimensions, (col) =>
-          getIn(col, ["fingerprint", "global", "distinct-count"]),
-        );
-
-        let rows;
-        let columns: DatasetColumn[];
-
-        if (dimensions.length < 2) {
-          columns = [];
-          rows = [first];
-        } else if (dimensions.length <= 3) {
-          columns = [first];
-          rows = [second, ...rest];
-        } else {
-          columns = [first, second];
-          rows = rest;
-        }
-        setting = _.mapObject({ rows, columns, values }, (cols) =>
-          cols.map((col) => col.name),
-        );
-      } else {
-        setting = updateValueWithCurrentColumns(
-          storedValue,
-          columnsToPartition,
-        );
-      }
-
-      return addMissingCardBreakouts(setting, columnsToPartition);
+    title: t`Pivot rows`,
+    widget: "fields",
+    addAnother: t`Add pivot row breakout`,
+    getDefault: () => {
+      return [null];
+    },
+    getProps: ([{ card, data }]: RawSeries) => {
+      const cols = data?.cols ?? [];
+      const options = cols
+        // .filter(getDefaultDimensionFilter(card.display))
+        .map(getOptionFromColumn);
+      return {
+        options,
+        addAnother: t`Add pivot breakout`,
+        columns: data.cols,
+        fieldSettingWidgets: [],
+      };
+    },
+  },
+  "pivot.cols": {
+    section: t`Columns`,
+    title: t`Pivot columns`,
+    widget: "fields",
+    addAnother: t`Add pivot column breakout`,
+    getDefault: () => {
+      return [null];
+    },
+    getProps: ([{ card, data }]: RawSeries) => {
+      const cols = data?.cols ?? [];
+      const options = cols
+        // .filter(getDefaultDimensionFilter(card.display))
+        .map(getOptionFromColumn);
+      return {
+        options,
+        addAnother: t`Add pivot breakout`,
+        columns: data.cols,
+        fieldSettingWidgets: [],
+      };
     },
   },
   "pivot.show_row_totals": {
