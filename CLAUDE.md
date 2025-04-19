@@ -46,30 +46,10 @@
 - The codebase is organized into feature-based modules with a clear separation of UI, state management, and data services
 - For detailed frontend architecture information, refer to `.claude/references/frontend-architecture.md`
 
-# Database Tools Usage Guidelines 
-- Always use the database tools when analyzing data models, application settings, data representation, notification systems, or user permissions
-- Available PostgreSQL App DB tools:
-  - `mcp__mb-postgres__list_tables`: List all tables
-  - `mcp__mb-postgres__query`: Run SQL queries 
-  - `mcp__mb-postgres__describe_table`: Get schema information
-
 # Documentation Reference
 - User-facing documentation is located in the `docs/` directory
 - Documentation covers key concepts including Questions, Dashboards, Data Modeling, Actions, Embedding, Database Connections, and Permissions
 - Reference appropriate documentation when answering conceptual questions about Metabase features
-
-# Trace Analysis Tools
-- Use the trace-analyzer MCP server when analyzing execution flow and debugging in the Clojure backend
-- Trace files can be generated using functions in `dev/src/trace.clj`
-- Available trace analyzer tools:
-  - `mcp__trace-analyzer__analyze_namespace_calls`: Find function calls from specific namespaces
-  - `mcp__trace-analyzer__analyze_function_calls`: Find specific function calls in a trace file
-  - `mcp__trace-analyzer__get_trace_statistics`: Get aggregate statistics about a trace file
-- When analyzing trace files, focus on:
-  - Function call patterns
-  - Call hierarchy and depth
-  - Return values for specific functions
-  - Most frequently called namespaces and functions
 
 ## Quick Commands
 
