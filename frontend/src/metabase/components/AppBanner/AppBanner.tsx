@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
+import { DevModeBanner } from "metabase/nav/components/DevModeBanner";
 import { PaymentBanner } from "metabase/nav/components/PaymentBanner/PaymentBanner";
 import { ReadOnlyBanner } from "metabase/nav/components/ReadOnlyBanner";
 import { TrialBanner } from "metabase/nav/components/TrialBanner";
@@ -19,6 +20,7 @@ export const AppBanner = () => {
   const isHosted = useSelector(getIsHosted);
   const tokenStatus = useSetting("token-status");
   const readOnly = useSetting("read-only-mode");
+  const isDevMode = useSetting("development-mode?");
 
   const tokenExpiryTimestamp = tokenStatus?.["valid-thru"];
   const isValidTrial = tokenExpiryTimestamp && tokenStatus?.trial && isHosted;
@@ -29,11 +31,9 @@ export const AppBanner = () => {
     tokenStatus &&
     paymentStatuses.includes(tokenStatus?.status ?? "");
 
-  // Even though both the `tokenStatus` and `readOnly` settings
-  // are visible only to admins (and will be `undefined` otherwise),
-  // we still need to explicitly prevent rendering the banner for non-admins.
+  // Most banners are only visible to admins, but DevModeBanner gets shown to all users
   if (!isAdmin) {
-    return null;
+    return isDevMode ? <DevModeBanner /> : null;
   }
 
   if (readOnly) {
@@ -64,6 +64,10 @@ export const AppBanner = () => {
 
   if (shouldRenderPaymentBanner) {
     return <PaymentBanner tokenStatus={tokenStatus} />;
+  }
+
+  if (isDevMode) {
+    return <DevModeBanner />;
   }
 
   // Do not render to admins if the specific conditions haven't been met
