@@ -48,3 +48,28 @@
 
     (is (empty? (get-context))
         "Context should be reset after exception")))
+
+(deftest ^:parallel with-error-context-works
+  (testing "has correct data for a basic example"
+    (is (= {:foo "bar"}
+           (log/get-exception-data
+            (try (log/with-context {:foo "bar"}
+                   (/ 1 0))
+                 (catch Exception e
+                   e))))))
+  (testing "nested: inner overrides outer"
+    (is (= {:data "inner"}
+           (log/get-exception-data
+            (try (log/with-context {:data "outer"}
+                   (log/with-context {:data "inner"}
+                     (/ 1 0)))
+                 (catch Exception e e))))))
+  (testing "a caught exception => context disappears"
+    (is (= {:data "outer"}
+           (log/get-exception-data
+            (try (log/with-context {:data "outer"}
+                   (try (log/with-context {:data "inner"}
+                          (/ 1 0))
+                        (catch Exception _ nil))
+                   (/ 1 0))
+                 (catch Exception e e)))))))
