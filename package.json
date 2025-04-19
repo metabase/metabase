@@ -492,6 +492,7 @@
       "prettier --write"
     ],
     "**/*.{clj,cljc,cljs,bb}": [
+      "./bin/mage kondo-updated",
       "./bin/mage cljfmt-files"
     ],
     "e2e/test/scenarios/*/{*.(js|ts),!(helpers|shared)/*.(js|ts)}": [
