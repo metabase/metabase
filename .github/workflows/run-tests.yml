@@ -58,6 +58,48 @@ jobs:
           token: ${{ github.token }}
           filters: .github/static-viz-sources.yaml
 
+  build-uberjar:
+    name: Build Uberjar (${{ matrix.edition }})
+    needs: [files-changed, static-viz-files-changed] # Depends on file checks
+    # Condition: Build if backend source, frontend source, or E2E files changed (adjust as needed)
+    # Using e2e_all might be too broad if it includes only spec changes,
+    # backend_all + frontend_sources might be more accurate for source code changes affecting the JAR.
+    if: ${{ !cancelled() && (needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.frontend_sources == 'true') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25 # Increased timeout for build
+    strategy:
+      matrix:
+        edition: [oss, ee]
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      INTERACTIVE: false
+      # make sure that builds on release branches get licenses, because we use them for releases
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+        # Add node-version input if needed based on get-build-requirements for release branches
+        # with:
+        #   node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: uberjar-build # Unique cache key for this build job
+          # Add java-version input if needed based on get-build-requirements for release branches
+          # java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
+          java-version: 21 # Defaulting to 21 if not on release branch or no specific requirement found
+
+      - name: Build uberjar with ./bin/build.sh
+        timeout-minutes: 15
+        run: ./bin/build.sh
+        shell: bash
+
+      - name: Prepare uberjar artifact
+        uses: ./.github/actions/prepare-uberjar-artifact
+        with:
+          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+
   backend-tests:
     if: ${{ !cancelled() }}
     needs: [files-changed, static-viz-files-changed]
@@ -81,8 +123,9 @@ jobs:
       skip: ${{ needs.files-changed.outputs.frontend_all != 'true' }}
 
   e2e-tests:
-    needs: files-changed
+    needs: [files-changed, build-uberjar]
+    if: ${{ !cancelled() && needs.files-changed.outputs.e2e_all == 'true' && (needs.build-uberjar.result == 'success' || needs.build-uberjar.result == 'skipped') }}
     uses: ./.github/workflows/e2e-tests.yml
     secrets: inherit
-    with:
-      skip: ${{ needs.files-changed.outputs.e2e_all != 'true' }}
+    # with:
+    #   skip: ${{ needs.files-changed.outputs.e2e_all != 'true' }}

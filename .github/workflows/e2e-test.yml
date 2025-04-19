@@ -81,10 +81,28 @@ jobs:
         if: inputs.name == 'embedding-sdk'
         uses: ./.github/actions/run-embedding-sdk-storybook
 
-      - name: Retrieve uberjar artifact for ${{ inputs.edition }}
+      - name: Download Metabase ${{ inputs.edition }} uberjar
         uses: actions/download-artifact@v4
         with:
+          # Use the consistent artifact name pattern
           name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          # Use the passed commit SHA if available:
+          # name: metabase-${{ inputs.edition }}-${{ inputs.commit_sha }}-uberjar
+
+      - name: Prepare JAR for test runner
+        run: |
+          mkdir -p target/uberjar
+          mv metabase.jar target/uberjar/metabase.jar
+          echo "Checking if version.properties exists..."
+          if jar tf target/uberjar/metabase.jar version.properties > /dev/null; then
+            echo "Extracting version.properties..."
+            jar xf target/uberjar/metabase.jar version.properties
+            mkdir -p resources # Ensure resources directory exists
+            mv version.properties resources/
+          else
+            echo "version.properties not found in JAR."
+          fi
+        shell: bash
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend

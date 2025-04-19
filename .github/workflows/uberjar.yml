@@ -23,45 +23,24 @@ on:
         description: "Optional full-length commit SHA-1 hash"
 
 jobs:
-  build:
-    name: Build MB ${{ matrix.edition }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-    strategy:
-      matrix:
-        edition: [ee, oss]
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      INTERACTIVE: false
-    steps:
-      - name: Check out the code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.commit }}
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: uberjar
-          java-version: 21
-      - name: Build
-        run: ./bin/build.sh
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
-        with:
-          name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
-
   check_jar_health:
     runs-on: ubuntu-22.04
     name: Is ${{ matrix.edition }} (java ${{ matrix.java-version }}) healthy?
-    needs: build
     timeout-minutes: 10
     strategy:
       matrix:
         edition: [ee, oss]
         java-version: [21]
     steps:
+      - name: Download Metabase ${{ matrix.edition }} uberjar
+        uses: ./.github/actions/e2e-download-uberjar # Use the robust download action
+        with:
+          edition: ${{ matrix.edition }}
+      - name: Prepare JAR for health check
+        run: |
+          mkdir -p target/uberjar
+          mv metabase.jar target/uberjar/metabase.jar
+
       - name: Prepare JRE (Java Run-time Environment)
         uses: actions/setup-java@v4
         with:
@@ -69,10 +48,6 @@ jobs:
           java-version: ${{ matrix.java-version }}
           distribution: "temurin"
       - run: java -version
-      - uses: actions/download-artifact@v4
-        name: Retrieve uberjar artifact
-        with:
-          name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
       - name: Launch uberjar
         run: >-
           java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./target/uberjar/metabase.jar &
@@ -107,13 +82,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.commit }}
-      - name: Download uploaded artifacts to insert into container
-        uses: actions/download-artifact@v4
+      - name: Download Metabase ${{ matrix.edition }} uberjar
+        uses: ./.github/actions/e2e-download-uberjar # Use the robust download action
         with:
-          name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
-          path: bin/docker/
+          edition: ${{ matrix.edition }}
       - name: Move the ${{ matrix.edition }} uberjar to the context dir
-        run: mv bin/docker/target/uberjar/metabase.jar bin/docker/.
+        run: |
+          mkdir -p bin/docker
+          mv metabase.jar bin/docker/.
+
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v2.5.0
@@ -258,13 +235,16 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.commit }}
-      - name: Download uploaded artifacts to insert into container
-        uses: actions/download-artifact@v4
+
+      - name: Download Metabase ${{ matrix.edition }} uberjar
+        uses: ./.github/actions/e2e-download-uberjar # Use the robust download action
         with:
-          name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
-          path: bin/docker/
+          edition: ${{ matrix.edition }}
       - name: Move the ${{ matrix.edition }} uberjar to the context dir
-        run: mv bin/docker/target/uberjar/metabase.jar bin/docker/.
+        run: |
+          mkdir -p bin/docker
+          mv metabase.jar bin/docker/.
+
       # We need it for multi-arch build
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
