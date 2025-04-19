@@ -753,7 +753,7 @@
        default)))
 
 (defn db-test-env-var!
-  "Update or the value of a test env var. A `nil` new-value removes the env var value."
+  "Update or unset the value of a test env var. A `nil` new-value removes the env var value."
   [driver env-var new-value]
   (if (some? new-value)
     (alter-var-root #'env/env assoc (db-test-env-var-keyword driver env-var) (str new-value))
