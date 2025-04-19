@@ -314,6 +314,9 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     H.openProductsTable({ limit: 5 });
 
+    H.tableInteractive()
+      .findByText("April 11, 2025, 8:49 AM")
+      .should("be.visible");
     H.tableInteractive().findByTextEnsureVisible("Rustic Paper Wallet").click();
 
     cy.location("search").should("eq", "?objectId=Rustic%20Paper%20Wallet");
