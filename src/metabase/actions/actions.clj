@@ -77,6 +77,25 @@
      (keyword action)])
   :hierarchy #'driver/hierarchy)
 
+(defmulti perform-action!**
+  "The advanced version, which takes and returns a context. Implicitly loops."
+  {:arglists '([driver action database context arg-maps]), :added "0.44.0"}
+  (fn [driver action _database _context _arg-maps]
+    [(driver/dispatch-on-initialized-driver driver)
+     (keyword action)])
+  :hierarchy #'driver/hierarchy)
+
+;; Context
+;; 1. Scope (who, where, etc.)
+;;    e.g. uuser U clicking the row action RA (action instance) button on dashcard DC
+;; 2. Parameters (e.g. dashboard filters, row pk)
+;; 3.
+
+;; Delegate to dumb actions if necessary
+(defmethod perform-action!** :default
+  [driver action database context arg-maps]
+  [context (mapv (partial perform-action!* driver action database) arg-maps)])
+
 (defn- known-actions
   "Set of all known actions."
   []
