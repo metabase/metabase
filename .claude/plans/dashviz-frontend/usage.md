@@ -1,5 +1,17 @@
 # Frontend Code Analysis Usage Statistics
 
+```
+> /cost
+  ⎿  Total cost:            $20.12
+     Total duration (API):  1h 10m 33.5s
+     Total duration (wall): 2h 31m 38.8s
+     Total code changes:    6904 lines added, 192 lines removed
+claude_code_key_tyler_oqbo
+tokens in: 30,345,395
+tokens out: 205,870
+(this is before i ask it to reduce & summarize our files)
+```
+
 ## Phase 6.2: Performance Optimization Techniques
 
 Date: April 18, 2025
@@ -605,14 +617,3 @@ Date: April 18, 2025
 - Well-defined interfaces for visualization components
 - ECharts integration for many chart types
 - Component-based architecture with clear composition patterns
-
-
-> /cost
-  ⎿  Total cost:            $20.12
-     Total duration (API):  1h 10m 33.5s
-     Total duration (wall): 2h 31m 38.8s
-     Total code changes:    6904 lines added, 192 lines removed
-claude_code_key_tyler_oqbo
-tokens in: 30,345,395
-tokens out: 205,870
-(this is before i ask it to reduce our files)
