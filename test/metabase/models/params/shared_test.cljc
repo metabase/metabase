@@ -105,6 +105,14 @@
       "Previous 7 days"
 
       "{{foo}}"
+      {"foo" {:type :date/relative :value "past30days-from-7days"}}
+      "Previous 30 days\\, starting 7 days ago"
+
+      "{{foo}}"
+      {"foo" {:type :date/relative :value "next10weeks-from-4weeks"}}
+      "Next 10 weeks\\, starting 4 weeks from now"
+
+      "{{foo}}"
       {"foo" {:type :date/relative :value "thismonth"}}
       "This month"))
 
