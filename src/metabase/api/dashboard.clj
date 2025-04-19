@@ -4,6 +4,7 @@
    [clojure.core.cache :as cache]
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.core :as analytics]
@@ -405,6 +406,30 @@
                                                     (dissoc :id :entity_id :created_at :updated_at))))]
     (zipmap (map :id existing-tabs) new-tab-ids)))
 
+(defn- update-colvalmap-setting
+  "Visualizer dashcards have unique visualization settings which embed column id remapping metadata
+  This function iterates through the `:columnValueMapping` viz setting and updates referenced card ids
+
+  col->val-source can look like:
+  {:COLUMN_2 [{:sourceId 'card:<OLD_CARD_ID>', :originalName 'sum', :name 'COLUMN_2'}], ...}"
+  [col->val-source id->new-card]
+  (let [update-cvm-item (fn [item]
+                          (if-let [source-id (:sourceId item)]
+                            (if (and (string? source-id) (str/starts-with? source-id "card:"))
+                              (let [old-id (Long/parseLong (subs source-id 5))]
+                                (if-let [new-card (and old-id (get id->new-card old-id))]
+                                  (assoc item :sourceId (str "card:" (:id new-card)))
+                                  item))
+                              item)
+                            item))
+        update-cvm      (fn [cvm]
+                          (when (map? cvm)
+                            (into {}
+                                  (map (fn [[col-key values-vec]]
+                                         [col-key (mapv update-cvm-item values-vec)])
+                                       cvm))))]
+    (update-cvm col->val-source)))
+
 (defn update-cards-for-copy
   "Update dashcards in a dashboard for copying.
   If the dashboard has tabs, fix up the tab ids in dashcards to point to the new tabs.
@@ -449,7 +474,9 @@
                                          (keep (fn [card]
                                                  (when-let [id' (new-id (:id card))]
                                                    (assoc card :id id')))
-                                               series)))))))
+                                               series)))
+                    (m/update-existing-in [:visualization_settings :visualization :columnValuesMapping]
+                                          update-colvalmap-setting id->new-card)))))
           dashcards)))
 
 (api.macros/defendpoint :post "/:from-dashboard-id/copy"
