@@ -35,19 +35,19 @@ Because cumulative metrics use values from previous rows, the sort order in the 
 
 For example, if you have a table with data grouped by month, Metabase will compute the cumulative count like this:
 
-| Month    | `Count` | `CumulativeCount` |
-| -------- | ------- | ----------------- |
-| July     | 5       | 5                 |
-| November | 4       | 5+4 = 9           |
-| March    | 2       | 5 + 4 + 2 = 11    |
+| Month    | `Count()` | `CumulativeCount()` |
+| -------- | --------- | ------------------- |
+| July     | 5         | 5                   |
+| November | 4         | 5+4 = 9             |
+| March    | 2         | 5 + 4 + 2 = 11      |
 
 If the sort is changed (while values remain the same), then the cumulative count changes as well:
 
-| Month    | `Count` | `CumulativeCount` |
-| -------- | ------- | ----------------- |
-| March    | 2       | 2                 |
-| July     | 5       | 2 + 5 = 7         |
-| November | 4       | 2 + 5 + 4 = 11    |
+| Month    | `Count()` | `CumulativeCount()` |
+| -------- | --------- | ------------------- |
+| March    | 2         | 2                   |
+| July     | 5         | 2 + 5 = 7           |
+| November | 4         | 2 + 5 + 4 = 11      |
 
 When you have only one breakout in the query, Metabase will sort the data by the breakout column in ascending order (using the logic that your database uses for the column's data type). To change how Metabase accumulates the metric, you can add a **Sort** block by the breakout column.
 

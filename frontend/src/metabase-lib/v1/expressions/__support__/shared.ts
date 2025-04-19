@@ -169,7 +169,7 @@ const expression: TestCase[] = [
   ["[User ID]", userId, "field name with spaces"],
   ["[foo]", ["expression", "foo"], "named expression"],
   ["[User → Name]", userName, "foriegn key"],
-  ["now", ["now"], "function with zero arguments"],
+  ["now()", ["now"], "function with zero arguments"],
   ["trim([User → Name])", ["trim", userName], "function with one argument"],
   [
     'coalesce([User → Name], ",")',
@@ -289,16 +289,16 @@ const expression: TestCase[] = [
 ];
 
 const aggregation: TestCase[] = [
-  ["Count", ["count"], "aggregation with no arguments"],
+  ["Count()", ["count"], "aggregation with no arguments"],
   ["Sum([Total])", ["sum", total], "aggregation with one argument"],
-  ["1 - Count", ["-", 1, ["count"]], "aggregation with math outside"],
+  ["1 - Count()", ["-", 1, ["count"]], "aggregation with math outside"],
   [
     "Sum([Total] * 2)",
     ["sum", ["*", total, 2]],
     "aggregation with math inside",
   ],
   [
-    "1 - Sum([Total] * 2) / Count",
+    "1 - Sum([Total] * 2) / Count()",
     ["-", 1, ["/", ["sum", ["*", total, 2]], ["count"]]],
     "aggregation with math inside and outside",
   ],

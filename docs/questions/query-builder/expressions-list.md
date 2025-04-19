@@ -124,9 +124,9 @@ Example: `Average([Quantity])` would return the mean for the `Quantity` field.
 
 Returns the count of rows (also known as records) in the selected data.
 
-Syntax: `Count`
+Syntax: `Count()`
 
-Example: `Count` If a table or result returns 10 rows, `Count` will return `10`.
+Example: `Count()` If a table or result returns 10 rows, `Count` will return `10`.
 
 ### [CountIf](./expressions/countif.md)
 
@@ -805,7 +805,7 @@ Related: [dayName](#dayname), [quarterName](#quartername).
 
 Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md#report-timezone).
 
-Syntax: `now`
+Syntax: `now()`
 
 ### quarter
 
@@ -916,7 +916,7 @@ For more info, check out our page on [cumulative functions](./expressions/cumula
 
 The additive total of rows across a breakout.
 
-Syntax: `CumulativeCount`
+Syntax: `CumulativeCount()`
 
 ### CumulativeSum
 
