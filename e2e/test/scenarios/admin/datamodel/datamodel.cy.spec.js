@@ -93,6 +93,34 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     cy.findByTestId("fk-target-select").should("have.value", "Products → ID");
   });
 
+  it("should correctly filter out options in Foreign Key picker (metabase#56839)", () => {
+    H.visitAlias("@ORDERS_PRODUCT_ID_URL");
+    cy.wait("@metadata");
+
+    cy.findByPlaceholderText("Select a target").clear();
+    H.popover()
+      .should("contain.text", "Orders → ID")
+      .and("contain.text", "People → ID")
+      .and("contain.text", "Products → ID")
+      .and("contain.text", "Reviews → ID");
+
+    cy.log("should case-insensitive match field display name");
+    cy.findByPlaceholderText("Select a target").type("id");
+    H.popover()
+      .should("contain.text", "Orders → ID")
+      .and("contain.text", "People → ID")
+      .and("contain.text", "Products → ID")
+      .and("contain.text", "Reviews → ID");
+
+    cy.log("should case-insensitive match field description");
+    cy.findByPlaceholderText("Select a target").clear().type("EXT");
+    H.popover()
+      .should("not.contain.text", "Orders → ID")
+      .and("not.contain.text", "People → ID")
+      .and("contain.text", "Products → ID")
+      .and("contain.text", "Reviews → ID");
+  });
+
   it("should not let you change the type to 'Number' (metabase#16781)", () => {
     H.visitAlias("@ORDERS_PRODUCT_ID_URL");
     cy.wait(["@metadata", "@metadata"]);
