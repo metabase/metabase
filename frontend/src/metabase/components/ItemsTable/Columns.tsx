@@ -14,7 +14,11 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type { IconProps } from "metabase/ui";
 import { Tooltip } from "metabase/ui";
-import type { CollectionItem, SearchResult } from "metabase-types/api";
+import type {
+  CollectionItem,
+  ListCollectionItemsSortColumn,
+  SearchResult,
+} from "metabase-types/api";
 
 import type { SortableColumnHeaderProps } from "./BaseItemsTable";
 import { SortableColumnHeader } from "./BaseItemsTable";
@@ -31,7 +35,10 @@ import {
   TableColumn,
 } from "./BaseItemsTable.styled";
 
-type HeaderProps = Omit<SortableColumnHeaderProps, "name">;
+type HeaderProps = Omit<
+  SortableColumnHeaderProps<ListCollectionItemsSortColumn>,
+  "name"
+>;
 
 const ItemLinkComponent = ({
   onClick,
