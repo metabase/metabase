@@ -191,15 +191,11 @@
                            (update :invocation-scope u/conjv invocation-id))]
     (actions.events/publish-action-invocation! action-kw context-before inputs)
     (try
-      (let [result        (perform-action!* action-kw context-before inputs)
-            ;; TODO update all the actions to return the new "monad" shape. For now we poly our way through it, hun.
-            context-after (:context result context-before)
-            outputs       (:outputs result [result])]
-        (doseq [k [:invocation-id :invocation-scope :user-id]]
-          (assert (= (k context-before) (k context-after)) (format "Output context must not change %s" k)))
-        (actions.events/publish-action-success! action-kw context-after outputs)
-        ;; Rebuild the result, in case it was in the legacy shape
-        {:context context-after, :outputs outputs})
+      (u/prog1 (perform-action!* action-kw context-before inputs)
+        (let [{context-after :context, :keys [outputs]} <>]
+          (doseq [k [:invocation-id :invocation-scope :user-id]]
+            (assert (= (k context-before) (k context-after)) (format "Output context must not change %s" k)))
+          (actions.events/publish-action-success! action-kw context-after outputs)))
       ;; Err on the side of visibility. We may want to handle Errors differently when we polish Internal Tools.
       (catch Throwable e
         (let [msg  (ex-message e)

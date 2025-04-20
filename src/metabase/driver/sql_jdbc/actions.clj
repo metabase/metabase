@@ -203,9 +203,7 @@
 (defn- prepare-query [hsql-query driver action]
   (prepare-query* driver action hsql-query))
 
-(defmethod actions/perform-action!* [:sql-jdbc :row/delete]
-  [action _context [{db-id :database, :as query} :as inputs]]
-  (assert (= 1 (count inputs)) "This action does not yet support multiple inputs")
+(defn- row-delete!* [action _context {db-id :database, :as query}]
   (let [database             (actions/cached-database db-id)
         ;; Don't trust the driver we dispatched on - it's deprecated anyhow.
         driver               (:engine database)
@@ -214,6 +212,8 @@
                                :where       where}
                               (prepare-query driver action))
         sql-args             (sql.qp/format-honeysql driver delete-hsql)]
+    ;; We rely on this per-row transaction for the consistency guarantee of deleting exactly 1 row
+    ;; Is it really worth it? Perhaps a pre-flight check is good enough.
     (with-jdbc-transaction [conn db-id]
       ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
       (let [rows-deleted (with-auto-parse-sql-exception driver database action
@@ -225,9 +225,22 @@
                           {:staus-code 400})))
         {:rows-deleted 1}))))
 
-(defmethod actions/perform-action!* [:sql-jdbc :row/update]
-  [action _context [{db-id :database :keys [update-row] :as query} :as inputs]]
-  (assert (= 1 (count inputs)) "This action does not yet support multiple inputs")
+(defn- count-row-executions! [action context k f inputs]
+  ;; TODO accumulate snapshots from row actions
+  (let [[context counter] (reduce
+                           (fn [[context counter] query]
+                             [context (+ counter (k (f action context query)))])
+                           [context 0]
+                           inputs)]
+    {:context context
+     :outputs [{k counter}]}))
+
+(defmethod actions/perform-action!* [:sql-jdbc :row/delete]
+  [action context inputs]
+  ;; TODO it would be nice to make this 1 statements instead of N.
+  (count-row-executions! action context :rows-deleted row-delete!* inputs))
+
+(defn- row-update!* [action _context {db-id :database :keys [update-row] :as query}]
   (let [database             (actions/cached-database db-id)
         ;; Don't trust the driver we dispatched on - it's deprecated anyhow.
         driver               (:engine database)
@@ -248,6 +261,11 @@
                             (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
                           {:status-code 400})))
         {:rows-updated 1}))))
+
+(defmethod actions/perform-action!* [:sql-jdbc :row/update]
+  [action context inputs]
+  ;; TODO it would be nice to make this 1 statements instead of N.
+  (count-row-executions! action context :rows-updated row-update!* inputs))
 
 (defmulti select-created-row
   "Multimethod for converting the result of an insert into the created row.
@@ -280,14 +298,10 @@
     (log/tracef ":row/create SELECT SQL + args:\n\n%s" (u/pprint-to-str select-sql-args))
     (first (jdbc/query {:connection conn} select-sql-args {:identifiers identity, :transaction? false, :keywordize? false}))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :row/create] :- [:map [:created-row [:maybe ::created-row]]]
-  [action
-   _context
-   [{db-id :database :keys [create-row] :as query} :as inputs] :- [:sequential ::mbql.s/Query]]
-  (assert (= 1 (count inputs)) "This action does not yet support multiple inputs")
-  (let [database             (actions/cached-database db-id)
+(defn- row-create!* [action _context {db-id :database, :keys [create-row] :as query}]
+  (let [database       (actions/cached-database db-id)
         ;; Don't trust the driver we dispatched on - it's deprecated anyhow.
-        driver               (:engine database)
+        driver         (:engine database)
         {:keys [from]} (mbql-query->raw-hsql driver query)
         create-hsql    (-> {:insert-into (first from)
                             :values      [(cast-values driver create-row db-id (get-in query [:query :source-table]))]}
@@ -305,6 +319,16 @@
             row    (select-created-row driver create-hsql conn result)]
         (log/tracef ":row/create returned row %s" (pr-str row))
         {:created-row row}))))
+
+(mu/defmethod actions/perform-action!* [:sql-jdbc :row/create]
+  ;; TODO make this a first class type declaration
+  :- [:map {:closed true}
+      [:context :map]
+      [:outputs [:sequential [:map [:created-row [:maybe ::created-row]]]]]]
+  [action context inputs :- [:sequential ::mbql.s/Query]]
+  ;; TODO accumulate snapshots from row actions
+  {:context context
+   :outputs (mapv (partial row-create!* action context) inputs)})
 
 ;;;; Bulk actions
 
@@ -334,6 +358,7 @@
     :or   {xform identity}}]
   (assert (seq rows))
   (with-jdbc-transaction [conn (u/the-id database)]
+    ;; TODO accumulate snapshots from row actions
     (transduce
      (comp xform (m/indexed))
      (fn
@@ -347,14 +372,14 @@
 
        ([[errors successes] [row-index arg-map]]
         (try
-          (let [result (do-nested-transaction
-                        driver
-                        conn
-                        (fn []
-                          ;; This is bypassing `actions/perform-action-internal!` to suppress events etc.
-                          (actions/perform-action!* action context [arg-map])))]
+          (let [results (do-nested-transaction
+                         driver
+                         conn
+                         (fn []
+                           ;; This is bypassing `actions/perform-action-internal!` to suppress events etc.
+                           (actions/perform-action!* action context [arg-map])))]
             [errors
-             (conj successes result)])
+             (into successes (:outputs results))])
           (catch Throwable e
             [(conj errors {:index row-index, :error (ex-message e)})
              successes]))))
@@ -362,15 +387,9 @@
 
 ;;;; `:bulk/create`
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :bulk/create]
-  [_action
-   context
-   [{:keys [table-id rows]} :as inputs] :- [:sequential [:map
-                                                         [:table-id ::lib.schema.id/table]
-                                                         [:rows [:sequential ::lib.schema.actions/row]]]]]
-  (assert (= 1 (count inputs)) "This action does not yet support multiple inputs")
-  (log/tracef "Inserting %d rows" (count rows))
-  (let [database    (actions/cached-database-via-table-id table-id)
+(defn- bulk-create!* [context table-id rows]
+  (log/tracef "Inserting %d rows into table %d" (count rows) table-id)
+  (let [database (actions/cached-database-via-table-id table-id)
         driver   (:engine database)]
     (perform-bulk-action-with-repeated-single-row-actions!
      {:context  context
@@ -388,6 +407,21 @@
                                          (throw (ex-info (tru "Error(s) inserting rows.")
                                                          {:status-code 400, :errors errors})))
                                        {:created-rows (map :created-row successes)})))})))
+
+(defn- batch-execution-by-table-id! [f context inputs]
+  ;; TODO accumulate snapshots from row actions
+  {:context context
+   :outputs (mapv (fn [[table-id rows]] (f context table-id rows))
+                  (u/group-by :table-id :rows concat inputs))})
+
+(mu/defmethod actions/perform-action!* [:sql-jdbc :bulk/create]
+  [_action
+   context
+   ;; TODO un-nest rows into the top-level sequence, to make things more composable.
+   inputs :- [:sequential [:map
+                           [:table-id ::lib.schema.id/table]
+                           [:rows [:sequential ::lib.schema.actions/row]]]]]
+  (batch-execution-by-table-id! bulk-create!* context inputs))
 
 ;;;; Shared stuff for both `:bulk/delete` and `:bulk/update`
 
@@ -468,9 +502,7 @@
                                           (format "%s × %d" (pr-str row) repeat-count))))
                     {:status-code 400, :repeated-rows repeats}))))
 
-(defmethod actions/perform-action!* [:sql-jdbc :bulk/delete]
-  [_action context [{:keys [table-id rows]} :as inputs]]
-  (assert (= 1 (count inputs)) "This action does not yet support multiple inputs")
+(defn- bulk-delete!* [context table-id rows]
   (log/tracef "Deleting %d rows" (count rows))
   (let [database    (actions/cached-database-via-table-id table-id)
         db-id       (:id database)
@@ -498,6 +530,11 @@
                                                          {:status-code 400, :errors errors})))
                                        ;; `:bulk/delete` just returns a simple status message on success.
                                        {:success true})))})))
+
+(defmethod actions/perform-action!* [:sql-jdbc :bulk/delete]
+  ;; TODO un-nest rows into the top-level sequence, to make things more composable.
+  [_action context inputs]
+  (batch-execution-by-table-id! bulk-delete!* context inputs))
 
 ;;;; `bulk/update`
 
@@ -542,10 +579,8 @@
                       :filter       (row->mbql-filter-clause pk-name->id pk-column->value)}
          :update-row (apply dissoc row pk-names)}))))
 
-(defmethod actions/perform-action!* [:sql-jdbc :bulk/update]
-  [_action context [{:keys [table-id rows]} :as inputs]]
-  (assert (= 1 (count inputs)) "This action does not yet support multiple inputs")
-  (log/tracef "Updating %d rows" (count rows))
+(defn- bulk-update!* [context table-id rows]
+  (log/tracef "Updating %d rows in table " (count rows) table-id)
   (let [database (actions/cached-database-via-table-id table-id)
         driver   (:engine database)]
     (perform-bulk-action-with-repeated-single-row-actions!
@@ -567,3 +602,8 @@
                                                       {:rows-updated num-rows-updated}))
                                         0
                                         successes))))})))
+
+(defmethod actions/perform-action!* [:sql-jdbc :bulk/update]
+  ;; TODO un-nest rows into the top-level sequence, to make things more composable.
+  [_action context inputs]
+  (batch-execution-by-table-id! bulk-update!* context inputs))
