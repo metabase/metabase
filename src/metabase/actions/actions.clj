@@ -79,28 +79,11 @@
 
 (defmulti perform-action!**
   "The advanced version, which takes and returns a context. Implicitly loops."
-  {:arglists '([driver action database context arg-maps]), :added "0.44.0"}
-  (fn [driver action _database _context _arg-maps]
-    [(driver/dispatch-on-initialized-driver driver)
-     (keyword action)])
-  :hierarchy #'driver/hierarchy)
+  {:arglists '([action context arg-maps]), :added "0.44.0"}
+  (fn [action _context _arg-maps] action))
 
-;; Context
-;; 1. Scope (who, where, etc.)
-;;    e.g. uuser U clicking the row action RA (action instance) button on dashcard DC
-;; 2. Parameters (e.g. dashboard filters, row pk)
-;; 3.
-
-;; Delegate to dumb actions if necessary
-(defmethod perform-action!** :default
-  [driver action database context arg-maps]
-  [context (mapv (partial perform-action!* driver action database) arg-maps)])
-
-(def blah 2)
-(def blahblah 3)
-
-(defn- known-actions
-  "Set of all known actions."
+(defn- known-implicit-actions
+  "Set of all known legacy actions."
   []
   (into #{}
         (comp (filter sequential?)
@@ -110,7 +93,7 @@
 (defmethod perform-action!* :default
   [driver action _database _arg-map]
   (let [action        (keyword action)
-        known-actions (known-actions)]
+        known-actions (known-implicit-actions)]
     ;; return 404 if the action doesn't exist.
     (when-not (contains? known-actions action)
       (throw (ex-info (i18n/tru "Unknown Action {0}. Valid Actions are: {1}"
