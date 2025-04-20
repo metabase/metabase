@@ -23,7 +23,7 @@
   check-data-editing-enabled-for-database!
   perform-action!
   perform-action!*
-  perform-with-system-events!
+  perform-with-effects!
   publish-action-success!]
  [metabase.actions.error
   incorrect-value-type

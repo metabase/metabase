@@ -205,6 +205,8 @@
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/delete]
   [driver action database {database-id :database, :as query}]
+  ;; Maybe we should treat having the database hydrated in the context as an optimization, and fetch it otherwise.
+  (assert (= (:id database) database-id) "Database argument is consistent with the context.")
   (let [{:keys [from where]} (mbql-query->raw-hsql driver query)
         delete-hsql       (-> {:delete-from (first from)
                                :where       where}

@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
+   [metabase.actions.events :as actions.events]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -76,11 +77,6 @@
     [(driver/dispatch-on-initialized-driver driver)
      (keyword action)])
   :hierarchy #'driver/hierarchy)
-
-(defmulti perform-action!**
-  "The advanced version, which takes and returns a context. Implicitly loops."
-  {:arglists '([action context arg-maps]), :added "0.44.0"}
-  (fn [action _context _arg-maps] action))
 
 (defn- known-implicit-actions
   "Set of all known legacy actions."
@@ -176,8 +172,42 @@
   [action-or-id]
   (check-actions-enabled-for-database! (api/check-404 (database-for-action action-or-id))))
 
+(mu/defn perform-action-internal!
+  "A more modern version of [[perform-action!]] that takes an existing context, and multiple arg-maps.
+   Assumes (for now) that the schemas have been checked and args coerced, etc. Also doesn't do perms checks yet.
+   Use this if you want to explicitly call an action from within an action and have it traced in the audit log etc."
+  [action-kw :- qualified-keyword?
+   ctx       :- :map
+   ;; Since the inner map shape will depend on action-kw, we will need to dynamically validate it.
+   inputs    :- [:sequential :map]
+   & {:as _opts}]
+  (let [invocation-id  (nano-id/nano-id)
+        context-before (-> (assoc ctx :invocation-id invocation-id)
+                           (update :invocation-scope u/conjv invocation-id))]
+    (actions.events/publish-action-invocation! action-kw context-before inputs)
+    (try
+      ;; TODO update the interface of perform-action!* to be "monadic"
+      (u/prog1 {:context context-before :outputs (map #(perform-action!* (:engine (:db context-before))
+                                                                         action-kw
+                                                                         (:db context-before)
+                                                                         %)
+                                                      inputs)}
+        (let [{context-after :context, :keys [outputs]} <>]
+          (doseq [k [:invocation-id :invocation-scope :user-id]]
+            (assert (= (k context-before) (k context-after)) (format "Output context must not change %s" k)))
+          (actions.events/publish-action-success! action-kw context-after outputs)))
+      ;; Err on the side of visibility. We may want to handle Errors differently when we polish Internal Tools.
+      (catch Throwable e
+        (let [msg  (ex-message e)
+              info (ex-data e)
+              ;; TODO Why metadata? Not sure anything is reading this, and it'll get lost if we serialize error events.
+              info (with-meta info (merge (meta info) {:exception e}))]
+          ;; Need to think about how we learn about already performed effects this way, since we don't get a context.
+          (actions.events/publish-action-failure! action-kw context-before msg info)
+          (throw e))))))
+
 (mu/defn perform-action!
-  "Perform an `action`. Invoke this function for performing actions, e.g. in API endpoints;
+  "Perform an *implicit* `action`. Invoke this function for performing actions, e.g. in API endpoints;
   implement [[perform-action!*]] to add support for a new driver/action combo. The shape of `arg-map` depends on the
   `action` being performed. [[action-arg-map-spec]] returns the specific spec used to validate `arg-map` for a given
   `action`."
@@ -185,11 +215,11 @@
    arg-map
    & {:keys [policy]
       :or   {policy :model-action}}]
-  (let [action  (keyword action)
-        spec    (action-arg-map-spec action)
-        arg-map (normalize-action-arg-map action arg-map)] ; is arg-map always just a regular query?
+  (let [action-kw (keyword action)
+        spec      (action-arg-map-spec action-kw)
+        arg-map   (normalize-action-arg-map action-kw arg-map)] ; is arg-map always just a regular query?
     (when (s/invalid? (s/conform spec arg-map))
-      (throw (ex-info (format "Invalid Action arg map for %s: %s" action (s/explain-str spec arg-map))
+      (throw (ex-info (format "Invalid Action arg map for %s: %s" action-kw (s/explain-str spec arg-map))
                       (s/explain-data spec arg-map))))
     (let [{driver :engine :as db} (api/check-404 (qp.store/with-metadata-provider (:database arg-map)
                                                    (lib.metadata/database (qp.store/metadata-provider))))]
@@ -202,74 +232,42 @@
         (when (= :model-action policy)
           (qp.perms/check-query-action-permissions* arg-map))
         (driver/with-driver driver
-          (perform-action!* driver action db arg-map))))))
-
-(defn- publish-action-invocation! [invocation-id user-id action-kw args-map]
-  (->> {:action        action-kw
-        :invocation_id invocation-id
-        :actor_id      user-id
-        :args          args-map}
-       (events/publish-event! :event/action.invoked)))
-
-(defn publish-action-success!
-  "Publish an action success event. This is a success event for the action that was invoked."
-  [invocation-id user-id action-kw result]
-  (->> {:action        action-kw
-        :invocation_id invocation-id
-        :actor_id      user-id
-        :result        result}
-       (events/publish-event! :event/action.success)))
-
-(defn- publish-action-failure! [invocation-id user-id action-kw msg info]
-  (->> {:action        action-kw
-        :invocation_id invocation-id
-        :actor_id      user-id
-        :error         (:error info)
-        :message       msg
-        :info          info}
-       (events/publish-event! :event/action.failure)))
+          (let [context {:user-id api/*current-user-id*
+                         ;; should really move to the cache, as arg-map redundantly implies the db.
+                         ;; will also allow compound actions like workflows to touch multiple dbs.
+                         :db db}
+                {:keys [outputs]} (perform-action-internal! action-kw context [arg-map])]
+            (assert (= 1 (count outputs)) "The legacy action APIs do not support multiple outputs")
+            (first outputs)))))))
 
 ;; TODO will fix requiring-resolve when we remove all this table-action specific stuff, which has NO place here
 #_{:clj-kondo/ignore [:metabase/modules]}
-(defn perform-with-system-events!
-  "Eventually, all calls to perform-action! should go through this... Proceeding with caution."
+(defn perform-with-effects!
+  "Fire the expected events used to send notifications if the underlying actions modified table data."
   [action-kw args-map & {:as opts}]
   (let [qry-context       ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/qry-context) args-map)
         ;; TODO this is totally broken if you create more than 1 row, because we don't know the pk yet (it's just {})
-        pk->db-row-before ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/query-previous-rows) action-kw qry-context)
-        invocation-id     (nano-id/nano-id)
-        user-id           api/*current-user-id*]
-    (publish-action-invocation! invocation-id user-id action-kw args-map)
-    (try
-      (u/prog1 (perform-action! action-kw args-map opts)
-        (publish-action-success! invocation-id user-id action-kw <>)
-
-        ;; process the "data has changed" side effects
-        (let [pk->db-row-after ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/query-latest-rows) action-kw qry-context <>)
-              all-pks          (set/union (set (keys pk->db-row-before))
-                                          (set (keys pk->db-row-after)))
-              row-changes      (for [pk all-pks
-                                     :let [before (get pk->db-row-before pk)
-                                           after  (get pk->db-row-after pk)]
-                                     :when (not= before after)]
-                                 {:pk     pk
-                                  :before before
-                                  :after  after})]
-          (->> {:actor_id      user-id
-                :row-changes   row-changes
-                :args          (u/snake-keys args-map)}
-               (events/publish-event!
-                (case action-kw
-                  :bulk/create :event/rows.created
-                  :bulk/update :event/rows.updated
-                  :bulk/delete :event/rows.deleted)))))
-
-      (catch Exception e
-        (let [msg  (ex-message e)
-              info (ex-data e)
-              info (with-meta info (merge (meta info) {:exception e}))]
-          (publish-action-failure! invocation-id user-id action-kw msg info)
-          (throw e))))))
+        pk->db-row-before ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/query-previous-rows) action-kw qry-context)]
+    (u/prog1 (perform-action! action-kw args-map opts)
+      ;; process the "data has changed" side effects
+      (let [pk->db-row-after ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/query-latest-rows) action-kw qry-context <>)
+            all-pks          (set/union (set (keys pk->db-row-before))
+                                        (set (keys pk->db-row-after)))
+            row-changes      (for [pk all-pks
+                                   :let [before (get pk->db-row-before pk)
+                                         after  (get pk->db-row-after pk)]
+                                   :when (not= before after)]
+                               {:pk     pk
+                                :before before
+                                :after  after})]
+        (->> {:actor_id    api/*current-user-id*
+              :row-changes row-changes
+              :args        (u/snake-keys args-map)}
+             (events/publish-event!
+              (case action-kw
+                :bulk/create :event/rows.created
+                :bulk/update :event/rows.updated
+                :bulk/delete :event/rows.deleted)))))))
 
 ;;;; Action definitions.
 
