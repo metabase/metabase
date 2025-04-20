@@ -57,9 +57,11 @@
 
 (defmulti perform-action!*
   "Multimethod for doing an Action. The specific `action` is a keyword like `:row/create` or `:bulk/create`; the shape
-  of `arg-map` depends on the action being performed. [[action-arg-map-spec]] returns the appropriate spec to use to
-  validate the args for a given action. When implementing a new action type, be sure to implement both this method
+  of each input depends on the action being performed. [[action-arg-map-spec]] returns the appropriate spec to use to
+  validate the inputs for a given action. When implementing a new action type, be sure to implement both this method
   and [[action-arg-map-spec]].
+
+  // AS FAR AS I CAN TELL THERE ARE NO APIS LIKE THIS, AT LEAST NOT ANYMORE.
 
   At the time of this writing Actions are performed with either `POST /api/action/:action-namespace/:action-name`,
   which passes in the request body as `args-map` directly, or `POST
@@ -70,10 +72,12 @@
   The former endpoint is currently used for the various `:row/*` Actions while the version with `:table-id` as part of
   the route is currently used for `:bulk/*` Actions.
 
+  // END OF LIES
+
   DON'T CALL THIS METHOD DIRECTLY TO PERFORM ACTIONS -- use [[perform-action!]] instead which does normalization,
   validation, and binds Database-local values."
-  {:arglists '([driver action database arg-map]), :added "0.44.0"}
-  (fn [driver action _database _arg-map]
+  {:arglists '([action context inputs]), :added "0.44.0"}
+  (fn [action {:keys [driver]} _inputs]
     [(driver/dispatch-on-initialized-driver driver)
      (keyword action)])
   :hierarchy #'driver/hierarchy)
@@ -87,8 +91,9 @@
         (keys (methods perform-action!*))))
 
 (defmethod perform-action!* :default
-  [driver action _database _arg-map]
+  [action context _inputs]
   (let [action        (keyword action)
+        driver        (:engine context)
         known-actions (known-implicit-actions)]
     ;; return 404 if the action doesn't exist.
     (when-not (contains? known-actions action)
@@ -186,25 +191,40 @@
                            (update :invocation-scope u/conjv invocation-id))]
     (actions.events/publish-action-invocation! action-kw context-before inputs)
     (try
-      ;; TODO update the interface of perform-action!* to be "monadic"
-      (u/prog1 {:context context-before :outputs (map #(perform-action!* (:engine (:db context-before))
-                                                                         action-kw
-                                                                         (:db context-before)
-                                                                         %)
-                                                      inputs)}
-        (let [{context-after :context, :keys [outputs]} <>]
-          (doseq [k [:invocation-id :invocation-scope :user-id]]
-            (assert (= (k context-before) (k context-after)) (format "Output context must not change %s" k)))
-          (actions.events/publish-action-success! action-kw context-after outputs)))
+      (let [result        (perform-action!* action-kw context-before inputs)
+            ;; TODO update all the actions to return the new "monad" shape. For now we poly our way through it, hun.
+            context-after (:context result context-before)
+            outputs       (:outputs result [result])]
+        (doseq [k [:invocation-id :invocation-scope :user-id]]
+          (assert (= (k context-before) (k context-after)) (format "Output context must not change %s" k)))
+        (actions.events/publish-action-success! action-kw context-after outputs)
+        ;; Rebuild the result, in case it was in the legacy shape
+        {:context context-after, :outputs outputs})
       ;; Err on the side of visibility. We may want to handle Errors differently when we polish Internal Tools.
       (catch Throwable e
         (let [msg  (ex-message e)
-              info (ex-data e)
+              ;; Can't be nil or adding metadata will NPE
+              info (or (ex-data e) {})
               ;; TODO Why metadata? Not sure anything is reading this, and it'll get lost if we serialize error events.
               info (with-meta info (merge (meta info) {:exception e}))]
           ;; Need to think about how we learn about already performed effects this way, since we don't get a context.
           (actions.events/publish-action-failure! action-kw context-before msg info)
           (throw e))))))
+
+(defn cached-database
+  "Uses cache to prevent redundant look-ups with an action call chain."
+  [db-id]
+  (assert db-id "Id cannot be nil")
+  (cached-value [:databases db-id]
+                #(qp.store/with-metadata-provider db-id
+                   (lib.metadata/database (qp.store/metadata-provider)))))
+
+(defn cached-database-via-table-id
+  "Uses cache to prevent redundant look-ups with an action call chain."
+  [table-id]
+  (assert table-id "Id cannot be nil")
+  ;; TODO There might be tests assuming we'll hit the qp cache here instead of appdb... (if not, delete-me)
+  (cached-database (:db_id (cached-value [:tables table-id] #(t2/select-one [:model/Table :db_id] table-id)))))
 
 (mu/defn perform-action!
   "Perform an *implicit* `action`. Invoke this function for performing actions, e.g. in API endpoints;
@@ -221,22 +241,24 @@
     (when (s/invalid? (s/conform spec arg-map))
       (throw (ex-info (format "Invalid Action arg map for %s: %s" action-kw (s/explain-str spec arg-map))
                       (s/explain-data spec arg-map))))
-    (let [{driver :engine :as db} (api/check-404 (qp.store/with-metadata-provider (:database arg-map)
-                                                   (lib.metadata/database (qp.store/metadata-provider))))]
+    (let [{driver :engine :as db} (api/check-404 (cached-database (:database arg-map)))]
       (case policy
         :model-action
         (check-actions-enabled-for-database! db)
         :data-editing
         (check-data-editing-enabled-for-database! db))
-      (binding [*misc-value-cache* (atom {})]
+      (binding [*misc-value-cache* (atom {:databases {(:id db) db}})]
         (when (= :model-action policy)
           (qp.perms/check-query-action-permissions* arg-map))
         (driver/with-driver driver
           (let [context {:user-id api/*current-user-id*
-                         ;; should really move to the cache, as arg-map redundantly implies the db.
-                         ;; will also allow compound actions like workflows to touch multiple dbs.
-                         :db db}
+                         ;; Legacy drivers dispatch on this, for now.
+                         ;; TODO As far as I'm aware we only have :sql-jdbc defined actions, so can stop dispatching
+                         ;;      on this and just fail if the dynamically determined driver is incompatible.
+                         :driver  driver}
                 {:keys [outputs]} (perform-action-internal! action-kw context [arg-map])]
+            ;; TODO perhaps we can have a standard way of wrapping them for new actions
+            ;;      or define a per-action reduction (e.g. totally the number of rows updated, for bulk events)
             (assert (= 1 (count outputs)) "The legacy action APIs do not support multiple outputs")
             (first outputs)))))))
 

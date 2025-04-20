@@ -21,10 +21,11 @@
   cached-value
   check-actions-enabled!
   check-data-editing-enabled-for-database!
+  cached-database
+  cached-database-via-table-id
   perform-action!
   perform-action!*
-  perform-with-effects!
-  publish-action-success!]
+  perform-with-effects!]
  [metabase.actions.error
   incorrect-value-type
   violate-foreign-key-constraint
@@ -38,4 +39,6 @@
   apply-json-query]
  [metabase.actions.models
   dashcard->action
-  select-action])
+  select-action]
+ [metabase.actions.events
+  publish-action-success!])
