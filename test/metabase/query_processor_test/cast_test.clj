@@ -17,6 +17,24 @@
 ;;  * :type/Integer
 ;;  * :type/Number
 
+(defn- ->integer [value]
+  (cond
+    (string? value)
+    (Long/parseLong value)
+
+    (float? value)
+    (Math/round (double value))
+
+    (int? value)
+    value
+
+    (instance? java.math.BigDecimal value)
+    (Math/round (double value))
+
+    :else
+    (throw (ex-info (str "I don't know how to convert " (pr-str value) " to an integer.")
+                    {:value value}))))
+
 (deftest ^:parallel integer-cast-table-fields
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
     (mt/dataset test-data
@@ -35,9 +53,7 @@
                   rows (mt/rows result)]
               (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[uncasted-value casted-value] rows]
-                (is (= (biginteger (case db-type
-                                     "TEXT" (Long/parseLong uncasted-value)
-                                     (Math/round (double uncasted-value))))
+                (is (= (biginteger (->integer uncasted-value))
                        (biginteger casted-value))
                     (str "Casting " (pr-str uncasted-value)))))))))))
 
@@ -65,9 +81,7 @@
                   rows (mt/rows result)]
               (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[_ uncasted-value casted-value] rows]
-                (is (= (biginteger (case db-type
-                                     "TEXT" (Long/parseLong uncasted-value)
-                                     (Math/round (double uncasted-value))))
+                (is (= (biginteger (->integer uncasted-value))
                        (biginteger casted-value))
                     (str "Casting " (pr-str uncasted-value)))))))))))
 
@@ -97,9 +111,7 @@
                       rows (mt/rows result)]
                   (is (types/field-is-type? :type/Number (last cols)))
                   (doseq [[_ uncasted-value casted-value] rows]
-                    (is (= (biginteger (case db-type
-                                         "TEXT" (Long/parseLong uncasted-value)
-                                         (Math/round (double uncasted-value))))
+                    (is (= (biginteger (->integer uncasted-value))
                            (biginteger casted-value))
                         (str "Casting " (pr-str uncasted-value)))))))))))))
 
@@ -127,9 +139,7 @@
                       rows (mt/rows result)]
                   (is (types/field-is-type? :type/Number (last cols)))
                   (doseq [[uncasted-value casted-value] rows]
-                    (is (= (biginteger (case db-type
-                                         "TEXT" (Long/parseLong uncasted-value)
-                                         (Math/round (double uncasted-value))))
+                    (is (= (biginteger (->integer uncasted-value))
                            (biginteger casted-value))
                         (str "Casting " (pr-str uncasted-value)))))))))))))
 
@@ -166,9 +176,7 @@
                       rows (mt/rows result)]
                   (is (types/field-is-type? :type/Number (last cols)))
                   (doseq [[_ uncasted-value casted-value] rows]
-                    (is (= (biginteger (case db-type
-                                         "TEXT" (Long/parseLong uncasted-value)
-                                         (Math/round (double uncasted-value))))
+                    (is (= (biginteger (->integer uncasted-value))
                            (biginteger casted-value))
                         (str "Casting " (pr-str uncasted-value)))))))))))))
 
@@ -196,9 +204,7 @@
                 rows (mt/rows result)]
             (is (types/field-is-type? :type/Number (last cols)))
             (doseq [[_ uncasted-value casted-value] rows]
-              (is (= (biginteger (case db-type
-                                   "TEXT" (Long/parseLong uncasted-value)
-                                   (Math/round (double uncasted-value))))
+              (is (= (biginteger (->integer uncasted-value))
                      (biginteger casted-value))
                   (str "Casting " (pr-str uncasted-value))))))))))
 
@@ -219,9 +225,7 @@
                   rows (mt/rows result)]
               (is (types/field-is-type? :type/Number (last cols)))
               (doseq [[uncasted-value casted-value] rows]
-                (is (= (biginteger (case db-type
-                                     "TEXT" (Long/parseLong uncasted-value)
-                                     (Math/round (double uncasted-value))))
+                (is (= (biginteger (->integer uncasted-value))
                        (biginteger casted-value))
                     (str "Casting " (pr-str uncasted-value)))))))))))
 
