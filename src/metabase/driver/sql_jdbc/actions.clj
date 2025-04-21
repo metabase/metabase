@@ -245,7 +245,7 @@
           (let [result (do-nested-transaction (:engine database) conn #(proc arg))]
             [errors (conj successes result)])
           (catch Throwable e
-            [(conj errors {:index row-index, :error (ex-message e)})
+            [(conj errors {:index row-index, :error e})
              successes]))))
      coll)))
 
@@ -307,10 +307,8 @@
                          :proc     (partial row-delete!* action database)
                          :coll     inputs})]
     (if (seq errors)
-      (throw (ex-info (tru "Error(s) deleting rows.")
-                      {:status-code 400
-                       :errors      errors
-                       :diffs       diffs}))
+      ;; For backwards compatibility
+      (throw (:error (first errors)))
       {:context (record-mutations context diffs)
        :outputs [{:rows-deleted (count diffs)}]})))
 
@@ -337,7 +335,7 @@
          :before 'need-the-pk-to-get-this
          :after  'need-the-pk-to-get-this}))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :row/update] :- (result-schema [:map [:rows-updated :int]])
+(mu/defmethod actions/perform-action!* [:sql-jdbc :row/update]
   [action context inputs]
   (let [database          (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
@@ -347,10 +345,8 @@
                             :proc     (partial row-update!* action database)
                             :coll     inputs})]
     (if (seq errors)
-      (throw (ex-info (tru "Error(s) updating rows.")
-                      {:status-code 400
-                       :errors      errors
-                       :diffs       diffs}))
+      ;; For backwards compatibility
+      (throw (:error (first errors)))
       {:context (record-mutations context diffs)
        :outputs [{:rows-updated (count diffs)}]})))
 
@@ -424,10 +420,8 @@
                             :proc     (partial row-create!* action database)
                             :coll     inputs})]
     (if (seq errors)
-      (throw (ex-info (tru "Error(s) creating rows.")
-                      {:status-code 400
-                       :errors      errors
-                       :diffs       diffs}))
+      ;; For backwards compatibility
+      (throw (:error (first errors)))
       {:context (record-mutations context diffs)
        :outputs (mapv #(array-map :created-row (:after %)) diffs)})))
 
