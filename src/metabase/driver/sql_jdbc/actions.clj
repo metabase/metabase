@@ -203,135 +203,6 @@
 (defn- prepare-query [hsql-query driver action]
   (prepare-query* driver action hsql-query))
 
-(defn- row-delete!* [action _context {db-id :database, :as query}]
-  (let [database             (actions/cached-database db-id)
-        ;; Don't trust the driver we dispatched on - it's deprecated anyhow.
-        driver               (:engine database)
-        {:keys [from where]} (mbql-query->raw-hsql driver query)
-        delete-hsql       (-> {:delete-from (first from)
-                               :where       where}
-                              (prepare-query driver action))
-        sql-args             (sql.qp/format-honeysql driver delete-hsql)]
-    ;; We rely on this per-row transaction for the consistency guarantee of deleting exactly 1 row
-    ;; Is it really worth it? Perhaps a pre-flight check is good enough.
-    (with-jdbc-transaction [conn db-id]
-      ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
-      (let [rows-deleted (with-auto-parse-sql-exception driver database action
-                           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
-        (when-not (= rows-deleted 1)
-          (throw (ex-info (if (zero? rows-deleted)
-                            (tru "Sorry, the row you''re trying to delete doesn''t exist")
-                            (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
-                          {:staus-code 400})))
-        {:rows-deleted 1}))))
-
-(defn- count-row-executions! [action context k f inputs]
-  ;; TODO accumulate snapshots from row actions
-  (let [[context counter] (reduce
-                           (fn [[context counter] query]
-                             [context (+ counter (k (f action context query)))])
-                           [context 0]
-                           inputs)]
-    {:context context
-     :outputs [{k counter}]}))
-
-(defmethod actions/perform-action!* [:sql-jdbc :row/delete]
-  [action context inputs]
-  ;; TODO it would be nice to make this 1 statements instead of N.
-  (count-row-executions! action context :rows-deleted row-delete!* inputs))
-
-(defn- row-update!* [action _context {db-id :database :keys [update-row] :as query}]
-  (let [database             (actions/cached-database db-id)
-        ;; Don't trust the driver we dispatched on - it's deprecated anyhow.
-        driver               (:engine database)
-        source-table         (get-in query [:query :source-table])
-        {:keys [from where]} (mbql-query->raw-hsql driver query)
-        update-hsql          (-> {:update (first from)
-                                  :set    (cast-values driver update-row db-id source-table)
-                                  :where  where}
-                                 (prepare-query driver action))
-        sql-args             (sql.qp/format-honeysql driver update-hsql)]
-    (with-jdbc-transaction [conn db-id]
-      ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
-      (let [rows-updated (with-auto-parse-sql-exception driver database action
-                           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
-        (when-not (= rows-updated 1)
-          (throw (ex-info (if (zero? rows-updated)
-                            (tru "Sorry, the row you''re trying to update doesn''t exist")
-                            (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
-                          {:status-code 400})))
-        {:rows-updated 1}))))
-
-(defmethod actions/perform-action!* [:sql-jdbc :row/update]
-  [action context inputs]
-  ;; TODO it would be nice to make this 1 statements instead of N.
-  (count-row-executions! action context :rows-updated row-update!* inputs))
-
-(defmulti select-created-row
-  "Multimethod for converting the result of an insert into the created row.
-  `create-hsql` is the honeysql query used to insert the new row,
-  `conn` is the DB connection used to insert the new row and
-  `result` is the value returned by the insert command."
-  {:changelog-test/ignore true, :arglists '([driver create-hsql conn result]), :added "0.46.0"}
-  (fn [driver _ _ _]
-    (driver/dispatch-on-initialized-driver driver))
-  :hierarchy #'driver/hierarchy)
-
-(mr/def ::created-row
-  [:map-of :string :any])
-
-;;; H2 and MySQL are dumb and `RETURN_GENERATED_KEYS` only returns the ID of
-;;; the newly created row. This function will `SELECT` the newly created row
-;;; assuming that `result` is a map from column names to the generated values.
-(mu/defmethod select-created-row :default :- [:maybe ::created-row]
-  [driver create-hsql conn result]
-  (let [select-hsql     (-> create-hsql
-                            (dissoc :insert-into :values)
-                            (assoc :select [:*]
-                                   :from [(:insert-into create-hsql)]
-                                   ;; :and with a single clause will be optimized in HoneySQL
-                                   :where (into [:and]
-                                                (for [[col val] result]
-                                                  [:= (keyword col) val]))))
-        select-sql-args (sql.qp/format-honeysql driver select-hsql)]
-    (log/tracef ":row/create SELECT HoneySQL:\n\n%s" (u/pprint-to-str select-hsql))
-    (log/tracef ":row/create SELECT SQL + args:\n\n%s" (u/pprint-to-str select-sql-args))
-    (first (jdbc/query {:connection conn} select-sql-args {:identifiers identity, :transaction? false, :keywordize? false}))))
-
-(defn- row-create!* [action _context {db-id :database, :keys [create-row] :as query}]
-  (let [database       (actions/cached-database db-id)
-        ;; Don't trust the driver we dispatched on - it's deprecated anyhow.
-        driver         (:engine database)
-        {:keys [from]} (mbql-query->raw-hsql driver query)
-        create-hsql    (-> {:insert-into (first from)
-                            :values      [(cast-values driver create-row db-id (get-in query [:query :source-table]))]}
-                           (prepare-query driver action))
-        sql-args       (sql.qp/format-honeysql driver create-hsql)]
-    (log/tracef ":row/create HoneySQL:\n\n%s" (u/pprint-to-str create-hsql))
-    (log/tracef ":row/create SQL + args:\n\n%s" (u/pprint-to-str sql-args))
-    (with-jdbc-transaction [conn db-id]
-      (let [result (with-auto-parse-sql-exception driver database action
-                     (jdbc/execute! {:connection conn} sql-args {:return-keys  true
-                                                                 :identifiers  identity
-                                                                 :transaction? false
-                                                                 :keywordize?  false}))
-            _      (log/tracef ":row/create INSERT returned\n\n%s" (u/pprint-to-str result))
-            row    (select-created-row driver create-hsql conn result)]
-        (log/tracef ":row/create returned row %s" (pr-str row))
-        {:created-row row}))))
-
-(mu/defmethod actions/perform-action!* [:sql-jdbc :row/create]
-  ;; TODO make this a first class type declaration
-  :- [:map {:closed true}
-      [:context :map]
-      [:outputs [:sequential [:map [:created-row [:maybe ::created-row]]]]]]
-  [action context inputs :- [:sequential ::mbql.s/Query]]
-  ;; TODO accumulate snapshots from row actions
-  {:context context
-   :outputs (mapv (partial row-create!* action context) inputs)})
-
-;;;; Bulk actions
-
 (defmulti do-nested-transaction
   "Execute `thunk` inside a nested transaction inside `connection`, which is currently in a transaction. If `thunk`
   throws an Exception, the nested transaction should be rolled back, but the parent transaction should be able to
@@ -352,6 +223,208 @@
   {:changelog-test/ignore true :arglists '([driver ^java.sql.Connection connection thunk]), :added "0.44.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
+
+(defn- run-bulk-transaction!
+  "Like [[clojure.core/run!]] but exhaustively executing the procedures within nested transactions.
+   Rolls back the outer transaction if there are any failures, and returns [errors success], golang style."
+  [{:keys [database proc coll]}]
+  (with-jdbc-transaction [conn (:id database)]
+    ;; TODO accumulate snapshots from row actions
+    (transduce
+     (m/indexed)
+     (fn
+       ([]
+        [[] []])
+
+       ([[errors successes]]
+        (when (seq errors)
+          (.rollback conn))
+        [errors successes])
+
+       ([[errors successes] [row-index arg]]
+        (try
+          (let [result (do-nested-transaction (:engine database) conn #(proc arg))]
+            [errors (conj successes result)])
+          (catch Throwable e
+            [(conj errors {:index row-index, :error (ex-message e)})
+             successes]))))
+     coll)))
+
+(defn- inputs->db
+  "Given the inputs to a row action, determine the underlying database."
+  [inputs]
+  (let [db-ids (into #{} (map :database inputs))
+        _      (when-not (= 1 (count db-ids))
+                 (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
+                                 {:status-code  400
+                                  :database-ids db-ids})))]
+    (actions/cached-database (first db-ids))))
+
+(defn- row-delete!* [action database query]
+  (let [db-id                (u/the-id database)
+        driver               (:engine database)
+        {:keys [from where]} (mbql-query->raw-hsql driver query)
+        delete-hsql          (-> {:delete-from (first from)
+                                  :where       where}
+                                 (prepare-query driver action))
+        sql-args             (sql.qp/format-honeysql driver delete-hsql)]
+    ;; We rely on this per-row transaction for the consistency guarantee of deleting exactly 1 row
+    (with-jdbc-transaction [conn db-id]
+      ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
+      (let [rows-deleted (with-auto-parse-sql-exception driver database action
+                           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
+        (when-not (= rows-deleted 1)
+          (throw (ex-info (if (zero? rows-deleted)
+                            (tru "Sorry, the row you''re trying to delete doesn''t exist")
+                            (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
+                          {:status-code 400})))
+        ;; TODO may need to revisit this whole MBQL thing
+        {:pk     'difficult-to-get-this-from-where
+         :before 'need-the-pk-to-get-this
+         :after  nil}))))
+
+(defmethod actions/perform-action!* [:sql-jdbc :row/delete]
+  [action context inputs]
+  (let [database       (inputs->db inputs)
+        ;; TODO it would be nice to make this 1 statement per table, instead of N.
+        ;;      we can rely on the table lock instead of the nested row transactions.
+        [errors diffs] (run-bulk-transaction!
+                        {:database database
+                         :proc     (partial row-delete!* action database)
+                         :coll     inputs})]
+    (if (seq errors)
+      (throw (ex-info (tru "Error(s) deleting rows.")
+                      {:status-code 400
+                       :errors      errors
+                       :successes   diffs}))
+      ;; TODO how do we pop the context? this should happen generically
+      {:context (update-in context [:effects :rows.modified] (fnil into []) diffs)
+       :outputs [{:rows-deleted (count diffs)}]})))
+
+(defn- row-update!* [action database {:keys [update-row] :as query}]
+  (let [driver       (:engine database)
+        source-table (get-in query [:query :source-table])
+        {:keys [from where]} (mbql-query->raw-hsql driver query)
+        update-hsql  (-> {:update (first from)
+                          :set    (cast-values driver update-row (u/the-id database) source-table)
+                          :where  where}
+                         (prepare-query driver action))
+        sql-args     (sql.qp/format-honeysql driver update-hsql)]
+    (with-jdbc-transaction [conn (u/the-id database)]
+      ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
+      (let [rows-updated (with-auto-parse-sql-exception driver database action
+                           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
+        (when-not (= rows-updated 1)
+          (throw (ex-info (if (zero? rows-updated)
+                            (tru "Sorry, the row you''re trying to update doesn''t exist")
+                            (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
+                          {:status-code 400})))
+        ;; TODO may need to revisit this whole MBQL thing
+        {:pk     'difficult-to-get-this-from-where
+         :before 'need-the-pk-to-get-this
+         :after  'need-the-pk-to-get-this}))))
+
+(defmethod actions/perform-action!* [:sql-jdbc :row/update]
+  [action context inputs]
+  (let [database          (inputs->db inputs)
+        ;; TODO it would be nice to make this 1 statement per table, instead of N.
+        ;;      we can rely on the table lock instead of the nested row transactions.
+        [errors diffs]    (run-bulk-transaction!
+                           {:database database
+                            :proc     (partial row-update!* action database)
+                            :coll     inputs})]
+    (if (seq errors)
+      (throw (ex-info (tru "Error(s) updating rows.")
+                      {:status-code 400
+                       :errors      errors
+                       :successes   diffs}))
+      ;; TODO how do we pop the context? this should happen generically
+      {:context (update-in context [:effects :rows.modified] (fnil into []) diffs)
+       :outputs [{:rows-updated (count diffs)}]})))
+
+(defmulti select-created-row
+  "Multimethod for converting the result of an insert into the created row.
+  `create-hsql` is the honeysql query used to insert the new row,
+  `conn` is the DB connection used to insert the new row and
+  `result` is the value returned by the insert command."
+  {:changelog-test/ignore true, :arglists '([driver create-hsql conn result]), :added "0.46.0"}
+  (fn [driver _ _ _]
+    (driver/dispatch-on-initialized-driver driver))
+  :hierarchy #'driver/hierarchy)
+
+(mr/def ::row
+  [:map-of :keyword :any])
+
+(mr/def ::modified-row
+  [:map
+   [:pk     ::row]
+   [:before [:maybe ::row]]
+   [:after  [:maybe ::row]]])
+
+;;; H2 and MySQL are dumb and `RETURN_GENERATED_KEYS` only returns the ID of
+;;; the newly created row. This function will `SELECT` the newly created row
+;;; assuming that `result` is a map from column names to the generated values.
+(mu/defmethod select-created-row :default :- [:maybe ::row]
+  [driver create-hsql conn result]
+  (let [select-hsql     (-> create-hsql
+                            (dissoc :insert-into :values)
+                            (assoc :select [:*]
+                                   :from [(:insert-into create-hsql)]
+                                   ;; :and with a single clause will be optimized in HoneySQL
+                                   :where (into [:and]
+                                                (for [[col val] result]
+                                                  [:= (keyword col) val]))))
+        select-sql-args (sql.qp/format-honeysql driver select-hsql)]
+    (log/tracef ":row/create SELECT HoneySQL:\n\n%s" (u/pprint-to-str select-hsql))
+    (log/tracef ":row/create SELECT SQL + args:\n\n%s" (u/pprint-to-str select-sql-args))
+    (first (jdbc/query {:connection conn} select-sql-args {:identifiers identity, :transaction? false, :keywordize? false}))))
+
+(defn- row-create!* [action database {:keys [create-row] :as query}]
+  (let [db-id       (u/the-id database)
+        driver      (:engine database)
+        {:keys [from]} (mbql-query->raw-hsql driver query)
+        create-hsql (-> {:insert-into (first from)
+                         :values      [(cast-values driver create-row db-id (get-in query [:query :source-table]))]}
+                        (prepare-query driver action))
+        sql-args    (sql.qp/format-honeysql driver create-hsql)]
+    (log/tracef ":row/create HoneySQL:\n\n%s" (u/pprint-to-str create-hsql))
+    (log/tracef ":row/create SQL + args:\n\n%s" (u/pprint-to-str sql-args))
+    (with-jdbc-transaction [conn db-id]
+      (let [result (with-auto-parse-sql-exception driver database action
+                     (jdbc/execute! {:connection conn} sql-args {:return-keys  true
+                                                                 :identifiers  identity
+                                                                 :transaction? false
+                                                                 :keywordize?  false}))
+            _      (log/tracef ":row/create INSERT returned\n\n%s" (u/pprint-to-str result))
+            row    (update-keys (select-created-row driver create-hsql conn result) keyword)]
+        (log/tracef ":row/create returned row %s" (pr-str row))
+        {:pk     'TODO
+         :before nil
+         :after  row}))))
+
+(mu/defmethod actions/perform-action!* [:sql-jdbc :row/create]
+  ;; TODO make this a first class type declaration
+  :- [:map {:closed true}
+      [:context :map]
+      [:outputs [:sequential [:map [:created-row ::row]]]]]
+  [action context inputs :- [:sequential ::mbql.s/Query]]
+  (let [database (inputs->db inputs)
+        ;; TODO it would be nice to make this 1 statement per table, instead of N.
+        ;;      we can rely on the table lock instead of the nested row transactions.
+        [errors diffs]    (run-bulk-transaction!
+                           {:database database
+                            :proc     (partial row-create!* action database)
+                            :coll     inputs})]
+    (if (seq errors)
+      (throw (ex-info (tru "Error(s) creating rows.")
+                      {:status-code 400
+                       :errors      errors
+                       :successes   diffs}))
+      ;; TODO how do we pop the context? this should happen generically
+      {:context (update-in context [:effects :rows.modified] (fnil into []) diffs)
+       :outputs (mapv #(array-map :created-row (:after %)) diffs)})))
+
+;;;; Bulk actions
 
 (defn- perform-bulk-action-with-repeated-single-row-actions!
   [{:keys [driver database context action rows xform]
@@ -406,7 +479,7 @@
                                        (when (seq errors)
                                          (throw (ex-info (tru "Error(s) inserting rows.")
                                                          {:status-code 400, :errors errors})))
-                                       {:created-rows (map :created-row successes)})))})))
+                                       {:created-rows (mapv :created-row successes)})))})))
 
 (defn- batch-execution-by-table-id! [f context inputs]
   ;; TODO accumulate snapshots from row actions
