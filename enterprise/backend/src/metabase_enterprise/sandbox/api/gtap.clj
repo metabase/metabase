@@ -75,16 +75,17 @@
    {:keys [table_id card_id]} :- [:map
                                   [:table_id ms/PositiveInt]
                                   [:card_id  {:optional true} [:maybe ms/PositiveInt]]]]
-  (let [db-features (:features (t2/select-one :model/Database
-                                              {:from [[:metabase_table :t]]
-                                               :join [[:metabase_database :d] [:= :t.db_id :d.id]]
-                                               :where [:= :t.id table_id]}))]
-    (if (contains? db-features :saved-question-sandboxing)
-      (gtap/check-columns-match-table {:table_id table_id
-                                       :card_id  card_id})
-      (throw (ex-info (tru "Sandboxing is not enabled for this database.")
-                      {:status-code 400
-                       :message     (tru "Sandboxing is not enabled for this database.")})))))
+  (when card_id
+    (let [db-features (:features (t2/select-one :model/Database
+                                                {:from [[:metabase_table :t]]
+                                                 :join [[:metabase_database :d] [:= :t.db_id :d.id]]
+                                                 :where [:= :t.id table_id]}))]
+      (when (not (contains? db-features :saved-question-sandboxing))
+        (throw (ex-info (tru "Sandboxing is not enabled for this database.")
+                        {:status-code 400
+                         :message     (tru "Sandboxing is not enabled for this database.")})))))
+  (gtap/check-columns-match-table {:table_id table_id
+                                   :card_id  card_id}))
 
 (api.macros/defendpoint :delete "/:id"
   "Delete a GTAP entry."
