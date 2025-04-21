@@ -14,7 +14,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -59,7 +58,6 @@ import type {
 } from "metabase/visualizations/types";
 import type { ClickObject, OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
-import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
@@ -75,6 +73,7 @@ import {
 } from "./cells/HeaderCellWithColumnInfo";
 import { MiniBarCell } from "./cells/MiniBarCell";
 import { useObjectDetail } from "./hooks/use-object-detail";
+import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-data-change";
 
 const getBodyCellVariant = (column: DatasetColumn): BodyCellVariant => {
   const isPill = isPK(column) || isFK(column);
@@ -667,24 +666,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   });
   const { virtualGrid } = tableProps;
 
-  const prevData = usePrevious(data);
-  const prevQuestion = usePrevious(question);
-
   // If the data changes we reset saved column widths as it is no longer relevant
   // except for the case where question is converted from a model to a question and back.
-  useEffect(() => {
-    const isDataChange =
-      prevData && data && !_.isEqual(prevData.cols, data.cols);
-    const isDatasetStatusChange =
-      isAdHocModelOrMetricQuestion(question, prevQuestion) ||
-      isAdHocModelOrMetricQuestion(prevQuestion, question);
-
-    if (isDataChange && !isDatasetStatusChange) {
-      onUpdateVisualizationSettings({
-        "table.column_widths": undefined,
-      });
-    }
-  }, [data, question, onUpdateVisualizationSettings, prevData, prevQuestion]);
+  useResetWidthsOnColumnsChange(onUpdateVisualizationSettings, data, question);
 
   const scrolledColumnRef = useRef<number | null>(null);
   useEffect(() => {
