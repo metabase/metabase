@@ -130,28 +130,28 @@ describe("resolver", () => {
     });
 
     describe("type = any", () => {
-      const any_ = (name: string) => resolve("any", name);
+      const any = (name: string) => resolve("any", name);
 
       it("should resolve dimensions of type: any", () => {
-        expect(any_("Created At")).toEqual(fields.orders.CREATED_AT);
-        expect(any_("ID")).toEqual(fields.orders.ID);
-        expect(any_("Product → Price")).toEqual(fields.products.PRICE);
-        expect(any_("bool")).toEqual(expressions.BOOL);
+        expect(any("Created At")).toEqual(fields.orders.CREATED_AT);
+        expect(any("ID")).toEqual(fields.orders.ID);
+        expect(any("Product → Price")).toEqual(fields.products.PRICE);
+        expect(any("bool")).toEqual(expressions.BOOL);
       });
 
       it("should not resolve unknown fields", () => {
-        expect(() => any_("Unknown")).toThrow("Unknown Field: Unknown");
+        expect(() => any("Unknown")).toThrow("Unknown Field: Unknown");
       });
 
       it("should not resolve segments", () => {
         // TODO: should we resolve segments here?
-        expect(() => any_("Expensive Things")).toThrow(
+        expect(() => any("Expensive Things")).toThrow(
           "Unknown Field: Expensive Things",
         );
       });
 
       it("should not resolve metrics", () => {
-        expect(() => any_("Foo Metric")).toThrow("Unknown Field: Foo Metric");
+        expect(() => any("Foo Metric")).toThrow("Unknown Field: Foo Metric");
       });
     });
 
@@ -340,30 +340,30 @@ describe("resolver", () => {
     });
 
     describe("type = any", () => {
-      const any_ = (name: string) => resolve("any", name);
+      const any = (name: string) => resolve("any", name);
 
       it("should resolve dimensions of type: any", () => {
-        expect(any_("Created At")).toEqual(fields.orders.CREATED_AT);
-        expect(any_("ID")).toEqual(fields.orders.ID);
-        expect(any_("Product → Price")).toEqual(fields.products.PRICE);
-        expect(any_("bool")).toEqual(expressions.BOOL);
+        expect(any("Created At")).toEqual(fields.orders.CREATED_AT);
+        expect(any("ID")).toEqual(fields.orders.ID);
+        expect(any("Product → Price")).toEqual(fields.products.PRICE);
+        expect(any("bool")).toEqual(expressions.BOOL);
       });
 
       it("should not resolve unknown fields", () => {
-        expect(() => any_("Unknown")).toThrow(
+        expect(() => any("Unknown")).toThrow(
           "Unknown Field or Metric: Unknown",
         );
       });
 
       it("should not resolve segments", () => {
         // TODO: should we resolve segments here?
-        expect(() => any_("Expensive Things")).toThrow(
+        expect(() => any("Expensive Things")).toThrow(
           "Unknown Field or Metric: Expensive Things",
         );
       });
 
       it("should resolve metrics", () => {
-        expect(any_("Foo Metric")).toEqual(metrics.FOO);
+        expect(any("Foo Metric")).toEqual(metrics.FOO);
       });
     });
 
