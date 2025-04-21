@@ -15,7 +15,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useUpdateEffect } from "react-use";
+import { usePrevious, useUpdateEffect } from "react-use";
 import _ from "underscore";
 
 import {
@@ -91,12 +91,6 @@ export const useDataGridInstance = <TData, TValue>({
     });
 
   const { measureBodyCellDimensions, measureRoot } = useBodyCellMeasure(theme);
-
-  useUpdateEffect(() => {
-    if (controlledColumnSizingMap) {
-      setColumnSizingMap(controlledColumnSizingMap);
-    }
-  }, [controlledColumnSizingMap]);
 
   // useEffect and useUpdateEffect is triggered after render, which causes flickering for controlled column order
   useLayoutEffect(() => {
@@ -259,6 +253,7 @@ export const useDataGridInstance = <TData, TValue>({
     truncateLongCellWidth,
     theme,
     setMeasuredColumnSizingMap,
+    controlledColumnSizingMap,
     measurementRenderWrapper,
   );
 
@@ -290,14 +285,13 @@ export const useDataGridInstance = <TData, TValue>({
   const handleColumnResize = useCallback(
     (columnName: string, width: number) => {
       const newWidth = Math.max(MIN_COLUMN_WIDTH, width);
-      const newColumnSizing = { ...columnSizingMap, [columnName]: newWidth };
-      setColumnSizingMap(newColumnSizing);
+      setColumnSizingMap({ ...columnSizingMap, [columnName]: newWidth });
 
       if (newWidth > truncateLongCellWidth) {
         handleUpdateColumnExpanded(columnName);
       }
 
-      onColumnResize?.(newColumnSizing);
+      onColumnResize?.(columnName, newWidth);
     },
     [
       columnSizingMap,
@@ -367,29 +361,60 @@ export const useDataGridInstance = <TData, TValue>({
     return table.getRowModel().rows;
   }, [enableRowVirtualization, table, virtualGrid.virtualRows]);
 
-  const previousPaginationRef = useRef<PaginationState>();
+  const previousPagination = usePrevious(pagination);
   useEffect(() => {
     // Auto-adjusts column widths during pagination when sizes aren't explicitly specified
-    const previousPagination = previousPaginationRef.current;
     if (
       pagination.pageSize === DISABLED_PAGINATION_STATE.pageSize ||
       !previousPagination
     ) {
       return;
     }
-    const hasExplicitlySizedColumns =
-      Object.values(controlledColumnSizingMap ?? {}).length === 0;
+    const hasAllColumnsExplicitlySized =
+      Object.values(controlledColumnSizingMap ?? {}).length ===
+      columnsOptions.length;
 
     const shouldMeasureColumnsForPage =
-      !hasExplicitlySizedColumns &&
+      !hasAllColumnsExplicitlySized &&
       (pagination.pageIndex !== previousPagination.pageIndex ||
         pagination.pageSize !== previousPagination.pageSize);
 
     if (shouldMeasureColumnsForPage) {
-      measureColumnWidths();
+      measureColumnWidths(controlledColumnSizingMap);
     }
-    previousPaginationRef.current = pagination;
-  }, [controlledColumnSizingMap, measureColumnWidths, pagination]);
+  }, [
+    controlledColumnSizingMap,
+    measureColumnWidths,
+    pagination,
+    columnsOptions,
+    previousPagination,
+  ]);
+
+  // If the column widths are not provided anymore, measure the column widths.
+  useUpdateEffect(() => {
+    if (Object.keys(controlledColumnSizingMap ?? {}).length === 0) {
+      measureColumnWidths(controlledColumnSizingMap, true);
+    } else {
+      setColumnSizingMap((prev) => ({ ...prev, ...controlledColumnSizingMap }));
+    }
+  }, [controlledColumnSizingMap]);
+
+  // When the column widths are not provided for all columns, measure the column widths.
+  // This can happen when new columns are added to the table.
+  useUpdateEffect(() => {
+    const hasSizingForAllColumns = columnsOptions.every((column) => {
+      return columnSizingMap[column.id] != null;
+    });
+
+    if (!hasSizingForAllColumns) {
+      measureColumnWidths(controlledColumnSizingMap);
+    }
+  }, [
+    columnsOptions,
+    columnSizingMap,
+    controlledColumnSizingMap,
+    measureColumnWidths,
+  ]);
 
   return {
     table,

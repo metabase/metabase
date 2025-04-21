@@ -2,20 +2,21 @@ import * as Lib from "metabase-lib";
 import type { Expression } from "metabase-types/api";
 
 import { type ExpressionError, renderError } from "./errors";
-import { type Resolver, fieldResolver } from "./field-resolver";
 import { compile, lexify, parse } from "./pratt";
-import { resolve } from "./resolver";
+import { type Resolver, resolver as defaultResolver } from "./resolver";
 import type { StartRule } from "./types";
 
 export type CompileResult =
   | {
       error: ExpressionError;
       expression: null;
+      expressionParts: null;
       expressionClause: null;
     }
   | {
       error: null;
       expression: Expression;
+      expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
       expressionClause: Lib.ExpressionClause;
     };
 
@@ -24,7 +25,7 @@ export function compileExpression({
   startRule,
   query,
   stageIndex,
-  resolver = fieldResolver({
+  resolver = defaultResolver({
     query,
     stageIndex,
     startRule,
@@ -39,16 +40,11 @@ export function compileExpression({
   try {
     const { tokens } = lexify(source);
     const { root } = parse(tokens, { throwOnError: true });
-    const compiled = compile(root);
-    const resolved = resolver
-      ? resolve({
-          expression: compiled,
-          type: startRule,
-          fn: resolver,
-        })
-      : compiled;
-
-    const expressionClause = Lib.expressionClause(resolved);
+    const expressionParts = compile(root, {
+      startRule,
+      resolver,
+    });
+    const expressionClause = Lib.expressionClause(expressionParts);
     const expression = Lib.legacyExpressionForExpressionClause(
       query,
       stageIndex,
@@ -57,12 +53,14 @@ export function compileExpression({
 
     return {
       expression,
+      expressionParts,
       expressionClause,
       error: null,
     };
   } catch (error) {
     return {
       expression: null,
+      expressionParts: null,
       expressionClause: null,
       error: renderError(error),
     };

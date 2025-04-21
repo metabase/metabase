@@ -1,5 +1,6 @@
 (ns mage.util
   (:require
+   [babashka.fs :as fs]
    [babashka.tasks :refer [shell]]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -101,4 +102,8 @@
         (str/split-lines)
         ;; filter out any files that have been deleted/moved
         (filter (fn [filename]
-                  (.exists (io/file (str project-root-directory "/" filename))))))))
+                  (fs/exists? (str project-root-directory "/" filename)))))))
+
+(comment
+  (count (updated-files "master"))
+  (count (updated-files "master...")))

@@ -960,12 +960,16 @@
   a parameter in order to run the query to get metadata, pass `param-name` and `param-value` template tag parameters
   when running the query."
   [group table-name param-name param-value]
-  (let [card-id (t2/select-one-fn :card_id :model/GroupTableAccessPolicy :group_id (u/the-id group), :table_id (mt/id table-name))
-        query   (t2/select-one-fn :dataset_query :model/Card :id (u/the-id card-id))
+  (let [card-id (t2/select-one-fn :card_id :model/GroupTableAccessPolicy
+                                  :group_id (u/the-id group), :table_id (mt/id table-name))
+        card    (t2/select-one :model/Card :id (u/the-id card-id))
         results (mt/with-test-user :crowberto
-                  (qp/process-query (assoc query :parameters [{:type   :category
-                                                               :target [:variable [:template-tag param-name]]
-                                                               :value  param-value}])))
+                  (-> (:dataset_query card)
+                      (assoc :parameters [{:type   :category
+                                           :target [:variable [:template-tag param-name]]
+                                           :value  param-value}])
+                      (assoc-in [:info :card-entity-id] (:entity_id card))
+                      qp/process-query))
         metadata (get-in results [:data :results_metadata :columns])]
     (is (seq metadata))
     (t2/update! :model/Card card-id {:result_metadata metadata})))

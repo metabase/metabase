@@ -9,7 +9,7 @@ import type {
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
 
-import { isLiteral } from "./matchers";
+import { isLiteral } from "./literal";
 
 const getDescriptionForNow: HelpTextConfig["description"] = (
   database,
@@ -52,6 +52,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     structure: "CumulativeCount",
     category: "aggregation",
     description: () => t`The additive total of rows across a breakout.`,
+    docsPage: "cumulative",
   },
   {
     name: "sum",
@@ -78,6 +79,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: ["dimension", t`Subtotal`],
       },
     ],
+    docsPage: "cumulative",
   },
   {
     name: "distinct",
@@ -142,6 +144,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: -1,
       },
     ],
+    docsPage: "offset",
   },
   {
     name: "avg",
@@ -221,6 +224,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: [">", ["dimension", t`Subtotal`], 100],
       },
     ],
+    docsPage: "countif",
   },
   {
     name: "sum-where",
@@ -240,6 +244,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: ["=", ["dimension", t`Order Status`], "Valid"],
       },
     ],
+    docsPage: "sumif",
   },
   {
     name: "var",
@@ -311,6 +316,19 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         name: t`value`,
         description: t`The string or float column to convert to numbers. Float values are rounded.`,
         example: ["dimension", "User ID"],
+      },
+    ],
+  },
+  {
+    name: "float",
+    structure: "float",
+    category: "conversion",
+    description: () => t`Converts a string to a floating-point number.`,
+    args: [
+      {
+        name: t`value`,
+        description: t`The string column to convert to floats.`,
+        example: ["dimension", "Text Rating"],
       },
     ],
   },
@@ -1151,6 +1169,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: "Gadget",
       },
     ],
+    docsPage: "in",
   },
   {
     name: "not-in",
@@ -1241,6 +1260,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: "iso",
       },
     ],
+    docsPage: "week",
   },
   {
     name: "get-day",
@@ -1366,6 +1386,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     structure: "now",
     category: "date",
     description: getDescriptionForNow,
+    docsPage: "now",
   },
   {
     name: "convert-timezone",
