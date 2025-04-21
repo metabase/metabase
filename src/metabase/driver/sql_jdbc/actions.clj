@@ -237,6 +237,10 @@
 
        ([[errors successes]]
         (when (seq errors)
+          ;; TODO Disabled due to errors about not being in a transaction block (?)
+          ;;      Returning the errors also causes issues in some cases, I guess from `with-jdbc-transaction` closing.
+          ;;      Well, this eager throw is consistent with how this action behaved previously.
+          (throw (:error (first errors)))
           (.rollback conn))
         [errors successes])
 
