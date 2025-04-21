@@ -193,7 +193,7 @@
                                                               (lib/- (lib.metadata/field mp (mt/id :orders :total))
                                                                      (lib.metadata/field mp (mt/id :orders :subtotal))))
                                                 :db-type "FLOAT"}]]]
-                {ex :expression db-type :db-type} expressions]
+                {ex :expression} expressions]
           (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
                           (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
                           (lib/expression "UNCASTED" (ex))
@@ -214,7 +214,7 @@
       (let [mp (mt/metadata-provider)]
         (doseq [[table fields] [[:people [{:field :zip   :db-type "TEXT"}]]
                                 [:orders [{:field :total :db-type "FLOAT"}]]]
-                {:keys [field db-type]} fields]
+                {:keys [field]} fields]
           (testing (str "aggregating " table "." field " and casting to integer")
             (let [field-md (lib.metadata/field mp (mt/id table field))
                   query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
