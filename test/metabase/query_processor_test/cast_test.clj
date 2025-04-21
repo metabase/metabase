@@ -289,12 +289,14 @@
                 [:model/Card
                  {card-id :id}
                  (mt/card-with-source-metadata-for-query native-query)]
-                (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
-                                (lib/with-fields [])
-                                (as-> q
-                                      (lib/expression q "UNCAST" (->> q lib/visible-columns (filter #(= "uncasted" (u/lower-case-en (:name %)))) first)))
-                                (as-> q
-                                      (lib/expression q "FLOATCAST" (lib/float (->> q lib/visible-columns (filter #(= "uncasted" (u/lower-case-en (:name %)))) first)))))
+                (let [card-query (lib/query mp (lib.metadata/card mp card-id))
+                      uncast-column (->> card-query
+                                         lib/visible-columns
+                                         (filter #(= "uncasted" (u/lower-case-en (:name %))))
+                                         first)
+                      query (-> card-query
+                                (lib/expression "UNCAST"               uncast-column)
+                                (lib/expression "FLOATCAST" (lib/float uncast-column)))
                       result (-> query qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
@@ -354,18 +356,21 @@
                 [:model/Card
                  {card-id :id}
                  (mt/card-with-source-metadata-for-query nested-query)]
-                (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
+                (let [card-query (lib/query mp (lib.metadata/card mp card-id))
+                      uncast-column (->> card-query
+                                         lib/visible-columns
+                                         (filter #(= "uncasted" (u/lower-case-en (:name %))))
+                                         first)
+                      query (-> card-query
                                 (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
-                                (as-> q
-                                      (lib/expression q "UNCAST" (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first)))
-                                (as-> q
-                                      (lib/expression q "FLOATCAST" (lib/float (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first))))
+                                (lib/expression "UNCAST"               uncast-column)
+                                (lib/expression "FLOATCAST" (lib/float uncast-column))
                                 (lib/limit 10))
                       result (-> query qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
                   (is (types/field-is-type? :type/Number (last cols)))
-                  (doseq [[_ uncasted-value casted-value] rows]
+                  (doseq [[_id uncasted-value casted-value] rows]
                     (is (float= (double (Double/parseDouble uncasted-value))
                                 (double casted-value))
                         (str "Text tested: " uncasted-value))))))))))))
