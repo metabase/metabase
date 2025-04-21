@@ -11,7 +11,7 @@ import {
   isIntegerLiteral,
   isStringLiteral,
 } from "../literal";
-import type { Kind } from "../resolver";
+import type { Kind, Resolver } from "../resolver";
 import type { ExpressionType } from "../types";
 
 import {
@@ -35,12 +35,6 @@ import {
   SUB,
 } from "./syntax";
 import { type Node, type NodeType, assert, check } from "./types";
-
-type Resolver = (
-  kind: "field" | "segment" | "metric",
-  name: string,
-  node?: Node,
-) => Lib.ExpressionParts | Lib.ExpressionArg;
 
 type CompileFn = (
   node: Node,

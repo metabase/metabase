@@ -13,7 +13,7 @@ export type Resolver = (
   kind: Kind,
   name: string,
   node?: Node,
-) => Lib.ColumnMetadata | Lib.SegmentMetadata | Lib.MetricMetadata;
+) => Lib.ExpressionParts | Lib.ExpressionArg;
 
 export function resolver(options: {
   query: Lib.Query;
