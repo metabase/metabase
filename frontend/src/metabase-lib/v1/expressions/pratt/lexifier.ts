@@ -107,6 +107,8 @@ export function lexify(source: string, { hooks }: { hooks?: Hooks } = {}) {
           type: STRING,
           value,
         });
+      } else {
+        return error(node, t`Unsupported string quote: ${openQuote}`);
       }
     }
 
