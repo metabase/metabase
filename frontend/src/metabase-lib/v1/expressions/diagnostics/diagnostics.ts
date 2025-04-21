@@ -41,6 +41,9 @@ export function diagnoseAndCompile(options: Options) {
       compiled({ expressionClause, expressionParts }) {
         diagnoseExpression({ ...options, expressionClause, expressionParts });
       },
+      error(error) {
+        throw error;
+      },
     },
   });
 }
