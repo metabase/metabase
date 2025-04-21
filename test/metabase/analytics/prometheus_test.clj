@@ -266,7 +266,7 @@
       (testing "SDK response metrics are recorded correctly"
         (is (approx= 1 (mt/metric-value system :metabase-sdk/response {:code "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-sdk/response {:code "404"}))))
-      
+
       (testing "iframe response metrics are recorded correctly"
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe/response {:code "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe/response {:code "404"})))))))

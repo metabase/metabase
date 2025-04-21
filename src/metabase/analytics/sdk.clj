@@ -73,7 +73,7 @@
                  (fn raiser [response]
                    (when (embedding-context? sdk-client)
                      (track-sdk-response sdk-client
-                       (if (:status response)
-                         response
-                         {:status 500})))
+                                         (if (:status response)
+                                           response
+                                           {:status 500})))
                    (raise response)))))))
