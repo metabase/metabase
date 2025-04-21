@@ -819,10 +819,13 @@
 (defclause ^:sugar is-null,  field Field)
 (defclause ^:sugar not-null, field Field)
 
+(def ^:private Emptyable
+  [:or StringExpressionArg Field])
+
 ;; These are rewritten as `[:or [:= <field> nil] [:= <field> ""]]` and
 ;; `[:and [:not= <field> nil] [:not= <field> ""]]`
-(defclause ^:sugar is-empty,  field Field)
-(defclause ^:sugar not-empty, field Field)
+(defclause ^:sugar is-empty  field Emptyable)
+(defclause ^:sugar not-empty field Emptyable)
 
 (def ^:private StringFilterOptions
   [:map
