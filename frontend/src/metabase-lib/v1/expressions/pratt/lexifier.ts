@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { ParseError } from "../errors";
 import { quoteString, unquoteString } from "../string";
 import { OPERATOR, tokenize } from "../tokenizer";
+import type { Hooks } from "../types";
 
 import {
   ADD,
@@ -28,7 +29,7 @@ import {
 } from "./syntax";
 import { type NodeType, Token } from "./types";
 
-export function lexify(source: string) {
+export function lexify(source: string, { hooks }: { hooks?: Hooks } = {}) {
   const lexs: Token[] = [];
   const errors: ParseError[] = [];
 
@@ -51,13 +52,12 @@ export function lexify(source: string) {
   }
 
   function error(node: SyntaxNodeRef, message: string) {
-    errors.push(
-      new ParseError(message, {
-        pos: node.from,
-        len: node.to - node.from,
-      }),
-    );
-
+    const error = new ParseError(message, {
+      pos: node.from,
+      len: node.to - node.from,
+    });
+    hooks?.error?.(error);
+    errors.push(error);
     return token(node, { type: BAD_TOKEN });
   }
 
