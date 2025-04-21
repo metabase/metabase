@@ -7,6 +7,7 @@ import type { Token } from "../pratt";
 
 import { checkArgCount } from "./check-arg-count";
 import { checkArgValidators } from "./check-arg-validators";
+import { checkBadTokens } from "./check-bad-tokens";
 import { checkCaseOrIfArgCount } from "./check-case-or-if-arg-count";
 import { checkComparisonOperatorArgs } from "./check-comparison-operator-args";
 import { checkFieldQuotes } from "./check-field-quotes";
@@ -66,6 +67,7 @@ const syntaxChecks = [
   checkNumberExponent,
   checkStringQuotes,
   checkFieldQuotes,
+  checkBadTokens,
 ];
 
 export function diagnoseExpressionSyntax(options: {

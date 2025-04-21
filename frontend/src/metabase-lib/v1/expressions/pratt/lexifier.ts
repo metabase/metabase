@@ -1,10 +1,8 @@
 import type { SyntaxNodeRef } from "@lezer/common";
-import { t } from "ttag";
 
-import { ParseError } from "../errors";
+import type { ParseError } from "../errors";
 import { unquoteString } from "../string";
 import { OPERATOR, tokenize } from "../tokenizer";
-import type { Hooks } from "../types";
 
 import {
   ADD,
@@ -29,7 +27,7 @@ import {
 } from "./syntax";
 import { type NodeType, Token } from "./types";
 
-export function lexify(source: string, { hooks }: { hooks?: Hooks } = {}) {
+export function lexify(source: string) {
   const lexs: Token[] = [];
   const errors: ParseError[] = [];
 
@@ -49,16 +47,6 @@ export function lexify(source: string, { hooks }: { hooks?: Hooks } = {}) {
       }),
     );
     return false;
-  }
-
-  function error(node: SyntaxNodeRef, message: string) {
-    const error = new ParseError(message, {
-      pos: node.from,
-      len: node.to - node.from,
-    });
-    hooks?.error?.(error);
-    errors.push(error);
-    return token(node, { type: BAD_TOKEN });
   }
 
   tokenize(source).iterate(function (node) {
@@ -118,10 +106,7 @@ export function lexify(source: string, { hooks }: { hooks?: Hooks } = {}) {
           }
         }
 
-        if (text.length === 1) {
-          error(node, t`Invalid character: ${text}`);
-          return false;
-        }
+        return token(node, { type: BAD_TOKEN });
       }
     }
   });

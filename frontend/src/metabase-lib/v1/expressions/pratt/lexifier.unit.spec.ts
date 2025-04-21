@@ -205,45 +205,6 @@ describe("lexify", () => {
     });
   });
 
-  describe("invalid characters", () => {
-    it("handles invalid characters", () => {
-      const { tokens, errors } = lexify("10°");
-      expect(tokens).toEqual(
-        [
-          { type: NUMBER, pos: 0, text: "10" },
-          { type: BAD_TOKEN, pos: 2, text: "°" },
-          { type: END_OF_INPUT, pos: 3, text: "\n" },
-        ].map(asToken),
-      );
-      expect(errors.map(plain)).toEqual([
-        {
-          message: "Invalid character: °",
-          friendly: true,
-          len: 1,
-          pos: 2,
-        },
-      ]);
-    });
-
-    it("should catch a lone decimal point", () => {
-      const { tokens, errors } = lexify(".");
-      expect(tokens).toEqual(
-        [
-          { type: BAD_TOKEN, pos: 0, text: "." },
-          { type: END_OF_INPUT, pos: 1, text: "\n" },
-        ].map(asToken),
-      );
-      expect(errors.map(plain)).toEqual([
-        {
-          friendly: true,
-          message: "Invalid character: .",
-          pos: 0,
-          len: 1,
-        },
-      ]);
-    });
-  });
-
   describe("numbers", () => {
     it("tokenizes numbers correctly", () => {
       const cases = [
@@ -566,14 +527,7 @@ describe("lexify", () => {
           { type: END_OF_INPUT, pos: 3, text: "\n" },
         ].map(asToken),
       );
-      expect(errors.map(plain)).toEqual([
-        {
-          message: "Invalid character: [",
-          len: 1,
-          pos: 2,
-          friendly: true,
-        },
-      ]);
+      expect(errors.map(plain)).toEqual([]);
     });
 
     it("should allow escaping brackets within bracket identifiers", () => {
@@ -776,14 +730,11 @@ describe("lexify", () => {
 
   describe("garbage", () => {
     const types = (expr: string) => lexify(expr).tokens.map((t) => t.type);
-    const errors = (expr: string) => lexify(expr).errors;
 
     it("should ignore garbage", () => {
-      expect(types("!@^ [Deal]")).toEqual([FIELD, END_OF_INPUT]);
-      expect(errors("!")[0].message).toEqual("Invalid character: !");
-      expect(errors(" % @")[1].message).toEqual("Invalid character: @");
-      expect(errors("    #")[0].pos).toEqual(4);
-      expect(errors("    #")[0].len).toEqual(1);
+      expect(types("!@^ [Deal]")).toEqual([BAD_TOKEN, FIELD, END_OF_INPUT]);
+      expect(types("!")).toEqual([BAD_TOKEN, END_OF_INPUT]);
+      expect(types(" % @")).toEqual([BAD_TOKEN, BAD_TOKEN, END_OF_INPUT]);
     });
   });
 });
