@@ -27,6 +27,12 @@ describe("resolver", () => {
         expect(boolean("bool")).toEqual(expressions.BOOL);
       });
 
+      it("should not resolve unknown segments", () => {
+        expect(() => boolean("Unknown")).toThrow(
+          "Unknown Segment or boolean Field: Unknown",
+        );
+      });
+
       it("should not resolve fields with non-boolean types", () => {
         expect(() => boolean("stringly")).toThrow(
           "Unknown Segment or boolean Field: stringly",
@@ -58,6 +64,10 @@ describe("resolver", () => {
         expect(string("Product → Price")).toEqual(fields.products.PRICE);
       });
 
+      it("should not resolve unknown fields", () => {
+        expect(() => string("Unknown")).toThrow("Unknown Field: Unknown");
+      });
+
       it("should not resolve segments", () => {
         expect(() => string("Expensive Things")).toThrow(
           "Unknown Field: Expensive Things",
@@ -80,6 +90,10 @@ describe("resolver", () => {
         expect(number("foo")).toEqual(expressions.FOO);
       });
 
+      it("should not resolve unknown fields", () => {
+        expect(() => number("Unknown")).toThrow("Unknown Field: Unknown");
+      });
+
       it("should not resolve segments", () => {
         expect(() => number("Expensive Things")).toThrow(
           "Unknown Field: Expensive Things",
@@ -96,6 +110,10 @@ describe("resolver", () => {
 
       it("should resolve dimensions of type: datetime", () => {
         expect(datetime("Created At")).toEqual(fields.orders.CREATED_AT);
+      });
+
+      it("should not resolve unknown fields", () => {
+        expect(() => datetime("Unknown")).toThrow("Unknown Field: Unknown");
       });
 
       it("should not resolve segments", () => {
@@ -121,6 +139,10 @@ describe("resolver", () => {
         expect(any_("bool")).toEqual(expressions.BOOL);
       });
 
+      it("should not resolve unknown fields", () => {
+        expect(() => any_("Unknown")).toThrow("Unknown Field: Unknown");
+      });
+
       it("should not resolve segments", () => {
         // TODO: should we resolve segments here?
         expect(() => any_("Expensive Things")).toThrow(
@@ -141,6 +163,10 @@ describe("resolver", () => {
         expect(expression("ID")).toEqual(fields.orders.ID);
         expect(expression("Product → Price")).toEqual(fields.products.PRICE);
         expect(expression("bool")).toEqual(expressions.BOOL);
+      });
+
+      it("should not resolve unknown fields", () => {
+        expect(() => expression("Unknown")).toThrow("Unknown Field: Unknown");
       });
 
       it("should not resolve segments", () => {
@@ -172,6 +198,10 @@ describe("resolver", () => {
         );
       });
 
+      it("should not resolve unknown fields", () => {
+        expect(() => aggregation("Unknown")).toThrow("Unknown Metric: Unknown");
+      });
+
       it("should not resolve segments", () => {
         expect(() => aggregation("Expensive Things")).toThrow(
           "Unknown Metric: Expensive Things",
@@ -200,6 +230,12 @@ describe("resolver", () => {
 
       it("should resolve columns of type: boolean", () => {
         expect(boolean("bool")).toEqual(expressions.BOOL);
+      });
+
+      it("should not resolve unknown fields", () => {
+        expect(() => boolean("Unknown")).toThrow(
+          "Unknown Segment or boolean Field: Unknown",
+        );
       });
 
       it("should not resolve fields with non-boolean types", () => {
@@ -234,6 +270,12 @@ describe("resolver", () => {
         expect(string("Product → Price")).toEqual(fields.products.PRICE);
       });
 
+      it("should not resolve unknown fields", () => {
+        expect(() => string("Unknown")).toThrow(
+          "Unknown Field or Metric: Unknown",
+        );
+      });
+
       it("should not resolve segments", () => {
         expect(() => string("Expensive Things")).toThrow(
           "Unknown Field or Metric: Expensive Things",
@@ -256,6 +298,12 @@ describe("resolver", () => {
         expect(number("foo")).toEqual(expressions.FOO);
       });
 
+      it("should not resolve unknown fields", () => {
+        expect(() => number("Unknown")).toThrow(
+          "Unknown Field or Metric: Unknown",
+        );
+      });
+
       it("should not resolve segments", () => {
         expect(() => number("Expensive Things")).toThrow(
           "Unknown Field or Metric: Expensive Things",
@@ -272,6 +320,12 @@ describe("resolver", () => {
 
       it("should resolve dimensions of type: datetime", () => {
         expect(datetime("Created At")).toEqual(fields.orders.CREATED_AT);
+      });
+
+      it("should not resolve unknown fields", () => {
+        expect(() => datetime("Unknown")).toThrow(
+          "Unknown Field or Metric: Unknown",
+        );
       });
 
       it("should not resolve segments", () => {
@@ -295,6 +349,12 @@ describe("resolver", () => {
         expect(any_("bool")).toEqual(expressions.BOOL);
       });
 
+      it("should not resolve unknown fields", () => {
+        expect(() => any_("Unknown")).toThrow(
+          "Unknown Field or Metric: Unknown",
+        );
+      });
+
       it("should not resolve segments", () => {
         // TODO: should we resolve segments here?
         expect(() => any_("Expensive Things")).toThrow(
@@ -315,6 +375,12 @@ describe("resolver", () => {
         expect(expression("ID")).toEqual(fields.orders.ID);
         expect(expression("Product → Price")).toEqual(fields.products.PRICE);
         expect(expression("bool")).toEqual(expressions.BOOL);
+      });
+
+      it("should not resolve unknown fields", () => {
+        expect(() => expression("Unknown")).toThrow(
+          "Unknown Field or Metric: Unknown",
+        );
       });
 
       it("should not resolve segments", () => {
@@ -342,6 +408,10 @@ describe("resolver", () => {
         expect(() => aggregation("bool")).toThrow(
           "No aggregation found in: bool. Use functions like Sum() or custom Metrics",
         );
+      });
+
+      it("should not resolve unknown fields", () => {
+        expect(() => aggregation("Unknown")).toThrow("Unknown Metric: Unknown");
       });
 
       it("should not resolve segments", () => {
