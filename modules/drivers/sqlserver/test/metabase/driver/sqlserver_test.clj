@@ -598,7 +598,7 @@
                      :params [1 0 1 0 1 1 1]}
                     :expected-rows
                     [[1]]}
-                   {:desc "case clause"
+                   {:desc "case expression"
                     :query
                     (orders-query {:expressions {"MyTrue"  true-value
                                                  "MyFalse" false-value
