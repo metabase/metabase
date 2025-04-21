@@ -37,6 +37,14 @@ export interface DatasetColumn {
   description?: string | null;
   source: string;
   aggregation_index?: number;
+  database_type?: string;
+  active?: boolean;
+  entity_id?: string;
+  fk_field_id?: number;
+  nfc_path?: string[] | null;
+  parent_id?: number | null;
+  position?: number;
+  source_alias?: string;
 
   aggregation_type?: AggregationType;
 
@@ -56,6 +64,8 @@ export interface DatasetColumn {
   binning_info?: BinningMetadata | null;
   settings?: Record<string, any>;
   fingerprint?: FieldFingerprint | null;
+  ident?: string;
+  "model/inner_ident"?: string;
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
