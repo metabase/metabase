@@ -167,10 +167,7 @@
     (query-db-rows table-id pk-fields rows)
 
     :bulk/create
-    (->> (for [row (:created-rows result)]
-           [(query-db-rows table-id pk-fields [row])
-            (update-keys row keyword)])
-         (into {}))
+    (query-db-rows table-id pk-fields (map #(update-keys % keyword) (:created-rows result)))
 
     ;; action does not relate to row updates
     (throw (ex-info "See, this doesn't make sense" {:dumb :hack}))))
