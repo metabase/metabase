@@ -10,4 +10,4 @@ export const shortcuts = {
   ...questionShortcuts,
 };
 
-export type ShortcutId = keyof typeof shortcuts;
+export type KeyboardShortcutId = keyof typeof shortcuts;
