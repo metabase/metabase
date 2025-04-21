@@ -37,7 +37,6 @@ import type { LinkProps } from "metabase/core/components/Link";
 import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
-import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import type { SearchFilterComponent } from "metabase/search/types";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -158,15 +157,15 @@ export const PLUGIN_DATA_PERMISSIONS: {
   ) => boolean;
 
   upgradeViewPermissionsIfNeeded:
-  | ((
-    permissions: GroupsPermissions,
-    groupId: number,
-    entityId: EntityId,
-    value: any,
-    database: Database,
-    permission: DataPermission,
-  ) => GroupPermissions)
-  | null;
+    | ((
+        permissions: GroupsPermissions,
+        groupId: number,
+        entityId: EntityId,
+        value: any,
+        database: Database,
+        permission: DataPermission,
+      ) => GroupPermissions)
+    | null;
 } = {
   permissionsPayloadExtraSelectors: [],
   hasChanges: [],
@@ -280,9 +279,9 @@ interface PluginDashboardSubscriptionParametersSectionOverride {
   }>;
 }
 export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE: PluginDashboardSubscriptionParametersSectionOverride =
-{
-  Component: undefined,
-};
+  {
+    Component: undefined,
+  };
 
 export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
   isEnabled: () => false,
@@ -568,13 +567,13 @@ export const PLUGIN_CONTENT_VERIFICATION = {
 
 export type InsightsLinkProps = (
   | {
-    question: Pick<Question, "id" | "collection">;
-    dashboard?: never;
-  }
+      question: Pick<Question, "id" | "collection">;
+      dashboard?: never;
+    }
   | {
-    question?: never;
-    dashboard: Pick<Dashboard, "id" | "collection">;
-  }
+      question?: never;
+      dashboard: Pick<Dashboard, "id" | "collection">;
+    }
 ) &
   Omit<LinkProps, "to">;
 
@@ -623,11 +622,10 @@ export const PLUGIN_DB_ROUTING = {
     null as React.ReactElement | null,
   useRedirectDestinationDatabase: (
     _database: Pick<DatabaseType, "id" | "router_database_id"> | undefined,
-  ): void => { },
+  ): void => {},
   getPrimaryDBEngineFieldState: (
     _database: Pick<Database, "router_user_attribute">,
   ): "default" | "hidden" | "disabled" => "default",
-}): EmbedResourceDownloadOptions => ({ pdf: true, dashcard: true }),
 };
 
 export const PLUGIN_API = {
