@@ -5,33 +5,31 @@ import type {
 } from "metabase-types/api";
 
 export function isLiteral(
-  expr: unknown,
-): expr is StringLiteral | NumericLiteral | BooleanLiteral {
-  return (
-    isStringLiteral(expr) || isNumberLiteral(expr) || isBooleanLiteral(expr)
-  );
+  x: unknown,
+): x is StringLiteral | NumericLiteral | BooleanLiteral {
+  return isStringLiteral(x) || isNumberLiteral(x) || isBooleanLiteral(x);
 }
 
-export function isStringLiteral(expr: unknown): expr is StringLiteral {
-  return typeof expr === "string";
+export function isStringLiteral(x: unknown): x is StringLiteral {
+  return typeof x === "string";
 }
 
-export function isBooleanLiteral(expr: unknown): expr is BooleanLiteral {
-  return typeof expr === "boolean";
+export function isBooleanLiteral(x: unknown): x is BooleanLiteral {
+  return typeof x === "boolean";
 }
 
-export function isNumberLiteral(expr: unknown): expr is NumericLiteral {
-  return typeof expr === "number" || typeof expr === "bigint";
+export function isNumberLiteral(x: unknown): x is NumericLiteral {
+  return isIntegerLiteral(x) || isFloatLiteral(x) || isBigIntLiteral(x);
 }
 
-export function isIntegerLiteral(expr: unknown): expr is NumericLiteral {
-  return typeof expr === "number" && Number.isInteger(expr);
+export function isIntegerLiteral(x: unknown): x is NumericLiteral {
+  return typeof x === "number" && Number.isInteger(x);
 }
 
-export function isFloatLiteral(expr: unknown): expr is NumericLiteral {
-  return typeof expr === "number" && !Number.isInteger(expr);
+export function isFloatLiteral(x: unknown): x is NumericLiteral {
+  return typeof x === "number" && !Number.isInteger(x);
 }
 
-export function isBigIntLiteral(expr: unknown): expr is NumericLiteral {
-  return typeof expr === "bigint";
+export function isBigIntLiteral(x: unknown): x is NumericLiteral {
+  return typeof x === "bigint";
 }
