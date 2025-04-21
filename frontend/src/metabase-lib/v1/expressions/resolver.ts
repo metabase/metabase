@@ -6,11 +6,10 @@ import { EDITOR_FK_SYMBOLS } from "./config";
 import { ResolverError } from "./errors";
 import { getDisplayNameWithSeparator } from "./identifier";
 import type { Node } from "./pratt";
-
-export type Kind = "field" | "metric" | "segment";
+import type { ExpressionType } from "./types";
 
 export type Resolver = (
-  kind: Kind,
+  type: ExpressionType,
   name: string,
   node?: Node,
 ) => Lib.ExpressionParts | Lib.ExpressionArg;
@@ -20,7 +19,8 @@ export function resolver(options: {
   stageIndex: number;
   expressionMode: Lib.ExpressionMode;
 }): Resolver {
-  return function (kind, name, node) {
+  return function (type, name, node) {
+    const kind = getKindForType(type);
     if (kind === "metric") {
       const metric = parseMetric(name, options);
       if (!metric) {
@@ -57,6 +57,17 @@ export function resolver(options: {
       return dimension;
     }
   };
+}
+
+function getKindForType(type: ExpressionType): "metric" | "segment" | "field" {
+  switch (type) {
+    case "boolean":
+      return "segment";
+    case "aggregation":
+      return "metric";
+    default:
+      return "field";
+  }
 }
 
 function parseMetric(
