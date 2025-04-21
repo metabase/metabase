@@ -179,7 +179,7 @@
    query
    (lib/order-bys query)))
 
-(mu/defn- generate-queries :- [:sequential ::lib.schema/query]
+(mu/defn generate-queries :- [:sequential ::lib.schema/query]
   "Generate the additional queries to perform a generic pivot table"
   [query                                               :- ::lib.schema/query
    {:keys [pivot-rows pivot-cols], :as _pivot-options} :- ::pivot-opts]
@@ -440,7 +440,7 @@
     (when (some some? (vals pivot-opts))
       pivot-opts)))
 
-(mu/defn- pivot-options :- ::pivot-opts
+(mu/defn pivot-options :- ::pivot-opts
   "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
   `pivot-cols` to use for generating subqueries. Supports both column name and field ref-based settings.
 

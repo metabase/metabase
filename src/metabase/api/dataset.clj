@@ -10,6 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.model-persistence.core :as model-persistence]
@@ -20,6 +21,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -184,16 +186,43 @@
   "Fetch a native version of an MBQL query."
   [_route-params
    _query-params
-   {:keys [database pretty] :as query} :- [:map
-                                           [:database ms/PositiveInt]
-                                           [:pretty   {:default true} [:maybe :boolean]]]]
+   {:keys [database pretty viz_settings] :as query} :- [:map
+                                                        [:database ms/PositiveInt]
+                                                        [:pretty   {:default true} [:maybe :boolean]]
+                                                        [:viz_settings {:optional true} [:maybe :map]]]]
   (model-persistence/with-persisted-substituion-disabled
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [driver (driver.u/database->driver database)
           prettify (partial driver/prettify-native-form driver)
-          compiled (qp.compile/compile-with-inline-parameters query)]
-      (cond-> compiled
-        pretty (update :query prettify)))))
+          is-pivot-query? (and viz_settings (get viz_settings :pivot_table.column_split))]
+
+      (if is-pivot-query?
+        ;; For pivot queries, return all the generated SQL queries
+        (qp.store/with-metadata-provider database
+          (let [pivot-opts (qp.pivot/pivot-options query viz_settings)
+                query (lib/query (qp.store/metadata-provider) query)
+                query (assoc-in query [:middleware :pivot-options] pivot-opts)
+                all-queries (qp.pivot/generate-queries query pivot-opts)
+                ;; Compile each query to SQL
+                compiled-queries (mapv #(let [compiled-query (qp.compile/compile-with-inline-parameters %)]
+                                          (cond-> compiled-query
+                                            pretty (update :query prettify)))
+                                       all-queries)
+                ;; Add labels for each query
+                labeled-queries (map-indexed (fn [idx q]
+                                               (let [label (cond
+                                                             (zero? idx) "Data"
+                                                             (= idx (dec (count all-queries))) "Grand totals"
+                                                             :else (str "Subtotals " idx))]
+                                                 (assoc q :label label)))
+                                             compiled-queries)]
+            {:all_queries labeled-queries
+             :is_pivot true}))
+
+        ;; For regular queries, return the single compiled query as before
+        (let [compiled (qp.compile/compile-with-inline-parameters query)]
+          (cond-> compiled
+            pretty (update :query prettify)))))))
 
 (api.macros/defendpoint :post "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"

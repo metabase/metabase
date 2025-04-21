@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useGetNativeDatasetQuery } from "metabase/api";
@@ -10,7 +10,7 @@ import { checkNotNull } from "metabase/lib/types";
 import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
 import { CodeMirrorEditor as Editor } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor";
 import { getQuestion } from "metabase/query_builder/selectors";
-import { Box, Button, Flex, Icon, rem } from "metabase/ui";
+import { Box, Button, Flex, Icon, Tabs, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { createNativeQuestion } from "./utils";
@@ -26,6 +26,7 @@ const BUTTON_TITLE = {
 };
 
 export const NotebookNativePreview = (): JSX.Element => {
+  const [activeTab, setActiveTab] = useState("0");
   const dispatch = useDispatch();
   const question = checkNotNull(useSelector(getQuestion));
 
@@ -35,26 +36,123 @@ export const NotebookNativePreview = (): JSX.Element => {
 
   const sourceQuery = question.query();
   const canRun = Lib.canRun(sourceQuery, question.type());
-  const payload = Lib.toLegacyQuery(sourceQuery);
+
+  // Get visualization settings from the question
+  const visualizationSettings = question.settings();
+
+  // Add visualization settings to the payload
+  const payload = {
+    ...Lib.toLegacyQuery(sourceQuery),
+    viz_settings: visualizationSettings,
+  };
+
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
+
+  const isPivotResponse = !!data?.is_pivot;
+  const pivotQueries = data?.all_queries;
 
   const showLoader = isFetching;
   const showError = !isFetching && canRun && !!error;
   const showQuery = !isFetching && canRun && !error;
   const showEmptySidebar = !canRun;
 
+  // For regular queries
   const newQuestion = createNativeQuestion(question, data);
   const newQuery = newQuestion.query();
 
+  // For pivot queries, create a question for each query in the response
+  // Wrap in useMemo to avoid recreating on every render
+  const pivotQueryObjects = useMemo(() => {
+    if (!isPivotResponse || !pivotQueries) {
+      return [];
+    }
+
+    return pivotQueries.map((q) => {
+      // Create a modified data object for each query
+      const queryData = {
+        query: q.query,
+        params: q.params,
+      };
+
+      // Create a question object for this specific query
+      const questionForQuery = createNativeQuestion(question, queryData);
+      return {
+        label: q.label || "Query",
+        queryObject: questionForQuery.query(),
+      };
+    });
+  }, [isPivotResponse, pivotQueries, question]);
+
   const handleConvertClick = useCallback(() => {
+    // For pivot queries, use the currently selected tab's query
+    if (isPivotResponse && pivotQueryObjects.length > 0) {
+      const activeTabIndex = parseInt(activeTab, 10);
+      const selectedQuery = pivotQueryObjects[activeTabIndex]?.queryObject;
+      if (selectedQuery) {
+        const questionToConvert = question.setQuery(selectedQuery);
+        dispatch(
+          updateQuestion(questionToConvert, {
+            shouldUpdateUrl: true,
+            run: true,
+          }),
+        );
+        dispatch(setUIControls({ isNativeEditorOpen: true }));
+        return;
+      }
+    }
+
+    // Default behavior for regular queries
     dispatch(updateQuestion(newQuestion, { shouldUpdateUrl: true, run: true }));
     dispatch(setUIControls({ isNativeEditorOpen: true }));
-  }, [newQuestion, dispatch]);
+  }, [
+    newQuestion,
+    isPivotResponse,
+    pivotQueryObjects,
+    activeTab,
+    question,
+    dispatch,
+  ]);
 
   const getErrorMessage = (error: unknown) =>
     typeof error === "string" ? error : undefined;
 
   const borderStyle = "1px solid var(--mb-color-border)";
+
+  const renderQueryContent = () => {
+    if (isPivotResponse && pivotQueryObjects.length > 0) {
+      return (
+        <Box style={{ height: "100%", overflow: "auto" }}>
+          <Tabs
+            value={activeTab}
+            onChange={setActiveTab}
+            style={{ height: "100%" }}
+          >
+            <Tabs.List>
+              {pivotQueryObjects.map((q, idx) => (
+                <Tabs.Tab key={idx} value={String(idx)}>
+                  {q.label}
+                </Tabs.Tab>
+              ))}
+            </Tabs.List>
+
+            {pivotQueryObjects.map((q, idx) => (
+              <Tabs.Panel
+                key={idx}
+                value={String(idx)}
+                style={{ height: "calc(100% - 42px)" }}
+              >
+                <Box p="md" style={{ height: "100%" }}>
+                  <Editor query={q.queryObject} readOnly />
+                </Box>
+              </Tabs.Panel>
+            ))}
+          </Tabs>
+        </Box>
+      );
+    }
+
+    return newQuery ? <Editor query={newQuery} readOnly /> : null;
+  };
 
   return (
     <Box
@@ -95,7 +193,7 @@ export const NotebookNativePreview = (): JSX.Element => {
             <Box mt="sm">{getErrorMessage(error)}</Box>
           </Flex>
         )}
-        {showQuery && <Editor query={newQuery} readOnly />}
+        {showQuery && renderQueryContent()}
       </Flex>
       <Box ta="end" p="1.5rem">
         <Button
