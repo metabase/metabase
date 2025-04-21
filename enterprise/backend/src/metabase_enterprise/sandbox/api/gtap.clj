@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
+   [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -76,14 +77,14 @@
                                   [:table_id ms/PositiveInt]
                                   [:card_id  {:optional true} [:maybe ms/PositiveInt]]]]
   (when card_id
-    (let [db-features (:features (t2/select-one :model/Database
-                                                {:from [[:metabase_table :t]]
-                                                 :join [[:metabase_database :d] [:= :t.db_id :d.id]]
-                                                 :where [:= :t.id table_id]}))]
-      (when (not (contains? db-features :saved-question-sandboxing))
-        (throw (ex-info (tru "Sandboxing is not enabled for this database.")
+    (let [db (t2/select-one :model/Database
+                            {:from [[:metabase_table :t]]
+                             :join [[:metabase_database :d] [:= :t.db_id :d.id]]
+                             :where [:= :t.id table_id]})]
+      (when (not (driver.u/supports? (:engine db) :saved-question-sandboxing db))
+        (throw (ex-info (tru "Sandboxing with a saved question is not enabled for this database.")
                         {:status-code 400
-                         :message     (tru "Sandboxing is not enabled for this database.")})))))
+                         :message     (tru "Sandboxing with a saved question is not enabled for this database.")})))))
   (gtap/check-columns-match-table {:table_id table_id
                                    :card_id  card_id}))
 
