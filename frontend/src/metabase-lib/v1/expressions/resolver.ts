@@ -14,165 +14,91 @@ export type Resolver = (
   node?: Node,
 ) => Lib.ExpressionParts | Lib.ExpressionArg;
 
-export function resolver(options: {
+type Options = {
   query: Lib.Query;
   stageIndex: number;
   expressionMode: Lib.ExpressionMode;
-}): Resolver {
+};
+
+export function resolver(options: Options): Resolver {
+  const { query, stageIndex, expressionMode } = options;
+
+  const metrics = Lib.availableMetrics(query, stageIndex);
+  const segments = Lib.availableSegments(query, stageIndex);
+  const columns = Lib.expressionableColumns(query, stageIndex);
+
   return function (type, name, node) {
-    const kind = getKindForType(type);
-    if (kind === "metric") {
-      const metric = parseMetric(name, options);
+    const hasMatchingName = nameMatcher(name, options);
+
+    if (type === "aggregation") {
+      // Return metrics
+      const availableDimensions = [...metrics, ...columns];
+      const metric = availableDimensions.find(hasMatchingName);
+
       if (!metric) {
-        const dimension = parseDimension(name, options);
-        const isNameKnown = Boolean(dimension);
-
-        if (isNameKnown) {
-          const error = c(
-            "{0} is an identifier of the field provided by user in a custom expression",
-          )
-            .t`No aggregation found in: ${name}. Use functions like Sum() or custom Metrics`;
-
-          throw new ResolverError(error, node);
-        }
-
         throw new ResolverError(t`Unknown Metric: ${name}`, node);
+      } else if (!Lib.isMetricMetadata(metric)) {
+        // If no metric was found, but there is a matching column,
+        // show a more sophisticated error message
+        const error = c(
+          "{0} is an identifier of the field provided by user in a custom expression",
+        )
+          .t`No aggregation found in: ${name}. Use functions like Sum() or custom Metrics`;
+        throw new ResolverError(error, node);
       }
 
       return metric;
-    } else if (kind === "segment") {
-      const segment = parseSegment(name, options);
+    }
+
+    if (type === "boolean") {
+      // Return segments and boolean fields
+      const availableDimensions: Dimension[] = [
+        ...segments,
+        ...columns.filter(Lib.isBoolean),
+      ];
+      const segment = availableDimensions.find(hasMatchingName);
       if (!segment) {
         throw new ResolverError(t`Unknown Segment: ${name}`, node);
       }
-
       return segment;
-    } else {
-      // fallback
-      const dimension = parseDimension(name, options);
-      if (!dimension) {
-        throw new ResolverError(t`Unknown Field: ${name}`, node);
-      }
-
-      return dimension;
     }
+
+    // Return columns and, in the case of aggregation expressions, metrics
+    const availableDimensions = [
+      ...columns,
+      ...(expressionMode === "aggregation" ? metrics : []),
+    ];
+    const dimension = availableDimensions.find(hasMatchingName);
+    if (!dimension) {
+      throw new ResolverError(t`Unknown Field: ${name}`, node);
+    }
+
+    return dimension;
   };
 }
 
-function getKindForType(type: ExpressionType): "metric" | "segment" | "field" {
-  switch (type) {
-    case "boolean":
-      return "segment";
-    case "aggregation":
-      return "metric";
-    default:
-      return "field";
-  }
-}
+type Dimension = Lib.SegmentMetadata | Lib.MetricMetadata | Lib.ColumnMetadata;
 
-function parseMetric(
-  metricName: string,
-  { query, stageIndex }: { query: Lib.Query; stageIndex: number },
-) {
-  const metrics = Lib.availableMetrics(query, stageIndex);
-
-  const metric = metrics.find((metric) => {
-    const displayInfo = Lib.displayInfo(query, stageIndex, metric);
-
-    return displayInfo.displayName.toLowerCase() === metricName.toLowerCase();
-  });
-
-  if (metric) {
-    return metric;
-  }
-}
-
-function parseSegment(
-  segmentName: string,
-  {
-    query,
-    stageIndex,
-    expressionIndex,
-  }: { query: Lib.Query; stageIndex: number; expressionIndex?: number },
-) {
-  const segment = Lib.availableSegments(query, stageIndex).find((segment) => {
-    const displayInfo = Lib.displayInfo(query, stageIndex, segment);
-
-    return displayInfo.displayName.toLowerCase() === segmentName.toLowerCase();
-  });
-
-  if (segment) {
-    return segment;
-  }
-
-  const column = Lib.expressionableColumns(
-    query,
-    stageIndex,
-    expressionIndex,
-  ).find((field) => {
-    const displayInfo = Lib.displayInfo(query, stageIndex, field);
-    return displayInfo.displayName.toLowerCase() === segmentName.toLowerCase();
-  });
-
-  if (column && Lib.isBoolean(column)) {
-    return column;
-  }
-}
-
-export function parseDimension(
+function nameMatcher(
   name: string,
-  options: {
-    query: Lib.Query;
-    stageIndex: number;
-    expressionIndex?: number | undefined;
-    expressionMode: Lib.ExpressionMode;
-  },
-) {
-  return getAvailableDimensions(options).find(({ info }) => {
-    return EDITOR_FK_SYMBOLS.symbols.some((separator) => {
-      const displayName = getDisplayNameWithSeparator(
-        info.longDisplayName,
-        separator,
-      );
+  options: Options,
+): (dimension: Dimension) => boolean {
+  const { query, stageIndex } = options;
+  return function (dimension: Dimension) {
+    if (Lib.isSegmentMetadata(dimension) || Lib.isSegmentMetadata(dimension)) {
+      const { displayName } = Lib.displayInfo(query, stageIndex, dimension);
+      return displayName.toLowerCase() === name.toLowerCase();
+    } else if (Lib.isColumnMetadata(dimension)) {
+      return EDITOR_FK_SYMBOLS.symbols.some((separator) => {
+        const info = Lib.displayInfo(query, stageIndex, dimension);
+        const displayName = getDisplayNameWithSeparator(
+          info.longDisplayName,
+          separator,
+        );
 
-      return displayName === name;
-    });
-  })?.dimension;
-}
-
-function getAvailableDimensions({
-  query,
-  stageIndex,
-  expressionIndex,
-  expressionMode,
-}: {
-  query: Lib.Query;
-  stageIndex: number;
-  expressionIndex?: number | undefined;
-  expressionMode: Lib.ExpressionMode;
-}) {
-  const results = Lib.expressionableColumns(
-    query,
-    stageIndex,
-    expressionIndex,
-  ).map((dimension) => {
-    return {
-      dimension,
-      info: Lib.displayInfo(query, stageIndex, dimension),
-    };
-  });
-
-  if (expressionMode === "aggregation") {
-    return [
-      ...results,
-      ...Lib.availableMetrics(query, stageIndex).map((dimension) => {
-        return {
-          dimension,
-          info: Lib.displayInfo(query, stageIndex, dimension),
-        };
-      }),
-    ];
-  }
-
-  return results;
+        return displayName === name;
+      });
+    }
+    return false;
+  };
 }
