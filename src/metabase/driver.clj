@@ -738,6 +738,9 @@
     ;; Does this driver support casting text to dates? (`date()` custom expression function)
     :expressions/date
 
+    ;; Does this driver support sandboxing with saved questions?
+    :saved-question-sandboxing
+
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
     ;; against except for Athena and Databricks which currently require test data to be loaded separately.
@@ -790,6 +793,7 @@
                               :test/jvm-timezone-setting              true
                               :fingerprint                            true
                               :upload-with-auto-pk                    true
+                              :saved-question-sandboxing              true
                               :test/dynamic-dataset-loading           true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
