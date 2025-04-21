@@ -639,8 +639,7 @@
      StringExpressionArg])
 
 (defclause ^{:requires-features #{:expressions :expressions/float}} float
-  x [:or NumericExpressionArg
-     StringExpressionArg])
+  x StringExpressionArg)
 
 ;; The result is positive if x <= y, and negative otherwise.
 ;;
