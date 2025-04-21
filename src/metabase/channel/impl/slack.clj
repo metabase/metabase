@@ -237,8 +237,6 @@
   (let [event-name (:event_name context)
         template    (or template (get event->template event-name))]
     (assert template (str "No template found for event " event-name))
-    (if-not template
-      []
-      (for [channel-id (map notification-recipient->channel-id recipients)]
-        {:channel-id  channel-id
-         :attachments [(text->markdown-block (channel.template/render-template template notification-payload))]}))))
+    (for [channel-id (map notification-recipient->channel-id recipients)]
+      {:channel-id  channel-id
+       :attachments [(text->markdown-block (channel.template/render-template template notification-payload))]})))

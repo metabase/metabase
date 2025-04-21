@@ -93,6 +93,7 @@
    - x: First value to compare
    - y: Second value to compare"
   [x [y] _kparams _options]
+  (def x x) (def y y)
   (= x y))
 
 (defhelper ne

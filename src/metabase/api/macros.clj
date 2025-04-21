@@ -312,6 +312,19 @@
    (mtx/default-value-transformer)
    {:name :api}))
 
+(malli.core/decode
+ [:map
+  [:a
+   {:decode/string keyword}
+   [:fn some? #_{:decode/string keyword}]]]
+ {:a "kerran"} decode-transformer)
+
+(malli.core/decode
+ [:map
+  [:a {:decode/string keyword} string?]]
+ [:a "sup"]
+ decode-transformer)
+
 (def ^:private encode-transformer
   (mtx/transformer
    (mtx/default-value-transformer)

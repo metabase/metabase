@@ -181,3 +181,18 @@
                                           {:payload_type :notification/system-event
                                            :payload      {:event_name :event/rows.deleted}
                                            :creator_id   (mt/user->id :crowberto)})))))
+
+(deftest preview-notification-test
+  (is (= {:subject "Meta Bot has created a row for orders",
+          :recipients ["bot@metabase.com"],
+          :message-type "attachments",
+          :message
+          [{:type "text/html; charset=utf-8", :content "Created 1 records"}],
+          :recipient-type nil}
+         (mt/user-http-request :crowberto :post 200 "notification/preview_template"
+                               {:template     {:channel_type :channel/email
+                                               :details {:type    :email/handlebars-text
+                                                         :subject "{{editor.first_name}} {{editor.last_name}} has created a row for {{table.name}}"
+                                                         :body    "Created {{count records}} records"}}
+                                :notification {:payload_type :notification/system-event
+                                               :payload      {:event_name :event/rows.created}}}))))
