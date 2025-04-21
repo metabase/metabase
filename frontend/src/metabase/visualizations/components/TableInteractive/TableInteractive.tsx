@@ -73,7 +73,7 @@ import {
 } from "./cells/HeaderCellWithColumnInfo";
 import { MiniBarCell } from "./cells/MiniBarCell";
 import { useObjectDetail } from "./hooks/use-object-detail";
-import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-data-change";
+import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-columns-change";
 
 const getBodyCellVariant = (column: DatasetColumn): BodyCellVariant => {
   const isPill = isPK(column) || isFK(column);
