@@ -44,9 +44,35 @@
    [metabase.util.log :as log]
    [metabase.util.log.capture :as log.capture]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+  ;; For describe-database privileges filtering
+   [metabase.driver.sql-jdbc.sync.interface :as sync-intf]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]))
 
 (set! *warn-on-reflection* true)
+(deftest current-user-table-privileges-normalization-test
+  (testing "Snowflake table privileges normalization"
+    (let [fake-rows [{:schema "s1" :table "t1" :privilege_type "SELECT"}
+                     {:schema "s1" :table "t1" :privilege_type "INSERT"}
+                     {:schema "s2" :table "t2" :privilege_type "DELETE"}]
+          expected #{{:role nil :schema "s1" :table "t1" :select true  :insert true  :update false :delete false}
+                     {:role nil :schema "s2" :table "t2" :select false :insert false :update false :delete true}}]
+      (with-redefs [jdbc/query (fn [_ _] fake-rows)]
+        (is (= expected
+               (set (sql-jdbc.sync/current-user-table-privileges :snowflake nil)))))))
+
+;;; ----------------------------------------------------------------------
+;;; Test describe-database filters tables by SELECT privilege for Snowflake
+;;; ----------------------------------------------------------------------
+(deftest describe-database-privileges-filtering-test
+  (testing "describe-database filters tables by SELECT privilege"
+    (with-redefs [sql-jdbc.execute/do-with-connection-with-options (fn [_driver _db _opts f] (f nil))
+                  sync-intf/active-tables (fn [_driver _conn _incl _excl]
+                                           [{:schema "s" :name "t1"} {:schema "s" :name "t2"}])
+                  sync-intf/current-user-table-privileges (fn [_driver _args]
+                                                            [{:schema "s" :table "t1" :select true :insert false :update false :delete false}])]
+      (let [{tables :tables} (driver/describe-database :snowflake nil)]
+        (is (= #{{:schema "s" :name "t1"}} tables))))))
 
 (defn- query->native! [query]
   (let [check-sql-fn (fn [_ _ sql & _]

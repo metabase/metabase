@@ -6,7 +6,9 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
-   [metabase.test.data.interface :as tx]))
+   [metabase.test.data.interface :as tx]
+   [clojure.java.jdbc :as jdbc]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]))
 
 (set! *warn-on-reflection* true)
 
@@ -72,3 +74,19 @@
            (->> (mt/native-query {:query (tx/native-array-query :vertica)})
                 mt/process-query
                 mt/rows)))))
+
+;;; ----------------------------------------------------------------------
+;;; Test current-user-table-privileges normalization for Vertica
+;;; ----------------------------------------------------------------------
+(deftest current-user-table-privileges-normalization-test
+  (testing "Vertica table privileges normalization"
+    (let [;; include UPDATE and DELETE for t2 to verify boolean mapping and grouping
+          fake-rows [{:schema "s1" :table "t1" :privilege_type "SELECT"}
+                     {:schema "s1" :table "t1" :privilege_type "INSERT"}
+                     {:schema "s2" :table "t2" :privilege_type "UPDATE"}
+                     {:schema "s2" :table "t2" :privilege_type "DELETE"}]
+          expected #{{:role nil :schema "s1" :table "t1" :select true  :insert true  :update false :delete false}
+                     {:role nil :schema "s2" :table "t2" :select false :insert false :update true  :delete true}}]
+      (with-redefs [jdbc/query (fn [_ _] fake-rows)]
+        (is (= expected
+               (set (sql-jdbc.sync/current-user-table-privileges :vertica nil))))))))

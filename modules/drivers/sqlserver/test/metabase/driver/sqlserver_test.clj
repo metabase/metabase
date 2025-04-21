@@ -23,9 +23,22 @@
    [metabase.test :as mt]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.date-2 :as u.date]
+   [clojure.java.jdbc :as jdbc]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [next.jdbc]))
 
 (set! *warn-on-reflection* true)
+
+(deftest current-user-table-privileges-normalization-test
+  (testing "SQL Server table privileges normalization"
+    (let [fake-rows [{:schema "s" :table "t" :privilege_type "SELECT"}
+                     {:schema "s" :table "t" :privilege_type "INSERT"}
+                     {:schema "x" :table "y" :privilege_type "DELETE"}]
+          expected #{{:role nil :schema "s" :table "t" :select true  :insert true  :update false :delete false}
+                     {:role nil :schema "x" :table "y" :select false :insert false :update false :delete true}}]
+      (with-redefs [jdbc/query (fn [_ _] fake-rows)]
+        (is (= expected
+               (set (sql-jdbc.sync/current-user-table-privileges :sqlserver nil)))))))
 
 (deftest ^:parallel fix-order-bys-test
   (testing "Remove order-by from joins"

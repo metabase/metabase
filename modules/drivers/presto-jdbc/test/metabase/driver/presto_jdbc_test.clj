@@ -17,7 +17,9 @@
    [metabase.test :as mt]
    [metabase.test.data.presto-jdbc :as data.presto-jdbc]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [clojure.java.jdbc :as jdbc]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync])
   (:import
    (java.io File)))
 
@@ -286,3 +288,16 @@
 (deftest bytes-to-varbinary-test
   (is (= ["FROM_BASE64(?)" "YSBzdHJpbmc="]
          (sql/format (sql.qp/->honeysql :presto-jdbc (.getBytes "a string"))))))
+
+;;; ------------------------------------------------ table privileges ------------------------------------------------
+(deftest current-user-table-privileges-normalization-test
+  (testing "Presto-JDBC table privileges normalization"
+    (let [fake-rows [{:schema "s1" :table "t1" :privilege_type "SELECT"}
+                     {:schema "s1" :table "t1" :privilege_type "INSERT"}
+                     {:schema "s2" :table "t2" :privilege_type "UPDATE"}
+                     {:schema "s2" :table "t2" :privilege_type "DELETE"}]
+          expected #{{:role nil :schema "s1" :table "t1" :select true  :insert true  :update false :delete false}
+                     {:role nil :schema "s2" :table "t2" :select false :insert false :update true  :delete true}}]
+      (with-redefs [jdbc/query (fn [_ _] fake-rows)]
+        (is (= expected
+               (set (sql-jdbc.sync/current-user-table-privileges :presto-jdbc nil))))))))

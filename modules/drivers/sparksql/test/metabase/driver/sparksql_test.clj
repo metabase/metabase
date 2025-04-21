@@ -8,7 +8,9 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [clojure.java.jdbc :as jdbc]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]))
 
 (set! *warn-on-reflection* true)
 
@@ -110,4 +112,17 @@
                         (.getName (java.sql.JDBCType/valueOf (.getColumnType rsmeta 1)))))))
              (testing "Rows should come back as expected Java types"
                (is (= [[#t "2024-03-22"]]
-                      (into [] (sql-jdbc.execute/reducible-rows :sparksql rset rsmeta))))))))))))
+                      (into [] (sql-jdbc.execute/reducible-rows :sparksql rset rsmeta)))))))))))))
+
+;;; ------------------------------------------------ table privileges ------------------------------------------------
+(deftest current-user-table-privileges-normalization-test
+  (testing "SparkSQL table privileges normalization"
+    (let [fake-rows [{:schema "s1" :table "t1" :privilege_type "SELECT"}
+                     {:schema "s1" :table "t1" :privilege_type "INSERT"}
+                     {:schema "s2" :table "t2" :privilege_type "UPDATE"}
+                     {:schema "s2" :table "t2" :privilege_type "DELETE"}]
+          expected #{{:role nil :schema "s1" :table "t1" :select true  :insert true  :update false :delete false}
+                     {:role nil :schema "s2" :table "t2" :select false :insert false :update true  :delete true}}]
+      (with-redefs [jdbc/query (fn [_ _] fake-rows)]
+        (is (= expected
+               (set (sql-jdbc.sync/current-user-table-privileges :sparksql nil))))))))

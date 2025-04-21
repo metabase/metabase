@@ -10,7 +10,11 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+  ;; For describe-database privileges filtering
+   [metabase.driver.sql-jdbc.sync.interface :as sync-intf]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sync-int]))
 
 (set! *warn-on-reflection* true)
 
@@ -18,6 +22,15 @@
   (mt/test-driver :sqlite
     (is (= "UTC"
            (driver/db-default-timezone :sqlite (mt/db))))))
+
+(deftest current-user-table-privileges-test
+  (testing "SQLite table privileges normalization"
+    (let [fake-rows [{:table "t1"} {:table "v1"}]
+          expected #{{:role nil :schema nil :table "t1" :select true  :insert false :update false :delete false}
+                     {:role nil :schema nil :table "v1" :select true  :insert false :update false :delete false}}]
+      (with-redefs [jdbc/query (fn [_ _] fake-rows)]
+        (is (= expected
+               (set (sync-int/current-user-table-privileges :sqlite nil))))))))
 
 (deftest filter-by-date-test
   (testing "Make sure filtering against a LocalDate works correctly in SQLite"

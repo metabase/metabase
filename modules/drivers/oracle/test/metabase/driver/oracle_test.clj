@@ -35,6 +35,9 @@
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   ;; For describe-database privileges filtering
+   [metabase.driver.sql-jdbc.sync.interface :as sync-intf]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -49,8 +52,31 @@
                       ;;
                       ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
                       ;;    tests.
-                      (binding [sync-util/*log-exceptions-and-continue?* false]
-                        (thunk))))
+                        (binding [sync-util/*log-exceptions-and-continue?* false]
+                          (thunk))))
+
+(deftest current-user-table-privileges-normalization-test
+  (testing "Oracle table privileges normalization"
+    (let [fake-rows [{:role nil :schema "s1" :table "t1" :select 1 :insert 0 :update 1 :delete 0}
+                     {:role nil :schema "s2" :table "t2" :select 0 :insert 1 :update 0 :delete 1}]
+          expected #{{:role nil :schema "s1" :table "t1" :select true  :insert false :update true  :delete false}
+                     {:role nil :schema "s2" :table "t2" :select false :insert true  :update false :delete true}}]
+  (with-redefs [jdbc/query (fn [_ _] fake-rows)]
+        (is (= expected
+               (set (sql-jdbc.sync/current-user-table-privileges :oracle nil))))))))
+
+;;; ----------------------------------------------------------------------
+;;; Test describe-database filters tables by SELECT privilege for Oracle
+;;; ----------------------------------------------------------------------
+(deftest describe-database-privileges-filtering-test
+  (testing "describe-database filters tables by SELECT privilege"
+    (with-redefs [sql-jdbc.execute/do-with-connection-with-options (fn [_driver _db _opts f] (f nil))
+                  sync-intf/active-tables (fn [_driver _conn _incl _excl]
+                                           [{:schema nil :name "a"} {:schema nil :name "b"}])
+                  sync-intf/current-user-table-privileges (fn [_driver _args]
+                                                            [{:schema nil :table "a" :select true :insert false :update false :delete false}])]
+      (let [{tables :tables} (driver/describe-database :oracle nil)]
+        (is (= #{{:schema nil :name "a"}} tables))))))
 
 (deftest ^:parallel connection-details->spec-test
   (doseq [[^String message expected-spec details]

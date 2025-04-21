@@ -42,7 +42,8 @@
 (doseq [[feature supported?] {:datetime-diff           true
                               :now                     true
                               :identifiers-with-spaces true
-                              :convert-timezone        true}]
+                              :convert-timezone        true
+                              :table-privileges        true}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
 (mr/def ::details
@@ -197,6 +198,33 @@
 (defmethod driver/db-start-of-week :oracle
   [_driver]
   :sunday)
+
+;;; ------------------------------------------------ table privileges ------------------------------------------------
+(defmethod sql-jdbc.sync/current-user-table-privileges :oracle
+  [_driver conn-spec & {:as _options}]
+  ;; Fetch table privileges from ALL_TAB_PRIVS for current user (OWNER as schema)
+  (let [rows (jdbc/query conn-spec
+                         [(str "WITH table_privileges AS ("
+                               " SELECT NULL AS role,"
+                               "        owner AS schema,"
+                               "        table_name AS table,"
+                               "        MAX(CASE WHEN privilege = 'SELECT' THEN 1 ELSE 0 END) AS select_priv," ; Alias to avoid conflict
+                               "        MAX(CASE WHEN privilege = 'INSERT' THEN 1 ELSE 0 END) AS insert_priv,"
+                               "        MAX(CASE WHEN privilege = 'UPDATE' THEN 1 ELSE 0 END) AS update_priv,"
+                               "        MAX(CASE WHEN privilege = 'DELETE' THEN 1 ELSE 0 END) AS delete_priv"
+                               "   FROM all_tab_privs"
+                               "  WHERE grantee = USER"
+                               "  GROUP BY owner, table_name)"
+                               "SELECT * FROM table_privileges")])]
+    ;; rows from the CTE are already aggregated per table
+    (for [{:keys [schema table select_priv insert_priv update_priv delete_priv]} rows]
+      {:role   nil
+       :schema schema
+       :table  table
+       :select (= select_priv 1) ; Check numeric flag directly
+       :insert (= insert_priv 1)
+       :update (= update_priv 1)
+       :delete (= delete_priv 1)})))
 
 ;;; use Honey SQL 2 `:oracle` `:dialect`
 (defmethod sql.qp/quote-style :oracle

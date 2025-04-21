@@ -18,10 +18,26 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
+  ;; sync interface for privileges-based filtering
+   [metabase.driver.sql-jdbc.sync.interface :as sync-intf]
    [metabase.util.date-2 :as u.date]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+  ;; For testing table-privileges
+   [clojure.java.jdbc :as jdbc]
+   [metabase.driver.sql-jdbc.sync :as sync-int]))
 
 (set! *warn-on-reflection* true)
+  
+(deftest current-user-table-privileges-normalization-test
+  (testing "Athena table privileges normalization"
+    (let [fake-rows [{:schema "s1" :table "t1" :privilege_type "SELECT"}
+                     {:schema "s1" :table "t1" :privilege_type "INSERT"}
+                     {:schema "s2" :table "t2" :privilege_type "DELETE"}]
+          expected #{{:role nil :schema "s1" :table "t1" :select true  :insert true  :update false :delete false}
+                     {:role nil :schema "s2" :table "t2" :select false :insert false :update false :delete true}}]
+      (with-redefs [jdbc/query (fn [_ _] fake-rows)]
+        (is (= expected
+               (set (sync-int/current-user-table-privileges :athena nil)))))))
 
 (def ^:private nested-schema
   [{:_col0 "key\tint\t"}
@@ -392,4 +408,17 @@
                        (mt/formatted-rows (repeat (count units) int))
                        first
                        (zipmap units))))]
-          (qp-test.date-time-zone-functions-test/run-datetime-diff-time-zone-tests! diffs))))))
+  (qp-test.date-time-zone-functions-test/run-datetime-diff-time-zone-tests! diffs))))))
+;;; ----------------------------------------------------------------------
+;;; Test describe-database filters tables by SELECT privilege for Athena
+;;; ----------------------------------------------------------------------
+(deftest describe-database-privileges-filtering-test
+  (testing "describe-database filters tables by SELECT privilege"
+    (with-redefs [sql-jdbc.execute/do-with-connection-with-options (fn [_driver _db _opts f] (f nil))
+                  sync-intf/active-tables (fn [_driver _conn _incl _excl]
+                                           [{:schema nil :name "t1"}
+                                            {:schema nil :name "t2"}])
+                  sync-intf/current-user-table-privileges (fn [_driver _args]
+                                                            [{:schema nil :table "t1" :select true  :insert false :update false :delete false}])]
+      (let [{tables :tables} (driver/describe-database :athena nil)]
+        (is (= #{{:schema nil :name "t1"}} tables))))))

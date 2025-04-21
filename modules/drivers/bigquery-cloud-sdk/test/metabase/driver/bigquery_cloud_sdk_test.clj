@@ -21,7 +21,9 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [clojure.java.jdbc :as jdbc]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync])
   (:import
    (com.google.cloud.bigquery TableResult)))
 
@@ -1249,3 +1251,16 @@
       (is (=? [["2024-12-11T16:23:55.123456Z" #"2024-12-11T16:23:55.123456.*"]]
               (-> (qp/process-query query)
                   mt/rows))))))
+
+;;; ------------------------------------------------ table privileges ------------------------------------------------
+(deftest current-user-table-privileges-normalization-test
+  (testing "BigQuery table privileges normalization"
+    (let [fake-rows [{:schema "s1" :table "t1" :privilege_type "SELECT"}
+                     {:schema "s1" :table "t1" :privilege_type "INSERT"}
+                     {:schema "s2" :table "t2" :privilege_type "UPDATE"}
+                     {:schema "s2" :table "t2" :privilege_type "DELETE"}]
+          expected #{{:role nil :schema "s1" :table "t1" :select true  :insert true  :update false :delete false}
+                     {:role nil :schema "s2" :table "t2" :select false :insert false :update true  :delete true}}]
+      (with-redefs [jdbc/query (fn [_ _] fake-rows)]
+        (is (= expected
+               (set (sql-jdbc.sync/current-user-table-privileges :bigquery-cloud-sdk nil)))))))

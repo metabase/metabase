@@ -34,12 +34,31 @@
                               :now                       true
                               :identifiers-with-spaces   true
                               :percentile-aggregations   false
-                              :test/jvm-timezone-setting false}]
+                              :test/jvm-timezone-setting false
+                              :table-privileges           true}]
   (defmethod driver/database-supports? [:vertica feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :vertica
   [_]
   :monday)
+
+;;; ------------------------------------------------ table privileges ------------------------------------------------
+(defmethod sql-jdbc.sync/current-user-table-privileges :vertica
+  [_driver conn-spec & {:as _options}]
+  ;; Fetch table privileges from INFORMATION_SCHEMA.TABLE_PRIVILEGES for current user
+  (let [rows (jdbc/query conn-spec
+                         ["SELECT table_schema AS schema, table_name AS table, privilege_type FROM information_schema.table_privileges WHERE grantee = CURRENT_USER"])
+        allowed #{"SELECT" "INSERT" "UPDATE" "DELETE"}
+        rows (filter #(contains? allowed (:privilege_type %)) rows)]
+    (for [[[schema table] grp] (group-by (juxt :schema :table) rows)
+          :let [privs (set (map :privilege_type grp))]]
+      {:role   nil
+       :schema schema
+       :table  table
+       :select (contains? privs "SELECT")
+       :insert (contains? privs "INSERT")
+       :update (contains? privs "UPDATE")
+       :delete (contains? privs "DELETE")})))
 
 (defmethod sql-jdbc.sync/database-type->base-type :vertica
   [_ database-type]

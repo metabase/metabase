@@ -60,7 +60,8 @@
                               :expressions/integer                    true
                               :identifiers-with-spaces                true
                               :split-part                             true
-                              :now                                    true}]
+                              :now                                    true
+                              :table-privileges                        true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake
@@ -76,6 +77,23 @@
 (defmethod driver/db-start-of-week :snowflake
   [_]
   :sunday)
+
+;;; ------------------------------------------------ table privileges ------------------------------------------------
+(defmethod sql-jdbc.sync/current-user-table-privileges :snowflake
+  [_driver conn-spec & {:as _options}]
+  ;; Fetch table privileges from INFORMATION_SCHEMA.TABLE_PRIVILEGES for current user
+  (let [rows (jdbc/query conn-spec
+                         ["SELECT table_schema AS schema, table_name AS table, privilege AS privilege_type FROM information_schema.table_privileges WHERE grantee = current_user()"])
+        allowed #{"SELECT" "INSERT" "UPDATE" "DELETE"}]
+    (for [[[schema table] grp] (group-by (juxt :schema :table) rows)
+          :let [privs (->> grp (map :privilege_type) (filter allowed) set)]]
+      {:role   nil
+       :schema schema
+       :table  table
+       :select (contains? privs "SELECT")
+       :insert (contains? privs "INSERT")
+       :update (contains? privs "UPDATE")
+       :delete (contains? privs "DELETE")})))
 
 (defn- start-of-week-setting->snowflake-offset
   "Value to use for the `WEEK_START` connection parameter -- see

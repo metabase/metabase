@@ -41,7 +41,7 @@
 (driver/register! :presto-jdbc, :parent #{:sql-jdbc
                                           ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(doseq [[feature supported?] {:basic-aggregations              true
+ (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
                               :expression-aggregations         true
                               :expression-literals             true
@@ -50,6 +50,7 @@
                               :now                             true
                               :set-timezone                    true
                               :standard-deviation-aggregations true
+                              :table-privileges                true
                               :metadata/key-constraints        false}]
   (defmethod driver/database-supports? [:presto-jdbc feature] [_driver _feature _db] supported?))
 
@@ -830,3 +831,22 @@
    ;; Source of the pattern:
    ;; https://github.com/prestodb/presto/blob/b73ab7df31e4d969c44fd953e5cb8e36a18eb55b/presto-parser/src/main/java/com/facebook/presto/sql/tree/Identifier.java#L26
    (str/replace s #"(^[^a-zA-Z_])|([^a-zA-Z0-9_:@])" "_")))
+
+;;; ------------------------------------------------ table privileges ------------------------------------------------
+(defmethod sql-jdbc.sync/current-user-table-privileges :presto-jdbc
+  [_driver conn-spec & {:as _options}]
+  ;; Fetch table privileges from INFORMATION_SCHEMA.TABLE_PRIVILEGES for current user
+  (let [rows (jdbc/query conn-spec
+                         ["SELECT table_schema AS schema, table_name AS table, privilege_type"
+                          "FROM information_schema.table_privileges"
+                          "WHERE grantee = current_user()"])
+        allowed #{"SELECT" "INSERT" "UPDATE" "DELETE"}]
+    (for [[[schema table] grp] (group-by (juxt :schema :table) rows)
+          :let [privs (->> grp (map :privilege_type) (filter allowed) set)]]
+      {:role   nil
+       :schema schema
+       :table  table
+       :select (contains? privs "SELECT")
+       :insert (contains? privs "INSERT")
+       :update (contains? privs "UPDATE")
+       :delete (contains? privs "DELETE")})))

@@ -1,5 +1,6 @@
 (ns metabase.driver.sqlite
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -42,7 +43,8 @@
                               ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
                               ;; we have this 'feature' so the frontend doesn't try to present the option to you.
                               :case-sensitivity-string-filter-options false
-                              :index-info                             true}]
+                              :index-info                             true
+                              :table-privileges                        true}]
   (defmethod driver/database-supports? [:sqlite feature] [_driver _feature _db] supported?))
 
 ;; Every SQLite3 file starts with "SQLite Format 3"
@@ -122,6 +124,21 @@
   (sql.qp/format-honeysql driver {:select [:*]
                                   :from   [[(h2x/identifier :table table-name)]]
                                   :limit  1}))
+
+;;; ------------------------------------------------ table privileges ------------------------------------------------
+(defmethod sql-jdbc.sync/current-user-table-privileges :sqlite
+  [_driver conn-spec & {:as _options}]
+  ;; SQLite has no per-user privileges; allow SELECT on all tables and views
+  (let [rows (jdbc/query conn-spec ["SELECT name AS table FROM sqlite_master WHERE type IN ('table','view')"])]
+    (map (fn [{:keys [table]}]
+           {:role   nil
+            :schema nil
+            :table  table
+            :select true
+            :insert false
+            :update false
+            :delete false})
+         rows)))
 
 (defn- ->date [& args]
   (-> (into [:date] args)

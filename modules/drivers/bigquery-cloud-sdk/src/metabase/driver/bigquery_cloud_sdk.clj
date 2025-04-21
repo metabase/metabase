@@ -26,7 +26,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [clojure.java.jdbc :as jdbc]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync])
   (:import
    (clojure.lang PersistentList)
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableDataListOption
@@ -668,6 +670,7 @@
                               :expressions              true
                               :now                      true
                               :percentile-aggregations  true
+                              :table-privileges         true
                               :metadata/key-constraints false
                               :identifiers-with-spaces  true
                               :expressions/integer      true
@@ -691,6 +694,25 @@
 (defmethod driver/notify-database-updated :bigquery-cloud-sdk
   [_ database]
   (bigquery.common/populate-project-id-from-credentials! database))
+
+;;; ------------------------------------------------ table privileges ------------------------------------------------
+(defmethod sql-jdbc.sync/current-user-table-privileges :bigquery-cloud-sdk
+  [_driver conn-spec & {:as _options}]
+  ;; Fetch table privileges from INFORMATION_SCHEMA.TABLE_PRIVILEGES for current user
+  (let [rows (jdbc/query conn-spec
+                         [(str "SELECT table_schema AS schema, table_name AS table, privilege_type"
+                               " FROM information_schema.table_privileges"
+                               " WHERE grantee = current_user()")])
+        allowed ##{"SELECT" "INSERT" "UPDATE" "DELETE"}]
+    (for [[[schema table] grp] (group-by (juxt :schema :table) rows)
+          :let [privs (->> grp (map :privilege_type) (filter allowed) set)]]
+      {:role   nil
+       :schema schema
+       :table  table
+       :select (contains? privs "SELECT")
+       :insert (contains? privs "INSERT")
+       :update (contains? privs "UPDATE")
+       :delete (contains? privs "DELETE")})))
 
 (defn- convert-dataset-id-to-filters!
   "Converts a bigquery-cloud-sdk db-details having the outdated `dataset-id` connection parameter, into one where that

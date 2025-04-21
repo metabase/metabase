@@ -1,6 +1,7 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -49,7 +50,8 @@
                               :index-info                             true
                               :now                                    true
                               :regex                                  false
-                              :test/jvm-timezone-setting              false}]
+                              :test/jvm-timezone-setting              false
+                              :table-privileges                        true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
@@ -62,6 +64,24 @@
 (defmethod driver/db-start-of-week :sqlserver
   [_]
   :sunday)
+
+;;; ------------------------------------------------ table privileges ------------------------------------------------
+(defmethod sql-jdbc.sync/current-user-table-privileges :sqlserver
+  [_driver conn-spec & {:as _options}]
+  ;; Fetch table privileges from INFORMATION_SCHEMA.TABLE_PRIVILEGES for current user
+  (let [rows (jdbc/query conn-spec
+                         ["SELECT table_schema AS schema, table_name AS table, privilege_type FROM INFORMATION_SCHEMA.TABLE_PRIVILEGES WHERE grantee = SUSER_NAME()"])
+        allowed #{"SELECT" "INSERT" "UPDATE" "DELETE"}
+        rows (filter #(contains? allowed (:privilege_type %)) rows)]
+    (for [[[schema table] grp] (group-by (juxt :schema :table) rows)
+          :let [privs (set (map :privilege_type grp))]]
+      {:role   nil
+       :schema schema
+       :table  table
+       :select (contains? privs "SELECT")
+       :insert (contains? privs "INSERT")
+       :update (contains? privs "UPDATE")
+       :delete (contains? privs "DELETE")})))
 
 (defmethod driver/prettify-native-form :sqlserver
   [_ native-form]
