@@ -122,13 +122,6 @@ function compileValue(
   };
 }
 
-function compileDimension(name: string, node: Node, ctx: Context) {
-  assert(typeof name === "string", t`Invalid dimension name: ${name}`);
-
-  const dimension = ctx.resolver(ctx.type, name, node);
-  return withNode(node, dimension);
-}
-
 function compileField(
   node: Node,
   ctx: Context,
@@ -136,7 +129,8 @@ function compileField(
   assert(node.type === FIELD, t`Invalid node type`);
   assert(node.token?.value, t`Empty field value`);
 
-  return compileDimension(node.token.value, node, ctx);
+  const dimension = ctx.resolver(ctx.type, node.token.value, node);
+  return withNode(node, dimension);
 }
 
 function compileIdentifier(
@@ -146,8 +140,8 @@ function compileIdentifier(
   assert(node.type === IDENTIFIER, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
 
-  const name = node.token.text;
-  return compileDimension(name, node, ctx);
+  const dimension = ctx.resolver(ctx.type, node.token.text, node);
+  return withNode(node, dimension);
 }
 
 function compileGroup(
