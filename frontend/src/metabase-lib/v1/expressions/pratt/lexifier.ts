@@ -1,6 +1,5 @@
 import type { SyntaxNodeRef } from "@lezer/common";
 
-import type { ParseError } from "../errors";
 import { unquoteString } from "../string";
 import { OPERATOR, tokenize } from "../tokenizer";
 
@@ -29,7 +28,6 @@ import { type NodeType, Token } from "./types";
 
 export function lexify(source: string) {
   const lexs: Token[] = [];
-  const errors: ParseError[] = [];
 
   function token(
     node: SyntaxNodeRef,
@@ -123,7 +121,6 @@ export function lexify(source: string) {
 
   return {
     tokens: lexs.sort((a, b) => a.pos - b.pos),
-    errors,
   };
 }
 

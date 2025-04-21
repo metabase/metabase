@@ -17,7 +17,7 @@ function bigint(x: string) {
 
 describe("pratt/compiler", () => {
   function expr(source: string) {
-    const { tokens } = maybe(lexify(source));
+    const { tokens } = lexify(source);
     const { root } = maybe(parse(tokens));
 
     return compile(root, {

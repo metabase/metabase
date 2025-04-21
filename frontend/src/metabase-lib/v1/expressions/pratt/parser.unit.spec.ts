@@ -17,7 +17,7 @@ describe("pratt/parser", () => {
   }
 
   function parseExpression(source: string) {
-    const { tokens } = maybe(lexify(source));
+    const { tokens } = lexify(source);
     const { root } = maybe(parse(tokens));
     return cleanupAST(root);
   }

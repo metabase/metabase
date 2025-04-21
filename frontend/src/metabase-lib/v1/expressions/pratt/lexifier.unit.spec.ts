@@ -1,5 +1,3 @@
-import type { ExpressionError } from "../errors";
-
 import { lexify } from "./lexifier";
 import {
   ADD,
@@ -23,15 +21,6 @@ import {
 } from "./syntax";
 import { type NodeType, Token } from "./types";
 
-function plain(error: ExpressionError) {
-  return {
-    message: error.message,
-    len: error.len,
-    pos: error.pos,
-    friendly: error.friendly,
-  };
-}
-
 function asToken(token: {
   type: NodeType;
   pos: number;
@@ -47,9 +36,8 @@ function asToken(token: {
 describe("lexify", () => {
   describe("expressions", () => {
     it("lexifies valid expressions", () => {
-      const { tokens, errors } = lexify('case([Total] > 200, [T], "Nothing")');
+      const { tokens } = lexify('case([Total] > 200, [T], "Nothing")');
 
-      expect(errors).toHaveLength(0);
       expect(tokens).toEqual(
         [
           { type: CALL, pos: 0, text: "case" },
@@ -70,8 +58,7 @@ describe("lexify", () => {
     it("should tokenize simple comparisons", () => {
       {
         const expression = "[Total] < 0";
-        const { tokens, errors } = lexify(expression);
-        expect(errors).toHaveLength(0);
+        const { tokens } = lexify(expression);
         expect(tokens).toEqual(
           [
             { type: FIELD, pos: 0, text: "[Total]", value: "Total" },
@@ -84,8 +71,7 @@ describe("lexify", () => {
 
       {
         const expression = "[Rate] >= 0";
-        const { tokens, errors } = lexify(expression);
-        expect(errors).toHaveLength(0);
+        const { tokens } = lexify(expression);
         expect(tokens).toEqual(
           [
             { type: FIELD, pos: 0, text: "[Rate]", value: "Rate" },
@@ -98,8 +84,7 @@ describe("lexify", () => {
 
       {
         const expression = "NOT [Deal]";
-        const { tokens, errors } = lexify(expression);
-        expect(errors).toHaveLength(0);
+        const { tokens } = lexify(expression);
         expect(tokens).toEqual(
           [
             { type: LOGICAL_NOT, pos: 0, text: "NOT" },
@@ -111,8 +96,7 @@ describe("lexify", () => {
 
       {
         const expression = "- Min(5, 10)";
-        const { tokens, errors } = lexify(expression);
-        expect(errors).toHaveLength(0);
+        const { tokens } = lexify(expression);
         expect(tokens).toEqual(
           [
             { type: SUB, pos: 0, text: "-" },
@@ -129,8 +113,7 @@ describe("lexify", () => {
 
       {
         const expression = "[X]+[Y]";
-        const { tokens, errors } = lexify(expression);
-        expect(errors).toHaveLength(0);
+        const { tokens } = lexify(expression);
         expect(tokens).toEqual(
           [
             { type: FIELD, pos: 0, text: "[X]", value: "X" },
@@ -143,8 +126,7 @@ describe("lexify", () => {
 
       {
         const expression = "[P]/[Q]";
-        const { tokens, errors } = lexify(expression);
-        expect(errors).toHaveLength(0);
+        const { tokens } = lexify(expression);
         expect(tokens).toEqual(
           [
             { type: FIELD, pos: 0, text: "[P]", value: "P" },
@@ -157,8 +139,7 @@ describe("lexify", () => {
 
       {
         const expression = "TODAY()";
-        const { tokens, errors } = lexify(expression);
-        expect(errors).toHaveLength(0);
+        const { tokens } = lexify(expression);
         expect(tokens).toEqual(
           [
             { type: CALL, pos: 0, text: "TODAY" },
@@ -171,8 +152,7 @@ describe("lexify", () => {
 
       {
         const expression = "AVG([Tax])";
-        const { tokens, errors } = lexify(expression);
-        expect(errors).toHaveLength(0);
+        const { tokens } = lexify(expression);
         expect(tokens).toEqual(
           [
             { type: CALL, pos: 0, text: "AVG" },
@@ -186,8 +166,7 @@ describe("lexify", () => {
 
       {
         const expression = "COUNTIF([Discount] < 5)";
-        const { tokens, errors } = lexify(expression);
-        expect(errors).toHaveLength(0);
+        const { tokens } = lexify(expression);
         expect(tokens).toEqual(
           [
             { type: CALL, pos: 0, text: "COUNTIF" },
@@ -255,8 +234,7 @@ describe("lexify", () => {
       ];
 
       for (const expression of cases) {
-        const { tokens, errors } = lexify(expression);
-        expect(errors).toHaveLength(0);
+        const { tokens } = lexify(expression);
         expect(tokens).toEqual(
           [
             {
@@ -304,8 +282,7 @@ describe("lexify", () => {
 
       for (const whitespace of cases) {
         const ws = String.fromCharCode(whitespace);
-        const { tokens, errors } = lexify(`a${ws}b`);
-        expect(errors).toHaveLength(0);
+        const { tokens } = lexify(`a${ws}b`);
         expect(tokens).toEqual(
           [
             { type: IDENTIFIER, pos: 0, text: "a", value: "a" },
@@ -353,8 +330,7 @@ describe("lexify", () => {
       ];
 
       for (const [expression, value] of cases) {
-        const { tokens, errors } = lexify(expression);
-        expect(errors).toHaveLength(0);
+        const { tokens } = lexify(expression);
         expect(tokens).toEqual(
           [
             {
@@ -376,8 +352,7 @@ describe("lexify", () => {
       ];
 
       for (const [expression, value] of cases) {
-        const { tokens, errors } = lexify(expression);
-        expect(errors).toHaveLength(0);
+        const { tokens } = lexify(expression);
         expect(tokens).toEqual(
           [
             {
@@ -393,8 +368,7 @@ describe("lexify", () => {
     });
 
     it("should continue to tokenize when encountering an unterminated string literal", () => {
-      const { tokens, errors } = lexify(`CONCAT(universe') = [answer]`);
-      expect(errors.map(plain)).toEqual([]);
+      const { tokens } = lexify(`CONCAT(universe') = [answer]`);
       expect(tokens).toEqual(
         [
           {
@@ -443,8 +417,7 @@ describe("lexify", () => {
       ];
 
       for (const expression of cases) {
-        const { tokens, errors } = lexify(expression);
-        expect(errors).toHaveLength(0);
+        const { tokens } = lexify(expression);
         expect(tokens).toEqual(
           [
             {
@@ -477,8 +450,7 @@ describe("lexify", () => {
       ];
 
       for (const expression of cases) {
-        const { tokens, errors } = lexify(expression);
-        expect(errors).toHaveLength(0);
+        const { tokens } = lexify(expression);
         expect(tokens).toEqual(
           [
             {
@@ -494,7 +466,7 @@ describe("lexify", () => {
     });
 
     it("handles brackets that aren't properly closed", () => {
-      const { tokens, errors } = lexify("[foo");
+      const { tokens } = lexify("[foo");
       expect(tokens).toEqual(
         [
           {
@@ -506,11 +478,10 @@ describe("lexify", () => {
           { type: END_OF_INPUT, pos: 4, text: "\n" },
         ].map(asToken),
       );
-      expect(errors.map(plain)).toEqual([]);
     });
 
     it("handles brackets that aren't properly closed (multiple open brackets)", () => {
-      const { tokens, errors } = lexify("[T[");
+      const { tokens } = lexify("[T[");
       expect(tokens).toEqual(
         [
           {
@@ -527,7 +498,6 @@ describe("lexify", () => {
           { type: END_OF_INPUT, pos: 3, text: "\n" },
         ].map(asToken),
       );
-      expect(errors.map(plain)).toEqual([]);
     });
 
     it("should allow escaping brackets within bracket identifiers", () => {
@@ -537,8 +507,7 @@ describe("lexify", () => {
         ["[T\\[A\\]]", "T[A]"],
       ];
       for (const [expression, value] of cases) {
-        const { tokens, errors } = lexify(expression);
-        expect(errors).toHaveLength(0);
+        const { tokens } = lexify(expression);
         expect(tokens).toEqual(
           [
             {
@@ -553,13 +522,8 @@ describe("lexify", () => {
       }
     });
 
-    it("should handle a dangling closing bracket", () => {
-      const { errors } = lexify("floor(Total]*1.25)");
-      expect(errors.map(plain)).toEqual([]);
-    });
-
     it("handles brackets that aren't properly opened", () => {
-      const { tokens, errors } = lexify("foo]");
+      const { tokens } = lexify("foo]");
       expect(tokens).toEqual(
         [
           {
@@ -571,11 +535,10 @@ describe("lexify", () => {
           { type: END_OF_INPUT, pos: 4, text: "\n" },
         ].map(asToken),
       );
-      expect(errors.map(plain)).toEqual([]);
     });
 
     it("takes operators into account when dealing with incomplete bracket identifier tokens", () => {
-      const { tokens, errors } = lexify('case([Total] > 200, [To, "Nothing")');
+      const { tokens } = lexify('case([Total] > 200, [To, "Nothing")');
 
       expect(tokens).toEqual(
         [
@@ -592,12 +555,10 @@ describe("lexify", () => {
           { type: END_OF_INPUT, pos: 35, text: "\n" },
         ].map(asToken),
       );
-      expect(errors.map(plain)).toEqual([]);
     });
 
     it("tokenizes empty identifier brackets", () => {
-      const { tokens, errors } = lexify("[]");
-      expect(errors).toHaveLength(0);
+      const { tokens } = lexify("[]");
       expect(tokens).toEqual(
         [
           {
@@ -612,8 +573,7 @@ describe("lexify", () => {
     });
 
     it("tokenizes consecutive bracket identifiers", () => {
-      const { tokens, errors } = lexify("[Foo] [Bar]");
-      expect(errors).toHaveLength(0);
+      const { tokens } = lexify("[Foo] [Bar]");
       expect(tokens).toEqual(
         [
           {
@@ -634,7 +594,7 @@ describe("lexify", () => {
     });
 
     it("tokenizes incomplete bracket identifier followed by whitespace (metabase#50925)", () => {
-      const { tokens, errors } = lexify("[Pr [Price]");
+      const { tokens } = lexify("[Pr [Price]");
       expect(tokens).toEqual(
         [
           {
@@ -652,11 +612,10 @@ describe("lexify", () => {
           { type: END_OF_INPUT, pos: 11, text: "\n" },
         ].map(asToken),
       );
-      expect(errors.map(plain)).toEqual([]);
     });
 
     it("tokenizes incomplete bracket identifier followed by bracket identifier (metabase#50925)", () => {
-      const { tokens, errors } = lexify("[Pr[Price]");
+      const { tokens } = lexify("[Pr[Price]");
       expect(tokens).toEqual(
         [
           {
@@ -674,7 +633,6 @@ describe("lexify", () => {
           { type: END_OF_INPUT, pos: 10, text: "\n" },
         ].map(asToken),
       );
-      expect(errors.map(plain)).toEqual([]);
     });
   });
 
@@ -694,8 +652,7 @@ describe("lexify", () => {
       );
 
       for (const [expression, op, index] of permutations) {
-        const { tokens, errors } = lexify(expression);
-        expect(errors).toHaveLength(0);
+        const { tokens } = lexify(expression);
         expect(tokens[index]).toEqual({
           type: op,
           pos: expect.any(Number),
@@ -712,8 +669,7 @@ describe("lexify", () => {
       const cases = ["true", "false"].flatMap(casePermutations);
 
       for (const expression of cases) {
-        const { tokens, errors } = lexify(expression);
-        expect(errors).toHaveLength(0);
+        const { tokens } = lexify(expression);
         expect(tokens).toEqual(
           [
             {
