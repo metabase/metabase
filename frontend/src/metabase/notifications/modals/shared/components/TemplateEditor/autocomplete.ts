@@ -7,12 +7,12 @@ import type {
 
 import type { Settings } from "metabase-types/api";
 
-// Type helper for consistent completion options
 export type MustacheCompletionOption = Completion & {
   type: "keyword" | "variable" | "function";
 };
 
 // Helper function to recursively find all leaf paths in an object
+// to provide all possible autocomplete options at once
 function getAllPaths(obj: any, currentPath = ""): string[] {
   let paths: string[] = [];
   if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {

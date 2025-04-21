@@ -10,7 +10,7 @@ import CodeMirror, {
   type ReactCodeMirrorRef,
 } from "@uiw/react-codemirror";
 import cx from "classnames";
-import React, { Fragment, useMemo, useRef, useState } from "react";
+import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSetting } from "metabase/common/hooks";
 import type { CodeLanguage } from "metabase/components/CodeBlock/types";
@@ -87,7 +87,7 @@ export const TemplateEditor = ({
   onChange,
   minHeight = "5rem",
   language = "html",
-  placeholder: propsPlaceholder,
+  placeholder,
   className,
   variant = "textarea",
   error,
@@ -98,6 +98,10 @@ export const TemplateEditor = ({
   const helpers = useSetting("default-handlebars-helpers");
   const ref = useRef<ReactCodeMirrorRef>(null);
   const [internalValue, setInternalValue] = useState(defaultValue);
+
+  useEffect(() => {
+    setInternalValue(defaultValue);
+  }, [defaultValue]);
 
   const handleChange = React.useCallback(
     (val: string) => {
@@ -167,6 +171,7 @@ export const TemplateEditor = ({
         onChange={handleChange}
         extensions={combinedExtensions}
         minHeight={isTextArea && minHeight ? minHeight : undefined}
+        placeholder={placeholder}
         basicSetup={{
           lineNumbers: false,
           foldGutter: false,
