@@ -40,4 +40,3 @@
         :message       msg
         :info          info}
        (events/publish-event! :event/action.failure)))
-

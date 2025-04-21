@@ -580,7 +580,7 @@
          :update-row (apply dissoc row pk-names)}))))
 
 (defn- bulk-update!* [context table-id rows]
-  (log/tracef "Updating %d rows in table " (count rows) table-id)
+  (log/tracef "Updating %d rows in table %d" (count rows) table-id)
   (let [database (actions/cached-database-via-table-id table-id)
         driver   (:engine database)]
     (perform-bulk-action-with-repeated-single-row-actions!
