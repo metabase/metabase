@@ -328,6 +328,27 @@ describe("diagnostics", () => {
         },
       );
     });
+
+    describe("field quotes", () => {
+      it.each([
+        `[foo`,
+        `[foo \\[`,
+        `[foo \\]`,
+        `[foo \\] bar`,
+        `[foo \\[ bar`,
+        `[foo \\[ bar \\]`,
+      ])("reject missing closing field quotes for %s", (expression) => {
+        expect(err(expression)).toBe("Missing a closing bracket");
+      });
+
+      it.each([`foo]`])("reject missing field quotes for %s", (expression) => {
+        expect(err(expression)).toMatch(/^Missing an opening bracket for /);
+      });
+
+      it.each([`[`, `[]`])("reject missing field name for %s", (expression) => {
+        expect(err(expression)).toBe("Expected a field name");
+      });
+    });
   });
 
   describe("diagnoseAndCompile", () => {

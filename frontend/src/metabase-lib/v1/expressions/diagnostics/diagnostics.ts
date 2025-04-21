@@ -9,6 +9,7 @@ import { checkArgCount } from "./check-arg-count";
 import { checkArgValidators } from "./check-arg-validators";
 import { checkCaseOrIfArgCount } from "./check-case-or-if-arg-count";
 import { checkComparisonOperatorArgs } from "./check-comparison-operator-args";
+import { checkFieldQuotes } from "./check-field-quotes";
 import { checkKnownFunctions } from "./check-known-functions";
 import { checkLibDiagnostics } from "./check-lib-diagnostics";
 import { checkMatchingParentheses } from "./check-matching-parenthesis";
@@ -64,6 +65,7 @@ const syntaxChecks = [
   checkMissingCommasInArgumentList,
   checkNumberExponent,
   checkStringQuotes,
+  checkFieldQuotes,
 ];
 
 export function diagnoseExpressionSyntax(options: {

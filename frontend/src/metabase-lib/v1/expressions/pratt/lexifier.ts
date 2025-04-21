@@ -2,7 +2,7 @@ import type { SyntaxNodeRef } from "@lezer/common";
 import { t } from "ttag";
 
 import { ParseError } from "../errors";
-import { quoteString, unquoteString } from "../string";
+import { unquoteString } from "../string";
 import { OPERATOR, tokenize } from "../tokenizer";
 import type { Hooks } from "../types";
 
@@ -63,17 +63,18 @@ export function lexify(source: string, { hooks }: { hooks?: Hooks } = {}) {
 
   tokenize(source).iterate(function (node) {
     if (node.type.name === "Identifier") {
-      return token(node, { type: IDENTIFIER });
+      return token(node, {
+        type: IDENTIFIER,
+        value: source.slice(node.from, node.to),
+      });
     }
 
     if (node.type.name === "Reference") {
       const text = source.slice(node.from, node.to);
-      const value = unquoteString(text);
-      if (quoteString(value, "[") !== text) {
-        error(node, t`Missing a closing bracket`);
-      }
-
-      return token(node, { type: FIELD, value });
+      return token(node, {
+        type: FIELD,
+        value: unquoteString(text),
+      });
     }
 
     if (node.type.name === "Number") {
@@ -92,6 +93,7 @@ export function lexify(source: string, { hooks }: { hooks?: Hooks } = {}) {
       const prev = lexs.at(-1);
       if (prev?.type === IDENTIFIER) {
         prev.type = CALL;
+        delete prev.value;
       }
       return token(node, { type: GROUP });
     }
@@ -111,10 +113,9 @@ export function lexify(source: string, { hooks }: { hooks?: Hooks } = {}) {
           // does not have a matching opening bracket.
           const prev = lexs.at(-1);
           if (prev && prev.type === IDENTIFIER) {
-            const name = source.slice(prev.pos, prev.pos + prev.length);
-            error(node, t`Missing an opening bracket for ${name}`);
+            prev.type = FIELD;
+            return false;
           }
-          return false;
         }
 
         if (text.length === 1) {

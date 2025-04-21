@@ -347,8 +347,8 @@ describe("lexify", () => {
         expect(errors).toHaveLength(0);
         expect(tokens).toEqual(
           [
-            { type: IDENTIFIER, pos: 0, text: "a" },
-            { type: IDENTIFIER, pos: 2, text: "b" },
+            { type: IDENTIFIER, pos: 0, text: "a", value: "a" },
+            { type: IDENTIFIER, pos: 2, text: "b", value: "b" },
             { type: END_OF_INPUT, pos: 3, text: "\n" },
           ].map(asToken),
         );
@@ -450,6 +450,7 @@ describe("lexify", () => {
             type: IDENTIFIER,
             pos: 7,
             text: "universe",
+            value: "universe",
           },
           {
             type: STRING,
@@ -489,6 +490,7 @@ describe("lexify", () => {
               type: IDENTIFIER,
               pos: 0,
               text: expression,
+              value: expect.any(String),
             },
             { type: END_OF_INPUT, pos: expression.length, text: "\n" },
           ].map(asToken),
@@ -535,11 +537,6 @@ describe("lexify", () => {
       expect(tokens).toEqual(
         [
           {
-            type: BAD_TOKEN,
-            pos: 0,
-            text: "[foo",
-          },
-          {
             type: FIELD,
             pos: 0,
             text: "[foo",
@@ -548,25 +545,13 @@ describe("lexify", () => {
           { type: END_OF_INPUT, pos: 4, text: "\n" },
         ].map(asToken),
       );
-      expect(errors.map(plain)).toEqual([
-        {
-          message: "Missing a closing bracket",
-          friendly: true,
-          pos: 0,
-          len: 4,
-        },
-      ]);
+      expect(errors.map(plain)).toEqual([]);
     });
 
     it("handles brackets that aren't properly closed (multiple open brackets)", () => {
       const { tokens, errors } = lexify("[T[");
       expect(tokens).toEqual(
         [
-          {
-            type: BAD_TOKEN,
-            pos: 0,
-            text: "[T",
-          },
           {
             type: FIELD,
             pos: 0,
@@ -582,12 +567,6 @@ describe("lexify", () => {
         ].map(asToken),
       );
       expect(errors.map(plain)).toEqual([
-        {
-          message: "Missing a closing bracket",
-          pos: 0,
-          len: 2,
-          friendly: true,
-        },
         {
           message: "Invalid character: [",
           len: 1,
@@ -620,16 +599,9 @@ describe("lexify", () => {
       }
     });
 
-    it("should catch a dangling closing bracket", () => {
+    it("should handle a dangling closing bracket", () => {
       const { errors } = lexify("floor(Total]*1.25)");
-      expect(errors.map(plain)).toEqual([
-        {
-          message: "Missing an opening bracket for Total",
-          pos: 11,
-          len: 1,
-          friendly: true,
-        },
-      ]);
+      expect(errors.map(plain)).toEqual([]);
     });
 
     it("handles brackets that aren't properly opened", () => {
@@ -637,26 +609,15 @@ describe("lexify", () => {
       expect(tokens).toEqual(
         [
           {
-            type: IDENTIFIER,
+            type: FIELD,
             pos: 0,
             text: "foo",
-          },
-          {
-            type: BAD_TOKEN,
-            pos: 3,
-            text: "]",
+            value: "foo",
           },
           { type: END_OF_INPUT, pos: 4, text: "\n" },
         ].map(asToken),
       );
-      expect(errors.map(plain)).toEqual([
-        {
-          message: "Missing an opening bracket for foo",
-          pos: 3,
-          len: 1,
-          friendly: true,
-        },
-      ]);
+      expect(errors.map(plain)).toEqual([]);
     });
 
     it("takes operators into account when dealing with incomplete bracket identifier tokens", () => {
@@ -670,7 +631,6 @@ describe("lexify", () => {
           { type: COMPARISON, pos: 13, text: ">" },
           { type: NUMBER, pos: 15, text: "200" },
           { type: COMMA, pos: 18, text: "," },
-          { type: BAD_TOKEN, pos: 20, text: "[To" },
           { type: FIELD, pos: 20, text: "[To", value: "To" },
           { type: COMMA, pos: 23, text: "," },
           { type: STRING, pos: 25, text: '"Nothing"', value: "Nothing" },
@@ -678,14 +638,7 @@ describe("lexify", () => {
           { type: END_OF_INPUT, pos: 35, text: "\n" },
         ].map(asToken),
       );
-      expect(errors.map(plain)).toEqual([
-        {
-          message: "Missing a closing bracket",
-          pos: 20,
-          len: 3,
-          friendly: true,
-        },
-      ]);
+      expect(errors.map(plain)).toEqual([]);
     });
 
     it("tokenizes empty identifier brackets", () => {
@@ -731,11 +684,6 @@ describe("lexify", () => {
       expect(tokens).toEqual(
         [
           {
-            type: BAD_TOKEN,
-            pos: 0,
-            text: "[Pr ",
-          },
-          {
             type: FIELD,
             pos: 0,
             text: "[Pr ",
@@ -750,27 +698,13 @@ describe("lexify", () => {
           { type: END_OF_INPUT, pos: 11, text: "\n" },
         ].map(asToken),
       );
-      expect(errors.map(plain)).toEqual([
-        {
-          message: "Missing a closing bracket",
-          pos: 0,
-          len: expect.any(Number),
-          friendly: true,
-        },
-      ]);
-      expect(errors[0].len).toBeGreaterThanOrEqual(3);
-      expect(errors[0].len).toBeLessThanOrEqual(4);
+      expect(errors.map(plain)).toEqual([]);
     });
 
     it("tokenizes incomplete bracket identifier followed by bracket identifier (metabase#50925)", () => {
       const { tokens, errors } = lexify("[Pr[Price]");
       expect(tokens).toEqual(
         [
-          {
-            type: BAD_TOKEN,
-            pos: 0,
-            text: "[Pr",
-          },
           {
             type: FIELD,
             pos: 0,
@@ -786,14 +720,7 @@ describe("lexify", () => {
           { type: END_OF_INPUT, pos: 10, text: "\n" },
         ].map(asToken),
       );
-      expect(errors.map(plain)).toEqual([
-        {
-          message: "Missing a closing bracket",
-          pos: 0,
-          len: expect.any(Number),
-          friendly: true,
-        },
-      ]);
+      expect(errors.map(plain)).toEqual([]);
     });
   });
 
