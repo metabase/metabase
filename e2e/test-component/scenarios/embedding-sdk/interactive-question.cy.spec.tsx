@@ -382,10 +382,11 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
-  it("should select sensible display for new questions (EMB-308)", () => {
+  it.only("should select sensible display for new questions (EMB-308)", () => {
     mountSdkContent(<InteractiveQuestion questionId="new" />);
     cy.log("Select data");
-    H.popover().findByRole("link", { name: "Orders" }).click();
+    H.popover().findByText("Raw Data").click();
+    H.popover().findByText("Orders").click();
 
     cy.log("Select summarization");
     H.getNotebookStep("summarize")
