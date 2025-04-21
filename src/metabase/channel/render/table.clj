@@ -249,8 +249,6 @@
   "Takes a vector of column definitions and visualization settings
   Returns a map of column identifier keys to style maps based on the visualization settings"
   [columns viz-settings]
-  (def columns columns)
-  (def viz-settings viz-settings)
   (let [column-settings (get viz-settings ::mb.viz/column-settings)
         column-widths   (get viz-settings :table.column_widths)]
     (reduce
@@ -267,7 +265,7 @@
                                        {:min-width (format "%spx" (get-min-width column-widths column-index))}
                                        ;; Text wrapping enabled but conditions not met, fall back to 780px
                                        ;; Email clients respond to `min-width`, but slack responds to `width`
-                                       {:min-width "780px"
+                                       {:max-width "780px !important"
                                         :width "780px"})))
 
            ;; text alignment
@@ -301,7 +299,6 @@
   - minibar-cols: Columns that should display mini-bar visualizations"
   ([color-selector {:keys [col-names cols-for-color-lookup]} [header & rows] columns viz-settings minibar-cols]
    (let [col->styles        (column->viz-setting-styles columns viz-settings)
-         _                  (def col->styles col->styles)
          row-index?         (:table.row_index viz-settings)
          pivot-grouping-idx (u/index-of #{"pivot-grouping"} col-names)
          col-names          (cond->> col-names
@@ -316,8 +313,6 @@
          color-getter       (partial js.color/get-background-color color-selector)
          thead              (render-table-head (vec col-names) header columns col->styles row-index?)
          tbody              (render-table-body color-getter cols-for-color-lookup rows columns viz-settings minibar-cols col->styles row-index?)]
-     (def thead thead)
-     (def tbody tbody)
      [:table {:style       (style/style {:max-width     "100%"
                                          :white-space   "nowrap"
                                          :border        (str "1px solid " style/color-border)
