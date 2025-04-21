@@ -382,7 +382,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
-  it.only("should select sensible display for new questions (EMB-308)", () => {
+  it("should select sensible display for new questions (EMB-308)", () => {
     mountSdkContent(<InteractiveQuestion questionId="new" />);
     cy.log("Select data");
     H.popover().findByText("Raw Data").click();
