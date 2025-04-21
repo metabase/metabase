@@ -27,3 +27,13 @@ export function getNode(item?: Nodable): Node | undefined {
 export function getToken(x?: Nodable): Token | undefined {
   return getNode(x)?.token ?? undefined;
 }
+
+export function maybe<T extends { errors: Error[] }>(
+  value: T,
+): Omit<T, "errors"> {
+  const { errors, ...rest } = value;
+  if (errors.length > 0) {
+    throw errors[0];
+  }
+  return rest;
+}
