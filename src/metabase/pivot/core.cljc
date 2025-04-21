@@ -18,6 +18,12 @@
   #?(:cljs (js->clj (js/JSON.parse x))
      :clj (json/decode x)))
 
+(defn- json-roundtrip
+  "Round-trips a value to JSON and back"
+  [x]
+  #?(:cljs (js->clj (js/JSON.parse (js/JSON.stringify x)))
+     :clj (json/decode (json/encode x))))
+
 (defn- pivot-group-column?
   "Is the given column the pivot-grouping column?"
   [col]
@@ -130,7 +136,10 @@
   {:children (ordered-map/ordered-map)}."
   [path tree]
   (if (seq path)
-    (let [v (first path)]
+    ;; In `add-is-collapsed` we parse JSON from the viz settings to determine
+    ;; the path of values to collapse. So we have to roundtrip values from the QP
+    ;; to JSON and back to make sure their types match.
+    (let [v (json-roundtrip (first path))]
       (update tree v
               (fn [node]
                 (let [subtree (or (:children node) (ordered-map/ordered-map))]
