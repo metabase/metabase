@@ -1,3 +1,5 @@
+import { maybe } from "../utils";
+
 import { type Node, lexify, parse } from ".";
 
 describe("pratt/parser", () => {
@@ -14,12 +16,10 @@ describe("pratt/parser", () => {
     };
   }
 
-  function parseExpression(source: string, throwOnError: boolean = true) {
-    return cleanupAST(
-      parse(lexify(source).tokens, {
-        throwOnError,
-      }).root,
-    );
+  function parseExpression(source: string) {
+    const { tokens } = maybe(lexify(source));
+    const { root } = maybe(parse(tokens));
+    return cleanupAST(root);
   }
 
   const parseAggregation = parseExpression;
@@ -103,7 +103,7 @@ describe("pratt/parser", () => {
 
     /// ---- Other weird negations ----
     it("should accept a double negation with syntax error", () => {
-      expect(() => parseExpression("NOT NOT Or", false)).not.toThrow();
+      expect(() => parseExpression("NOT NOT [X]")).not.toThrow();
     });
   });
 

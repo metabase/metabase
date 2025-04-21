@@ -18,7 +18,6 @@ import { assert } from "./types";
 
 interface ParserOptions {
   maxIterations?: number;
-  throwOnError?: boolean;
 }
 
 interface ParserResult {
@@ -27,16 +26,13 @@ interface ParserResult {
 }
 
 export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
-  const { maxIterations = 1000000, throwOnError = false } = opts;
+  const { maxIterations = 1000000 } = opts;
   const errors: CompileError[] = [];
   let counter = 0;
   const root = createASTNode(null, null, ROOT);
 
   function error(message: string, node?: Node) {
     const err = new CompileError(message, node);
-    if (throwOnError) {
-      throw err;
-    }
     errors.push(err);
   }
 
