@@ -92,7 +92,7 @@
     (loop [already-seen #{}, acc [], [[col alias :as col-alias] & more] (select-clause-alias-everything select-clause)]
       (cond
         ;; if no more cols are left to deduplicate, we're done
-        (not col-alias)
+        (nil? col-alias)
         acc
 
         ;; otherwise if we've already used this alias, replace it with one like `identifier_2` and try agan
