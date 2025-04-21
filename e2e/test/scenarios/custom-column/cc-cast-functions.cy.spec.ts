@@ -152,7 +152,7 @@ function addOperatorFilter({ filterOperator, filterValue }: CastTestCase) {
 
 function addDateFilter({ filterOperator, filterValue }: CastTestCase) {
   H.popover().within(() => {
-    cy.findByText("Specific dates…").click();
+    cy.findByText("Fixed date range…").click();
     cy.findByText(filterOperator).click();
     cy.findByLabelText("Date").clear().type(filterValue);
     cy.button("Add filter").click();

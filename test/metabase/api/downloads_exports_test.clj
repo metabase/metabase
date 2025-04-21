@@ -1061,6 +1061,7 @@
                                                                     :field_ref          [:field (mt/id :orders :subtotal) nil]
                                                                     :effective_type     :type/Float
                                                                     :id                 (mt/id :orders :subtotal)
+                                                                    :ident              (mt/ident :orders :subtotal)
                                                                     :visibility_type    :normal
                                                                     :display_name       "Subtotal"
                                                                     :base_type          :type/Float}]}]

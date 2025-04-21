@@ -22,11 +22,11 @@ export const AddQuestionButton = () => {
   useRegisterShortcut(
     [
       {
-        id: "add-notebook-question",
+        id: "dashboard-add-notebook-question",
         perform: () => dispatch(addDashboardQuestion("notebook")),
       },
       {
-        id: "add-native-question",
+        id: "dashboard-add-native-question",
         perform: () => dispatch(addDashboardQuestion("native")),
       },
     ],

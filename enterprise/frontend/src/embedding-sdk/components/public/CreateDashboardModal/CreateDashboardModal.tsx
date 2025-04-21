@@ -1,11 +1,12 @@
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import type { SdkCollectionId } from "embedding-sdk/types/collection";
+import type { MetabaseDashboard } from "embedding-sdk/types/dashboard";
 import { useCollectionQuery } from "metabase/common/hooks";
 import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
-import type { Dashboard } from "metabase-types/api";
 
 /**
+ * @expand
  * @category CreateDashboardModal
  */
 export interface CreateDashboardModalProps {
@@ -22,7 +23,7 @@ export interface CreateDashboardModalProps {
   /**
    * Handler to react on dashboard creation.
    */
-  onCreate: (dashboard: Dashboard) => void;
+  onCreate: (dashboard: MetabaseDashboard) => void;
 
   /**
    * Handler to close modal component

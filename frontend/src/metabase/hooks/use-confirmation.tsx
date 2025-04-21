@@ -1,11 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import _ConfirmContent from "metabase/components/ConfirmContent";
-import _Modal from "metabase/components/Modal";
-
-const Modal = _Modal as any;
-const ConfirmContent = _ConfirmContent as any;
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 
 export type ConfirmationState = {
   title: string;
@@ -24,16 +20,18 @@ export const useConfirmation = () => {
   };
 
   const modalContent = confirmationState ? (
-    <Modal isOpen onClose={handleClose} data-testid="confirm-modal">
-      <ConfirmContent
-        title={confirmationState.title}
-        message={confirmationState?.message}
-        confirmButtonText={confirmationState.confirmButtonText}
-        cancelButtonText={confirmationState.cancelButtonText}
-        onClose={handleClose}
-        onAction={confirmationState.onConfirm}
-      />
-    </Modal>
+    <ConfirmModal
+      opened
+      onConfirm={() => {
+        confirmationState.onConfirm();
+        handleClose();
+      }}
+      onClose={handleClose}
+      data-testid="confirm-modal"
+      title={confirmationState.title}
+      message={confirmationState?.message}
+      confirmButtonText={confirmationState.confirmButtonText}
+    />
   ) : null;
 
   const show = ({

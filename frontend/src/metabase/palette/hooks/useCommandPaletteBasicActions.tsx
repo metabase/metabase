@@ -67,7 +67,7 @@ export const useCommandPaletteBasicActions = ({
 
     if (hasDataAccess) {
       actions.push({
-        id: "create-question",
+        id: "create-new-question",
         name: t`New question`,
         section: "basic",
         icon: "insight",
@@ -89,7 +89,7 @@ export const useCommandPaletteBasicActions = ({
 
     if (hasNativeWrite) {
       actions.push({
-        id: "create-native-query",
+        id: "create-new-native-query",
         name: t`New SQL query`,
         section: "basic",
         icon: "sql",
@@ -109,7 +109,7 @@ export const useCommandPaletteBasicActions = ({
     }
 
     actions.push({
-      id: "create-dashboard",
+      id: "create-new-dashboard",
       name: t`New dashboard`,
       section: "basic",
       icon: "dashboard",
@@ -118,7 +118,7 @@ export const useCommandPaletteBasicActions = ({
       },
     });
     actions.push({
-      id: "create-collection",
+      id: "create-new-collection",
       name: t`New collection`,
       section: "basic",
       icon: "collection",
@@ -129,7 +129,7 @@ export const useCommandPaletteBasicActions = ({
 
     if (hasNativeWrite) {
       actions.push({
-        id: "create-model",
+        id: "create-new-model",
         name: t`New model`,
         section: "basic",
         icon: "model",
@@ -142,7 +142,7 @@ export const useCommandPaletteBasicActions = ({
 
     if (hasDataAccess) {
       actions.push({
-        id: "create-metric",
+        id: "create-new-metric",
         name: t`New metric`,
         section: "basic",
         icon: "metric",
@@ -176,7 +176,7 @@ export const useCommandPaletteBasicActions = ({
 
     const browseActions: RegisterShortcutProps[] = [
       {
-        id: "browse-model",
+        id: "navigate-browse-model",
         name: t`Browse models`,
         section: "basic",
         icon: "model",
@@ -185,7 +185,7 @@ export const useCommandPaletteBasicActions = ({
         },
       },
       {
-        id: "browse-database",
+        id: "navigate-browse-database",
         name: t`Browse databases`,
         section: "basic",
         icon: "database",
@@ -194,7 +194,7 @@ export const useCommandPaletteBasicActions = ({
         },
       },
       {
-        id: "browse-metric",
+        id: "navigate-browse-metric",
         name: t`Browse Metrics`,
         section: "basic",
         icon: "metric",
@@ -226,6 +226,10 @@ export const useCommandPaletteBasicActions = ({
       {
         id: "navigate-trash",
         perform: () => dispatch(push("/trash")),
+      },
+      {
+        id: "navigate-home",
+        perform: () => dispatch(push("/")),
       },
     );
 

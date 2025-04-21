@@ -68,7 +68,7 @@ substring([Mission ID], (1 + length([Mission ID]) - 3), 3)
 
 `substring` extracts text by counting a fixed number of characters. If you need to extract text based on some more complicated logic, try [`regexextract`](../expressions-list.md#regexextract).
 
-And if you only need to clean up extra whitespace around your text, you can use the [`trim`](../expressions-list.md#trim), [`ltrim`](../expressions-list.md#ltrim), or [`rtrim`](../expressions-list.md#rtrim) expressions instead.
+And if you only need to clean up extra whitespace around your text, you can use the [`trim`](../expressions-list.md#trim), [`lTrim`](../expressions-list.md#ltrim), or [`rTrim`](../expressions-list.md#rtrim) expressions instead.
 
 ## Related functions
 
@@ -100,7 +100,7 @@ substring([Mission ID], 9, 3)
 
 ### SQL
 
-When you run a question using the [notebook editor](https://www.metabase.com/glossary/notebook_editor), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
+When you run a question using the [notebook editor](https://www.metabase.com/glossary/notebook-editor), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
 If our [sample data](#getting-a-substring-from-the-left) is stored in a PostgreSQL database:
 
