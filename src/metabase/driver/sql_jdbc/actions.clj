@@ -229,7 +229,6 @@
    Rolls back the outer transaction if there are any failures, and returns [errors success], golang style."
   [{:keys [database proc coll]}]
   (with-jdbc-transaction [conn (:id database)]
-    ;; TODO accumulate snapshots from row actions
     (transduce
      (m/indexed)
      (fn
@@ -293,7 +292,12 @@
   [parent-context child-results]
   (update parent-context :effects (fnil into []) (mapcat (comp :effects :context)) child-results))
 
-(defmethod actions/perform-action!* [:sql-jdbc :row/delete]
+(defn- result-schema [output-schema]
+  [:map {:closed true}
+   [:context :map]
+   [:outputs [:sequential output-schema]]])
+
+(mu/defmethod actions/perform-action!* [:sql-jdbc :row/delete] :- (result-schema [:map [:rows-deleted :int]])
   [action context inputs]
   (let [database       (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
@@ -333,7 +337,7 @@
          :before 'need-the-pk-to-get-this
          :after  'need-the-pk-to-get-this}))))
 
-(defmethod actions/perform-action!* [:sql-jdbc :row/update]
+(mu/defmethod actions/perform-action!* [:sql-jdbc :row/update] :- (result-schema [:map [:rows-updated :int]])
   [action context inputs]
   (let [database          (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
@@ -410,11 +414,7 @@
          :before nil
          :after  row}))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :row/create]
-  ;; TODO make this a first class type declaration
-  :- [:map {:closed true}
-      [:context :map]
-      [:outputs [:sequential [:map [:created-row ::row]]]]]
+(mu/defmethod actions/perform-action!* [:sql-jdbc :row/create] :- (result-schema [:map [:created-row ::row]])
   [action context inputs :- [:sequential ::mbql.s/Query]]
   (let [database (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
@@ -598,9 +598,8 @@
                                           (format "%s × %d" (pr-str row) repeat-count))))
                     {:status-code 400, :repeated-rows repeats}))))
 
-(defmethod actions/perform-action!* [:sql-jdbc :bulk/delete]
-  ;; TODO un-nest rows into the top-level sequence, to make things more composable.
-  [_action context inputs]
+(mu/defmethod actions/perform-action!* [:sql-jdbc :bulk/delete]
+  [_action context inputs :- [:sequential ::bulk-row-input]]
   (let [[errors results]
         (batch-execution-by-table-id!
          {:context       context
