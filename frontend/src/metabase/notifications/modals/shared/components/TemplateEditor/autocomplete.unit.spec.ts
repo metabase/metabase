@@ -34,7 +34,7 @@ const METABASE_BLOCK_HELPERS = [
   "card-url",
   "trash-url",
   "dashboard-url",
-].map((name) => ({ name, doc: "", type: "custom-block" as const }));
+].map((name) => ({ name, doc: "", type: "custom" as const }));
 const METABASE_INLINE_HELPERS = [
   "and",
   "empty",
@@ -47,13 +47,17 @@ const METABASE_INLINE_HELPERS = [
   "ne",
   "or",
   "not",
-].map((name) => ({ name, doc: "", type: "custom-inline" as const }));
+].map((name) => ({ name, doc: "", type: "custom" as const }));
 
-const helpers = [...BLOCK_HELPERS, ...METABASE_BLOCK_HELPERS];
+// We'll use these for now, but we might need to split custom helpers
+// to provide more sophisticated autocompletion.
+const ALL_MB_HELPERS = [...METABASE_BLOCK_HELPERS, ...METABASE_INLINE_HELPERS];
+
+const helpers = [...BLOCK_HELPERS, ...ALL_MB_HELPERS];
 // Define the default sources
 const defaultSources = [
   mustacheHelpersCompletionSource(helpers),
-  createTemplateAutocompleteSource(MOCK_CONTEXT, METABASE_INLINE_HELPERS),
+  createTemplateAutocompleteSource(MOCK_CONTEXT, helpers),
 ];
 
 // Updated helper to get completions, handling single or multiple sources

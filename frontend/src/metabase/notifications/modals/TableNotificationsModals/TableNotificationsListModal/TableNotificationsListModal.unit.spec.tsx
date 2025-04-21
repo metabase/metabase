@@ -215,7 +215,7 @@ describe("TableNotificationsListModal", () => {
 
     // Verify the notification is rendered
     const notificationTitle = screen.getByText(
-      "Notify when records are created",
+      "Notify when new records are created",
     );
     expect(notificationTitle).toBeInTheDocument();
 

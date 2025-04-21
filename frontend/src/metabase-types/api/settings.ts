@@ -370,7 +370,7 @@ interface PublicSettings {
   "default-handlebars-helpers"?: Array<{
     name: string;
     doc: string;
-    type: "built-in" | "custom-block" | "custom-inline";
+    type: "built-in" | "custom";
   }>;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;

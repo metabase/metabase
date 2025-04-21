@@ -122,9 +122,7 @@ export const mustacheHelpersCompletionSource =
     const builtinBlockHelpersArr = helpers.filter(
       (helper) => helper.type === "built-in",
     );
-    const mbBlockHelpersArr = helpers.filter(
-      (helper) => helper.type === "custom-block",
-    );
+    const mbHelpersArr = helpers.filter((helper) => helper.type === "custom");
     const builtinBlockHelpers = builtinBlockHelpersArr.map(
       (helper) => helper.name,
     );
@@ -194,7 +192,7 @@ export const mustacheHelpersCompletionSource =
             1,
           );
           const metabaseOptions = createCompletionOptionsFromHelpers(
-            mbBlockHelpersArr,
+            mbHelpersArr,
             "function",
             1,
           );
@@ -242,14 +240,12 @@ export const createTemplateAutocompleteSource = (
   context: Record<string, any>,
   helpers: Settings["default-handlebars-helpers"] = [],
 ): CompletionSource => {
-  const mbInlineHelpersArr = helpers.filter(
-    (helper) => helper.type === "custom-inline",
-  );
+  const mbHelpersArr = helpers.filter((helper) => helper.type === "custom");
   // Precompute all possible paths once
   const allVarPaths = getAllPaths(context);
   const baseVarOptions = createCompletionOptions(allVarPaths, "variable", -1);
   const inlineHelperOptions = createCompletionOptionsFromHelpers(
-    mbInlineHelpersArr,
+    mbHelpersArr,
     "keyword",
     1,
   );
