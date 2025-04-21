@@ -288,6 +288,37 @@ describe("diagnostics", () => {
       expect(err(`"foo"`)).toBeUndefined();
       expect(err(`true`)).toBeUndefined();
     });
+
+    describe("mathematical notation", () => {
+      it.each([
+        "1E",
+        "1e",
+        "1.2E",
+        "1.2e",
+        "1E+",
+        "1e+",
+        "1.2E+",
+        "1.2e+",
+        "1E-",
+        "1e-",
+        "1.2E-",
+        "1.2e-",
+        "1.2e-",
+        ".1E",
+        ".1e",
+        ".1E+",
+        ".1e+",
+        ".1E-",
+        ".1e-",
+        ".1E-",
+        "2e",
+        "3e+",
+        "4E-",
+        "4E-",
+      ])("handles missing exponents for %s", (expression) => {
+        expect(err(expression)).toBe("Missing exponent");
+      });
+    });
   });
 
   describe("diagnoseAndCompile", () => {

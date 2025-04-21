@@ -309,47 +309,6 @@ describe("lexify", () => {
         );
       }
     });
-
-    it("handles malformed exponents in mathematical notation", () => {
-      const cases = [
-        "1E",
-        "1e",
-        "1.2E",
-        "1.2e",
-        "1E+",
-        "1e+",
-        "1.2E+",
-        "1.2e+",
-        "1E-",
-        "1e-",
-        "1.2E-",
-        "1.2e-",
-        "1.2e-",
-        ".1E",
-        ".1e",
-        ".1E+",
-        ".1e+",
-        ".1E-",
-        ".1e-",
-        ".1E-",
-        "2e",
-        "3e+",
-        "4E-",
-        "4E-",
-      ];
-
-      for (const expression of cases) {
-        const { errors } = lexify(expression);
-        expect(errors.map(plain)).toEqual([
-          {
-            friendly: true,
-            message: "Missing exponent",
-            pos: 0,
-            len: expect.any(Number),
-          },
-        ]);
-      }
-    });
   });
 
   describe("whitespace", () => {

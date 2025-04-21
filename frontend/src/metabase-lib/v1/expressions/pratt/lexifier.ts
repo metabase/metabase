@@ -77,14 +77,6 @@ export function lexify(source: string, { hooks }: { hooks?: Hooks } = {}) {
     }
 
     if (node.type.name === "Number") {
-      const value = source.slice(node.from, node.to).toLowerCase();
-      const [, exponent, ...rest] = value.split("e");
-      if (typeof exponent === "string" && !exponent.match(/[0-9]$/)) {
-        error(node, t`Missing exponent`);
-      } else if (rest.length > 0) {
-        error(node, t`Malformed exponent`);
-      }
-
       return token(node, { type: NUMBER });
     }
 

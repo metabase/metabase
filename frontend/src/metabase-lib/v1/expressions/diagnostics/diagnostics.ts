@@ -13,6 +13,7 @@ import { checkKnownFunctions } from "./check-known-functions";
 import { checkLibDiagnostics } from "./check-lib-diagnostics";
 import { checkMatchingParentheses } from "./check-matching-parenthesis";
 import { checkMissingCommasInArgumentList } from "./check-missing-comma-in-argument-list";
+import { checkNumberExponent } from "./check-number-exponent";
 import { checkOpenParenthesisAfterFunction } from "./check-open-parenthesis-after-function";
 import { checkSupportedFunctions } from "./check-supported-functions";
 
@@ -60,6 +61,7 @@ const syntaxChecks = [
   checkOpenParenthesisAfterFunction,
   checkMatchingParentheses,
   checkMissingCommasInArgumentList,
+  checkNumberExponent,
 ];
 
 export function diagnoseExpressionSyntax(options: {
