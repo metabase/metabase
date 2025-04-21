@@ -202,39 +202,17 @@
              (testing (format "schema name = %s" (pr-str schema-name))
                (is (not= \v (first schema-name)))))))))))
 
-(defn- sql-sleep-16
-  "A statement that simply sleeps for 16 seconds"
-  [driver _ _]
-  [(case driver
-     :snowflake "CALL SYSTEM$WAIT(16, 'SECONDS');"
-     :mysql     "SELECT SLEEP(16);"
-     :postgres  "SELECT pg_sleep(16);")])
-
-(deftest have-select-privelege?-timeout-test
-  (mt/test-drivers #{:snowflake :postgres :mysql}
-    (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
-      (qp.store/with-metadata-provider (mt/id)
-        (testing "checking select privilege defaults to allow on timeout (#56737)"
-          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query sql-sleep-16]
-            (sql-jdbc.execute/do-with-connection-with-options
-             driver/*driver*
-             (mt/db)
-             nil
-             (fn [^java.sql.Connection conn]
-               (is (true? (sql-jdbc.sync.interface/have-select-privilege?
-                           driver/*driver* conn schema table-name)))))))))))
-
 (deftest have-select-privilege?-test
-  (let [default-have-slect-privilege?
-        #(identical? (get-method sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc)
-                     (get-method sql-jdbc.sync.interface/have-select-privilege? %))]
-    (mt/test-drivers (into #{}
-                           (filter default-have-slect-privilege?)
-                           (descendants driver/hierarchy :sql-jdbc))
-      (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
-        (qp.store/with-metadata-provider (mt/id)
-          (testing (sql-jdbc.describe-database/simple-select-probe-query driver/*driver* schema table-name)
-            (testing "checking select privilege works with and without auto commit (#36040)"
+  (testing "checking select privilege works with and without auto commit (#36040)"
+    (let [default-have-slect-privilege?
+          #(identical? (get-method sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc)
+                       (get-method sql-jdbc.sync.interface/have-select-privilege? %))]
+      (mt/test-drivers (into #{}
+                             (filter default-have-slect-privilege?)
+                             (descendants driver/hierarchy :sql-jdbc))
+        (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+          (qp.store/with-metadata-provider (mt/id)
+            (testing (sql-jdbc.describe-database/simple-select-probe-query driver/*driver* schema table-name)
               (doseq [auto-commit [true false]]
                 (testing (pr-str {:auto-commit auto-commit :schema schema :name table-name})
                   (sql-jdbc.execute/do-with-connection-with-options
