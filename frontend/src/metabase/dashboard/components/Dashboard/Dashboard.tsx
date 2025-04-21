@@ -2,7 +2,6 @@ import cx from "classnames";
 import { useMemo } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -43,7 +42,7 @@ function Dashboard() {
     selectedTabId,
     setSharing,
     parameterQueryParams = {},
-    downloadsEnabled = true,
+    downloadsEnabled,
     handleAddQuestion,
     shouldRenderAsNightMode,
     setArchivedDashboard,
@@ -105,7 +104,6 @@ function Dashboard() {
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
 
-<<<<<<< HEAD
   const { data: databasesResponse } = useListDatabasesQuery();
   const databases = useMemo(
     () => databasesResponse?.data ?? [],
@@ -118,127 +116,6 @@ function Dashboard() {
   );
   const canCreateQuestions = hasDataAccess || hasNativeWrite;
 
-  const shouldRenderAsNightMode = isNightMode && isFullscreen;
-
-  const handleSetEditing = useCallback(
-    (dashboard: IDashboard | null) => {
-      if (!isEditing) {
-        onRefreshPeriodChange(null);
-        setEditingDashboard(dashboard);
-      }
-    },
-    [isEditing, onRefreshPeriodChange, setEditingDashboard],
-  );
-
-  const handleAddQuestion = useCallback(() => {
-    handleSetEditing(dashboard);
-    toggleSidebar(SIDEBAR_NAME.addQuestion);
-  }, [handleSetEditing, dashboard, toggleSidebar]);
-
-  const handleLoadDashboard = useCallback(
-    async (dashboardId: DashboardId) => {
-      initialize({ clearCache: !isNavigatingBackToDashboard });
-
-      const result = await fetchDashboard({
-        dashId: dashboardId,
-        queryParams: parameterQueryParams,
-        options: {
-          clearCache: !isNavigatingBackToDashboard,
-          preserveParameters: isNavigatingBackToDashboard,
-        },
-      });
-
-      if (!isSuccessfulFetchDashboardResult(result)) {
-        if (!isCancelledFetchDashboardResult(result)) {
-          setErrorPage(result.payload);
-        }
-        return;
-      }
-
-      try {
-        const dashboard = result.payload.dashboard;
-
-        if (editingOnLoad) {
-          onRefreshPeriodChange(null);
-          setEditingDashboard(dashboard);
-        }
-        if (addCardOnLoad != null) {
-          const searchParams = new URLSearchParams(window.location.search);
-          const tabParam = searchParams.get("tab");
-          const tabId = tabParam ? parseInt(tabParam, 10) : null;
-
-          addCardToDashboard({
-            dashId: dashboardId,
-            cardId: addCardOnLoad,
-            tabId,
-          });
-        }
-      } catch (error) {
-        if (error instanceof Response && error.status === 404) {
-          setErrorPage({ ...error, context: "dashboard" });
-        } else {
-          console.error(error);
-          setError(error);
-        }
-      }
-    },
-    [
-      addCardOnLoad,
-      addCardToDashboard,
-      editingOnLoad,
-      fetchDashboard,
-      initialize,
-      isNavigatingBackToDashboard,
-      onRefreshPeriodChange,
-      parameterQueryParams,
-      setEditingDashboard,
-      setErrorPage,
-    ],
-  );
-
-  useEffect(() => {
-    const hasDashboardChanged = dashboardId !== previousDashboardId;
-    if (hasDashboardChanged) {
-      handleLoadDashboard(dashboardId).then(() => setIsInitialized(true));
-      return;
-    }
-
-    if (!dashboard) {
-      return;
-    }
-
-    const hasDashboardLoaded = !previousDashboard;
-    const hasTabChanged = selectedTabId !== previousTabId;
-    const hasParameterValueChanged = !_.isEqual(
-      parameterValues,
-      previousParameterValues,
-    );
-
-    if (hasDashboardLoaded) {
-      fetchDashboardCardData({ reload: false, clearCache: true });
-    } else if (hasTabChanged || hasParameterValueChanged) {
-      fetchDashboardCardData();
-    }
-  }, [
-    dashboard,
-    dashboardId,
-    fetchDashboardCardData,
-    handleLoadDashboard,
-    isInitialized,
-    parameterValues,
-    previousDashboard,
-    previousDashboardId,
-    previousParameterValues,
-    previousTabId,
-    selectedTabId,
-  ]);
-
-  useUnmount(() => {
-    cancelFetchDashboardCardData();
-  });
-
-=======
->>>>>>> fe48e208cd (Solve more type issues and clean up code)
   const renderEmptyStates = () => {
     if (!dashboardHasCards) {
       return canWrite ? (
