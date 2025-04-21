@@ -35,11 +35,11 @@ export function resolver(options: Options): Resolver {
     if (type === "aggregation") {
       // Return metrics
       const availableDimensions = [...metrics(), ...columns()];
-      const metric = availableDimensions.find(hasMatchingName);
+      const dimension = availableDimensions.find(hasMatchingName);
 
-      if (!metric) {
+      if (!dimension) {
         throw new ResolverError(t`Unknown Metric: ${name}`, node);
-      } else if (!Lib.isMetricMetadata(metric)) {
+      } else if (!Lib.isMetricMetadata(dimension)) {
         // If no metric was found, but there is a matching column,
         // show a more sophisticated error message
         const error = c(
@@ -49,7 +49,7 @@ export function resolver(options: Options): Resolver {
         throw new ResolverError(error, node);
       }
 
-      return metric;
+      return dimension;
     }
 
     if (type === "boolean") {
@@ -58,11 +58,11 @@ export function resolver(options: Options): Resolver {
         ...segments(),
         ...columns().filter(Lib.isBoolean),
       ];
-      const segment = availableDimensions.find(hasMatchingName);
-      if (!segment) {
+      const dimension = availableDimensions.find(hasMatchingName);
+      if (!dimension) {
         throw new ResolverError(t`Unknown Segment: ${name}`, node);
       }
-      return segment;
+      return dimension;
     }
 
     // Return columns and, in the case of aggregation expressions, metrics
