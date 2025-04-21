@@ -264,7 +264,6 @@
   "Fire the expected events used to send notifications if the underlying actions modified table data."
   [action-kw args-map & {:as opts}]
   (let [qry-context       ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/qry-context) args-map)
-        ;; TODO this is totally broken if you create more than 1 row, because we don't know the pk yet (it's just {})
         pk->db-row-before ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/query-previous-rows) action-kw qry-context)]
     (u/prog1 (perform-action! action-kw args-map opts)
       ;; process the "data has changed" side effects
