@@ -9,7 +9,7 @@ import type {
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
 
-import { isLiteral } from "./matchers";
+import { isLiteral } from "./literal";
 
 const getDescriptionForNow: HelpTextConfig["description"] = (
   database,
@@ -315,6 +315,19 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         name: t`value`,
         description: t`The string column to convert to integers.`,
         example: ["dimension", "User ID"],
+      },
+    ],
+  },
+  {
+    name: "float",
+    structure: "float",
+    category: "conversion",
+    description: () => t`Converts a string to a floating-point number.`,
+    args: [
+      {
+        name: t`value`,
+        description: t`The string column to convert to floats.`,
+        example: ["dimension", "Text Rating"],
       },
     ],
   },
