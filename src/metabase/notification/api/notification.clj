@@ -8,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
+   [metabase.channel.template.core :as channel.template]
    [metabase.events :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
@@ -228,6 +229,16 @@
 
       true
       (notification/send-notification! :notification/sync? true))))
+
+(api.macros/defendpoint :post "/default_template"
+  "Get default templates for a notification."
+  [_params
+   _query
+   {:keys [notification channel_types] :as _body} :- [:map
+                                                      [:notification ::models.notification/NotificationWithPayload]
+                                                      [:channel_types {:optional true} [:sequential :keyword]]]]
+  (zipmap channel_types
+          (map #(channel.template/default-template (:payload_type notification) (:payload notification) %) channel_types)))
 
 (defn- promote-to-t2-instance
   [notification]

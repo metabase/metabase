@@ -306,25 +306,6 @@
                      :when (seq emails)]
                  emails)))
 
-(def ^:private event->template
-  {:event/rows.created
-   {:channel_type :channel/email
-    :details      {:type    :email/handlebars-resource
-                   :subject "Table {{table.name}} has a new row"
-                   :path    "metabase/channel/email/data_editing_row_create.hbs"}}
-
-   :event/rows.updated
-   {:channel_type :channel/email
-    :details      {:type    :email/handlebars-resource
-                   :subject "Table {{table.name}} has been updated"
-                   :path    "metabase/channel/email/data_editing_row_update.hbs"}}
-
-   :event/rows.deleted
-   {:channel_type :channel/email
-    :details      {:type    :email/handlebars-resource
-                   :subject "Table {{table.name}} has a row deleted"
-                   :path    "metabase/channel/email/data_editing_row_delete.hbs"}}})
-
 (mu/defmethod channel/render-notification
   [:channel/email :notification/system-event]
   [_channel-type
@@ -332,7 +313,9 @@
    template             :- [:maybe ::models.channel/ChannelTemplate]
    recipients           :- [:sequential ::models.notification/NotificationRecipient]]
   (let [event-name  (get-in notification-payload [:context :event_name])
-        template    (or template (get event->template event-name))]
+        template    (or template
+                        ;; TODO: the context here does not nescessarily have the same shape as payload, needs to rethink this
+                        (channel.template/default-template :notification/system-event (:context notification-payload) :channel/email))]
     (assert template (str "No template found for event " event-name))
     (if-not template
       []
