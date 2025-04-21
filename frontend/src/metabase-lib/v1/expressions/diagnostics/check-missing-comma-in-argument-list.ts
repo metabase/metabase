@@ -11,10 +11,13 @@ import {
   OPERATORS,
 } from "../pratt";
 
-export function checkMissingCommasInArgumentList(
-  tokens: Token[],
-  source: string,
-) {
+export function checkMissingCommasInArgumentList({
+  tokens,
+  source,
+}: {
+  tokens: Token[];
+  source: string;
+}) {
   const call = 1;
   const group = 2;
   const stack = [];

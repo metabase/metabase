@@ -62,14 +62,11 @@ const syntaxChecks = [
   checkMissingCommasInArgumentList,
 ];
 
-export function diagnoseExpressionSyntax({
-  source,
-  tokens,
-}: {
+export function diagnoseExpressionSyntax(options: {
   source: string;
   tokens: Token[];
 }) {
-  syntaxChecks.forEach((check) => check(tokens, source));
+  syntaxChecks.forEach((check) => check(options));
 }
 
 const expressionChecks = [

@@ -4,7 +4,7 @@ import { DiagnosticError } from "../errors";
 import type { Token } from "../pratt";
 import { GROUP, GROUP_CLOSE } from "../pratt";
 
-export function checkMatchingParentheses(tokens: Token[]) {
+export function checkMatchingParentheses({ tokens }: { tokens: Token[] }) {
   const mismatchedParentheses = countMatchingParentheses(tokens);
   if (mismatchedParentheses === 1) {
     throw new DiagnosticError(t`Expecting a closing parenthesis`);
