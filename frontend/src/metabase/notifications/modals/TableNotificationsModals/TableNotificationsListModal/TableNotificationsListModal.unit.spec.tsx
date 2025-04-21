@@ -138,7 +138,12 @@ describe("TableNotificationsListModal", () => {
 
   it("should call onEdit when edit button is clicked", async () => {
     const currentUserId = 1;
-    const notification = createNotificationForUser(currentUserId);
+    const notification = createNotificationForUser(currentUserId, 0, {
+      payload: {
+        event_name: "event/rows.updated",
+        table_id: 1,
+      },
+    });
     const onEdit = jest.fn();
 
     setup({
@@ -151,7 +156,7 @@ describe("TableNotificationsListModal", () => {
     // Clicking on the notification item itself triggers edit
     // We'll click directly on the title which is part of the notification item
     const notificationTitle = screen.getByText(
-      "Notify when new records are created",
+      "Notify when records are updated",
     );
     await userEvent.click(notificationTitle);
 
@@ -160,7 +165,12 @@ describe("TableNotificationsListModal", () => {
 
   it("should call onDelete when delete button is clicked", async () => {
     const currentUserId = 1;
-    const notification = createNotificationForUser(currentUserId);
+    const notification = createNotificationForUser(currentUserId, 0, {
+      payload: {
+        event_name: "event/rows.deleted",
+        table_id: 1,
+      },
+    });
     const onDelete = jest.fn();
 
     setup({
@@ -172,7 +182,7 @@ describe("TableNotificationsListModal", () => {
 
     // Get the notification title and test that it's rendered
     const notificationTitle = screen.getByText(
-      "Notify when new records are created",
+      "Notify when records are deleted",
     );
     expect(notificationTitle).toBeInTheDocument();
 
