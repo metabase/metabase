@@ -141,9 +141,7 @@ const setup = ({
     </InteractiveQuestion>,
     {
       sdkProviderProps: {
-        authConfig: createMockAuthProviderUriConfig({
-          authProviderUri: "http://TEST_URI/sso/metabase",
-        }),
+        authConfig: createMockAuthProviderUriConfig(),
       },
       storeInitialState: state,
     },
