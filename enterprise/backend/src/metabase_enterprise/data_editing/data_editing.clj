@@ -104,7 +104,7 @@
   ;; TODO make this work for multi instances by using the metabase_cluster_lock table
   ;; https://github.com/metabase/metabase/pull/56173/files
   (locking #'perform-bulk-action!
-    (actions/perform-with-system-events!
+    (actions/perform-with-effects!
      action-kw
      {:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
       :table-id table-id
@@ -167,10 +167,7 @@
     (query-db-rows table-id pk-fields rows)
 
     :bulk/create
-    (->> (for [row (:created-rows result)]
-           [(query-db-rows table-id pk-fields [row])
-            (update-keys row keyword)])
-         (into {}))
+    (query-db-rows table-id pk-fields (map #(update-keys % keyword) (:created-rows result)))
 
     ;; action does not relate to row updates
     (throw (ex-info "See, this doesn't make sense" {:dumb :hack}))))

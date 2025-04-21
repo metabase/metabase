@@ -134,7 +134,9 @@
          [:invocation_id ::nano-id]]
         actor-schema))
 
-(mr/def :event/action.invoked [:merge ::action-events [:map [:args :map]]])
+(mr/def :event/action.invoked [:merge ::action-events [:map [:inputs [:sequential :map]]]])
+(mr/def :event/action.success [:merge ::action-events [:map [:outputs [:sequential :map]]]])
+(mr/def :event/action.failure [:merge ::action-events [:map [:message :string] [:info :map]]])
 
 (def ^:private bulk-row-schema
   [:map {:closed true}
@@ -152,11 +154,3 @@
 (mr/def :event/rows.created bulk-event)
 (mr/def :event/rows.updated bulk-event)
 (mr/def :event/rows.deleted bulk-event)
-
-(mr/def :event/action.success
-  [:merge ::action-events
-   ;; No consumers of any events yet, so no need to specialize yet.
-   ;; In any case, this should just fetch the schema with the action definition itself, always matching exactly.
-   :map])
-
-(mr/def :event/action.failure [:merge ::action-events [:map [:info :map]]])
