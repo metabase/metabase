@@ -59,7 +59,7 @@ describe("diagnostics", () => {
     });
 
     it("should catch unterminated string literals", () => {
-      expect(err('[Category] = "widget')).toBe("Missing closing quotes");
+      expect(err('[Category] = "widget')).toBe("Missing closing string quote");
     });
 
     it("should catch unterminated field reference", () => {
@@ -318,6 +318,15 @@ describe("diagnostics", () => {
       ])("handles missing exponents for %s", (expression) => {
         expect(err(expression)).toBe("Missing exponent");
       });
+    });
+
+    describe("string quotes", () => {
+      it.each([`"single`, `'double`, `"foo\\"`, `'foo\\'`])(
+        "reject missing string quotes for %s",
+        (expression) => {
+          expect(err(expression)).toBe("Missing closing string quote");
+        },
+      );
     });
   });
 

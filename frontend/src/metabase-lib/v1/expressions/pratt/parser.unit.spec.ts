@@ -152,18 +152,6 @@ describe("pratt/parser", () => {
       expect(() => parseExpression("Case([X]>5,5,[X]>3,3,0)")).not.toThrow();
     });
 
-    it("should reject an unclosed single-quoted string", () => {
-      expect(() => parseExpression('"Answer')).toThrow();
-    });
-
-    it("should reject an unclosed double-quoted string", () => {
-      expect(() => parseExpression('"Answer')).toThrow();
-    });
-
-    it("should reject a mismatched quoted string", () => {
-      expect(() => parseExpression("\"Answer'")).toThrow();
-    });
-
     it("should handle a conditional with ISEMPTY", () => {
       expect(() =>
         parseExpression("case(isempty([Discount]),[P])"),

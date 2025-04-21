@@ -431,32 +431,9 @@ describe("lexify", () => {
       }
     });
 
-    it("handles unbalanced strings", () => {
-      const cases = [`"single`, `'double`, `"foo\\"`, `'foo\\'`];
-
-      for (const expression of cases) {
-        const { errors } = lexify(expression);
-        expect(errors.map(plain)).toEqual([
-          {
-            message: "Missing closing quotes",
-            friendly: true,
-            pos: 0,
-            len: expression.length,
-          },
-        ]);
-      }
-    });
-
     it("should continue to tokenize when encountering an unterminated string literal", () => {
       const { tokens, errors } = lexify(`CONCAT(universe') = [answer]`);
-      expect(errors.map(plain)).toEqual([
-        {
-          message: "Missing closing quotes",
-          len: 13,
-          pos: 15,
-          friendly: true,
-        },
-      ]);
+      expect(errors.map(plain)).toEqual([]);
       expect(tokens).toEqual(
         [
           {
@@ -473,11 +450,6 @@ describe("lexify", () => {
             type: IDENTIFIER,
             pos: 7,
             text: "universe",
-          },
-          {
-            type: BAD_TOKEN,
-            pos: 15,
-            text: "') = [answer]",
           },
           {
             type: STRING,

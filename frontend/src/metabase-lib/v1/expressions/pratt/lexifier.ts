@@ -81,19 +81,11 @@ export function lexify(source: string, { hooks }: { hooks?: Hooks } = {}) {
     }
 
     if (node.type.name === "String") {
-      const openQuote = source[node.from];
-      if (openQuote === "'" || openQuote === '"') {
-        const text = source.slice(node.from, node.to);
-        const value = unquoteString(text);
-
-        if (quoteString(value, openQuote) !== text) {
-          error(node, t`Missing closing quotes`);
-        }
-
-        return token(node, { type: STRING, value });
-      } else {
-        return error(node, t`Unsupported string quote: ${openQuote}`);
-      }
+      const text = source.slice(node.from, node.to);
+      return token(node, {
+        type: STRING,
+        value: unquoteString(text),
+      });
     }
 
     if (node.type.name === OPERATOR.OpenParenthesis) {
