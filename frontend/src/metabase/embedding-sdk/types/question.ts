@@ -1,3 +1,5 @@
+import type { DefaultClickAction } from "metabase/visualizations/types";
+
 export interface MetabaseQuestion {
   id: number;
   name: string;
@@ -5,4 +7,5 @@ export interface MetabaseQuestion {
   entityId: string;
 
   isSavedQuestion: boolean;
+  foo: DefaultClickAction;
 }
