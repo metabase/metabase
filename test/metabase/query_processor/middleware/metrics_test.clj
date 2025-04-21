@@ -46,11 +46,12 @@
   ([metadata-provider query]
    (mock-metric metadata-provider query nil))
   ([metadata-provider query card-details]
-   (let [metric (merge {:lib/type :metadata/card
-                        :id (fresh-card-id metadata-provider)
-                        :database-id (meta/id)
-                        :name "Mock Metric"
-                        :type :metric
+   (let [metric (merge {:lib/type      :metadata/card
+                        :id            (fresh-card-id metadata-provider)
+                        :entity-id     (u/generate-nano-id)
+                        :database-id   (meta/id)
+                        :name          "Mock Metric"
+                        :type          :metric
                         :dataset-query query}
                        card-details)]
      [metric (lib/composed-metadata-provider
@@ -338,16 +339,20 @@
                   (lib/join (lib/join-clause question [(lib/= 1 1)])))]
     (is (=? {:stages [{:joins [{:stages [{:aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}
                                          ;; Empty stage added by resolved-source-cards to nest join
-                                         #(= #{:lib/type :qp/stage-had-source-card :source-query/model?} (set (keys %)))]}]}]}
+                                         (=?/exactly {:lib/type                 :mbql.stage/mbql
+                                                      :qp/stage-had-source-card (:id question)
+                                                      :source-query/model?      false
+                                                      :source-query/entity-id   (:entity-id question)})]}]}]}
             (adjust query)))))
 
 (defn- model-based-metric-question
   [mp model-query agg-col-fn]
-  (let [model {:lib/type :metadata/card
-               :id (fresh-card-id mp)
-               :database-id (meta/id)
-               :name "Mock Model"
-               :type :model
+  (let [model {:lib/type      :metadata/card
+               :id            (fresh-card-id mp)
+               :entity-id     (u/generate-nano-id)
+               :database-id   (meta/id)
+               :name          "Mock Model"
+               :type          :model
                :dataset-query model-query}
         model-mp (lib/composed-metadata-provider
                   mp
@@ -398,11 +403,12 @@
   (let [mp meta/metadata-provider
         model-query (-> (lib/query mp (meta/table-metadata :orders))
                         (lib/filter (lib/> (meta/field-metadata :orders :discount) 3)))
-        model {:lib/type :metadata/card
-               :id (fresh-card-id mp)
-               :database-id (meta/id)
-               :name "Base Mock Model"
-               :type :model
+        model {:lib/type      :metadata/card
+               :id            (fresh-card-id mp)
+               :entity-id     (u/generate-nano-id)
+               :database-id   (meta/id)
+               :name          "Base Mock Model"
+               :type          :model
                :dataset-query model-query}
         model-mp (lib/composed-metadata-provider
                   mp
@@ -666,6 +672,7 @@
 (deftest ^:parallel model-based-metric-use-test
   (let [model {:lib/type :metadata/card
                :id (fresh-card-id meta/metadata-provider)
+               :entity-id (u/generate-nano-id)
                :database-id (meta/id)
                :name "Mock Model"
                :type :model

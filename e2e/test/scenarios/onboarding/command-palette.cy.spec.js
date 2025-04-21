@@ -1,5 +1,5 @@
 const { H } = cy;
-import { USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -371,27 +371,18 @@ describe("command palette", () => {
       cy.findByText("Report an issue").should("be.visible");
     });
   });
-
-  it("The data picker does not cover the command palette (metabase#45469)", () => {
-    cy.visit("/");
-    cy.log("Click on the New button in the navigation bar and select Question");
-    H.newButton("Question").click();
-    cy.findByRole("dialog", { name: "Pick your starting data" });
-    cy.log("Open the command palette with a shortcut key");
-    cy.get("body").type("{ctrl+k}{cmd+k}");
-    H.commandPalette().within(() => {
-      H.commandPaletteInput().should("be.visible");
-    });
-  });
 });
 
-describe("shortcuts", () => {
+H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
   beforeEach(() => {
+    H.resetSnowplow();
     H.restore();
     cy.signInAsAdmin();
+    H.enableTracking();
   });
 
   it("should render a shortcuts modal, and global shortcuts should be available", () => {
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
     cy.visit("/");
     cy.findByTestId("home-page")
       .findByTestId("loading-indicator")
@@ -409,9 +400,17 @@ describe("shortcuts", () => {
     cy.realPress("c").realPress("f");
     cy.findByRole("dialog", { name: /collection/i }).should("exist");
     cy.realPress("Escape");
+    H.expectGoodSnowplowEvent({
+      event: "keyboard_shortcut_performed",
+      event_detail: "create-new-collection",
+    });
     cy.realPress("c").realPress("d");
     cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
     cy.realPress("Escape");
+    H.expectGoodSnowplowEvent({
+      event: "keyboard_shortcut_performed",
+      event_detail: "create-new-dashboard",
+    });
 
     cy.realPress("g").realPress("d");
     cy.location("pathname").should("contain", "browse/databases");
@@ -421,15 +420,63 @@ describe("shortcuts", () => {
     H.navigationSidebar().should("not.be.visible");
     cy.realPress("[");
     H.navigationSidebar().should("be.visible");
+    H.expectGoodSnowplowEvent(
+      {
+        event: "keyboard_shortcut_performed",
+        event_detail: "toggle-navbar",
+      },
+      2,
+    );
 
     cy.realPress("g").realPress("p");
     cy.location("pathname").should(
       "equal",
       `/collection/${ADMIN_PERSONAL_COLLECTION_ID}`,
     );
+    H.expectGoodSnowplowEvent({
+      event: "keyboard_shortcut_performed",
+      event_detail: "navigate-personal-collection",
+    });
 
     cy.realPress("g").realPress("t");
     cy.location("pathname").should("equal", "/trash");
+
+    H.expectGoodSnowplowEvent({
+      event: "keyboard_shortcut_performed",
+      event_detail: "navigate-trash",
+    });
+
+    cy.log("shortcuts should not be enabled when working in a modal (ADM 658)");
+
+    H.navigationSidebar().should("be.visible");
+    // Mantine Modals
+    H.newButton("Collection").click();
+
+    H.modal()
+      .findByLabelText(/collection it's saved in/i)
+      .click();
+
+    // Remove focus
+    H.entityPickerModal().findByRole("heading").click();
+
+    cy.realPress("[");
+    H.navigationSidebar().should("be.visible");
+    cy.realPress("Escape");
+    cy.realPress("[");
+    H.navigationSidebar().should("be.visible");
+    cy.realPress("Escape");
+    // Legacy Modals
+
+    H.newButton("Action").click();
+    // Remove focus
+    H.modal()
+      .findByText(/Build custom forms/)
+      .click();
+    cy.realPress("[");
+    H.navigationSidebar().should("be.visible");
+    cy.realPress("Escape");
+    cy.realPress("[");
+    H.navigationSidebar().should("not.visible");
   });
 
   it("should support dashboard shortcuts", () => {
@@ -480,7 +527,8 @@ describe("shortcuts", () => {
     // Sidesheet
     cy.realPress("]");
     cy.findByRole("dialog", { name: "Info" }).should("exist");
-    cy.realPress("]");
+    // Should be able to toggle again in ], but modals disable shortcuts
+    cy.realPress("Escape");
     cy.findByRole("dialog", { name: "Info" }).should("not.exist");
 
     // Viz Settings
