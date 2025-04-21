@@ -41,7 +41,7 @@ export interface DatasetColumn {
   active?: boolean;
   entity_id?: string;
   fk_field_id?: number;
-  nfc_path?: string | null;
+  nfc_path?: string[] | null;
   parent_id?: number | null;
   position?: number;
   source_alias?: string;
