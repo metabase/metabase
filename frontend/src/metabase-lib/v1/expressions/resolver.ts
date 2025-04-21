@@ -4,7 +4,7 @@ import _ from "underscore";
 import * as Lib from "metabase-lib";
 
 import { EDITOR_FK_SYMBOLS } from "./config";
-import { ResolverError } from "./errors";
+import { CompileError } from "./errors";
 import { getDisplayNameWithSeparator } from "./identifier";
 import type { Node } from "./pratt";
 import type { ExpressionType } from "./types";
@@ -36,11 +36,11 @@ export function resolver(options: Options): Resolver {
       // Return metrics
       const dimension = findByName([...metrics(), ...columns()]);
       if (!dimension) {
-        throw new ResolverError(t`Unknown Metric: ${name}`, node);
+        throw new CompileError(t`Unknown Metric: ${name}`, node);
       } else if (!Lib.isMetricMetadata(dimension)) {
         // If no metric was found, but there is a matching column,
         // show a more sophisticated error message
-        throw new ResolverError(
+        throw new CompileError(
           c(
             "{0} is an identifier of the field provided by user in a custom expression",
           )
@@ -58,7 +58,10 @@ export function resolver(options: Options): Resolver {
         ...columns().filter(Lib.isBoolean),
       ]);
       if (!dimension) {
-        throw new ResolverError(t`Unknown Segment: ${name}`, node);
+        throw new CompileError(
+          t`Unknown Segment or boolean Field: ${name}`,
+          node,
+        );
       }
       return dimension;
     }
@@ -69,7 +72,10 @@ export function resolver(options: Options): Resolver {
       ...(expressionMode === "aggregation" ? metrics() : []),
     ]);
     if (!dimension) {
-      throw new ResolverError(t`Unknown Field: ${name}`, node);
+      if (expressionMode === "aggregation") {
+        throw new CompileError(t`Unknown Field or Metric: ${name}`, node);
+      }
+      throw new CompileError(t`Unknown Field: ${name}`, node);
     }
     return dimension;
   };
@@ -83,20 +89,48 @@ function nameMatcher(
     dimension: Dimension,
   ) => Lib.ColumnDisplayInfo | Lib.MetricDisplayInfo | Lib.SegmentDisplayInfo,
 ): (dimensions: Dimension[]) => Dimension | undefined {
-  return (dimensions) =>
-    dimensions.find((dimension) => {
-      if (Lib.isColumnMetadata(dimension)) {
-        return EDITOR_FK_SYMBOLS.symbols.some(
-          (separator) =>
-            name ===
-            getDisplayNameWithSeparator(
-              info(dimension).longDisplayName,
-              separator,
-            ),
-        );
+  function byName({
+    preserveSeparators,
+    caseSensitive,
+  }: {
+    preserveSeparators: boolean;
+    caseSensitive: boolean;
+  }) {
+    return (dimension: Dimension) => {
+      if (preserveSeparators || !Lib.isColumnMetadata(dimension)) {
+        return equals(caseSensitive, name, info(dimension).longDisplayName);
       }
-      return info(dimension).displayName.toLowerCase() === name.toLowerCase();
-    });
+
+      // When exact = false, we allow matching columns on other separators,
+      // ie. [User.ID] will match [User → ID]
+      return EDITOR_FK_SYMBOLS.symbols.some((separator) =>
+        equals(
+          caseSensitive,
+          name,
+          getDisplayNameWithSeparator(
+            info(dimension).longDisplayName,
+            separator,
+          ),
+        ),
+      );
+    };
+  }
+
+  // Match the exact matches first,
+  // then match exact matches ignoring case,
+  // then match matches with different separators
+  // prettier-ignore
+  return (dimensions) =>
+    dimensions.find(byName({ preserveSeparators: true, caseSensitive: true })) ??
+    dimensions.find(byName({ preserveSeparators: true, caseSensitive: false })) ??
+    dimensions.find(byName({ preserveSeparators: false, caseSensitive: false }));
+}
+
+function equals(caseSensitive: boolean, a: string, b: string) {
+  if (caseSensitive) {
+    return a === b;
+  }
+  return a.toLowerCase() === b.toLowerCase();
 }
 
 function infoCache(options: Options) {

@@ -28,13 +28,17 @@ describe("resolver", () => {
       });
 
       it("should not resolve fields with non-boolean types", () => {
-        expect(() => boolean("stringly")).toThrow("Unknown Segment: stringly");
-        expect(() => boolean("Total")).toThrow("Unknown Segment: Total");
+        expect(() => boolean("stringly")).toThrow(
+          "Unknown Segment or Field: stringly",
+        );
+        expect(() => boolean("Total")).toThrow(
+          "Unknown Segment or Field: Total",
+        );
       });
 
       it("should not resolve metrics", () => {
         expect(() => boolean("Foo Metric")).toThrow(
-          "Unknown Segment: Foo Metric",
+          "Unknown Segment or Field: Foo Metric",
         );
       });
     });
@@ -199,14 +203,18 @@ describe("resolver", () => {
       });
 
       it("should not resolve fields with non-boolean types", () => {
-        expect(() => boolean("stringly")).toThrow("Unknown Segment: stringly");
-        expect(() => boolean("Total")).toThrow("Unknown Segment: Total");
+        expect(() => boolean("stringly")).toThrow(
+          "Unknown Segment or Field: stringly",
+        );
+        expect(() => boolean("Total")).toThrow(
+          "Unknown Segment or Field: Total",
+        );
       });
 
       it("should not resolve metrics", () => {
         // TODO: should this resolve metrics?
         expect(() => boolean("Foo Metric")).toThrow(
-          "Unknown Segment: Foo Metric",
+          "Unknown Segment or Field: Foo Metric",
         );
       });
     });
@@ -228,7 +236,7 @@ describe("resolver", () => {
 
       it("should not resolve segments", () => {
         expect(() => string("Expensive Things")).toThrow(
-          "Unknown Field: Expensive Things",
+          "Unknown Field or Metric: Expensive Things",
         );
       });
 
@@ -250,7 +258,7 @@ describe("resolver", () => {
 
       it("should not resolve segments", () => {
         expect(() => number("Expensive Things")).toThrow(
-          "Unknown Field: Expensive Things",
+          "Unknown Field or Metric: Expensive Things",
         );
       });
 
@@ -268,7 +276,7 @@ describe("resolver", () => {
 
       it("should not resolve segments", () => {
         expect(() => datetime("Expensive Things")).toThrow(
-          "Unknown Field: Expensive Things",
+          "Unknown Field or Metric: Expensive Things",
         );
       });
 
@@ -290,7 +298,7 @@ describe("resolver", () => {
       it("should not resolve segments", () => {
         // TODO: should we resolve segments here?
         expect(() => any_("Expensive Things")).toThrow(
-          "Unknown Field: Expensive Things",
+          "Unknown Field or Metric: Expensive Things",
         );
       });
 
@@ -311,7 +319,7 @@ describe("resolver", () => {
 
       it("should not resolve segments", () => {
         expect(() => expression("Expensive Things")).toThrow(
-          "Unknown Field: Expensive Things",
+          "Unknown Field or Metric: Expensive Things",
         );
       });
 
