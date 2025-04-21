@@ -21,6 +21,7 @@ describe("resolver", () => {
 
       it("should resolve segments", () => {
         expect(boolean("Expensive Things")).toEqual(segments.EXPENSIVE_THINGS);
+        expect(boolean("expensive things")).toEqual(segments.EXPENSIVE_THINGS);
       });
 
       it("should resolve columns of type: boolean", () => {
@@ -210,6 +211,7 @@ describe("resolver", () => {
 
       it("should resolve metrics", () => {
         expect(aggregation("Foo Metric")).toEqual(metrics.FOO);
+        expect(aggregation("foo metric")).toEqual(metrics.FOO);
       });
     });
   });
