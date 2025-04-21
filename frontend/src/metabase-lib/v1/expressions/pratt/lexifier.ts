@@ -63,9 +63,7 @@ export function lexify(source: string, { hooks }: { hooks?: Hooks } = {}) {
 
   tokenize(source).iterate(function (node) {
     if (node.type.name === "Identifier") {
-      return token(node, {
-        type: IDENTIFIER,
-      });
+      return token(node, { type: IDENTIFIER });
     }
 
     if (node.type.name === "Reference") {
@@ -75,10 +73,7 @@ export function lexify(source: string, { hooks }: { hooks?: Hooks } = {}) {
         error(node, t`Missing a closing bracket`);
       }
 
-      return token(node, {
-        type: FIELD,
-        value,
-      });
+      return token(node, { type: FIELD, value });
     }
 
     if (node.type.name === "Number") {
@@ -103,59 +98,23 @@ export function lexify(source: string, { hooks }: { hooks?: Hooks } = {}) {
           error(node, t`Missing closing quotes`);
         }
 
-        return token(node, {
-          type: STRING,
-          value,
-        });
+        return token(node, { type: STRING, value });
       } else {
         return error(node, t`Unsupported string quote: ${openQuote}`);
       }
     }
 
-    if (node.type.name === "Boolean") {
-      const op = source.slice(node.from, node.to);
-      if (isValidBoolean(op)) {
-        return token(node, {
-          type: BOOLEAN,
-        });
+    if (node.type.name === OPERATOR.OpenParenthesis) {
+      const prev = lexs.at(-1);
+      if (prev?.type === IDENTIFIER) {
+        prev.type = CALL;
       }
+      return token(node, { type: GROUP });
     }
 
-    switch (parseOperator(node.type.name)) {
-      case null:
-        break;
-      case OPERATOR.Comma:
-        return token(node, { type: COMMA });
-      case OPERATOR.OpenParenthesis: {
-        const prev = lexs.at(-1);
-        if (prev?.type === IDENTIFIER) {
-          prev.type = CALL;
-        }
-        return token(node, { type: GROUP });
-      }
-      case OPERATOR.CloseParenthesis:
-        return token(node, { type: GROUP_CLOSE });
-      case OPERATOR.Plus:
-        return token(node, { type: ADD });
-      case OPERATOR.Minus:
-        return token(node, { type: SUB });
-      case OPERATOR.Star:
-      case OPERATOR.Slash:
-        return token(node, { type: MULDIV_OP });
-      case OPERATOR.Equal:
-      case OPERATOR.NotEqual:
-        return token(node, { type: EQUALITY });
-      case OPERATOR.LessThan:
-      case OPERATOR.GreaterThan:
-      case OPERATOR.LessThanEqual:
-      case OPERATOR.GreaterThanEqual:
-        return token(node, { type: COMPARISON });
-      case OPERATOR.Not:
-        return token(node, { type: LOGICAL_NOT });
-      case OPERATOR.And:
-        return token(node, { type: LOGICAL_AND });
-      case OPERATOR.Or:
-        return token(node, { type: LOGICAL_OR });
+    const type = parseOperatorType(node.type.name);
+    if (type) {
+      return token(node, { type });
     }
 
     // Handle parse errors
@@ -198,21 +157,31 @@ export function lexify(source: string, { hooks }: { hooks?: Hooks } = {}) {
   };
 }
 
-function isValidBoolean(op: string): op is "true" | "false" {
+const OPERATOR_TO_TYPE: Record<OPERATOR, NodeType> = {
+  [OPERATOR.Comma]: COMMA,
+  [OPERATOR.OpenParenthesis]: GROUP,
+  [OPERATOR.CloseParenthesis]: GROUP_CLOSE,
+  [OPERATOR.Plus]: ADD,
+  [OPERATOR.Minus]: SUB,
+  [OPERATOR.Star]: MULDIV_OP,
+  [OPERATOR.Slash]: MULDIV_OP,
+  [OPERATOR.Equal]: EQUALITY,
+  [OPERATOR.NotEqual]: EQUALITY,
+  [OPERATOR.LessThan]: COMPARISON,
+  [OPERATOR.GreaterThan]: COMPARISON,
+  [OPERATOR.GreaterThanEqual]: COMPARISON,
+  [OPERATOR.LessThanEqual]: COMPARISON,
+  [OPERATOR.Not]: LOGICAL_NOT,
+  [OPERATOR.And]: LOGICAL_AND,
+  [OPERATOR.Or]: LOGICAL_OR,
+  [OPERATOR.True]: BOOLEAN,
+  [OPERATOR.False]: BOOLEAN,
+};
+
+function parseOperatorType(op: string): NodeType | null {
   const lower = op.toLowerCase();
-  return lower === "true" || lower === "false";
-}
-
-const VALID_OPERATORS = new Set(Object.values(OPERATOR));
-
-function isValidOperator(op: string): op is OPERATOR {
-  return VALID_OPERATORS.has(op as OPERATOR);
-}
-
-function parseOperator(op: string): OPERATOR | null {
-  const lower = op.toLowerCase();
-  if (isValidOperator(lower)) {
-    return lower;
+  if (lower in OPERATOR_TO_TYPE) {
+    return OPERATOR_TO_TYPE[lower as keyof typeof OPERATOR_TO_TYPE];
   }
   return null;
 }
