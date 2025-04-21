@@ -1,6 +1,6 @@
-import type { SystemEvent } from "metabase-types/api";
+import type { NotificationTriggerEvent } from "metabase-types/api";
 
 export type TableNotificationTriggerOption = {
-  value: SystemEvent;
+  value: NotificationTriggerEvent;
   label: string;
 };

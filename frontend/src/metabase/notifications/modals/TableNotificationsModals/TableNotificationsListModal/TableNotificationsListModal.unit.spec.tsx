@@ -28,7 +28,7 @@ describe("TableNotificationsListModal", () => {
     // The Box component in TableNotificationsListItem doesn't have a data-testid
     // Use getAllByText since we'll have multiple elements with the same text
     const notificationTitles = screen.getAllByText(
-      "Notify when new record is created",
+      "Notify when new records are created",
     );
     expect(notificationTitles).toHaveLength(2);
   });
@@ -75,7 +75,7 @@ describe("TableNotificationsListModal", () => {
 
     // Test that we can click on both notification titles (admin can edit all)
     const notificationItems = screen.getAllByText(
-      "Notify when new record is created",
+      "Notify when new records are created",
     );
     expect(notificationItems).toHaveLength(2);
   });
@@ -151,7 +151,7 @@ describe("TableNotificationsListModal", () => {
     // Clicking on the notification item itself triggers edit
     // We'll click directly on the title which is part of the notification item
     const notificationTitle = screen.getByText(
-      "Notify when new record is created",
+      "Notify when new records are created",
     );
     await userEvent.click(notificationTitle);
 
@@ -172,7 +172,7 @@ describe("TableNotificationsListModal", () => {
 
     // Get the notification title and test that it's rendered
     const notificationTitle = screen.getByText(
-      "Notify when new record is created",
+      "Notify when new records are created",
     );
     expect(notificationTitle).toBeInTheDocument();
 
@@ -205,7 +205,7 @@ describe("TableNotificationsListModal", () => {
 
     // Verify the notification is rendered
     const notificationTitle = screen.getByText(
-      "Notify when new record is created",
+      "Notify when new records are created",
     );
     expect(notificationTitle).toBeInTheDocument();
 

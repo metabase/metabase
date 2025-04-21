@@ -1,6 +1,5 @@
 (ns metabase-enterprise.data-editing.api
   (:require
-   [medley.core :as m]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase-enterprise.data-editing.undo :as undo]
    [metabase.actions.core :as actions]
@@ -8,86 +7,16 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver :as driver]
-   [metabase.events.notification :as events.notification]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.field-values :as field-values]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
    [metabase.upload :as-alias upload]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
-   [nano-id.core :as nano-id]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
-
-(defmethod events.notification/notification-filter-for-topic :event/action.success
-  [_topic event-info]
-  [:and
-   [:= :table_id (-> event-info :args :table_id)]
-   [:= :action (u/qualified-name (:action event-info))]])
-
-(defn- qp-result->row-map
-  [{:keys [rows cols]}]
-  ;; rows from the request are keywordized
-  (let [col-names (map (comp keyword :name) cols)]
-    (map #(zipmap col-names %) rows)))
-
-(defn- table-id->pks
-  [table-id]
-  (let [pks (api/check-404 (t2/select :model/Field :table_id table-id :semantic_type :type/PK))]
-    (api/check-500 (pos? (count pks)))
-    pks))
-
-(defn- get-row-pks
-  [pk-fields row]
-  (select-keys row (map (comp keyword :name) pk-fields)))
-
-(defn- valid-pks [pks]
-  (every? some? (vals pks)))
-
-(defn- apply*
-  "Work around the fact that the lib logical operators don't have a 0 or 1 arity."
-  [f clauses]
-  (if (<= (count clauses) 1)
-    (first clauses)
-    (apply f clauses)))
-
-(defn- query-db-rows
-  [table-id pk-fields rows]
-  (assert (seq pk-fields) "Table must have at least on primary key column")
-  ;; TODO pass in the db-id from above rather
-  (let [{:keys [db_id]} (api/check-404 (t2/select-one :model/Table table-id))
-        row-pks (seq (map (partial get-row-pks pk-fields) rows))]
-    (assert (every? valid-pks row-pks) "All rows must have valid primary keys")
-    (when row-pks
-      (qp.store/with-metadata-provider db_id
-        (let [mp    (qp.store/metadata-provider)
-              query (lib/query mp (lib.metadata/table mp table-id))
-              query (lib/filter
-                     query
-                     ;; We can optimize the most common case considerably.
-                     (if (= 1 (count pk-fields))
-                       (apply lib/in
-                              (lib.metadata/field mp (:id (first pk-fields)))
-                              (map (comp first vals) row-pks))
-                       ;; Optimizing this could be done in many cases, but it would be complex.
-                       (apply* lib/or
-                               (for [row-pk row-pks]
-                                 (apply* lib/and
-                                         (for [field pk-fields]
-                                           (lib/= (lib.metadata/field mp (:id field))
-                                                  (get row-pk (keyword (:name field))))))))))]
-          (->>  query
-                qp/userland-query-with-default-constraints
-                qp/process-query
-                :data
-                qp-result->row-map
-                (m/index-by #(get-row-pks pk-fields %))))))))
 
 (defn- invalidate-field-values! [table-id rows]
   (let [field-name-xf (comp (mapcat keys)
@@ -120,11 +49,11 @@
   (check-permissions)
   (let [rows'      (data-editing/apply-coercions table-id rows)
         res        (data-editing/insert! api/*current-user-id* table-id rows')
-        pk-fields  (table-id->pks table-id)
+        pk-fields  (data-editing/select-table-pk-fields table-id)
         ;; actions code does not return coerced values
         ;; right now the FE works off qp outputs, which coerce output row data
         ;; still feels messy, revisit this
-        pks->db-row (query-db-rows table-id pk-fields (map #(update-keys % keyword) (:created-rows res)))]
+        pks->db-row (data-editing/query-db-rows table-id pk-fields (map #(update-keys % keyword) (:created-rows res)))]
     (invalidate-field-values! table-id rows')
     {:created-rows (vals pks->db-row)}))
 
@@ -137,67 +66,46 @@
   (if (empty? rows)
     {:updated []}
     (let [rows'        (data-editing/apply-coercions table-id rows)
-          pk-fields    (table-id->pks table-id)
-          pks->db-row  (query-db-rows table-id pk-fields rows')
-          updated-rows (volatile! [])
+          pk-fields    (data-editing/select-table-pk-fields table-id)
+          pks->db-row  (data-editing/query-db-rows table-id pk-fields rows')
           user-id      api/*current-user-id*]
-      ;; TODO this publishing needs to move down the stack and be generic all :row/delete invocations
-      ;; https://linear.app/metabase/issue/WRK-228/publish-events-when-modified-by-action-execution
-      (doseq [row rows']
-        ;; TODO fix this to use bulk action properly
-        (let [;; well, this is a trick, but I haven't figured out how to do single row update
-              result     (:rows-updated (data-editing/perform-bulk-action! :bulk/update table-id [row]))
-              after-row  (-> (query-db-rows table-id pk-fields [row]) vals first)
-              row-before (get pks->db-row (get-row-pks pk-fields row))]
-          (vswap! updated-rows conj after-row)
-          (when (pos-int? result)
-            (actions/publish-action-success!
-             (nano-id/nano-id)
-             user-id
-             :row/update
-             {:table_id table-id
-              :row row}
-             {:after      after-row
-              :before     row-before
-              :raw_update row}))))
-      ;; TODO this should also become a subscription to the above action's success, e.g. via the system event
+      ;; If this fails, we probably have another bug like the type-mismatch issue we had here:
+      ;; https://linear.app/metabase/issue/WRK-281/undo-deletes-a-record-instead-of-reverting-the-edits
+      (assert (every? (fn [row] (get pks->db-row (data-editing/get-row-pks pk-fields row))) rows')
+              "Able to look up the existing values of these rows, for system events")
+      (data-editing/perform-bulk-action! :bulk/update table-id rows')
+      ;; TODO this should also become a subscription to the "data written" system event
       (let [row-pk->old-new-values (->> (for [row rows']
-                                          (let [pks (get-row-pks pk-fields row)]
+                                          (let [pks (data-editing/get-row-pks pk-fields row)]
                                             [pks [(get pks->db-row pks)
                                                   row]]))
                                         (into {}))]
         (undo/track-change! user-id {table-id row-pk->old-new-values}))
 
       (invalidate-field-values! table-id rows')
-      {:updated @updated-rows})))
+      {:updated (vals (data-editing/query-db-rows table-id pk-fields rows'))})))
 
+;; This is a POST instead of DELETE as not all web proxies pass on the body of DELETE requests.
 (api.macros/defendpoint :post "/table/:table-id/delete"
   "Delete row(s) from the given table"
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (check-permissions)
-  ;; TODO fix for composite keys here too
-  (let [pk-fields    (table-id->pks table-id)
-        pks->db-rows (query-db-rows table-id pk-fields rows)
-        res         (data-editing/perform-bulk-action! :bulk/delete table-id rows)
-        user-id     api/*current-user-id*]
-    ;; TODO this publishing needs to move down the stack and be generic all :row/delete invocations
-    ;; https://linear.app/metabase/issue/WRK-228/publish-events-when-modified-by-action-execution
-    (doseq [row rows]
-      (actions/publish-action-success!
-       (nano-id/nano-id)
-       user-id
-       :row/delete
-       {:table_id table-id
-        :row      row}
-       {:deleted_row (get pks->db-rows (get-row-pks pk-fields row))}))
-    ;; TODO this should also become a subscription to the above action's success, e.g. via the system event
-    (let [row-pk->old-new-values (->> (for [row rows]
-                                        (let [pks  (get-row-pks pk-fields row)]
-                                          [pks [(get pks->db-rows pks) nil]]))
-                                      (into {}))]
-      (undo/track-change! user-id {table-id row-pk->old-new-values}))
+  (let [pk-fields              (data-editing/select-table-pk-fields table-id)
+        pks->db-rows           (data-editing/query-db-rows table-id pk-fields rows)
+        ;; If this fails, we probably have another bug like the type-mismatch issue we had here:
+        ;; https://linear.app/metabase/issue/WRK-281/undo-deletes-a-record-instead-of-reverting-the-edits
+        _                      (assert (every? (fn [row] (get pks->db-rows (data-editing/get-row-pks pk-fields row))) rows)
+                                       "Able to look up the existing values of these rows, for system events")
+        res                    (data-editing/perform-bulk-action! :bulk/delete table-id rows)
+        user-id                api/*current-user-id*
+        row-pk->old-new-values (->> (for [row rows]
+                                      (let [pks (data-editing/get-row-pks pk-fields row)]
+                                        [pks [(get pks->db-rows pks) nil]]))
+                                    (into {}))]
+    ;; TODO this should also become a subscription to the "data written" system event
+    (undo/track-change! user-id {table-id row-pk->old-new-values})
     res))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust

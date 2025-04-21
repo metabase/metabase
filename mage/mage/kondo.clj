@@ -1,6 +1,5 @@
 (ns mage.kondo
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.shell :as shell]
    [mage.util :as u]))
@@ -28,9 +27,9 @@
 
 (defn- saved-deps-edn-hash
   []
-  (str/trim (try
-              (slurp saved-deps-edn-hash-filename)
-              (catch Exception _ nil))))
+  (try
+    (str/trim (slurp saved-deps-edn-hash-filename))
+    (catch Exception _ nil)))
 
 (defn- copy-configs-if-needed!
   "Copy Kondo configs for dependencies only if `deps.edn` has changed since last time we did it."

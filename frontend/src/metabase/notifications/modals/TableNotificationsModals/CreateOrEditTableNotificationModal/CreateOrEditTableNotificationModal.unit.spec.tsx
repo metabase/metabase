@@ -13,10 +13,9 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { CreateOrEditTableNotificationModal } from "metabase/notifications/modals";
 import type { UserWithApplicationPermissions } from "metabase/plugins";
 import type {
-  ActionType,
   ChannelApiResponse,
   NotificationChannel,
-  SystemEvent,
+  NotificationTriggerEvent,
   TableNotification,
 } from "metabase-types/api";
 import {
@@ -173,14 +172,14 @@ describe("CreateOrEditTableNotificationModal", () => {
       screen.getByRole("option", { name: /When any cell changes it's value/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("option", { name: /When a record is deleted/i }),
+      screen.getByRole("option", { name: /When a records are deleted/i }),
     ).toBeInTheDocument();
   });
 
   it("should show notification data when in edit mode", async () => {
     // Create a custom notification with 'row updated' event
     const mockNotification = createMockTableNotification({
-      action: "bulk/update",
+      event_name: "event/rows.updated",
     });
 
     setup({
@@ -226,11 +225,7 @@ describe("CreateOrEditTableNotificationModal", () => {
     const parsedBody = JSON.parse(requestBody as string);
 
     await waitFor(() => {
-      expect(parsedBody.payload.event_name).toBe("event/action.success");
-    });
-
-    await waitFor(() => {
-      expect(parsedBody.payload.action).toBe("bulk/create");
+      expect(parsedBody.payload.event_name).toBe("event/rows.created");
     });
 
     // Verify it has the default table_id
@@ -276,11 +271,7 @@ describe("CreateOrEditTableNotificationModal", () => {
     const parsedBody = JSON.parse(requestBody as string);
 
     await waitFor(() => {
-      expect(parsedBody.payload.event_name).toBe("event/action.success");
-    });
-
-    await waitFor(() => {
-      expect(parsedBody.payload.action).toBe("bulk/update");
+      expect(parsedBody.payload.event_name).toBe("event/rows.updated");
     });
 
     // Additional assertions...
@@ -298,7 +289,7 @@ describe("CreateOrEditTableNotificationModal", () => {
     // Create a notification with 'row created' event
     const mockNotification = createMockTableNotification({
       id: notificationId,
-      event_name: "event/action.success",
+      event_name: "event/rows.created",
     });
 
     setup({
@@ -335,7 +326,7 @@ describe("CreateOrEditTableNotificationModal", () => {
       return parsedBody; // Return the parsed body for later assertions
     }).then((parsedBody) => {
       // Verify the event has been changed to 'row updated'
-      expect(parsedBody.payload.action).toBe("bulk/update");
+      expect(parsedBody.payload.event).toBe("event/row.updated");
     });
 
     expect(onNotificationUpdatedMock).toHaveBeenCalledTimes(1);
@@ -345,14 +336,12 @@ describe("CreateOrEditTableNotificationModal", () => {
 // Helper function to create a mock table notification
 function createMockTableNotification({
   id = 123,
-  event_name = "event/action.success",
-  action = "bulk/create",
+  event_name = "event/rows.created",
   table_id = 42,
   user_id = 1,
 }: {
   id?: number;
-  event_name?: SystemEvent;
-  action?: ActionType;
+  event_name?: NotificationTriggerEvent;
   table_id?: number;
   user_id?: number;
 }): TableNotification {
@@ -378,7 +367,6 @@ function createMockTableNotification({
     payload: {
       event_name,
       table_id,
-      action,
     },
     payload_id: null,
     condition: ["=", ["field", "id"], 1],

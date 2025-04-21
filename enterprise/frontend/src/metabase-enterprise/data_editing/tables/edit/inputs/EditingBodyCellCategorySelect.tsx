@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useSearchFieldValuesQuery } from "metabase/api";
@@ -34,18 +34,25 @@ export const EditingBodyCellCategorySelect = ({
   datasetColumn,
   withCreateNew = true,
   classNames,
+  field,
   getDropdownLabelText = DefaultItemLabelTextGetter,
   getSelectedLabelText = DefaultSelectedLabelTextGetter,
   onSubmit,
   onChangeValue,
   onCancel,
 }: EditingBodyCellCategorySelectProps) => {
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState(initialValue?.toString() ?? "");
   const [search, setSearch] = useState("");
+
+  const focusSearchInput = useCallback(() => {
+    setTimeout(() => searchInputRef.current?.focus(), 0);
+  }, []);
 
   const combobox = useCombobox({
     defaultOpened: autoFocus,
     onDropdownClose: onCancel,
+    onDropdownOpen: focusSearchInput,
   });
 
   const { options, isLoading, isFetching } = useCategorySelectSearchOptions({
@@ -57,8 +64,8 @@ export const EditingBodyCellCategorySelect = ({
   });
 
   const handleOptionSubmit = useCallback(
-    (value: string) => {
-      setValue(value);
+    (value: string | null) => {
+      setValue(value ?? "");
       onSubmit(value);
       onChangeValue?.(value);
       combobox.toggleDropdown();
@@ -111,6 +118,9 @@ export const EditingBodyCellCategorySelect = ({
     getSelectedLabelText,
   ]);
 
+  const isNullable = field?.database_is_nullable;
+  const shouldDisplayClearButton = isNullable && !!value;
+
   return (
     <Combobox
       store={combobox}
@@ -128,6 +138,17 @@ export const EditingBodyCellCategorySelect = ({
             wrapper: classNames?.wrapper,
             input: classNames?.selectTextInputElement,
           }}
+          rightSectionPointerEvents="all"
+          rightSection={
+            shouldDisplayClearButton && (
+              <Icon
+                name="close"
+                color="var(--mb-color-text-light)"
+                onClick={() => handleOptionSubmit(null)}
+                onMouseDown={(event) => event.stopPropagation()}
+              />
+            )
+          }
         >
           {inputLabel}
         </Input>
@@ -141,7 +162,10 @@ export const EditingBodyCellCategorySelect = ({
             placeholder={t`Search the list`}
             leftSection={<Icon name="search" />}
             rightSection={isFetching ? <Loader size="xs" /> : undefined}
+            // Auto focus works when dropdown is initially rendered as opened (e.g. inline editing)
+            // whereas `onDropdownOpen` is called only when dropdown is opened by clicking the button (e.g. modal editing)
             autoFocus
+            ref={searchInputRef}
           />
         </Box>
 

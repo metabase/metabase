@@ -20,16 +20,22 @@ export const ColumnSortingActionMenu = ({
 
   const [isOpen, { close, toggle }] = useDisclosure(false);
 
-  if (!sortDirection) {
-    return (
-      <Tooltip label={t`Sort by this column`}>
-        <ChartSettingActionIcon
-          icon="sort"
-          onClick={() => onSort(columnId, "asc")}
-        />
-      </Tooltip>
-    );
-  }
+  const handleClick = () => {
+    if (!sortDirection) {
+      onSort(columnId, "asc");
+    }
+
+    // we need a tick for sorting state to be updated before opening the menu to avoid instant label flickering
+    setTimeout(() => {
+      toggle();
+    });
+  };
+
+  const icon = !sortDirection
+    ? "sort"
+    : sortDirection === "asc"
+      ? "arrow_up"
+      : "arrow_down";
 
   return (
     <Menu
@@ -39,11 +45,10 @@ export const ColumnSortingActionMenu = ({
       closeOnClickOutside
     >
       <Menu.Target>
-        <Tooltip label={t`Change sorting`}>
-          <ChartSettingActionIcon
-            icon={sortDirection === "asc" ? "arrow_up" : "arrow_down"}
-            onClick={toggle}
-          />
+        <Tooltip
+          label={!sortDirection ? t`Sort by this column` : t`Change sorting`}
+        >
+          <ChartSettingActionIcon icon={icon} onClick={handleClick} />
         </Tooltip>
       </Menu.Target>
       <Menu.Dropdown>

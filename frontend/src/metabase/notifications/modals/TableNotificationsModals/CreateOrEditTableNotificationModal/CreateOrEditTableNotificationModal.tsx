@@ -27,10 +27,9 @@ import { addUndo } from "metabase/redux/undo";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
 import { Button, Flex, Modal, Stack } from "metabase/ui";
 import type {
-  ActionType,
   CreateTableNotificationRequest,
   NotificationHandler,
-  SystemEvent,
+  NotificationTriggerEvent,
   TableId,
   TableNotification,
   UpdateTableNotificationRequest,
@@ -38,11 +37,9 @@ import type {
 
 type TableNotificationTriggerOption = {
   value: {
-    eventName: SystemEvent;
-    action: ActionType;
+    eventName: NotificationTriggerEvent;
   };
   label: string;
-  action: ActionType;
 };
 
 // Format JSON for tooltip display
@@ -51,32 +48,26 @@ const formatJsonForTooltip = (json: any) => {
 };
 
 const NOTIFICATION_TRIGGER_OPTIONS_MAP: Record<
-  ActionType,
+  NotificationTriggerEvent,
   TableNotificationTriggerOption
 > = {
-  "bulk/create": {
+  "event/rows.created": {
     value: {
-      eventName: "event/action.success",
-      action: "bulk/create",
+      eventName: "event/rows.created",
     },
     label: t`When new records are created`,
-    action: "bulk/create",
   },
-  "bulk/update": {
+  "event/rows.updated": {
     value: {
-      eventName: "event/action.success",
-      action: "bulk/update",
+      eventName: "event/rows.updated",
     },
     label: t`When any cell changes it's value`,
-    action: "bulk/update",
   },
-  "bulk/delete": {
+  "event/rows.deleted": {
     value: {
-      eventName: "event/action.success",
-      action: "bulk/delete",
+      eventName: "event/rows.deleted",
     },
     label: t`When records are deleted`,
-    action: "bulk/delete",
   },
 };
 
@@ -130,26 +121,30 @@ export const CreateOrEditTableNotificationModal = ({
 
   const triggerOptions = useMemo(
     () =>
-      (["bulk/create", "bulk/update", "bulk/delete"] as ActionType[]).map(
-        (action) => ({
-          value: action,
-          label: NOTIFICATION_TRIGGER_OPTIONS_MAP[action].label,
-          option: NOTIFICATION_TRIGGER_OPTIONS_MAP[action],
-        }),
-      ),
+      (
+        [
+          "event/rows.created",
+          "event/rows.updated",
+          "event/rows.deleted",
+        ] as NotificationTriggerEvent[]
+      ).map((event) => ({
+        value: event,
+        label: NOTIFICATION_TRIGGER_OPTIONS_MAP[event].label,
+        option: NOTIFICATION_TRIGGER_OPTIONS_MAP[event],
+      })),
     [],
   );
 
   useEffect(() => {
     if (tableId && channelSpec && user && hookChannels && !requestBody) {
-      const defaultOption = NOTIFICATION_TRIGGER_OPTIONS_MAP["bulk/create"];
+      const defaultOption =
+        NOTIFICATION_TRIGGER_OPTIONS_MAP["event/rows.created"];
       setRequestBody(
         isEditMode
           ? { ...notification }
           : getDefaultTableNotificationRequest({
               tableId,
               eventName: defaultOption.value.eventName,
-              action: defaultOption.value.action,
               currentUserId: user.id,
               channelSpec,
               hookChannels,
@@ -169,22 +164,17 @@ export const CreateOrEditTableNotificationModal = ({
     notification,
   ]);
 
-  // Get example payload when action changes
+  // Get example payload when event changes
   useEffect(() => {
     const fetchExamplePayload = async () => {
-      if (
-        !requestBody?.payload?.event_name ||
-        !requestBody?.payload?.action ||
-        !user
-      ) {
+      if (!requestBody?.payload?.event_name || !user) {
         return;
       }
 
       const result = await getNotificationPayloadExample({
         payload_type: "notification/system-event",
         payload: {
-          event_name: requestBody.payload.event_name as "event/action.success",
-          action: requestBody.payload.action as ActionType,
+          event_name: requestBody.payload.event_name,
         },
         creator_id: user.id,
       });
@@ -195,12 +185,7 @@ export const CreateOrEditTableNotificationModal = ({
     };
 
     fetchExamplePayload();
-  }, [
-    getNotificationPayloadExample,
-    requestBody?.payload?.action,
-    requestBody?.payload?.event_name,
-    user,
-  ]);
+  }, [getNotificationPayloadExample, requestBody?.payload?.event_name, user]);
 
   const onCreateOrEditAlert = async () => {
     if (requestBody) {
@@ -287,18 +272,19 @@ export const CreateOrEditTableNotificationModal = ({
             <AutoWidthSelect
               data-testid="notification-event-select"
               data={triggerOptions}
-              value={requestBody.payload.action}
+              value={requestBody.payload.event_name}
               onChange={(value) => {
                 if (value) {
                   const selectedOption =
-                    NOTIFICATION_TRIGGER_OPTIONS_MAP[value as ActionType];
+                    NOTIFICATION_TRIGGER_OPTIONS_MAP[
+                      value as NotificationTriggerEvent
+                    ];
                   if (selectedOption) {
                     setRequestBody({
                       ...requestBody,
                       payload: {
                         ...requestBody.payload,
                         event_name: selectedOption.value.eventName,
-                        action: selectedOption.value.action,
                       },
                     });
                   }
