@@ -232,10 +232,25 @@
     (= "middle" text-align) "center"
     :else                   text-align))
 
+(defn- column-has-width
+  "Check if a column has a valid width in the column-widths array.
+   Returns true if:
+   - column-widths is present
+   - column-index is not nil
+   - column-index is within bounds of column-widths
+   - The width at column-index is not nil"
+  [column-widths column-index]
+  (and column-widths
+       (some? column-index)
+       (< column-index (count column-widths))
+       (some? (nth column-widths column-index))))
+
 (defn column->viz-setting-styles
   "Takes a vector of column definitions and visualization settings
   Returns a map of column identifier keys to style maps based on the visualization settings"
   [columns viz-settings]
+  (def columns columns)
+  (def viz-settings viz-settings)
   (let [column-settings (get viz-settings ::mb.viz/column-settings)
         column-widths   (get viz-settings :table.column_widths)]
     (reduce
@@ -248,10 +263,12 @@
            ;; text wrapping
            (::mb.viz/text-wrapping col-setting)
            (assoc column-name (merge {:white-space "normal"}
-                                     (if column-widths
+                                     (if (column-has-width column-widths column-index)
                                        {:min-width (format "%spx" (get-min-width column-widths column-index))}
-                                       ;; Text wrapping enabled but no column widths supplied, default to 780px
-                                       {:max-width "780px"})))
+                                       ;; Text wrapping enabled but conditions not met, fall back to 780px
+                                       ;; Email clients respond to `min-width`, but slack responds to `width`
+                                       {:min-width "780px"
+                                        :width "780px"})))
 
            ;; text alignment
            (::mb.viz/text-align col-setting)
@@ -263,7 +280,7 @@
 
            ;; minibar
            (::mb.viz/show-mini-bar col-setting)
-           (assoc column-name (if column-widths
+           (assoc column-name (if (column-has-width column-widths column-index)
                                 {:width (nth column-widths column-index)
                                  :min-width (get-min-width column-widths column-index)}
                                 {})))))
@@ -284,6 +301,7 @@
   - minibar-cols: Columns that should display mini-bar visualizations"
   ([color-selector {:keys [col-names cols-for-color-lookup]} [header & rows] columns viz-settings minibar-cols]
    (let [col->styles        (column->viz-setting-styles columns viz-settings)
+         _                  (def col->styles col->styles)
          row-index?         (:table.row_index viz-settings)
          pivot-grouping-idx (u/index-of #{"pivot-grouping"} col-names)
          col-names          (cond->> col-names
@@ -298,6 +316,8 @@
          color-getter       (partial js.color/get-background-color color-selector)
          thead              (render-table-head (vec col-names) header columns col->styles row-index?)
          tbody              (render-table-body color-getter cols-for-color-lookup rows columns viz-settings minibar-cols col->styles row-index?)]
+     (def thead thead)
+     (def tbody tbody)
      [:table {:style       (style/style {:max-width     "100%"
                                          :white-space   "nowrap"
                                          :border        (str "1px solid " style/color-border)
