@@ -64,7 +64,7 @@
                 (is (string? split-string))
                 (is (= (-> main-string
                            (str/split (re-pattern delimiter))
-                           (get (dec index) ""))
+                           (get (dec (long index)) ""))
                        split-string)
                     (str "String: " (pr-str main-string) " Delimiter: " (pr-str delimiter) " Index: " index))))))))))
 
