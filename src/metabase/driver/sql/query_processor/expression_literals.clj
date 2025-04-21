@@ -1,7 +1,7 @@
 (ns metabase.driver.sql.query-processor.expression-literals
-  "In Oracle and some other databases, boolean literals cannot appear in the top-level of WHERE clauses or logical
-  operators like AND, OR, and NOT. Those clauses instead require a comparison operator, so boolean constants like
-  0 and 1 must be replaced with equivalent expressions like 1 = 1 or 0 = 1.
+  "In Oracle and some other databases, boolean literals cannot appear in the top-level of WHERE clauses or expressions
+  like AND, OR, NOT, and CASE. These instead require a comparison operator, so boolean constants like 0 and 1 must be
+  replaced with equivalent expressions like 1 = 1 or 0 = 1.
 
   Drivers can derive from this abstract driver to use an alternate implementation(s) of SQL QP method(s) that treat
   boolean literals as comparison expressions in filter clauses and logical operators."
@@ -73,6 +73,8 @@
   [driver clause]
   (compile-logical-op driver clause))
 
+;; The following expressions compile down to :case and should therefore also
+;; work: :if, :sum-where, :count-where, :distinct-where.
 (defmethod sql.qp/->honeysql [::boolean->comparison :case]
   [driver clause]
   (let [parent-method (get-method sql.qp/->honeysql [:sql :case])
