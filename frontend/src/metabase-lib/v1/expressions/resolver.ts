@@ -1,4 +1,5 @@
 import { c, t } from "ttag";
+import _ from "underscore";
 
 import * as Lib from "metabase-lib";
 
@@ -23,16 +24,16 @@ type Options = {
 export function resolver(options: Options): Resolver {
   const { query, stageIndex, expressionMode } = options;
 
-  const metrics = Lib.availableMetrics(query, stageIndex);
-  const segments = Lib.availableSegments(query, stageIndex);
-  const columns = Lib.expressionableColumns(query, stageIndex);
+  const metrics = _.memoize(() => Lib.availableMetrics(query, stageIndex));
+  const segments = _.memoize(() => Lib.availableSegments(query, stageIndex));
+  const columns = _.memoize(() => Lib.expressionableColumns(query, stageIndex));
 
   return function (type, name, node) {
     const hasMatchingName = nameMatcher(name, options);
 
     if (type === "aggregation") {
       // Return metrics
-      const availableDimensions = [...metrics, ...columns];
+      const availableDimensions = [...metrics(), ...columns()];
       const metric = availableDimensions.find(hasMatchingName);
 
       if (!metric) {
@@ -53,8 +54,8 @@ export function resolver(options: Options): Resolver {
     if (type === "boolean") {
       // Return segments and boolean fields
       const availableDimensions: Dimension[] = [
-        ...segments,
-        ...columns.filter(Lib.isBoolean),
+        ...segments(),
+        ...columns().filter(Lib.isBoolean),
       ];
       const segment = availableDimensions.find(hasMatchingName);
       if (!segment) {
@@ -65,8 +66,8 @@ export function resolver(options: Options): Resolver {
 
     // Return columns and, in the case of aggregation expressions, metrics
     const availableDimensions = [
-      ...columns,
-      ...(expressionMode === "aggregation" ? metrics : []),
+      ...columns(),
+      ...(expressionMode === "aggregation" ? metrics() : []),
     ];
     const dimension = availableDimensions.find(hasMatchingName);
     if (!dimension) {
