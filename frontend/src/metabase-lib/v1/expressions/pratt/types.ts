@@ -83,15 +83,6 @@ export interface NodeType {
   precedence: number;
 }
 
-class AssertionError extends Error {
-  data?: any;
-
-  constructor(message: string, data?: any) {
-    super(`Assertion failed: ${message}`);
-    this.data = data;
-  }
-}
-
 /**
  * Assert compiler invariants and assumptions.
  * Throws a non-friendly error if the condition is false.
@@ -102,7 +93,7 @@ export function assert(
   data?: any,
 ): asserts condition {
   if (!condition) {
-    throw new AssertionError(msg, data || {});
+    throw new Error(msg, data || {});
   }
 }
 
