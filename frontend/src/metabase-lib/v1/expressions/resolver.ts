@@ -30,35 +30,33 @@ export function resolver(options: Options): Resolver {
   const cache = infoCache(options);
 
   return function (type, name, node) {
-    const hasMatchingName = nameMatcher(name, cache);
+    const findByName = nameMatcher(name, cache);
 
     if (type === "aggregation") {
       // Return metrics
-      const availableDimensions = [...metrics(), ...columns()];
-      const dimension = availableDimensions.find(hasMatchingName);
-
+      const dimension = findByName([...metrics(), ...columns()]);
       if (!dimension) {
         throw new ResolverError(t`Unknown Metric: ${name}`, node);
       } else if (!Lib.isMetricMetadata(dimension)) {
         // If no metric was found, but there is a matching column,
         // show a more sophisticated error message
-        const error = c(
-          "{0} is an identifier of the field provided by user in a custom expression",
-        )
-          .t`No aggregation found in: ${name}. Use functions like Sum() or custom Metrics`;
-        throw new ResolverError(error, node);
+        throw new ResolverError(
+          c(
+            "{0} is an identifier of the field provided by user in a custom expression",
+          )
+            .t`No aggregation found in: ${name}. Use functions like Sum() or custom Metrics`,
+          node,
+        );
       }
-
       return dimension;
     }
 
     if (type === "boolean") {
       // Return segments and boolean fields
-      const availableDimensions: Dimension[] = [
+      const dimension = findByName([
         ...segments(),
         ...columns().filter(Lib.isBoolean),
-      ];
-      const dimension = availableDimensions.find(hasMatchingName);
+      ]);
       if (!dimension) {
         throw new ResolverError(t`Unknown Segment: ${name}`, node);
       }
@@ -66,15 +64,13 @@ export function resolver(options: Options): Resolver {
     }
 
     // Return columns and, in the case of aggregation expressions, metrics
-    const availableDimensions = [
+    const dimension = findByName([
       ...columns(),
       ...(expressionMode === "aggregation" ? metrics() : []),
-    ];
-    const dimension = availableDimensions.find(hasMatchingName);
+    ]);
     if (!dimension) {
       throw new ResolverError(t`Unknown Field: ${name}`, node);
     }
-
     return dimension;
   };
 }
@@ -86,22 +82,21 @@ function nameMatcher(
   info: (
     dimension: Dimension,
   ) => Lib.ColumnDisplayInfo | Lib.MetricDisplayInfo | Lib.SegmentDisplayInfo,
-): (dimension: Dimension) => boolean {
-  return function (dimension: Dimension) {
-    if (Lib.isSegmentMetadata(dimension) || Lib.isSegmentMetadata(dimension)) {
+): (dimensions: Dimension[]) => Dimension | undefined {
+  return (dimensions) =>
+    dimensions.find((dimension) => {
+      if (Lib.isColumnMetadata(dimension)) {
+        return EDITOR_FK_SYMBOLS.symbols.some(
+          (separator) =>
+            name ===
+            getDisplayNameWithSeparator(
+              info(dimension).longDisplayName,
+              separator,
+            ),
+        );
+      }
       return info(dimension).displayName.toLowerCase() === name.toLowerCase();
-    } else if (Lib.isColumnMetadata(dimension)) {
-      return EDITOR_FK_SYMBOLS.symbols.some(
-        (separator) =>
-          name ===
-          getDisplayNameWithSeparator(
-            info(dimension).longDisplayName,
-            separator,
-          ),
-      );
-    }
-    return false;
-  };
+    });
 }
 
 function infoCache(options: Options) {
@@ -114,8 +109,8 @@ function infoCache(options: Options) {
     if (cached) {
       return cached;
     }
-    // @ts-expect-error: for some reason, TS will not allow this to be typed correctly
-    // even though all the types in the union match the types for displayInfo
+    // @ts-expect-error: for some reason TS will not allow this to be typed correctly,
+    // even though all the types in the Dimension union match the types for displayInfo
     const res = Lib.displayInfo(options.query, options.stageIndex, dimension);
     cache.set(dimension, res);
     return res;
