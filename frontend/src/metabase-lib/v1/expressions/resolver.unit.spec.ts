@@ -26,6 +26,7 @@ describe("resolver", () => {
 
       it("should resolve columns of type: boolean", () => {
         expect(boolean("bool")).toEqual(expressions.BOOL);
+        expect(boolean("Bool")).toEqual(expressions.BOOL);
       });
 
       it("should not resolve unknown segments", () => {
@@ -55,13 +56,18 @@ describe("resolver", () => {
 
       it("should resolve dimensions of type: string", () => {
         expect(string("Product → Category")).toEqual(fields.products.CATEGORY);
+        expect(string("product → Category")).toEqual(fields.products.CATEGORY);
         expect(string("User → Address")).toEqual(fields.people.ADDRESS);
+        expect(string("User → address")).toEqual(fields.people.ADDRESS);
         expect(string("User.Address")).toEqual(fields.people.ADDRESS);
+        expect(string("User.address")).toEqual(fields.people.ADDRESS);
         expect(string("stringly")).toEqual(expressions.STRINGLY);
+        expect(string("Stringly")).toEqual(expressions.STRINGLY);
       });
 
       it("should resolve dimensions of types that can be stringly typed", () => {
         expect(string("Total")).toEqual(fields.orders.TOTAL);
+        expect(string("total")).toEqual(fields.orders.TOTAL);
         expect(string("Product → Price")).toEqual(fields.products.PRICE);
       });
 
@@ -85,10 +91,13 @@ describe("resolver", () => {
 
       it("should resolve dimensions of type: number", () => {
         expect(number("ID")).toEqual(fields.orders.ID);
+        expect(number("id")).toEqual(fields.orders.ID);
         expect(number("Total")).toEqual(fields.orders.TOTAL);
+        expect(number("total")).toEqual(fields.orders.TOTAL);
         expect(number("Product → Price")).toEqual(fields.products.PRICE);
         expect(number("Product.Price")).toEqual(fields.products.PRICE);
         expect(number("foo")).toEqual(expressions.FOO);
+        expect(number("Foo")).toEqual(expressions.FOO);
       });
 
       it("should not resolve unknown fields", () => {
@@ -213,6 +222,11 @@ describe("resolver", () => {
         expect(aggregation("Foo Metric")).toEqual(metrics.FOO);
         expect(aggregation("foo metric")).toEqual(metrics.FOO);
       });
+    });
+
+    it("should allow resolving field with exact case matches first", () => {
+      expect(resolve("number", "BAR")).toEqual(expressions.BAR_UPPER);
+      expect(resolve("number", "bar")).toEqual(expressions.BAR_LOWER);
     });
   });
 
@@ -425,6 +439,11 @@ describe("resolver", () => {
       it("should resolve metrics", () => {
         expect(aggregation("Foo Metric")).toEqual(metrics.FOO);
       });
+    });
+
+    it("should allow resolving field with exact case matches first", () => {
+      expect(resolve("number", "BAR")).toEqual(expressions.BAR_UPPER);
+      expect(resolve("number", "bar")).toEqual(expressions.BAR_LOWER);
     });
   });
 });
