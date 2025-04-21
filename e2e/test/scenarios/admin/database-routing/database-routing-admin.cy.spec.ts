@@ -135,7 +135,6 @@ describe("admin > database > database routing", () => {
         })),
       });
       cy.reload();
-      expandDbRouting();
       dbRoutingSection().within(() => {
         cy.findByText("Destination DB 5").should("exist");
         cy.findByText("Destination DB 6").should("not.exist");
@@ -225,7 +224,6 @@ describe("admin > database > database routing", () => {
       cy.log("validate setup was successful");
       cy.reload();
       cy.findByLabelText("Enable database routing").should("be.checked");
-      expandDbRouting();
       dbRoutingSection()
         .findByText(BASE_POSTGRES_MIRROR_DB_INFO.name)
         .should("exist");
@@ -440,7 +438,6 @@ describe("admin > database > database routing", () => {
         cy.signIn("normal");
         cy.visit("/admin/databases/2");
         dbRoutingSection().should("exist");
-        expandDbRouting();
         dbRoutingSection().within(() => {
           cy.log("should not be able to manage db routing settings");
           cy.findByLabelText("Enable database routing").should("be.disabled");
