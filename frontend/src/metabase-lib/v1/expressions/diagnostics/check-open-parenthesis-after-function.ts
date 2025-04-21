@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
 import { getClauseDefinition, getMBQLName } from "../config";
-import { DiagnosticError } from "../errors";
 import { GROUP, IDENTIFIER, type Token } from "../pratt";
+
+import { error } from "./utils";
 
 export function checkOpenParenthesisAfterFunction({
   tokens,
@@ -20,12 +21,9 @@ export function checkOpenParenthesisAfterFunction({
       if (clause && clause.args.length > 0) {
         const next = tokens[i + 1];
         if (next.type !== GROUP) {
-          throw new DiagnosticError(
+          error(
+            token,
             t`Expecting an opening parenthesis after function ${functionName}`,
-            {
-              pos: token.start,
-              len: token.end - token.start,
-            },
           );
         }
       }

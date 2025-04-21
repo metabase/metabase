@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
-import { DiagnosticError } from "../errors";
 import { STRING, type Token } from "../pratt";
 import { quoteString } from "../string";
+
+import { error } from "./utils";
 
 export function checkStringQuotes({ tokens }: { tokens: Token[] }) {
   for (const token of tokens) {
@@ -12,19 +13,16 @@ export function checkStringQuotes({ tokens }: { tokens: Token[] }) {
 
     const { text, value } = token;
     if (typeof value !== "string") {
-      throw new DiagnosticError(t`Missing string value`, token);
+      error(token, t`Missing string value`);
     }
 
     const openQuote = text[0];
     if (openQuote === "'" || openQuote === '"') {
       if (quoteString(value, openQuote) !== text) {
-        throw new DiagnosticError(t`Missing closing string quote`, token);
+        error(token, t`Missing closing string quote`);
       }
     } else {
-      throw new DiagnosticError(t`Unsupported string quote`, {
-        pos: token.pos,
-        len: 1,
-      });
+      error({ pos: token.pos, len: 1 }, t`Unsupported string quote`);
     }
   }
 }

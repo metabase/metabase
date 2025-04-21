@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
-import { DiagnosticError } from "../errors";
 import type { Token } from "../pratt";
 import { GROUP, GROUP_CLOSE } from "../pratt";
+
+import { error } from "./utils";
 
 export function checkMatchingParentheses({ tokens }: { tokens: Token[] }) {
   let lastOpen = undefined;
@@ -16,13 +17,13 @@ export function checkMatchingParentheses({ tokens }: { tokens: Token[] }) {
 
     if (token.type === GROUP_CLOSE) {
       if (count === 0) {
-        throw new DiagnosticError(t`Expecting an opening parenthesis`, token);
+        error(token, t`Expecting an opening parenthesis`);
       }
       count -= 1;
     }
   }
 
   if (count !== 0) {
-    throw new DiagnosticError(t`Expecting a closing parenthesis`, lastOpen);
+    error(lastOpen, t`Expecting a closing parenthesis`);
   }
 }

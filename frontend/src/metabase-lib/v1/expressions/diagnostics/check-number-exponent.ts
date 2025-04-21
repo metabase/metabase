@@ -1,7 +1,8 @@
 import { t } from "ttag";
 
-import { DiagnosticError } from "../errors";
 import { NUMBER, type Token } from "../pratt";
+
+import { error } from "./utils";
 
 export function checkNumberExponent({
   source,
@@ -19,10 +20,10 @@ export function checkNumberExponent({
     const [, exponent, ...rest] = value.split("e");
 
     if (typeof exponent === "string" && !exponent.match(/[0-9]$/)) {
-      throw new DiagnosticError(t`Missing exponent`, token);
+      error(token, t`Missing exponent`);
     } else if (rest.length > 0) {
       // this should never occur with the current tokenizer
-      throw new DiagnosticError(t`Malformed exponent`, token);
+      error(token, t`Malformed exponent`);
     }
   }
 }

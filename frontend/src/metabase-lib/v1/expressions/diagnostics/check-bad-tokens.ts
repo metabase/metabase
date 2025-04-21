@@ -1,7 +1,8 @@
 import { t } from "ttag";
 
-import { DiagnosticError } from "../errors";
 import { BAD_TOKEN, type Token } from "../pratt";
+
+import { error } from "./utils";
 
 export function checkBadTokens({ tokens }: { tokens: Token[] }) {
   for (const token of tokens) {
@@ -11,9 +12,9 @@ export function checkBadTokens({ tokens }: { tokens: Token[] }) {
 
     const { text } = token;
     if (text.length === 1) {
-      throw new DiagnosticError(t`Invalid character: ${text}`, token);
+      error(token, t`Invalid character: ${text}`);
     }
 
-    throw new DiagnosticError(t`Invalid expression: ${text}`, token);
+    error(token, t`Invalid expression: ${text}`);
   }
 }

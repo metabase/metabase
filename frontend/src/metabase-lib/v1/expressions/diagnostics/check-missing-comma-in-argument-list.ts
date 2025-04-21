@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { DiagnosticError } from "../errors";
 import type { Token } from "../pratt";
 import {
   CALL,
@@ -10,6 +9,8 @@ import {
   IDENTIFIER,
   OPERATORS,
 } from "../pratt";
+
+import { error } from "./utils";
 
 export function checkMissingCommasInArgumentList({
   tokens,
@@ -51,10 +52,7 @@ export function checkMissingCommasInArgumentList({
     if (token.type === IDENTIFIER || token.type === FIELD) {
       if (nextToken && !OPERATORS.has(nextToken.type)) {
         const text = source.slice(nextToken.start, nextToken.end);
-        throw new DiagnosticError(
-          t`Expecting operator but got ${text} instead`,
-          nextToken,
-        );
+        error(nextToken, t`Expecting operator but got ${text} instead`);
       }
     }
   }

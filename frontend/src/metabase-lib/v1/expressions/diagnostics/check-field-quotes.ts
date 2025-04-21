@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
-import { DiagnosticError } from "../errors";
 import { FIELD, type Token } from "../pratt";
 import { quoteString } from "../string";
+
+import { error } from "./utils";
 
 export function checkFieldQuotes({ tokens }: { tokens: Token[] }) {
   for (const token of tokens) {
@@ -13,21 +14,18 @@ export function checkFieldQuotes({ tokens }: { tokens: Token[] }) {
     const { text, value } = token;
 
     if (typeof value !== "string") {
-      throw new DiagnosticError(t`Missing field value`, token);
+      error(token, t`Missing field value`);
     }
 
     if (value === "") {
-      throw new DiagnosticError(t`Expected a field name`, token);
+      error(token, t`Expected a field name`);
     }
 
     if (quoteString(value, "[") !== text) {
       if (text.startsWith("[")) {
-        throw new DiagnosticError(t`Missing a closing bracket`, token);
+        error(token, t`Missing a closing bracket`);
       } else {
-        throw new DiagnosticError(
-          t`Missing an opening bracket for ${value}`,
-          token,
-        );
+        error(token, t`Missing an opening bracket for ${value}`);
       }
     }
   }
