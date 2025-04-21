@@ -1,9 +1,5 @@
 import { CompileError } from "../errors";
 
-type VariableKind = "dimension" | "segment" | "aggregation" | "expression";
-type Type = VariableKind | "string" | "number" | "boolean";
-type VariableId = number;
-
 export class Token {
   type: NodeType;
   text: string;
@@ -51,10 +47,8 @@ export interface Node {
   type: NodeType;
   children: Node[];
   complete: boolean;
-  resolvedType: Type | VariableId;
   parent: Node | null;
   token: Token | null;
-  isRoot?: boolean;
 }
 
 export interface NodeType {
@@ -87,13 +81,6 @@ export interface NodeType {
 
   // The precedence to use for operator parsing conflicts. Higher wins.
   precedence: number;
-
-  // The type this node resolves to, if it can be deduced early on. If null, the
-  // parser assigns an integer value for substitutions instead
-  resolvesAs: Type | null;
-
-  // The expectedType of the child nodes
-  expectedTypes: Type[] | null;
 }
 
 class AssertionError extends Error {

@@ -30,8 +30,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
   const { maxIterations = 1000000, throwOnError = false } = opts;
   const errors: CompileError[] = [];
   let counter = 0;
-  const root = createASTNode(null, null, ROOT, counter);
-  root.isRoot = true;
+  const root = createASTNode(null, null, ROOT);
 
   function error(message: string, node?: Node) {
     const err = new CompileError(message, node);
@@ -78,7 +77,6 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
           token,
           node.parent,
           getASType(token.type, node.parent.type),
-          counter,
         );
       } else {
         // If we don't need to reparent, we decrement the token index. This is
@@ -117,7 +115,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
       if (token.type === SUB) {
         // Subtraction is a special case because it might actually be negation
         // ie. -42
-        node = createASTNode(token, node, NEGATIVE, counter);
+        node = createASTNode(token, node, NEGATIVE);
       } else if (token.type === ADD) {
         // Addition is a special case because it might actually be just a unary plus
         // ie. +42
@@ -128,12 +126,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
     } else {
       // Create the AST node. It will be marked as complete if the node doesn't
       // expect any children (like a literal or identifier)
-      node = createASTNode(
-        token,
-        node,
-        getASType(token.type, node.type),
-        counter,
-      );
+      node = createASTNode(token, node, getASType(token.type, node.type));
     }
     counter += 1;
   }
@@ -153,7 +146,6 @@ function createASTNode(
   token: Token | null,
   parent: Node | null,
   type: NodeType,
-  counter: number,
 ): Node {
   return {
     type,
@@ -161,7 +153,6 @@ function createASTNode(
     complete: type.expectedChildCount === 0,
     parent,
     token,
-    resolvedType: type.resolvesAs ? type.resolvesAs : counter,
   };
 }
 
