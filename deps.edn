@@ -678,7 +678,7 @@
   ;;
   ;; ./bin/mage cljfmt-all -h for more info
   :cljfmt
-  {:deps       {io.github.weavejester/cljfmt {:git/sha "fc3340da3c8344b3fbb336d190ce696ef40e42d4"}}
+  {:deps       {io.github.weavejester/cljfmt {:git/sha "c87493e54bdc30c104d75b95ce2a2ce5e7403430"}}
    :ns-default cljfmt.tool
    :exec-fn    cljfmt.tool/fix}
 
