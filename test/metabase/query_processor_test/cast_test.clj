@@ -426,7 +426,7 @@
                       {:original "00123.34" :value 123.34 :msg "Initial zeros."}
                       {:original "-123.08" :value -123.08 :msg "Negative sign."}
                       {:original (pr-str Float/MAX_VALUE) :value Float/MAX_VALUE :msg "Big number."}
-                      {:original (pr-str Float/MIN_VALUE) :value Float/MIN_VALUE :msg "Big number."}]]
+                      {:original (pr-str Float/MIN_VALUE) :value Float/MIN_VALUE :msg "Small number."}]]
         (doseq [{:keys [original value msg]} examples]
           (testing (str "float cast: " msg)
             (let [field-md (lib.metadata/field mp (mt/id :people :id))
