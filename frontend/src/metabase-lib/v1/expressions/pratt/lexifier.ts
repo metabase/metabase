@@ -167,13 +167,13 @@ export function lexify(source: string) {
           const prev = lexs.at(-1);
           if (prev && prev.type === IDENTIFIER) {
             const name = source.slice(prev.pos, prev.pos + prev.length);
-            error(node, `Missing an opening bracket for ${name}`);
+            error(node, t`Missing an opening bracket for ${name}`);
           }
           return false;
         }
 
         if (text.length === 1) {
-          error(node, `Invalid character: ${text}`);
+          error(node, t`Invalid character: ${text}`);
           return false;
         }
       }
