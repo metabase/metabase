@@ -34,13 +34,16 @@ export function lexify(source: string) {
     token: {
       type: NodeType;
       value?: string;
+      pos?: number;
+      length?: number;
     },
   ) {
+    const { pos = node.from, length = node.to - node.from } = token;
     lexs.push(
       new Token({
-        pos: node.from,
-        length: node.to - node.from,
-        text: source.slice(node.from, node.to),
+        pos,
+        length,
+        text: source.slice(pos, pos + length),
         ...token,
       }),
     );
@@ -99,7 +102,14 @@ export function lexify(source: string) {
           // does not have a matching opening bracket.
           const prev = lexs.at(-1);
           if (prev && prev.type === IDENTIFIER) {
-            prev.type = FIELD;
+            // replace the token with the merged identifier bracked
+            lexs.pop();
+            token(node, {
+              type: FIELD,
+              value: prev.value,
+              pos: prev.from,
+              length: node.to - prev.from,
+            });
             return false;
           }
         }

@@ -529,10 +529,25 @@ describe("lexify", () => {
           {
             type: FIELD,
             pos: 0,
-            text: "foo",
+            text: "foo]",
             value: "foo",
           },
           { type: END_OF_INPUT, pos: 4, text: "\n" },
+        ].map(asToken),
+      );
+    });
+
+    it("handles brackets that aren't properly and have whitespace between them", () => {
+      const { tokens } = lexify("foo  ]");
+      expect(tokens).toEqual(
+        [
+          {
+            type: FIELD,
+            pos: 0,
+            text: "foo  ]",
+            value: "foo",
+          },
+          { type: END_OF_INPUT, pos: 6, text: "\n" },
         ].map(asToken),
       );
     });
