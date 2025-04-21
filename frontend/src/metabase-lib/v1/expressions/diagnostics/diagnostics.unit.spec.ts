@@ -35,16 +35,23 @@ describe("diagnostics", () => {
       return setup({ expression, expressionMode, metadata })?.message;
     }
 
-    it("should catch mismatched parentheses", () => {
+    it("should catch mismatched parentheses after function", () => {
       expect(err("FLOOR [Price]/2)")).toBe(
         "Expecting an opening parenthesis after function FLOOR",
+      );
+      expect(err("LOWER [Vendor]")).toBe(
+        "Expecting an opening parenthesis after function LOWER",
       );
     });
 
     it("should catch missing parentheses", () => {
-      expect(err("LOWER [Vendor]")).toBe(
-        "Expecting an opening parenthesis after function LOWER",
-      );
+      expect(err("(")).toBe("Expecting a closing parenthesis");
+      expect(err("(()")).toBe("Expecting a closing parenthesis");
+      expect(err("((()")).toBe("Expecting a closing parenthesis");
+
+      expect(err(")")).toBe("Expecting an opening parenthesis");
+      expect(err("())")).toBe("Expecting an opening parenthesis");
+      expect(err("()))")).toBe("Expecting an opening parenthesis");
     });
 
     it("should catch invalid characters", () => {
