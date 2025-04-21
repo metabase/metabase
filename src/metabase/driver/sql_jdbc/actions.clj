@@ -372,7 +372,7 @@
 ;;; H2 and MySQL are dumb and `RETURN_GENERATED_KEYS` only returns the ID of
 ;;; the newly created row. This function will `SELECT` the newly created row
 ;;; assuming that `result` is a map from column names to the generated values.
-(mu/defmethod select-created-row :default :- [:maybe ::row]
+(mu/defmethod select-created-row :default :- [:maybe [:map-of :string :any]]
   [driver create-hsql conn result]
   (let [select-hsql     (-> create-hsql
                             (dissoc :insert-into :values)
