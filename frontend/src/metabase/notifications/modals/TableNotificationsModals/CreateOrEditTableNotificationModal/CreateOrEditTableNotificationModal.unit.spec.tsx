@@ -33,6 +33,7 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 describe("CreateOrEditTableNotificationModal", () => {
   beforeEach(() => {
     fetchMock.reset();
+    fetchMock.post("path:/api/notification/payload", { body: { id: 123 } });
   });
 
   afterEach(() => {
@@ -172,7 +173,7 @@ describe("CreateOrEditTableNotificationModal", () => {
       screen.getByRole("option", { name: /When any cell changes it's value/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("option", { name: /When a records are deleted/i }),
+      screen.getByRole("option", { name: /When records are deleted/i }),
     ).toBeInTheDocument();
   });
 
@@ -326,7 +327,7 @@ describe("CreateOrEditTableNotificationModal", () => {
       return parsedBody; // Return the parsed body for later assertions
     }).then((parsedBody) => {
       // Verify the event has been changed to 'row updated'
-      expect(parsedBody.payload.event).toBe("event/row.updated");
+      expect(parsedBody.payload.event_name).toBe("event/rows.updated");
     });
 
     expect(onNotificationUpdatedMock).toHaveBeenCalledTimes(1);
