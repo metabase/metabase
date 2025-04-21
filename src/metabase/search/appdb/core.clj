@@ -143,11 +143,14 @@
          t2/query
          (into #{} (map :model)))))
 
+(defn- populate-index! [context]
+  (search.index/index-docs! context (search.ingestion/searchable-documents)))
+
 (defmethod search.engine/init! :search.engine/appdb
   [_ {:keys [re-populate?] :as opts}]
   (let [created? (search.index/ensure-ready! opts)]
     (when (or created? re-populate?)
-      (search.ingestion/populate-index! :search.engine/appdb))))
+      (populate-index! :search/updating))))
 
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
@@ -157,5 +160,5 @@
       ;; keep the current table, just delete its contents
       (t2/delete! table))
     (search.index/maybe-create-pending!))
-  (u/prog1 (search.ingestion/populate-index! :search.engine/appdb)
+  (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
     (search.index/activate-table!)))

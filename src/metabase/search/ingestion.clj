@@ -101,10 +101,10 @@
          (m/distinct-by (juxt :id :model))
          (map ->document)))))
 
-(defn populate-index!
-  "Go over all searchable items and populate the index with them."
-  [engine]
-  (search.engine/consume! engine (query->documents (search-items-reducible))))
+(defn searchable-documents
+  "Return all existing searchable documents from the database."
+  []
+  (query->documents (search-items-reducible)))
 
 (def ^:dynamic *force-sync*
   "Force ingestion to happen immediately, on the same thread."
@@ -114,16 +114,16 @@
   "Used by tests to disable updates, for example when testing migrations, where the schema is wrong."
   false)
 
-(defn consume!
-  "Update all active engines' indexes with the given documents"
+(defn update!
+  "Update all active engines' existing indexes with the given documents"
   [documents-reducible]
   (when-let [engines (seq (search.engine/active-engines))]
     (if (= 1 (count engines))
-      (search.engine/consume! (first engines) documents-reducible)
+      (search.engine/update! (first engines) documents-reducible)
       ;; TODO um, multiplexing over the reducible awkwardly feels strange. We at least use a magic number for now.
       (doseq [batch (eduction (partition-all 150) documents-reducible)
               e     engines]
-        (search.engine/consume! e batch)))))
+        (search.engine/update! e batch)))))
 
 (defn bulk-ingest!
   "Process the given search model updates. Returns the number of search index entries that get updated as a result."
@@ -133,7 +133,7 @@
        ;; init collection is only for clj-kondo, as we know that the list is non-empty
        (reduce u/rconcat [])
        query->documents
-       consume!))
+       update!))
 
 (defn- track-queue-size! []
   (analytics/set! :metabase-search/queue-size (.size queue)))
