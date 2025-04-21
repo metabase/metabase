@@ -27,9 +27,10 @@ export function resolver(options: Options): Resolver {
   const metrics = _.memoize(() => Lib.availableMetrics(query, stageIndex));
   const segments = _.memoize(() => Lib.availableSegments(query, stageIndex));
   const columns = _.memoize(() => Lib.expressionableColumns(query, stageIndex));
+  const cache = infoCache(options);
 
   return function (type, name, node) {
-    const hasMatchingName = nameMatcher(name, options);
+    const hasMatchingName = nameMatcher(name, cache);
 
     if (type === "aggregation") {
       // Return metrics
@@ -82,24 +83,41 @@ type Dimension = Lib.SegmentMetadata | Lib.MetricMetadata | Lib.ColumnMetadata;
 
 function nameMatcher(
   name: string,
-  options: Options,
+  info: (
+    dimension: Dimension,
+  ) => Lib.ColumnDisplayInfo | Lib.MetricDisplayInfo | Lib.SegmentDisplayInfo,
 ): (dimension: Dimension) => boolean {
-  const { query, stageIndex } = options;
   return function (dimension: Dimension) {
     if (Lib.isSegmentMetadata(dimension) || Lib.isSegmentMetadata(dimension)) {
-      const { displayName } = Lib.displayInfo(query, stageIndex, dimension);
-      return displayName.toLowerCase() === name.toLowerCase();
+      return info(dimension).displayName.toLowerCase() === name.toLowerCase();
     } else if (Lib.isColumnMetadata(dimension)) {
-      return EDITOR_FK_SYMBOLS.symbols.some((separator) => {
-        const info = Lib.displayInfo(query, stageIndex, dimension);
-        const displayName = getDisplayNameWithSeparator(
-          info.longDisplayName,
-          separator,
-        );
-
-        return displayName === name;
-      });
+      return EDITOR_FK_SYMBOLS.symbols.some(
+        (separator) =>
+          name ===
+          getDisplayNameWithSeparator(
+            info(dimension).longDisplayName,
+            separator,
+          ),
+      );
     }
     return false;
+  };
+}
+
+function infoCache(options: Options) {
+  const cache = new Map<
+    Dimension,
+    Lib.ColumnDisplayInfo | Lib.MetricDisplayInfo | Lib.SegmentDisplayInfo
+  >();
+  return function (dimension: Dimension) {
+    const cached = cache.get(dimension);
+    if (cached) {
+      return cached;
+    }
+    // @ts-expect-error: for some reason, TS will not allow this to be typed correctly
+    // even though all the types in the union match the types for displayInfo
+    const res = Lib.displayInfo(options.query, options.stageIndex, dimension);
+    cache.set(dimension, res);
+    return res;
   };
 }
