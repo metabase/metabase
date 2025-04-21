@@ -5,7 +5,12 @@ import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetDatabaseQuery,
+  useGetTableQuery,
+} from "metabase/api";
 import {
   QuestionPickerModal,
   getQuestionPickerValue,
@@ -131,6 +136,14 @@ const EditSandboxingModal = ({
     policy.table_id != null ? { id: policy.table_id } : skipToken,
   );
 
+  const { data: database } = useGetDatabaseQuery(
+    policyTable?.db_id != null ? { id: policyTable.db_id } : skipToken,
+  );
+
+  const hasSavedQuestionSandboxingFeature = database?.features?.includes(
+    "saved-question-sandboxing",
+  );
+
   return (
     <div>
       <h2 className={CS.p3}>{t`Restrict access to this table`}</h2>
@@ -148,10 +161,14 @@ const EditSandboxingModal = ({
             value={!shouldUseSavedQuestion}
             options={[
               { name: t`Filter by a column in the table`, value: true },
-              {
-                name: t`Use a saved question to create a custom view for this table`,
-                value: false,
-              },
+              ...(hasSavedQuestionSandboxingFeature
+                ? [
+                    {
+                      name: t`Use a saved question to create a custom view for this table`,
+                      value: false,
+                    },
+                  ]
+                : []),
             ]}
             onChange={(shouldUseSavedQuestion) =>
               setShouldUseSavedQuestion(!shouldUseSavedQuestion)
