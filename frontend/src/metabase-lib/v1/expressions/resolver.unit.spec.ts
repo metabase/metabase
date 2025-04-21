@@ -29,16 +29,16 @@ describe("resolver", () => {
 
       it("should not resolve fields with non-boolean types", () => {
         expect(() => boolean("stringly")).toThrow(
-          "Unknown Segment or Field: stringly",
+          "Unknown Segment or boolean Field: stringly",
         );
         expect(() => boolean("Total")).toThrow(
-          "Unknown Segment or Field: Total",
+          "Unknown Segment or boolean Field: Total",
         );
       });
 
       it("should not resolve metrics", () => {
         expect(() => boolean("Foo Metric")).toThrow(
-          "Unknown Segment or Field: Foo Metric",
+          "Unknown Segment or boolean Field: Foo Metric",
         );
       });
     });
@@ -204,17 +204,17 @@ describe("resolver", () => {
 
       it("should not resolve fields with non-boolean types", () => {
         expect(() => boolean("stringly")).toThrow(
-          "Unknown Segment or Field: stringly",
+          "Unknown Segment or boolean Field: stringly",
         );
         expect(() => boolean("Total")).toThrow(
-          "Unknown Segment or Field: Total",
+          "Unknown Segment or boolean Field: Total",
         );
       });
 
       it("should not resolve metrics", () => {
         // TODO: should this resolve metrics?
         expect(() => boolean("Foo Metric")).toThrow(
-          "Unknown Segment or Field: Foo Metric",
+          "Unknown Segment or boolean Field: Foo Metric",
         );
       });
     });
