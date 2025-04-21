@@ -30,7 +30,8 @@
   [expr context]
   (if (sequential? expr)
     (let [operator (first expr)
-          operands (rest expr)]
+          operands (rest expr)
+          context  (stringify-map context)]
       (case (keyword operator)
         ;; Logical operators
         :and (boolean (every? #(evaluate-expression % context) operands))
@@ -46,7 +47,7 @@
         :<= (apply <= (map #(evaluate-expression % context) operands))
 
         ;; Data access
-        :context (get-in context (map keyword operands))
+        :context (get-in context operands)
         :this    (if (seq operands)
                    (get-in *local-context* operands)
                    *local-context*)
