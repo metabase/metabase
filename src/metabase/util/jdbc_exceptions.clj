@@ -50,7 +50,7 @@
   (= (get-sql-state e) "HY008"))
 
 (defmethod impl-query-canceled? :snowflake [_ e]
-  (= (get-sql-state e) "42S02"))
+  (= (get-sql-state e) "57014"))
 
 (defn- extract-sql-exception
   "Examines the chain of exceptions to find the first SQLException error. Returns nil if no SQLException is found"

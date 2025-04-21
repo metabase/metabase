@@ -12,7 +12,7 @@
     (let [e (Exception. "bad" (Exception. "bad" (Exception. "bad" (java.sql.SQLTimeoutException. "timeout"))))]
       (is (sut/query-canceled? nil e))))
   (testing "recognizes snowflake exception"
-    (let [e (java.sql.SQLException. "SQL execution canceled" "42S02")]
+    (let [e (java.sql.SQLException. "SQL execution canceled" "57014")]
       (is (sut/query-canceled? :snowflake e))))
   (testing "recognizes postgres exception"
     (let [e (org.postgresql.util.PSQLException. "ERROR: canceling statement due to user request" PSQLState/QUERY_CANCELED)]
