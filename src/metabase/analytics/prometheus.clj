@@ -321,6 +321,15 @@
    (prometheus/counter :metabase-gsheets/connection-deleted
                        {:description "How many times the instance has deleted their Google Sheets connection."})])
 
+(defn- quartz-collectors
+  []
+  [(prometheus/counter :metabase-tasks/quartz-tasks-executed
+                       {:description "How many tasks this metabase instance has executed"
+                        :labels [:status]})
+   (prometheus/gauge :metabase-tasks/quartz-tasks-states
+                     {:description "How many tasks are in a given state in the entire quartz cluster"
+                      :labels [:state]})])
+
 (defmulti known-labels
   "Implement this for a given metric to initialize it for the given set of label values."
   {:arglists '([metric]), :added "0.52.0"}
@@ -362,7 +371,8 @@
                         (concat (jvm-collectors)
                                 (jetty-collectors)
                                 [@c3p0-collector]
-                                (product-collectors)))]
+                                (product-collectors)
+                                (quartz-collectors)))]
     (doseq [{:keys [metric labels value]} (initial-labelled-metric-values)]
       (prometheus/inc registry metric (qualified-vals labels) value))
     (when @jvm-hiccup-thread (@jvm-hiccup-thread))
