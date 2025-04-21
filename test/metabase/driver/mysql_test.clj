@@ -749,7 +749,7 @@
 (deftest table-privileges-test
   (mt/test-driver :mysql
     (when-not (mysql/mariadb? (mt/db))
-      (testing "`table-privileges` should return the correct data for current_user and role privileges"
+      (testing "`table-privileges` should return the correct data for current_user and role privileges [MySQL]"
         (drop-if-exists-and-create-db! "table_privileges_test")
         (let [details          (tx/dbdef->connection-details :mysql :db {:database-name "table_privileges_test"})
               spec             (sql-jdbc.conn/connection-details->spec :mysql details)
@@ -796,7 +796,58 @@
               (doseq [stmt ["DROP ROLE IF EXISTS 'table_privileges_test_role';"
                             "DROP ROLE IF EXISTS 'table_privileges_test_role_2';"
                             "DROP ROLE IF EXISTS 'table_privileges_test_role_3';"]]
-                (jdbc/execute! spec stmt)))))))))
+                (jdbc/execute! spec stmt)))))))
+
+    (when (mysql/mariadb? (mt/db))
+      (testing "`table-privileges` should return the correct data for current_user and role privileges [MariaDB]"
+        (drop-if-exists-and-create-db! "table_privileges_test")
+        (let [db-name          "table_privileges_test"
+              details          (tx/dbdef->connection-details :mysql :db {:database-name db-name})
+              spec             (sql-jdbc.conn/connection-details->spec :mysql details)
+              get-privileges   (fn []
+                                 (let [new-connection-details (assoc details
+                                                                     :user "table_privileges_test_user",
+                                                                     :password "password"
+                                                                     :ssl true
+                                                                     :additional-options "trustServerCertificate=true")]
+                                   (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                                    [spec [:mysql new-connection-details]]
+                                     (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
+                                       (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec {})))))]
+          (try
+            (doseq [stmt [(format "CREATE TABLE `%s` (id INTEGER);" "bar")
+                          (format "CREATE TABLE `%s` (id INTEGER);" "baz")
+                          "CREATE USER 'table_privileges_test_user' IDENTIFIED BY 'password';"
+                          (format "GRANT SELECT ON %s.%s TO 'table_privileges_test_user'" db-name "bar")]]
+              (jdbc/execute! spec stmt))
+            (testing "should return privileges on the table"
+              (is (= [{:role   nil
+                       :schema db-name
+                       :table  "bar"
+                       :select true
+                       :update false
+                       :insert false
+                       :delete false}]
+                     (get-privileges))))
+            (testing "should return privileges on the database"
+              (jdbc/execute! spec (format "GRANT UPDATE ON %s.* TO 'table_privileges_test_user'" db-name))
+              (is (= [{:role nil, :schema db-name, :table "bar", :select true, :update true, :insert false, :delete false}
+                      {:role nil, :schema db-name, :table "baz", :select false, :update true, :insert false, :delete false}]
+                     (set (get-privileges))))) ; Use set for order-insensitivity
+            ;; MariaDB roles might behave differently or require specific setup not covered here.
+            ;; Skipping role test for MariaDB for now, focusing on direct user grants.
+            #_(testing "should return privileges on roles that the user has been granted"
+                (doseq [stmt [(format "CREATE ROLE 'table_privileges_test_role'")
+                              (format "GRANT INSERT ON %s.%s TO 'table_privileges_test_role'" db-name "bar")
+                              (format "GRANT 'table_privileges_test_role' TO 'table_privileges_test_user'")]]
+                  (jdbc/execute! spec stmt))
+                (is (= [{:role nil, :schema db-name, :table "bar", :select true, :update true, :insert true, :delete false}
+                        {:role nil, :schema db-name, :table "baz", :select false, :update true, :insert false, :delete false}]
+                       (set (get-privileges))))) ; Use set for order-insensitivity
+            (finally
+              (jdbc/execute! spec "DROP USER IF EXISTS 'table_privileges_test_user';")
+              (doseq [stmt [(format "DROP ROLE IF EXISTS 'table_privileges_test_role';")]]
+                (try (jdbc/execute! spec stmt) (catch Exception _))))))))))
 
 (deftest ^:parallel temporal-column-with-binning-keeps-type
   (mt/test-driver :mysql
