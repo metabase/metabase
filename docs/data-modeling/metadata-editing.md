@@ -104,7 +104,7 @@ To sort the columns **automatically**, click on the **sort** icon at the top rig
 
 ### Field type
 
-To change the [field type](../data-modeling/field-types.md) of a column, click on the **Type** dropdown menu in a column's setting box. You can also use the **Type** dropdown to label a column as an [entity key](https://www.metabase.com/glossary/entity_key) (primary key) or [foreign key](https://www.metabase.com/glossary/foreign_key) in Metabase (with no consequence to your database).
+To change the [field type](../data-modeling/field-types.md) of a column, click on the **Type** dropdown menu in a column's setting box. You can also use the **Type** dropdown to label a column as an [entity key](https://www.metabase.com/glossary/entity-key) (primary key) or [foreign key](https://www.metabase.com/glossary/foreign-key) in Metabase (with no consequence to your database).
 
 ### Casting to a specific data type
 

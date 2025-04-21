@@ -12,12 +12,12 @@ import {
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import CS from "metabase/css/core/index.css";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
-import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { Box } from "metabase/ui";
@@ -28,7 +28,7 @@ import { Box } from "metabase/ui";
  * @category StaticDashboard
  */
 export type StaticDashboardProps = SdkDashboardDisplayProps &
-  PublicOrEmbeddedDashboardEventHandlersProps;
+  DashboardEventHandlersProps;
 
 export const StaticDashboardInner = ({
   dashboardId,

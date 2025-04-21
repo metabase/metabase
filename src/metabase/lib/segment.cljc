@@ -22,7 +22,7 @@
   (lib.options/ensure-uuid [:segment {} id]))
 
 (defmethod lib.metadata.calculation/type-of-method :metadata/segment
-  [_query _stage-number _metric-metadata]
+  [_query _stage-number _segment-metadata]
   :type/Boolean)
 
 (defmethod lib.metadata.calculation/type-of-method :segment
