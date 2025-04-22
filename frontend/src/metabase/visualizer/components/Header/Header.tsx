@@ -81,6 +81,7 @@ export function Header({
         <Tooltip label={t`Back`}>
           <Button
             size="sm"
+            aria-label={t`Back`}
             disabled={!canUndo}
             onClick={undo}
             leftSection={
@@ -94,6 +95,7 @@ export function Header({
         <Tooltip label={t`Forward`}>
           <Button
             size="sm"
+            aria-label={t`Forward`}
             disabled={!canRedo}
             onClick={redo}
             leftSection={
