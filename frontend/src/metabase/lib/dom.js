@@ -451,7 +451,7 @@ export function removeAllChildren(element) {
 
 export function parseDataUri(url) {
   const match =
-    url && url.match(/^data:(?:([^;]+)(?:;([^;]+))?)?(;base64)?,(.*)$/);
+    url && url.match(/^data:(?:([^;]+)(?:;([^;]+))?)?(;base64)?,((?:(?!\1|,).)*)$/);
   if (match) {
     let [, mimeType, charset, base64, data] = match;
     if (charset === "base64" && !base64) {
