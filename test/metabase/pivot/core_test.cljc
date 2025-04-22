@@ -354,18 +354,18 @@
           row-indexes [0 1]
           col-indexes [2]
           val-indexes [4]
-          col-settings [{} {} {} {} {}]]
-      (let [settings {:pivot_table.collapsed_rows {:value ["[1]"]}}
-            result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-        (is (= [{:children [{:children [] :isCollapsed false :value "A"}
-                            {:children [] :isCollapsed false :value "B"}]
-                 :isCollapsed true  ;; Only the node with value 1 should be collapsed
-                 :value 1}
-                {:children [{:children [] :isCollapsed false :value "A"}
-                            {:children [] :isCollapsed false :value "B"}]
-                 :isCollapsed false ;; Node with value 2 should not be collapsed
-                 :value 2.5}]
-               (:row-tree result)))))))
+          col-settings [{} {} {} {} {}]
+          settings {:pivot_table.collapsed_rows {:value ["[1]"]}}
+          result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
+      (is (= [{:children [{:children [] :isCollapsed false :value "A"}
+                          {:children [] :isCollapsed false :value "B"}]
+               :isCollapsed true  ;; Only the node with value 1 should be collapsed
+               :value 1}
+              {:children [{:children [] :isCollapsed false :value "A"}
+                          {:children [] :isCollapsed false :value "B"}]
+               :isCollapsed false ;; Node with value 2 should not be collapsed
+               :value 2.5}]
+             (:row-tree result))))))
 
 (deftest create-row-section-getter-test
   (testing "Returns a function that correctly retrieves cell values"
