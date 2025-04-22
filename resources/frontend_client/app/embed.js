@@ -70,7 +70,7 @@
         return;
       }
 
-      if (event.data.type === "metabase.embed.waitingForAuth") {
+      if (event.data.type === "metabase.embed.askToAuthenticate") {
         if (typeof event.data.payload.sdkVersion === "string") {
           this.sdkVersion = event.data.payload.sdkVersion;
         }
@@ -128,7 +128,7 @@
     }
 
     /**
-     * @returns {Promise<{id: string} | null>}
+     * @returns {Promise<{id: string, exp: number} | null>}
      */
     _getRefreshToken = async () => {
       const url = new URL(this.url);
@@ -157,7 +157,7 @@
 
     /**
      * @param {string} url
-     * @returns {Promise<{id: string} | null>}
+     * @returns {Promise<{id: string, exp: number} | null>}
      */
     async _getRefreshTokenViaJwt(url) {
       const clientBackendResponse = await fetch(url, {
@@ -220,7 +220,7 @@
      *  5) The IDP eventually redirects back to POST /auth/sso which returns HTML markup
      *      that postMessages the token to this window. We'll save it in localStorage for now.
      *
-     * @returns {Promise<{id: string} | null>}
+     * @returns {Promise<{id: string, exp: number} | null>}
      **/
     async _getRefreshTokenViaPopup(url) {
       return new Promise((resolve, reject) => {

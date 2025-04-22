@@ -37,10 +37,7 @@ export const initAuth = createAsyncThunk(
     const isValidApiKeyConfig =
       authConfig.apiKey && (isEmbeddingSdk ? getIsLocalhost() : true);
 
-    if (authConfig.isIframe) {
-      // ensure getOrRefreshSession is not called.
-      // for SDK-based iframe embedding, we set the session token externally.
-    } else if (isValidAuthProviderUri) {
+    if (isValidAuthProviderUri) {
       // JWT setup
       api.onBeforeRequest = async () => {
         const session = await dispatch(

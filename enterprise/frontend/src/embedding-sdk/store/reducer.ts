@@ -15,6 +15,7 @@ import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import { createAsyncThunk } from "metabase/lib/redux";
 
 import { initAuth, refreshTokenAsync } from "./auth";
+import { authenticateWithIframe } from "./auth/iframe";
 import { authTokenStorage } from "./auth/saml-token-storage";
 import { getSessionTokenState } from "./selectors";
 
@@ -40,7 +41,13 @@ const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
   async (
-    instanceUrl: MetabaseAuthConfig["metabaseInstanceUrl"],
+    {
+      instanceUrl,
+      isIframe = false,
+    }: {
+      instanceUrl: MetabaseAuthConfig["metabaseInstanceUrl"];
+      isIframe: boolean;
+    },
     { dispatch, getState },
   ) => {
     // necessary to ensure that we don't use a popup every time the user
@@ -55,7 +62,19 @@ export const getOrRefreshSession = createAsyncThunk(
       return token;
     }
 
-    return dispatch(refreshTokenAsync(instanceUrl)).unwrap();
+    if (!isIframe) {
+      return dispatch(refreshTokenAsync(instanceUrl)).unwrap();
+    }
+
+    if (isIframe) {
+      const config = await authenticateWithIframe().promise;
+
+      if (config?.type !== "sso") {
+        return null;
+      }
+
+      return config.refreshToken;
+    }
   },
 );
 

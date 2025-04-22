@@ -8,10 +8,11 @@ import {
   defineMetabaseAuthConfig,
   defineMetabaseTheme,
 } from "embedding-sdk";
-import { getEmbeddingSdkVersion } from "embedding-sdk/config";
+import {
+  type IframeAuthConfig,
+  authenticateWithIframe,
+} from "embedding-sdk/store/auth/iframe";
 import type { SdkInteractiveEmbedRouteProps } from "metabase/embedding-sdk/types/iframe-interactive-embedding";
-import api from "metabase/lib/api";
-import { isWithinIframe } from "metabase/lib/dom";
 import { Box, Center, Loader } from "metabase/ui";
 
 import {
@@ -19,15 +20,6 @@ import {
   useSdkInteractiveEmbedSettings,
 } from "../../hooks/useSdkInteractiveEmbedSettings";
 import { SdkInteractiveEmbedProvider } from "../SdkInteractiveEmbedProvider";
-
-type IframeAuthConfig =
-  | { type: "apiKey"; apiKey: string }
-  | { type: "sso"; refreshToken: { id: string } };
-
-type SimpleInteractivePostMessageAction = {
-  type: "metabase.embed.authenticate";
-  payload: IframeAuthConfig;
-};
 
 export const SdkInteractiveEmbedRoute = ({
   params: { settings: settingsKey },
@@ -58,41 +50,10 @@ export const SdkInteractiveEmbedRoute = ({
   }, [theme]);
 
   useEffect(() => {
-    if (isWithinIframe()) {
-      // Send a message to the parent to indicate that the embed is waiting for authentication
-      window.parent.postMessage(
-        {
-          type: "metabase.embed.waitingForAuth",
-          payload: {
-            sdkVersion: getEmbeddingSdkVersion(),
-          },
-        },
-        "*",
-      );
+    const { promise, cleanup } = authenticateWithIframe();
+    promise.then(setConfig);
 
-      // TODO: verify the sender's origin for security
-      const receiveMessage = (event: MessageEvent) => {
-        const action: SimpleInteractivePostMessageAction | null = event.data;
-
-        if (!action) {
-          return;
-        }
-
-        if (action.type === "metabase.embed.authenticate") {
-          setConfig(action.payload);
-
-          if (action.payload.type === "sso" && action.payload.refreshToken) {
-            api.sessionToken = action.payload.refreshToken.id;
-          }
-        }
-      };
-
-      window.addEventListener("message", receiveMessage);
-
-      return () => {
-        window.removeEventListener("message", receiveMessage);
-      };
-    }
+    return cleanup;
   }, []);
 
   // TODO: improve error handling
