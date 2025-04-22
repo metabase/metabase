@@ -9,7 +9,7 @@ import {
 } from "./test/shared";
 
 describe("resolver", () => {
-  describe.each(["expression", "filter"])(
+  describe.each(["expression", "filter"] as const)(
     "expressionMode = %s",
     (expressionMode) => {
       const resolve = makeResolver({
