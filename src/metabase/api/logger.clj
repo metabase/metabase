@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.logger :as logger]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
    (java.util.concurrent ScheduledFuture ScheduledThreadPoolExecutor ThreadFactory TimeUnit)
@@ -88,7 +89,17 @@
   [{:keys [ns to]}]
   (logger/set-ns-log-level! ns to))
 
-(defn- set-log-levels!
+(mr/def ::log-adjustment
+  [:map
+   [:op [:enum :add :change]]
+   [:ns :string]
+   [:from {:optional true} ::log-level]
+   [:to ::log-level]])
+
+(mr/def ::plan
+  [:sequential ::log-adjustment])
+
+(mu/defn- set-log-levels! :- ::plan
   [log-levels]
   (let [plan (create-plan log-levels)]
     (run! execute-plan! plan)
@@ -130,7 +141,7 @@
 
 (defn- cancel-undo-task!
   [{:keys [plan ^ScheduledFuture undo-task]}]
-  (when (.cancel undo-task false)
+  (when (and undo-task (.cancel undo-task false))
     (undo-plan! plan)))
 
 (defonce ^{:private true
@@ -138,21 +149,11 @@
   log-adjustment
   (atom nil))
 
-(mr/def ::log-adjustment
-  [:map
-   [:op [:enum :add :change]]
-   [:ns :string]
-   [:from {:optional true} ::log-level]
-   [:to ::log-level]])
-
-(mr/def ::plan
-  [:sequential ::log-adjustment])
-
 (mr/def ::time-unit
   (into [:enum {:decode/json keyword}] (keys keyword->TimeUnit)))
 
-(api.macros/defendpoint :post "/adjust" :- ::plan
-  "Get the namespaces of preset `id`."
+(api.macros/defendpoint :post "/adjustment"
+  "Temporarily adjust the log levels."
   [_route-params
    _query-params
    {:keys [duration duration_unit log_levels]} :- [:map
@@ -163,5 +164,14 @@
   (when-let [task @log-adjustment]
     (cancel-undo-task! task))
   (let [plan (set-log-levels! log_levels)]
-    (reset! log-adjustment {:plan plan, :undo-task (undo-task plan duration duration_unit)})
-    plan))
+    (reset! log-adjustment {:plan plan, :undo-task (undo-task plan duration duration_unit)}))
+  nil)
+
+(api.macros/defendpoint :delete "/adjustment"
+  "Undo any log level adjustments."
+  []
+  (api/check-superuser)
+  (when-let [task @log-adjustment]
+    (cancel-undo-task! task)
+    (reset! log-adjustment nil))
+  nil)

@@ -8023,10 +8023,10 @@ redirect_from:
         "tags" : [ "/api/ldap" ]
       }
     },
-    "/api/logger/adjust" : {
+    "/api/logger/adjustment" : {
       "post" : {
-        "summary" : "POST /api/logger/adjust",
-        "description" : "Get the namespaces of preset `id`.",
+        "summary" : "POST /api/logger/adjustment",
+        "description" : "Temporarily adjust the log levels.",
         "parameters" : [ ],
         "requestBody" : {
           "content" : {
@@ -8052,6 +8052,12 @@ redirect_from:
             }
           }
         },
+        "tags" : [ "/api/logger" ]
+      },
+      "delete" : {
+        "summary" : "DELETE /api/logger/adjustment",
+        "description" : "Undo any log level adjustments.",
+        "parameters" : [ ],
         "tags" : [ "/api/logger" ]
       }
     },
