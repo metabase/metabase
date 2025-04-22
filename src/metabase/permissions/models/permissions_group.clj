@@ -55,6 +55,29 @@
   "Fetch the `All Users` permissions group"
   (magic-group all-users-magic-group-type))
 
+(def all-external-users-magic-group-type
+  "The magic group type of the \"All External Users\" magic group."
+  "all-external-users")
+
+#_(def ^{:arglists '([])} all-external-users
+    "Fetch the `all-external-users` magic group"
+    (mdb/memoize-for-application-db
+     (fn []
+     ;; Don't use `magic-group` here, because this one might not exist and that's ok.
+       (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type] :magic_group_type all-external-users-magic-group-type))))
+
+(defn create-all-external-users!
+  "Creates the \"All External Users\" magic group."
+  []
+  (t2/insert! :model/PermissionsGroup {:magic_group_type all-external-users-magic-group-type
+                                       :name "All External Users"
+                                       :is_tenant_group true}))
+
+(defn delete-all-external-users!
+  "Deletes the \"All External Users\" magic group."
+  []
+  (t2/delete! :model/PermissionsGroup {:magic_group_type all-external-users-magic-group-type}))
+
 (def admin-magic-group-type
   "The magic-group type of the \"Administrators\" magic group."
   "admin")
@@ -168,5 +191,6 @@
      (t2/select-one-fn :is_tenant_group :model/PermissionsGroup :id group-id))))
 
 (defn is-tenant-group?
+  "Returns a boolean representing whether this group is a tenant group. Memoized for speed."
   [group-or-id]
   (group-id->is-tenant-group? (u/the-id group-or-id)))

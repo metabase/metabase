@@ -68,6 +68,29 @@
   :type       :boolean
   :audit      :never)
 
+(defn- turn-off-tenants! []
+  ;; TODO: when we have `:model/Tenant`, make sure none exist
+  (when (t2/exists? :model/User :tenant_id [:not= nil])
+    (throw (ex-info (tru "Tenants cannot be turned off, a tenant user exists") {})))
+  (perms-group/delete-all-external-users!))
+
+(defn- turn-on-tenants! []
+  (perms-group/create-all-external-users!))
+
+(defsetting use-tenants
+  (deferred-tru
+   "Turn on the Tenants feature, allowing users to be assigned to a particular Tenant.")
+  :type :boolean
+  :visibility :admin
+  :export? false
+  :default false
+  :setter (fn [new-value]
+            (when-not new-value
+              (turn-off-tenants!))
+            (when new-value
+              (turn-on-tenants!))
+            (setting/set-value-of-type! :boolean :use-tenants new-value)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GRAPH ENDPOINTS                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
