@@ -25,6 +25,7 @@ export type DatabaseFeature =
   | "expressions"
   | "expressions/date"
   | "expressions/integer"
+  | "expressions/float"
   | "expressions/text"
   | "native-parameters"
   | "nested-queries"
