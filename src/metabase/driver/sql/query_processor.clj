@@ -156,32 +156,33 @@
   [driver value]
   (h2x/maybe-cast (float-dbtype driver) value))
 
+(defn- untyped-inline-value [h2x]
+  (let [unwrapped (h2x/unwrap-typed-honeysql-form h2x)]
+    (when (inline? unwrapped)
+      (second unwrapped))))
+
 (defn ->float
-  "Convert numbers to floats, being smart about converting inlines and constants at compile-time."
+  "Convert honeysql numbers/strings to floats, being smart about converting inlines and constants at compile-time."
   [driver value]
   ;; The smarts of this function are to cast inline numbers and strings at
   ;; query-compile time (in Clojure) instead of in SQL
-  (cond
-    (h2x/is-of-type? value (float-dbtype driver))
-    value
+  (let [inline (untyped-inline-value value)]
+    (cond
+      (h2x/is-of-type? value (float-dbtype driver))
+      value
 
-    (h2x/typed? value)
-    (recur driver (h2x/unwrap-typed-honeysql-form value))
+      (not inline)
+      (cast-float driver value)
 
-    (inline? value)
-    (recur driver (second value))
+      (number? inline)
+      (h2x/with-database-type-info (inline-num (double inline)) (float-dbtype driver))
 
-    (float? value)
-    (h2x/with-database-type-info (inline-num value) (float-dbtype driver))
+      (string? inline)
+      (h2x/with-database-type-info (inline-num (Double/parseDouble inline)) (float-dbtype driver))
 
-    (number? value)
-    (recur driver (double value))
-
-    (string? value)
-    (recur driver (Double/parseDouble value))
-
-    :else
-    (cast-float driver value)))
+      :else
+      (ex-info (str "Cannot convert " (pr-str value) " to float.")
+               {:value value}))))
 
 (defmulti ^clojure.lang.MultiFn inline-value
   "Return an inline value (as a raw SQL string) for an object `x`, e.g.
@@ -1050,31 +1051,31 @@
 
 (defn- safe-denominator
   "Make sure we're not trying to divide by zero."
-  [denominator]
-  (cond
+  [driver denominator]
+  (let [inline-value (untyped-inline-value denominator)]
+    (cond
     ;; try not to generate hairy nonsense like `CASE WHERE 7.0 = 0 THEN NULL ELSE 7.0` if we're dealing with number
     ;; literals and can determine this stuff ahead of time.
-    (and (number? denominator)
-         (zero? denominator))
-    nil
+      (not inline-value)
+      (h2x/with-database-type-info [:nullif denominator [:inline 0.0]] (float-dbtype driver))
 
-    (number? denominator)
-    (inline-num denominator)
+      (and (number? inline-value)
+           (zero? inline-value))
+      nil
 
-    (inline? denominator)
-    (recur (second denominator))
+      (number? inline-value)
+      denominator
 
-    :else
-    [:nullif denominator [:inline 0]]))
+      :else
+      (ex-info (str "This won't make a good denominator: " (pr-str denominator))
+               {:value denominator}))))
 
 (defmethod ->honeysql [:sql :/]
   [driver [_ & mbql-exprs]]
   (let [[numerator & denominators] (for [mbql-expr mbql-exprs]
-                                     (->honeysql driver (if (integer? mbql-expr)
-                                                          (double mbql-expr)
-                                                          mbql-expr)))]
-    (into [:/ (->float driver numerator)]
-          (map safe-denominator)
+                                     (->float driver (->honeysql driver mbql-expr)))]
+    (into [:/ numerator]
+          (map #(safe-denominator driver %))
           denominators)))
 
 (defmethod ->honeysql [:sql :float]
