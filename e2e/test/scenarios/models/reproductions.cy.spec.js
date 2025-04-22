@@ -2196,3 +2196,123 @@ describe("issue 45926", () => {
     cy.findByRole("columnheader", { name: "ID updated" }).should("be.visible");
   });
 });
+
+describe("issue 38747", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  function drillThruVendor() {
+    cy.get("@modelId").then((modelId) => {
+      // Set Vendor column to PK
+      H.setModelMetadata(modelId, (field) => {
+        if (field.name === "VENDOR") {
+          return {
+            ...field,
+            display_name: "Vendor",
+            semantic_type: "type/PK",
+          };
+        }
+        return field;
+      });
+
+      cy.visit(`/model/${modelId}`);
+      cy.wait("@dataset");
+      cy.findAllByTestId("header-cell").should("contain", "Vendor");
+
+      // drill through on Vendor as PK value
+      cy.findAllByTestId("cell-data")
+        .contains("Swaniawski, Casper and Hilll")
+        .first()
+        .click();
+
+      cy.wait("@dataset");
+      H.assertQueryBuilderRowCount(1);
+      cy.findByTestId("filter-pill").should(
+        "have.text",
+        "Vendor is Swaniawski, Casper and Hilll",
+      );
+      cy.findAllByTestId("cell-data")
+        .should("contain", "Rustic Paper Wallet")
+        .should("contain", "Swaniawski, Casper and Hilll");
+    });
+  }
+
+  function nestedModelDetails(cardId) {
+    return {
+      name: "Nested Model",
+      type: "model",
+      query: {
+        "source-table": `card__${cardId}`,
+        limit: 5,
+      },
+    };
+  }
+
+  const nativeQuestionDetails = {
+    name: "Native Model",
+    type: "model",
+    native: {
+      query: "select * from products limit 5",
+    },
+  };
+
+  const questionDetails = {
+    name: "MBQL Model",
+    type: "model",
+    query: {
+      "source-table": PRODUCTS_ID,
+      limit: 5,
+    },
+  };
+
+  describe("should allow drills on non-integer multi-PK columns (metabase#38747)", () => {
+    it("should work with native models", () => {
+      H.createNativeQuestion(nativeQuestionDetails, {
+        wrapId: true,
+        idAlias: "modelId",
+      });
+      drillThruVendor();
+    });
+
+    it("should work with MBQL models", () => {
+      H.createQuestion(questionDetails, { wrapId: true, idAlias: "modelId" });
+      drillThruVendor();
+    });
+
+    it("should work with models based on a native question", () => {
+      H.createNativeQuestion(nativeQuestionDetails, {
+        wrapId: true,
+        idAlias: "nativeQuestionId",
+      }).then(({ body: { id } }) => {
+        H.createQuestion(nestedModelDetails(id), {
+          wrapId: true,
+          idAlias: "modelId",
+        });
+      });
+      drillThruVendor();
+    });
+
+    it("should work with models based on MBQL question", () => {
+      H.createQuestion(questionDetails, {
+        wrapId: true,
+        idAlias: "innerQuestionId",
+      }).then(({ body: { id } }) => {
+        H.createQuestion(
+          {
+            name: "Nested Model",
+            type: "model",
+            query: {
+              "source-table": `card__${id}`,
+              limit: 5,
+            },
+          },
+          { wrapId: true, idAlias: "modelId" },
+        );
+      });
+      drillThruVendor();
+    });
+  });
+});
