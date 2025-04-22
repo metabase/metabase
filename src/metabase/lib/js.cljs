@@ -2365,34 +2365,6 @@
   [a-query stage-number a-filter-clause]
   (lib.core/filter-args-display-name a-query stage-number a-filter-clause))
 
-(defn ^:export expression-clause-for-legacy-expression
-  "Convert `legacy-expression` into a modern expression clause.
-
-  > **Code health:** Legacy, Single use. We should refactor away the round trip through legacy expressions and make the
-  expression parser understand MLv2 expressions."
-  [a-query stage-number legacy-expression]
-  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [expr (js->clj legacy-expression :keywordize-keys true)
-          expr (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))]
-      (lib.core/normalize (lib.convert/->pMBQL expr)))))
-
-(defn ^:export legacy-expression-for-expression-clause
-  "Convert `an-expression-clause` into a legacy expression.
-
-  When processing aggregation clauses with custom expressions, any `aggregation-options` wrapper is thrown away. (The
-  options specify extras like the name of the aggregation expression.)
-
-  > **Code health:** Legacy, Single use. We should refactor away the round trip through legacy expressions and make the
-  expression parser understand MLv2 expressions."
-  [a-query stage-number an-expression-clause]
-  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [legacy-expr (-> an-expression-clause lib.convert/->legacy-MBQL)]
-      (clj->js (cond-> legacy-expr
-                 (and (vector? legacy-expr)
-                      (#{:aggregation-options} (first legacy-expr)))
-                 (get 1))
-               :keyword-fn u/qualified-name))))
-
 (defn ^:export diagnose-expression
   "Checks `legacy-expression` for type errors and possibly for cyclic references to other expressions.
 

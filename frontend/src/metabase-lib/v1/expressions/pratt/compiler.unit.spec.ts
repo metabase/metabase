@@ -1,24 +1,17 @@
-import type * as Lib from "metabase-lib";
+import { value } from "../test/utils";
 
 import { compile, lexify, parse } from ".";
 
-function value(value: unknown, options: Lib.ExpressionOptions = {}) {
-  return {
-    operator: "value",
-    options,
-    args: [value],
-  };
-}
-
 function integer(x: number) {
-  return value(x, {
-    "base-type": "type/Integer",
-    "effective-type": "type/Integer",
-  });
+  return value(x, "type/Integer");
 }
 
 function text(x: string) {
-  return value(x, { "base-type": "type/Text", "effective-type": "type/Text" });
+  return value(x, "type/Text");
+}
+
+function bigint(x: string) {
+  return value(x, "type/BigInteger");
 }
 
 describe("pratt/compiler", () => {
@@ -47,28 +40,16 @@ describe("pratt/compiler", () => {
 
     it("should compile bigints", () => {
       expect(expr("12309109320930192039")).toEqual(
-        value("12309109320930192039", {
-          "base-type": "type/BigInteger",
-          "effective-type": "type/BigInteger",
-        }),
+        bigint("12309109320930192039"),
       );
       expect(expr("-12309109320930192039")).toEqual(
-        value("-12309109320930192039", {
-          "base-type": "type/BigInteger",
-          "effective-type": "type/BigInteger",
-        }),
+        bigint("-12309109320930192039"),
       );
 
       expect(expr("1 + 12309109320930192039")).toEqual({
         operator: "+",
         options: {},
-        args: [
-          1,
-          value("12309109320930192039", {
-            "base-type": "type/BigInteger",
-            "effective-type": "type/BigInteger",
-          }),
-        ],
+        args: [1, bigint("12309109320930192039")],
       });
     });
 
@@ -117,14 +98,7 @@ describe("pratt/compiler", () => {
           },
         ],
       });
-      expect(expr("-12")).toEqual({
-        operator: "value",
-        options: {
-          "base-type": "type/Integer",
-          "effective-type": "type/Integer",
-        },
-        args: [-12],
-      });
+      expect(expr("-12")).toEqual(value(-12, "type/Integer"));
     });
 
     it("should compile comparisons", () => {

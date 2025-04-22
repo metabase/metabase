@@ -54,7 +54,7 @@ type FormatOptions = {
 };
 
 export async function formatExpressionParts(
-  root: Lib.ExpressionParts,
+  root: Lib.ExpressionParts | Lib.ExpressionArg,
   options: FormatOptions = {},
 ) {
   // prettier expects us to pass a string, but we have the AST already

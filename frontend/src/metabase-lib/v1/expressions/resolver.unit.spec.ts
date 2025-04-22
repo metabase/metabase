@@ -1,7 +1,7 @@
 import type * as Lib from "metabase-lib";
 
-import { query } from "./__support__/shared";
 import { compileExpression } from "./compiler";
+import { query } from "./test/shared";
 
 describe("resolve", () => {
   function collect(

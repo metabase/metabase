@@ -1,8 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
 import type * as Lib from "metabase-lib";
-import { createQuery } from "metabase-lib/test-helpers";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+import { query, stageIndex } from "../test/shared";
 
 import { diagnose, diagnoseAndCompile } from "./diagnostics";
 
@@ -17,8 +18,6 @@ describe("diagnostics", () => {
       expressionMode?: Lib.ExpressionMode;
       metadata?: Metadata;
     }) {
-      const query = createQuery();
-      const stageIndex = -1;
       return diagnose({
         source: expression,
         expressionMode,
@@ -286,8 +285,6 @@ describe("diagnostics", () => {
 
   describe("diagnoseAndCompile", () => {
     function setup({ expression }: { expression: string }) {
-      const query = createQuery();
-      const stageIndex = -1;
       return diagnoseAndCompile({
         source: expression,
         query,

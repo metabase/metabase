@@ -59,7 +59,7 @@ export function diagnoseAndCompile({
       stageIndex,
     });
 
-    if (result.expression === null || result.expressionClause === null) {
+    if (result.expressionClause === null) {
       const error = result.error ?? new DiagnosticError(t`Invalid expression`);
       throw error;
     }
@@ -77,7 +77,6 @@ export function diagnoseAndCompile({
     return result;
   } catch (error) {
     return {
-      expression: null,
       expressionClause: null,
       expressionParts: null,
       error: renderError(error),
