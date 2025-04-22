@@ -1077,6 +1077,10 @@
           (map safe-denominator)
           denominators)))
 
+(defmethod ->honeysql [:sql :float]
+  [driver [_ value]]
+  (->float driver (->honeysql driver value)))
+
 (defmethod ->honeysql [:sql :sum-where]
   [driver [_ arg pred]]
   [:sum [:case

@@ -421,10 +421,6 @@
   [driver [_ value]]
   (h2x/maybe-cast "SIGNED" (sql.qp/->honeysql driver value)))
 
-(defmethod sql.qp/->honeysql [:mysql :float]
-  [driver [_ value]]
-  (h2x/maybe-cast "DOUBLE" (sql.qp/->honeysql driver value)))
-
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
 ;; explanation of format specifiers
