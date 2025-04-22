@@ -54,7 +54,7 @@ function setAttributes(...syntaxRules: [Partial<NodeType>, NodeType[]][]) {
   }
 }
 
-const ALL_NODES = {
+const NODE_TYPE = {
   ADD,
   LOGICAL_AND,
   ARG_LIST,
@@ -94,7 +94,7 @@ setAttributes([
     precedence: -Infinity,
   },
 
-  Object.values(ALL_NODES),
+  Object.values(NODE_TYPE),
 ]);
 
 setAttributes(
@@ -231,7 +231,7 @@ ROOT.checkChildConstraints = anyChildConstraint(
   }
 });
 
-for (const [key, value] of Object.entries(ALL_NODES)) {
+for (const [key, value] of Object.entries(NODE_TYPE)) {
   value.name = key;
 }
 
