@@ -6,7 +6,6 @@ import type { MBQLClauseFunctionConfig } from "./types";
 export const EDITOR_QUOTES = {
   // specifies the default quoting style:
   literalQuoteDefault: '"',
-  identifierQuoteDefault: "[",
 } as const;
 
 type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;

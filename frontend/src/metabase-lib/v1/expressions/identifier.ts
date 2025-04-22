@@ -1,7 +1,8 @@
 import { FK_SYMBOL } from "metabase/lib/formatting";
 
-import { EDITOR_QUOTES } from "./config";
 import { quoteString } from "./string";
+
+const IDENTIFIER_QUOTE = "[";
 
 export const EDITOR_FK_SYMBOLS = {
   // specifies which symbols can be used to delimit foreign/joined fields
@@ -10,33 +11,21 @@ export const EDITOR_FK_SYMBOLS = {
   default: " → ",
 };
 
-// can be double-quoted, but are not by default unless they have non-word characters or are reserved
-export function formatIdentifier(
-  name: string,
-  { delimiters = EDITOR_QUOTES } = {},
-) {
-  return quoteString(name, delimiters.identifierQuoteDefault);
+// Quote identifiers with [ ]
+export function formatIdentifier(name: string) {
+  return quoteString(name, IDENTIFIER_QUOTE);
 }
 
-export function formatMetricName(
-  metricName: string,
-  options: Record<string, any>,
-) {
-  return formatIdentifier(metricName, options);
+export function formatMetricName(metricName: string) {
+  return formatIdentifier(metricName);
 }
 
-export function formatSegmentName(
-  segmentName: string,
-  options: Record<string, any>,
-) {
-  return formatIdentifier(segmentName, options);
+export function formatSegmentName(segmentName: string) {
+  return formatIdentifier(segmentName);
 }
 
-export function formatDimensionName(
-  dimensionName: string,
-  options: Record<string, any>,
-) {
-  return formatIdentifier(getDisplayNameWithSeparator(dimensionName), options);
+export function formatDimensionName(dimensionName: string) {
+  return formatIdentifier(getDisplayNameWithSeparator(dimensionName));
 }
 
 export function getDisplayNameWithSeparator(
