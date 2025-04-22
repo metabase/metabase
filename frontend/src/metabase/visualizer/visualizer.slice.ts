@@ -1,9 +1,14 @@
 import type { DragEndEvent } from "@dnd-kit/core";
-import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
+import {
+  type PayloadAction,
+  createAction,
+  createSlice,
+} from "@reduxjs/toolkit";
+import undoable, { includeAction } from "redux-undo";
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
-import { createAsyncThunk } from "metabase/lib/redux";
+import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
 import { copy } from "metabase/lib/utils";
 import { isCartesianChart } from "metabase/visualizations";
 import type {
@@ -155,7 +160,7 @@ const initializeFromCard = async (
     dispatch(fetchCard(cardId)),
     dispatch(fetchCardQuery(cardId)),
   ]);
-  const { cards, datasets } = getState().visualizer;
+  const { cards, datasets } = getState().visualizer.present;
   const card = cards.find((card) => card.id === cardId);
   const dataset = datasets[`card:${cardId}`];
   if (!card || !dataset) {
@@ -164,8 +169,9 @@ const initializeFromCard = async (
   return getInitialStateForCardDataSource(card, dataset);
 };
 
+const ADD_DATA_SOURCE = "visualizer/dataImporter/addDataSource";
 export const addDataSource = createAsyncThunk(
-  "visualizer/dataImporter/addDataSource",
+  ADD_DATA_SOURCE,
   async (id: VisualizerDataSourceId, { dispatch, getState }) => {
     const { type, sourceId } = parseDataSourceId(id);
 
@@ -234,6 +240,20 @@ const fetchCardQuery = createAsyncThunk<Dataset, CardId>(
       return result.data;
     }
     throw new Error("Failed to fetch card query");
+  },
+);
+
+export const undo = createAction("visualizer/undo");
+export const redo = createAction("visualizer/redo");
+
+const CLEAR_HISTORY = "visualizer/clearHistory";
+const clearHistory = createAction(CLEAR_HISTORY);
+
+export const resetVisualizer = createThunkAction(
+  CLEAR_HISTORY,
+  () => (dispatch) => {
+    dispatch(_resetVisualizer());
+    dispatch(clearHistory());
   },
 );
 
@@ -479,9 +499,7 @@ const visualizerSlice = createSlice({
     closeDataSidebar: (state) => {
       state.isDataSidebarOpen = false;
     },
-    undo: () => {},
-    redo: () => {},
-    resetVisualizer: (state) => {
+    _resetVisualizer: (state) => {
       Object.assign(state, getInitialState());
     },
   },
@@ -589,6 +607,8 @@ function maybeCombineDataset(
   return state;
 }
 
+const { _resetVisualizer } = visualizerSlice.actions;
+
 export const {
   addColumn,
   setTitle,
@@ -603,9 +623,22 @@ export const {
   closeVizSettingsSidebar,
   closeDataSidebar,
   removeDataSource,
-  undo,
-  redo,
-  resetVisualizer,
 } = visualizerSlice.actions;
 
-export const { reducer } = visualizerSlice;
+export const reducer = undoable(visualizerSlice.reducer, {
+  filter: includeAction([
+    initializeVisualizer.fulfilled.type,
+    addColumn.type,
+    setTitle.type,
+    updateSettings.type,
+    removeColumn.type,
+    setDisplay.type,
+    handleDrop.type,
+    removeDataSource.type,
+    addDataSource.fulfilled.type,
+  ]),
+  undoType: undo.type,
+  redoType: redo.type,
+  clearHistoryType: CLEAR_HISTORY,
+  ignoreInitialState: true,
+});

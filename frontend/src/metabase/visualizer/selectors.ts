@@ -26,11 +26,17 @@ import {
   splitVisualizerSeries,
 } from "./utils";
 
-type State = { visualizer: VisualizerState };
+type State = {
+  visualizer: {
+    past: VisualizerState[];
+    present: VisualizerState;
+    future: VisualizerState[];
+  };
+};
 
 // Private selectors
 
-const getCurrentHistoryItem = (state: State) => state.visualizer;
+const getCurrentHistoryItem = (state: State) => state.visualizer.present;
 
 const getVisualizationColumns = (state: State) =>
   getCurrentHistoryItem(state).columns;
@@ -43,7 +49,7 @@ const getVisualizerColumnValuesMapping = (state: State) =>
 export const getVisualizerRawSettings = (state: State) =>
   getCurrentHistoryItem(state).settings;
 
-export const getCards = (state: State) => state.visualizer.cards;
+export const getCards = (state: State) => getCurrentHistoryItem(state).cards;
 
 export function getVisualizationTitle(state: State) {
   const settings = getVisualizerRawSettings(state);
@@ -54,16 +60,20 @@ export function getVisualizationType(state: State) {
   return getCurrentHistoryItem(state).display ?? undefined;
 }
 
-export const getDatasets = (state: State) => state.visualizer.datasets;
+export const getDatasets = (state: State) =>
+  getCurrentHistoryItem(state).datasets;
 
 export const getLoadingDatasets = (state: State) =>
-  state.visualizer.loadingDatasets;
+  getCurrentHistoryItem(state).loadingDatasets;
 
 export const getExpandedDataSources = (state: State) =>
-  state.visualizer.expandedDataSources;
+  getCurrentHistoryItem(state).expandedDataSources;
 
 export const getIsLoading = createSelector(
-  [(state) => state.visualizer.loadingDataSources, getLoadingDatasets],
+  [
+    (state) => getCurrentHistoryItem(state).loadingDataSources,
+    getLoadingDatasets,
+  ],
   (loadingDataSources, loadingDatasets) => {
     return (
       Object.values(loadingDataSources).includes(true) ||
@@ -72,18 +82,17 @@ export const getIsLoading = createSelector(
   },
 );
 
-export const getDraggedItem = (state: State) => state.visualizer.draggedItem;
+export const getDraggedItem = (state: State) =>
+  getCurrentHistoryItem(state).draggedItem;
 
 export const getIsDataSidebarOpen = (state: State) =>
-  state.visualizer.isDataSidebarOpen;
+  getCurrentHistoryItem(state).isDataSidebarOpen;
 
 export const getIsVizSettingsSidebarOpen = (state: State) =>
-  state.visualizer.isVizSettingsSidebarOpen;
+  getCurrentHistoryItem(state).isVizSettingsSidebarOpen;
 
-// TODO Update
-// #0 is state before its actually initialized, hence the > 1
-export const getCanUndo = () => false;
-export const getCanRedo = () => false;
+export const getCanUndo = (state: State) => state.visualizer.past.length > 0;
+export const getCanRedo = (state: State) => state.visualizer.future.length > 0;
 
 export const getReferencedColumns = createSelector(
   [getVisualizerColumnValuesMapping],

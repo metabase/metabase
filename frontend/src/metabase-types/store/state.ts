@@ -38,7 +38,11 @@ export interface State {
   modal: ModalName;
   undo: UndoState;
   downloads: DownloadsState;
-  visualizer: VisualizerState;
+  visualizer: {
+    past: VisualizerState[];
+    present: VisualizerState;
+    future: VisualizerState[];
+  };
 }
 
 export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;
