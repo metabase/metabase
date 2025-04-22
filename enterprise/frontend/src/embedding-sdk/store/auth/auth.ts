@@ -3,7 +3,6 @@ import * as Yup from "yup";
 import type {
   MetabaseAuthConfig,
   MetabaseEmbeddingSessionToken,
-  MetabaseFetchRequestTokenFn,
 } from "embedding-sdk";
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
@@ -17,15 +16,19 @@ import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import type { Settings } from "metabase-types/api";
 
-import { getOrRefreshSession } from "./reducer";
-import { getFetchRefreshTokenFn } from "./selectors";
+import { getOrRefreshSession } from "../reducer";
+import { getFetchRefreshTokenFn } from "../selectors";
+
+import { jwtRefreshFunction } from "./jwt";
+import { popupRefreshTokenFn } from "./popup";
 
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
   async (authConfig: MetabaseAuthConfig, { dispatch }) => {
     // Setup JWT or API key
     const isValidAuthProviderUri =
-      authConfig.authProviderUri && authConfig.authProviderUri?.length > 0;
+      authConfig.metabaseInstanceUrl &&
+      authConfig.metabaseInstanceUrl?.length > 0;
 
     // TODO: add a proper check for interactive embedding mode
     const isValidApiKeyConfig =
@@ -35,14 +38,16 @@ export const initAuth = createAsyncThunk(
       // JWT setup
       api.onBeforeRequest = async () => {
         const session = await dispatch(
-          getOrRefreshSession(authConfig.authProviderUri!),
+          getOrRefreshSession(authConfig.metabaseInstanceUrl),
         ).unwrap();
         if (session?.id) {
           api.sessionToken = session.id;
         }
       };
       // verify that the session is actually valid before proceeding
-      await dispatch(getOrRefreshSession(authConfig.authProviderUri!)).unwrap();
+      await dispatch(
+        getOrRefreshSession(authConfig.metabaseInstanceUrl),
+      ).unwrap();
     } else if (isValidApiKeyConfig) {
       // API key setup
       api.apiKey = authConfig.apiKey;
@@ -93,7 +98,7 @@ export const initAuth = createAsyncThunk(
 export const refreshTokenAsync = createAsyncThunk(
   "sdk/token/REFRESH_TOKEN",
   async (
-    url: string,
+    url: MetabaseAuthConfig["metabaseInstanceUrl"],
     { getState },
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
     // The SDK user can provide a custom function to refresh the token.
@@ -101,7 +106,7 @@ export const refreshTokenAsync = createAsyncThunk(
       getState() as SdkStoreState,
     );
 
-    const getRefreshToken = customGetRefreshToken ?? defaultGetRefreshTokenFn;
+    const getRefreshToken = customGetRefreshToken ?? runRefreshTokenFn;
 
     // # How does the error handling work?
     // This is an async thunk, thunks _by design_ can fail and no error will be shown on the console (it's the reducer that should handle the reject action)
@@ -156,31 +161,24 @@ const safeStringify = (value: unknown) => {
   }
 };
 
-/**
- * The default implementation of the function to get the refresh token.
- * Only supports sessions by default.
- */
-export const defaultGetRefreshTokenFn: MetabaseFetchRequestTokenFn = async (
-  url,
+const runRefreshTokenFn = async (
+  url: MetabaseAuthConfig["metabaseInstanceUrl"],
 ) => {
-  const response = await fetch(url, {
-    method: "GET",
-    credentials: "include",
-  });
+  // GET /auth/sso with headers
+  const urlResponse = await fetch(`${url}/auth/sso`, getFetchParams());
+  const urlResponseJson = await urlResponse.json();
 
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch the session, HTTP status: ${response.status}`,
-    );
+  // For the SDK, both SAML and JWT endpoints return {url: [...], method: "saml" | "jwt"}
+  // when the headers are passed
+  const { method, url: responseUrl } = urlResponseJson;
+
+  if (method === "saml") {
+    // The URL should point to the SAML IDP
+    return popupRefreshTokenFn(responseUrl);
   }
 
-  const asText = await response.text();
-
-  try {
-    return JSON.parse(asText);
-  } catch (ex) {
-    return asText;
-  }
+  // Points to the JWT Auth endpoint on the client server
+  return jwtRefreshFunction(responseUrl);
 };
 
 const sessionSchema = Yup.object({
@@ -189,3 +187,17 @@ const sessionSchema = Yup.object({
   // We should also receive `iat` and `status` in the response, but we don't actually need them
   // as we don't use them, so we don't throw an error if they are missing
 });
+
+export function getFetchParams() {
+  const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
+  const fetchParams: RequestInit = {
+    method: "GET",
+    headers: {
+      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      "X-Metabase-Client": "embedding-sdk-react",
+      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      "X-Metabase-Client-Version": EMBEDDING_SDK_VERSION,
+    },
+  };
+  return fetchParams;
+}

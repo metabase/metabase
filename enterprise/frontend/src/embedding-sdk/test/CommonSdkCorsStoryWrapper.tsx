@@ -7,7 +7,6 @@ const METABASE_INSTANCE_URL =
 
 const DEFAULT_AUTH_CONFIG: MetabaseAuthConfig = {
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
-  authProviderUri: `${METABASE_INSTANCE_URL}/sso/metabase`,
 };
 
 export const CommonSdkStoryCorsWrapper = (Story: StoryFn) => (

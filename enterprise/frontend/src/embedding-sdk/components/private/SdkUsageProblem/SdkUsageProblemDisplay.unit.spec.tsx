@@ -150,7 +150,6 @@ describe("SdkUsageProblemDisplay", () => {
 
   it("shows an error when neither an Auth Provider URI or API keys are provided", async () => {
     setup({
-      // @ts-expect-error - we're intentionally passing neither to simulate bad usage
       authConfig: { metabaseInstanceUrl: "http://localhost" },
     });
 
@@ -161,36 +160,6 @@ describe("SdkUsageProblemDisplay", () => {
     expect(
       within(card).getByText(
         /must provide either an Auth Provider URI or an API key for authentication/,
-      ),
-    ).toBeInTheDocument();
-
-    const docsLink = within(card).getByRole("link", {
-      name: /View documentation/,
-    });
-
-    expect(docsLink).toHaveAttribute(
-      "href",
-      "https://www.metabase.com/docs/latest/embedding/sdk/authentication#authenticating-people-from-your-server",
-    );
-  });
-
-  it("shows an error when both an Auth Provider URI and API keys are provided", async () => {
-    setup({
-      // @ts-expect-error - we're intentionally passing both to simulate bad usage
-      authConfig: {
-        apiKey: "TEST_API_KEY",
-        metabaseInstanceUrl: "http://localhost",
-        authProviderUri: "http://TEST_URI/sso/metabase",
-      },
-    });
-
-    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
-
-    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
-
-    expect(
-      within(card).getByText(
-        /cannot use both an Auth Provider URI and API key authentication at the same time/,
       ),
     ).toBeInTheDocument();
 

@@ -160,9 +160,7 @@ const setup = async ({
     {
       sdkProviderProps: {
         ...providerProps,
-        authConfig: createMockAuthProviderUriConfig({
-          authProviderUri: "http://TEST_URI/sso/metabase",
-        }),
+        authConfig: createMockAuthProviderUriConfig(),
       },
       storeInitialState: state,
     },
