@@ -24,3 +24,20 @@
     color: var(--mb-color-text-white);
   }
 }
+
+.label {
+  padding: 0;
+  margin: 0;
+  height: auto;
+  border-radius: 99px;
+  border: none;
+}
+
+.indicator {
+  background-color: var(--mb-color-brand);
+  border-radius: 99px;
+  height: calc(100% - 8px);
+  margin: 0;
+  box-shadow: none;
+  border: none;
+}

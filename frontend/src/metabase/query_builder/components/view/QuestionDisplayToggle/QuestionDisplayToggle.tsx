@@ -2,7 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { Flex, Icon } from "metabase/ui";
+import { Flex, Icon, SegmentedControl } from "metabase/ui";
 
 import QuestionDisplayToggleS from "./QuestionDisplayToggle.module.css";
 
@@ -17,14 +17,6 @@ const QuestionDisplayToggle = ({
   isShowingRawTable,
   onToggleRawTable,
 }: QuestionDisplayToggleProps) => {
-  const handleToggle = () => onToggleRawTable(!isShowingRawTable);
-
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      handleToggle();
-    }
-  };
   useRegisterShortcut(
     [
       {
@@ -36,34 +28,50 @@ const QuestionDisplayToggle = ({
   );
 
   return (
-    <Flex
-      className={cx(QuestionDisplayToggleS.Well, className)}
-      onClick={handleToggle}
-      onKeyDown={handleKeyDown}
-      tabIndex={0}
-      role="button"
-      aria-pressed={isShowingRawTable}
-      aria-label={
-        isShowingRawTable ? t`Switch to visualization` : t`Switch to data`
-      }
-    >
-      <Flex
-        className={cx(QuestionDisplayToggleS.ToggleIcon, {
-          [QuestionDisplayToggleS.active]: isShowingRawTable,
-        })}
-        aria-label={t`Switch to data`}
-      >
-        <Icon name="table2" />
-      </Flex>
-      <Flex
-        className={cx(QuestionDisplayToggleS.ToggleIcon, {
-          [QuestionDisplayToggleS.active]: !isShowingRawTable,
-        })}
-        aria-label={t`Switch to visualization`}
-      >
-        <Icon name="lineandbar" />
-      </Flex>
-    </Flex>
+    <SegmentedControl
+      classNames={{
+        root: cx(QuestionDisplayToggleS.Well, className),
+        label: QuestionDisplayToggleS.label,
+        indicator: QuestionDisplayToggleS.indicator,
+      }}
+      value={isShowingRawTable ? "data" : "visualization"}
+      onChange={(value) => onToggleRawTable(value === "data")}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggleRawTable(!isShowingRawTable);
+        }
+      }}
+      data={[
+        {
+          value: "data",
+          label: (
+            <Flex
+              className={cx(QuestionDisplayToggleS.ToggleIcon, {
+                [QuestionDisplayToggleS.active]: isShowingRawTable,
+              })}
+              aria-label={t`Switch to data`}
+            >
+              <Icon name="table2" />
+            </Flex>
+          ),
+        },
+        {
+          value: "visualization",
+          label: (
+            <Flex
+              className={cx(QuestionDisplayToggleS.ToggleIcon, {
+                [QuestionDisplayToggleS.active]: !isShowingRawTable,
+              })}
+              aria-label={t`Switch to visualization`}
+            >
+              <Icon name="lineandbar" />
+            </Flex>
+          ),
+        },
+      ]}
+      transitionDuration={0}
+    />
   );
 };
 

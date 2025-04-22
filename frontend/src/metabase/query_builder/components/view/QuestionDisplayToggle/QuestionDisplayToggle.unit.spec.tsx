@@ -12,10 +12,13 @@ describe("QuestionDisplayToggle", () => {
         onToggleRawTable={jest.fn()}
       />,
     );
-    expect(screen.getByRole("button")).toBeInTheDocument();
+    expect(screen.getByLabelText("Switch to data")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Switch to visualization"),
+    ).toBeInTheDocument();
   });
 
-  it("toggles state on click", async () => {
+  it("toggles to data on click", async () => {
     const onToggleRawTable = jest.fn();
     renderWithProviders(
       <QuestionDisplayToggle
@@ -24,9 +27,23 @@ describe("QuestionDisplayToggle", () => {
       />,
     );
 
-    const button = screen.getByRole("button");
-    await userEvent.click(button);
+    const dataButton = screen.getByLabelText("Switch to data");
+    await userEvent.click(dataButton);
     expect(onToggleRawTable).toHaveBeenCalledWith(true);
+  });
+
+  it("toggles to visualization on click", async () => {
+    const onToggleRawTable = jest.fn();
+    renderWithProviders(
+      <QuestionDisplayToggle
+        isShowingRawTable={true}
+        onToggleRawTable={onToggleRawTable}
+      />,
+    );
+
+    const vizButton = screen.getByLabelText("Switch to visualization");
+    await userEvent.click(vizButton);
+    expect(onToggleRawTable).toHaveBeenCalledWith(false);
   });
 
   it("toggles state on Enter key press", async () => {
@@ -38,7 +55,7 @@ describe("QuestionDisplayToggle", () => {
       />,
     );
 
-    const button = screen.getByRole("button");
+    const button = screen.getByLabelText("Switch to data");
     await userEvent.type(button, "{enter}");
     expect(onToggleRawTable).toHaveBeenCalledWith(true);
   });
@@ -52,7 +69,7 @@ describe("QuestionDisplayToggle", () => {
       />,
     );
 
-    const button = screen.getByRole("button");
+    const button = screen.getByLabelText("Switch to visualization");
     await userEvent.type(button, " ");
     expect(onToggleRawTable).toHaveBeenCalledWith(false);
   });
