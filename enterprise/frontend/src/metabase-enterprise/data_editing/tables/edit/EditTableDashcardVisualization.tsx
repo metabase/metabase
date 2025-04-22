@@ -78,9 +78,11 @@ export const EditTableDashcardVisualization = ({
     visualizationSettings,
   );
 
-  const { hasCreateAction, hasDeleteAction } = useTableActions(
-    visualizationSettings,
-  );
+  const { hasCreateAction, hasDeleteAction, enabledRowActions } =
+    useTableActions({
+      cardId,
+      visualizationSettings,
+    });
 
   const { getColumnSortDirection } = useTableSorting({
     question,
@@ -96,6 +98,7 @@ export const EditTableDashcardVisualization = ({
           onRowExpandClick={handleModalOpenAndExpandedRow}
           columnsConfig={columnsConfig}
           getColumnSortDirection={getColumnSortDirection}
+          rowActions={enabledRowActions}
         />
       </Box>
 

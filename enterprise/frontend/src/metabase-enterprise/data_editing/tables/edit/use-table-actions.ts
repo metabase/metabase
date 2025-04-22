@@ -1,23 +1,47 @@
+import { useMemo } from "react";
+
+import { useListActionsQuery } from "metabase/api";
 import type {
   DashCardVisualizationSettings,
+  EditableTableRowActionId,
   VisualizationSettings,
 } from "metabase-types/api";
 
-export const useTableActions = (
-  visualizationSettings?: VisualizationSettings & DashCardVisualizationSettings,
-) => {
-  const hasCreateAction =
-    visualizationSettings?.["editableTable.enabledActions"]?.find(
-      ({ id }) => id === "row/create",
-    )?.enabled || false;
+export const useTableActions = ({
+  cardId,
+  visualizationSettings,
+}: {
+  cardId: number;
+  visualizationSettings?: VisualizationSettings & DashCardVisualizationSettings;
+}) => {
+  const { data: actions } = useListActionsQuery({
+    "model-id": cardId,
+  });
 
-  const hasDeleteAction =
-    visualizationSettings?.["editableTable.enabledActions"]?.find(
-      ({ id }) => id === "row/delete",
-    )?.enabled || false;
+  return useMemo(() => {
+    const enabledActionsSet =
+      visualizationSettings?.["editableTable.enabledActions"]?.reduce(
+        (result, item) => {
+          if (item.enabled) {
+            result.add(item.id);
+          }
 
-  return {
-    hasCreateAction,
-    hasDeleteAction,
-  };
+          return result;
+        },
+        new Set<EditableTableRowActionId>(),
+      ) || new Set<EditableTableRowActionId>();
+
+    const hasCreateAction = enabledActionsSet.has("row/create");
+
+    const hasDeleteAction = enabledActionsSet.has("row/delete");
+
+    const enabledRowActions =
+      actions?.filter(({ id }) => enabledActionsSet.has(id)) || [];
+
+    return {
+      hasCreateAction,
+      hasDeleteAction,
+      enabledRowActions,
+    };
+  }, [actions, visualizationSettings]);
 };

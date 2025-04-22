@@ -17,6 +17,7 @@ import type {
   FieldWithMetadata,
   RowValue,
   RowValues,
+  WritebackAction,
 } from "metabase-types/api";
 
 import { canEditField } from "../../helpers";
@@ -36,6 +37,7 @@ type EditTableDataGridProps = {
   getColumnSortDirection?: (
     column: DatasetColumn,
   ) => OrderByDirection | undefined;
+  rowActions?: WritebackAction[];
 };
 
 export const EditTableDataGrid = ({
@@ -45,6 +47,7 @@ export const EditTableDataGrid = ({
   onRowExpandClick,
   columnsConfig,
   getColumnSortDirection,
+  rowActions,
 }: EditTableDataGridProps) => {
   const { cols, rows } = data;
 
@@ -159,6 +162,7 @@ export const EditTableDataGrid = ({
     columnSizingMap,
     columnsOptions,
     columnVisibility,
+    rowActionsColumn: rowActions ? { actions: rowActions } : undefined,
   });
 
   const handleCellClick = useCallback(

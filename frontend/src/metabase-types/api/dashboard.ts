@@ -99,8 +99,13 @@ export type DashboardCardLayoutAttrs = {
   size_y: number;
 };
 
+export type EditableTableRowActionId =
+  | WritebackActionId
+  | "row/create"
+  | "row/delete";
+
 export type EditableTableRowActionDisplaySetting = {
-  id: WritebackActionId | "row/create" | "row/delete";
+  id: EditableTableRowActionId;
   enabled: boolean;
 };
 

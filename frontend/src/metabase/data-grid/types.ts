@@ -14,6 +14,8 @@ import type { VirtualItem } from "@tanstack/react-virtual";
 import type React from "react";
 import type { RefObject } from "react";
 
+import type { WritebackAction } from "metabase-types/api";
+
 import type { ColumnsReordering } from "./hooks/use-columns-reordering";
 import type { VirtualGrid } from "./hooks/use-virtual-grid";
 
@@ -122,6 +124,14 @@ export interface RowIdColumnOptions {
   onRowExpandClick?: (rowIndex: number) => void;
 }
 
+export interface RowActionsColumnConfig {
+  actions: WritebackAction[];
+  renderCell?: (
+    actions: WritebackAction[],
+    rowIndex: number,
+  ) => React.ReactNode;
+}
+
 export interface DataGridTheme {
   /** Table font size, defaults to ~12.5px */
   fontSize?: string;
@@ -200,6 +210,8 @@ export interface DataGridOptions<TData = any, TValue = any> {
   measurementRenderWrapper?: (
     children: React.ReactElement,
   ) => React.ReactElement;
+
+  rowActionsColumn?: RowActionsColumnConfig;
 }
 
 export type CellAlign = "left" | "middle" | "right";
