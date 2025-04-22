@@ -1,4 +1,5 @@
 import type { DragEndEvent } from "@dnd-kit/core";
+import type { Draft } from "immer";
 import _ from "underscore";
 
 import { isCartesianChart } from "metabase/visualizations";
@@ -31,7 +32,7 @@ import type {
 import { removeColumnFromStateUnlessUsedElseWhere } from "./utils";
 
 export const cartesianDropHandler = (
-  state: VisualizerHistoryItem,
+  state: Draft<VisualizerHistoryItem> | VisualizerHistoryItem,
   { active, over }: DragEndEvent,
   {
     dataSourceMap,
@@ -187,7 +188,7 @@ export function addDimensionColumnToCartesianChart(
  * If the column is already in use, it will not be added again.
  */
 export function addColumnToCartesianChart(
-  state: VisualizerHistoryItem,
+  state: Draft<VisualizerHistoryItem> | VisualizerHistoryItem,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataset: Dataset,
@@ -344,7 +345,7 @@ function removeDimensionFromMultiSeriesChart(
 }
 
 export function maybeImportDimensionsFromOtherDataSources(
-  state: VisualizerHistoryItem,
+  state: Draft<VisualizerHistoryItem> | VisualizerHistoryItem,
   newDimension: DatasetColumn,
   datasetMap: Record<string, Dataset>,
   dataSourceMap: Record<string, VisualizerDataSource>,

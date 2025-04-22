@@ -308,7 +308,14 @@ const visualizerSlice = createSlice({
       );
 
       if (state.display === "funnel") {
-        addColumnToFunnel(state, column, columnRef, dataset, dataSource);
+        addColumnToFunnel(
+          state,
+          column,
+          columnRef,
+          // Prevents "Type instantiation is excessively deep" error
+          dataset as Dataset,
+          dataSource,
+        );
         return;
       }
 
@@ -320,7 +327,8 @@ const visualizerSlice = createSlice({
           state,
           column,
           columnRef,
-          dataset,
+          // Prevents "Type instantiation is excessively deep" error
+          dataset as Dataset,
           dataSource,
         );
 
@@ -328,10 +336,14 @@ const visualizerSlice = createSlice({
         const isDimension = dimension.includes(column.name);
 
         if (isDimension && column.id) {
+          const datasetMap = _.omit(state.datasets, dataSource.id) as Record<
+            string,
+            Dataset
+          >;
           maybeImportDimensionsFromOtherDataSources(
             state,
             column,
-            _.omit(state.datasets, dataSource.id),
+            datasetMap,
             dataSourceMap,
           );
         }
@@ -374,7 +386,8 @@ const visualizerSlice = createSlice({
 
       if (isCartesianChart(state.display)) {
         cartesianDropHandler(state, event, {
-          datasetMap: state.datasets,
+          // Prevents "Type instantiation is excessively deep" error
+          datasetMap: state.datasets as Record<VisualizerDataSourceId, Dataset>,
           dataSourceMap: Object.fromEntries(
             state.cards.map((card) => {
               const dataSource = createDataSource("card", card.id, card.name);
@@ -501,14 +514,17 @@ const visualizerSlice = createSlice({
         state.loadingDataSources[`card:${cardId}`] = true;
         state.error = null;
       })
-      .addCase(fetchCard.fulfilled, (state, action) => {
+      .addCase(fetchCard.fulfilled, (state, action: PayloadAction<Card>) => {
         const card = action.payload;
         const index = state.cards.findIndex((c) => c.id === card.id);
+
+        // `any` prevents the "Type instantiation is excessively deep" error
         if (index !== -1) {
-          state.cards[index] = card;
+          state.cards[index] = card as any;
         } else {
-          state.cards.push(card);
+          state.cards.push(card as any);
         }
+
         state.loadingDataSources[`card:${card.id}`] = false;
         state.expandedDataSources[`card:${card.id}`] = true;
       })
@@ -524,12 +540,18 @@ const visualizerSlice = createSlice({
         state.loadingDatasets[`card:${cardId}`] = true;
         state.error = null;
       })
-      .addCase(fetchCardQuery.fulfilled, (state, action) => {
-        const cardId = action.meta.arg;
-        const dataset = action.payload;
-        state.datasets[`card:${cardId}`] = dataset;
-        state.loadingDatasets[`card:${cardId}`] = false;
-      })
+      .addCase(
+        fetchCardQuery.fulfilled,
+        (state, action: { payload: Dataset; meta: { arg: CardId } }) => {
+          const cardId = action.meta.arg;
+          const dataset = action.payload;
+
+          // `any` prevents the "Type instantiation is excessively deep" error
+          state.datasets[`card:${cardId}`] = dataset as any;
+
+          state.loadingDatasets[`card:${cardId}`] = false;
+        },
+      )
       .addCase(fetchCardQuery.rejected, (state, action) => {
         const cardId = action.meta.arg;
         if (cardId) {

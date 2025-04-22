@@ -1,4 +1,5 @@
 import type { DragEndEvent } from "@dnd-kit/core";
+import type { Draft } from "immer";
 import _ from "underscore";
 
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
@@ -145,7 +146,7 @@ export function addScalarToFunnel(
 }
 
 export function addColumnToFunnel(
-  state: VisualizerHistoryItem,
+  state: Draft<VisualizerHistoryItem> | VisualizerHistoryItem,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataset: Dataset,
