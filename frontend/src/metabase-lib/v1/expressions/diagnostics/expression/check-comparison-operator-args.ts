@@ -2,8 +2,7 @@ import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
-import { COMPARISON_OPERATORS } from "../../config";
-import type { OPERATOR } from "../../tokenizer";
+import { COMPARISON, EQUALITY, parseOperatorType } from "../../pratt";
 import { visit } from "../../visitor";
 import { error } from "../utils";
 
@@ -16,10 +15,13 @@ export function checkComparisonOperatorArgs({
     if (!Lib.isExpressionParts(node)) {
       return;
     }
+
     const { operator, args } = node;
-    if (!COMPARISON_OPERATORS.has(operator as OPERATOR)) {
+    const type = parseOperatorType(operator);
+    if (type !== COMPARISON && type !== EQUALITY) {
       return;
     }
+
     const [firstOperand] = args;
     if (typeof firstOperand === "number") {
       error(node, t`Expecting field but found ${firstOperand}`);
