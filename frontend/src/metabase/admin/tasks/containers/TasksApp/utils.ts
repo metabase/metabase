@@ -1,6 +1,7 @@
-import type {
-  QueryParam,
-  UrlStateConfig,
+import {
+  type QueryParam,
+  type UrlStateConfig,
+  getFirstParamValue,
 } from "metabase/common/hooks/use-url-state";
 import type { ListTasksSortColumn, TaskStatus } from "metabase-types/api";
 import { SortDirection } from "metabase-types/api/sorting";
@@ -35,13 +36,13 @@ export const urlStateConfig: UrlStateConfig<UrlState> = {
 };
 
 function parsePage(param: QueryParam): UrlState["page"] {
-  const value = Array.isArray(param) ? param[0] : param;
+  const value = getFirstParamValue(param);
   const parsed = parseInt(value || "0", 10);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
 function parseSortColumn(param: QueryParam): UrlState["sort_column"] {
-  const value = Array.isArray(param) ? param[0] : param;
+  const value = getFirstParamValue(param);
   return value && isSortColumn(value) ? value : DEFAULT_SORT_COLUMN;
 }
 
@@ -50,14 +51,14 @@ function isSortColumn(value: string): value is ListTasksSortColumn {
 }
 
 function parseSortDirection(param: QueryParam): UrlState["sort_direction"] {
-  const value = Array.isArray(param) ? param[0] : param;
+  const value = getFirstParamValue(param);
   return value === SortDirection.Asc
     ? SortDirection.Asc
     : DEFAULT_SORT_DIRECTION;
 }
 
 function parseStatus(param: QueryParam): UrlState["status"] {
-  const value = Array.isArray(param) ? param[0] : param;
+  const value = getFirstParamValue(param);
   return value && isTaskStatus(value) ? value : null;
 }
 
@@ -66,6 +67,6 @@ function isTaskStatus(value: string): value is TaskStatus {
 }
 
 function parseTask(param: QueryParam): UrlState["task"] {
-  const value = Array.isArray(param) ? param[0] : param;
+  const value = getFirstParamValue(param);
   return value && value.trim().length > 0 ? value.trim() : null;
 }
