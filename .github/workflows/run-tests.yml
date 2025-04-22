@@ -1,4 +1,4 @@
-name: Run Tests
+name: Run tests
 
 on:
   push:
@@ -18,7 +18,6 @@ jobs:
       backend_all: ${{ steps.changes.outputs.backend_all }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
-      embedding_sdk: ${{ steps.changes.outputs.frontend_embedding_sdk_sources }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
@@ -49,7 +48,7 @@ jobs:
       - name: Upload Static Viz Bundle Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: static-viz-bundle-${{ github.event.pull_request.head.sha || github.sha }}
+          name: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist
 
       - name: Check for static viz changes
@@ -59,176 +58,83 @@ jobs:
           token: ${{ github.token }}
           filters: .github/static-viz-sources.yaml
 
-  # if this is a test on a release branch, we need to check the build requirements
-  get-build-requirements:
-    if: |
-      !cancelled() &&
-      contains(github.ref, 'release-x')
+  backend-tests:
+    if: ${{ !cancelled() }}
+    needs: [files-changed, static-viz-files-changed, build-uberjars]
+    uses: ./.github/workflows/backend.yml
+    secrets: inherit
+    with:
+      skip: ${{ needs.files-changed.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true' }}
+      artifact_name_ee: ${{ needs.build-uberjars.outputs.artifact_name_ee }}
+      artifact_name_oss: ${{ needs.build-uberjars.outputs.artifact_name_oss }}
+
+  driver-tests:
+    needs: [files-changed, build-uberjars]
+    uses: ./.github/workflows/drivers.yml
+    secrets: inherit
+    with:
+      skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
+      artifact_name_ee: ${{ needs.build-uberjars.outputs.artifact_name_ee }}
+      artifact_name_oss: ${{ needs.build-uberjars.outputs.artifact_name_oss }}
+
+  frontend-tests:
+    needs: files-changed
+    uses: ./.github/workflows/frontend.yml
+    secrets: inherit
+    with:
+      skip: ${{ needs.files-changed.outputs.frontend_all != 'true' }}
+      
+  # Build uberjars for ee and oss
+  build-uberjars:
+    name: Build Uberjars
+    needs: [files-changed]
+    if: ${{ !cancelled() && (needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.e2e_all == 'true') }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 25
     outputs:
-      java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
-      node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: release
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
-      - name: Get build dependencies
-        uses: actions/github-script@v7
-        id: dependencies
-        with:
-          script: | # js
-            const { getBuildRequirements, getVersionFromReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
-
-            const version = getVersionFromReleaseBranch('${{ github.ref }}');
-            const requirements = getBuildRequirements(version);
-
-            return {
-              java_version: requirements.java,
-              node_version: requirements.node,
-            };
-
-  # Central uberjar build that all other jobs will use
-  build-uberjar-ee:
-    name: Build Uberjar EE
-    needs: [files-changed, get-build-requirements]
-    if: ${{ !cancelled() && (needs.files-changed.outputs.e2e_all == 'true' || needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.embedding_sdk == 'true') }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-    env:
-      MB_EDITION: ee
-      INTERACTIVE: false
-      # make sure that builds on release branches get licenses, because we use them for releases
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
-    outputs:
-      artifact_name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+      artifact_name_ee: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+      artifact_name_oss: metabase-oss-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-        with:
-          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: uberjar
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
-
-      - name: Build uberjar with ./bin/build.sh
-        timeout-minutes: 10
-        run: ./bin/build.sh
+          java-version: 21
+          
+      # Build EE version
+      - name: Build EE uberjar
+        run: |
+          MB_EDITION=ee ./bin/build.sh
         shell: bash
-
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
+      - name: Prepare EE uberjar artifact
+        uses: actions/upload-artifact@v4
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-
-  build-uberjar-oss:
-    name: Build Uberjar OSS
-    needs: [files-changed, get-build-requirements]
-    if: ${{ !cancelled() && (needs.files-changed.outputs.e2e_all == 'true' || needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.embedding_sdk == 'true') }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-    env:
-      MB_EDITION: oss
-      INTERACTIVE: false
-      # make sure that builds on release branches get licenses, because we use them for releases
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
-    outputs:
-      artifact_name: metabase-oss-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-        with:
-          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: uberjar
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
-
-      - name: Build uberjar with ./bin/build.sh
-        timeout-minutes: 10
-        run: ./bin/build.sh
+          path: |
+            ./target/uberjar/metabase.jar
+            
+      # Build OSS version  
+      - name: Build OSS uberjar
+        run: |
+          MB_EDITION=oss ./bin/build.sh
         shell: bash
-
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
+      - name: Prepare OSS uberjar artifact
+        uses: actions/upload-artifact@v4
         with:
           name: metabase-oss-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          path: |
+            ./target/uberjar/metabase.jar
 
-  # Check if the uberjar is healthy and create job outputs for each edition
-  create-uberjar-outputs:
-    name: Create Uberjar Output Names
-    needs: [build-uberjar-ee, build-uberjar-oss]
-    runs-on: ubuntu-22.04
-    timeout-minutes: 5
-    outputs:
-      artifact_name_ee: ${{ needs.build-uberjar-ee.outputs.artifact_name }}
-      artifact_name_oss: ${{ needs.build-uberjar-oss.outputs.artifact_name }}
-    steps:
-      - name: Generate artifact names
-        run: |
-          echo "Generated artifact names for EE and OSS builds"
-          echo "EE: ${{ needs.build-uberjar-ee.outputs.artifact_name }}"
-          echo "OSS: ${{ needs.build-uberjar-oss.outputs.artifact_name }}"
-
-  check-uberjar-health-ee:
-    runs-on: ubuntu-22.04
-    name: Check if EE uberjar is healthy
-    needs: [build-uberjar-ee, create-uberjar-outputs]
-    timeout-minutes: 10
-    steps:
-      - name: Prepare JRE (Java Run-time Environment)
-        uses: actions/setup-java@v4
-        with:
-          java-package: jre
-          java-version: 21
-          distribution: "temurin"
-      - run: java -version
-      - uses: actions/download-artifact@v4
-        name: Retrieve uberjar artifact
-        with:
-          name: ${{ needs.create-uberjar-outputs.outputs.artifact_name_ee }}
-      - name: Launch uberjar
-        run: >-
-          java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./target/uberjar/metabase.jar &
-      - name: Wait for Metabase to start
-        run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-
-  check-uberjar-health-oss:
-    runs-on: ubuntu-22.04
-    name: Check if OSS uberjar is healthy
-    needs: [build-uberjar-oss, create-uberjar-outputs]
-    timeout-minutes: 10
-    steps:
-      - name: Prepare JRE (Java Run-time Environment)
-        uses: actions/setup-java@v4
-        with:
-          java-package: jre
-          java-version: 21
-          distribution: "temurin"
-      - run: java -version
-      - uses: actions/download-artifact@v4
-        name: Retrieve uberjar artifact
-        with:
-          name: ${{ needs.create-uberjar-outputs.outputs.artifact_name_oss }}
-      - name: Launch uberjar
-        run: >-
-          java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./target/uberjar/metabase.jar &
-      - name: Wait for Metabase to start
-        run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-
-  # Central embedding SDK build that all jobs will use
+  # Build embedding SDK
   build-embedding-sdk:
+    name: Build Embedding SDK
     needs: [files-changed]
-    if: ${{ !cancelled() && needs.files-changed.outputs.embedding_sdk == 'true' }}
+    if: ${{ !cancelled() && needs.files-changed.outputs.frontend_all == 'true' }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     outputs:
       artifact_name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
     steps:
@@ -247,65 +153,21 @@ jobs:
           name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: resources/embedding-sdk
 
-  # Run all the backend tests
-  backend-tests:
-    needs: [files-changed, static-viz-files-changed, build-uberjar-ee, build-uberjar-oss, check-uberjar-health-ee, check-uberjar-health-oss, create-uberjar-outputs]
-    if: ${{ !cancelled() }}
-    uses: ./.github/workflows/backend.yml
+  e2e-tests:
+    needs: [files-changed, build-uberjars]
+    uses: ./.github/workflows/e2e-tests.yml
     secrets: inherit
     with:
-      skip: ${{ needs.files-changed.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true' }}
-      artifact_name_ee: ${{ needs.create-uberjar-outputs.outputs.artifact_name_ee }}
-      artifact_name_oss: ${{ needs.create-uberjar-outputs.outputs.artifact_name_oss }}
-
-  # Run all the database driver tests
-  driver-tests:
-    needs: [files-changed, build-uberjar-ee, build-uberjar-oss, check-uberjar-health-ee, check-uberjar-health-oss, create-uberjar-outputs]
-    if: ${{ !cancelled() }}
-    uses: ./.github/workflows/drivers.yml
-    secrets: inherit
-    with:
-      skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
-      artifact_name_ee: ${{ needs.create-uberjar-outputs.outputs.artifact_name_ee }}
-      artifact_name_oss: ${{ needs.create-uberjar-outputs.outputs.artifact_name_oss }}
-
-  # Run all the frontend tests
-  frontend-tests:
-    needs: files-changed
-    uses: ./.github/workflows/frontend.yml
-    secrets: inherit
-    with:
-      skip: ${{ needs.files-changed.outputs.frontend_all != 'true' }}
-
-  # Run embedding SDK tests
-  embedding-sdk-tests:
-    needs: [files-changed, build-uberjar-ee, build-uberjar-oss, build-embedding-sdk, check-uberjar-health-ee, check-uberjar-health-oss, create-uberjar-outputs]
-    if: ${{ !cancelled() && needs.files-changed.outputs.embedding_sdk == 'true' }}
-    uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml
-    secrets: inherit
-    with:
-      cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
-      artifact_name_ee: ${{ needs.create-uberjar-outputs.outputs.artifact_name_ee }}
-      artifact_name_oss: ${{ needs.create-uberjar-outputs.outputs.artifact_name_oss }}
-
-  # Run sample apps tests
+      skip: ${{ needs.files-changed.outputs.e2e_all != 'true' }}
+      artifact_name_ee: ${{ needs.build-uberjars.outputs.artifact_name_ee }}
+      artifact_name_oss: ${{ needs.build-uberjars.outputs.artifact_name_oss }}
+      
   sample-apps-tests:
-    needs: [files-changed, build-uberjar-ee, build-uberjar-oss, build-embedding-sdk, check-uberjar-health-ee, check-uberjar-health-oss, create-uberjar-outputs]
+    needs: [files-changed, build-uberjars, build-embedding-sdk]
     if: ${{ !cancelled() && needs.files-changed.outputs.e2e_all == 'true' }}
     uses: ./.github/workflows/e2e-sample-apps-tests.yml
     secrets: inherit
     with:
-      artifact_name_ee: ${{ needs.create-uberjar-outputs.outputs.artifact_name_ee }}
-      artifact_name_oss: ${{ needs.create-uberjar-outputs.outputs.artifact_name_oss }}
-      embedding_sdk_artifact_name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
-
-  # Run all the e2e tests
-  e2e-tests:
-    needs: [files-changed, build-uberjar-ee, build-uberjar-oss, check-uberjar-health-ee, check-uberjar-health-oss, create-uberjar-outputs]
-    if: ${{ !cancelled() && needs.files-changed.outputs.e2e_all == 'true' }}
-    uses: ./.github/workflows/e2e-tests.yml
-    secrets: inherit
-    with:
-      skip: false
-      artifact_name_ee: ${{ needs.create-uberjar-outputs.outputs.artifact_name_ee }}
-      artifact_name_oss: ${{ needs.create-uberjar-outputs.outputs.artifact_name_oss }}
+      artifact_name_ee: ${{ needs.build-uberjars.outputs.artifact_name_ee }}
+      artifact_name_oss: ${{ needs.build-uberjars.outputs.artifact_name_oss }}
+      embedding_sdk_artifact_name: ${{ needs.build-embedding-sdk.outputs.artifact_name }}

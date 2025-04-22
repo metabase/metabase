@@ -6,6 +6,14 @@ on:
       skip:
         type: boolean
         default: false
+      artifact_name_ee:
+        type: string
+        description: "Name of the EE uberjar artifact"
+        required: false
+      artifact_name_oss:
+        type: string
+        description: "Name of the OSS uberjar artifact"
+        required: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-backend
