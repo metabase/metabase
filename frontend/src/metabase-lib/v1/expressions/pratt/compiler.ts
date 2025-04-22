@@ -10,7 +10,7 @@ import {
   isFloatLiteral,
   isIntegerLiteral,
   isStringLiteral,
-} from "../matchers";
+} from "../literal";
 import type { Kind } from "../resolver";
 import type { ExpressionType, StartRule } from "../types";
 
