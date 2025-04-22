@@ -165,7 +165,10 @@
                                    "*:8080 ws://*:8080")
                                  ;; CLJS REPL
                                  (when config/is-dev?
-                                   "ws://*:9630")]
+                                   "ws://*:9630")
+                                 ;; TODO: REMOVE ME! this is for testing only
+                                  (when config/is-dev?
+                                    "http://localhost:3002")]
                   :manifest-src ["'self'"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
