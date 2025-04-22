@@ -1178,11 +1178,12 @@
     (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
       (qp.store/with-metadata-provider (mt/id)
         (testing "checking select privilege defaults to allow on timeout (#56737)"
-          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT SYSTEM$WAIT(17, 'SECONDS')"])]
-            (sql-jdbc.execute/do-with-connection-with-options
-             driver/*driver*
-             (mt/db)
-             nil
-             (fn [^java.sql.Connection conn]
-               (is (true? (sql-jdbc.sync.interface/have-select-privilege?
-                           driver/*driver* conn schema table-name)))))))))))
+          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT SYSTEM$WAIT(3, 'SECONDS')"])]
+            (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
+              (sql-jdbc.execute/do-with-connection-with-options
+               driver/*driver*
+               (mt/db)
+               nil
+               (fn [^java.sql.Connection conn]
+                 (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                             driver/*driver* conn schema table-name))))))))))))

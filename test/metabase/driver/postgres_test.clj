@@ -43,7 +43,6 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.jdbc-exceptions :as jdbc-exceptions]
    [metabase.util.log :as log]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
@@ -1621,7 +1620,7 @@
                       (.execute))
                     (is false "Query successfully executed. Should sleep for 5s with a timeout of 1s")
                     (catch Throwable e
-                      (is (jdbc-exceptions/query-canceled? :postgres e))))))))))))
+                      (is (driver/query-canceled? :postgres e))))))))))))
 
 (deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"
@@ -1740,11 +1739,12 @@
     (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
       (qp.store/with-metadata-provider (mt/id)
         (testing "checking select privilege defaults to allow on timeout (#56737)"
-          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT pg_sleep(16)"])]
-            (sql-jdbc.execute/do-with-connection-with-options
-             driver/*driver*
-             (mt/db)
-             nil
-             (fn [^java.sql.Connection conn]
-               (is (true? (sql-jdbc.sync.interface/have-select-privilege?
-                           driver/*driver* conn schema table-name)))))))))))
+          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT pg_sleep(3)"])]
+            (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
+              (sql-jdbc.execute/do-with-connection-with-options
+               driver/*driver*
+               (mt/db)
+               nil
+               (fn [^java.sql.Connection conn]
+                 (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                             driver/*driver* conn schema table-name))))))))))))

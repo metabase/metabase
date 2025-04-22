@@ -1348,3 +1348,9 @@
 (defmethod dynamic-database-types-lookup ::driver
   [_driver _database _database-types]
   nil)
+
+(defmulti query-canceled?
+  "Test if an exception is due to a query being canceled due to user action. For JDBC drivers this can
+  happen when setting `.setQueryTimeout`."
+  {:arglists '([driver ^Throwable e])}
+  (fn [driver & _] driver))

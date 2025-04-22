@@ -3,7 +3,7 @@
   (:require
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
-   [metabase.util.jdbc-exceptions :as jdbc-exceptions]
+   [metabase.driver :as driver]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
@@ -16,7 +16,7 @@
 
 (defn- is-canceled-statement?
   [e]
-  (jdbc-exceptions/query-canceled? (mdb/db-type) e))
+  (driver/query-canceled? (mdb/db-type) e))
 
 (def ^:private default-retry-config
   {:max-attempts 5

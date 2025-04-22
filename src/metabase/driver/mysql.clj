@@ -16,6 +16,7 @@
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -36,7 +37,7 @@
    [metabase.util.log :as log])
   (:import
    (java.io File)
-   (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
+   (java.sql DatabaseMetaData ResultSet ResultSetMetaData SQLException Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
    (java.time.format DateTimeFormatter)))
 
@@ -1030,3 +1031,16 @@
                        (when (seq table-names) [:in :a.table_name table-names])]
                :order-by [:a.table_name]}
               :dialect (sql.qp/quote-style driver)))
+
+;; MariaDB jdbc uses its `max_statement_time` mechanism to timeout. It is unclear which of these
+;; codes should be returned. Hibernate expects 3024, but in testing 1969 was observed.
+;; https://mariadb.com/kb/en/e1969/
+;; https://mariadb.com/kb/en/e3024/
+(defmethod sql-jdbc/impl-query-canceled? :mariadb [_ ^SQLException e]
+  (contains? #{1969 3024} (.getErrorCode e)))
+
+(defmethod sql-jdbc/impl-query-canceled? :mysql [_ ^SQLException e]
+  (or (= (.getErrorCode e) 1317)
+      ;; when we use MariaDB as the app-db the driver type is returned as `:mysql` so we also need
+      ;; to check for the different error code MariaDB uses
+      (sql-jdbc/impl-query-canceled? :mariadb e)))
