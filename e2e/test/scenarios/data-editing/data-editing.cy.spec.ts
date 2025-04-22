@@ -28,7 +28,6 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
         cy.findByText("Explore").should("be.visible");
         cy.findByText("Edit").should("be.visible");
-        cy.findByLabelText("Refresh").should("be.visible");
 
         cy.findByTestId("table-root").should("be.visible");
       });

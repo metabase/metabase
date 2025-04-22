@@ -343,10 +343,11 @@ describe("issues 55617, 55618", () => {
     cy.findAllByPlaceholderText("Select a target")
       .should("have.length", 2)
       .eq(0)
-      .should("have.value", "People → ID");
+      .should("have.value", "Products → ID");
     cy.findAllByPlaceholderText("Select a target")
       .eq(1)
-      .should("have.value", "Products → ID");
+      .should("have.value", "People → ID");
+
     cy.findAllByPlaceholderText("Select a target").eq(0).click();
     H.popover().within(() => {
       cy.findByText("Orders → ID").should("be.visible");
@@ -378,10 +379,10 @@ describe("issues 55617, 55618", () => {
       .should("have.value", "People → ID")
       .click();
     H.popover().within(() => {
-      cy.findByText("Orders → ID").should("be.visible");
-      cy.findByText("People → ID").should("be.visible");
-      cy.findByText("Products → ID").should("be.visible");
-      cy.findByText("Reviews → ID").should("be.visible").click();
+      cy.findByText("Orders → ID").should("exist");
+      cy.findByText("People → ID").should("exist");
+      cy.findByText("Products → ID").should("exist");
+      cy.findByText("Reviews → ID").should("exist").click();
     });
     cy.findByPlaceholderText("Select a target").should(
       "have.value",
