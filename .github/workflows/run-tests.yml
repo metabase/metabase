@@ -127,8 +127,7 @@ jobs:
         with:
           name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
-  # Check if the uberjar is healthy
-  # Create job outputs for each edition
+  # Check if the uberjar is healthy and create job outputs for each edition
   create-uberjar-outputs:
     name: Create Uberjar Output Names
     needs: build-uberjar
