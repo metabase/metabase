@@ -709,11 +709,6 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "coalesce",
 ]);
 
-export const FUNCTIONS = new Set([
-  ...EXPRESSION_FUNCTIONS,
-  ...AGGREGATION_FUNCTIONS,
-]);
-
 export const OPERATORS = new Set([
   OPERATOR.Plus,
   OPERATOR.Minus,
