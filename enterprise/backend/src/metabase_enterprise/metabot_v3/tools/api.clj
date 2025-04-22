@@ -231,6 +231,7 @@
    [:map
     [:field_id :string]
     [:bucket {:optional true} ::bucket]
+    [:sort_order {:optional true} [:enum {:encode/tool-api-request keyword} "asc" "desc"]]
     [:function [:enum {:encode/tool-api-request keyword}
                 "avg" "count" "count-distinct" "max" "min" "sum"]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
@@ -249,7 +250,11 @@
     [:fields {:optional true} [:maybe [:sequential ::field]]]
     [:filters {:optional true} [:maybe [:sequential ::filter]]]
     [:aggregations {:optional true} [:maybe [:sequential ::aggregation]]]
-    [:group_by {:optional true} [:maybe [:sequential ::group-by]]]]
+    [:group_by {:optional true} [:maybe [:sequential ::group-by]]]
+    [:order_by {:optional true} [:maybe [:sequential [:map
+                                                      [:field ::field]
+                                                      [:direction [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]]]
+    [:limit {:optional true} [:maybe :int]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::field-type

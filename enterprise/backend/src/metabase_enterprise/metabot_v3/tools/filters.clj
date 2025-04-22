@@ -182,14 +182,20 @@
 (defn- add-aggregation
   [query aggregation]
   (let [expr     (bucketed-column aggregation)
+        sort-order (:sort-order aggregation)
         agg-expr (case (:function aggregation)
                    :count          (lib/count)
                    :count-distinct (lib/distinct expr)
                    :sum            (lib/sum expr)
                    :min            (lib/min expr)
                    :max            (lib/max expr)
-                   :avg            (lib/avg expr))]
-    (lib/aggregate query agg-expr)))
+                   :avg            (lib/avg expr))
+        query-with-aggregation (lib/aggregate query agg-expr)]
+    (if sort-order
+      (let [query-aggregations (lib/aggregations query-with-aggregation)
+            last-aggregation-idx (dec (count query-aggregations))]
+        (lib/order-by query-with-aggregation (lib/aggregation-ref query-with-aggregation last-aggregation-idx) sort-order))
+      query-with-aggregation)))
 
 (defn- expression?
   [expr-or-column]
@@ -204,14 +210,23 @@
                 expr-or-column)))
        (lib/with-fields query)))
 
+(defn- add-order-by [query {:keys [field direction]}]
+  (lib/order-by query (:column field) direction))
+
+(defn- add-limit [query limit]
+  (if limit
+    (lib/limit query limit)
+    query))
+
 (defn- query-model*
-  [{:keys [model-id fields filters aggregations group-by] :as _arguments}]
+  [{:keys [model-id fields filters aggregations group-by order-by limit] :as _arguments}]
   (let [card (metabot-v3.tools.u/get-card model-id)
         mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
         base-query (lib/query mp (lib.metadata/card mp model-id))
         visible-cols (lib/visible-columns base-query)
         filter-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
         resolve-visible-column  #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
+        resolve-order-by-column (fn [{:keys [field direction]}] {:field (resolve-visible-column field) :direction direction})
         projection (map (comp (juxt bucketed-column (fn [{:keys [column bucket]}]
                                                       (let [column (cond-> column
                                                                      bucket (assoc :unit bucket))]
@@ -226,7 +241,9 @@
                   (add-fields projection)
                   (reduce-query add-filter (map resolve-visible-column filters))
                   (reduce-query add-aggregation (map resolve-visible-column aggregations))
-                  (reduce-query add-breakout (map resolve-visible-column group-by)))
+                  (reduce-query add-breakout (map resolve-visible-column group-by))
+                  (reduce-query add-order-by (map resolve-order-by-column order-by))
+                  (add-limit limit))
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
