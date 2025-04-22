@@ -36,8 +36,10 @@
                              items)]
       (doseq [[model ids] model->ids]
         (let [cnt->ids (group-by-frequency ids)
-              lock-name (keyword "metabase.events.view_log"
-                                 (str (name (t2/table-name model)) "-view-count"))]
+              lock-name (if (= model :model/Card)
+                          cluster-lock/card-statistics-lock ;; need to use a shared lock for all updates to the card table
+                          (keyword "metabase.events.view_log"
+                                   (str (name (t2/table-name model)) "-view-count")))]
           (cluster-lock/with-cluster-lock lock-name
             (t2/query {:update (t2/table-name model)
                        :set    {:view_count [:+ :view_count (into [:case]

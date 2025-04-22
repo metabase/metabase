@@ -87,3 +87,7 @@
   the specified name to coordinate concurrency with other metabase instances sharing the appdb."
   ([lock-options & body]
    `(do-with-cluster-lock ~lock-options (fn [] ~@body))))
+
+(def card-statistics-lock
+  "A shared keyword that any method doing a batch update of card statistics can use for the cluster lock"
+  ::statistics-lock)
