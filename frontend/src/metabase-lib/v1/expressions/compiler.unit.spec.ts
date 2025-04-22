@@ -399,10 +399,10 @@ describe("old recursive-parser tests", () => {
 
     // functions without argument, hence no "()"
     expect(aggregation("Count()")).toEqual(op("count"));
-    expect(aggregation("CumulativeCount")).toEqual(op("cum-count"));
+    expect(aggregation("CumulativeCount()")).toEqual(op("cum-count"));
 
     // mixed them in some arithmetic
-    expect(aggregation("COUNT / 2()")).toEqual(op("/", op("count"), 2));
+    expect(aggregation("COUNT() / 2")).toEqual(op("/", op("count"), 2));
     expect(aggregation("1+CumulativeCount()")).toEqual(
       op("+", 1, op("cum-count")),
     );
