@@ -19,7 +19,7 @@ runs:
   steps:
     - name: Remove previous pull-request comment
       uses: actions/github-script@v7
-      if: inputs.remove-previous-comment == 'true'
+      if: ${{ inputs.remove-previous-comment == 'true' }}
       with:
         script: |
           const { owner, repo } = context.repo;
@@ -47,7 +47,7 @@ runs:
 
     - name: Notify pull-request
       uses: actions/github-script@v7
-      if: inputs.add-new-comment == 'true'
+      if: ${{ inputs.add-new-comment == 'true' }}
       id: notify-pull-request
       with:
         result-encoding: string
