@@ -90,7 +90,7 @@
               (persistent!
                (reduce
                 (fn [acc row]
-                  (let [grouping-key (mapv #(nth row %) column-indexes)
+                  (let [grouping-key (json-roundtrip (mapv #(nth row %) column-indexes))
                         values (mapv #(nth row %) val-indexes)]
                     (assoc! acc grouping-key values)))
                 (transient {})
@@ -160,7 +160,7 @@
   (let [col-and-row-indexes (into (vec col-indexes) row-indexes)]
     (reduce
      (fn [acc row]
-       (let [value-key  (select-indexes row col-and-row-indexes)
+       (let [value-key  (map json-roundtrip (select-indexes row col-and-row-indexes))
              values     (select-indexes row val-indexes)
              data       (into []
                               (map-indexed
@@ -502,7 +502,8 @@
 (defn- get-normal-cell-values
   "Processes and formats values for normal data cells (non-subtotal)."
   [values-by-key index-values value-formatters color-getter]
-  (let [{:keys [values valueColNames data dimensions]} (get values-by-key index-values) formatted-values (format-values values value-formatters)]
+  (let [{:keys [values valueColNames data dimensions]} (get values-by-key index-values)
+        formatted-values (format-values values value-formatters)]
     (if-not data
       formatted-values
       (map-indexed
