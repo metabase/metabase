@@ -1,5 +1,6 @@
 (function () {
   const error = (message) => console.error(`[mb:embed] ${message}`);
+  const debug = (message) => console.debug(`[mb:embed:debug] ${message}`);
 
   class MetabaseEmbed {
     static VERSION = "0.0.1";
@@ -67,6 +68,8 @@
           ? { type: "apiKey", apiKey: this.apiKey }
           : { type: "sso" },
       };
+
+      debug("sending authentication message", message);
 
       this.iframe.contentWindow.postMessage(message, "*");
     }
