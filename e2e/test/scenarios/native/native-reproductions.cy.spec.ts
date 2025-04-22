@@ -546,3 +546,18 @@ describe("issue 56570", () => {
     cy.findByTestId("native-query-editor-sidebar").should("be.visible");
   });
 });
+
+describe("issue 53649", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not get caught in an infinite loop when opening the native editor (metabase#53649)", () => {
+    H.startNewNativeModel();
+
+    // If the app freezes, this won't work
+    H.NativeEditor.type("select 1");
+    H.NativeEditor.get().should("contain", "select 1");
+  });
+});
