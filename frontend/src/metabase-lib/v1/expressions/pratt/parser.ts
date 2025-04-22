@@ -27,8 +27,14 @@ interface ParserResult {
   errors: CompileError[];
 }
 
+const DEFAULT_HOOKS: Hooks = {
+  error(error) {
+    throw error;
+  },
+};
+
 export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
-  const { maxIterations = 1000000, hooks } = opts;
+  const { maxIterations = 1000000, hooks = DEFAULT_HOOKS } = opts;
   const errors: CompileError[] = [];
   let counter = 0;
   const root = createASTNode(null, null, ROOT);
