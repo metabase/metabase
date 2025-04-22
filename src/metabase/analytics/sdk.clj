@@ -46,8 +46,8 @@
   "Tabulates the number of responses by status code made by clients of the SDK."
   [sdk-client {:keys [status]}]
   (case sdk-client
-    "embedding-sdk-react"    (prometheus/inc! :metabase-sdk/response {:code (str status)})
-    "embedding-iframe"       (prometheus/inc! :metabase-embedding-iframe/response {:code (str status)})
+    "embedding-sdk-react"    (prometheus/inc! :metabase-sdk/response {:status (str status)})
+    "embedding-iframe"       (prometheus/inc! :metabase-embedding-iframe/response {:status (str status)})
     (log/infof "Unknown client. client: %s" sdk-client)))
 
 (defn- embedding-context?

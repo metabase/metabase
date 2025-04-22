@@ -314,10 +314,10 @@
                        {:description "How many times the instance has deleted their Google Sheets connection."})
    (prometheus/counter :metabase-sdk/response
                        {:description "Number of SDK embedding responses by status code."
-                        :labels [:code]})
+                        :labels [:status]})
    (prometheus/counter :metabase-embedding-iframe/response
                        {:description "Number of iframe embedding responses by status code."
-                        :labels [:code]})])
+                        :labels [:status]})])
 
 (defmulti known-labels
   "Implement this for a given metric to initialize it for the given set of label values."

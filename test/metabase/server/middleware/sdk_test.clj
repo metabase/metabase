@@ -49,14 +49,14 @@
           bad (analytics/embedding-mw (fn [_ respond _] (respond {:status 400})))
           exception (analytics/embedding-mw (fn [_ _respond raise] (raise {})))]
       (good request identity identity)
-      (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:code "200"})))
+      (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:status "200"})))
       (bad request identity identity)
-      (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:code "200"})))
-      (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:code "400"})))
+      (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:status "200"})))
+      (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:status "400"})))
       (exception request identity identity)
-      (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:code "200"})))
-      (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:code "400"})))
-      (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:code "500"}))))))
+      (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:status "200"})))
+      (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:status "400"})))
+      (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:status "500"}))))))
 
 (deftest embeding-mw-bumps-metrics-with-iframe-client-header
   (mt/with-prometheus-system! [_ system]
@@ -66,14 +66,14 @@
           bad (analytics/embedding-mw (fn [_ respond _] (respond {:status 400})))
           exception (analytics/embedding-mw (fn [_ _respond raise] (raise {})))]
       (good request identity identity)
-      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:code "200"})))
+      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:status "200"})))
       (bad request identity identity)
-      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:code "200"})))
-      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:code "400"})))
+      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:status "200"})))
+      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:status "400"})))
       (exception request identity identity)
-      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:code "200"})))
-      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:code "400"})))
-      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:code "500"}))))))
+      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:status "200"})))
+      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:status "400"})))
+      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:status "500"}))))))
 
 (deftest embeding-mw-does-not-bump-metrics-with-random-sdk-header
   (let [prometheus-standin (atom {})]
