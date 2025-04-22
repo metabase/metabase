@@ -256,14 +256,14 @@
   Later when evaluated as a row action using /row-action/:action-id/execute, you will also be able to omit these parameters."
   [{:keys [action-id]}   :- [:map [:action-id   :string]]
    {:keys [dashcard-id]} :- [:map [:dashcard-id ms/PositiveInt]]]
-  (let [action             (-> (actions/select-action :id (parse-long action-id) :archived false)
-                               (t2/hydrate :creator)
-                               api/read-check)
-        card-id            (api/check-404 (t2/select-one-fn :card_id [:model/DashboardCard :card_id] dashcard-id))
-        table-id           (api/check-404 (t2/select-one-fn :table_id [:model/Card :table_id] card-id))
-        fields             (t2/select [:model/Field :name] :table_id table-id)
-        field-names        (set (map :name fields))
-        include?           #(not (contains? field-names (:slug %)))]
+  (let [action      (-> (actions/select-action :id (parse-long action-id) :archived false)
+                        (t2/hydrate :creator)
+                        api/read-check)
+        card-id     (api/check-404 (t2/select-one-fn :card_id [:model/DashboardCard :card_id] dashcard-id))
+        table-id    (api/check-404 (t2/select-one-fn :table_id [:model/Card :table_id] card-id))
+        fields      (t2/select [:model/Field :name] :table_id table-id)
+        field-names (set (map :name fields))
+        include?    #(not (contains? field-names (:slug %)))]
     (update action :parameters #(some->> % (filterv include?)))))
 
 (def ^{:arglists '([request respond raise])} routes
