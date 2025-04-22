@@ -75,6 +75,10 @@ export function lexify(source: string) {
       });
     }
 
+    if (node.type.name === "Boolean") {
+      return token(node, { type: BOOLEAN });
+    }
+
     if (node.type.name === OPERATOR.OpenParenthesis) {
       const prev = lexs.at(-1);
       if (prev?.type === IDENTIFIER) {
