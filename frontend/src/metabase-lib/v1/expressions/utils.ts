@@ -12,18 +12,6 @@ export function getDatabase(
   return metadata?.database(databaseId) ?? null;
 }
 
-export function getExpressionMode(startRule: string): Lib.ExpressionMode {
-  switch (startRule) {
-    case "expression":
-      return "expression";
-    case "aggregation":
-      return "aggregation";
-    case "boolean":
-      return "filter";
-  }
-  throw new Error(`Unknown start rule: ${startRule}`);
-}
-
 type Nodable =
   | unknown[]
   | Lib.ExpressionParts
