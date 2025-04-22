@@ -709,37 +709,27 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "coalesce",
 ]);
 
-export const NUMBER_OPERATORS = new Set([
-  OPERATOR.Plus,
-  OPERATOR.Minus,
-  OPERATOR.Star,
-  OPERATOR.Slash,
-]);
-
-export const COMPARISON_OPERATORS = new Set([
-  OPERATOR.Equal,
-  OPERATOR.NotEqual,
-  OPERATOR.GreaterThan,
-  OPERATOR.LessThan,
-  OPERATOR.GreaterThanEqual,
-  OPERATOR.LessThanEqual,
-]);
-
-export const LOGICAL_OPERATORS = new Set([
-  OPERATOR.Not,
-  OPERATOR.And,
-  OPERATOR.Or,
-]);
-
 export const FUNCTIONS = new Set([
   ...EXPRESSION_FUNCTIONS,
   ...AGGREGATION_FUNCTIONS,
 ]);
 
 export const OPERATORS = new Set([
-  ...NUMBER_OPERATORS,
-  ...COMPARISON_OPERATORS,
-  ...LOGICAL_OPERATORS,
+  OPERATOR.Plus,
+  OPERATOR.Minus,
+  OPERATOR.Star,
+  OPERATOR.Slash,
+
+  OPERATOR.Not,
+  OPERATOR.And,
+  OPERATOR.Or,
+
+  OPERATOR.Equal,
+  OPERATOR.NotEqual,
+  OPERATOR.GreaterThan,
+  OPERATOR.LessThan,
+  OPERATOR.GreaterThanEqual,
+  OPERATOR.LessThanEqual,
 ]);
 
 export const FIELD_MARKERS = new Set([
