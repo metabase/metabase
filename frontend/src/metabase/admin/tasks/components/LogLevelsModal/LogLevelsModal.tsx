@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { goBack } from "react-router-redux";
 import { t } from "ttag";
 
@@ -14,12 +14,13 @@ import {
   Box,
   Button,
   Flex,
+  Icon,
   Loader,
   Menu,
   Select,
   TextInput,
 } from "metabase/ui";
-import type { TimeUnit } from "metabase-types/api";
+import type { LoggerPreset, TimeUnit } from "metabase-types/api";
 import { isErrorWithMessageResponse } from "metabase-types/guards";
 
 import S from "./LogLevelsModal.module.css";
@@ -72,6 +73,15 @@ export const LogLevelsModal = () => {
     }
   };
 
+  useEffect(
+    function autoApplyFirstPreset() {
+      if (presets.length > 0) {
+        setJson(getPresetJson(presets[0]));
+      }
+    },
+    [presets],
+  );
+
   if (presetsError || isLoadingPresets) {
     return (
       <ModalContent title={t`Customize log levels`} onClose={handleClose}>
@@ -87,30 +97,7 @@ export const LogLevelsModal = () => {
     <ModalContent title={t`Customize log levels`} onClose={handleClose}>
       <form onSubmit={handleSubmit}>
         <Flex align="flex-end" gap="md" justify="space-between" mb="xl">
-          <Menu position="bottom-start" shadow="md" width={200}>
-            <Menu.Target>
-              <Button>Load preset</Button>
-            </Menu.Target>
-
-            <Menu.Dropdown>
-              {presets.map((preset) => (
-                <Menu.Item
-                  key={preset.id}
-                  onClick={() => {
-                    const logLevels = Object.fromEntries(
-                      preset.loggers.map(({ level, name }) => [name, level]),
-                    );
-                    const json = JSON.stringify(logLevels, null, 2);
-                    setJson(json);
-                  }}
-                >
-                  {preset.display_name}
-                </Menu.Item>
-              ))}
-            </Menu.Dropdown>
-          </Menu>
-
-          <Flex gap="md">
+          <Flex align="flex-end" gap="md">
             <TextInput
               label={t`Duration`}
               placeholder={t`Duration`}
@@ -123,16 +110,36 @@ export const LogLevelsModal = () => {
 
             <Select
               data={getData()}
-              label={t`Unit`}
               placeholder={t`Unit`}
               value={durationUnit}
               w={140}
               onChange={setDurationUnit}
             />
           </Flex>
+
+          {presets.length > 0 && (
+            <Menu position="bottom-end" shadow="md" width={200}>
+              <Menu.Target>
+                <Button>Load preset</Button>
+              </Menu.Target>
+
+              <Menu.Dropdown>
+                {presets.map((preset) => (
+                  <Menu.Item
+                    key={preset.id}
+                    onClick={() => {
+                      setJson(getPresetJson(preset));
+                    }}
+                  >
+                    {preset.display_name}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
+          )}
         </Flex>
 
-        <Box className={S.codeContainer} mih={200}>
+        <Box className={S.codeContainer} mih={200} mah="50vh">
           <CodeBlock
             language="json"
             value={json}
@@ -153,6 +160,8 @@ export const LogLevelsModal = () => {
 
           <Button
             disabled={isLoadingAdjustLogLevels}
+            leftSection={<Icon name="revert" />}
+            type="button"
             onClick={handleReset}
           >{t`Reset to defaults`}</Button>
 
@@ -184,6 +193,14 @@ function getData() {
   };
 
   return Object.values(statusNames);
+}
+
+function getPresetJson(preset: LoggerPreset) {
+  const logLevels = Object.fromEntries(
+    preset.loggers.map(({ level, name }) => [name, level]),
+  );
+  const json = JSON.stringify(logLevels, null, 2);
+  return json;
 }
 
 function getErrorMessage(error: unknown) {
