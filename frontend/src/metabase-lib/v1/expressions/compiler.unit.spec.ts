@@ -1,3 +1,5 @@
+import type * as Lib from "metabase-lib";
+
 import {
   bool,
   created,
@@ -9,19 +11,18 @@ import {
   total,
 } from "./__support__/shared";
 import { compileExpression } from "./compiler";
-import type { StartRule } from "./types";
 
 function expr(
   source: string,
   {
-    startRule = "expression",
+    expressionMode = "expression",
   }: {
-    startRule?: StartRule;
+    expressionMode?: Lib.ExpressionMode;
   } = {},
 ) {
   const { expression, error } = compileExpression({
     source,
-    startRule,
+    expressionMode,
     query,
     stageIndex: -1,
   });
@@ -34,11 +35,11 @@ function expr(
 }
 
 function filter(source: string) {
-  return expr(source, { startRule: "boolean" });
+  return expr(source, { expressionMode: "filter" });
 }
 
 function aggregation(source: string) {
-  return expr(source, { startRule: "aggregation" });
+  return expr(source, { expressionMode: "aggregation" });
 }
 
 describe("old recursive-parser tests", () => {

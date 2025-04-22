@@ -4,7 +4,6 @@ import { query } from "./__support__/shared";
 import { compileExpression } from "./compiler";
 import { fuzz } from "./test/fuzz";
 import { generateExpression } from "./test/generator";
-import type { StartRule } from "./types";
 
 jest.mock("metabase-lib", () => {
   const mod = jest.requireActual("metabase-lib");
@@ -18,7 +17,10 @@ jest.mock("metabase-lib", () => {
 
 const MAX_SEED = 10_000;
 
-function compile(expression: string, startRule: StartRule = "expression") {
+function compile(
+  expression: string,
+  expressionMode: Lib.ExpressionMode = "expression",
+) {
   const stageIndex = -1;
 
   const columns = Lib.expressionableColumns(query, stageIndex);
@@ -27,7 +29,7 @@ function compile(expression: string, startRule: StartRule = "expression") {
     source: expression,
     query,
     stageIndex,
-    startRule,
+    expressionMode,
     resolver() {
       return columns[0];
     },
@@ -62,7 +64,7 @@ fuzz("FUZZING metabase-lib/v1/expressions/compiler", () => {
 
     it("should parse generated boolean expression from seed " + seed, () => {
       const { expression } = generateExpression(seed, "boolean");
-      expect(() => compile(expression, "boolean")).not.toThrow();
+      expect(() => compile(expression, "filter")).not.toThrow();
     });
   }
 });

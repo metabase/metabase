@@ -39,8 +39,6 @@ interface HelpTextArg {
   template?: string;
 }
 
-export type StartRule = "expression" | "boolean" | "aggregation";
-
 type MBQLClauseFunctionReturnType =
   | "aggregation"
   | "any"

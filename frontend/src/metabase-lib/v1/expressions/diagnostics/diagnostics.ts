@@ -6,7 +6,6 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { type CompileResult, compileExpression } from "../compiler";
 import { DiagnosticError, type ExpressionError, renderError } from "../errors";
 import { lexify } from "../pratt";
-import type { StartRule } from "../types";
 
 import { checkArgCount } from "./check-arg-count";
 import { checkArgValidators } from "./check-arg-validators";
@@ -21,7 +20,7 @@ import { checkSupportedFunctions } from "./check-supported-functions";
 
 export function diagnose(options: {
   source: string;
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   stageIndex: number;
   expressionIndex?: number;
@@ -36,14 +35,14 @@ export function diagnose(options: {
 
 export function diagnoseAndCompile({
   source,
-  startRule,
+  expressionMode,
   query,
   stageIndex,
   metadata,
   expressionIndex,
 }: {
   source: string;
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   stageIndex: number;
   metadata?: Metadata;
@@ -55,7 +54,7 @@ export function diagnoseAndCompile({
     // make a simple check on expression syntax correctness
     const result = compileExpression({
       source,
-      startRule,
+      expressionMode,
       query,
       stageIndex,
     });
@@ -68,7 +67,7 @@ export function diagnoseAndCompile({
     diagnoseExpression({
       query,
       stageIndex,
-      startRule,
+      expressionMode,
       expressionClause: result.expressionClause,
       expressionParts: result.expressionParts,
       expressionIndex,
@@ -118,7 +117,7 @@ const expressionChecks = [
 export function diagnoseExpression(options: {
   query: Lib.Query;
   stageIndex: number;
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
   expressionClause: Lib.ExpressionClause;
   expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
   expressionIndex?: number;

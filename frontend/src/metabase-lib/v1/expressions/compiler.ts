@@ -4,7 +4,6 @@ import type { Expression } from "metabase-types/api";
 import { type ExpressionError, renderError } from "./errors";
 import { compile, lexify, parse } from "./pratt";
 import { type Resolver, resolver as defaultResolver } from "./resolver";
-import type { StartRule } from "./types";
 
 export type CompileResult =
   | {
@@ -22,17 +21,17 @@ export type CompileResult =
 
 export function compileExpression({
   source,
-  startRule,
+  expressionMode,
   query,
   stageIndex,
   resolver = defaultResolver({
     query,
     stageIndex,
-    startRule,
+    expressionMode,
   }),
 }: {
   source: string;
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   stageIndex: number;
   resolver?: Resolver | null;
@@ -41,7 +40,7 @@ export function compileExpression({
     const { tokens } = lexify(source);
     const { root } = parse(tokens, { throwOnError: true });
     const expressionParts = compile(root, {
-      startRule,
+      expressionMode,
       resolver,
     });
     const expressionClause = Lib.expressionClause(expressionParts);

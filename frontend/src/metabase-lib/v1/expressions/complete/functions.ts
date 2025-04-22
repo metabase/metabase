@@ -19,19 +19,19 @@ import {
 } from "./util";
 
 export type Options = {
-  startRule: string;
+  expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   metadata: Metadata;
   reportTimezone?: string;
 };
 
 export function suggestFunctions({
-  startRule,
+  expressionMode,
   query,
   metadata,
   reportTimezone,
 }: Options) {
-  if (startRule !== "expression" && startRule !== "boolean") {
+  if (expressionMode !== "expression" && expressionMode !== "filter") {
     return null;
   }
 
@@ -42,7 +42,7 @@ export function suggestFunctions({
     .filter((clause) => clause && database?.hasFeature(clause.requiresFeature))
     .filter(function disableOffsetInFilterExpressions(clause) {
       const isOffset = clause.name === "offset";
-      const isFilterExpression = startRule === "boolean";
+      const isFilterExpression = expressionMode === "filter";
       const isOffsetInFilterExpression = isOffset && isFilterExpression;
       return !isOffsetInFilterExpression;
     })

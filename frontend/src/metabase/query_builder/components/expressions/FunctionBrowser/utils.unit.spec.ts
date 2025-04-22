@@ -1,15 +1,15 @@
 import { createMockMetadata } from "__support__/metadata";
-import type { StartRule } from "metabase-lib/v1/expressions";
+import type * as Lib from "metabase-lib";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { getFilteredClauses } from "./utils";
 
 function setup({
   filter = "",
-  startRule = "expression",
+  expressionMode = "expression",
 }: {
   filter?: string;
-  startRule?: StartRule;
+  expressionMode?: Lib.ExpressionMode;
 } = {}) {
   const sampleDatabase = createSampleDatabase();
   const metadata = createMockMetadata({ databases: [sampleDatabase] });
@@ -21,7 +21,7 @@ function setup({
 
   return getFilteredClauses({
     filter,
-    startRule,
+    expressionMode,
     database,
   });
 }

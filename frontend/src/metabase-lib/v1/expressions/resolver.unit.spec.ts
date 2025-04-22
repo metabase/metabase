@@ -1,9 +1,13 @@
+import type * as Lib from "metabase-lib";
+
 import { query } from "./__support__/shared";
 import { compileExpression } from "./compiler";
-import type { StartRule } from "./types";
 
 describe("resolve", () => {
-  function collect(source: string, startRule: StartRule = "expression") {
+  function collect(
+    source: string,
+    expressionMode: Lib.ExpressionMode = "expression",
+  ) {
     const fields: string[] = [];
     const segments: string[] = [];
     const metrics: string[] = [];
@@ -12,7 +16,7 @@ describe("resolve", () => {
 
     const res = compileExpression({
       source,
-      startRule,
+      expressionMode,
       query,
       stageIndex,
       resolver(kind: string, name: string) {
@@ -48,7 +52,7 @@ describe("resolve", () => {
   }
 
   const expression = (expr: string) => collect(expr, "expression");
-  const filter = (expr: string) => collect(expr, "boolean");
+  const filter = (expr: string) => collect(expr, "filter");
   const aggregation = (expr: string) => collect(expr, "aggregation");
 
   describe("for filters", () => {

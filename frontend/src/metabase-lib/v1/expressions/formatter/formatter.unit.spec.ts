@@ -5,11 +5,13 @@ import type { Expression } from "metabase-types/api";
 
 import { dataForFormatting, query } from "../__support__/shared";
 import { compileExpression } from "../compiler";
-import type { StartRule } from "../types";
 
 import { format } from "./formatter";
 
-function setup(printWidth: number, startRule: StartRule = "expression") {
+function setup(
+  printWidth: number,
+  expressionMode: Lib.ExpressionMode = "expression",
+) {
   async function assertFormatted(
     expressions: string | string[],
   ): Promise<void> {
@@ -19,7 +21,7 @@ function setup(printWidth: number, startRule: StartRule = "expression") {
     for (const source of expressions) {
       const options = {
         query,
-        startRule,
+        expressionMode,
         stageIndex: -1,
       };
 
@@ -172,7 +174,7 @@ describe("format", () => {
     });
 
     it("formats unary operators", async () => {
-      const { assertFormatted } = setup(25, "boolean");
+      const { assertFormatted } = setup(25, "filter");
       await assertFormatted([
         expression`
           NOT [Total] < 10
