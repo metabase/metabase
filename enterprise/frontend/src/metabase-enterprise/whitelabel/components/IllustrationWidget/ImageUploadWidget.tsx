@@ -76,7 +76,7 @@ export function ImageUploadWidget({
   }
 
   return (
-    <Box maw="36rem">
+    <Box maw="36rem" data-testid={`${name}-setting`}>
       <SettingHeader
         id={name}
         title={title}
@@ -107,6 +107,7 @@ export function ImageUploadWidget({
               >{t`Choose File`}</Button>
               <input
                 data-testid="file-input"
+                id={name}
                 ref={fileInputRef}
                 hidden
                 onChange={handleFileUpload}

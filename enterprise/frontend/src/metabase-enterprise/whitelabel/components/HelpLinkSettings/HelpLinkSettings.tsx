@@ -64,7 +64,7 @@ export const HelpLinkSettings = () => {
   const isTextInputVisible = helpLinkSetting === "custom";
 
   return (
-    <Stack>
+    <Stack data-testid="help-link-setting">
       <SettingHeader
         id="help-link"
         title={t`Help link`}

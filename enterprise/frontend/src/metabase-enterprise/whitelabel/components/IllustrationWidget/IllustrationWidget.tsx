@@ -153,6 +153,7 @@ export function IllustrationWidget({
         await updateSetting({
           key: customIllustrationSettingName,
           value: dataUri,
+          toast: false,
         });
       };
       reader.readAsDataURL(file);
@@ -164,20 +165,19 @@ export function IllustrationWidget({
       fileInputRef.current.value = "";
     }
     setFileName("");
-    // Setting 2 setting values at the same time could result in one of them not being saved
-
     await updateSetting({
       key: name,
-      value: "none",
+      value: "default",
     });
     await updateSetting({
       key: customIllustrationSettingName,
       value: null,
+      toast: false,
     });
   }
 
   return (
-    <Box maw="36rem">
+    <Box maw="36rem" data-testid={`${name}-setting`}>
       <SettingHeader id={name} title={title} description={description} />
       {errorMessage && (
         <Text size="sm" c="error" mb="sm">
@@ -223,6 +223,7 @@ export function IllustrationWidget({
                   hidden
                   onChange={handleFileUpload}
                   type="file"
+                  id={name}
                   accept="image/jpeg,image/png,image/svg+xml"
                   multiple={false}
                 />
