@@ -20,11 +20,6 @@
       this.iframe.style.height = "100%";
       this.iframe.style.border = "none";
 
-      if (!this.apiKey) {
-        error("you must provide an API key");
-        return;
-      }
-
       if (this.iframeClassName) {
         this.iframe.classList.add(this.iframeClassName);
       }
@@ -61,14 +56,20 @@
       }
 
       if (event.data.type === "metabase.embed.waitingForAuth") {
-        const payload = {
-          type: "metabase.embed.authenticate",
-          payload: { apiKey: this.apiKey },
-        };
-
-        this.iframe.contentWindow.postMessage(payload, "*");
+        this._authenticate();
       }
     };
+
+    _authenticate() {
+      const message = {
+        type: "metabase.embed.authenticate",
+        payload: this.apiKey
+          ? { type: "apiKey", apiKey: this.apiKey }
+          : { type: "sso" },
+      };
+
+      this.iframe.contentWindow.postMessage(message, "*");
+    }
   }
 
   window["metabase.embed"] = { MetabaseEmbed };

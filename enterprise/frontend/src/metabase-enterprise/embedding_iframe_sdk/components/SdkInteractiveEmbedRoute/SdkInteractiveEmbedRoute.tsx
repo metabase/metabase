@@ -18,15 +18,17 @@ import {
 } from "../../hooks/useSdkInteractiveEmbedSettings";
 import { SdkInteractiveEmbedProvider } from "../SdkInteractiveEmbedProvider";
 
+type IframeAuthConfig = { type: "apiKey"; apiKey: string } | { type: "sso" };
+
 type SimpleInteractivePostMessageAction = {
   type: "metabase.embed.authenticate";
-  payload: { apiKey: string };
+  payload: IframeAuthConfig;
 };
 
 export const SdkInteractiveEmbedRoute = ({
   params: { settings: settingsKey },
 }: SdkInteractiveEmbedRouteProps) => {
-  const [apiKey, setApiKey] = useState("");
+  const [config, setConfig] = useState<IframeAuthConfig | null>(null);
 
   const settings = useSdkInteractiveEmbedSettings(settingsKey);
   const { theme } = settings ?? {};
@@ -34,9 +36,9 @@ export const SdkInteractiveEmbedRoute = ({
   const authConfig = useMemo(() => {
     return defineMetabaseAuthConfig({
       metabaseInstanceUrl: window.location.origin,
-      apiKey,
+      ...(config?.type === "apiKey" && { apiKey: config.apiKey }),
     });
-  }, [apiKey]);
+  }, [config]);
 
   const derivedTheme = useMemo(() => {
     return defineMetabaseTheme({
@@ -64,10 +66,10 @@ export const SdkInteractiveEmbedRoute = ({
           return;
         }
 
-        // If the message is an authentication request, set the API key.
-        // TODO: use a more secure method of authentication than API keys.
         if (action.type === "metabase.embed.authenticate") {
-          setApiKey(action.payload.apiKey);
+          setConfig(action.payload);
+
+          // TODO: handle type = "sso"
         }
       };
 
