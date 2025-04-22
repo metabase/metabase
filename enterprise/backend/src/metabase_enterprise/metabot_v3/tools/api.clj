@@ -7,6 +7,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
+   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.envelope :as envelope]
@@ -491,19 +492,6 @@
                          [:models  [:sequential ::full-table]]]]]
    [:map [:output :string]]])
 
-(def internal-metabot-id
-  "The ID of the internal Metabot instance."
-  "b5716059-ad40-4d83-a4e1-673af020b2d8")
-
-(def embedded-metabot-id
-  "The ID of the embedded Metabot instance."
-  "c61bf5f5-1025-47b6-9298-bf1827105bb6")
-
-(def metabot-config
-  "The name of the collection exposed by the answer-sources tool."
-  {internal-metabot-id {:collection-name "__METABOT__"}
-   embedded-metabot-id {:collection-name "__METABOT_EMBEDDING__"}})
-
 (api.macros/defendpoint :post "/answer-sources" :- [:merge ::answer-sources-result ::tool-request]
   "Create a dashboard subscription."
   [_route-params
@@ -511,7 +499,7 @@
    {:keys [conversation_id] :as body} :- ::tool-request
    {:keys [metabot-v3/metabot-id]}]
   (metabot-v3.context/log (assoc body :api :answer-sources) :llm.log/llm->be)
-  (if-let [collection-name (get-in metabot-config [metabot-id :collection-name])]
+  (if-let [collection-name (get-in metabot-v3.config/metabot-config [metabot-id :collection-name])]
     (doto (-> (mc/decode ::answer-sources-result
                          (metabot-v3.dummy-tools/answer-sources collection-name)
                          (mtx/transformer {:name :tool-api-response}))

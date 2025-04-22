@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
+   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
    [metabase.test :as mt]))
 
@@ -35,10 +36,13 @@
                         :messages [(update historical-message :role keyword) {:role :user, :content question}]
                         :state {}
                         :conversation-id conversation-id
+                        :profile-id (when-not metabot-id
+                                      (get-in metabot-v3.config/metabot-config
+                                              [metabot-v3.config/internal-metabot-id :profile-id]))
                         :session-id (fn [session-id]
                                       (when-let [token (#'metabot-v3.tools.api/decode-ai-service-token session-id)]
                                         (and (= (:metabot-id token) (or metabot-id
-                                                                        metabot-v3.tools.api/internal-metabot-id))
+                                                                        metabot-v3.config/internal-metabot-id))
                                              (= (:user token) (mt/user->id :rasta)))))}]
                       @ai-requests))
               (is (=? {:reactions [{:type "metabot.reaction/redirect", :url navigation-target}]
