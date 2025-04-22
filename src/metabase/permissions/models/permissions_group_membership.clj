@@ -1,5 +1,6 @@
 (ns metabase.permissions.models.permissions-group-membership
   (:require
+   [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.util :as u]
@@ -35,6 +36,19 @@
       (throw (ex-info (tru "You cannot add or remove users to/from the ''All Users'' group.")
                       {:status-code 400})))))
 
+(def ^:private user-id->is-tenant-user?
+  (mdb/memoize-for-application-db
+   (fn [user-id]
+     (t2/select-one-fn :tenant_id :model/User :id user-id))))
+
+(defn- check-can-add-user-to-group
+  [group-id user-id]
+  (if (perms-group/is-tenant-group? group-id)
+    (when-not (user-id->is-tenant-user? user-id)
+      (throw (ex-info (tru "Normal users cannot be added to tenant groups") {:status-code 400})))
+    (when (user-id->is-tenant-user? user-id)
+      (throw (ex-info (tru "Tenant users cannot be added to normal groups") {:status-code 400})))))
+
 (defn- admin-count
   "The current number of non-archived admins (superusers)."
   []
@@ -66,8 +80,9 @@
     (t2/update! 'User user_id {:is_superuser false})))
 
 (t2/define-before-insert :model/PermissionsGroupMembership
-  [{:keys [group_id], :as membership}]
+  [{:keys [group_id user_id], :as membership}]
   (u/prog1 membership
+    (check-can-add-user-to-group group_id user_id)
     (check-not-all-users-group group_id)))
 
 (t2/define-after-insert :model/PermissionsGroupMembership

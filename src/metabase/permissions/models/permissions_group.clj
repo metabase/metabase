@@ -161,3 +161,12 @@
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group and the All Users group."
   []
   (t2/select :model/PermissionsGroup {:where [:= :magic_group_type nil]}))
+
+(def ^:private group-id->is-tenant-group?
+  (mdb/memoize-for-application-db
+   (fn [group-id]
+     (t2/select-one-fn :is_tenant_group :model/PermissionsGroup :id group-id))))
+
+(defn is-tenant-group?
+  [group-or-id]
+  (group-id->is-tenant-group? (u/the-id group-or-id)))

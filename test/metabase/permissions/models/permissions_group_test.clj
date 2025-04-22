@@ -204,3 +204,13 @@
                                  {:id user-2-g1 :is_group_manager false}}
                     group-id-2 #{{:id user-1-g2 :is_group_manager false}}}
                    (group-id->members)))))))))
+
+(deftest is-tenant-group?-works
+  (mt/with-temp [:model/PermissionsGroup {:as normal-group} {:is_tenant_group false}
+                 :model/PermissionsGroup {:as tenant-group} {:is_tenant_group true}]
+    (is (= true
+           (perms-group/is-tenant-group? tenant-group)
+           (perms-group/is-tenant-group? (u/the-id tenant-group))))
+    (is (= false
+           (perms-group/is-tenant-group? normal-group)
+           (perms-group/is-tenant-group? (u/the-id normal-group))))))
