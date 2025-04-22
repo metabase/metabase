@@ -38,10 +38,10 @@
   (.formatCellValue ^DataFormatter cell-formatter c))
 
 (defn- read-xlsx
-  [pivot result]
+  [result]
   (with-open [in (io/input-stream result)]
     (->> (spreadsheet/load-workbook in)
-         (spreadsheet/select-sheet (if pivot "data" "Query result"))
+         (spreadsheet/select-sheet "Query result")
          (spreadsheet/row-seq)
          (mapv (fn [r]
                  (->>  (spreadsheet/cell-seq r)
@@ -60,7 +60,7 @@
     (case export-format
       :csv  (cond-> results
               (not (map? results)) csv/read-csv)
-      :xlsx (read-xlsx pivot results)
+      :xlsx (read-xlsx results)
       :json (tabulate-maps results))))
 
 (defn card-download
@@ -793,15 +793,15 @@
                   ["Grand totals" "" "11,149.28" "200"]]
                  result)))))))
 
-(deftest pivot-table-native-pivot-in-xlsx-test
-  (testing "Pivot table xlsx downloads produce a 'native pivot' in the workbook."
+(deftest pivot-table-in-xlsx-test
+  (testing "Pivot table xlsx downloads use the pivoted shape"
     (mt/dataset test-data
       (mt/with-temp [:model/Card {pivot-card-id :id}
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
                                                {:rows    ["CREATED_AT"],
                                                 :columns ["CATEGORY"],
-                                                :values  ["sum" "avg"]}}
+                                                :values  ["sum"]}}
                       :dataset_query          (mt/mbql-query products
                                                 {:aggregation [[:sum $price]
                                                                [:avg $rating]]
@@ -811,24 +811,23 @@
                                            (format "card/%d/query/xlsx" pivot-card-id)
                                            {:format_rows   true
                                             :pivot_results true})
-              pivot  (with-open [in (io/input-stream result)]
-                       (->> (spreadsheet/load-workbook in)
-                            (spreadsheet/select-sheet "pivot")
-                            ((fn [s] (.getPivotTables ^XSSFSheet s)))))]
-          (is (not (nil? pivot))))
+              pivot  (read-xlsx result)]
+          (is (= [["Created At: Month" "Doohickey" "Gadget" "Gizmo" "Widget" "Row totals"]
+                  ["May, 2016" "144.12" "81.58" "75.09" "90.21" "391"]
+                  ["June, 2016" "82.92" "75.53" "83.26" "" "241.71"]]
+                 (take 3 pivot))))
+
         (testing "but only when `public-settings/enable-pivoted-exports` is true"
           (mt/with-temporary-setting-values [public-settings/enable-pivoted-exports false]
             (let [result      (mt/user-http-request :crowberto :post 200
                                                     (format "card/%d/query/xlsx" pivot-card-id)
                                                     :format_rows   true
                                                     :pivot_results true)
-                  sheet-names (with-open [in (io/input-stream result)]
-                                (->> (spreadsheet/load-workbook in)
-                                     spreadsheet/sheet-seq
-                                     (mapv (fn [s] (.getSheetName ^XSSFSheet s)))))]
-              ;; when xlsx exports without pivot, we have only a single Query result sheet.
-              (is (= ["Query result"]
-                     sheet-names)))))))))
+                  sheet      (read-xlsx result)]
+              (is (= [["Category" "Created At: Month" "Sum of Price" "Average of Rating"]
+                      ["Doohickey" "May 1, 2016, 12:00 AM" "144.12" "2.97"]
+                      ["Doohickey" "June 1, 2016, 12:00 AM" "82.92" "3.6"]]
+                     (take 3 sheet))))))))))
 
 (deftest ^:parallel zero-column-native-pivot-tables-test
   (testing "Pivot tables with zero columns download correctly as xlsx."
@@ -843,26 +842,15 @@
                                                 {:aggregation [[:sum $price]]
                                                  :breakout    [$category
                                                                !month.created_at]})}]
-        (let [result       (mt/user-http-request :crowberto :post 200
-                                                 (format "card/%d/query/xlsx" pivot-card-id)
-                                                 {:format_rows   true
-                                                  :pivot_results true})
-              [pivot data] (with-open [in (io/input-stream result)]
-                             (let [wb    (spreadsheet/load-workbook in)
-                                   pivot (.getPivotTables ^XSSFSheet (spreadsheet/select-sheet "pivot" wb))
-                                   data  (->> (spreadsheet/select-sheet "data" wb)
-                                              spreadsheet/row-seq
-                                              (mapv (fn [row] (->> (spreadsheet/cell-seq row)
-                                                                   (mapv spreadsheet/read-cell)))))]
-                               [pivot data]))]
-          (is (not (nil? pivot)))
-          (is (= [["Category" "Created At: Month" "Sum of Price"]
-                  ["Doohickey" #inst "2016-05-01T00:00:00.000-00:00" 144.12]
-                  ["Doohickey" #inst "2016-06-01T00:00:00.000-00:00" 82.92]
-                  ["Doohickey" #inst "2016-07-01T00:00:00.000-00:00" 78.22]
-                  ["Doohickey" #inst "2016-08-01T00:00:00.000-00:00" 71.09]
-                  ["Doohickey" #inst "2016-09-01T00:00:00.000-00:00" 45.65]]
-                 (take 6 data))))))))
+        (let [result (mt/user-http-request :crowberto :post 200
+                                           (format "card/%d/query/xlsx" pivot-card-id)
+                                           {:format_rows   true
+                                            :pivot_results true})
+              pivot (read-xlsx result)]
+          (is (= [["Created At: Month" "Category" "Sum of Price"]
+                  ["May, 2016" "Doohickey" "144.12"]
+                  ["May, 2016" "Gadget" "81.58"]]
+                 (take 3 pivot))))))))
 
 (deftest ^:parallel zero-row-native-pivot-tables-test
   (testing "Pivot tables with zero rows download correctly as xlsx."
@@ -880,21 +868,10 @@
                                                  (format "card/%d/query/xlsx" pivot-card-id)
                                                  {:format_rows   true
                                                   :pivot_results true})
-              [pivot data] (with-open [in (io/input-stream result)]
-                             (let [wb    (spreadsheet/load-workbook in)
-                                   pivot (.getPivotTables ^XSSFSheet (spreadsheet/select-sheet "pivot" wb))
-                                   data  (->> (spreadsheet/select-sheet "data" wb)
-                                              spreadsheet/row-seq
-                                              (mapv (fn [row] (->> (spreadsheet/cell-seq row)
-                                                                   (mapv spreadsheet/read-cell)))))]
-                               [pivot data]))]
-          (is (not (nil? pivot)))
-          (is (= [["Category" "Sum of Price"]
-                  ["Doohickey" 2185.89]
-                  ["Gadget" 3019.2]
-                  ["Gizmo" 2834.88]
-                  ["Widget" 3109.31]]
-                 (take 6 data))))))))
+              pivot (read-xlsx result)]
+          (is (= [["Doohickey" "Gadget" "Gizmo" "Widget" "Row totals"]
+                  ["2,185.89" "3,019.2" "2,834.88" "3,109.31" "11,149.28"]]
+                 pivot)))))))
 
 (deftest ^:parallel pivot-table-questions-can-export-unpivoted
   (testing "Pivot tables will export the 'classic' way by default"
@@ -1154,7 +1131,7 @@
             (let [results (mt/user-http-request :rasta :post 200 (format "card/%d/query/%s" card-id export-format)
                                                 {:format_rows true})
                   results-string (if (= "xlsx" export-format)
-                                   (read-xlsx false results)
+                                   (read-xlsx results)
                                    (str results))]
               (testing (format "Testing export format: %s" export-format)
                 (doseq [illegal illegal-strings]
@@ -1221,14 +1198,18 @@
                                                 {:aggregation [[:sum $price]]
                                                  :breakout    [$category
                                                                !year.created_at]})}]
-        (is (= [["Category" "Created At: Year" "Sum of Price"]
-                ["Doohickey" "2016" "[$$]632.14"]
-                ["Doohickey" "2017" "[$$]854.19"]]
-               (take 3 (card-download card {:export-format :xlsx :format-rows true :pivot true})))
-            ;; Excel will apply a default format which is seen here. The 'actual' data in the cells is unformatted.
-            (= [["Category" "Created At" "Sum of Price"]
-                ["Doohickey" "January 1, 2016, 12:00 AM" "632.14"]
-                ["Doohickey" "January 1, 2017, 12:00 AM" "854.19"]]
+        (is (= [["Category" "2016" "2017" "2018" "2019" "Row totals"]
+                ["Doohickey" "[$$]632.14" "[$$]854.19" "[$$]496.43" "[$$]203.13" "[$$]2,185.89"]
+                ["Gadget" "[$$]679.83" "[$$]1,059.11" "[$$]844.51" "[$$]435.75" "[$$]3,019.20"]]
+               (take 3 (card-download card {:export-format :xlsx :format-rows true :pivot true}))))
+        (is (= [["Category"
+                 "January 1, 2016, 12:00 AM"
+                 "January 1, 2017, 12:00 AM"
+                 "January 1, 2018, 12:00 AM"
+                 "January 1, 2019, 12:00 AM"
+                 "Row totals"]
+                ["Doohickey" "632.14" "854.19" "496.43" "203.13" "2,185.89"]
+                ["Gadget" "679.83" "1,059.11" "844.51" "435.75" "3,019.2"]]
                (take 3 (card-download card {:export-format :xlsx :format-rows false :pivot true}))))))))
 
 (deftest unformatted-downloads-and-exports-keep-numbers-as-numbers

@@ -1,7 +1,6 @@
 (ns metabase.query-processor.streaming.xlsx
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time.api :as t]
    [medley.core :as m]
