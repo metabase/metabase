@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { goBack } from "react-router-redux";
 import { t } from "ttag";
 
@@ -10,11 +10,21 @@ import { CodeBlock } from "metabase/components/CodeBlock";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Button, Flex } from "metabase/ui";
+import { Box, Button, Flex, Loader, Select, TextInput } from "metabase/ui";
 import type { AdjustLogLevelsRequest, TimeUnit } from "metabase-types/api";
 import { isErrorWithMessageResponse } from "metabase-types/guards";
 
 import S from "./LogLevelsModal.module.css";
+
+const TIME_UNITS: TimeUnit[] = [
+  "nanoseconds",
+  "microseconds",
+  "milliseconds",
+  "seconds",
+  "minutes",
+  "hours",
+  "days",
+];
 
 export const LogLevelsModal = () => {
   const dispatch = useDispatch();
@@ -27,10 +37,13 @@ export const LogLevelsModal = () => {
     adjustLogLevels,
     { error: adjustLogLevelsError, isLoading: isLoadingAdjustLogLevels },
   ] = useAdjustLogLevelsMutation();
-  const [duration, setDuration] = useState<number>(60);
+  const [duration, setDuration] = useState("60");
   const [durationUnit, setDurationUnit] = useState<TimeUnit>("minutes");
-  const logLevels: AdjustLogLevelsRequest["log_levels"] = {};
-  const code = JSON.stringify({ e: 1 }, null, 2);
+  const [json, setJson] = useState("");
+  const durationNumber = parseInt(duration, 10);
+  const isDurationValid = Number.isFinite(durationNumber);
+  const isValid = isDurationValid && isJsonValid(json);
+  const logLevels: AdjustLogLevelsRequest["log_levels"] = {}; // TODO
 
   const handleClose = () => {
     dispatch(goBack());
@@ -38,7 +51,7 @@ export const LogLevelsModal = () => {
 
   const handleReset = async () => {
     const response = await adjustLogLevels({
-      duration,
+      duration: durationNumber,
       duration_unit: durationUnit,
       log_levels: {},
     });
@@ -48,9 +61,11 @@ export const LogLevelsModal = () => {
     }
   };
 
-  const handleSave = async () => {
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+
     const response = await adjustLogLevels({
-      duration,
+      duration: durationNumber,
       duration_unit: durationUnit,
       log_levels: logLevels,
     });
@@ -62,26 +77,72 @@ export const LogLevelsModal = () => {
 
   if (presetsError || isLoadingPresets) {
     return (
-      <LoadingAndErrorWrapper error={presetsError} loading={isLoadingPresets} />
+      <ModalContent title={t`Customize log levels`} onClose={handleClose}>
+        <LoadingAndErrorWrapper
+          error={presetsError}
+          loading={isLoadingPresets}
+        />
+      </ModalContent>
     );
   }
 
   return (
     <ModalContent title={t`Customize log levels`} onClose={handleClose}>
-      <Box className={S.codeContainer}>
-        <CodeBlock code={code} language="json" />
-      </Box>
+      <form onSubmit={handleSubmit}>
+        <Flex gap="md" justify="space-between" mb="xl">
+          <Flex gap="md">
+            <TextInput
+              label={t`Duration`}
+              placeholder={t`Duration`}
+              required
+              type="number"
+              value={duration}
+              w={80}
+              onChange={(event) => setDuration(event.target.value)}
+            />
 
-      {adjustLogLevelsError ? (
-        <Box c="error" mt="md">
-          {getErrorMessage(adjustLogLevelsError)}
+            <Select
+              data={TIME_UNITS}
+              label={t`Unit`}
+              placeholder={t`Unit`}
+              value={durationUnit}
+              w={140}
+              onChange={setDurationUnit}
+            />
+          </Flex>
+        </Flex>
+
+        <Box className={S.codeContainer} mih={200}>
+          <CodeBlock
+            language="json"
+            value={json}
+            onChange={(value) => setJson(value)}
+          />
         </Box>
-      ) : null}
 
-      <Flex gap="md" justify="flex-end" mt="xl">
-        <Button onClick={handleReset}>{t`Reset to defaults`}</Button>
-        <Button variant="filled" onClick={handleSave}>{t`Save`}</Button>
-      </Flex>
+        {adjustLogLevelsError ? (
+          <Box c="error" mt="md">
+            {getErrorMessage(adjustLogLevelsError)}
+          </Box>
+        ) : null}
+
+        <Flex gap="md" justify="flex-end" mt="xl">
+          <Flex align="center">
+            {isLoadingAdjustLogLevels && <Loader size="sm" />}
+          </Flex>
+
+          <Button
+            disabled={isLoadingAdjustLogLevels}
+            onClick={handleReset}
+          >{t`Reset to defaults`}</Button>
+
+          <Button
+            disabled={isLoadingAdjustLogLevels || !isValid}
+            type="submit"
+            variant="filled"
+          >{t`Save`}</Button>
+        </Flex>
+      </form>
     </ModalContent>
   );
 };
@@ -92,4 +153,13 @@ function getErrorMessage(error: unknown) {
   }
 
   return t`Server error encountered`;
+}
+
+function isJsonValid(json: string): boolean {
+  try {
+    JSON.parse(json);
+    return true;
+  } catch (_error) {
+    return false;
+  }
 }
