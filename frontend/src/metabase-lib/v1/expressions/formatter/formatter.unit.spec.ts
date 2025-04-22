@@ -14,7 +14,7 @@ import {
   segments,
   stageIndex,
 } from "../test/shared";
-import { op, opt } from "../test/util";
+import { op, opt } from "../test/utils";
 import type { StartRule } from "../types";
 
 import { format, formatExpressionParts } from "./formatter";

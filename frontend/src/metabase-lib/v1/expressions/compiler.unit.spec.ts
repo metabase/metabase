@@ -6,7 +6,7 @@ import {
   segments,
   stageIndex,
 } from "./test/shared";
-import { op, opt, value } from "./test/util";
+import { op, opt, value } from "./test/utils";
 import type { StartRule } from "./types";
 
 function expr(

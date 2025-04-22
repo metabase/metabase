@@ -1,4 +1,4 @@
-import { value } from "../test/util";
+import { value } from "../test/utils";
 
 import { compile, lexify, parse } from ".";
 
