@@ -4,12 +4,6 @@ import { OPERATOR } from "./tokenizer";
 import type { MBQLClauseFunctionConfig } from "./types";
 
 export const EDITOR_QUOTES = {
-  // specifies where different quoting is used:
-  characters: {
-    "[": "identifier",
-    "'": "literal",
-    '"': "literal",
-  },
   // specifies the default quoting style:
   literalQuoteDefault: '"',
   identifierQuoteDefault: "[",
