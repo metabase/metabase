@@ -1,24 +1,22 @@
-import type { VisualizerHistoryItem, VisualizerState } from "../visualizer";
+import type { VisualizerState } from "../visualizer";
 
-export const createMockVisualizerHistoryItem = (
-  opts?: Partial<VisualizerHistoryItem>,
-): VisualizerHistoryItem => ({
+export const createMockVisualizerState = (
+  opts?: Partial<VisualizerState>,
+): VisualizerState => ({
+  initialState: {
+    display: null,
+    columns: [],
+    columnValuesMapping: {},
+    settings: {
+      "card.title": "Card Title",
+    },
+  },
   display: null,
   columns: [],
   columnValuesMapping: {},
   settings: {
     "card.title": "Card Title",
   },
-  ...opts,
-});
-
-export const createMockVisualizerState = (
-  opts?: Partial<VisualizerState>,
-): VisualizerState => ({
-  initialState: createMockVisualizerHistoryItem(),
-  past: [],
-  present: createMockVisualizerHistoryItem(),
-  future: [],
   cards: [],
   datasets: {},
   expandedDataSources: {},

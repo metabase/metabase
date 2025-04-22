@@ -1,10 +1,5 @@
 import type { DragEndEvent } from "@dnd-kit/core";
-import {
-  type Action,
-  type PayloadAction,
-  createAction,
-  createSlice,
-} from "@reduxjs/toolkit";
+import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
@@ -22,7 +17,6 @@ import type {
 import type { Dispatch, GetState } from "metabase-types/store";
 import type {
   DraggedItem,
-  VisualizerCommonState,
   VisualizerDataSource,
   VisualizerDataSourceId,
   VisualizerHistoryItem,
@@ -67,18 +61,6 @@ import {
   removeColumnFromPieChart,
 } from "./visualizations/pie";
 
-const initialCommonState: VisualizerCommonState = {
-  cards: [],
-  datasets: {},
-  loadingDataSources: {},
-  loadingDatasets: {},
-  expandedDataSources: {},
-  isDataSidebarOpen: true,
-  isVizSettingsSidebarOpen: false,
-  error: null,
-  draggedItem: null,
-};
-
 function getInitialVisualizerHistoryItem(): VisualizerHistoryItem {
   return {
     display: null,
@@ -92,11 +74,19 @@ function getInitialVisualizerHistoryItem(): VisualizerHistoryItem {
 
 function getInitialState(): VisualizerState {
   return {
-    ...initialCommonState,
-    past: [],
-    present: getInitialVisualizerHistoryItem(),
-    future: [],
+    ...getInitialVisualizerHistoryItem(),
+
     initialState: getInitialVisualizerHistoryItem(),
+
+    cards: [],
+    datasets: {},
+    loadingDataSources: {},
+    loadingDatasets: {},
+    expandedDataSources: {},
+    isDataSidebarOpen: true,
+    isVizSettingsSidebarOpen: false,
+    error: null,
+    draggedItem: null,
   };
 }
 
@@ -111,7 +101,12 @@ export const initializeVisualizer = createAsyncThunk(
   "visualizer/initializeVisualizer",
   async (payload: InitVisualizerPayload, { dispatch, getState }) => {
     if ("cardId" in payload) {
-      return initializeFromCard(payload.cardId, dispatch, getState);
+      const initState = await initializeFromCard(
+        payload.cardId,
+        dispatch,
+        getState,
+      );
+      return initState;
     } else {
       return initializeFromState(payload, dispatch);
     }
@@ -216,19 +211,6 @@ export const addDataSource = createAsyncThunk(
   },
 );
 
-export const addColumn = createAction<{
-  dataSource: VisualizerDataSource;
-  column: DatasetColumn;
-}>("metabase/visualizer/addColumn");
-
-export const removeDataSource = createAction<VisualizerDataSource>(
-  "metabase/visualizer/removeDataSource",
-);
-
-export const handleDrop = createAction<DragEndEvent>(
-  "metabase/visualizer/handleDrop",
-);
-
 const fetchCard = createAsyncThunk<Card, CardId>(
   "visualizer/fetchCard",
   async (cardId, { dispatch }) => {
@@ -255,9 +237,9 @@ const fetchCardQuery = createAsyncThunk<Dataset, CardId>(
   },
 );
 
-const visualizerHistoryItemSlice = createSlice({
-  name: "present",
-  initialState: getInitialVisualizerHistoryItem(),
+const visualizerSlice = createSlice({
+  name: "visualizer",
+  initialState: getInitialState(),
   reducers: {
     setDisplay: (state, action: PayloadAction<VisualizationDisplay>) => {
       const display = action.payload;
@@ -291,27 +273,27 @@ const visualizerHistoryItemSlice = createSlice({
         ...action.payload,
       };
     },
-    addColumnInner: (
+    addColumn: (
       state,
       action: PayloadAction<{
         column: DatasetColumn;
         dataSource: VisualizerDataSource;
-        dataset: Dataset;
-        dataSourceMap: Record<VisualizerDataSourceId, VisualizerDataSource>;
-        datasetMap: Record<VisualizerDataSourceId, Dataset>;
       }>,
     ) => {
-      const {
-        column: originalColumn,
-        dataSource,
-        dataset,
-        dataSourceMap,
-        datasetMap,
-      } = action.payload;
+      const { column: originalColumn, dataSource } = action.payload;
 
       if (!state.display) {
         return;
       }
+
+      const dataset = state.datasets[dataSource.id];
+
+      const dataSourceMap = Object.fromEntries(
+        state.cards.map((card) => {
+          const dataSource = createDataSource("card", card.id, card.name);
+          return [dataSource.id, dataSource];
+        }),
+      );
 
       const columnRef = createVisualizerColumnReference(
         dataSource,
@@ -349,7 +331,7 @@ const visualizerHistoryItemSlice = createSlice({
           maybeImportDimensionsFromOtherDataSources(
             state,
             column,
-            _.omit(datasetMap, dataSource.id),
+            _.omit(state.datasets, dataSource.id),
             dataSourceMap,
           );
         }
@@ -381,46 +363,47 @@ const visualizerHistoryItemSlice = createSlice({
         removeColumnFromPieChart(state, name);
       }
     },
-    handleDropInner: (
-      state,
-      action: PayloadAction<{
-        event: DragEndEvent;
-        datasetMap: Record<VisualizerDataSourceId, Dataset>;
-        dataSourceMap: Record<VisualizerDataSourceId, VisualizerDataSource>;
-      }>,
-    ) => {
+    handleDrop: (state, action: PayloadAction<DragEndEvent>) => {
+      state.draggedItem = null;
+
       if (!state.display) {
         return;
       }
 
-      const { event, ...ctx } = action.payload;
+      const event = action.payload;
 
       if (isCartesianChart(state.display)) {
-        cartesianDropHandler(state, event, ctx);
+        cartesianDropHandler(state, event, {
+          datasetMap: state.datasets,
+          dataSourceMap: Object.fromEntries(
+            state.cards.map((card) => {
+              const dataSource = createDataSource("card", card.id, card.name);
+              return [dataSource.id, dataSource];
+            }),
+          ),
+        });
       } else if (state.display === "funnel") {
         funnelDropHandler(state, event);
       } else if (state.display === "pie") {
         pieDropHandler(state, event);
       }
     },
-  },
-  extraReducers: (builder) => {
-    builder
-      .addCase(initializeVisualizer.fulfilled, (state, action) => {
-        const initialState = action.payload;
-        if (initialState) {
-          Object.assign(state, initialState);
-        }
-        if (!state.settings?.["card.title"]) {
-          state.settings["card.title"] = getDefaultVisualizationName();
-        }
-      })
-      .addCase(addDataSource.fulfilled, (state, action) => {
-        Object.assign(state, copy(action.payload));
-      })
-      .addCase(removeDataSource, (state, action) => {
-        const source = action.payload;
+    removeDataSource: (state, action: PayloadAction<VisualizerDataSource>) => {
+      const source = action.payload;
+      if (source.type === "card") {
+        const cardId = source.sourceId;
+        state.cards = state.cards.filter((card) => card.id !== cardId);
+      }
+      delete state.expandedDataSources[source.id];
+      delete state.loadingDataSources[source.id];
+      delete state.datasets[source.id];
+      delete state.loadingDatasets[source.id];
 
+      const isLastDataSource = Object.keys(state.datasets).length === 0;
+      if (isLastDataSource) {
+        Object.assign(state, getInitialVisualizerHistoryItem());
+        state.isVizSettingsSidebarOpen = false;
+      } else {
         const columnsToRemove: string[] = [];
         const columnVizSettings = state.display
           ? getColumnVizSettings(state.display)
@@ -459,14 +442,8 @@ const visualizerHistoryItemSlice = createSlice({
             );
           }
         });
-      });
-  },
-});
-
-const visualizerSlice = createSlice({
-  name: "visualizer",
-  initialState: getInitialState(),
-  reducers: {
+      }
+    },
     setDraggedItem: (state, action: PayloadAction<DraggedItem | null>) => {
       state.draggedItem = action.payload;
     },
@@ -489,33 +466,10 @@ const visualizerSlice = createSlice({
     closeDataSidebar: (state) => {
       state.isDataSidebarOpen = false;
     },
-    undo: (state) => {
-      const canUndo = state.past.length > 0;
-      if (canUndo) {
-        state.future = [state.present, ...state.future];
-        state.present = state.past[state.past.length - 1];
-        state.past = state.past.slice(0, state.past.length - 1);
-      }
-    },
-    redo: (state) => {
-      const canRedo = state.future.length > 0;
-      if (canRedo) {
-        state.past = [...state.past, state.present];
-        state.present = state.future[0];
-        state.future = state.future.slice(1);
-      }
-    },
-    resetVisualizer: (
-      state,
-      action: PayloadAction<{ full?: boolean } | undefined>,
-    ) => {
-      if (action.payload?.full) {
-        Object.assign(state, getInitialState());
-      } else {
-        state.past = [];
-        state.future = [...state.future, state.present];
-        state.present = getInitialVisualizerHistoryItem();
-      }
+    undo: () => {},
+    redo: () => {},
+    resetVisualizer: (state) => {
+      Object.assign(state, getInitialState());
     },
   },
   extraReducers: (builder) => {
@@ -528,45 +482,18 @@ const visualizerSlice = createSlice({
             ...initialState,
           };
         }
-
-        maybeUpdateHistory(state, action);
-      })
-      .addCase(handleDrop, (state, action) => {
-        state.draggedItem = null;
-        maybeUpdateHistory(
-          state,
-          handleDropInner({
-            event: action.payload,
-            datasetMap: state.datasets,
-            dataSourceMap: Object.fromEntries(
-              state.cards.map((card) => {
-                const dataSource = createDataSource("card", card.id, card.name);
-                return [dataSource.id, dataSource];
-              }),
-            ),
-          }),
-        );
-      })
-      .addCase(removeDataSource, (state, action) => {
-        const source = action.payload;
-        if (source.type === "card") {
-          const cardId = source.sourceId;
-          state.cards = state.cards.filter((card) => card.id !== cardId);
+        Object.assign(state, initialState);
+        if (!state.settings?.["card.title"]) {
+          state.settings["card.title"] = getDefaultVisualizationName();
         }
-        delete state.expandedDataSources[source.id];
-        delete state.loadingDataSources[source.id];
-        delete state.datasets[source.id];
-        delete state.loadingDatasets[source.id];
-
-        const isLastDataSource = Object.keys(state.datasets).length === 0;
-        if (isLastDataSource) {
-          const present = _.clone(state.present);
-          state.past = [...state.past, present];
-          state.present = getInitialVisualizerHistoryItem();
-          state.future = [];
-          state.isVizSettingsSidebarOpen = false;
-        } else {
-          maybeUpdateHistory(state, action);
+      })
+      .addCase(addDataSource.fulfilled, (state, action) => {
+        const nextState = action.payload;
+        if (nextState) {
+          state.display = nextState.display;
+          state.columns = copy(nextState.columns);
+          state.columnValuesMapping = copy(nextState.columnValuesMapping);
+          state.settings = copy(nextState.settings);
         }
       })
       .addCase(fetchCard.pending, (state, action) => {
@@ -584,7 +511,6 @@ const visualizerSlice = createSlice({
         }
         state.loadingDataSources[`card:${card.id}`] = false;
         state.expandedDataSources[`card:${card.id}`] = true;
-        maybeUpdateHistory(state, action);
       })
       .addCase(fetchCard.rejected, (state, action) => {
         const cardId = action.meta.arg;
@@ -603,7 +529,6 @@ const visualizerSlice = createSlice({
         const dataset = action.payload;
         state.datasets[`card:${cardId}`] = dataset;
         state.loadingDatasets[`card:${cardId}`] = false;
-        maybeUpdateHistory(state, action);
       })
       .addCase(fetchCardQuery.rejected, (state, action) => {
         const cardId = action.meta.arg;
@@ -611,46 +536,9 @@ const visualizerSlice = createSlice({
           state.loadingDatasets[`card:${cardId}`] = false;
         }
         state.error = action.error.message || "Failed to fetch card query";
-      })
-      .addCase(addColumn, (state, action) => {
-        const { cards, datasets } = state;
-        const { column, dataSource } = action.payload;
-
-        const dataset = datasets[dataSource.id];
-
-        const dataSourceMap = Object.fromEntries(
-          cards.map((card) => {
-            const dataSource = createDataSource("card", card.id, card.name);
-            return [dataSource.id, dataSource];
-          }),
-        );
-
-        maybeUpdateHistory(
-          state,
-          addColumnInner({
-            column,
-            dataset,
-            dataSource,
-            dataSourceMap,
-            datasetMap: datasets,
-          }),
-        );
-      })
-      .addDefaultCase((state, action) => {
-        maybeUpdateHistory(state, action);
       });
   },
 });
-
-function maybeUpdateHistory(state: VisualizerState, action: Action) {
-  const present = _.clone(state.present);
-  const newPresent = visualizerHistoryItemSlice.reducer(state.present, action);
-  if (!_.isEqual(present, newPresent)) {
-    state.past = [...state.past, present];
-    state.present = newPresent;
-    state.future = [];
-  }
-}
 
 function maybeCombineDataset(
   state: VisualizerHistoryItem,
@@ -679,18 +567,20 @@ function maybeCombineDataset(
   return state;
 }
 
-const { addColumnInner, handleDropInner } = visualizerHistoryItemSlice.actions;
-
-export const { setTitle, updateSettings, removeColumn, setDisplay } =
-  visualizerHistoryItemSlice.actions;
-
 export const {
+  addColumn,
+  setTitle,
+  updateSettings,
+  removeColumn,
+  setDisplay,
   setDraggedItem,
+  handleDrop,
   toggleDataSourceExpanded,
   toggleDataSideBar,
   toggleVizSettingsSidebar,
   closeVizSettingsSidebar,
   closeDataSidebar,
+  removeDataSource,
   undo,
   redo,
   resetVisualizer,

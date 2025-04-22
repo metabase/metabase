@@ -1,7 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
-import { utf8_to_b64 } from "metabase/lib/encoding";
 import {
   extractRemappings,
   getVisualization,
@@ -16,10 +15,7 @@ import type {
   RawSeries,
   SingleSeries,
 } from "metabase-types/api";
-import type {
-  VisualizerHistoryItem,
-  VisualizerState,
-} from "metabase-types/store/visualizer";
+import type { VisualizerState } from "metabase-types/store/visualizer";
 
 import {
   createDataSource,
@@ -34,7 +30,7 @@ type State = { visualizer: VisualizerState };
 
 // Private selectors
 
-const getCurrentHistoryItem = (state: State) => state.visualizer.present;
+const getCurrentHistoryItem = (state: State) => state.visualizer;
 
 const getVisualizationColumns = (state: State) =>
   getCurrentHistoryItem(state).columns;
@@ -84,9 +80,10 @@ export const getIsDataSidebarOpen = (state: State) =>
 export const getIsVizSettingsSidebarOpen = (state: State) =>
   state.visualizer.isVizSettingsSidebarOpen;
 
+// TODO Update
 // #0 is state before its actually initialized, hence the > 1
-export const getCanUndo = (state: State) => state.visualizer.past.length > 1;
-export const getCanRedo = (state: State) => state.visualizer.future.length > 0;
+export const getCanUndo = () => false;
+export const getCanRedo = () => false;
 
 export const getReferencedColumns = createSelector(
   [getVisualizerColumnValuesMapping],
@@ -260,34 +257,6 @@ export const getIsDirty = createSelector(
     return !_.isEqual(state, initialState);
   },
 );
-
-export const getVisualizerUrlHash = createSelector(
-  [getCurrentVisualizerState],
-  (state) => getStateHash(state),
-);
-
-export const getPastVisualizerUrlHashes = createSelector(
-  [(state) => state.visualizer.past],
-  (items) => items.map(getStateHash),
-);
-
-export const getFutureVisualizerUrlHashes = createSelector(
-  [(state) => state.visualizer.future],
-  (items) => items.map(getStateHash),
-);
-
-function getStateHash(state: VisualizerHistoryItem) {
-  return checkIfStateDirty(state) ? utf8_to_b64(JSON.stringify({ state })) : "";
-}
-
-function checkIfStateDirty(state: VisualizerHistoryItem) {
-  return (
-    !!state.display ||
-    state.columns.length > 0 ||
-    Object.keys(state.settings).length > 0 ||
-    Object.keys(state.columnValuesMapping).length > 0
-  );
-}
 
 export const getIsRenderable = createSelector(
   [getVisualizationType, getVisualizerRawSeries, getVisualizerComputedSettings],

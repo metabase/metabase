@@ -58,7 +58,9 @@ export type VisualizerHistoryItem = {
   settings: VisualizationSettings;
 };
 
-export type VisualizerCommonState = {
+export interface VisualizerState extends VisualizerHistoryItem {
+  initialState: VisualizerHistoryItem;
+
   cards: Card[];
   datasets: Record<VisualizerDataSourceId, Dataset>;
   expandedDataSources: Record<VisualizerDataSourceId, boolean>;
@@ -68,12 +70,4 @@ export type VisualizerCommonState = {
   isVizSettingsSidebarOpen: boolean;
   error: string | null;
   draggedItem: DraggedItem | null;
-};
-
-export interface VisualizerState extends VisualizerCommonState {
-  past: VisualizerHistoryItem[];
-  present: VisualizerHistoryItem;
-  future: VisualizerHistoryItem[];
-
-  initialState: VisualizerHistoryItem;
 }

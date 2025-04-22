@@ -88,7 +88,7 @@ export const Visualizer = (props: VisualizerProps) => {
   });
 
   useUnmount(() => {
-    dispatch(resetVisualizer({ full: true }));
+    dispatch(resetVisualizer());
   });
 
   useEffect(() => {
