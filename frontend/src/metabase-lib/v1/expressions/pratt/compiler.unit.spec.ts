@@ -813,10 +813,10 @@ describe("resolve", () => {
           fields.push(name);
         }
         return {
-          operator: "dimension",
+          operator: "value",
           options: {},
           args: [name],
-        } as any;
+        };
       },
     });
 
