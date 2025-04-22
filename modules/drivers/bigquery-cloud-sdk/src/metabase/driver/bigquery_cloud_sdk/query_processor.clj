@@ -577,9 +577,13 @@
         (datetime target-timezone)
         (with-temporal-type :datetime))))
 
-(defmethod sql.qp/->float :bigquery-cloud-sdk
+(defmethod sql.qp/float-dbtype :bigquery-cloud-sdk
+  [_]
+  :float64)
+
+(defmethod sql.qp/cast-float :bigquery-cloud-sdk
   [_ value]
-  (h2x/cast :float64 value))
+  (h2x/maybe-cast :float64 value))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :regex-match-first]
   [driver [_ arg pattern]]

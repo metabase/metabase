@@ -243,7 +243,9 @@
     (:database-type type-info)
     (update :database-type (comp u/lower-case-en name))))
 
-(defn- typed? [x]
+(defn typed?
+  "Does HoneySQL expression have db type information?"
+  [x]
   (and (vector? x)
        (= (first x) ::typed)))
 

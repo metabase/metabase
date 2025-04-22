@@ -126,9 +126,13 @@
 ;;; |                                          Misc Implementations                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod sql.qp/->float :starburst
+(defmethod sql.qp/float-dbtype :starburst
+  [_]
+  :double)
+
+(defmethod sql.qp/cast-float :starburst
   [_ value]
-  (h2x/cast :double value))
+  (h2x/maybe-cast :double value))
 
 (defn- format-mod
   [_fn [x y]]

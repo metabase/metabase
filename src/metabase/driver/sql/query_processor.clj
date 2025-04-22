@@ -136,30 +136,52 @@
   [_ value]
   (h2x/->integer value))
 
-(defmulti ->float
+(defmulti float-dbtype
+  "Return the name of the floating point type we convert to in this database."
+  {:changelog-test/ignore true :added "0.55.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod float-dbtype :sql
+  [_driver]
+  "float")
+
+(defmulti cast-float
   "Cast to float."
   {:changelog-test/ignore true :added "0.45.0" :arglists '([driver honeysql-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod ->float :sql
+(defmethod cast-float :sql
   [driver value]
-  ;; optimization: we don't need to cast a number literal that is already a `Float` or a `Double` to `FLOAT`. Other
-  ;; number literals can be converted to doubles in Clojure-land. Note that there is a little bit of a mismatch between
-  ;; FLOAT and DOUBLE here, but that's mostly because I'm not 100% sure which drivers have both types. In the future
-  ;; maybe we can fix this.
-  (cond
-    (float? value)
-    (h2x/with-database-type-info (inline-num value) "float")
+  (h2x/maybe-cast (float-dbtype driver) value))
 
-    (number? value)
-    (recur driver (double value))
+(defn ->float
+  "Convert numbers to floats, being smart about converting inlines and constants at compile-time."
+  [driver value]
+  ;; The smarts of this function are to cast inline numbers and strings at
+  ;; query-compile time (in Clojure) instead of in SQL
+  (cond
+    (h2x/is-of-type? value (float-dbtype driver))
+    value
+
+    (h2x/typed? value)
+    (recur driver (h2x/unwrap-typed-honeysql-form value))
 
     (inline? value)
     (recur driver (second value))
 
+    (float? value)
+    (h2x/with-database-type-info (inline-num value) (float-dbtype driver))
+
+    (number? value)
+    (recur driver (double value))
+
+    (string? value)
+    (recur driver (Double/parseDouble value))
+
     :else
-    (h2x/cast :float value)))
+    (cast-float driver value)))
 
 (defmulti ^clojure.lang.MultiFn inline-value
   "Return an inline value (as a raw SQL string) for an object `x`, e.g.

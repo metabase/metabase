@@ -143,9 +143,13 @@
   [_ [_ t]]
   (h2x/cast :time (u.date/format-sql (t/local-time t))))
 
-(defmethod sql.qp/->float :presto-jdbc
+(defmethod sql.qp/float-dbtype :presto-jdbc
+  [_]
+  :double)
+
+(defmethod sql.qp/cast-float :presto-jdbc
   [_ value]
-  (h2x/cast :double value))
+  (h2x/maybe-cast :double value))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :regex-match-first]
   [driver [_ arg pattern]]
