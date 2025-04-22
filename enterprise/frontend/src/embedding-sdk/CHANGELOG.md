@@ -1,3 +1,22 @@
+## [0.55.2-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.1-metabot...embedding-sdk-0.55.2-metabot) (2025-04-22)
+
+
+### Bug Fixes
+
+* **sdk:** use instance locale if no locale is passed ([#56683](https://github.com/metabase/metabase/issues/56683)) ([88a8827](https://github.com/metabase/metabase/commit/88a88270be99c24095deb6bbf3bf6eb61ca73e1a))
+
+
+### Features
+
+* **sdk:** Add question details to Metabot ([#56601](https://github.com/metabase/metabase/issues/56601)) ([5b7c4ec](https://github.com/metabase/metabase/commit/5b7c4ec58799d5669eea2cd0df07d80a96374d1e))
+* **sdk:** Automatically set a sensible display to interactive questions ([#56584](https://github.com/metabase/metabase/issues/56584)) ([debae53](https://github.com/metabase/metabase/commit/debae5382881a4f824a547dc955ed03de80da626))
+* **sdk:** Automatically set a sensible display to interactive questions ([#56584](https://github.com/metabase/metabase/issues/56584)) ([#56667](https://github.com/metabase/metabase/issues/56667)) ([b7a74d0](https://github.com/metabase/metabase/commit/b7a74d02c7082b1dd180d059c255e2ebb1d0cbaf))
+* **sdk:** Export more public SDK types ([#56838](https://github.com/metabase/metabase/issues/56838)) ([764b236](https://github.com/metabase/metabase/commit/764b2366015df4594d3e7745234fdef126abc3b5))
+* **sdk:** Export public plugin and icon types ([#56851](https://github.com/metabase/metabase/issues/56851)) ([fe1df8d](https://github.com/metabase/metabase/commit/fe1df8df8839eca275dd1dd2c02d1a8872278643))
+* **sdk:** Use public types for Dashboard/Collection/User and other entities ([#56875](https://github.com/metabase/metabase/issues/56875)) ([9bb5e3e](https://github.com/metabase/metabase/commit/9bb5e3ec502f6a2bb80ad0be0c01124668abf387))
+
+
+
 ## [0.55.1-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.1-nightly...embedding-sdk-0.55.1-metabot) (2025-04-04)
 
 
