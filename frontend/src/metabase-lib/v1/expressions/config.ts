@@ -28,7 +28,6 @@ function defineClauses<const T extends Record<string, ConfigInput>>(
   return result;
 }
 
-// `type` and `args` types have no effect. Type checking is done by MBQL lib.
 export const MBQL_CLAUSES = defineClauses({
   // aggregation functions
   count: { displayName: `Count`, type: "aggregation", args: [] },
