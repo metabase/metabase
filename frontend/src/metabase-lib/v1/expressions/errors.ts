@@ -16,7 +16,7 @@ export abstract class ExpressionError extends Error {
 export class CompileError extends ExpressionError {
   constructor(
     message: string,
-    private node: Node,
+    private node?: Node,
   ) {
     super(message);
   }

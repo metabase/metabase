@@ -166,7 +166,9 @@ describe("QueryBuilder", () => {
 
       expect(inputArea).toHaveValue("SELECT 1");
 
-      await userEvent.click(screen.getByTestId("download-button"));
+      await userEvent.click(
+        screen.getByTestId("question-results-download-button"),
+      );
       await userEvent.click(await screen.findByLabelText(".csv"));
       await userEvent.click(
         await screen.findByTestId("download-results-button"),
@@ -197,7 +199,9 @@ describe("QueryBuilder", () => {
 
       expect(inputArea).toHaveValue("SELECT 1 union SELECT 2");
 
-      await userEvent.click(screen.getByTestId("download-button"));
+      await userEvent.click(
+        screen.getByTestId("question-results-download-button"),
+      );
       await userEvent.click(await screen.findByLabelText(".csv"));
       await userEvent.click(
         await screen.findByTestId("download-results-button"),
