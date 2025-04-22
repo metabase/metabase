@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
-import type { Token } from "../pratt";
-import { GROUP, GROUP_CLOSE } from "../pratt";
-
-import { error } from "./utils";
+import type { Token } from "../../pratt";
+import { GROUP, GROUP_CLOSE } from "../../pratt";
+import { error } from "../utils";
 
 export function checkMatchingParentheses({ tokens }: { tokens: Token[] }) {
   let lastOpen = undefined;

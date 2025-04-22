@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
-import { getClauseDefinition, getMBQLName } from "../config";
-import { GROUP, IDENTIFIER, type Token } from "../pratt";
-
-import { error } from "./utils";
+import { getClauseDefinition, getMBQLName } from "../../config";
+import { GROUP, IDENTIFIER, type Token } from "../../pratt";
+import { error } from "../utils";
 
 export function checkOpenParenthesisAfterFunction({
   tokens,

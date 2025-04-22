@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
-import { BAD_TOKEN, type Token } from "../pratt";
-
-import { error } from "./utils";
+import { BAD_TOKEN, type Token } from "../../pratt";
+import { error } from "../utils";
 
 export function checkBadTokens({ tokens }: { tokens: Token[] }) {
   for (const token of tokens) {

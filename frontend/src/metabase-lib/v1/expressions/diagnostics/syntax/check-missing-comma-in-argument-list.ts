@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { Token } from "../pratt";
+import type { Token } from "../../pratt";
 import {
   CALL,
   FIELD,
@@ -8,9 +8,8 @@ import {
   GROUP_CLOSE,
   IDENTIFIER,
   OPERATORS,
-} from "../pratt";
-
-import { error } from "./utils";
+} from "../../pratt";
+import { error } from "../utils";
 
 export function checkMissingCommasInArgumentList({
   tokens,

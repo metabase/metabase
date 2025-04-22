@@ -5,20 +5,8 @@ import { compileExpression } from "../compiler";
 import type { ExpressionError } from "../errors";
 import type { Token } from "../pratt";
 
-import { checkArgCount } from "./check-arg-count";
-import { checkArgValidators } from "./check-arg-validators";
-import { checkBadTokens } from "./check-bad-tokens";
-import { checkCaseOrIfArgCount } from "./check-case-or-if-arg-count";
-import { checkComparisonOperatorArgs } from "./check-comparison-operator-args";
-import { checkFieldQuotes } from "./check-field-quotes";
-import { checkKnownFunctions } from "./check-known-functions";
-import { checkLibDiagnostics } from "./check-lib-diagnostics";
-import { checkMatchingParentheses } from "./check-matching-parenthesis";
-import { checkMissingCommasInArgumentList } from "./check-missing-comma-in-argument-list";
-import { checkNumberExponent } from "./check-number-exponent";
-import { checkOpenParenthesisAfterFunction } from "./check-open-parenthesis-after-function";
-import { checkStringQuotes } from "./check-string-quotes";
-import { checkSupportedFunctions } from "./check-supported-functions";
+import { diagnoseExpression } from "./expression";
+import { diagnoseExpressionSyntax } from "./syntax";
 
 type Options = {
   source: string;
@@ -58,43 +46,4 @@ export function diagnose(options: Options): ExpressionError | null {
     return result.error;
   }
   return null;
-}
-
-const syntaxChecks = [
-  checkOpenParenthesisAfterFunction,
-  checkMatchingParentheses,
-  checkMissingCommasInArgumentList,
-  checkNumberExponent,
-  checkStringQuotes,
-  checkFieldQuotes,
-  checkBadTokens,
-];
-
-export function diagnoseExpressionSyntax(options: {
-  source: string;
-  tokens: Token[];
-}) {
-  syntaxChecks.forEach((check) => check(options));
-}
-
-const expressionChecks = [
-  checkKnownFunctions,
-  checkSupportedFunctions,
-  checkArgValidators,
-  checkArgCount,
-  checkComparisonOperatorArgs,
-  checkCaseOrIfArgCount,
-  checkLibDiagnostics,
-];
-
-export function diagnoseExpression(options: {
-  query: Lib.Query;
-  stageIndex: number;
-  expressionMode: Lib.ExpressionMode;
-  expressionClause: Lib.ExpressionClause;
-  expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
-  expressionIndex?: number;
-  metadata?: Metadata;
-}) {
-  expressionChecks.forEach((check) => check(options));
 }

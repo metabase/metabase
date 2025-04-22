@@ -2,10 +2,9 @@ import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
-import { FIELD_MARKERS, getClauseDefinition } from "../config";
-import { visit } from "../visitor";
-
-import { error } from "./utils";
+import { FIELD_MARKERS, getClauseDefinition } from "../../config";
+import { visit } from "../../visitor";
+import { error } from "../utils";
 
 export function checkKnownFunctions({
   expressionParts,

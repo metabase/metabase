@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
-import { FIELD, type Token } from "../pratt";
-import { quoteString } from "../string";
-
-import { error } from "./utils";
+import { FIELD, type Token } from "../../pratt";
+import { quoteString } from "../../string";
+import { error } from "../utils";
 
 export function checkFieldQuotes({ tokens }: { tokens: Token[] }) {
   for (const token of tokens) {

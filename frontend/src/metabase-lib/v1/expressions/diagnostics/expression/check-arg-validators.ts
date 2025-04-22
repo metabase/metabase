@@ -1,9 +1,8 @@
 import * as Lib from "metabase-lib";
 
-import { getClauseDefinition } from "../config";
-import { visit } from "../visitor";
-
-import { error } from "./utils";
+import { getClauseDefinition } from "../../config";
+import { visit } from "../../visitor";
+import { error } from "../utils";
 
 export function checkArgValidators({
   expressionParts,

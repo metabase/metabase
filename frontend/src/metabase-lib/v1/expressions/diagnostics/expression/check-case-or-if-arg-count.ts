@@ -2,9 +2,8 @@ import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
-import { visit } from "../visitor";
-
-import { error } from "./utils";
+import { visit } from "../../visitor";
+import { error } from "../utils";
 
 export function checkCaseOrIfArgCount({
   expressionParts,

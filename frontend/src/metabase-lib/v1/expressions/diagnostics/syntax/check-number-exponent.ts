@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
-import { NUMBER, type Token } from "../pratt";
-
-import { error } from "./utils";
+import { NUMBER, type Token } from "../../pratt";
+import { error } from "../utils";
 
 export function checkNumberExponent({
   source,

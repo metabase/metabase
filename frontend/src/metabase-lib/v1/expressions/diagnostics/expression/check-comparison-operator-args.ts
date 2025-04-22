@@ -2,11 +2,10 @@ import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
-import { COMPARISON_OPERATORS } from "../config";
-import type { OPERATOR } from "../tokenizer";
-import { visit } from "../visitor";
-
-import { error } from "./utils";
+import { COMPARISON_OPERATORS } from "../../config";
+import type { OPERATOR } from "../../tokenizer";
+import { visit } from "../../visitor";
+import { error } from "../utils";
 
 export function checkComparisonOperatorArgs({
   expressionParts,

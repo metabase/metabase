@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
-import { STRING, type Token } from "../pratt";
-import { quoteString } from "../string";
-
-import { error } from "./utils";
+import { STRING, type Token } from "../../pratt";
+import { quoteString } from "../../string";
+import { error } from "../utils";
 
 export function checkStringQuotes({ tokens }: { tokens: Token[] }) {
   for (const token of tokens) {

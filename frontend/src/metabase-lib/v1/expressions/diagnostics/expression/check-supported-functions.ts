@@ -3,11 +3,10 @@ import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { getClauseDefinition } from "../config";
-import { getDatabase } from "../utils";
-import { visit } from "../visitor";
-
-import { error } from "./utils";
+import { getClauseDefinition } from "../../config";
+import { getDatabase } from "../../utils";
+import { visit } from "../../visitor";
+import { error } from "../utils";
 
 export function checkSupportedFunctions({
   expressionParts,
