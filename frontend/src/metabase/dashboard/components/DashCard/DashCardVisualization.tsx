@@ -254,6 +254,8 @@ export function DashCardVisualization({
     dashcardId: dashcard.id,
   });
 
+  const showTitle = withTitle && !getVisualizationRaw(series)?.disableTitle;
+
   return (
     <Visualization
       className={cx(CS.flexFull, {
@@ -273,7 +275,7 @@ export function DashCardVisualization({
       expectedDuration={expectedDuration}
       error={error?.message}
       errorIcon={error?.icon}
-      showTitle={withTitle}
+      showTitle={showTitle}
       canToggleSeriesVisibility={!isEditing}
       isAction={isAction}
       isDashboard

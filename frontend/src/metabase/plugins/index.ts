@@ -651,6 +651,7 @@ export const PLUGIN_DATA_EDITING = {
     location: Location<{ filter?: string }>;
   }>,
   CARD_TABLE_COMPONENT: PluginPlaceholder as ComponentType<{
+    title: string;
     dashcardId: number;
     cardId: number;
     data: DatasetData;

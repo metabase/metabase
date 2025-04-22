@@ -316,6 +316,7 @@ export type VisualizationDefinition = {
   supportsSeries?: boolean;
   disableReplaceCard?: boolean;
   disableNavigateToNewCardFromDashboard?: boolean;
+  disableTitle?: boolean;
 
   minSize: VisualizationGridSize;
   defaultSize: VisualizationGridSize;
