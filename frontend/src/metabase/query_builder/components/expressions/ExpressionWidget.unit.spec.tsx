@@ -118,9 +118,9 @@ describe("ExpressionWidget", () => {
     });
   });
 
-  describe("startRule = 'aggregation'", () => {
+  describe("expressionMode = 'aggregation'", () => {
     it("should show 'unknown metric' error if the identifier is not recognized as a dimension (metabase#50753)", async () => {
-      await setup({ startRule: "aggregation" });
+      await setup({ expressionMode: "aggregation" });
 
       await userEvent.paste("[Imaginary]");
       await userEvent.tab();
@@ -132,7 +132,7 @@ describe("ExpressionWidget", () => {
     });
 
     it("should show 'no aggregation found' error if the identifier is recognized as a dimension (metabase#50753)", async () => {
-      await setup({ startRule: "aggregation" });
+      await setup({ expressionMode: "aggregation" });
 
       await userEvent.paste("[Total] / [Subtotal]");
       await userEvent.tab();
@@ -146,9 +146,9 @@ describe("ExpressionWidget", () => {
     });
   });
 
-  describe("startRule = 'expression'", () => {
+  describe("expressionMode = 'expression'", () => {
     it("should show a detailed error when comma is missing (metabase#15892)", async () => {
-      await setup({ startRule: "expression" });
+      await setup({ expressionMode: "expression" });
 
       await userEvent.paste('concat([Tax] "test")');
       await userEvent.tab();
