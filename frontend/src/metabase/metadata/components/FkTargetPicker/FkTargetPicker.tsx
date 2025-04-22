@@ -76,9 +76,8 @@ export const FkTargetPicker = ({
           }
 
           return (
-            field.display_name.includes(query) ||
-            field.table?.display_name.includes(query) ||
-            field.table?.schema_name?.includes(query)
+            option.label.toLowerCase().includes(query) ||
+            field.description?.toLowerCase().includes(query)
           );
         });
       }}
