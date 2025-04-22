@@ -19,11 +19,15 @@ const registerVisualizationsOnce = _.once(registerVisualizations);
 interface InitDataLoaderParameters {
   authConfig: MetabaseAuthConfig;
   allowConsoleLog?: boolean;
+
+  /** For new iframe embedding */
+  isIframe?: boolean;
 }
 
 export const useInitData = ({
   authConfig,
   allowConsoleLog = true,
+  isIframe = false,
 }: InitDataLoaderParameters) => {
   // react calls some lifecycle hooks twice in dev mode, the auth init fires some http requests and when it's called twice,
   // it fires them twice as well, making debugging harder as they show up twice in the network tab and in the logs
@@ -41,11 +45,19 @@ export const useInitData = ({
   }
 
   useEffect(() => {
-    if (authConfig.fetchRequestToken !== fetchRefreshTokenFnFromStore) {
+    if (
+      !isIframe &&
+      authConfig.fetchRequestToken !== fetchRefreshTokenFnFromStore
+    ) {
       // This needs to be a useEffect to avoid the `Cannot update a component XX while rendering a different component` error
       dispatch(setFetchRefreshTokenFn(authConfig.fetchRequestToken ?? null));
     }
-  }, [authConfig.fetchRequestToken, fetchRefreshTokenFnFromStore, dispatch]);
+  }, [
+    isIframe,
+    authConfig.fetchRequestToken,
+    fetchRefreshTokenFnFromStore,
+    dispatch,
+  ]);
 
   useMount(() => {
     if (hasBeenInitialized.current) {
@@ -58,7 +70,7 @@ export const useInitData = ({
     // Note: this check is not actually needed in prod, but some of our tests start with a loginStatus already initialized
     // and they don't mock the network requests so the tests fail
     if (loginStatus.status === "uninitialized") {
-      dispatch(initAuth(authConfig));
+      dispatch(initAuth({ ...authConfig, isIframe }));
     }
 
     const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();

@@ -5,6 +5,10 @@ import type { MetabaseAuthConfig, MetabaseTheme } from "embedding-sdk";
 import { MetabaseProviderInternal } from "embedding-sdk/components/public/MetabaseProvider";
 import "metabase/css/index.module.css";
 import "metabase/css/vendor.css";
+import {
+  setFetchRefreshTokenFn,
+  setIsNewIframeEmbedding,
+} from "embedding-sdk/store/reducer";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import { useStore } from "metabase/lib/redux";
 import { setIsEmbeddingSdk } from "metabase/redux/embed";
@@ -32,9 +36,14 @@ export const SdkInteractiveEmbedProvider = ({
 }: SdkInteractiveEmbedProviderProps): JSX.Element => {
   const store = useStore();
 
-  // Define that we are embedding the SDK in an iframe
+  // Define that we are using new iframe embedding.
   useEffect(() => {
     store.dispatch(setIsEmbeddingSdk(true));
+    store.dispatch(setIsNewIframeEmbedding(true));
+  }, [store]);
+
+  useEffect(() => {
+    store.dispatch(setFetchRefreshTokenFn(null));
   }, [store]);
 
   return (

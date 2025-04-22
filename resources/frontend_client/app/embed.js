@@ -85,9 +85,31 @@
       return hostname === "localhost" || hostname === "127.0.0.1";
     }
 
-    _authenticate() {
+    async _authenticate() {
       if (this.apiKey) {
-        this._authenticateWithApiKey;
+        this._authenticateWithApiKey();
+        return;
+      }
+
+      const refreshToken = await this._getRefreshToken();
+
+      if (!refreshToken) {
+        error("failed to refresh the session token.");
+        return;
+      }
+
+      this._sendMessage({
+        type: "metabase.embed.authenticate",
+        payload: { type: "sso", refreshToken },
+      });
+    }
+
+    _sendMessage(message) {
+      debug("sending message", message);
+
+      if (this.iframe?.contentWindow) {
+        // TODO: do not use origin of "*" in production
+        this.iframe.contentWindow.postMessage(message, "*");
       }
     }
 
@@ -97,20 +119,18 @@
         return;
       }
 
-      const message = {
+      console.warn("API keys must be used for development only.");
+
+      this._sendMessage({
         type: "metabase.embed.authenticate",
         payload: { type: "apiKey", apiKey: this.apiKey },
-      };
-
-      console.warn("API keys must be used for development only.");
-      debug("sending authentication message", message);
-
-      if (this.iframe?.contentWindow) {
-        this.iframe.contentWindow.postMessage(message, "*");
-      }
+      });
     }
 
-    _runRefreshTokenFn = async () => {
+    /**
+     * @returns {Promise<{id: string} | null>}
+     */
+    _getRefreshToken = async () => {
       const url = new URL(this.url);
       const instanceUrl = url.origin;
 
@@ -128,14 +148,18 @@
 
       if (method === "saml") {
         // The URL should point to the SAML IDP
-        return this._popupRefreshTokenFn(responseUrl);
+        return this._getRefreshTokenViaPopup(responseUrl);
       }
 
       // Points to the JWT Auth endpoint on the client server
-      return this._jwtRefreshFunction(responseUrl);
+      return this._getRefreshTokenViaJwt(responseUrl);
     };
 
-    async _jwtRefreshFunction(url) {
+    /**
+     * @param {string} url
+     * @returns {Promise<{id: string} | null>}
+     */
+    async _getRefreshTokenViaJwt(url) {
       const clientBackendResponse = await fetch(url, {
         method: "GET",
         credentials: "include",
@@ -162,7 +186,7 @@
       try {
         return JSON.parse(asText);
       } catch (ex) {
-        return asText;
+        return null;
       }
     }
 
@@ -183,7 +207,7 @@
       return fetchParams;
     }
 
-    /*
+    /**
      * For the markup for the popup (nice rhyme), visit
      * enterprise/backend/src/metabase_enterprise/sso/integrations/saml.clj
      *
@@ -195,8 +219,10 @@
      *  4) We then take that URL and put it in the popup.
      *  5) The IDP eventually redirects back to POST /auth/sso which returns HTML markup
      *      that postMessages the token to this window. We'll save it in localStorage for now.
-     * */
-    async _popupRefreshTokenFn(url) {
+     *
+     * @returns {Promise<{id: string} | null>}
+     **/
+    async _getRefreshTokenViaPopup(url) {
       return new Promise((resolve, reject) => {
         const width = 600;
         const height = 700;

@@ -59,6 +59,9 @@ export const getOrRefreshSession = createAsyncThunk(
   },
 );
 
+const SET_IS_IFRAME = "sdk/SET_IS_IFRAME";
+export const setIsNewIframeEmbedding = createAction<boolean>(SET_IS_IFRAME);
+
 const SET_PLUGINS = "sdk/SET_PLUGINS";
 export const setPlugins = createAction<MetabasePluginsConfig | null>(
   SET_PLUGINS,

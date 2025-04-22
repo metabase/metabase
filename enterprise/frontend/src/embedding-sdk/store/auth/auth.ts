@@ -24,7 +24,10 @@ import { popupRefreshTokenFn } from "./popup";
 
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
-  async (authConfig: MetabaseAuthConfig, { dispatch }) => {
+  async (
+    authConfig: MetabaseAuthConfig & { isIframe?: boolean },
+    { dispatch },
+  ) => {
     // Setup JWT or API key
     const isValidAuthProviderUri =
       authConfig.metabaseInstanceUrl &&
@@ -34,7 +37,10 @@ export const initAuth = createAsyncThunk(
     const isValidApiKeyConfig =
       authConfig.apiKey && (isEmbeddingSdk ? getIsLocalhost() : true);
 
-    if (isValidAuthProviderUri) {
+    if (authConfig.isIframe) {
+      // ensure getOrRefreshSession is not called.
+      // for SDK-based iframe embedding, we set the session token externally.
+    } else if (isValidAuthProviderUri) {
       // JWT setup
       api.onBeforeRequest = async () => {
         const session = await dispatch(
@@ -52,6 +58,7 @@ export const initAuth = createAsyncThunk(
       // API key setup
       api.apiKey = authConfig.apiKey;
     }
+
     // Fetch user and site settings
     const [user, siteSettings] = await Promise.all([
       dispatch(refreshCurrentUser()),
