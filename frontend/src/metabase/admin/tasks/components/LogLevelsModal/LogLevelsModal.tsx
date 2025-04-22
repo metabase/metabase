@@ -120,7 +120,9 @@ export const LogLevelsModal = () => {
           {presets.length > 0 && (
             <Menu position="bottom-end" shadow="md" width={200}>
               <Menu.Target>
-                <Button>Load preset</Button>
+                <Button leftSection={<Icon name="snippet" />}>
+                  Load preset
+                </Button>
               </Menu.Target>
 
               <Menu.Dropdown>
