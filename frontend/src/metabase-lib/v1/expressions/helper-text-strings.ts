@@ -431,8 +431,12 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Converts a string to a floating-point number.`,
     args: [
       {
-        name: t`value`,
-        description: t`The string column to convert to floats.`,
+        get name() {
+          return t`value`;
+        },
+        get description() {
+          return t`The string column to convert to floats.`;
+        },
         example: ["dimension", "Text Rating"],
       },
     ],
