@@ -1,11 +1,11 @@
-(ns metabase.driver.sql.query-processor.expression-literals-test
+(ns metabase.driver.sql.query-processor.boolean-is-comparison-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.query-processor.expression-literals :as sql.qp.expression-literals]))
+   [metabase.driver.sql.query-processor.boolean-is-comparison :as sql.qp.boolean-is-comparison]))
 
-(driver/register! ::test-driver, :parent #{::sql.qp.expression-literals/boolean->comparison})
+(driver/register! ::test-driver, :parent #{::sql.qp.boolean-is-comparison/boolean-is-comparison})
 
 (defmethod sql.qp/->honeysql [::test-driver Boolean]
   [_ bool]

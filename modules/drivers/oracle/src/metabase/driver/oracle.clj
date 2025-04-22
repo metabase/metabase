@@ -16,8 +16,8 @@
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.boolean-is-comparison :as sql.qp.boolean-is-comparison]
    [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
-   [metabase.driver.sql.query-processor.expression-literals :as sql.qp.expression-literals]
    [metabase.driver.sql.util :as sql.u]
    [metabase.models.secret :as secret]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -39,7 +39,7 @@
 
 (driver/register! :oracle, :parent #{:sql-jdbc
                                      ::sql.qp.empty-string-is-null/empty-string-is-null
-                                     ::sql.qp.expression-literals/boolean->comparison})
+                                     ::sql.qp.boolean-is-comparison/boolean-is-comparison})
 
 (doseq [[feature supported?] {:datetime-diff           true
                               :expression-literals     true

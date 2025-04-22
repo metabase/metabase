@@ -1,4 +1,4 @@
-(ns metabase.driver.sql.query-processor.expression-literals
+(ns metabase.driver.sql.query-processor.boolean-is-comparison
   "In Oracle and some other databases, boolean literals cannot appear in the top-level of WHERE clauses or expressions
   like AND, OR, NOT, and CASE. These instead require a comparison operator, so boolean constants like 0 and 1 must be
   replaced with equivalent expressions like 1 = 1 or 0 = 1.
@@ -34,7 +34,7 @@
 ;; https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/About-SQL-Conditions.html#GUID-E9EC8434-CD48-4C01-B01B-85E5359D8DD7
 ;; https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/Data-Types.html#GUID-285FFCA8-390D-4FA9-9A51-47B84EF5F83A
 ;; https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/Logical-Conditions.html
-(driver/register! ::boolean->comparison, :abstract? true)
+(driver/register! ::boolean-is-comparison, :abstract? true)
 
 (defn- boolean->comparison
   "Convert boolean literals to equivalent boolean comparison expressions.
@@ -49,33 +49,33 @@
       false-value [:= false-value true-value]
       value)))
 
-(defmethod sql.qp/apply-top-level-clause [::boolean->comparison :filter]
+(defmethod sql.qp/apply-top-level-clause [::boolean-is-comparison :filter]
   [driver _ honeysql-form {clause :filter}]
   (sql.helpers/where honeysql-form (->> (sql.qp/->honeysql driver clause)
                                         (boolean->comparison driver))))
 
-(prefer-method sql.qp/apply-top-level-clause [::boolean->comparison :filter] [:sql :filter])
+(prefer-method sql.qp/apply-top-level-clause [::boolean-is-comparison :filter] [:sql :filter])
 
 (defn- compile-logical-op [driver [tag & _ :as clause]]
   (let [parent-method (get-method sql.qp/->honeysql [:sql tag])]
     (->> (parent-method driver clause)
          (mapv (partial boolean->comparison driver)))))
 
-(defmethod sql.qp/->honeysql [::boolean->comparison :and]
+(defmethod sql.qp/->honeysql [::boolean-is-comparison :and]
   [driver clause]
   (compile-logical-op driver clause))
 
-(defmethod sql.qp/->honeysql [::boolean->comparison :or]
+(defmethod sql.qp/->honeysql [::boolean-is-comparison :or]
   [driver clause]
   (compile-logical-op driver clause))
 
-(defmethod sql.qp/->honeysql [::boolean->comparison :not]
+(defmethod sql.qp/->honeysql [::boolean-is-comparison :not]
   [driver clause]
   (compile-logical-op driver clause))
 
 ;; The following expressions compile down to :case and should therefore also
 ;; work: :if, :sum-where, :count-where, :distinct-where.
-(defmethod sql.qp/->honeysql [::boolean->comparison :case]
+(defmethod sql.qp/->honeysql [::boolean-is-comparison :case]
   [driver clause]
   (let [parent-method (get-method sql.qp/->honeysql [:sql :case])
         bool->comp (partial boolean->comparison driver)]
@@ -86,4 +86,4 @@
                          (odd? %1) bool->comp)))))
 
 (doseq [tag [:and :or :not :case]]
-  (prefer-method sql.qp/->honeysql [::boolean->comparison tag] [:sql tag]))
+  (prefer-method sql.qp/->honeysql [::boolean-is-comparison tag] [:sql tag]))
