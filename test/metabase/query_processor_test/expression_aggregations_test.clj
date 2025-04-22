@@ -404,7 +404,7 @@
                                                [:aggregation-options [:sum [:expression "Two"]] {:name "SumTwo"}]
                                                [:aggregation-options [:min [:expression "Bob"]] {:name "MinBob"}]]
                                 :breakout     [$category_id]
-                                :filters      [[:= 2.0 [:* [:expression "Two"] [:expression "AvgOne"]]]]}
+                                :filters      [[:= 2.0 [:* [:expression "Two"] [:expression "One"]]]]}
                  :filters      [[:!= *MinBob/Text [:expression "Name"]]
                                 [:= true [:expression "True"]]
                                 [:= [:expression "True"] true]

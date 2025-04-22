@@ -16,6 +16,7 @@
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.boolean-is-comparison :as sql.qp.boolean-is-comparison]
    [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
    [metabase.driver.sql.util :as sql.u]
    [metabase.models.secret :as secret]
@@ -37,9 +38,11 @@
 (set! *warn-on-reflection* true)
 
 (driver/register! :oracle, :parent #{:sql-jdbc
-                                     ::sql.qp.empty-string-is-null/empty-string-is-null})
+                                     ::sql.qp.empty-string-is-null/empty-string-is-null
+                                     ::sql.qp.boolean-is-comparison/boolean-is-comparison})
 
 (doseq [[feature supported?] {:datetime-diff           true
+                              :expression-literals     true
                               :now                     true
                               :identifiers-with-spaces true
                               :convert-timezone        true}]
