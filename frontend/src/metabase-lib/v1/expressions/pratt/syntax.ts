@@ -235,8 +235,6 @@ for (const [key, value] of Object.entries(NODE_TYPE)) {
   value.name = key;
 }
 
-SUB.name = "SUBTRACT";
-
 export const OPERATORS = new Set([
   COMMA,
   GROUP,
