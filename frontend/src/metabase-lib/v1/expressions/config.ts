@@ -3,11 +3,6 @@ import { t } from "ttag";
 import { OPERATOR } from "./tokenizer";
 import type { MBQLClauseFunctionConfig } from "./types";
 
-export const EDITOR_QUOTES = {
-  // specifies the default quoting style:
-  literalQuoteDefault: '"',
-} as const;
-
 type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
 type Forbidden<T, K extends keyof T> = Omit<T, K> & { [P in K]?: never };
 

@@ -7,7 +7,6 @@ import * as Lib from "metabase-lib";
 import { isa } from "metabase-lib/v1/types/utils/isa";
 
 import {
-  type EDITOR_QUOTES,
   FIELD_MARKERS,
   OPERATORS,
   getClauseDefinition,
@@ -20,7 +19,7 @@ import {
   formatSegmentName,
 } from "../identifier";
 import { parseOperatorType } from "../pratt";
-import { formatStringLiteral } from "../string";
+import { type StartDelimiter, formatStringLiteral } from "../string";
 import type { OPERATOR } from "../tokenizer";
 
 import { pathMatchers as check } from "./utils";
@@ -49,7 +48,7 @@ type FormatOptions = {
   stageIndex?: number;
   expressionIndex?: number | undefined;
   printWidth?: number;
-  delimiters?: typeof EDITOR_QUOTES;
+  stringDelimiter?: StartDelimiter;
 };
 
 export async function formatExpressionParts(
@@ -133,7 +132,7 @@ function print(
   } else if (check.isBooleanLiteral(path)) {
     return formatBooleanLiteral(path.node);
   } else if (check.isStringLiteral(path)) {
-    return formatStringLiteral(path.node, options.extra);
+    return formatStringLiteral(path.node, options.extra.stringDelimiter);
   } else if (check.isColumnMetadata(path)) {
     return formatColumn(path, options.extra);
   } else if (check.isMetricMetadata(path)) {
@@ -199,7 +198,7 @@ function formatColumn(
   assert(Lib.isColumnMetadata(column), "Expected column");
 
   const info = Lib.displayInfo(query, stageIndex, column);
-  return formatDimensionName(info.longDisplayName, options);
+  return formatDimensionName(info.longDisplayName);
 }
 
 function formatMetric(
@@ -214,7 +213,7 @@ function formatMetric(
   assert(Lib.isMetricMetadata(metric), "Expected metric");
 
   const displayInfo = Lib.displayInfo(query, stageIndex, metric);
-  return formatMetricName(displayInfo.displayName, options);
+  return formatMetricName(displayInfo.displayName);
 }
 
 function formatSegment(
@@ -229,7 +228,7 @@ function formatSegment(
   assert(Lib.isSegmentMetadata(segment), "Expected segment");
 
   const displayInfo = Lib.displayInfo(query, stageIndex, segment);
-  return formatSegmentName(displayInfo.displayName, options);
+  return formatSegmentName(displayInfo.displayName);
 }
 
 function isExpression(op: string): op is "expression" {
