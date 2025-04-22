@@ -1817,6 +1817,7 @@ describe("issue 56716", () => {
         },
       },
     };
+
     const getParameterMapping = (cardId) => ({
       card_id: cardId,
       parameter_id: parameterDetails.id,
