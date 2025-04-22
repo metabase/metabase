@@ -10,6 +10,20 @@ on:
     branches:
       - "master"
       - "release-**"
+  workflow_call:
+    inputs:
+      artifact_name_ee:
+        type: string
+        description: "Name of the EE uberjar artifact"
+        required: false
+      artifact_name_oss:
+        type: string
+        description: "Name of the OSS uberjar artifact" 
+        required: false
+      embedding_sdk_artifact_name:
+        type: string
+        description: "Name of the embedding SDK artifact"
+        required: false
 
 env:
   # we must support last two stable releases
@@ -146,59 +160,14 @@ jobs:
               matrix: []
             };
 
-  build-uberjar:
-    needs: [files-changed, get-build-requirements, get-sample-apps-data]
-    if: |
-      !cancelled() &&
-      needs.files-changed.outputs.e2e_all == 'true' &&
-      fromJSON(needs.get-sample-apps-data.outputs.matrix)[0] != null
-    uses: ./.github/workflows/uberjar.yml
-    with:
-      commit: ${{ github.event.inputs.commit }}
-
-  build-embedding-sdk:
-    needs: [files-changed, get-build-requirements, get-sample-apps-data, build-uberjar]
-    if: |
-      !cancelled() && 
-      needs.build-uberjar.result == 'success'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-    env:
-      MB_EDITION: ee
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-        with:
-          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
-          
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
-
-      - name: Compile CLJS
-        run: yarn build-pure:cljs
-        shell: bash
-
-      - name: Build Embedding SDK package
-        run: yarn build-embedding-sdk
-
-      - name: Prepare Embedding SDK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
-          path: resources/embedding-sdk
-
   e2e-tests:
-    needs: [get-build-requirements, get-sample-apps-data, build-uberjar, build-embedding-sdk]
+    needs: [get-build-requirements, get-sample-apps-data]
     strategy:
       matrix:
         test_suite: ${{ fromJSON(needs.get-sample-apps-data.outputs.matrix) }}
     if: |
-      !cancelled() && needs.build-embedding-sdk.result == 'success'
+      !cancelled() && 
+      fromJSON(needs.get-sample-apps-data.outputs.matrix)[0] != null
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     name: e2e-sample-app-${{ matrix.test_suite }}-tests
@@ -224,15 +193,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Get uberjar artifact name
+        id: get_artifact_name
+        run: |
+          echo "artifact_name=${{ inputs.artifact_name_ee || format('metabase-ee-{0}-uberjar', github.event.pull_request.head.sha || github.sha) }}" >> $GITHUB_OUTPUT
+
+      - name: Get embedding SDK artifact name
+        id: get_sdk_artifact_name  
+        run: |
+          echo "artifact_name=${{ inputs.embedding_sdk_artifact_name || format('embedding-sdk-{0}', github.event.pull_request.head.sha || github.sha) }}" >> $GITHUB_OUTPUT
+
       - name: Retrieve uberjar artifact for ee
         uses: actions/download-artifact@v4
         with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          name: ${{ steps.get_artifact_name.outputs.artifact_name }}
 
       - name: Retrieve Embedding SDK dist artifact
         uses: actions/download-artifact@v4
         with:
-          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          name: ${{ steps.get_sdk_artifact_name.outputs.artifact_name }}
           path: ${{ github.workspace }}/resources/embedding-sdk
 
       - name: Prepare front-end environment
