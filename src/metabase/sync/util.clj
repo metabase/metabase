@@ -314,12 +314,21 @@
   {:active          true
    :visibility_type nil})
 
+(def ^:dynamic *batch-size*
+  "Size of table update partition."
+  20000)
+
 (defn set-initial-table-sync-complete-for-db!
   "Marks initial sync for all tables in `db` as complete so that it becomes usable in the UI, if not already
   set."
   [database-or-id]
-  (t2/update! :model/Table (merge sync-tables-kv-args {:db_id (u/the-id database-or-id)})
-              {:initial_sync_status "complete"}))
+  (let [where-clause {:where (into [:and]
+                                   (map (partial into [:=]))
+                                   (merge sync-tables-kv-args
+                                          {:db_id (u/the-id database-or-id)}))}
+        ids (t2/select :model/Table where-clause)]
+    (doseq [ids' (partition-all *batch-size* ids)]
+      (t2/update! :model/Table :id [:in ids'] {:initial_sync_status "complete"}))))
 
 (defn set-initial-database-sync-complete!
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
