@@ -127,6 +127,7 @@ snowplow:
   - "snowplow/**"
 
 documentation:
+  - ".typedoc/**"
   - "docs/**"
   - "**/*.md"
 
