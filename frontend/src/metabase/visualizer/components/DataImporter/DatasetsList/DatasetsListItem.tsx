@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 
-import { useGetCardQuery } from "metabase/api";
 import ButtonGroup from "metabase/core/components/ButtonGroup";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { useSelector } from "metabase/lib/redux";
@@ -9,7 +8,11 @@ import {
   getVisualizationType,
   getVisualizerPrimaryColumn,
 } from "metabase/visualizer/selectors";
-import type { VisualizerCardDataSource } from "metabase-types/api";
+import type {
+  Field,
+  VisualizationDisplay,
+  VisualizerCardDataSource,
+} from "metabase-types/api";
 
 import { useVisualizerUi } from "../../VisualizerUiContext";
 
@@ -17,7 +20,10 @@ import S from "./DatasetsListItem.module.css";
 import { getIsCompatible } from "./getIsCompatible";
 
 interface DatasetsListItemProps {
-  item: VisualizerCardDataSource;
+  item: VisualizerCardDataSource & {
+    display: VisualizationDisplay | null;
+    result_metadata?: Field[];
+  };
   onSwap?: (item: VisualizerCardDataSource) => void;
   onToggle?: (item: VisualizerCardDataSource) => void;
   onRemove?: (item: VisualizerCardDataSource) => void;
@@ -32,18 +38,10 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
   const currentDisplay = useSelector(getVisualizationType);
   const primaryColumn = useSelector(getVisualizerPrimaryColumn);
 
-  const { data } = useGetCardQuery({ id: item.cardId });
-
-  const metadata = useMemo(
-    () => ({
-      display: data?.display,
-      fields: data?.result_metadata,
-    }),
-    [data],
-  );
-
   const isCompatible = useMemo(() => {
-    const { display, fields } = metadata;
+    if (!item.display || !item.result_metadata) {
+      return false;
+    }
 
     return getIsCompatible({
       currentDataset: {
@@ -51,11 +49,11 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
         primaryColumn,
       },
       targetDataset: {
-        display,
-        fields,
+        display: item.display,
+        fields: item.result_metadata,
       },
     });
-  }, [metadata, primaryColumn, currentDisplay]);
+  }, [item, primaryColumn, currentDisplay]);
 
   return (
     <ButtonGroup style={{ display: "flex", gap: "8px", width: "100%" }}>
