@@ -245,3 +245,28 @@
         (is (= 1 (sum :metabase-search/engine-active)))))
     (testing "There is only one default"
       (is (= 1 (sum :metabase-search/engine-default))))))
+
+(deftest embedding-response-metrics-test
+  (testing "Embedding metrics are correctly tracked"
+    (mt/with-prometheus-system! [_ system]
+      ;; Initialize metrics to 0
+      (prometheus/inc! :metabase-sdk/response {:status "200"} 0)
+      (prometheus/inc! :metabase-sdk/response {:status "404"} 0)
+      (prometheus/inc! :metabase-embedding-iframe/response {:status "200"} 0)
+      (prometheus/inc! :metabase-embedding-iframe/response {:status "404"} 0)
+
+      ;; Track SDK responses
+      (prometheus/inc! :metabase-sdk/response {:status "200"})
+      (prometheus/inc! :metabase-sdk/response {:status "404"})
+
+      ;; Track iframe responses
+      (prometheus/inc! :metabase-embedding-iframe/response {:status "200"})
+      (prometheus/inc! :metabase-embedding-iframe/response {:status "404"})
+
+      (testing "SDK response metrics are recorded correctly"
+        (is (approx= 1 (mt/metric-value system :metabase-sdk/response {:status "200"})))
+        (is (approx= 1 (mt/metric-value system :metabase-sdk/response {:status "404"}))))
+
+      (testing "iframe response metrics are recorded correctly"
+        (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe/response {:status "200"})))
+        (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe/response {:status "404"})))))))
