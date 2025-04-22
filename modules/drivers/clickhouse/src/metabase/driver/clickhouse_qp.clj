@@ -341,7 +341,7 @@
 
 (defmethod sql.qp/cast-float :clickhouse
   [_ value]
-  [:'toFloat64 value])
+  (h2x/with-database-type-info [:'toFloat64 value] :Float64))
 
 (defmethod sql.qp/->honeysql [:clickhouse :value]
   [driver value]
