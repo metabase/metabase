@@ -3,11 +3,9 @@ import type { Location } from "history";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import { createMockLocation } from "metabase-types/store/mocks";
 
-import {
-  type QueryParam,
-  type UrlStateConfig,
-  useUrlState,
-} from "./use-url-state";
+import type { QueryParam } from "./types";
+import { type UrlStateConfig, useUrlState } from "./use-url-state";
+import { getFirstParamValue } from "./utils";
 
 type UrlState = {
   name: string | null;
@@ -20,12 +18,12 @@ interface SetupOpts {
 
 const setup = ({ location = createMockLocation() }: SetupOpts = {}) => {
   const parseName = (param: QueryParam): UrlState["name"] => {
-    const value = Array.isArray(param) ? param[0] : param;
+    const value = getFirstParamValue(param);
     return value ?? null;
   };
 
   const parseScore = (param: QueryParam): UrlState["score"] => {
-    const value = Array.isArray(param) ? param[0] : param;
+    const value = getFirstParamValue(param);
     if (!value) {
       return null;
     }
