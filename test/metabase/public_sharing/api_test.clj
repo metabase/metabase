@@ -1903,7 +1903,8 @@
 ;; This test is same as [[metabase.api.dashboard-test/dashboard-param-values-param-fields-hydration-test]]
 ;; adjusted to run with PUBLIC dashboard.
 (deftest ^:synchronized public-dashboard-param-values-param-fields-hydration-test
-  (let [public-dashboard-uuid (str (random-uuid))]
+  (let [public-dashboard-uuid (str (random-uuid))
+        c1-eid                (u/generate-nano-id)]
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp
         [:model/Dashboard     d   {:name "D"
@@ -1925,24 +1926,24 @@
                                                :native   {:query "select * from people"}}]
                                     {:name "C1"
                                      :type :model
-                                     :database_id (mt/id)
+                                     :entity_id     c1-eid
+                                     :database_id   (mt/id)
                                      :dataset_query query
                                      :result_metadata
                                      (mapv (fn [{col-name :name :as meta}]
                                              ;; Map model's metadata to corresponding field id
-                                             (assoc meta :id  (mt/id :people (keyword (u/lower-case-en col-name)))))
-                                           (-> (qp/process-query query)
+                                             (assoc meta :id (mt/id :people (keyword (u/lower-case-en col-name)))))
+                                           (-> query
+                                               (assoc-in [:info :card-entity-id] c1-eid)
+                                               qp/process-query
                                                :data :results_metadata :columns))})
 
          :model/Card          c2 (let [query (mt/mbql-query nil
                                                {:source-table (str "card__" (:id c1))
                                                 :aggregation
                                                 [[:distinct [:field "STATE" {:base-type :type/Text}]]]})]
-                                   {:name "C2"
-                                    :database_id (mt/id)
-                                    :dataset_query query
-                                    :result_metadata (-> (qp/process-query query)
-                                                         :data :results_metadata :columns)})
+                                   (-> (mt/card-with-source-metadata-for-query query)
+                                       (assoc :name "C2")))
          :model/DashboardCard _dc1 {:dashboard_id       (:id d)
                                     :card_id            (:id c2)
                                     :parameter_mappings

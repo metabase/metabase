@@ -1654,3 +1654,51 @@ describe("issue 56596", () => {
     });
   });
 });
+
+describe("issue 55687", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    const questionDetails = {
+      query: {
+        "source-table": PRODUCTS_ID,
+        limit: 1,
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+
+    H.openNotebook();
+  });
+
+  function addExpression(name, expression) {
+    H.getNotebookStep("expression").icon("add").click();
+    H.enterCustomColumnDetails({
+      formula: expression,
+      name,
+    });
+    H.popover().button("Done").click();
+  }
+
+  it("should allow passing stringly-typed expressions to is-empty and not-empty (metabase#55687)", () => {
+    H.addCustomColumn();
+    H.popover().button("Cancel").click();
+
+    addExpression("isEmpty - title", "isEmpty([Title])");
+    addExpression("isEmpty - ltrim - title", "isEmpty(lTrim([Title]))");
+    addExpression("isEmpty - literal", "isEmpty('AAA')");
+    addExpression("isEmpty - ltrim - literal", "isEmpty(lTrim('AAA'))");
+
+    addExpression("notEmpty - title", "notEmpty([Title])");
+    addExpression("notEmpty - ltrim - title", "notEmpty(lTrim([Title]))");
+    addExpression("notEmpty - literal", "notEmpty('AAA')");
+    addExpression("notEmpty - ltrim - literal", "notEmpty(lTrim('AAA'))");
+
+    H.visualize();
+
+    cy.findByTestId("query-visualization-root")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+  });
+});

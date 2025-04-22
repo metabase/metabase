@@ -34,8 +34,18 @@ import type {
 import S from "./NotificationChannelsPicker.module.css";
 
 const DEFAULT_CHANNELS_CONFIG = {
-  email: { name: t`Email`, type: "email" },
-  slack: { name: t`Slack`, type: "slack" },
+  email: {
+    get name() {
+      return t`Email`;
+    },
+    type: "email",
+  },
+  slack: {
+    get name() {
+      return t`Slack`;
+    },
+    type: "slack",
+  },
 };
 type SupportedChannelKey = Extract<NotificationChannelKey, "email" | "slack">;
 

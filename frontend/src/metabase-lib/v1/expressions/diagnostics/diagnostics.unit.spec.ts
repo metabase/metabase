@@ -1,32 +1,26 @@
 import { createMockMetadata } from "__support__/metadata";
-import { createQuery } from "metabase-lib/test-helpers";
+import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import {
-  countMatchingParentheses,
-  diagnose,
-  diagnoseAndCompile,
-} from "./diagnostics";
-import { lexify } from "./pratt";
-import type { StartRule } from "./types";
+import { query, stageIndex } from "../test/shared";
+
+import { diagnose, diagnoseAndCompile } from "./diagnostics";
 
 describe("diagnostics", () => {
   describe("diagnose", () => {
     function setup({
       expression,
-      startRule = "expression",
+      expressionMode = "expression",
       metadata,
     }: {
       expression: string;
-      startRule?: StartRule;
+      expressionMode?: Lib.ExpressionMode;
       metadata?: Metadata;
     }) {
-      const query = createQuery();
-      const stageIndex = -1;
       return diagnose({
         source: expression,
-        startRule,
+        expressionMode,
         query,
         stageIndex,
         metadata,
@@ -35,22 +29,11 @@ describe("diagnostics", () => {
 
     function err(
       expression: string,
-      startRule: StartRule = "expression",
+      expressionMode: Lib.ExpressionMode = "expression",
       metadata?: Metadata,
     ) {
-      return setup({ expression, startRule, metadata })?.message;
+      return setup({ expression, expressionMode, metadata })?.message;
     }
-
-    it("should count matching parentheses", () => {
-      const count = (expr: string) =>
-        countMatchingParentheses(lexify(expr).tokens);
-      expect(count("()")).toBe(0);
-      expect(count("(")).toBe(1);
-      expect(count(")")).toBe(-1);
-      expect(count("(A+(")).toBe(2);
-      expect(count("SUMIF(")).toBe(1);
-      expect(count("COUNTIF(Deal))")).toBe(-1);
-    });
 
     it("should catch mismatched parentheses", () => {
       expect(err("FLOOR [Price]/2)")).toBe(
@@ -81,7 +64,7 @@ describe("diagnostics", () => {
     });
 
     it("should show the correct number of function arguments in a custom expression", () => {
-      expect(err("between([Tax])", "boolean")).toBe(
+      expect(err("between([Tax])", "filter")).toBe(
         "Function between expects 3 arguments",
       );
     });
@@ -114,7 +97,7 @@ describe("diagnostics", () => {
 
       it("should accept multiple arguments for logical operators", () => {
         expect(
-          err(`(1 > 2) and (2 > 3) and (3 > 4) and (4 > 5)`),
+          err(`([Tax] > 2) and ([Tax] > 3) and ([Tax] > 4) and ([Tax] > 5)`),
         ).toBeUndefined();
       });
 
@@ -302,13 +285,11 @@ describe("diagnostics", () => {
 
   describe("diagnoseAndCompile", () => {
     function setup({ expression }: { expression: string }) {
-      const query = createQuery();
-      const stageIndex = -1;
       return diagnoseAndCompile({
         source: expression,
         query,
         stageIndex,
-        startRule: "expression",
+        expressionMode: "expression",
       });
     }
 
