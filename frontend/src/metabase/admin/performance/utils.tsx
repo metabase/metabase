@@ -205,15 +205,6 @@ export const hourTo24HourFormat = (hour: number, amPm: number): number => {
   return hour24 === 24 ? 0 : hour24;
 };
 
-type ErrorWithMessage = { data: { message: string } };
-export const isErrorWithMessage = (error: unknown): error is ErrorWithMessage =>
-  typeof error === "object" &&
-  error !== null &&
-  "data" in error &&
-  typeof (error as { data: any }).data === "object" &&
-  "message" in (error as { data: any }).data &&
-  typeof (error as { data: { message: any } }).data.message === "string";
-
 const delay = (milliseconds: number) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
