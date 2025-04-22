@@ -37,7 +37,6 @@ export const MULDIV_OP = {} as NodeType;
 export const STRING = {} as NodeType;
 export const SUB = {} as NodeType;
 export const IDENTIFIER = {} as NodeType;
-export const WS = {} as NodeType;
 
 function operand(leftOperands: number, rightOperands: number) {
   return {
@@ -78,7 +77,6 @@ const ALL_NODES = {
   SUB,
   FIELD,
   IDENTIFIER,
-  WS,
 };
 
 // Set default values for AST node attributes
@@ -117,9 +115,6 @@ setAttributes(
   [{ requiresTerminator: END_OF_INPUT }, [ROOT]],
   [{ requiresTerminator: GROUP_CLOSE }, [ARG_LIST, GROUP]],
   [{ isTerminator: true }, [COMMA, END_OF_INPUT, GROUP_CLOSE]],
-
-  // Skip whitespace
-  [{ skip: true }, [WS]],
 );
 
 /*
@@ -243,7 +238,6 @@ for (const [key, value] of Object.entries(ALL_NODES)) {
 }
 
 SUB.name = "SUBTRACT";
-WS.name = "WHITESPACE";
 
 export const OPERATORS = new Set([
   COMMA,
