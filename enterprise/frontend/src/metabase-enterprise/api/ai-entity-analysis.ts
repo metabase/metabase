@@ -6,6 +6,8 @@ import type {
 
 import { EnterpriseApi } from "./api";
 
+const DEFAULT_TIMEOUT = 30000;
+
 export const aiEntityAnalysisApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     analyzeChart: builder.mutation<
@@ -22,6 +24,7 @@ export const aiEntityAnalysisApi = EnterpriseApi.injectEndpoints({
             description,
             timeline_events: timelineEvents,
           },
+          signal: AbortSignal.timeout(DEFAULT_TIMEOUT),
         };
       },
     }),
@@ -40,6 +43,7 @@ export const aiEntityAnalysisApi = EnterpriseApi.injectEndpoints({
             description,
             tab_name: tabName,
           },
+          signal: AbortSignal.timeout(DEFAULT_TIMEOUT),
         };
       },
     }),

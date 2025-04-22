@@ -117,4 +117,98 @@ describe("AIDashboardAnalysisSidebar", () => {
       expect(screen.getByText("Test chart analysis")).toBeInTheDocument();
     });
   });
+
+  it("should reload analysis when dashcardId changes", async () => {
+    const dashboard = createMockDashboard();
+    const firstDashcardId = 1;
+    const secondDashcardId = 2;
+
+    const firstChartResponse: AIEntityAnalysisResponse = {
+      summary: "First chart analysis",
+    };
+
+    const secondChartResponse: AIEntityAnalysisResponse = {
+      summary: "Second chart analysis",
+    };
+
+    setupAnalyzeChartEndpoint(firstChartResponse);
+
+    const firstMockCard = createMockCard({
+      id: 10,
+      name: "First Chart",
+      description: "First Description",
+    });
+
+    const secondMockCard = createMockCard({
+      id: 20,
+      name: "Second Chart",
+      description: "Second Description",
+    });
+
+    const firstMockDashcard = createMockDashboardCard({
+      id: firstDashcardId,
+      dashboard_id: dashboard.id,
+      card_id: firstMockCard.id,
+      card: firstMockCard,
+    });
+
+    const secondMockDashcard = createMockDashboardCard({
+      id: secondDashcardId,
+      dashboard_id: dashboard.id,
+      card_id: secondMockCard.id,
+      card: secondMockCard,
+    });
+
+    const dashboardState = createMockDashboardState({
+      dashboardId: dashboard.id,
+      dashboards: {
+        [dashboard.id]: {
+          ...dashboard,
+          dashcards: [firstDashcardId, secondDashcardId],
+          tabs: [],
+        },
+      },
+      dashcards: {
+        [firstDashcardId]: firstMockDashcard,
+        [secondDashcardId]: secondMockDashcard,
+      },
+      loadingDashCards: {
+        loadingStatus: "complete",
+        loadingIds: [],
+        startTime: null,
+        endTime: null,
+      },
+    });
+
+    const { rerender } = renderWithProviders(
+      <AIDashboardAnalysisSidebar
+        dashboard={dashboard}
+        dashcardId={firstDashcardId}
+        onClose={jest.fn()}
+      />,
+      {
+        storeInitialState: {
+          dashboard: dashboardState,
+        },
+      },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("First chart analysis")).toBeInTheDocument();
+    });
+
+    setupAnalyzeChartEndpoint(secondChartResponse);
+
+    rerender(
+      <AIDashboardAnalysisSidebar
+        dashboard={dashboard}
+        dashcardId={secondDashcardId}
+        onClose={jest.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Second chart analysis")).toBeInTheDocument();
+    });
+  });
 });

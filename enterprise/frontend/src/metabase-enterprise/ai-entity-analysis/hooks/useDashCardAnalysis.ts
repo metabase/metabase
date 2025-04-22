@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { usePrevious } from "react-use";
 
 import {
   getBase64ChartImage,
@@ -30,8 +31,17 @@ export function useDashCardAnalysis({
     useAnalyzeChartMutation();
   const pendingAnalysisRef = useRef(true);
   const analysisTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevDashcardId = usePrevious(dashcardId);
 
   useEffect(() => {
+    if (prevDashcardId === dashcardId) {
+      return;
+    }
+
+    if (prevDashcardId != null && prevDashcardId !== dashcardId) {
+      pendingAnalysisRef.current = true;
+    }
+
     if (!isEnabled || !pendingAnalysisRef.current || !isLoadingComplete) {
       return;
     }
@@ -63,6 +73,7 @@ export function useDashCardAnalysis({
   }, [
     analyzeChart,
     dashcardId,
+    prevDashcardId,
     isLoadingComplete,
     name,
     description,
@@ -74,8 +85,5 @@ export function useDashCardAnalysis({
     isLoading:
       isLoading ||
       (isEnabled && isLoadingComplete && pendingAnalysisRef.current),
-    reloadAnalysis: () => {
-      pendingAnalysisRef.current = true;
-    },
   };
 }
