@@ -1449,8 +1449,18 @@ WHERE NOT (
     H.queryBuilderMain().within(() => {
       cy.findByText("Affiliate");
       cy.findByText("AK");
-      // Ensure it shows subtotals for the single value
-      cy.findByText("Totals for Affiliate");
+
+      // Ensure it does not show subtotals for the single value by default
+      cy.findByText("Totals for Affiliate").should("not.exist");
+
+      H.openVizSettingsSidebar();
     });
+
+    H.sidebar().findByText("Condense duplicate totals").click();
+
+    // Ensure it shows subtotals for the single value
+    H.queryBuilderMain()
+      .findByText("Totals for Affiliate")
+      .should("be.visible");
   });
 });
