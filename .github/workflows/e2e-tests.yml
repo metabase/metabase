@@ -6,6 +6,14 @@ on:
       skip:
         type: boolean
         default: false
+      artifact_name_ee:
+        type: string
+        description: "Name of the EE uberjar artifact"
+        required: false
+      artifact_name_oss:
+        type: string
+        description: "Name of the OSS uberjar artifact"
+        required: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-e2e
@@ -50,7 +58,7 @@ jobs:
 
   build:
     needs: [get-build-requirements]
-    if: ${{ !cancelled() && !inputs.skip }}
+    if: ${{ !cancelled() && !inputs.skip && inputs.artifact_name_ee == '' && inputs.artifact_name_oss == '' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     strategy:
@@ -121,7 +129,7 @@ jobs:
       - e2e-matrix-builder
       - build
     if: |
-      !cancelled() && needs.build.result == 'success'
+      !cancelled() && (needs.build.result == 'success' || needs.build.result == 'skipped')
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -134,6 +142,8 @@ jobs:
       split_index: ${{ strategy.job-index }}
       tags: ${{ matrix.tags }}
       runner: ${{ matrix.runner }}
+      artifact_name_ee: ${{ inputs.artifact_name_ee }}
+      artifact_name_oss: ${{ inputs.artifact_name_oss }}
 
   # run this separately to make it non-blocking
   flaky-e2e-tests:
@@ -141,12 +151,14 @@ jobs:
     uses: ./.github/workflows/e2e-test.yml
     needs: build
     if: |
-      !cancelled() && needs.build.result == 'success'
+      !cancelled() && (needs.build.result == 'success' || needs.build.result == 'skipped')
     secrets: inherit
     with:
       name: Flaky
       tags: "@flaky"
       specs: "./e2e/test/scenarios/**/*.cy.spec.*"
+      artifact_name_ee: ${{ inputs.artifact_name_ee }}
+      artifact_name_oss: ${{ inputs.artifact_name_oss }}
 
   e2e-tests-result:
     needs:
