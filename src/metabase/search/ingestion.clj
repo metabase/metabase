@@ -115,25 +115,43 @@
   false)
 
 (defn update!
-  "Update all active engines' existing indexes with the given documents"
-  [documents-reducible]
+  "Update all active engines' existing indexes with the given documents. Passed remove-documents will be deleted from the index."
+  [documents-reducible remove-documents]
   (when-let [engines (seq (search.engine/active-engines))]
     (if (= 1 (count engines))
-      (search.engine/update! (first engines) documents-reducible)
-      ;; TODO um, multiplexing over the reducible awkwardly feels strange. We at least use a magic number for now.
-      (doseq [batch (eduction (partition-all 150) documents-reducible)
-              e     engines]
-        (search.engine/update! e batch)))))
+      (u/prog1 (search.engine/update! (first engines) documents-reducible)
+        (doseq [[group ids] (u/group-by first second remove-documents)]
+          (search.engine/delete! (first engines) group ids)))
+      (u/prog1
+        ;; TODO um, multiplexing over the reducible awkwardly feels strange. We at least use a magic number for now.
+        (doseq [batch (eduction (partition-all 150) documents-reducible)
+                e engines]
+          (search.engine/update! e batch))
+        (doseq [[group ids] (u/group-by first second remove-documents)]
+          (search.engine/delete! (first engines) group ids))))))
+
+(defn- extract-model-and-id [update]
+  (let [[model value] update]
+    [model (str (cond
+                  (= := (first value))
+                  (first (filter integer? value))
+
+                  (= :and (first value))
+                  (first (first (filter not-empty (map (partial filter integer?) (rest value)))))))]))
 
 (defn bulk-ingest!
   "Process the given search model updates. Returns the number of search index entries that get updated as a result."
   [updates]
-  (->> (for [[search-model where-clauses] (u/group-by first second updates)]
-         (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
-       ;; init collection is only for clj-kondo, as we know that the list is non-empty
-       (reduce u/rconcat [])
-       query->documents
-       update!))
+  (let [documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
+                         (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
+                       ;; init collection is only for clj-kondo, as we know that the list is non-empty
+                       (reduce u/rconcat [])
+                       query->documents)
+        passed-documents (map extract-model-and-id updates)
+        indexed-documents (map (juxt :model (comp str :id)) (into [] documents))
+        to-delete (remove (set indexed-documents) passed-documents)]
+
+    (update! documents to-delete)))
 
 (defn- track-queue-size! []
   (analytics/set! :metabase-search/queue-size (.size queue)))
