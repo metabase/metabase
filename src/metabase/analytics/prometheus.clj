@@ -234,9 +234,6 @@
    (prometheus/gauge :metabase-database/status
                      {:description "Does a given database using driver pass a health check."
                       :labels [:driver :healthy :reason]})
-   (prometheus/counter :metabase-database/unhealthy
-                       {:description "Does a given database using driver fail a health check."
-                        :labels [:driver]})
    (prometheus/counter :metabase-search/index-error
                        {:description "Number of errors encountered when indexing for search"})
    (prometheus/counter :metabase-search/index-ms
