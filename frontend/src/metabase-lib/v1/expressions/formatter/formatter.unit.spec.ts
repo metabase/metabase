@@ -244,6 +244,12 @@ describe("format", () => {
           )
           OR [User ID] = 1
         `,
+        expression`
+          NOT (
+            [Product ID] > 10
+            AND [Tax] < 10
+          )
+        `,
       ]);
     });
   });

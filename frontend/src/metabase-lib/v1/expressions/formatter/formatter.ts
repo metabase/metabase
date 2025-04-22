@@ -10,7 +10,6 @@ import {
   type EDITOR_QUOTES,
   FIELD_MARKERS,
   OPERATORS,
-  OPERATOR_PRECEDENCE,
   getClauseDefinition,
   getExpressionName,
 } from "../config";
@@ -20,6 +19,7 @@ import {
   formatMetricName,
   formatSegmentName,
 } from "../identifier";
+import { parseOperatorType } from "../pratt";
 import { formatStringLiteral } from "../string";
 import type { OPERATOR } from "../tokenizer";
 
@@ -326,17 +326,18 @@ function formatOperator(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {
     const argOperator = arg.operator;
     const formattedArg = recurse(path, print, path.node.args[index]);
 
-    const isLowerPrecedence =
-      OPERATOR_PRECEDENCE[node.operator] > OPERATOR_PRECEDENCE[argOperator];
+    const operatorPrecedence = precedence(node.operator);
+    const argPrecedence = precedence(argOperator);
+
+    const isLowerPrecedence = operatorPrecedence > argPrecedence;
+    const isSamePrecedence = operatorPrecedence === argPrecedence;
 
     // "*","/" always have two arguments.
     // If the second argument of "/" is an expression, we have to calculate it first.
     // Hence, adding parenthesis.
     // "a / b * c" vs "a / (b * c)", "a / b / c" vs "a / (b / c)"
     // "a - b + c" vs "a - (b + c)", "a - b - c" vs "a - (b - c)"
-    const isSamePrecedenceWithExecutionPriority =
-      index > 0 &&
-      OPERATOR_PRECEDENCE[node.operator] === OPERATOR_PRECEDENCE[argOperator];
+    const isSamePrecedenceWithExecutionPriority = index > 0 && isSamePrecedence;
 
     const shouldUseParens =
       isLowerPrecedence || isSamePrecedenceWithExecutionPriority;
@@ -369,6 +370,10 @@ function formatOperator(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {
   } else {
     return group(join([" ", displayName(node.operator)], args));
   }
+}
+
+function precedence(op: string): number {
+  return parseOperatorType(op)?.precedence ?? Infinity;
 }
 
 function isLogicOperator(op: string) {

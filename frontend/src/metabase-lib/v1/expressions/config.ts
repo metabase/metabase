@@ -24,17 +24,6 @@ export const EDITOR_FK_SYMBOLS = {
   default: " → ",
 };
 
-// copied relevant parts from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence
-export const OPERATOR_PRECEDENCE: Record<string, number> = {
-  not: 17,
-  "*": 15,
-  "/": 15,
-  "+": 14,
-  "-": 14,
-  and: 6,
-  or: 5,
-};
-
 type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
 type Forbidden<T, K extends keyof T> = Omit<T, K> & { [P in K]?: never };
 

@@ -135,7 +135,7 @@ const OPERATOR_TO_TYPE: Record<OPERATOR, NodeType> = {
   [OPERATOR.False]: BOOLEAN,
 };
 
-function parseOperatorType(op: string): NodeType | null {
+export function parseOperatorType(op: string): NodeType | null {
   const lower = op.toLowerCase();
   if (lower in OPERATOR_TO_TYPE) {
     return OPERATOR_TO_TYPE[lower as keyof typeof OPERATOR_TO_TYPE];
