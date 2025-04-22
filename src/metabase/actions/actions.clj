@@ -219,7 +219,6 @@
   "Uses cache to prevent redundant look-ups with an action call chain."
   [table-id]
   (assert table-id "Id cannot be nil")
-  ;; TODO There might be tests assuming we'll hit the qp cache here instead of appdb... (if not, delete-me)
   (cached-database (:db_id (cached-value [:tables table-id] #(t2/select-one [:model/Table :db_id] table-id)))))
 
 (mu/defn perform-action!
