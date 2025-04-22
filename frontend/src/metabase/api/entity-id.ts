@@ -46,7 +46,7 @@ export type TranslateEntityIdResponse = Record<
   TranslateEntityIdResponseSuccess | TranslateEntityIdResponseNotFound
 >;
 
-const entityIdApi = Api.injectEndpoints({
+export const entityIdApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     translateEntityId: builder.query<
       TranslateEntityIdResponse,

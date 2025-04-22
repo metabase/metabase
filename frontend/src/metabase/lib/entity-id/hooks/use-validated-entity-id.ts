@@ -1,8 +1,11 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
-import { skipToken } from "metabase/api";
-import { useTranslateEntityIdQuery } from "metabase/api/entity-id";
+import { entityIdApi, skipToken } from "metabase/api";
+import {
+  type TranslateEntityIdResponse,
+  useTranslateEntityIdQuery,
+} from "metabase/api/entity-id";
 import type {
   BaseEntityId,
   CardId,
@@ -10,12 +13,27 @@ import type {
   DashboardId,
 } from "metabase-types/api";
 import { isBaseEntityID } from "metabase-types/api/entity-id";
+import type { Dispatch } from "metabase-types/store";
 
 type SUPPORTED_ENTITIES = {
   dashboard: DashboardId;
   card: CardId;
   collection: CollectionId;
 };
+
+type ValidatedEntityIdReturned<
+  TEntity extends keyof SUPPORTED_ENTITIES,
+  TReturnedId = SUPPORTED_ENTITIES[TEntity],
+> =
+  | { id: TReturnedId; isError: false }
+  | {
+      id: null;
+      isError: false;
+    }
+  | {
+      id: null;
+      isError: true;
+    };
 
 /**
  * A hook that validates and potentially translates an entity ID.
@@ -101,3 +119,42 @@ export const useValidatedEntityId = <
     return { id: null, isLoading: false, isError: true } as const;
   }, [isEntityId, isLoading, isError, entity_ids, id]);
 };
+
+export const fetchEntityId =
+  <
+    TEntity extends keyof SUPPORTED_ENTITIES = keyof SUPPORTED_ENTITIES,
+    TReturnedId = SUPPORTED_ENTITIES[TEntity],
+  >({
+    type,
+    id,
+  }: {
+    type: TEntity;
+    id: BaseEntityId | string | number | null | undefined;
+  }) =>
+  async (
+    dispatch: Dispatch,
+  ): Promise<ValidatedEntityIdReturned<TEntity, TReturnedId>> => {
+    if (!isBaseEntityID(id)) {
+      return { id: null, isError: true };
+    }
+
+    if (_.isNumber(id)) {
+      return { id, isError: false };
+    }
+
+    const { data, isError } = await (dispatch(
+      entityIdApi.endpoints.translateEntityId.initiate({
+        [type]: [id],
+      }),
+    ) as Promise<{
+      data?: TranslateEntityIdResponse;
+      isError?: any;
+      unwrap: () => TranslateEntityIdResponse;
+    }>);
+
+    if (isError || !data) {
+      return { id: null, isError: true };
+    }
+
+    return { id: data[id].id as TReturnedId, isError: false };
+  };
