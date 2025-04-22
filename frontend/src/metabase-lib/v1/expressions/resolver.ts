@@ -18,7 +18,7 @@ export type Resolver = (
 export function resolver(options: {
   query: Lib.Query;
   stageIndex: number;
-  startRule: string;
+  expressionMode: Lib.ExpressionMode;
 }): Resolver {
   return function (kind, name, node) {
     if (kind === "metric") {
@@ -114,7 +114,7 @@ export function parseDimension(
     query: Lib.Query;
     stageIndex: number;
     expressionIndex?: number | undefined;
-    startRule: string;
+    expressionMode: Lib.ExpressionMode;
   },
 ) {
   return getAvailableDimensions(options).find(({ info }) => {
@@ -133,12 +133,12 @@ function getAvailableDimensions({
   query,
   stageIndex,
   expressionIndex,
-  startRule,
+  expressionMode,
 }: {
   query: Lib.Query;
   stageIndex: number;
   expressionIndex?: number | undefined;
-  startRule: string;
+  expressionMode: Lib.ExpressionMode;
 }) {
   const results = Lib.expressionableColumns(
     query,
@@ -151,7 +151,7 @@ function getAvailableDimensions({
     };
   });
 
-  if (startRule === "aggregation") {
+  if (expressionMode === "aggregation") {
     return [
       ...results,
       ...Lib.availableMetrics(query, stageIndex).map((dimension) => {
