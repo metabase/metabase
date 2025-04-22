@@ -69,6 +69,18 @@
 
               :else
               (is (nil? (logger/exact-ns-logger other-ns)) "the change has not been undone automatically")))))
+
+      (testing "empty adjustment works"
+        (mt/user-http-request :crowberto :post 204 "logger/adjustment"
+                              {:duration timeout-ms, :duration_unit :milliseconds, :log_levels {}})
+        (is (= :info (logger/ns-log-level trace-ns)))
+        (is (nil? (logger/exact-ns-logger fatal-ns)))
+
+        (testing "empty adjustment works a second time too"
+          (mt/user-http-request :crowberto :post 204 "logger/adjustment"
+                                {:duration timeout-ms, :duration_unit :milliseconds, :log_levels {}})
+          (is (= :info (logger/ns-log-level trace-ns)))
+          (is (nil? (logger/exact-ns-logger fatal-ns)))))
       (finally
         (logger/remove-ns-logger! trace-ns)
         (logger/remove-ns-logger! fatal-ns)
@@ -93,6 +105,11 @@
         (is (= :fatal (logger/ns-log-level fatal-ns))))
 
       (testing "delete undoes the adjustments"
+        (mt/user-http-request :crowberto :delete 204 "logger/adjustment")
+        (is (= :info (logger/ns-log-level trace-ns)))
+        (is (nil? (logger/exact-ns-logger fatal-ns))))
+
+      (testing "second delete is OK"
         (mt/user-http-request :crowberto :delete 204 "logger/adjustment")
         (is (= :info (logger/ns-log-level trace-ns)))
         (is (nil? (logger/exact-ns-logger fatal-ns))))

@@ -141,7 +141,7 @@
 
 (defn- cancel-undo-task!
   [{:keys [plan ^ScheduledFuture undo-task]}]
-  (when (.cancel undo-task false)
+  (when (and undo-task (.cancel undo-task false))
     (undo-plan! plan)))
 
 (defonce ^{:private true
@@ -172,5 +172,6 @@
   []
   (api/check-superuser)
   (when-let [task @log-adjustment]
-    (cancel-undo-task! task))
+    (cancel-undo-task! task)
+    (reset! log-adjustment nil))
   nil)
