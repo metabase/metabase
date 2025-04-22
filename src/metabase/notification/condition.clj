@@ -1,37 +1,11 @@
-(ns metabase.notification.condition
-  (:require
-   [clojure.walk :as walk]
-   [metabase.util :as u]))
-
-(def ^{:dynamic true
-       :private true}
-  *local-context* nil)
-
-(declare evaluate-expression)
-
-(defn- stringify-map
-  "Turn all map keys into strings"
-  [m]
-  (walk/postwalk
-   #(if (map? %)
-      (update-keys % u/qualified-name)
-      %)
-   m))
-
-(defn- collection-predicate-op
-  "Helper function for collection predicate operations (every?, some, not-any?)"
-  [pred-fn [pred col] context]
-  (pred-fn #(binding [*local-context* (stringify-map %)]
-              (evaluate-expression pred context))
-           (evaluate-expression col context)))
+(ns metabase.notification.condition)
 
 (defn evaluate-expression
   "Evaluates an array-based expression against a context payload"
   [expr context]
   (if (sequential? expr)
     (let [operator (first expr)
-          operands (rest expr)
-          context  (stringify-map context)]
+          operands (rest expr)]
       (case (keyword operator)
         ;; Logical operators
         :and (boolean (every? #(evaluate-expression % context) operands))
@@ -47,13 +21,7 @@
         :<= (apply <= (map #(evaluate-expression % context) operands))
 
         ;; Data access
-        :context (get-in context operands)
-        :this    (if (seq operands)
-                   (get-in *local-context* operands)
-                   *local-context*)
-        :every   (collection-predicate-op every? operands context)
-        :some    (collection-predicate-op some operands context)
-        :none    (collection-predicate-op not-any? operands context)
+        :context (get-in context (map keyword operands))
 
         ;; Functions
         :count (count (evaluate-expression (first operands) context))
@@ -61,3 +29,10 @@
         :max   (apply max (map #(evaluate-expression % context) operands))))
     ;; literal value
     expr))
+
+(comment
+  (evaluate-expression ["and",
+                        [">", ["count", ["context", "rows"]], 0],
+                        ["=", ["context", "user_id"], 1]]
+                       {:user_id 1
+                        :rows [1 2 3 4]}))
