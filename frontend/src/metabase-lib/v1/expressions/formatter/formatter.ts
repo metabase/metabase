@@ -6,12 +6,7 @@ import { parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
 import { isa } from "metabase-lib/v1/types/utils/isa";
 
-import {
-  FIELD_MARKERS,
-  OPERATORS,
-  getClauseDefinition,
-  getExpressionName,
-} from "../config";
+import { FIELD_MARKERS, OPERATORS, getClauseDefinition } from "../config";
 import {
   formatDimensionName,
   formatIdentifier,
@@ -444,5 +439,6 @@ function formatCallExpression(callee: string, args: Doc[]): Doc {
  * Format the name of an expression clause.
  */
 function displayName(name: string): string {
-  return getExpressionName(name) ?? name;
+  const clause = getClauseDefinition(name);
+  return clause?.displayName ?? name;
 }
