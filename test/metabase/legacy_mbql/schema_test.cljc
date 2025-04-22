@@ -195,4 +195,19 @@
     [:value true nil]
     [:value false nil]
     [:field 1 nil]
-    [:segment 1]))
+    [:segment 1]
+    [:and [:expression "bool1"] [:expression "bool2"]]
+    [:or  [:expression "bool1"] [:expression "bool2"]]))
+
+(deftest ^:parallel emptyable-filter-test
+  (are [x] (not (me/humanize (mr/explain ::mbql.s/Filter x)))
+    [:is-empty ""]
+    [:is-empty "A"]
+    [:is-empty [:field 1 nil]]
+    [:is-empty [:ltrim "A"]]
+    [:is-empty [:ltrim [:field 1 nil]]]
+    [:not-empty ""]
+    [:not-empty "A"]
+    [:not-empty [:field 1 nil]]
+    [:not-empty [:ltrim "A"]]
+    [:not-empty [:ltrim [:field 1 nil]]]))
