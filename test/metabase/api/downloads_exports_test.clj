@@ -26,8 +26,7 @@
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
-   (org.apache.poi.ss.usermodel DataFormatter)
-   (org.apache.poi.xssf.usermodel XSSFSheet)))
+   (org.apache.poi.ss.usermodel DataFormatter)))
 
 (set! *warn-on-reflection* true)
 
@@ -55,7 +54,7 @@
      (map #(mapv % ks) result))))
 
 (defn- process-results
-  [pivot export-format results]
+  [export-format results]
   (when (seq results)
     (case export-format
       :csv  (cond-> results
@@ -72,7 +71,7 @@
                                       {:format_rows   format-rows
                                        :pivot_results pivot})]
     (try
-      (process-results pivot export-format results)
+      (process-results export-format results)
       (catch Throwable e
         (throw (ex-info (format "Error processing results: %s" (ex-message e))
                         {:results results}
@@ -90,7 +89,7 @@
                                             {:userland-query? true})
                               :format_rows   format-rows
                               :pivot_results (boolean pivot)})
-       (process-results pivot export-format)))
+       (process-results export-format)))
 
 (defn public-question-download
   [card {:keys [export-format format-rows pivot]
@@ -104,7 +103,7 @@
                                          public-uuid (name export-format)
                                          format-rows
                                          pivot))
-           (process-results pivot export-format)))))
+           (process-results export-format)))))
 
 (defn- dashcard-download
   [card-or-dashcard {:keys [export-format format-rows pivot]}]
@@ -115,7 +114,7 @@
                                        (format "dashboard/%d/dashcard/%d/card/%d/query/%s" dashboard-id dashcard-id card-id (name export-format))
                                        {:format_rows   format-rows
                                         :pivot_results pivot})
-                 (process-results pivot export-format)))]
+                 (process-results export-format)))]
     (if (= (t2/model card-or-dashcard) :model/DashboardCard)
       (dashcard-download* card-or-dashcard)
       (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
@@ -133,7 +132,7 @@
                                                  public-uuid dashcard-id card-id (name export-format))
                                          {:format_rows   format-rows
                                           :pivot_results pivot})
-                   (process-results pivot export-format)))]
+                   (process-results export-format)))]
       (if (= :model/DashboardCard (t2/model card-or-dashcard))
         (mt/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid public-uuid}]
           (public-dashcard-download* (assoc card-or-dashcard :dashboard_id dashboard-id)))
@@ -164,7 +163,7 @@
   [card {:keys [export-format format-rows pivot]}]
   (letfn [(alert-attachment* [pulse]
             (->> (run-pulse-and-return-attached-csv-data! pulse export-format)
-                 (process-results pivot export-format)))]
+                 (process-results export-format)))]
     (mt/with-temp [:model/Pulse {pulse-id :id
                                  :as      pulse} {:name "Test Alert"
                                                   :alert_condition "rows"}
@@ -187,7 +186,7 @@
   [card-or-dashcard {:keys [export-format format-rows pivot]}]
   (letfn [(subscription-attachment* [pulse]
             (->> (run-pulse-and-return-attached-csv-data! pulse export-format)
-                 (process-results pivot export-format)))]
+                 (process-results export-format)))]
     (if (= :model/DashboardCard (t2/model card-or-dashcard))
       ;; dashcard
       (mt/with-temp [:model/Pulse {pulse-id :id
@@ -1147,7 +1146,7 @@
             (let [result (mt/user-http-request :crowberto :post 200
                                                (format "card/%d/query/%s?format_rows=false" pivot-card-id export-format)
                                                {})
-                  data   (process-results false (keyword export-format) result)]
+                  data   (process-results (keyword export-format) result)]
               (is (= ["Category" "Sum of Price"]
                      (first data)))
               (is (= 2
@@ -1169,7 +1168,7 @@
         (let [result   (mt/user-http-request :crowberto :post 200
                                              (format "card/%d/query/xlsx" pivot-card-id)
                                              {:format_rows true})
-              data   (process-results false :xlsx result)]
+              data   (process-results :xlsx result)]
           (is (= ["Doohickey" "4,200.00%"] (second data))))))))
 
 (deftest format-rows-value-affects-xlsx-exports
