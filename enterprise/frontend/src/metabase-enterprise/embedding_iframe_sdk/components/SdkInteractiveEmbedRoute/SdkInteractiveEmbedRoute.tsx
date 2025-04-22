@@ -86,7 +86,10 @@ export const SdkInteractiveEmbedRoute = ({
     return <div>Invalid settings!</div>;
   }
 
-  if (!apiKey) {
+  const ready =
+    (config?.type === "apiKey" && config.apiKey) || config?.type === "sso";
+
+  if (ready) {
     return (
       <Center h="100%" mih="100vh">
         <Loader />
