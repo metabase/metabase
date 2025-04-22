@@ -12,7 +12,7 @@ import { complete } from "./__support__";
 import { type Options, suggestMetrics } from "./metrics";
 
 describe("suggestMetrics", () => {
-  function setup({ startRule = "expression" }: Partial<Options>) {
+  function setup({ expressionMode = "expression" }: Partial<Options>) {
     const DATABASE_ID = SAMPLE_DATABASE.id;
     const TABLE_ID = 1;
 
@@ -90,7 +90,7 @@ describe("suggestMetrics", () => {
     });
 
     const source = suggestMetrics({
-      startRule,
+      expressionMode,
       query,
       stageIndex: -1,
     });
@@ -100,33 +100,33 @@ describe("suggestMetrics", () => {
     };
   }
 
-  describe("startRule = expression", () => {
-    const startRule = "expression";
+  describe("expressionMode = expression", () => {
+    const expressionMode = "expression";
 
     it("should not suggest metrics", () => {
-      const complete = setup({ startRule });
+      const complete = setup({ expressionMode });
       const results = complete("Fo|");
       expect(results).toBe(null);
     });
   });
 
-  describe("startRule = boolean", () => {
-    const startRule = "boolean";
+  describe("expressionMode = boolean", () => {
+    const expressionMode = "filter";
 
     it("should not suggest metrics", () => {
-      const complete = setup({ startRule });
+      const complete = setup({ expressionMode });
       const results = complete("Fo|");
       expect(results).toBe(null);
     });
   });
 
-  describe("startRule = aggregations", () => {
-    const startRule = "aggregations";
+  describe("expressionMode = aggregations", () => {
+    const expressionMode = "aggregation";
 
     // TODO: I cannot get metrics to work
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip("should suggest metrics", () => {
-      const complete = setup({ startRule });
+      const complete = setup({ expressionMode });
       const results = complete("Fo|");
       expect(results).toBe({
         from: 0,

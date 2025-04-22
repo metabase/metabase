@@ -1,9 +1,8 @@
 import { createMockMetadata } from "__support__/metadata";
+import type * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-
-import type { StartRule } from "../types";
 
 import { diagnose, diagnoseAndCompile } from "./diagnostics";
 
@@ -11,18 +10,18 @@ describe("diagnostics", () => {
   describe("diagnose", () => {
     function setup({
       expression,
-      startRule = "expression",
+      expressionMode = "expression",
       metadata,
     }: {
       expression: string;
-      startRule?: StartRule;
+      expressionMode?: Lib.ExpressionMode;
       metadata?: Metadata;
     }) {
       const query = createQuery();
       const stageIndex = -1;
       return diagnose({
         source: expression,
-        startRule,
+        expressionMode,
         query,
         stageIndex,
         metadata,
@@ -31,10 +30,10 @@ describe("diagnostics", () => {
 
     function err(
       expression: string,
-      startRule: StartRule = "expression",
+      expressionMode: Lib.ExpressionMode = "expression",
       metadata?: Metadata,
     ) {
-      return setup({ expression, startRule, metadata })?.message;
+      return setup({ expression, expressionMode, metadata })?.message;
     }
 
     it("should catch mismatched parentheses", () => {
@@ -66,7 +65,7 @@ describe("diagnostics", () => {
     });
 
     it("should show the correct number of function arguments in a custom expression", () => {
-      expect(err("between([Tax])", "boolean")).toBe(
+      expect(err("between([Tax])", "filter")).toBe(
         "Function between expects 3 arguments",
       );
     });
@@ -293,7 +292,7 @@ describe("diagnostics", () => {
         source: expression,
         query,
         stageIndex,
-        startRule: "expression",
+        expressionMode: "expression",
       });
     }
 
