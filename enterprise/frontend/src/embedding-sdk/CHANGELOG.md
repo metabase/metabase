@@ -1,3 +1,22 @@
+## [0.54.6](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.5...embedding-sdk-0.54.6) (2025-04-22)
+
+
+### Bug Fixes
+
+* **sdk:** css variables leak from Mantine to the host app ([#56985](https://github.com/metabase/metabase/issues/56985)) ([#57026](https://github.com/metabase/metabase/issues/57026)) ([5df4060](https://github.com/metabase/metabase/commit/5df4060bf9501059134e9d042172233892f16260))
+* **sdk:** use instance locale if no locale is passed ([#56683](https://github.com/metabase/metabase/issues/56683)) ([#56873](https://github.com/metabase/metabase/issues/56873)) ([e931e8f](https://github.com/metabase/metabase/commit/e931e8fe3ab429aa562216548b7042dbed5fc0e1))
+
+
+### Features
+
+* **sdk:** Apply dts rollup to generate a single .d.ts file with types ([#56205](https://github.com/metabase/metabase/issues/56205)) ([#56582](https://github.com/metabase/metabase/issues/56582)) ([e1dfb27](https://github.com/metabase/metabase/commit/e1dfb2738a391a0f9137c4df645b01fe9a16d402))
+* **sdk:** Automatically set a sensible display to interactive questions ([#56584](https://github.com/metabase/metabase/issues/56584)) ([#56667](https://github.com/metabase/metabase/issues/56667)) ([#56713](https://github.com/metabase/metabase/issues/56713)) ([6d89581](https://github.com/metabase/metabase/commit/6d8958137c514e473d493b2d165b282edd4f2eb3))
+* **sdk:** Export more public SDK types ([#56838](https://github.com/metabase/metabase/issues/56838)) ([#56840](https://github.com/metabase/metabase/issues/56840)) ([1186671](https://github.com/metabase/metabase/commit/1186671800ebddee859ac5790904b780b2087587))
+* **sdk:** Export public plugin and icon types ([#56851](https://github.com/metabase/metabase/issues/56851)) ([#56867](https://github.com/metabase/metabase/issues/56867)) ([34a16e5](https://github.com/metabase/metabase/commit/34a16e5272df0eb928ec6bf16e2c7092eaa8d217))
+* **sdk:** Use public types for Dashboard/Collection/User and other entities ([#56888](https://github.com/metabase/metabase/issues/56888)) ([19abbea](https://github.com/metabase/metabase/commit/19abbeae7f802fb38d48f13f8c364d2c64344649))
+
+
+
 ## [0.54.5](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.4-nightly...embedding-sdk-0.54.5) (2025-04-04)
 
 
