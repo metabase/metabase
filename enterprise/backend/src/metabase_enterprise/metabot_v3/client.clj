@@ -211,28 +211,17 @@
                       {:request (assoc options :body body)
                        :response response})))))
 
-(defn- build-multipart-request-options
-  "Build request options for multipart upload."
-  [image]
-  (let [base-headers (dissoc (request-headers) "Content-Type")]
-    {:headers          base-headers
-     :multipart        [{:name "image"
-                         :content (:tempfile image)
-                         :filename (:filename image)}]
-     :follow-redirects true
-     :throw-exceptions false}))
-
 (mu/defn analyze-chart
   "Ask the AI service to analyze a chart image."
   [chart-data :- [:map
-                 [:image_base64 :string]
-                 [:chart {:optional true} [:map
-                          [:name {:optional true} [:maybe :string]]
-                          [:description {:optional true} [:maybe :string]]]]
-                 [:timeline_events {:optional true} [:sequential [:map
-                                                                 [:name :string]
-                                                                 [:description {:optional true} [:maybe :string]]
-                                                                 [:timestamp :string]]]]]]
+                  [:image_base64 :string]
+                  [:chart {:optional true} [:map
+                                            [:name {:optional true} [:maybe :string]]
+                                            [:description {:optional true} [:maybe :string]]]]
+                  [:timeline_events {:optional true} [:sequential [:map
+                                                                   [:name :string]
+                                                                   [:description {:optional true} [:maybe :string]]
+                                                                   [:timestamp :string]]]]]]
   (let [url (analyze-chart-endpoint)
         options (build-request-options chart-data)
         response (post! url options)]
@@ -246,11 +235,11 @@
 (mu/defn analyze-dashboard
   "Ask the AI service to analyze a dashboard image."
   [dashboard-data :- [:map
-                     [:image_base64 :string]
-                     [:dashboard {:optional true} [:map
-                                  [:name {:optional true} [:maybe :string]]
-                                  [:description {:optional true} [:maybe :string]]
-                                  [:tab_name {:optional true} [:maybe :string]]]]]]
+                      [:image_base64 :string]
+                      [:dashboard {:optional true} [:map
+                                                    [:name {:optional true} [:maybe :string]]
+                                                    [:description {:optional true} [:maybe :string]]
+                                                    [:tab_name {:optional true} [:maybe :string]]]]]]
   (let [url (analyze-dashboard-endpoint)
         options (build-request-options dashboard-data)
         response (post! url options)]
