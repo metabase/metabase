@@ -140,10 +140,7 @@
 
 (def ^:private bulk-row-schema
   [:map {:closed true}
-   [:args (-> [:map
-               [:arg      [:sequential :map]]
-               [:database pos-int?]]
-              (into table-id-hydrate-schemas))]
+   [:args (into [:map] table-id-hydrate-schemas)]
    [:row-changes [:sequential [:map
                                [:pk     :any]
                                [:before [:maybe :map]]

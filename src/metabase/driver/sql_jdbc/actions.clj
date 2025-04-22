@@ -263,29 +263,6 @@
                                   :database-ids db-ids})))]
     (actions/cached-database (first db-ids))))
 
-(defn- row-delete!* [action database query]
-  (let [db-id                (u/the-id database)
-        driver               (:engine database)
-        {:keys [from where]} (mbql-query->raw-hsql driver query)
-        delete-hsql          (-> {:delete-from (first from)
-                                  :where       where}
-                                 (prepare-query driver action))
-        sql-args             (sql.qp/format-honeysql driver delete-hsql)]
-    ;; We rely on this per-row transaction for the consistency guarantee of deleting exactly 1 row
-    (with-jdbc-transaction [conn db-id]
-      ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
-      (let [rows-deleted (with-auto-parse-sql-exception driver database action
-                           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
-        (when-not (= rows-deleted 1)
-          (throw (ex-info (if (zero? rows-deleted)
-                            (tru "Sorry, the row you''re trying to delete doesn''t exist")
-                            (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
-                          {:status-code 400})))
-        ;; TODO may need to revisit this whole MBQL thing
-        {:pk     'difficult-to-get-this-from-where
-         :before 'need-the-pk-to-get-this
-         :after  nil}))))
-
 (defn- record-mutations
   "Update the context to reflect the modifications made by the action."
   [context diffs]
@@ -300,6 +277,33 @@
   [:map {:closed true}
    [:context :map]
    [:outputs [:sequential output-schema]]])
+
+(defn- row-delete!* [action database query]
+  (let [db-id                (u/the-id database)
+        driver               (:engine database)
+        {:keys [from where]} (mbql-query->raw-hsql driver query)
+        delete-hsql          (-> {:delete-from (first from)
+                                  :where       where}
+                                 (prepare-query driver action))
+        sql-args             (sql.qp/format-honeysql driver delete-hsql)]
+    ;; We rely on this per-row transaction for the consistency guarantee of deleting exactly 1 row
+    (with-jdbc-transaction [conn db-id]
+      (let [row-before   (as-> {:select [:*] :from from :where where} %
+                           (prepare-query % driver action)
+                           (sql.qp/format-honeysql driver %)
+                           (jdbc/query {:connection conn} % {:transaction? false})
+                           (first %))
+            ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
+            rows-deleted (with-auto-parse-sql-exception driver database action
+                           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
+        (when-not (= rows-deleted 1)
+          (throw (ex-info (if (zero? rows-deleted)
+                            (tru "Sorry, the row you''re trying to delete doesn''t exist")
+                            (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
+                          {:status-code 400})))
+        {:table-id (-> query :query :source-table)
+         :before   row-before
+         :after    nil}))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :row/delete] :- (result-schema [:map [:rows-deleted :int]])
   [action context inputs]
@@ -326,18 +330,27 @@
                          (prepare-query driver action))
         sql-args     (sql.qp/format-honeysql driver update-hsql)]
     (with-jdbc-transaction [conn (u/the-id database)]
-      ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
-      (let [rows-updated (with-auto-parse-sql-exception driver database action
-                           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
+      (let [row-before   (as-> {:select [:*] :from from :where where} %
+                           (prepare-query % driver action)
+                           (sql.qp/format-honeysql driver %)
+                           (jdbc/query {:connection conn} % {:transaction? false})
+                           (first %))
+            ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
+            rows-updated (with-auto-parse-sql-exception driver database action
+                           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))
+            row-after    (as-> {:select [:*] :from from :where where} %
+                           (prepare-query % driver action)
+                           (sql.qp/format-honeysql driver %)
+                           (jdbc/query {:connection conn} % {:transaction? false})
+                           (first %))]
         (when-not (= rows-updated 1)
           (throw (ex-info (if (zero? rows-updated)
                             (tru "Sorry, the row you''re trying to update doesn''t exist")
                             (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
                           {:status-code 400})))
-        ;; TODO may need to revisit this whole MBQL thing
-        {:pk     'difficult-to-get-this-from-where
-         :before 'need-the-pk-to-get-this
-         :after  'need-the-pk-to-get-this}))))
+        {:table-id (-> query :query :source-table)
+         :before row-before
+         :after  row-after}))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :row/update]
   [action context inputs]
@@ -410,7 +423,7 @@
             _      (log/tracef ":row/create INSERT returned\n\n%s" (u/pprint-to-str result))
             row    (update-keys (select-created-row driver create-hsql conn result) keyword)]
         (log/tracef ":row/create returned row %s" (pr-str row))
-        {:pk     'TODO
+        {:table-id (-> query :query :source-table)
          :before nil
          :after  row}))))
 
@@ -447,14 +460,14 @@
           (.rollback conn))
         [errors results])
 
-       ([[errors results] [row-index arg-map]]
+       ([[errors results] [row-index inputs]]
         (try
           (let [result (do-nested-transaction
                         driver
                         conn
                         (fn []
                           ;; This is bypassing `actions/perform-action-internal!` to suppress events etc.
-                          (actions/perform-action!* action context [arg-map])))]
+                          (actions/perform-action!* action context inputs)))]
             [errors (conj results result)])
           (catch Throwable e
             [(conj errors {:index row-index, :error (ex-message e)})
@@ -485,7 +498,7 @@
       :database database
       :action   row-action
       :rows     inputs
-      :xform    (mapcat #(map (partial input-fn database (:table-id %)) (:rows %)))})))
+      :xform    (map #(map (partial input-fn database (:table-id %)) (:rows %)))})))
 
 (mr/def ::bulk-row-input
   [:map

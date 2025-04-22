@@ -45,15 +45,14 @@
               [:last_name :string]
               [:email :string]
               [:common_name :string]]]
-   ;; webhooks don't know the editor
-   [:editor [:maybe [:map {:gen/return {:first_name  "Meta"
-                                        :last_name   "Bot"
-                                        :common_name "Meta Bot"
-                                        :email       "bot@metabase.com"}}
-                     [:first_name :string]
-                     [:last_name :string]
-                     [:email :string]
-                     [:common_name :string]]]]
+   [:editor [:map {:gen/return {:first_name  "Meta"
+                                :last_name   "Bot"
+                                :common_name "Meta Bot"
+                                :email       "bot@metabase.com"}}
+             [:first_name :string]
+             [:last_name :string]
+             [:email :string]
+             [:common_name :string]]]
    [:table [:map {:gen/return {:id    1
                                :name "orders"}}
             [:id :int]
@@ -86,11 +85,10 @@
                       :row-changes ?row-changes}}
         {:payload_type :notification/system-event
          :context      {:event_name ?event_name}
-         :editor       (when ?actor
-                         {:first_name  (:first_name ?actor)
-                          :last_name   (:last_name ?actor)
-                          :email       (:email ?actor)
-                          :common_name (:common_name ?actor)})
+         :editor       {:first_name  (:first_name ?actor)
+                        :last_name   (:last_name ?actor)
+                        :email       (:email ?actor)
+                        :common_name (:common_name ?actor)}
          :creator      {:first_name  ?creator_first_name
                         :last_name   ?creator_last_name
                         :email       ?creator_email
