@@ -58,12 +58,8 @@
   "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
   [driver namespaced-col database-type]
   (or (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))
-      (do (let [pretty-column (str/join "."
-                                        (reverse
-                                         (into []
-                                               (comp (take-while some?)
-                                                     (map #(str "'" % "'")))
-                                               (reverse namespaced-col))))]
+      (do (let [pretty-column (str/join "." (map #(str "'" % "'")
+                                                 (drop-while nil? namespaced-col)))]
             (log/warnf "Don't know how to map column type '%s' to a Field base_type for %s, falling back to :type/*."
                        database-type
                        pretty-column))
