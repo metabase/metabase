@@ -276,10 +276,11 @@
   driver/query-canceled so extracting the SQLException from an exception chain can happen once for jdbc-
   based drivers."
   {:arglists '([driver ^SQLException e])}
-  (fn [driver & _] driver))
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
 
 ;; For Dialects that do return a SQLTimeoutException
-(defmethod impl-query-canceled? :default [_ e]
+(defmethod impl-query-canceled? :sql-jdbc [_ e]
   (instance? SQLTimeoutException e))
 
 (defmethod driver/query-canceled? :sql-jdbc [driver e]

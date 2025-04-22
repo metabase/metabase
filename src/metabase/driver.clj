@@ -1353,4 +1353,7 @@
   "Test if an exception is due to a query being canceled due to user action. For JDBC drivers this can
   happen when setting `.setQueryTimeout`."
   {:arglists '([driver ^Throwable e])}
-  (fn [driver & _] driver))
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod query-canceled? ::driver [_ _] false)
