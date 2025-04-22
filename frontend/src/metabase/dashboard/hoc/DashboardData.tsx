@@ -46,11 +46,12 @@ const connector = connect(mapStateToProps, mapDispatchToProps);
 
 type ReduxProps = ConnectedProps<typeof connector>;
 
-type DashboardDataProps = {
+export type DashboardDataProps = {
   dashboardId: DashboardId;
   noLink: boolean;
 } & WithRouterProps;
-type DashboardDataInnerProps = DashboardDataProps &
+
+export type DashboardDataReturnedProps = DashboardDataProps &
   Omit<ReduxProps, "navigateToNewCardFromDashboard"> & {
     navigateToNewCardFromDashboard:
       | ReduxProps["navigateToNewCardFromDashboard"]
@@ -61,11 +62,11 @@ type DashboardDataInnerProps = DashboardDataProps &
  * @deprecated HOCs are deprecated
  */
 export const DashboardData = (
-  ComposedComponent: ComponentType<DashboardDataInnerProps>,
+  ComposedComponent: ComponentType<DashboardDataReturnedProps>,
 ) =>
   connector(
-    class DashboardDataInner extends Component<DashboardDataInnerProps> {
-      async load(props: DashboardDataInnerProps) {
+    class DashboardDataInner extends Component<DashboardDataReturnedProps> {
+      async load(props: DashboardDataReturnedProps) {
         const {
           initialize,
           fetchDashboard,
@@ -110,7 +111,7 @@ export const DashboardData = (
         this.props.cancelFetchDashboardCardData();
       }
 
-      UNSAFE_componentWillReceiveProps(nextProps: DashboardDataInnerProps) {
+      UNSAFE_componentWillReceiveProps(nextProps: DashboardDataReturnedProps) {
         if (nextProps.dashboardId !== this.props.dashboardId) {
           this.load(nextProps);
           return;
