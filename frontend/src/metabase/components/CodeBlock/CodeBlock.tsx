@@ -15,20 +15,32 @@ import {
   useHighlightText,
 } from "./utils";
 
-export type CodeBlockProps = {
-  code: string;
-  language: CodeLanguage;
-  lineNumbers?: boolean;
-  className?: string;
-  highlightRanges?: { start: number; end: number }[];
+type ReadOnlyProps = {
+  readOnly: true;
+  onChange?: never;
 };
 
+type EditableProps = {
+  readOnly?: false;
+  onChange: (value: string) => void;
+};
+
+export type CodeBlockProps = {
+  className?: string;
+  highlightRanges?: { start: number; end: number }[];
+  language: CodeLanguage;
+  lineNumbers?: boolean;
+  value: string;
+} & (ReadOnlyProps | EditableProps);
+
 export function CodeBlock({
-  code,
-  language,
-  lineNumbers = true,
   className,
   highlightRanges,
+  language,
+  lineNumbers = true,
+  readOnly,
+  value,
+  onChange,
 }: CodeBlockProps) {
   const ref = useRef<ReactCodeMirrorRef>(null);
   const extensions = useMemo(
@@ -46,17 +58,18 @@ export function CodeBlock({
 
   return (
     <CodeMirror
-      ref={ref}
       basicSetup={{
         lineNumbers,
         foldGutter: false,
         highlightActiveLine: false,
         highlightActiveLineGutter: false,
       }}
-      value={code}
-      extensions={extensions}
-      readOnly
       className={cx(S.codeBlock, className)}
+      extensions={extensions}
+      readOnly={readOnly}
+      ref={ref}
+      value={value}
+      onChange={onChange}
     />
   );
 }

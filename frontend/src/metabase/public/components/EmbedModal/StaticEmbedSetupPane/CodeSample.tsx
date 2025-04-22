@@ -80,8 +80,9 @@ export const CodeSample = ({
         <CodeBlock
           className={CS.z1}
           language={language}
-          code={source}
           highlightRanges={highlightRanges}
+          readOnly
+          value={source}
         />
         {source && (
           <CopyButtonContainer>
