@@ -286,25 +286,25 @@ describe("admin > database > database routing", () => {
       cy.visit("/admin/databases/2");
 
       cy.log("should be disabled if model actions is enabled");
-      cy.findAllByTestId("database-model-features-section")
-        .findByLabelText("Model actions")
-        .should("be.checked");
+      cy.findByLabelText("Model actions").should("be.checked");
       assertDbRoutingDisabled();
-      cy.findAllByTestId("database-model-features-section")
-        .findByLabelText("Model actions")
-        .click({ force: true });
+
+      cy.findByLabelText("Model actions").parent("label").click();
+
       assertDbRoutingNotDisabled();
 
       cy.log("should be disabled if model persistence is enabled");
-      cy.findAllByTestId("database-model-features-section")
-        .findByLabelText("Model persistence")
+      cy.findByLabelText("Model persistence")
         .should("not.be.checked")
-        .click({ force: true });
+        .parent("label")
+        .click();
+
       assertDbRoutingDisabled();
       cy.findAllByTestId("database-model-features-section")
         .findByLabelText("Model persistence")
         .should("be.checked")
-        .click({ force: true });
+        .parent("label")
+        .click();
       assertDbRoutingNotDisabled();
 
       cy.log("should be disabled if uploads are enabled for the database");
@@ -495,9 +495,7 @@ function assertDbRoutingNotDisabled() {
       .should("not.be.disabled")
       .realHover();
   });
-  H.tooltip()
-    .findByText(/Database routing can't be enabled if/)
-    .should("not.exist");
+  H.tooltip().should("not.contain", /Database routing can't be enabled if/);
 }
 
 function assertDbRoutingDisabled() {
