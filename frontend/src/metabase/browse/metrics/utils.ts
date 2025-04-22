@@ -6,7 +6,7 @@ import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Dataset } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
-import type { MetricResult } from "./types";
+import type { MetricResult, SortColumn } from "./types";
 
 export const getMetricDescription = (item: MetricResult) => {
   if (item.collection && !item.description?.trim()) {
@@ -18,37 +18,24 @@ export const getMetricDescription = (item: MetricResult) => {
 
 const getValueForSorting = (
   metric: MetricResult,
-  sort_column: keyof MetricResult,
+  sortColumn: SortColumn,
 ): string => {
-  if (sort_column === "collection") {
+  if (sortColumn === "collection") {
     return getCollectionPathAsString(metric.collection) ?? "";
   } else {
-    return metric[sort_column] ?? "";
+    return metric[sortColumn] ?? "";
   }
 };
 
-export const isValidSortColumn = (
-  sort_column: string,
-): sort_column is keyof MetricResult => {
-  return ["name", "collection", "description"].includes(sort_column);
-};
-
-export const getSecondarySortColumn = (
-  sort_column: string,
-): keyof MetricResult => {
-  return sort_column === "name" ? "collection" : "name";
+export const getSecondarySortColumn = (sortColumn: SortColumn): SortColumn => {
+  return sortColumn === "name" ? "collection" : "name";
 };
 
 export function sortMetrics(
   metrics: MetricResult[],
-  sortingOptions: SortingOptions,
+  sortingOptions: SortingOptions<SortColumn>,
 ) {
   const { sort_column, sort_direction } = sortingOptions;
-
-  if (!isValidSortColumn(sort_column)) {
-    console.error("Invalid sort column", sort_column);
-    return metrics;
-  }
 
   const compare = (a: string, b: string) => a.localeCompare(b);
 

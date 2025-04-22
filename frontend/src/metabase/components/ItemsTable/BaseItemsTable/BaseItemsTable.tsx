@@ -14,12 +14,13 @@ import { BaseItemsTableBody } from "metabase/components/ItemsTable/BaseItemsTabl
 import type { ItemRendererProps } from "metabase/components/ItemsTable/DefaultItemRenderer";
 import { DefaultItemRenderer } from "metabase/components/ItemsTable/DefaultItemRenderer";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-import {
-  type SortColumn,
-  SortDirection,
-  type SortingOptions,
-} from "metabase-types/api/sorting";
+import type {
+  Bookmark,
+  Collection,
+  CollectionItem,
+  ListCollectionItemsSortColumn,
+} from "metabase-types/api";
+import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import {
   ColumnHeader,
@@ -30,14 +31,16 @@ import {
 import { Columns } from "../Columns";
 import type { ResponsiveProps } from "../utils";
 
-export type SortableColumnHeaderProps = {
+export type SortableColumnHeaderProps<SortColumn extends string> = {
   name?: SortColumn;
-  sortingOptions?: SortingOptions;
-  onSortingOptionsChange?: (newSortingOptions: SortingOptions) => void;
+  sortingOptions?: SortingOptions<SortColumn>;
+  onSortingOptionsChange?: (
+    newSortingOptions: SortingOptions<SortColumn>,
+  ) => void;
   columnHeaderProps?: Partial<HTMLAttributes<HTMLTableHeaderCellElement>>;
 } & PropsWithChildren<Partial<HTMLAttributes<HTMLDivElement>>>;
 
-export const SortableColumnHeader = ({
+export const SortableColumnHeader = <SortColumn extends string>({
   name,
   sortingOptions,
   onSortingOptionsChange,
@@ -46,7 +49,7 @@ export const SortableColumnHeader = ({
   containerName,
   columnHeaderProps,
   ...props
-}: SortableColumnHeaderProps & ResponsiveProps) => {
+}: SortableColumnHeaderProps<SortColumn> & ResponsiveProps) => {
   const isSortable = !!onSortingOptionsChange && !!name;
   const isSortingThisColumn = sortingOptions?.sort_column === name;
   const direction = isSortingThisColumn
@@ -105,8 +108,10 @@ export type BaseItemsTableProps = {
   selectedItems?: CollectionItem[];
   hasUnselected?: boolean;
   isPinned?: boolean;
-  sortingOptions?: SortingOptions;
-  onSortingOptionsChange?: (newSortingOptions: SortingOptions) => void;
+  sortingOptions?: SortingOptions<ListCollectionItemsSortColumn>;
+  onSortingOptionsChange?: (
+    newSortingOptions: SortingOptions<ListCollectionItemsSortColumn>,
+  ) => void;
   onToggleSelected?: OnToggleSelectedWithItem;
   onSelectAll?: () => void;
   onSelectNone?: () => void;
