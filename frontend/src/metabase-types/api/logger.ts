@@ -29,20 +29,8 @@ export interface LoggerPreset {
   loggers: Logger[];
 }
 
-export interface AdjustmentPlan {
-  op: "add" | "change";
-  ns: string;
-  from?: LogLevel;
-  to: LogLevel;
-}
-
 export interface AdjustLogLevelsRequest {
   duration: number;
   duration_unit: TimeUnit;
   log_levels: Record<LoggerName, LogLevel>;
-}
-
-export interface AdjustLogLevelsResponse {
-  plan: AdjustmentPlan[];
-  "undo-task": string; // TODO: rename to undo_task? https://github.com/metabase/metabase/pull/56973#discussion_r2053883326
 }

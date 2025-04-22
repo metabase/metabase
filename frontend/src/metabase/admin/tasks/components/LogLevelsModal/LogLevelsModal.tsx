@@ -5,6 +5,7 @@ import { t } from "ttag";
 import {
   useAdjustLogLevelsMutation,
   useListLoggerPresetsQuery,
+  useResetLogLevelsAdjustmentMutation,
 } from "metabase/api/logger";
 import { CodeBlock } from "metabase/components/CodeBlock";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
@@ -36,23 +37,25 @@ export const LogLevelsModal = () => {
     adjustLogLevels,
     { error: adjustLogLevelsError, isLoading: isLoadingAdjustLogLevels },
   ] = useAdjustLogLevelsMutation();
+  const [
+    resetLogLevelsAdjustment,
+    { error: resetError, isLoading: isLoadingReset },
+  ] = useResetLogLevelsAdjustmentMutation();
+
   const [duration, setDuration] = useState("60");
   const [durationUnit, setDurationUnit] = useState<TimeUnit>("minutes");
   const [json, setJson] = useState("");
   const durationNumber = parseInt(duration, 10);
   const isDurationValid = Number.isFinite(durationNumber);
   const isValid = isDurationValid && isJsonValid(json);
+  const isLoading = isLoadingAdjustLogLevels || isLoadingReset;
 
   const handleClose = () => {
     dispatch(goBack());
   };
 
   const handleReset = async () => {
-    const response = await adjustLogLevels({
-      duration: durationNumber,
-      duration_unit: durationUnit,
-      log_levels: {},
-    });
+    const response = await resetLogLevelsAdjustment();
 
     if (!response.error) {
       handleClose();
@@ -149,6 +152,12 @@ export const LogLevelsModal = () => {
           />
         </Box>
 
+        {resetError ? (
+          <Box c="error" mt="md">
+            {getErrorMessage(resetError)}
+          </Box>
+        ) : null}
+
         {adjustLogLevelsError ? (
           <Box c="error" mt="md">
             {getErrorMessage(adjustLogLevelsError)}
@@ -156,19 +165,17 @@ export const LogLevelsModal = () => {
         ) : null}
 
         <Flex gap="md" justify="flex-end" mt="xl">
-          <Flex align="center">
-            {isLoadingAdjustLogLevels && <Loader size="sm" />}
-          </Flex>
+          <Flex align="center">{isLoading && <Loader size="sm" />}</Flex>
 
           <Button
-            disabled={isLoadingAdjustLogLevels}
+            disabled={isLoading}
             leftSection={<Icon name="revert" />}
             type="button"
             onClick={handleReset}
           >{t`Reset to defaults`}</Button>
 
           <Button
-            disabled={isLoadingAdjustLogLevels || !isValid}
+            disabled={isLoading || !isValid}
             type="submit"
             variant="filled"
           >{t`Save`}</Button>

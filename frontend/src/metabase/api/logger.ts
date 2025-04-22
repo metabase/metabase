@@ -1,8 +1,4 @@
-import type {
-  AdjustLogLevelsRequest,
-  AdjustmentPlan,
-  LoggerPreset,
-} from "metabase-types/api";
+import type { AdjustLogLevelsRequest, LoggerPreset } from "metabase-types/api";
 
 import { Api } from "./api";
 import { provideLoggerPresetListTags } from "./tags";
@@ -14,17 +10,24 @@ export const loggerApi = Api.injectEndpoints({
       providesTags: (response) =>
         response ? provideLoggerPresetListTags(response) : [],
     }),
-    adjustLogLevels: builder.mutation<AdjustmentPlan[], AdjustLogLevelsRequest>(
-      {
-        query: (body) => ({
-          url: "/api/logger/adjust",
-          method: "POST",
-          body,
-        }),
-      },
-    ),
+    adjustLogLevels: builder.mutation<void, AdjustLogLevelsRequest>({
+      query: (body) => ({
+        url: "/api/logger/adjustment",
+        method: "POST",
+        body,
+      }),
+    }),
+    resetLogLevelsAdjustment: builder.mutation<void, void>({
+      query: () => ({
+        url: "/api/logger/adjustment",
+        method: "DELETE",
+      }),
+    }),
   }),
 });
 
-export const { useListLoggerPresetsQuery, useAdjustLogLevelsMutation } =
-  loggerApi;
+export const {
+  useListLoggerPresetsQuery,
+  useAdjustLogLevelsMutation,
+  useResetLogLevelsAdjustmentMutation,
+} = loggerApi;
