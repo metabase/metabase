@@ -108,6 +108,37 @@ export const DashboardApp = ({
     }
   };
 
+  const onLoadDashboard = (result: SuccessfulFetchDashboardResult) => {
+    const dashboard = result.payload.dashboard;
+
+    try {
+      if (editingOnLoad) {
+        onRefreshPeriodChange(null);
+        setEditingDashboard(dashboard);
+      }
+      if (addCardOnLoad != null) {
+        const searchParams = new URLSearchParams(window.location.search);
+        const tabParam = searchParams.get("tab");
+        const tabId = tabParam ? parseInt(tabParam, 10) : null;
+
+        dispatch(
+          addCardToDashboard({
+            dashId: dashboardId,
+            cardId: addCardOnLoad,
+            tabId,
+          }),
+        );
+      }
+    } catch (error) {
+      if (error instanceof Response && error.status === 404) {
+        setErrorPage({ ...error, context: "dashboard" });
+      } else {
+        console.error(error);
+        setError(error as string);
+      }
+    }
+  };
+
   return (
     <ErrorBoundary message={error}>
       <DashboardContextProvider
