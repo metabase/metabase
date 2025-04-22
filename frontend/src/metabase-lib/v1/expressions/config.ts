@@ -11,11 +11,11 @@ export const EDITOR_QUOTES = {
     '"': "literal",
   },
   // specifies the default quoting style:
-  literalQuoteDefault: '"' as const,
-  identifierQuoteDefault: "[" as const,
+  literalQuoteDefault: '"',
+  identifierQuoteDefault: "[",
   // always quote identifiers even if they have non-word characters or conflict with reserved words
   identifierAlwaysQuoted: true,
-};
+} as const;
 
 type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
 type Forbidden<T, K extends keyof T> = Omit<T, K> & { [P in K]?: never };
