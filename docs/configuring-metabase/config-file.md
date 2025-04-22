@@ -219,7 +219,7 @@ If a value contains double braces (`{%raw %}}}{% endraw %}` or `{%raw %}{{{% end
 
 ```
 {% raw %}
-password: ```MetaPa$$123{{>```
+password: "{{{MetaPa$$123{{>}}}"
 {% endraw %}
 ```
 
