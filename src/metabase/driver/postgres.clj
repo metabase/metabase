@@ -82,6 +82,7 @@
                               :expression-literals      true
                               :expressions/text         true
                               :expressions/integer      true
+                              :expressions/float        true
                               :expressions/date         true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
@@ -643,6 +644,10 @@
 (defmethod sql.qp/->honeysql [:postgres :integer]
   [driver [_ value]]
   (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
+
+(defmethod sql.qp/->honeysql [:postgres :float]
+  [driver [_ value]]
+  (h2x/maybe-cast "DOUBLE PRECISION" (sql.qp/->honeysql driver value)))
 
 (defn- format-regex-match-first [_fn [identifier pattern]]
   (let [[identifier-sql & identifier-args] (sql/format-expr identifier {:nested true})

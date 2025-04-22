@@ -7,7 +7,6 @@ import {
   EXPRESSION_FUNCTIONS,
   type HelpText,
   type MBQLClauseFunctionConfig,
-  type StartRule,
   getClauseDefinition,
 } from "metabase-lib/v1/expressions";
 import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
@@ -21,20 +20,22 @@ const AGGREGATION_CLAUSES = Array.from(AGGREGATION_FUNCTIONS)
   .map(getClauseDefinition)
   .filter(isNotNull);
 
-export function getSearchPlaceholder(startRule: StartRule) {
-  if (startRule === "expression" || startRule === "boolean") {
+export function getSearchPlaceholder(expressionMode: Lib.ExpressionMode) {
+  if (expressionMode === "expression" || expressionMode === "filter") {
     return t`Search functions…`;
   }
-  if (startRule === "aggregation") {
+  if (expressionMode === "aggregation") {
     return t`Search aggregations…`;
   }
 }
 
-function getClauses(startRule: StartRule): MBQLClauseFunctionConfig[] {
-  if (startRule === "expression" || startRule === "boolean") {
+function getClauses(
+  expressionMode: Lib.ExpressionMode,
+): MBQLClauseFunctionConfig[] {
+  if (expressionMode === "expression" || expressionMode === "filter") {
     return EXPRESSION_CLAUSES;
   }
-  if (startRule === "aggregation") {
+  if (expressionMode === "aggregation") {
     return AGGREGATION_CLAUSES;
   }
   return [];
@@ -60,17 +61,17 @@ function getCategoryName(category: string) {
 }
 
 export function getFilteredClauses({
-  startRule,
+  expressionMode,
   filter,
   database,
   reportTimezone,
 }: {
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
   filter: string;
   database: Database | null;
   reportTimezone?: string;
 }) {
-  const clauses = getClauses(startRule);
+  const clauses = getClauses(expressionMode);
   const filteredClauses = clauses
     .filter(
       (clause) =>
