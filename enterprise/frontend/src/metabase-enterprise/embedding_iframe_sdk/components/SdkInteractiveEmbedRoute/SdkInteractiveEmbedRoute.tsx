@@ -8,6 +8,7 @@ import {
   defineMetabaseAuthConfig,
   defineMetabaseTheme,
 } from "embedding-sdk";
+import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import type { SdkInteractiveEmbedRouteProps } from "metabase/embedding-sdk/types/iframe-interactive-embedding";
 import { isWithinIframe } from "metabase/lib/dom";
 import { Box, Center, Loader } from "metabase/ui";
@@ -56,7 +57,15 @@ export const SdkInteractiveEmbedRoute = ({
   useEffect(() => {
     if (isWithinIframe()) {
       // Send a message to the parent to indicate that the embed is waiting for authentication
-      window.parent.postMessage({ type: "metabase.embed.waitingForAuth" }, "*");
+      window.parent.postMessage(
+        {
+          type: "metabase.embed.waitingForAuth",
+          payload: {
+            sdkVersion: getEmbeddingSdkVersion(),
+          },
+        },
+        "*",
+      );
 
       // TODO: verify the sender's origin for security
       const receiveMessage = (event: MessageEvent) => {
@@ -89,10 +98,11 @@ export const SdkInteractiveEmbedRoute = ({
   const ready =
     (config?.type === "apiKey" && config.apiKey) || config?.type === "sso";
 
-  if (ready) {
+  if (!ready) {
     return (
       <Center h="100%" mih="100vh">
-        <Loader />
+        <Loader mr="md" />
+        <div>authenticating...</div>
       </Center>
     );
   }
