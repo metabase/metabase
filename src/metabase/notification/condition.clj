@@ -1,4 +1,20 @@
 (ns metabase.notification.condition
+  "Expression language for evaluating conditions in notifications.
+
+  Grammar:
+
+    <expr> ::= <literal> | <func_eval>
+
+    <literal> ::= <number> | <string> | <boolean>
+    <number> ::= integer or decimal
+    <string> ::= quoted text
+    <boolean> ::= true | false
+
+    <func_eval> ::= [<func>, <expr>*]
+
+    <func> ::= 'and' | 'or' | 'not' | '=' | '!=' | '>' | '<' | '>=' | '<=' 
+               | 'max' | 'min' | 'count' | 'context' | 'this' | 'every' | 'some' | 'none'
+    <expr>* ::= zero or more expressions or paths"
   (:require
    [clojure.walk :as walk]
    [metabase.util :as u]))
@@ -51,6 +67,10 @@
         :this    (if (seq operands)
                    (get-in *local-context* operands)
                    *local-context*)
+
+        ;; Collection predicates, [:every predicate collection]
+        ;; Predicate is an expression that returns a boolean. It'll bind *local-context*
+        ;; when it's evaluated. Use [:this] to refer to the current context.
         :every   (collection-predicate-op every? operands context)
         :some    (collection-predicate-op some operands context)
         :none    (collection-predicate-op not-any? operands context)
