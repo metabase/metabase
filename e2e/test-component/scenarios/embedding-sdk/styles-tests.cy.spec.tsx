@@ -412,21 +412,30 @@ describe("scenarios > embedding-sdk > styles", () => {
         </MantineProvider>,
       );
 
-      // Customer's elements outside of the SDK provider should have their brand color intact
+      cy.log(
+        "Customer's elements outside of the SDK provider should have their brand color intact",
+      );
+
       cy.contains("button", "outside sdk provider").should(
         "have.css",
         "background-color",
         "rgb(255, 0, 255)",
       );
 
-      // Customer's elements outside of the SDK components should have their brand color intact
+      cy.log(
+        "Customer's elements outside of the SDK components should have their brand color intact",
+      );
+
       cy.contains("button", "outside sdk wrapper").should(
         "have.css",
         "background-color",
         "rgb(255, 0, 255)",
       );
 
-      // SDK elements should have the brand color from the Metabase theme
+      cy.log(
+        "SDK elements should have the brand color from the Metabase theme",
+      );
+
       getSdkRoot().within(() => {
         cy.get("button")
           .contains("Filter")
