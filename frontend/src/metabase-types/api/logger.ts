@@ -44,5 +44,5 @@ export interface AdjustLogLevelsRequest {
 
 export interface AdjustLogLevelsResponse {
   plan: AdjustmentPlan[];
-  "undo-task": string;
+  "undo-task": string; // TODO: rename to undo_task? https://github.com/metabase/metabase/pull/56973#discussion_r2053883326
 }
