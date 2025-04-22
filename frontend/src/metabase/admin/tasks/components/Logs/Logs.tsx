@@ -119,7 +119,7 @@ const LogsBase = ({
         <Flex align="center" gap="md">
           <Button
             component={Link}
-            to="/admin/troubleshooting/logs/log-levels"
+            to="/admin/troubleshooting/logs/levels"
             leftSection={<Icon name="pulse" />}
             variant="default"
           >{t`Customize log levels`}</Button>

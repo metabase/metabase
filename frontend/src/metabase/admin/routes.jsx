@@ -141,7 +141,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           </Route>
           <Route path="logs" component={Logs}>
             <ModalRoute
-              path="log-levels"
+              path="levels"
               modal={LogLevelsModal}
               modalProps={{
                 // EventSandbox interferes with mouse text selection in CodeMirror editor

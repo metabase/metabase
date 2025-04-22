@@ -10,26 +10,24 @@ import { CodeBlock } from "metabase/components/CodeBlock";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Button, Flex, Loader, Select, TextInput } from "metabase/ui";
-import type { AdjustLogLevelsRequest, TimeUnit } from "metabase-types/api";
+import {
+  Box,
+  Button,
+  Flex,
+  Loader,
+  Menu,
+  Select,
+  TextInput,
+} from "metabase/ui";
+import type { TimeUnit } from "metabase-types/api";
 import { isErrorWithMessageResponse } from "metabase-types/guards";
 
 import S from "./LogLevelsModal.module.css";
 
-const TIME_UNITS: TimeUnit[] = [
-  "nanoseconds",
-  "microseconds",
-  "milliseconds",
-  "seconds",
-  "minutes",
-  "hours",
-  "days",
-];
-
 export const LogLevelsModal = () => {
   const dispatch = useDispatch();
   const {
-    data: presets,
+    data: presets = [],
     error: presetsError,
     isLoading: isLoadingPresets,
   } = useListLoggerPresetsQuery();
@@ -43,7 +41,6 @@ export const LogLevelsModal = () => {
   const durationNumber = parseInt(duration, 10);
   const isDurationValid = Number.isFinite(durationNumber);
   const isValid = isDurationValid && isJsonValid(json);
-  const logLevels: AdjustLogLevelsRequest["log_levels"] = {}; // TODO
 
   const handleClose = () => {
     dispatch(goBack());
@@ -67,7 +64,7 @@ export const LogLevelsModal = () => {
     const response = await adjustLogLevels({
       duration: durationNumber,
       duration_unit: durationUnit,
-      log_levels: logLevels,
+      log_levels: JSON.parse(json),
     });
 
     if (!response.error) {
@@ -89,7 +86,30 @@ export const LogLevelsModal = () => {
   return (
     <ModalContent title={t`Customize log levels`} onClose={handleClose}>
       <form onSubmit={handleSubmit}>
-        <Flex gap="md" justify="space-between" mb="xl">
+        <Flex align="flex-end" gap="md" justify="space-between" mb="xl">
+          <Menu position="bottom-start" shadow="md" width={200}>
+            <Menu.Target>
+              <Button>Load preset</Button>
+            </Menu.Target>
+
+            <Menu.Dropdown>
+              {presets.map((preset) => (
+                <Menu.Item
+                  key={preset.id}
+                  onClick={() => {
+                    const logLevels = Object.fromEntries(
+                      preset.loggers.map(({ level, name }) => [name, level]),
+                    );
+                    const json = JSON.stringify(logLevels, null, 2);
+                    setJson(json);
+                  }}
+                >
+                  {preset.display_name}
+                </Menu.Item>
+              ))}
+            </Menu.Dropdown>
+          </Menu>
+
           <Flex gap="md">
             <TextInput
               label={t`Duration`}
@@ -102,7 +122,7 @@ export const LogLevelsModal = () => {
             />
 
             <Select
-              data={TIME_UNITS}
+              data={getData()}
               label={t`Unit`}
               placeholder={t`Unit`}
               value={durationUnit}
@@ -146,6 +166,25 @@ export const LogLevelsModal = () => {
     </ModalContent>
   );
 };
+
+// It intentionally is a function and not a module-level constant, so that `t` function works correctly
+function getData() {
+  /**
+   * Using a Record, so that this gives compilation error when TimeUnit is extended,
+   * so that whoever changes that type does not forget to update this function.
+   */
+  const statusNames: { [T in TimeUnit]: { label: string; value: T } } = {
+    nanoseconds: { label: t`Nanoseconds`, value: "nanoseconds" },
+    microseconds: { label: t`Microseconds`, value: "microseconds" },
+    milliseconds: { label: t`Milliseconds`, value: "milliseconds" },
+    seconds: { label: t`Seconds`, value: "seconds" },
+    minutes: { label: t`Minutes`, value: "minutes" },
+    hours: { label: t`Hours`, value: "hours" },
+    days: { label: t`Days`, value: "days" },
+  };
+
+  return Object.values(statusNames);
+}
 
 function getErrorMessage(error: unknown) {
   if (isErrorWithMessageResponse(error)) {
