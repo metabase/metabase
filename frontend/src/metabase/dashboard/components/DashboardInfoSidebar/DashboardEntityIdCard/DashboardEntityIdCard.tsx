@@ -49,9 +49,14 @@ export const DashboardEntityIdCard = ({
         <Icon name={opened ? "chevronup" : "chevrondown"} />
       </Group>
 
-      <Collapse in={opened}>
+      <Collapse in={opened} role="list">
         <Divider mb="0.75rem" />
-        <Group justify="space-between" className={Styles.EntityId}>
+        <Group
+          justify="space-between"
+          className={Styles.EntityId}
+          role="listitem"
+          aria-label="This dashboard"
+        >
           <Text>{t`This dashboard`}</Text>
           <EntityCopyButton entityId={dashboard.entity_id} />
         </Group>
@@ -61,6 +66,8 @@ export const DashboardEntityIdCard = ({
               justify="space-between"
               key={tab.id}
               className={Styles.EntityId}
+              role="listitem"
+              aria-label={tab.name}
             >
               <Text>{tab.name}</Text>
               <EntityCopyButton entityId={tab.entity_id} />
