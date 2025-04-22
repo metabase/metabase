@@ -1,7 +1,14 @@
 import { FK_SYMBOL } from "metabase/lib/formatting";
 
-import { EDITOR_FK_SYMBOLS, EDITOR_QUOTES, getMBQLName } from "./config";
+import { EDITOR_QUOTES, getMBQLName } from "./config";
 import { quoteString } from "./string";
+
+export const EDITOR_FK_SYMBOLS = {
+  // specifies which symbols can be used to delimit foreign/joined fields
+  symbols: [".", " → "],
+  // specifies the default/canonical symbol
+  default: " → ",
+};
 
 // can be double-quoted, but are not by default unless they have non-word characters or are reserved
 export function formatIdentifier(

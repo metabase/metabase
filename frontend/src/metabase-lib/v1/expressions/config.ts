@@ -17,13 +17,6 @@ export const EDITOR_QUOTES = {
   identifierAlwaysQuoted: true,
 };
 
-export const EDITOR_FK_SYMBOLS = {
-  // specifies which symbols can be used to delimit foreign/joined fields
-  symbols: [".", " → "],
-  // specifies the default/canonical symbol
-  default: " → ",
-};
-
 type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
 type Forbidden<T, K extends keyof T> = Omit<T, K> & { [P in K]?: never };
 
