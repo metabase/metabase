@@ -1296,19 +1296,24 @@ describe("admin > settings > updates", () => {
   });
 
   it("should show the updates page", () => {
-    cy.findByLabelText("Check for updates").should("be.visible");
+    cy.findByTestId("check-for-updates-setting")
+      .findByText("Check for updates")
+      .should("be.visible");
+
     cy.findByTestId("update-channel-setting")
       .findByText("Types of releases to check for")
       .should("be.visible");
 
     cy.findByTestId("settings-updates").within(() => {
-      cy.findByText("Metabase 1.86.76 is available. You're running 1.86.70");
+      cy.findByText("Metabase 1.86.76 is available. You're running 1.86.70.");
       cy.findByText("Some old feature").should("be.visible");
     });
 
     cy.log("hide most things if updates are turned off");
 
-    cy.findByLabelText("Check for updates").click();
+    cy.findByTestId("check-for-updates-setting")
+      .findByText("Check for updates")
+      .click();
 
     cy.findByTestId("settings-updates").within(() => {
       cy.findByText("Types of releases to check for").should("not.exist");
@@ -1321,7 +1326,7 @@ describe("admin > settings > updates", () => {
       cy.findByText(/Metabase 1\.86\.76 is available/).should("be.visible");
       cy.findByText("Some old feature").should("be.visible");
       cy.findByText("New latest feature").should("be.visible");
-      cy.findByText("Stable releases").click();
+      cy.findByDisplayValue("Stable releases").click();
     });
 
     H.popover().findByText("Beta releases").click();
@@ -1331,7 +1336,7 @@ describe("admin > settings > updates", () => {
         "be.visible",
       );
       cy.findByText("New beta feature").should("be.visible");
-      cy.findByText("Beta releases").click();
+      cy.findByDisplayValue("Beta releases").click();
     });
 
     H.popover().findByText("Nightly builds").click();

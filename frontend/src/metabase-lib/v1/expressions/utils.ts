@@ -12,19 +12,11 @@ export function getDatabase(
   return metadata?.database(databaseId) ?? null;
 }
 
-export function getExpressionMode(startRule: string): Lib.ExpressionMode {
-  switch (startRule) {
-    case "expression":
-      return "expression";
-    case "aggregation":
-      return "aggregation";
-    case "boolean":
-      return "filter";
-  }
-  throw new Error(`Unknown start rule: ${startRule}`);
-}
-
-type Nodable = string | number | boolean | bigint | unknown[] | { node?: Node };
+type Nodable =
+  | unknown[]
+  | Lib.ExpressionParts
+  | Lib.ExpressionArg
+  | { node?: Node };
 
 export function getNode(item?: Nodable): Node | undefined {
   if (typeof item === "object" && item !== null && "node" in item) {

@@ -146,7 +146,7 @@ export function ViewTitleHeaderRightSide({
     hasRunButton && !isShowingNotebook
       ? [
           {
-            id: "question-refresh",
+            id: "query-builder-data-refresh",
             perform: () =>
               isRunning ? cancelQuery : runQuestionQuery({ ignoreCache: true }),
           },

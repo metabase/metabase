@@ -16,10 +16,9 @@ import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import {
   type ExpressionError,
-  MBQL_CLAUSES,
-  type StartRule,
   diagnoseAndCompile,
   format,
+  getClauseDefinition,
 } from "metabase-lib/v1/expressions";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
 import { COMMA, GROUP } from "metabase-lib/v1/expressions/pratt";
@@ -43,7 +42,7 @@ type EditorProps = {
   clause?: Lib.Expressionable | null;
   query: Lib.Query;
   stageIndex: number;
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
   expressionIndex?: number;
   reportTimezone?: string;
   readOnly?: boolean;
@@ -65,7 +64,7 @@ const FB_HEIGHT_WITH_HEADER = FB_HEIGHT + 48;
 export function Editor(props: EditorProps) {
   const {
     id,
-    startRule = "expression",
+    expressionMode = "expression",
     stageIndex,
     query,
     expressionIndex,
@@ -114,7 +113,7 @@ export function Editor(props: EditorProps) {
   });
 
   const extensions = useExtensions({
-    startRule,
+    expressionMode,
     query,
     stageIndex,
     expressionIndex,
@@ -128,7 +127,7 @@ export function Editor(props: EditorProps) {
     if (!view) {
       return;
     }
-    const clause = MBQL_CLAUSES[name];
+    const clause = getClauseDefinition(name);
     if (!clause) {
       return;
     }
@@ -208,7 +207,7 @@ export function Editor(props: EditorProps) {
       {isFunctionBrowserOpen && (
         <LayoutSidebar h={hasHeader ? FB_HEIGHT_WITH_HEADER : FB_HEIGHT}>
           <FunctionBrowser
-            startRule={startRule}
+            expressionMode={expressionMode}
             reportTimezone={reportTimezone}
             query={query}
             onClauseClick={handleFunctionBrowserClauseClick}
@@ -228,7 +227,7 @@ export function Editor(props: EditorProps) {
 
 function useExpression({
   clause,
-  startRule,
+  expressionMode,
   stageIndex,
   query,
   expressionIndex,
@@ -297,7 +296,7 @@ function useExpression({
 
       const { error, expressionClause: clause } = diagnoseAndCompile({
         source,
-        startRule,
+        expressionMode,
         query,
         stageIndex,
         metadata,
@@ -313,7 +312,7 @@ function useExpression({
     [
       query,
       stageIndex,
-      startRule,
+      expressionMode,
       metadata,
       handleChange,
       debouncedOnChange,
