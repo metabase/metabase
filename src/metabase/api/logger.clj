@@ -41,11 +41,14 @@
                     (map logger))
            namespace-names))))
 
+(mr/def ::log-level
+  (into [:enum {:decode/json keyword}] logger/levels))
+
 (defn- presets
   []
   (let [namespace-names (all-namespace-names)]
     [{:id :sync
-      :display-name (tru "Sync issue")
+      :display_name (tru "Sync issue")
       :loggers (->> (-> [(logger "metabase.driver")]
                         (into (loggers-under "metabase.sync" namespace-names))
                         (into (comp (map #(str "metabase.driver." %))
@@ -53,7 +56,11 @@
                               (sort (loaded-drivers))))
                     (sort-by :name))}]))
 
-(api.macros/defendpoint :get "/presets"
+(api.macros/defendpoint :get "/presets" :- [:sequential
+                                            [:map
+                                             [:id :keyword]
+                                             [:display_name :string]
+                                             [:loggers [:sequential [:map [:name :string] [:level ::log-level]]]]]]
   "Get all known presets."
   []
   (api/check-superuser)
@@ -131,17 +138,20 @@
   log-adjustment
   (atom nil))
 
-(comment
-  (.getDelay (:undo-task @log-adjustment))
-  -)
+(mr/def ::log-adjustment
+  [:map
+   [:op [:enum :add :change]]
+   [:ns :string]
+   [:from {:optional true} ::log-level]
+   [:to ::log-level]])
 
-(mr/def ::log-level
-  (into [:enum {:decode/json keyword}] logger/levels))
+(mr/def ::plan
+  [:sequential ::log-adjustment])
 
 (mr/def ::time-unit
   (into [:enum {:decode/json keyword}] (keys keyword->TimeUnit)))
 
-(api.macros/defendpoint :post "/adjust"
+(api.macros/defendpoint :post "/adjust" :- ::plan
   "Get the namespaces of preset `id`."
   [_route-params
    _query-params
@@ -153,4 +163,5 @@
   (when-let [task @log-adjustment]
     (cancel-undo-task! task))
   (let [plan (set-log-levels! log_levels)]
-    (reset! log-adjustment {:plan plan, :undo-task (undo-task plan duration duration_unit)})))
+    (reset! log-adjustment {:plan plan, :undo-task (undo-task plan duration duration_unit)})
+    plan))
