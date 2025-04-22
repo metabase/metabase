@@ -48,40 +48,12 @@ jobs:
               node_version: requirements.node,
             };
 
-  build:
-    needs: [get-build-requirements]
+  build-uberjar:
     if: ${{ !cancelled() && !inputs.skip }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-    strategy:
-      matrix:
-        edition: [oss, ee]
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      INTERACTIVE: false
-      # make sure that builds on release branches get licenses, because we use them for releases
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-        with:
-          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: uberjar
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
-
-      - name: Build uberjar with ./bin/build.sh
-        timeout-minutes: 10
-        run:  ./bin/build.sh
-        shell: bash
-
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
-        with:
-          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+    needs: [get-build-requirements]
+    uses: ./.github/workflows/uberjar.yml
+    with:
+      commit: ${{ github.event.inputs.commit }}
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
@@ -119,9 +91,9 @@ jobs:
     uses: ./.github/workflows/e2e-test.yml
     needs:
       - e2e-matrix-builder
-      - build
+      - build-uberjar
     if: |
-      !cancelled() && needs.build.result == 'success'
+      !cancelled() && needs.build-uberjar.result == 'success'
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -139,9 +111,9 @@ jobs:
   flaky-e2e-tests:
     name: Flaky e2e Tests
     uses: ./.github/workflows/e2e-test.yml
-    needs: build
+    needs: build-uberjar
     if: |
-      !cancelled() && needs.build.result == 'success'
+      !cancelled() && needs.build-uberjar.result == 'success'
     secrets: inherit
     with:
       name: Flaky
@@ -176,7 +148,7 @@ jobs:
           fi
 
   pr-env:
-    needs: [build]
+    needs: [build-uberjar]
     if: |
       !cancelled() &&
       contains(github.event.pull_request.labels.*.name, 'PR-Env')
