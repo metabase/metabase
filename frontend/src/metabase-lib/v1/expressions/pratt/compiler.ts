@@ -10,9 +10,9 @@ import {
   isFloatLiteral,
   isIntegerLiteral,
   isStringLiteral,
-} from "../matchers";
+} from "../literal";
 import type { Kind } from "../resolver";
-import type { ExpressionType, StartRule } from "../types";
+import type { ExpressionType } from "../types";
 
 import {
   ADD,
@@ -49,7 +49,7 @@ type CompileFn = (
 
 type Options = {
   resolver?: Resolver | null;
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
 };
 
 type Context = {
@@ -59,9 +59,18 @@ type Context = {
 
 export function compile(node: Node, options: Options) {
   return compileRoot(node, {
-    type: options.startRule,
+    type: getTypeForExpressionMode(options.expressionMode),
     resolver: options.resolver ?? fallbackResolver,
   });
+}
+
+function getTypeForExpressionMode(
+  expressionMode: Lib.ExpressionMode,
+): ExpressionType {
+  if (expressionMode === "filter") {
+    return "boolean";
+  }
+  return expressionMode;
 }
 
 function fallbackResolver(_kind: Kind, name: string, _node?: Node) {
