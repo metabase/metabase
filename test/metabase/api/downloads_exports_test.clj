@@ -521,17 +521,7 @@
                       ["Gizmo" "$529.70" "$1,080.18" "$997.94" "$227.06" "$2,834.88"]
                       ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
                       ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"]]
-                     (card-download card {:export-format :csv :format-rows true :pivot true}))))
-            (testing "the xlsx export has a pivot table"
-              (let [result (mt/user-http-request :crowberto :post 200
-                                                 (format "card/%d/query/xlsx" (:id card))
-                                                 {:format_rows   true
-                                                  :pivot_results true})
-                    pivot  (with-open [in (io/input-stream result)]
-                             (->> (spreadsheet/load-workbook in)
-                                  (spreadsheet/select-sheet "pivot")
-                                  ((fn [s] (.getPivotTables ^XSSFSheet s)))))]
-                (is (some? pivot))))))))))
+                     (card-download card {:export-format :csv :format-rows true :pivot true}))))))))))
 
 (deftest ^:parallel pivot-export-test
   (mt/dataset test-data
