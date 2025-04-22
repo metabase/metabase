@@ -49,6 +49,8 @@ Once you've enabled SCIM in Metabase and gotten your SCIM endpoint URL and SCIM 
 
 With Okta, Metabase supports user and group provisioning; groups are created and populated in Metabase.
 
+NOTE: the authentication mode you need to set is "HTTP Header"
+
 ## SCIM with Microsoft Entra ID
 
 Once you've enabled SCIM in Metabase and gotten your SCIM endpoint URL and SCIM token, follow the docs for [Setting up SCIM in Microsoft Entra ID](https://learn.microsoft.com/en-us/entra/identity/app-provisioning/configure-automatic-user-provisioning-portal).
