@@ -749,9 +749,6 @@ export const NUMBER_OPERATORS = new Set([
   OPERATOR.Slash,
 ]);
 
-// operators in which order of operands doesn't matter
-export const EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY = new Set(["+", "*"]);
-
 export const COMPARISON_OPERATORS = new Set([
   OPERATOR.Equal,
   OPERATOR.NotEqual,

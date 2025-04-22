@@ -100,6 +100,45 @@ describe("format", () => {
         expression`
           90071992547409901
         `,
+        expression`
+          1 + 2 - (3 + 4)
+        `,
+        expression`
+          1 - 2 + (3 - 4)
+        `,
+        expression`
+          1 - 2 - 3 + 4
+        `,
+        expression`
+          1 * 2 / (3 + 4)
+        `,
+        expression`
+          1 / 2 * (3 / 4)
+        `,
+        expression`
+          1 / 2 / 3 * 4
+        `,
+        expression`
+          1 * (2 + 3)
+        `,
+        expression`
+          1 * (2 - 3)
+        `,
+        expression`
+          1 * (2 / 3)
+        `,
+        expression`
+          1 / (2 + 3)
+        `,
+        expression`
+          1 / (2 - 3)
+        `,
+        expression`
+          1 / (2 / 3)
+        `,
+        expression`
+          1 - (2 - 3)
+        `,
       ]);
     });
 

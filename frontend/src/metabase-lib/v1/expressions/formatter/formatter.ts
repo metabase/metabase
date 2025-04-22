@@ -8,7 +8,6 @@ import { isa } from "metabase-lib/v1/types/utils/isa";
 
 import {
   type EDITOR_QUOTES,
-  EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY,
   FIELD_MARKERS,
   OPERATORS,
   OPERATOR_PRECEDENCE,
@@ -337,8 +336,7 @@ function formatOperator(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {
     // "a - b + c" vs "a - (b + c)", "a - b - c" vs "a - (b - c)"
     const isSamePrecedenceWithExecutionPriority =
       index > 0 &&
-      OPERATOR_PRECEDENCE[node.operator] === OPERATOR_PRECEDENCE[argOperator] &&
-      !EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY.has(node.operator);
+      OPERATOR_PRECEDENCE[node.operator] === OPERATOR_PRECEDENCE[argOperator];
 
     const shouldUseParens =
       isLowerPrecedence || isSamePrecedenceWithExecutionPriority;
