@@ -50,5 +50,6 @@ runs:
       with:
         junit-paths: ${{ inputs.input-path }}
         org-slug: metabase
+        variant: ${{ inputs.output-name }}
         token: ${{ inputs.trunk-api-token }}
       continue-on-error: true
