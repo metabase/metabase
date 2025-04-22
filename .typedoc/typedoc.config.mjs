@@ -6,7 +6,6 @@ const config = {
   name: "Embedded analytics SDK API",
   tsconfig: "./tsconfig.sdk-docs.json",
   plugin: [
-    "typedoc-plugin-missing-exports",
     "typedoc-plugin-mdn-links",
     "typedoc-plugin-dt-links",
     "typedoc-plugin-redirect",
@@ -15,7 +14,6 @@ const config = {
   ],
   entryPoints: ["../resources/embedding-sdk/dist/index.d.ts"],
   router: "structure",
-  internalModule: "internal",
   outputs: [
     {
       name: "html",
@@ -25,7 +23,6 @@ const config = {
         customJs: "./.typedoc/page-custom-logic.js",
         customCss: "./.typedoc/page-custom-styles.css",
         hideGenerator: true,
-        collapseInternalModule: true,
         visibilityFilters: {},
         frontmatterGlobals: {
           title: "Embedded analytics SDK documentation",
@@ -40,9 +37,6 @@ const config = {
       },
     },
   ],
-  redirects: {
-    "internal.html": "index.html",
-  },
   defaultCategory: "other",
   kindSortOrder: [
     "Reference",
