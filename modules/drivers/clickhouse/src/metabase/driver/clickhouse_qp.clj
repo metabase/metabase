@@ -339,10 +339,6 @@
   [_]
   :Float64)
 
-(defmethod sql.qp/cast-float :clickhouse
-  [_ value]
-  [:'toFloat64 value])
-
 (defmethod sql.qp/->honeysql [:clickhouse :value]
   [driver value]
   (let [[_ value {base-type :base_type}] value]

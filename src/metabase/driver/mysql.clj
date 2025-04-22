@@ -314,10 +314,6 @@
   [_]
   "DOUBLE")
 
-(defmethod sql.qp/cast-float :mysql
-  [_ value]
-  (h2x/maybe-cast "DOUBLE" value))
-
 (defmethod sql.qp/->integer :mysql
   [_ value]
   (h2x/maybe-cast :signed value))

@@ -581,10 +581,6 @@
   [_]
   :float64)
 
-(defmethod sql.qp/cast-float :bigquery-cloud-sdk
-  [_ value]
-  (h2x/maybe-cast :float64 value))
-
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :regex-match-first]
   [driver [_ arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
