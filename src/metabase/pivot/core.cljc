@@ -19,9 +19,10 @@
      :clj (json/decode x)))
 
 (defn- json-roundtrip
-  "Round-trips a value to JSON and back"
+  "Round-trips a value to JSON and back in Clojure to ensure it can be used as a key with consistent type.
+  Does nothing in CLJS."
   [x]
-  #?(:cljs (js->clj (js/JSON.parse (js/JSON.stringify x)))
+  #?(:cljs x
      :clj (json/decode (json/encode x))))
 
 (defn- pivot-group-column?
