@@ -21,7 +21,7 @@ describe("pratt/compiler", () => {
     });
 
     return compile(ast.root, {
-      startRule: "expression",
+      expressionMode: "expression",
     });
   }
 

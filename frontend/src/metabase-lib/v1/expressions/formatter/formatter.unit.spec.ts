@@ -15,11 +15,13 @@ import {
   stageIndex,
 } from "../test/shared";
 import { op, opt } from "../test/utils";
-import type { StartRule } from "../types";
 
 import { format, formatExpressionParts } from "./formatter";
 
-function setup(printWidth: number, startRule: StartRule = "expression") {
+function setup(
+  printWidth: number,
+  expressionMode: Lib.ExpressionMode = "expression",
+) {
   async function assertFormatted(
     expressions: string | string[],
   ): Promise<void> {
@@ -29,7 +31,7 @@ function setup(printWidth: number, startRule: StartRule = "expression") {
     for (const source of expressions) {
       const options = {
         query,
-        startRule,
+        expressionMode,
         stageIndex,
       };
 
@@ -182,7 +184,7 @@ describe("format", () => {
     });
 
     it("formats unary operators", async () => {
-      const { assertFormatted } = setup(25, "boolean");
+      const { assertFormatted } = setup(25, "filter");
       await assertFormatted([
         expression`
           NOT [Total] < 10
