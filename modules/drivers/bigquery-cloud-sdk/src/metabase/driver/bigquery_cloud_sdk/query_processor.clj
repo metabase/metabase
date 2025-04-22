@@ -202,6 +202,10 @@
   [driver [_ value]]
   (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
 
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :float]
+  [driver [_ value]]
+  (h2x/maybe-cast "FLOAT64" (sql.qp/->honeysql driver value)))
+
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :split-part]
   [driver [_ text divider position]]
   [:coalesce
@@ -218,7 +222,7 @@
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :date]
   [driver [_ value]]
-  [:parse_date (sql.qp/->honeysql driver value) "%Y-%m-%d"])
+  [:parse_date "%Y-%m-%d" (sql.qp/->honeysql driver value)])
 
 ;; TODO -- all this [[temporal-type]] stuff below can be replaced with the more generalized
 ;; [[h2x/with-database-type-info]] stuff we've added. [[h2x/with-database-type-info]] was inspired by this BigQuery code
