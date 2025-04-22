@@ -20,4 +20,14 @@ describe("getSelectionPosition/setSelectionPosition", () => {
     const position = getSelectionPosition(input);
     expect(position).toEqual([3, 6]);
   });
+  
+  it("does not hang or crash on malicious DOS input", () => {
+      // Regex DOS vulnerability test vector
+      const malicious = "data:\u0000" + "\u0000,".repeat(100000) + "\n1\n";
+      const start = Date.now();
+      const result = parseDataUri(malicious);
+      const duration = Date.now() - start;
+      expect(result).toBeNull();
+      expect(duration).toBeLessThan(1000);
+  });
 });
