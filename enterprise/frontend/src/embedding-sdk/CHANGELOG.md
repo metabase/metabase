@@ -1,3 +1,12 @@
+## [0.55.3-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.2-metabot...embedding-sdk-0.55.3-metabot) (2025-04-22)
+
+
+### Bug Fixes
+
+* **sdk:** css variables leak from Mantine to the host app ([#56985](https://github.com/metabase/metabase/issues/56985)) ([2b3f683](https://github.com/metabase/metabase/commit/2b3f6833e71696827cb61a4b5a504859ce674f01))
+
+
+
 ## [0.55.2-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.1-metabot...embedding-sdk-0.55.2-metabot) (2025-04-22)
 
 
