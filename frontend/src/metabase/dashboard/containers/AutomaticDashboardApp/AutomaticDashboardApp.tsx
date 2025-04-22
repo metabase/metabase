@@ -2,18 +2,22 @@
 import cx from "classnames";
 import { dissoc } from "icepick";
 import { Component } from "react";
+import type { ConnectedProps } from "react-redux";
+import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ActionButton from "metabase/components/ActionButton";
-import Card from "metabase/components/Card";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
-import { DashboardData } from "metabase/dashboard/hoc/DashboardData";
+import {
+  DashboardData,
+  type DashboardDataReturnedProps,
+} from "metabase/dashboard/hoc/DashboardData";
 import { getIsHeaderVisible, getTabs } from "metabase/dashboard/selectors";
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
@@ -24,21 +28,28 @@ import * as Urls from "metabase/lib/urls";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Flex, Icon, Title, Tooltip } from "metabase/ui";
+import { Box } from "metabase/ui";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
+import type { State } from "metabase-types/store";
 
-import { FixedWidthContainer } from "../components/Dashboard/DashboardComponents";
-import { useDashboardUrlQuery } from "../hooks/use-dashboard-url-query";
+import { FixedWidthContainer } from "../../components/Dashboard/DashboardComponents";
+import { useDashboardUrlQuery } from "../../hooks/use-dashboard-url-query";
+import { XrayIcon } from "../XrayIcon";
 
 import S from "./AutomaticDashboardApp.module.css";
-import { XrayIcon } from "./XrayIcon";
+import { SuggestionsSidebar } from "./SuggestionsSidebar";
 
-type AutomaticDashboardAppRouterProps = WithRouterProps<{ split: string }>
+type AutomaticDashboardAppRouterProps = WithRouterProps<{ splat: string }>;
 
-const getDashboardId = (_state: State, { params: { splat }, location: { hash } }: AutomaticDashboardAppRouterProps) =>
-  `/auto/dashboard/${splat}${hash.replace(/^#?/, "?")}`;
+const getDashboardId = (
+  _state: State,
+  { params: { splat }, location: { hash } }: AutomaticDashboardAppRouterProps,
+) => `/auto/dashboard/${splat}${hash.replace(/^#?/, "?")}`;
 
-const mapStateToProps = (state: State, props: AutomaticDashboardAppRouterProps) => ({
+const mapStateToProps = (
+  state: State,
+  props: AutomaticDashboardAppRouterProps,
+) => ({
   metadata: getMetadata(state),
   dashboardId: getDashboardId(state, props),
   isHeaderVisible: getIsHeaderVisible(state),
@@ -51,15 +62,20 @@ const mapDispatchToProps = {
   addUndo,
 };
 
-const connector = connect(mapStateToProps, mapDispatchToProps)
-type ReduxProps = ConnectedProps<typeof connector>
+const connector = connect(mapStateToProps, mapDispatchToProps);
+type ReduxProps = ConnectedProps<typeof connector>;
 
-class AutomaticDashboardAppInner extends Component<ReduxProps & AutomaticDashboardAppRouterProps> {
+type AutomaticDashboardAppInnerProps = ReduxProps &
+  AutomaticDashboardAppRouterProps &
+  DashboardDataReturnedProps &
+  WithToasterReturned;
+
+class AutomaticDashboardAppInner extends Component<AutomaticDashboardAppInnerProps> {
   state = {
     savedDashboardId: null,
   };
 
-  componentDidUpdate(prevProps) {
+  componentDidUpdate(prevProps: AutomaticDashboardAppInnerProps) {
     // scroll to the top when the pathname changes
     if (prevProps.location.pathname !== this.props.location.pathname) {
       window.scrollTo(0, 0);
@@ -92,7 +108,7 @@ class AutomaticDashboardAppInner extends Component<ReduxProps & AutomaticDashboa
     this.setState({ savedDashboardId: newDashboard.id });
   };
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps: AutomaticDashboardAppInnerProps) {
     // clear savedDashboardId if changing to a different dashboard
     if (this.props.location.pathname !== nextProps.location.pathname) {
       this.setState({ savedDashboardId: null });
@@ -224,7 +240,6 @@ const TransientTitle = ({ dashboard }) =>
   ) : dashboard.name ? (
     <span>{dashboard.name}</span>
   ) : null;
-
 
 // Workaround until AutomaticDashboardApp is refactored to be a function component
 // (or even better, merged/generalized with DashboardApp)
