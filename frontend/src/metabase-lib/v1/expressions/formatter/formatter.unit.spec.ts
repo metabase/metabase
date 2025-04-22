@@ -239,9 +239,7 @@ describe("format", () => {
     it.each([
       { result: "[Unknown Field]", parts: fields.orders.TOTAL },
       { result: "[Unknown Segment]", parts: segments.EXPENSIVE_THINGS },
-
-      // TODO: fix metrics in tests
-      // { result: "[Unknown Metric]", parts: metrics.FOO },
+      { result: "[Unknown Metric]", parts: metrics.FOO },
     ])("should format an unknown %s as %s", async ({ result, parts }) => {
       const clause = Lib.expressionClause(parts);
 
@@ -599,11 +597,9 @@ describe("if printWidth = Infinity, it should return the same results as the sin
     // ],
   });
 
-  // TODO: cannot find available metrics in tests
-  // eslint-disable-next-line jest/no-disabled-tests
-  it.skip("should format metrics", async () => {
+  it("should format metrics", async () => {
     await all({
-      "[Metric]": metrics.FOO,
+      "[Foo Metric]": metrics.FOO,
     });
   });
 
