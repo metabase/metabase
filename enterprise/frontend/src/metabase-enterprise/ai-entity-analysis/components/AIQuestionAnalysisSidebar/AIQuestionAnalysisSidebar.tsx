@@ -8,18 +8,16 @@ import { isNotNull } from "metabase/lib/types";
 import type { AIQuestionAnalysisSidebarProps } from "metabase/plugins";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { getIsLoadingComplete } from "metabase/query_builder/selectors";
+import { Box } from "metabase/ui";
 import {
   getBase64ChartImage,
   getChartSelector,
 } from "metabase/visualizations/lib/image-exports";
 
 import { useAnalyzeChartMutation } from "../../../api/ai-entity-analysis";
-import { AIAnalysisContent } from "../AIAnalysisContent";
+import { AIAnalysisContent } from "../AIAnalysisContent/AIAnalysisContent";
 
-import styles from "./AIQuestionAnalysisSidebar.module.css";
-
-// TODO: This is a hack to ensure visualizations have rendered after data loading, as they can render asynchronously.
-// We should find a better way to do this.
+// This is a hack to ensure visualizations have rendered after data loading, as they can render asynchronously.
 const RENDER_DELAY_MS = 100;
 
 export function AIQuestionAnalysisSidebar({
@@ -94,8 +92,8 @@ export function AIQuestionAnalysisSidebar({
     return (
       <CopyButton
         value={analysisData.summary}
-        className={styles.copyButton}
-        aria-label={t`Copy summary`}
+        style={{ color: "var(--color-text-medium)" }}
+        aria-label={t`Copy`}
       />
     );
   };
@@ -108,9 +106,9 @@ export function AIQuestionAnalysisSidebar({
       icon="metabot"
       headerActions={renderCopyButton()}
     >
-      <div className={styles.contentWrapper}>
+      <Box px="1.5rem" py="0.5rem">
         <AIAnalysisContent explanation={analysisData?.summary} />
-      </div>
+      </Box>
     </SidebarContent>
   );
 }

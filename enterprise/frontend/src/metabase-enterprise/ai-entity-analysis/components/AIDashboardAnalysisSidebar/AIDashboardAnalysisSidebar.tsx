@@ -45,13 +45,14 @@ export function AIDashboardAnalysisSidebar({
 
   const { analysisData: dashcardAnalysisData, isLoading: isDashcardLoading } =
     useDashCardAnalysis({
-      dashcardId: dashcardId || 0,
-      card: card || { name: "", description: "" },
+      dashcardId,
+      name: card?.name,
+      description: card?.description,
       isLoadingComplete: isDashCardsLoadingComplete,
       isEnabled: !isDashboardMode,
     });
 
-  // Parameter and tab change handling for dashboard mode
+  // Update analysis when dashboard tab changes
   useEffect(() => {
     if (!isDashboardMode) {
       return;
@@ -62,6 +63,7 @@ export function AIDashboardAnalysisSidebar({
     }
   }, [isDashboardMode, selectedTabId, previousTabId, reloadDashboardAnalysis]);
 
+  // Update analysis when dashboard parameters change
   useEffect(() => {
     if (!isDashboardMode || !previousParameterValues) {
       return;

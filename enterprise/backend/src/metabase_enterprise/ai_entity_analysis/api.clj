@@ -1,5 +1,5 @@
-(ns metabase-enterprise.ai-analysis.api
-  "`/api/ee/ai-analysis/` routes"
+(ns metabase-enterprise.ai-entity-analysis.api
+  "`/api/ee/ai-entity-analysis/` routes"
   (:require
    [metabase-enterprise.metabot-v3.client :as metabot-client]
    [metabase.api.macros :as api.macros]
@@ -62,5 +62,5 @@
     {:summary (:analysis resp)}))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/ai-analysis` routes."
+  "`/api/ee/ai-entity-analysis` routes."
   (api.macros/ns-handler *ns* +auth))

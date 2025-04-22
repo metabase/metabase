@@ -12,17 +12,7 @@
 .analysisWrapper h4,
 .analysisWrapper h5,
 .analysisWrapper h6 {
-  margin-top: 1.5rem;
   margin-bottom: 1rem;
-}
-
-.analysisWrapper h1:first-child,
-.analysisWrapper h2:first-child,
-.analysisWrapper h3:first-child,
-.analysisWrapper h4:first-child,
-.analysisWrapper h5:first-child,
-.analysisWrapper h6:first-child {
-  margin-top: 0;
 }
 
 .analysisWrapper ul,

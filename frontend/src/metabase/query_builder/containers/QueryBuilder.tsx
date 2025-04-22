@@ -118,10 +118,6 @@ type EntityListLoaderMergedProps = {
   TimelineListLoaderOutput;
 
 const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
-  const isAIQuestionAnalysisSidebarVisible =
-    state.plugins?.aiAnalysisPlugin?.isAIQuestionAnalysisSidebarVisible ||
-    false;
-
   return {
     user: getUser(state),
     canManageSubscriptions: canManageSubscriptions(state),
@@ -169,7 +165,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     isHeaderVisible: getIsHeaderVisible(state),
     isActionListVisible: getIsActionListVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
-    isAIQuestionAnalysisSidebarVisible,
 
     parameters: getParameters(state),
     sampleDatabaseId: getSampleDatabaseId(state),

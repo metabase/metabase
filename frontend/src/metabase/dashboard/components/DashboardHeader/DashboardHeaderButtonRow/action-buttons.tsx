@@ -1,5 +1,5 @@
 import { DashboardSharingMenu } from "metabase/embedding/components/SharingMenu/DashboardSharingMenu";
-import { PLUGIN_AI_ANALYSIS } from "metabase/plugins";
+import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import { Center, Divider } from "metabase/ui";
 
 import { DashboardBookmark } from "../../DashboardBookmark";
@@ -173,9 +173,9 @@ export const dashboardActionButtons: Record<
       !dashboard.archived,
   },
   [DASHBOARD_ACTION.ANALYZE_DASHBOARD]: {
-    component: () => <PLUGIN_AI_ANALYSIS.AIDashboardAnalysisButton />,
+    component: () => <PLUGIN_AI_ENTITY_ANALYSIS.AIDashboardAnalysisButton />,
     enabled: ({ isEditing, dashboard }) =>
-      PLUGIN_AI_ANALYSIS.canAnalyzeDashboard(dashboard) && !isEditing,
+      PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeDashboard(dashboard) && !isEditing,
   },
 
   // ACTIONS WHEN DASHBOARD IS ANALYTICS DASHBOARD

@@ -8,10 +8,10 @@ import { useInteractiveDashboardContext } from "embedding-sdk/components/public/
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { editQuestion } from "metabase/dashboard/actions";
-import { showDashCardAnalysisSidebar } from "metabase/dashboard/actions/ui";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import { useDispatch } from "metabase/lib/redux";
-import { PLUGIN_AI_ANALYSIS } from "metabase/plugins";
+import { isNotNull } from "metabase/lib/types";
+import { PLUGIN_DASHCARD_MENU } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { DashCardId, Dataset } from "metabase-types/api";
@@ -94,18 +94,11 @@ export const DashCardMenuItems = ({
       });
     }
 
-    if (PLUGIN_AI_ANALYSIS.canAnalyzeQuestion(question)) {
-      items.push({
-        key: "MB_ANALYZE_CHART",
-        iconName: "metabot",
-        label: t`Analyze chart`,
-        onClick: () => {
-          if (dashcardId != null) {
-            dispatch(showDashCardAnalysisSidebar(dashcardId));
-          }
-        },
-      });
-    }
+    items.push(
+      ...PLUGIN_DASHCARD_MENU.dashcardMenuItemGetters
+        .map((itemGetter) => itemGetter(question, dashcardId, dispatch))
+        .filter(isNotNull),
+    );
 
     if (customItems) {
       items.push(

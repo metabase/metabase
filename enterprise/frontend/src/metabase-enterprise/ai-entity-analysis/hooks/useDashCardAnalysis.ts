@@ -4,7 +4,7 @@ import {
   getBase64ChartImage,
   getChartSelector,
 } from "metabase/visualizations/lib/image-exports";
-import type { Card, DashCardId } from "metabase-types/api";
+import type { DashCardId } from "metabase-types/api";
 
 import { useAnalyzeChartMutation } from "../../api/ai-entity-analysis";
 
@@ -12,15 +12,17 @@ import { useAnalyzeChartMutation } from "../../api/ai-entity-analysis";
 const RENDER_DELAY_MS = 100;
 
 interface UseDashCardAnalysisOptions {
-  dashcardId: DashCardId;
-  card: Card;
+  dashcardId?: DashCardId;
+  name?: string | null;
+  description?: string | null;
   isLoadingComplete: boolean;
   isEnabled?: boolean;
 }
 
 export function useDashCardAnalysis({
   dashcardId,
-  card,
+  name,
+  description,
   isLoadingComplete,
   isEnabled = true,
 }: UseDashCardAnalysisOptions) {
@@ -42,8 +44,8 @@ export function useDashCardAnalysis({
       if (imageBase64) {
         await analyzeChart({
           imageBase64,
-          name: card.name,
-          description: card.description ?? undefined,
+          name: name ?? undefined,
+          description: description ?? undefined,
           timelineEvents: [],
         });
       }
@@ -58,7 +60,14 @@ export function useDashCardAnalysis({
         analysisTimeoutRef.current = null;
       }
     };
-  }, [analyzeChart, dashcardId, isLoadingComplete, card, isEnabled]);
+  }, [
+    analyzeChart,
+    dashcardId,
+    isLoadingComplete,
+    name,
+    description,
+    isEnabled,
+  ]);
 
   return {
     analysisData: analysisData?.summary,

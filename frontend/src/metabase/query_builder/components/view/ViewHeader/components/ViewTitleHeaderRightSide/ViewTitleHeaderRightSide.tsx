@@ -8,7 +8,7 @@ import { QuestionSharingMenu } from "metabase/embedding/components/SharingMenu";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { PLUGIN_AI_ANALYSIS } from "metabase/plugins";
+import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
@@ -224,8 +224,9 @@ export function ViewTitleHeaderRightSide({
         </Box>
       )}
       {!isShowingNotebook && <QuestionSharingMenu question={question} />}
-      {!isShowingNotebook && PLUGIN_AI_ANALYSIS.canAnalyzeQuestion(question) ? (
-        <PLUGIN_AI_ANALYSIS.AIQuestionAnalysisButton />
+      {!isShowingNotebook &&
+      PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion(question) ? (
+        <PLUGIN_AI_ENTITY_ANALYSIS.AIQuestionAnalysisButton />
       ) : null}
       {isSaved && (
         <QuestionActions

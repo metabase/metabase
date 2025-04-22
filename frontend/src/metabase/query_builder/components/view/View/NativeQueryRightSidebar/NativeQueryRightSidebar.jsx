@@ -1,6 +1,6 @@
 import { match } from "ts-pattern";
 
-import { PLUGIN_AI_ANALYSIS } from "metabase/plugins";
+import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
@@ -77,7 +77,7 @@ export const NativeQueryRightSidebar = (props) => {
       <QuestionSettingsSidebar question={question} />
     ))
     .with({ isShowingAIQuestionAnalysisSidebar: true }, () => (
-      <PLUGIN_AI_ANALYSIS.AIQuestionAnalysisSidebar
+      <PLUGIN_AI_ENTITY_ANALYSIS.AIQuestionAnalysisSidebar
         question={question}
         timelines={timelines}
         onClose={onCloseAIQuestionAnalysisSidebar}

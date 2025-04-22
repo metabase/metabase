@@ -131,7 +131,10 @@ const downloadChart = async ({
   dashcardId,
 }: DownloadQueryResultsOpts) => {
   const fileName = getChartFileName(question);
-  const chartSelector = getChartSelector({ dashcardId });
+  const isDashcard = dashcardId != null;
+  const chartSelector = getChartSelector(
+    isDashcard ? { dashcardId } : { cardId: question.id() },
+  );
   await saveChartImage(chartSelector, fileName);
 };
 

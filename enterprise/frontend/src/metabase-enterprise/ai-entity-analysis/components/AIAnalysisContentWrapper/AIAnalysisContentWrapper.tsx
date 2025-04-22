@@ -1,20 +1,15 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { CopyButton } from "metabase/components/CopyButton";
-import { Icon } from "metabase/ui";
+import { Button, Flex, Group, Icon, Stack, Text } from "metabase/ui";
 
-import { AIAnalysisContent } from "../AIAnalysisContent";
-
-import styles from "./AIAnalysisContentWrapper.module.css";
+import { AIAnalysisContent } from "../AIAnalysisContent/AIAnalysisContent";
 
 export interface AIAnalysisContentWrapperProps {
   title: string;
   explanation?: string;
   isLoading: boolean;
   onClose?: () => void;
-  renderHeader?: () => ReactNode;
-  children?: ReactNode;
 }
 
 export function AIAnalysisContentWrapper({
@@ -22,35 +17,39 @@ export function AIAnalysisContentWrapper({
   explanation,
   isLoading,
   onClose,
-  renderHeader,
-  children,
 }: AIAnalysisContentWrapperProps) {
   return (
-    <div className={styles.contentWrapper}>
-      <div className={styles.header}>
-        <h3 className={styles.title}>{title}</h3>
-        <div className={styles.actions}>
+    <Stack h="100%" p="lg" style={{ overflowY: "auto" }}>
+      <Group justify="space-between" align="center">
+        <Flex align="center" gap="xs">
+          <Icon name="metabot" />
+          <Text fz="1.17em" ml="xs" fw="bold">
+            {title}
+          </Text>
+        </Flex>
+        <Group gap="xs">
           {explanation && (
             <CopyButton
               value={explanation}
-              className={styles.copyButton}
-              aria-label={t`Copy summary`}
+              aria-label={t`Copy`}
+              style={{ color: "var(--color-text-medium)" }}
             />
           )}
           {onClose && (
-            <button
-              className={styles.closeButton}
+            <Button
+              variant="subtle"
+              size="compact-sm"
+              p={4}
               onClick={onClose}
               aria-label={t`Close`}
+              color="text-medium"
             >
               <Icon name="close" size={16} />
-            </button>
+            </Button>
           )}
-        </div>
-      </div>
-      {renderHeader?.()}
+        </Group>
+      </Group>
       <AIAnalysisContent explanation={explanation} isLoading={isLoading} />
-      {children}
-    </div>
+    </Stack>
   );
 }

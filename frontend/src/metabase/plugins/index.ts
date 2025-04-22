@@ -1,6 +1,5 @@
 import React, {
   type ComponentType,
-  type Dispatch,
   type HTMLAttributes,
   type ReactNode,
   type SetStateAction,
@@ -34,6 +33,7 @@ import type {
   ModelFilterSettings,
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/core/components/Link";
+import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
@@ -74,7 +74,7 @@ import type {
   Timeline,
   User,
 } from "metabase-types/api";
-import type { AdminPathKey, State } from "metabase-types/store";
+import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
 
 import type {
   GetAuthProviders,
@@ -453,13 +453,11 @@ export const PLUGIN_REDUCERS: {
   sandboxingPlugin: any;
   shared: any;
   metabotPlugin: any;
-  aiAnalysisPlugin: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
   metabotPlugin: () => null,
-  aiAnalysisPlugin: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
@@ -674,7 +672,7 @@ export interface AIQuestionAnalysisSidebarProps {
   timelines?: Timeline[];
 }
 
-export type PluginAiAnalysis = {
+export type PluginAIEntityAnalysis = {
   AIQuestionAnalysisButton: ComponentType<any>;
   AIDashboardAnalysisButton: ComponentType<any>;
   AIQuestionAnalysisSidebar: ComponentType<AIQuestionAnalysisSidebarProps>;
@@ -683,7 +681,7 @@ export type PluginAiAnalysis = {
   canAnalyzeQuestion: (question: Question) => boolean;
 };
 
-export const PLUGIN_AI_ANALYSIS: PluginAiAnalysis = {
+export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
   AIQuestionAnalysisButton: PluginPlaceholder,
   AIDashboardAnalysisButton: PluginPlaceholder,
   AIQuestionAnalysisSidebar: PluginPlaceholder,
@@ -710,6 +708,20 @@ export const PLUGIN_METABOT = {
 
 export const PLUGIN_GO_MENU = {
   getMenuItems: (_dispatch: any) => [] as Array<any>,
+};
+
+type DashCardMenuItemGetter = (
+  question: Question,
+  dashcardId: DashCardId | undefined,
+  dispatch: Dispatch,
+) => (DashCardMenuItem & { key: string }) | null;
+
+export type PluginDashcardMenu = {
+  dashcardMenuItemGetters: DashCardMenuItemGetter[];
+};
+
+export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
+  dashcardMenuItemGetters: [],
 };
 
 export const PLUGIN_DB_ROUTING = {

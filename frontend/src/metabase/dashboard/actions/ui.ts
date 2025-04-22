@@ -31,16 +31,6 @@ export const showClickBehaviorSidebar =
     }
   };
 
-export const showDashCardAnalysisSidebar =
-  (dashcardId: DashCardId) => (dispatch: Dispatch) => {
-    dispatch(
-      setSidebar({
-        name: SIDEBAR_NAME.analyze,
-        props: { dashcardId },
-      }),
-    );
-  };
-
 export const toggleSidebar =
   (name: DashboardSidebarName) => (dispatch: Dispatch, getState: GetState) => {
     const currentSidebarName = getSidebar(getState()).name;

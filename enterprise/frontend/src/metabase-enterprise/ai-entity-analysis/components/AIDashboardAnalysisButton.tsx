@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
-import { setSidebar } from "metabase/dashboard/actions/ui";
+import { setSidebar } from "metabase/dashboard/actions";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { useDispatch } from "metabase/lib/redux";
 

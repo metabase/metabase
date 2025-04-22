@@ -11,7 +11,7 @@ import { useSelector } from "metabase/lib/redux";
 import DashboardSubscriptionsSidebar from "metabase/notifications/DashboardSubscriptionsSidebar";
 import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
 import { hasMapping } from "metabase/parameters/utils/dashboards";
-import { PLUGIN_AI_ANALYSIS } from "metabase/plugins";
+import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import type {
   CardId,
   DashCardId,
@@ -233,7 +233,7 @@ export function DashboardSidebars({
       );
     case SIDEBAR_NAME.analyze:
       return (
-        <PLUGIN_AI_ANALYSIS.AIDashboardAnalysisSidebar
+        <PLUGIN_AI_ENTITY_ANALYSIS.AIDashboardAnalysisSidebar
           dashcardId={sidebar.props?.dashcardId}
           dashboard={dashboard}
           onClose={closeSidebar}
