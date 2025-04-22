@@ -1,3 +1,4 @@
+/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
@@ -97,7 +98,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         placeholder: "metabase@yourcompany.com",
         type: "string",
         required: true,
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         validations: [["email", t`That's not a valid email address`]],
       },
       {
@@ -107,7 +107,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         type: "string",
         required: false,
         widget: SettingCommaDelimitedInput,
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         validations: [["email_list", t`That's not a valid email address`]],
       },
       {
@@ -143,7 +142,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         placeholder: "587",
         type: "number",
         required: true,
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         validations: [["integer", t`That's not a valid port number`]],
       },
       {
@@ -212,10 +210,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
         description: (
           <>
             <div>
-              {/* eslint-disable-next-line ttag/no-module-declaration */}
               {t`URL of the map tile server to use for rendering maps. If you're using a custom map tile server, you can set it here.`}
             </div>
-            {/* eslint-disable-next-line ttag/no-module-declaration */}
             <div>{t`Metabase uses OpenStreetMaps by default.`}</div>
           </>
         ),
@@ -259,9 +255,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         ],
         description: (
           <>
-            {/* eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045 */}
             <div>{t`Connection timezone to use when executing queries. Defaults to system timezone.`}</div>
-            {/* eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045 */}
             <div>{t`Not all databases support timezones, in which case this setting won't take effect.`}</div>
           </>
         ),
@@ -374,9 +368,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         display_name: t`AI features enabled`,
         description: (
           <>
-            {/* eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045 */}
             <div>{t`Enable AI features.`}</div>
-            {/* eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045 */}
             <div>{t`You must supply an API key before AI features can be enabled.`}</div>
           </>
         ),

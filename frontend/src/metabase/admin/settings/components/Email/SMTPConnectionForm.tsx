@@ -1,3 +1,4 @@
+/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import cx from "classnames";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
@@ -30,7 +31,6 @@ import {
 } from "../../settings";
 import { SetByEnvVarWrapper } from "../SettingsSetting";
 
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const BREADCRUMBS = [[t`Email`, "/admin/settings/email"], [t`SMTP`]];
 
 const SEND_TEST_BUTTON_STATES = {
