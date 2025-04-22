@@ -45,42 +45,53 @@
     :mongo
     (mt/dataset test-data
       (mt/db)
-      (doseq [{:keys [details expected message]} [{:details  {:host   "localhost"
-                                                              :port   3000
-                                                              :dbname "bad-db-name"}
-                                                   :expected false}
-                                                  {:details  {}
-                                                   :expected false}
-                                                  {:details  {:host   "localhost"
-                                                              :port   27017
-                                                              :user   "metabase"
-                                                              :pass   "metasample123"
-                                                              :dbname "test-data"}
-                                                   :expected true}
-                                                  {:details  {:host   "localhost"
-                                                              :user   "metabase"
-                                                              :pass   "metasample123"
-                                                              :dbname "test-data"}
-                                                   :expected true
-                                                   :message  "should use default port 27017 if not specified"}
-                                                  {:details  {:host   "123.4.5.6"
-                                                              :dbname "bad-db-name?connectTimeoutMS=50"}
-                                                   :expected false}
-                                                  {:details  {:host   "localhost"
-                                                              :port   3000
-                                                              :dbname "bad-db-name?connectTimeoutMS=50"}
-                                                   :expected false}
-                                                  {:details  {:use-conn-uri true
-                                                              :conn-uri "mongodb://metabase:metasample123@localhost:27017/test-data?authSource=admin"}
-                                                   :expected (not (tdm/ssl-required?))}
-                                                  {:details  {:use-conn-uri true
-                                                              :conn-uri "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}
-                                                   :expected false}]
-              :let [ssl-details (tdm/conn-details details)]]
-        (testing (str "connect with " details)
-          (is (= expected
-                 (driver.u/can-connect-with-details? :mongo ssl-details))
-              (str message)))))))
+      (let [host     (tx/db-test-env-var :mongo :host "localhost")
+            port     (tx/db-test-env-var :mongo :port 27017)
+            user     (tx/db-test-env-var :mongo :user "metabase")
+            password (tx/db-test-env-var :mongo :password "metasample123")
+            use-srv  (tx/db-test-env-var :mongo :use-srv false)
+            conn-uri (if use-srv
+                       (format "mongodb+srv://%s:%s@%s/test-data" user password host)
+                       (format "mongodb://%s:%s@%s:%s/test-data?authSource=admin" user password host port))]
+        (doseq [{:keys [details expected message]}
+                [{:details  {:host   "localhost"
+                             :port   3000
+                             :dbname "bad-db-name"}
+                  :expected false}
+                 {:details  {}
+                  :expected false}
+                 {:details  {:host   host
+                             :port   port
+                             :user   user
+                             :pass password
+                             :use-srv use-srv
+                             :dbname "test-data"}
+                  :expected true}
+                 {:details  {:host   host
+                             :user   user
+                             :pass   password
+                             :use-srv use-srv
+                             :dbname "test-data"}
+                  :expected true
+                  :message  "should use default port 27017 if not specified"}
+                 {:details  {:host   "123.4.5.6"
+                             :dbname "bad-db-name?connectTimeoutMS=50"}
+                  :expected false}
+                 {:details  {:host   "localhost"
+                             :port   3000
+                             :dbname "bad-db-name?connectTimeoutMS=50"}
+                  :expected false}
+                 {:details  {:use-conn-uri true
+                             :conn-uri conn-uri}
+                  :expected (not (tdm/ssl-required?))}
+                 {:details  {:use-conn-uri true
+                             :conn-uri "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}
+                  :expected false}]
+                :let [ssl-details (tdm/conn-details details)]]
+          (testing (str "connect with " details)
+            (is (= expected
+                   (driver.u/can-connect-with-details? :mongo ssl-details))
+                (str message))))))))
 
 (deftest database-supports?-test
   (mt/test-driver :mongo
@@ -526,14 +537,13 @@
     (mt/dataset all-null-columns
       ;; do a full sync on the DB to get the correct semantic type info
       (sync/sync-database! (mt/db))
-      (is (= [{:name "_id",            :database_type "long",   :base_type :type/Integer, :semantic_type :type/PK}
-              {:name "favorite_snack", :database_type "null",   :base_type :type/*,       :semantic_type nil}
-              {:name "name",           :database_type "string", :base_type :type/Text,    :semantic_type :type/Name}]
-             (map
-              (partial into {})
-              (t2/select [:model/Field :name :database_type :base_type :semantic_type]
-                         :table_id (mt/id :bird_species)
-                         {:order-by [:name]})))))))
+      (is (= {"_id"            {:name "_id",            :database_type "long",   :base_type :type/Integer, :semantic_type :type/PK}
+              "favorite_snack" {:name "favorite_snack", :database_type "null",   :base_type :type/*,       :semantic_type nil}
+              "name"           {:name "name",           :database_type "string", :base_type :type/Text,    :semantic_type :type/Name}}
+             (into {}
+                   (map (fn [field] [(field :name) (into {} field)]))
+                   (t2/select [:model/Field :name :database_type :base_type :semantic_type]
+                              :table_id (mt/id :bird_species))))))))
 
 (deftest new-rows-take-precedence-when-collecting-metadata-test
   (mt/test-driver :mongo
@@ -599,28 +609,33 @@
       ;; Even though Mongo does not support foreign keys, there are few :type/FK semantic types. Why? Because those are
       ;; added to test data manually (see the [[metabase.test.data.impl.get-or-create/create-database!]]) to enable
       ;; implicit joins testing.
-      (is (= [[{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}]
-              [{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:semantic_type nil,             :base_type :type/Instant,  :name "date"}
-               {:semantic_type :type/FK,        :base_type :type/Integer,  :name "user_id"}
-               {:semantic_type :type/FK,        :base_type :type/Integer,  :name "venue_id"}]
-              [{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:semantic_type nil,             :base_type :type/Instant,  :name "last_login"}
-               {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}
-               {:semantic_type :type/Category,  :base_type :type/Text,     :name "password"}]
-              [{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:semantic_type :type/FK,        :base_type :type/Integer,  :name "category_id"}
-               {:semantic_type :type/Latitude,  :base_type :type/Float,    :name "latitude"}
-               {:semantic_type :type/Longitude, :base_type :type/Float,    :name "longitude"}
-               {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}
-               {:semantic_type :type/Category,  :base_type :type/Integer,  :name "price"}]]
-             (vec (for [table-name table-names]
-                    (vec (for [field (t2/select [:model/Field :name :base_type :semantic_type]
-                                                :active   true
-                                                :table_id (mt/id table-name)
-                                                {:order-by [:name]})]
-                           (into {} field))))))))))
+      (is (= {:categories {"_id" {:name "_id", :base_type :type/Integer, :semantic_type :type/PK}
+                           "name" {:name "name", :base_type :type/Text, :semantic_type :type/Name}}
+              :checkins   {"_id" {:name "_id", :base_type :type/Integer, :semantic_type :type/PK}
+                           "date" {:name "date", :base_type :type/Instant, :semantic_type nil}
+                           "user_id" {:name "user_id", :base_type :type/Integer, :semantic_type :type/FK}
+                           "venue_id" {:name "venue_id", :base_type :type/Integer, :semantic_type :type/FK}}
+              :users      {"_id" {:name "_id", :base_type :type/Integer, :semantic_type :type/PK}
+                           "last_login" {:name "last_login", :base_type :type/Instant, :semantic_type nil}
+                           "name" {:name "name", :base_type :type/Text, :semantic_type :type/Name}
+                           "password" {:name "password", :base_type :type/Text, :semantic_type :type/Category}}
+              :venues     {"_id" {:name "_id", :base_type :type/Integer, :semantic_type :type/PK}
+                           "category_id" {:name "category_id", :base_type :type/Integer, :semantic_type :type/FK}
+                           "latitude" {:name "latitude", :base_type :type/Float, :semantic_type :type/Latitude}
+                           "longitude" {:name "longitude", :base_type :type/Float, :semantic_type :type/Longitude}
+                           "name" {:name "name", :base_type :type/Text, :semantic_type :type/Name}
+                           "price" {:name "price", :base_type :type/Integer, :semantic_type :type/Category}}}
+             (into {}
+                   (map (fn [table-name]
+                          [table-name
+                           (into {}
+                                 (map (fn [field]
+                                        [(field :name) (into {} field)]))
+                                 (t2/select [:model/Field :name :base_type :semantic_type]
+                                            :active   true
+                                            :table_id (mt/id table-name)
+                                            {:order-by [:name]}))]))
+                   table-names))))))
 
 (tx/defdataset with-bson-ids
   [["birds"
@@ -1050,3 +1065,4 @@
                     (qp.compile/compile-with-inline-parameters)
                     :query
                     (driver/prettify-native-form driver/*driver*))))))))
+
