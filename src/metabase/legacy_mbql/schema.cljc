@@ -1,6 +1,6 @@
 (ns metabase.legacy-mbql.schema
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
-  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs])
+  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs float])
   (:require
    [clojure.core :as core]
    [clojure.set :as set]
@@ -415,7 +415,7 @@
 
 (def numeric-functions
   "Functions that return numeric values. Should match [[NumericExpression]]."
-  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :if :datetime-diff :integer
+  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :if :datetime-diff :integer :float
     ;; extraction functions (get some component of a given temporal value/column)
     :temporal-extract
     ;; SUGAR drivers do not need to implement
@@ -637,6 +637,9 @@
 (defclause ^{:requires-features #{:expressions :expressions/integer}} integer
   x [:or NumericExpressionArg
      StringExpressionArg])
+
+(defclause ^{:requires-features #{:expressions :expressions/float}} float
+  x StringExpressionArg)
 
 ;; The result is positive if x <= y, and negative otherwise.
 ;;
@@ -960,7 +963,7 @@
   clauses CaseClauses, options (optional CaseOptions))
 
 (mr/def ::NumericExpression
-  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff integer
+  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff integer float
           temporal-extract get-year get-quarter get-month get-week get-day get-day-of-week
           get-hour get-minute get-second))
 
