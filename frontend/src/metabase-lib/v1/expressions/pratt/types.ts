@@ -54,9 +54,6 @@ export interface Node {
 export interface NodeType {
   name?: string;
 
-  // Should the parser ignore this sort of token entirely (whitespace)
-  skip: boolean;
-
   // Number of operands to expect for this node on the left side
   leftOperands: number;
   // Number of operands to expect for this node on the right side

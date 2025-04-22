@@ -48,9 +48,6 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
   ) {
     const token = tokens[index];
 
-    if (token.type.skip) {
-      continue;
-    }
     if (token.type === BAD_TOKEN) {
       error(t`Unexpected token "${token.text}"`, node);
 

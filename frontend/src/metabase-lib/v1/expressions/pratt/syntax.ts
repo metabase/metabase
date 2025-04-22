@@ -82,8 +82,6 @@ const ALL_NODES = {
 // Set default values for AST node attributes
 setAttributes([
   {
-    skip: false,
-
     leftOperands: 0,
     rightOperands: 0,
     expectedChildCount: 0,
