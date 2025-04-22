@@ -64,7 +64,9 @@ export class Scalar extends Component {
 
   static settings = {
     ...fieldSetting("scalar.field", {
-      title: t`Field to show`,
+      get title() {
+        return t`Field to show`;
+      },
       getDefault: ([
         {
           data: { cols },

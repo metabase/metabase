@@ -19,18 +19,18 @@ import {
 
 export type Options = {
   query: Lib.Query;
-  startRule: string;
+  expressionMode: Lib.ExpressionMode;
   metadata: Metadata;
   reportTimezone?: string;
 };
 
 export function suggestAggregations({
-  startRule,
+  expressionMode,
   query,
   metadata,
   reportTimezone,
 }: Options) {
-  if (startRule !== "aggregation") {
+  if (expressionMode !== "aggregation") {
     return null;
   }
 
