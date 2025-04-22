@@ -53,6 +53,7 @@ export const SdkInteractiveEmbedProvider = ({
       locale={locale}
       store={store as StoreWithSdkState}
       classNames={{ portalContainer: S.InteractiveEmbeddingPortalContainer }}
+      isIframe
     >
       {children}
     </MetabaseProviderInternal>
