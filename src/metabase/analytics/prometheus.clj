@@ -236,14 +236,6 @@
                        {:description "Number of emails sent."})
    (prometheus/counter :metabase-email/message-errors
                        {:description "Number of errors when sending emails."})
-   (prometheus/counter :metabase-sdk/response-ok
-                       {:description "Number of successful SDK requests."})
-   (prometheus/counter :metabase-sdk/response-error
-                       {:description "Number of errors when responding to SDK requests."})
-   (prometheus/counter :metabase-embedding-iframe/response-ok
-                       {:description "Number of successful iframe embedding requests."})
-   (prometheus/counter :metabase-embedding-iframe/response-error
-                       {:description "Number of errors when responding to iframe embedding requests."})
    (prometheus/counter :metabase-scim/response-ok
                        {:description "Number of successful responses from SCIM endpoints"})
    (prometheus/counter :metabase-scim/response-error
@@ -319,7 +311,13 @@
                        {:description "How many failures there were when creating a Google Sheets connection."
                         :labels [:reason]})
    (prometheus/counter :metabase-gsheets/connection-deleted
-                       {:description "How many times the instance has deleted their Google Sheets connection."})])
+                       {:description "How many times the instance has deleted their Google Sheets connection."})
+   (prometheus/counter :metabase-sdk/response
+                       {:description "Number of SDK embedding responses by status code."
+                        :labels [:status]})
+   (prometheus/counter :metabase-embedding-iframe/response
+                       {:description "Number of iframe embedding responses by status code."
+                        :labels [:status]})])
 
 (defmulti known-labels
   "Implement this for a given metric to initialize it for the given set of label values."
