@@ -505,7 +505,7 @@
                 VENUES.PRICE       AS PRICE
                 CAST (VENUES.PRICE AS float)
                 /
-                NULLIF (CategoriesStats.AvgPrice, 0) AS RelativePrice
+                NULLIF (CAST (CategoriesStats.AvgPrice AS float), 0.0) AS RelativePrice
                 CategoriesStats.CATEGORY_ID AS CategoriesStats__CATEGORY_ID
                 CategoriesStats.MaxPrice    AS CategoriesStats__MaxPrice
                 CategoriesStats.AvgPrice    AS CategoriesStats__AvgPrice
@@ -809,7 +809,7 @@
     (is (= '{:select   [CAST
                         (VENUES.PRICE AS float)
                         /
-                        NULLIF (VENUES.PRICE + 2, 0) AS my_cool_new_field]
+                        NULLIF (CAST (VENUES.PRICE + 2 AS float), 0.0) AS my_cool_new_field]
              :from     [VENUES]
              :order-by [VENUES.ID ASC]
              :limit    [3]}
