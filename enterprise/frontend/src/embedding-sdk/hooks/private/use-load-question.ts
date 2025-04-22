@@ -1,7 +1,6 @@
 import { useReducer, useRef, useState } from "react";
 import { useAsyncFn, useUnmount } from "react-use";
 
-import type { ParameterValues } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import {
   loadQuestionSdk,
   runQuestionOnNavigateSdk,
@@ -13,6 +12,7 @@ import type {
   LoadSdkQuestionParams,
   NavigateToNewCardParams,
   SdkQuestionState,
+  SqlParameterValues,
 } from "embedding-sdk/types/question";
 import { type Deferred, defer } from "metabase/lib/promise";
 import type Question from "metabase-lib/v1/Question";
@@ -204,7 +204,7 @@ const questionReducer = (state: SdkQuestionState, next: SdkQuestionState) => ({
 });
 
 export const getParameterDependencyKey = (
-  parameters?: ParameterValues,
+  parameters?: SqlParameterValues,
 ): string =>
   Object.entries(parameters ?? {})
     .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))

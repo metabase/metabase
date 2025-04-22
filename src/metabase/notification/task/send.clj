@@ -102,29 +102,33 @@
   (let [subscription    (t2/select-one :model/NotificationSubscription subscription-id)
         notification-id (:notification_id subscription)
         notification    (t2/select-one :model/Notification notification-id)]
-    (cond
-      (:active notification)
-      (try
-        (log/infof "Sending notification %d for subscription %d" notification-id subscription-id)
-        (task-history/with-task-history {:task         "notification-trigger"
-                                         :task_details {:trigger_type                 :notification-subscription/cron
-                                                        :notification_subscription_id subscription-id
-                                                        :cron_schedule                (:cron_schedule subscription)
-                                                        :notification_ids             [notification-id]}}
-          (notification.send/send-notification! (assoc notification :triggering_subscription subscription)))
-        (log/infof "Sent notification %d for subscription %d" notification-id subscription-id)
-        (catch Exception e
-          (log/errorf e "Failed to send notification %d for subscription %d" notification-id subscription-id)
-          (throw e)))
+    (log/with-context {:subscription-id subscription-id
+                       :notification-id notification-id}
 
-      (nil? notification)
-      (do
-        (log/warnf "Skipping and deleting trigger for subscription %d because it does not exist." subscription-id)
-        (delete-trigger-for-subscription! subscription-id))
-      (not (:active notification))
-      (do
-        (log/warnf "Skipping and deleting trigger for subscription %d because the notification is deactivated" subscription-id)
-        (delete-trigger-for-subscription! subscription-id)))))
+      (cond
+        (:active notification)
+        (try
+          (log/info "Submitting to the notification queue")
+          (task-history/with-task-history {:task         "notification-trigger"
+                                           :task_details {:trigger_type                 :notification-subscription/cron
+                                                          :notification_subscription_id subscription-id
+                                                          :cron_schedule                (:cron_schedule subscription)
+                                                          :notification_ids             [notification-id]}}
+            (notification.send/send-notification! (assoc notification :triggering_subscription subscription)))
+          (log/info "Submitted to the notification queue")
+          (catch Exception e
+            (log/error e "Failed to submit to the notification queue")
+            (throw e)))
+
+        (nil? notification)
+        (do
+          (log/warnf "Skipping and deleting trigger for subscription %d because it does not exist." subscription-id)
+          (delete-trigger-for-subscription! subscription-id))
+
+        (not (:active notification))
+        (do
+          (log/warnf "Skipping and deleting trigger for subscription %d because the notification is deactivated" subscription-id)
+          (delete-trigger-for-subscription! subscription-id))))))
 
 (defn- active-cron-subscription-id->subscription
   []

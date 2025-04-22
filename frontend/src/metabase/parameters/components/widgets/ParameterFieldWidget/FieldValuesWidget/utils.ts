@@ -2,7 +2,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { stripId } from "metabase/lib/formatting";
-import { MetabaseApi } from "metabase/services";
 import type { ComboboxItem } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -26,39 +25,6 @@ import type {
 } from "metabase-types/api";
 
 import type { ValuesMode } from "./types";
-
-export async function searchFieldValues(
-  {
-    fields,
-    value,
-    disablePKRemappingForSearch,
-    maxResults,
-  }: {
-    fields: Field[];
-    value: string;
-    disablePKRemappingForSearch?: boolean;
-    maxResults: number;
-  },
-  cancelled: Promise<unknown>,
-) {
-  const options: null | FieldValue[] = dedupeValues(
-    await Promise.all(
-      fields.map((field: Field) =>
-        MetabaseApi.field_search(
-          {
-            value,
-            fieldId: field.id,
-            searchFieldId: field.searchField(disablePKRemappingForSearch)?.id,
-            limit: maxResults,
-          },
-          { cancelled },
-        ),
-      ),
-    ),
-  );
-
-  return options;
-}
 
 export function getNonVirtualFields(fields: Field[]) {
   return fields.filter((field) => !field.isVirtual());

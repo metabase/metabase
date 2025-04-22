@@ -14,7 +14,7 @@ import { KBarProvider } from "kbar";
 import type * as React from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
-import { Router, useRouterHistory } from "react-router";
+import { Route, Router, useRouterHistory } from "react-router";
 import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
@@ -111,7 +111,11 @@ export function renderHookWithProviders<TProps, TResult>(
     ...renderHookOptions
   }: Omit<RenderHookOptions<TProps>, "wrapper"> & RenderWithProvidersOptions,
 ) {
-  const { wrapper, store } = getTestStoreAndWrapper({
+  const {
+    wrapper: Wrapper,
+    store,
+    history,
+  } = getTestStoreAndWrapper({
     mode,
     initialRoute,
     storeInitialState,
@@ -123,9 +127,19 @@ export function renderHookWithProviders<TProps, TResult>(
     theme,
   });
 
+  const WrapperWithRoute = ({ children, ...props }: any) => {
+    return (
+      <Wrapper {...props}>
+        <Route path="/" component={() => <>{children}</>} />
+      </Wrapper>
+    );
+  };
+
+  const wrapper = withRouter ? WrapperWithRoute : Wrapper;
+
   const renderHookReturn = renderHook(hook, { wrapper, ...renderHookOptions });
 
-  return { ...renderHookReturn, store };
+  return { ...renderHookReturn, store, history };
 }
 
 type GetTestStoreAndWrapperOptions = RenderWithProvidersOptions &
@@ -261,6 +275,7 @@ function MaybeRouter({
   if (!hasRouter) {
     return children;
   }
+
   return <Router history={history}>{children}</Router>;
 }
 
