@@ -7,8 +7,6 @@ export const EDITOR_QUOTES = {
   // specifies the default quoting style:
   literalQuoteDefault: '"',
   identifierQuoteDefault: "[",
-  // always quote identifiers even if they have non-word characters or conflict with reserved words
-  identifierAlwaysQuoted: true,
 } as const;
 
 type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;

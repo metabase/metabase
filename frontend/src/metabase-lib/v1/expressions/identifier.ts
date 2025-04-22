@@ -1,6 +1,6 @@
 import { FK_SYMBOL } from "metabase/lib/formatting";
 
-import { EDITOR_QUOTES, getMBQLName } from "./config";
+import { EDITOR_QUOTES } from "./config";
 import { quoteString } from "./string";
 
 export const EDITOR_FK_SYMBOLS = {
@@ -15,18 +15,7 @@ export function formatIdentifier(
   name: string,
   { delimiters = EDITOR_QUOTES } = {},
 ) {
-  if (
-    !delimiters.identifierAlwaysQuoted &&
-    /^\w+$/.test(name) &&
-    !isReservedWord(name)
-  ) {
-    return name;
-  }
   return quoteString(name, delimiters.identifierQuoteDefault);
-}
-
-function isReservedWord(word: string) {
-  return Boolean(getMBQLName(word));
 }
 
 export function formatMetricName(
