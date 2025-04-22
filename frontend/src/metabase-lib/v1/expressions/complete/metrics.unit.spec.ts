@@ -19,6 +19,7 @@ describe("suggestMetrics", () => {
     const METRIC_FOO = createMockCard({
       name: "FOO",
       type: "metric",
+      table_id: TABLE_ID,
       dataset_query: createMockStructuredDatasetQuery({
         database: DATABASE_ID,
         query: {
@@ -123,14 +124,21 @@ describe("suggestMetrics", () => {
   describe("expressionMode = aggregations", () => {
     const expressionMode = "aggregation";
 
-    // TODO: I cannot get metrics to work
-    // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should suggest metrics", () => {
+    it("should suggest metrics", () => {
       const complete = setup({ expressionMode });
-      const results = complete("Fo|");
-      expect(results).toBe({
+      const results = complete("FO|");
+      expect(results).toEqual({
         from: 0,
-        options: [],
+        to: 2,
+        options: [
+          {
+            displayLabel: "FOO",
+            icon: "metric",
+            label: "[FOO]",
+            matches: [[0, 1]],
+            type: "metric",
+          },
+        ],
       });
     });
   });
