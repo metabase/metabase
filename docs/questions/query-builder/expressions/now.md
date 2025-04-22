@@ -44,13 +44,13 @@ case(now() >= [Start] AND now() < [Deadline], "In progress",
 
 ## Data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Returned by `now` |
-| ------------------------------------------------------------------------------------------------------------------------------ | ----------------- |
-| String                                                                                                                         | ❌                |
-| Number                                                                                                                         | ❌                |
-| Timestamp                                                                                                                      | ✅                |
-| Boolean                                                                                                                        | ❌                |
-| JSON                                                                                                                           | ❌                |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Returned by `now()` |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------- |
+| String                                                                                                                         | ❌                  |
+| Number                                                                                                                         | ❌                  |
+| Timestamp                                                                                                                      | ✅                  |
+| Boolean                                                                                                                        | ❌                  |
+| JSON                                                                                                                           | ❌                  |
 
 `now` returns a `timestamp with time zone` if time zones are supported by your database, otherwise `now` returns a `timestamp without time zone`.
 
