@@ -15,11 +15,11 @@ export async function findRequests(
   const calls = fetchMock.calls();
   const data = calls.filter((call) => call[1]?.method === method) ?? [];
 
-  const posts = data.map(async ([url, putDetails]) => {
-    const body = ((await putDetails?.body) as string) ?? "{}";
+  const reqs = data.map(async ([url, details]) => {
+    const body = ((await details?.body) as string) ?? "{}";
 
     return { url, body: JSON.parse(body ?? "{}") };
   });
 
-  return Promise.all(posts);
+  return Promise.all(reqs);
 }

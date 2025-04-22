@@ -151,6 +151,7 @@ export type GdrivePayload = {
   sync_started_at?: number;
   last_sync_at?: number;
   next_sync_at?: number;
+  error_message?: string;
   db_id?: number;
   error?: string;
 };
