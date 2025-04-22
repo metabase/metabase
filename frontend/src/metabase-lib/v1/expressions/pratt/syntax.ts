@@ -37,7 +37,6 @@ export const MULDIV_OP = {} as NodeType;
 export const STRING = {} as NodeType;
 export const SUB = {} as NodeType;
 export const IDENTIFIER = {} as NodeType;
-export const WS = {} as NodeType;
 
 function operand(leftOperands: number, rightOperands: number) {
   return {
@@ -78,14 +77,11 @@ const ALL_NODES = {
   SUB,
   FIELD,
   IDENTIFIER,
-  WS,
 };
 
 // Set default values for AST node attributes
 setAttributes([
   {
-    skip: false,
-
     leftOperands: 0,
     rightOperands: 0,
     expectedChildCount: 0,
@@ -96,8 +92,6 @@ setAttributes([
     isTerminator: false,
 
     precedence: -Infinity,
-    resolvesAs: null,
-    expectedTypes: null,
   },
 
   Object.values(ALL_NODES),
@@ -119,25 +113,6 @@ setAttributes(
   [{ requiresTerminator: END_OF_INPUT }, [ROOT]],
   [{ requiresTerminator: GROUP_CLOSE }, [ARG_LIST, GROUP]],
   [{ isTerminator: true }, [COMMA, END_OF_INPUT, GROUP_CLOSE]],
-
-  // Skip whitespace
-  [{ skip: true }, [WS]],
-
-  // Known types
-  [{ resolvesAs: "string" }, [STRING]],
-  [{ resolvesAs: "number" }, [ADD, NUMBER, NEGATIVE, MULDIV_OP, SUB]],
-  [
-    { resolvesAs: "boolean" },
-    [LOGICAL_AND, EQUALITY, LOGICAL_NOT, LOGICAL_OR, COMPARISON, BOOLEAN],
-  ],
-
-  // Expected types
-  [
-    { expectedTypes: ["number"] },
-    [ADD, NUMBER, NEGATIVE, MULDIV_OP, SUB, COMPARISON],
-  ],
-  [{ expectedTypes: ["boolean"] }, [LOGICAL_NOT, LOGICAL_AND, LOGICAL_OR]],
-  [{ expectedTypes: ["boolean", "number", "string"] }, [EQUALITY]],
 );
 
 /*
@@ -261,7 +236,6 @@ for (const [key, value] of Object.entries(ALL_NODES)) {
 }
 
 SUB.name = "SUBTRACT";
-WS.name = "WHITESPACE";
 
 export const OPERATORS = new Set([
   COMMA,
