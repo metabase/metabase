@@ -6,9 +6,10 @@ on:
       cached-embedding-sdk-dist-artifact-name:
         required: true
         type: string
-      uberjar_built:
-        type: boolean
-        default: false
+      artifact_name_ee:
+        type: string
+        description: "Name of the EE uberjar artifact"
+        required: false
 
 jobs:
   files-changed:
@@ -61,45 +62,10 @@ jobs:
               node_version: requirements.node,
             };
 
-  # Only build if the uberjar hasn't been built already
-  build-uberjar:
-    needs: [files-changed, get-build-requirements]
-    if: |
-      !cancelled() &&
-      needs.files-changed.outputs.e2e_all == 'true' &&
-      !inputs.uberjar_built
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-    env:
-      MB_EDITION: ee
-      INTERACTIVE: false
-      # make sure that builds on release branches get licenses, because we use them for releases
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-        with:
-          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: uberjar
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
-
-      - name: Build uberjar with ./bin/build.sh
-        run: ./bin/build.sh
-
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
-        with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-
   e2e-tests:
-    needs: [get-build-requirements, build-uberjar]
+    needs: [get-build-requirements]
     if: |
-      !cancelled() &&
-      (needs.build-uberjar.result == 'success' || inputs.uberjar_built)
+      !cancelled()
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     strategy:
@@ -129,10 +95,15 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Get artifact name
+        id: get_artifact_name
+        run: |
+          echo "artifact_name=${{ inputs.artifact_name_ee || format('metabase-ee-{0}-uberjar', github.event.pull_request.head.sha || github.sha) }}" >> $GITHUB_OUTPUT
+
       - name: Retrieve uberjar artifact for ee
         uses: actions/download-artifact@v4
         with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          name: ${{ steps.get_artifact_name.outputs.artifact_name }}
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend

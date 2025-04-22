@@ -1,12 +1,12 @@
 name: Embedding SDK
 
 on:
-  push:
-    branches:
-      - "master"
-      - "release-**"
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_call:
+    inputs:
+      artifact_name_ee:
+        type: string
+        description: "Name of the EE uberjar artifact"
+        required: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -20,7 +20,6 @@ jobs:
     outputs:
       documentation: ${{ steps.changes.outputs.documentation }}
       frontend_embedding_sdk_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_sources }}
-      e2e_all: ${{ steps.changes.outputs.e2e_all }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
@@ -29,100 +28,6 @@ jobs:
         with:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
-
-  # if this is a test on a release branch, we need to check the build requirements
-  get-build-requirements:
-    if: |
-      !cancelled() &&
-      contains(github.ref, 'release-x')
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    outputs:
-      java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
-      node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: release
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
-      - name: Get build dependencies
-        uses: actions/github-script@v7
-        id: dependencies
-        with:
-          script: | # js
-            const { getBuildRequirements, getVersionFromReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
-
-            const version = getVersionFromReleaseBranch('${{ github.ref }}');
-            const requirements = getBuildRequirements(version);
-
-            return {
-              java_version: requirements.java,
-              node_version: requirements.node,
-            };
-
-  # Build uberjar only if it's needed and hasn't been built in another workflow
-  build-uberjar:
-    needs: [files-changed, get-build-requirements]
-    if: |
-      !cancelled() &&
-      needs.files-changed.outputs.e2e_all == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-    strategy:
-      matrix:
-        edition: [ee]
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      INTERACTIVE: false
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-        with:
-          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: uberjar
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
-
-      - name: Check if uberjar already exists
-        id: check_uberjar
-        uses: actions/github-script@v7
-        with:
-          script: |
-            try {
-              const artifactName = `metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar`;
-              const response = await github.rest.actions.listArtifactsForRepo({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                name: artifactName,
-                per_page: 1
-              });
-              
-              if (response.data.total_count > 0) {
-                console.log(`Artifact ${artifactName} already exists.`);
-                return true;
-              }
-              return false;
-            } catch (error) {
-              console.error('Error checking for artifact:', error);
-              return false;
-            }
-
-      - name: Build uberjar with ./bin/build.sh
-        if: steps.check_uberjar.outputs.result != 'true'
-        timeout-minutes: 10
-        run:  ./bin/build.sh
-        shell: bash
-
-      - name: Prepare uberjar artifact
-        if: steps.check_uberjar.outputs.result != 'true'
-        uses: ./.github/actions/prepare-uberjar-artifact
-        with:
-          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
   build-sdk:
     needs: [files-changed]
@@ -188,11 +93,11 @@ jobs:
 
   sdk-e2e-tests:
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml
-    needs: [build-sdk, build-uberjar]
+    needs: [build-sdk]
     secrets: inherit
     with:
       cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
-      uberjar_built: true
+      artifact_name_ee: ${{ inputs.artifact_name_ee }}
 
   e2e-component-tests-embedding-sdk-cross-version:
     if: ${{ startsWith(inputs.branch, 'release-x.') }}

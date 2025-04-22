@@ -6,9 +6,14 @@ on:
       skip:
         type: boolean
         default: false
-      uberjar_built:
-        type: boolean
-        default: false
+      artifact_name_ee:
+        type: string
+        description: "Name of the EE uberjar artifact"
+        required: false
+      artifact_name_oss:
+        type: string
+        description: "Name of the OSS uberjar artifact"
+        required: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-e2e
@@ -51,42 +56,6 @@ jobs:
               node_version: requirements.node,
             };
 
-  # This job only runs if the uberjar is not already built in the parent workflow
-  build-uberjar:
-    needs: [get-build-requirements]
-    if: ${{ !cancelled() && !inputs.skip && !inputs.uberjar_built }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-    strategy:
-      matrix:
-        edition: [oss, ee]
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      INTERACTIVE: false
-      # make sure that builds on release branches get licenses, because we use them for releases
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-        with:
-          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: uberjar
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
-
-      - name: Build uberjar with ./bin/build.sh
-        timeout-minutes: 10
-        run:  ./bin/build.sh
-        shell: bash
-
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
-        with:
-          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
@@ -123,10 +92,8 @@ jobs:
     uses: ./.github/workflows/e2e-test.yml
     needs:
       - e2e-matrix-builder
-      - build-uberjar
     if: |
-      !cancelled() && 
-      (needs.build-uberjar.result == 'success' || inputs.uberjar_built)
+      !cancelled()
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -139,20 +106,22 @@ jobs:
       split_index: ${{ strategy.job-index }}
       tags: ${{ matrix.tags }}
       runner: ${{ matrix.runner }}
+      artifact_name_ee: ${{ inputs.artifact_name_ee }}
+      artifact_name_oss: ${{ inputs.artifact_name_oss }}
 
   # run this separately to make it non-blocking
   flaky-e2e-tests:
     name: Flaky e2e Tests
     uses: ./.github/workflows/e2e-test.yml
-    needs: build-uberjar
     if: |
-      !cancelled() && 
-      (needs.build-uberjar.result == 'success' || inputs.uberjar_built)
+      !cancelled()
     secrets: inherit
     with:
       name: Flaky
       tags: "@flaky"
       specs: "./e2e/test/scenarios/**/*.cy.spec.*"
+      artifact_name_ee: ${{ inputs.artifact_name_ee }}
+      artifact_name_oss: ${{ inputs.artifact_name_oss }}
 
   e2e-tests-result:
     needs:
@@ -182,10 +151,11 @@ jobs:
           fi
 
   pr-env:
-    needs: [build-uberjar]
+    needs: []
     if: |
       !cancelled() &&
-      contains(github.event.pull_request.labels.*.name, 'PR-Env') &&
-      (needs.build-uberjar.result == 'success' || inputs.uberjar_built)
+      contains(github.event.pull_request.labels.*.name, 'PR-Env')
     uses: ./.github/workflows/pr-env.yml
     secrets: inherit
+    with:
+      artifact_name_ee: ${{ inputs.artifact_name_ee }}

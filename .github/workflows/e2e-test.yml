@@ -28,6 +28,14 @@ on:
       split_index: # index of the chunk
         required: false
         type: number
+      artifact_name_ee:
+        required: false
+        type: string
+        description: "Name of the EE uberjar artifact"
+      artifact_name_oss:
+        required: false
+        type: string
+        description: "Name of the OSS uberjar artifact"
 
 jobs:
   e2e-tests:
@@ -81,10 +89,19 @@ jobs:
         if: inputs.name == 'embedding-sdk'
         uses: ./.github/actions/run-embedding-sdk-storybook
 
+      - name: Get artifact name
+        id: get_artifact_name
+        run: |
+          if [ "${{ inputs.edition }}" == "ee" ]; then
+            echo "artifact_name=${{ inputs.artifact_name_ee || format('metabase-ee-{0}-uberjar', github.event.pull_request.head.sha || github.sha) }}" >> $GITHUB_OUTPUT
+          else
+            echo "artifact_name=${{ inputs.artifact_name_oss || format('metabase-oss-{0}-uberjar', github.event.pull_request.head.sha || github.sha) }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Retrieve uberjar artifact for ${{ inputs.edition }}
         uses: actions/download-artifact@v4
         with:
-          name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          name: ${{ steps.get_artifact_name.outputs.artifact_name }}
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
