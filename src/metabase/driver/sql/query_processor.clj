@@ -168,6 +168,9 @@
   ;; query-compile time (in Clojure) instead of in SQL
   (let [inline (untyped-inline-value value)]
     (cond
+      (nil? value)
+      nil
+
       (h2x/is-of-type? value (float-dbtype driver))
       value
 
@@ -1056,6 +1059,9 @@
     (cond
     ;; try not to generate hairy nonsense like `CASE WHERE 7.0 = 0 THEN NULL ELSE 7.0` if we're dealing with number
     ;; literals and can determine this stuff ahead of time.
+      (nil? denominator)
+      nil
+
       (not inline-value)
       (h2x/with-database-type-info [:nullif denominator [:inline 0.0]] (float-dbtype driver))
 
