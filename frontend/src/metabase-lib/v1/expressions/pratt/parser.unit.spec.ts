@@ -1,5 +1,3 @@
-import { maybe } from "../utils";
-
 import { type Node, lexify, parse } from ".";
 
 describe("pratt/parser", () => {
@@ -18,7 +16,7 @@ describe("pratt/parser", () => {
 
   function parseExpression(source: string) {
     const { tokens } = lexify(source);
-    const { root } = maybe(parse(tokens));
+    const { root } = parse(tokens);
     return cleanupAST(root);
   }
 

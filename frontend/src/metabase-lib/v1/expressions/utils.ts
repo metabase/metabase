@@ -9,13 +9,3 @@ export function getDatabase(
   const databaseId = Lib.databaseID(query);
   return metadata?.database(databaseId) ?? null;
 }
-
-export function maybe<T extends { errors: Error[] }>(
-  value: T,
-): Omit<T, "errors"> {
-  const { errors, ...rest } = value;
-  if (errors.length > 0) {
-    throw errors[0];
-  }
-  return rest;
-}

@@ -1,5 +1,4 @@
 import { value } from "../test/utils";
-import { maybe } from "../utils";
 
 import { compile, lexify, parse } from ".";
 
@@ -18,7 +17,7 @@ function bigint(x: string) {
 describe("pratt/compiler", () => {
   function expr(source: string) {
     const { tokens } = lexify(source);
-    const { root } = maybe(parse(tokens));
+    const { root } = parse(tokens);
 
     return compile(root, {
       expressionMode: "expression",
