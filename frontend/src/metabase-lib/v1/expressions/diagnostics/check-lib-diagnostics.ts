@@ -1,26 +1,24 @@
 import * as Lib from "metabase-lib";
 
 import { DiagnosticError } from "../errors";
-import type { StartRule } from "../types";
-import { getExpressionMode } from "../utils";
 
 export function checkLibDiagnostics({
   query,
   stageIndex,
-  startRule,
+  expressionMode,
   expressionClause,
   expressionIndex,
 }: {
   query: Lib.Query;
   stageIndex: number;
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
   expressionClause: Lib.ExpressionClause;
   expressionIndex?: number;
 }) {
   const error = Lib.diagnoseExpression(
     query,
     stageIndex,
-    getExpressionMode(startRule),
+    expressionMode,
     expressionClause,
     expressionIndex,
   );
