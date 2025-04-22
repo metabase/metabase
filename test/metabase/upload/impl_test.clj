@@ -634,6 +634,7 @@
   "Because life is too short for zillions of temp files."
   [^String s]
   (let [bytes (.getBytes s "UTF-8")]
+    #_{:clj-kondo/ignore [:missing-protocol-method]}
     (reify
       io/IOFactory
       (make-input-stream [_ _opts]

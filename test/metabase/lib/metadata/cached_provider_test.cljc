@@ -12,6 +12,7 @@
   (let [fetch-count (atom 0)
         missing-id  123
         provider    (lib.metadata.cached-provider/cached-metadata-provider
+                     #_{:clj-kondo/ignore [:missing-protocol-method]}
                      (reify
                        lib.metadata.protocols/MetadataProvider
                        (metadatas [_this metadata-type ids]
