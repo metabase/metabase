@@ -38,19 +38,22 @@ export const initAuth = createAsyncThunk(
       authConfig.apiKey && (isEmbeddingSdk ? getIsLocalhost() : true);
 
     if (isValidAuthProviderUri) {
+      const config = {
+        instanceUrl: authConfig.metabaseInstanceUrl,
+        isIframe: authConfig.isIframe ?? false,
+      };
+
       // JWT setup
       api.onBeforeRequest = async () => {
-        const session = await dispatch(
-          getOrRefreshSession(authConfig.metabaseInstanceUrl),
-        ).unwrap();
+        const session = await dispatch(getOrRefreshSession(config)).unwrap();
+
         if (session?.id) {
           api.sessionToken = session.id;
         }
       };
+
       // verify that the session is actually valid before proceeding
-      await dispatch(
-        getOrRefreshSession(authConfig.metabaseInstanceUrl),
-      ).unwrap();
+      await dispatch(getOrRefreshSession(config)).unwrap();
     } else if (isValidApiKeyConfig) {
       // API key setup
       api.apiKey = authConfig.apiKey;
