@@ -8,6 +8,8 @@ import { Box } from "metabase/ui";
 import { FontFilesWidget } from "./FontFilesWidget";
 import { useGetFontOptions } from "./utils";
 
+const defaultFont = "Lato";
+
 export const FontWidget = () => {
   const fontOptions = useGetFontOptions();
   const {
@@ -26,8 +28,7 @@ export const FontWidget = () => {
 
     await updateSetting({
       key: "application-font",
-      // If the new value is "custom", we set the value to null
-      value: newValue === "custom" ? null : newValue,
+      value: newValue === "custom" ? defaultFont : newValue,
     });
 
     await updateSetting({

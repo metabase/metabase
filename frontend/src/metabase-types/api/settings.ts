@@ -378,7 +378,7 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 interface PublicSettings {
   "allowed-iframe-hosts": string;
   "anon-tracking-enabled": boolean;
-  "application-font": string | null;
+  "application-font": string;
   "application-font-files": FontFile[] | null;
   "application-name": string;
   "application-favicon-url": string;

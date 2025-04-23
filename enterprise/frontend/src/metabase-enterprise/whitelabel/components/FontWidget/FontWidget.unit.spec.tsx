@@ -59,7 +59,7 @@ describe("FontWidget", () => {
 
     expect(url).toMatch(/application-font/);
     expect(body).toEqual({
-      value: null,
+      value: "Lato",
     });
     expect(url2).toMatch(/application-font-files/);
     expect(body2).toEqual({

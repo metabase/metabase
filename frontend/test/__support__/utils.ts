@@ -40,11 +40,11 @@ export async function findRequests(method: "PUT" | "POST" | "DELETE" | "GET") {
   const calls = fetchMock.calls();
   const data = calls.filter((call) => call[1]?.method === method) ?? [];
 
-  const puts = data.map(async ([putUrl, putDetails]) => {
-    const body = ((await putDetails?.body) as string) ?? "{}";
+  const reqs = data.map(async ([url, details]) => {
+    const body = ((await details?.body) as string) ?? "{}";
 
-    return { url: putUrl, body: JSON.parse(body ?? "{}") };
+    return { url: url, body: JSON.parse(body ?? "{}") };
   });
 
-  return Promise.all(puts);
+  return Promise.all(reqs);
 }

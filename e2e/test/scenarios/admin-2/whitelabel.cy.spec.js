@@ -715,7 +715,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .findByText("Please make sure this is a valid URL")
         .should("exist");
 
-      getHelpLinkCustomDestinationInput().type("example");
+      getHelpLinkCustomDestinationInput().type("example").blur();
 
       H.main()
         .findByText("Please make sure this is a valid URL")
