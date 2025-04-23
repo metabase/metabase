@@ -201,67 +201,20 @@ class AutomaticDashboardAppInner extends Component<AutomaticDashboardAppInnerPro
                 </FixedWidthContainer>
               </div>
             )}
-            <Dashboard
-              isXray
-              dashboard={this.props.dashboard}
-              slowCards={this.props.slowCards}
-              parameterValues={this.props.parameterValues}
-              isHeaderVisible={this.props.isHeaderVisible}
-              selectedTabId={this.props.selectedTabId}
-              isNavigatingBackToDashboard={
-                this.props.isNavigatingBackToDashboard
-              }
-              dashboardId={this.props.dashboardId}
-              initialize={this.props.initialize}
-              cancelFetchDashboardCardData={
-                this.props.cancelFetchDashboardCardData
-              }
-              addCardToDashboard={this.props.addCardToDashboard}
-              addHeadingDashCardToDashboard={
-                this.props.addHeadingDashCardToDashboard
-              }
-              addMarkdownDashCardToDashboard={
-                this.props.addMarkdownDashCardToDashboard
-              }
-              addLinkDashCardToDashboard={this.props.addLinkDashCardToDashboard}
-              setEditingDashboard={this.props.setEditingDashboard}
-              setDashboardAttributes={this.props.setDashboardAttributes}
-              setSharing={this.props.setSharing}
-              toggleSidebar={this.props.toggleSidebar}
-              closeSidebar={this.props.closeSidebar}
-              setErrorPage={this.props.setErrorPage}
-              setParameterName={this.props.setParameterName}
-              setParameterType={this.props.setParameterType}
-              navigateToNewCardFromDashboard={
-                this.props.navigateToNewCardFromDashboard
-              }
-              setParameterDefaultValue={this.props.setParameterDefaultValue}
-              setParameterRequired={this.props.setParameterRequired}
-              setParameterTemporalUnits={this.props.setParameterTemporalUnits}
-              setParameterIsMultiSelect={this.props.setParameterIsMultiSelect}
-              setParameterQueryType={this.props.setParameterQueryType}
-              setParameterSourceType={this.props.setParameterSourceType}
-              setParameterSourceConfig={this.props.setParameterSourceConfig}
-              setParameterFilteringParameters={
-                this.props.setParameterFilteringParameters
-              }
-              showAddParameterPopover={this.props.showAddParameterPopover}
-              removeParameter={this.props.removeParameter}
-              onReplaceAllDashCardVisualizationSettings={
-                this.props.onReplaceAllDashCardVisualizationSettings
-              }
-              onUpdateDashCardVisualizationSettings={
-                this.props.onUpdateDashCardVisualizationSettings
-              }
-              onUpdateDashCardColumnSettings={
-                this.props.onUpdateDashCardColumnSettings
-              }
-              updateDashboardAndCards={this.props.updateDashboardAndCards}
-              setSidebar={this.props.setSidebar}
-              hideAddParameterPopover={this.props.hideAddParameterPopover}
-              fetchDashboard={this.props.fetchDashboard}
-              fetchDashboardCardData={this.props.fetchDashboardCardData}
-            />
+            {this.props.dashboard && (
+              <Dashboard
+                isXray
+                dashboard={this.props.dashboard}
+                slowCards={this.props.slowCards}
+                selectedTabId={this.props.selectedTabId}
+                isEditing={false}
+                isEditingParameter={false}
+                clickBehaviorSidebarDashcard={null}
+                downloadsEnabled={false}
+                autoScrollToDashcardId={undefined}
+                reportAutoScrolledToDashcard={_.noop}
+              />
+            )}{" "}
           </div>
           {more && (
             <div className={cx(CS.flex, CS.justifyEnd, CS.px4, CS.pb4)}>

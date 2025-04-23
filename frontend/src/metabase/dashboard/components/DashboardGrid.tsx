@@ -31,7 +31,6 @@ import {
 } from "metabase/lib/dashboard_grid";
 import { connect } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Flex } from "metabase/ui";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
@@ -135,13 +134,13 @@ export type DashboardGridProps = {
   dashboard: Dashboard;
   selectedTabId: DashboardTabId | null;
   slowCards: Record<DashCardId, boolean>;
-  isEditing: boolean;
-  isEditingParameter: boolean;
+  isEditing?: boolean;
+  isEditingParameter?: boolean;
   /** If public sharing or static/public embed */
   isPublicOrEmbedded?: boolean;
   isXray?: boolean;
-  isFullscreen: boolean;
-  isNightMode: boolean;
+  isFullscreen?: boolean;
+  isNightMode?: boolean;
   withCardTitle?: boolean;
   clickBehaviorSidebarDashcard: DashboardCard | null;
   getClickActionMode?: ClickActionModeGetter;
@@ -152,7 +151,7 @@ export type DashboardGridProps = {
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
   onEditingChange?: (dashboard: Dashboard | null) => void;
-  downloadsEnabled: EmbedResourceDownloadOptions;
+  downloadsEnabled: boolean;
   autoScrollToDashcardId: DashCardId | undefined;
   reportAutoScrolledToDashcard: () => void;
 };
@@ -200,7 +199,7 @@ class DashboardGridInner extends Component<
       isAnimationPaused: true,
       _lastProps: {
         dashboard: props.dashboard,
-        isEditing: props.isEditing,
+        isEditing: Boolean(props.isEditing),
         selectedTabId: props.selectedTabId,
       },
     };
@@ -256,7 +255,7 @@ class DashboardGridInner extends Component<
     const visibleCards = getVisibleCards(
       dashboard.dashcards,
       visibleCardIds,
-      isEditing,
+      Boolean(isEditing),
       selectedTabId,
     );
 
@@ -285,7 +284,7 @@ class DashboardGridInner extends Component<
       layouts: getLayouts(visibleCards, state.initialCardSizes),
       _lastProps: {
         dashboard,
-        isEditing,
+        isEditing: Boolean(isEditing),
         selectedTabId,
       },
     };
@@ -352,7 +351,7 @@ class DashboardGridInner extends Component<
     return getVisibleCards(
       cards,
       visibleCardIds,
-      isEditing,
+      Boolean(isEditing),
       selectedTabId,
     ) as DashboardCard[];
   };
@@ -527,7 +526,7 @@ class DashboardGridInner extends Component<
       isMobile: boolean;
       gridItemWidth: number;
       totalNumGridCols: number;
-      downloadsEnabled: EmbedResourceDownloadOptions;
+      downloadsEnabled: boolean;
       shouldAutoScrollTo: boolean;
       reportAutoScrolledToDashcard: () => void;
     },
@@ -576,8 +575,8 @@ class DashboardGridInner extends Component<
   get isEditingLayout() {
     const { isEditing, isEditingParameter, clickBehaviorSidebarDashcard } =
       this.props;
-    return (
-      isEditing && !isEditingParameter && clickBehaviorSidebarDashcard == null
+    return Boolean(
+      isEditing && !isEditingParameter && clickBehaviorSidebarDashcard == null,
     );
   }
 
@@ -598,7 +597,7 @@ class DashboardGridInner extends Component<
 
     const shouldChangeResizeHandle = isEditingTextOrHeadingCard(
       dc.card.display,
-      isEditing,
+      Boolean(isEditing),
     );
 
     return (
