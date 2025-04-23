@@ -166,6 +166,12 @@ export const TemplateEditor = ({
             ref.current.view?.focus();
           }
         }}
+        onKeyDown={(e) => {
+          // Prevent Escape key from propagating to the modal
+          if (e.key === "Escape") {
+            e.stopPropagation();
+          }
+        }}
         ref={ref}
         value={internalValue}
         onChange={handleChange}
@@ -182,6 +188,7 @@ export const TemplateEditor = ({
           [S.hasError]: error && typeof error === "string",
           [S.textInputVariant]: isTextInput,
         })}
+        indentWithTab={isTextArea}
         {...rest}
       />
       {typeof error === "string" && error && (

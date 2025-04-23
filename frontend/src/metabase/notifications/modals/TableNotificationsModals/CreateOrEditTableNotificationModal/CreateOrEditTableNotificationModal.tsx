@@ -11,6 +11,7 @@ import {
   useListChannelsQuery,
   useUpdateNotificationMutation,
 } from "metabase/api";
+import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import { AutoWidthSelect } from "metabase/components/Schedule/AutoWidthSelect";
 import CS from "metabase/css/core/index.css";
@@ -44,7 +45,6 @@ type TableNotificationTriggerOption = {
   label: string;
 };
 
-// Format JSON for tooltip display
 const formatJsonForTooltip = (json: any) => {
   return json ? JSON.stringify(json, null, 2) : "";
 };
@@ -229,7 +229,7 @@ export const CreateOrEditTableNotificationModal = ({
           addUndo({
             icon: "warning",
             toastColor: "error",
-            message: t`An error occurred`,
+            message: t`Failed to save alert.`,
           }),
         );
 
@@ -262,6 +262,8 @@ export const CreateOrEditTableNotificationModal = ({
     [requestBody, notification],
   );
 
+  useEscapeToCloseModal(onClose, { capture: false });
+
   if (!isLoadingChannelInfo && channelSpec && !channelRequirementsMet) {
     return (
       <ChannelSetupModal
@@ -284,6 +286,7 @@ export const CreateOrEditTableNotificationModal = ({
       size="lg"
       onClose={onClose}
       padding="2.5rem"
+      closeOnEscape={false}
       title={isEditMode ? t`Edit alert` : t`New alert`}
       styles={{
         body: {

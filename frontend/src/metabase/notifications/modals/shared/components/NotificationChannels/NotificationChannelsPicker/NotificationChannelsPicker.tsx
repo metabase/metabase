@@ -566,10 +566,10 @@ export const NotificationChannelsPicker = ({
                 control: S.customTemplateControl,
                 label: S.customTemplateLabel,
                 icon: S.customTemplateIcon,
+                item: S.customTemplateItem,
+                chevron: S.customTemplateChevron,
               }}
-              defaultValue={
-                templateState.templates.email ? "email-template" : null
-              }
+              defaultValue={"email-template"}
             >
               <Accordion.Item value="email-template">
                 <Accordion.Control>
@@ -580,7 +580,9 @@ export const NotificationChannelsPicker = ({
                     />
                   </Flex>
                 </Accordion.Control>
-                <Accordion.Panel styles={{ content: { padding: 0 } }}>
+                <Accordion.Panel
+                  styles={{ content: { padding: 0, border: "none" } }}
+                >
                   <Stack>
                     <Stack gap="xs">
                       <Text size="sm" fw={700}>{t`Subject`}</Text>
@@ -646,10 +648,10 @@ export const NotificationChannelsPicker = ({
                 control: S.customTemplateControl,
                 label: S.customTemplateLabel,
                 icon: S.customTemplateIcon,
+                item: S.customTemplateItem,
+                chevron: S.customTemplateChevron,
               }}
-              defaultValue={
-                templateState.templates.slack ? "slack-template" : null
-              }
+              defaultValue={"slack-template"}
             >
               <Accordion.Item value="slack-template">
                 <Accordion.Control>
@@ -660,7 +662,9 @@ export const NotificationChannelsPicker = ({
                     />
                   </Flex>
                 </Accordion.Control>
-                <Accordion.Panel styles={{ content: { padding: 0 } }}>
+                <Accordion.Panel
+                  styles={{ content: { padding: 0, border: "none" } }}
+                >
                   <Stack gap="xs">
                     <Text size="sm" fw={700}>{t`Content`}</Text>
                     <TemplateEditor
