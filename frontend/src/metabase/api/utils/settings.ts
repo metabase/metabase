@@ -81,31 +81,20 @@ export const getErrorMessage = (
     | { message: string },
   fallback: string = t`Something went wrong`,
 ): string => {
+  if (typeof payload === "string") {
+    return payload || fallback;
+  }
+
   if (!payload || typeof payload !== "object") {
     return fallback;
   }
 
-  if (typeof payload === "string") {
-    return payload;
-  }
-
-  if ("message" in payload && typeof payload.message === "string") {
-    return payload.message;
+  if ("message" in payload) {
+    return getErrorMessage(payload.message, fallback);
   }
 
   if ("data" in payload) {
-    const data = payload.data;
-    if (typeof data === "string") {
-      return data;
-    }
-    if (
-      typeof data === "object" &&
-      data &&
-      "message" in data &&
-      typeof data.message === "string"
-    ) {
-      return data.message;
-    }
+    return getErrorMessage(payload.data, fallback);
   }
 
   return fallback;
