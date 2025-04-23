@@ -24,9 +24,11 @@ export const getGroupTableAccessPolicy = (
   );
 };
 
-export const getDraftPolicies = (state: SandboxesState) => {
-  return Object.values(state.plugins.sandboxingPlugin.groupTableAccessPolicies);
-};
+export const getDraftPolicies = createSelector(
+  (state: SandboxesState) =>
+    state.plugins.sandboxingPlugin.groupTableAccessPolicies,
+  (groupTableAccessPolicies) => Object.values(groupTableAccessPolicies),
+);
 
 export const hasPolicyChanges = createSelector(
   getDraftPolicies,

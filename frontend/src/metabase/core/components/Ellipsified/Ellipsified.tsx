@@ -16,6 +16,7 @@ interface EllipsifiedProps {
   multiline?: boolean;
   placement?: FloatingPosition;
   "data-testid"?: string;
+  resizable?: boolean;
   id?: string;
 }
 
@@ -31,17 +32,35 @@ export const Ellipsified = ({
   multiline = false,
   placement = "top",
   "data-testid": dataTestId,
+  resizable = true,
   id,
 }: EllipsifiedProps) => {
   const canSkipTooltipRendering = !showTooltip && !alwaysShowTooltip;
   const { isTruncated, ref } = useIsTruncated<HTMLDivElement>({
     disabled: canSkipTooltipRendering,
+    isResizeable: resizable,
   });
   const isEnabled =
     (showTooltip && (isTruncated || alwaysShowTooltip)) || false;
 
   const truncatedProps: Partial<TextProps> =
     lines > 1 ? { lineClamp: lines } : { truncate: true };
+
+  const text = (
+    <Text
+      c="inherit"
+      ref={ref}
+      className={className}
+      style={style}
+      data-testid={dataTestId}
+      id={id}
+      fz="inherit"
+      lh="inherit"
+      {...truncatedProps}
+    >
+      {children}
+    </Text>
+  );
 
   return (
     <Tooltip
@@ -52,19 +71,7 @@ export const Ellipsified = ({
       w={tooltipMaxWidth}
       multiline={multiline}
     >
-      <Text
-        c="inherit"
-        ref={ref}
-        className={className}
-        style={style}
-        data-testid={dataTestId}
-        id={id}
-        fz="inherit"
-        lh="inherit"
-        {...truncatedProps}
-      >
-        {children}
-      </Text>
+      {text}
     </Tooltip>
   );
 };

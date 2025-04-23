@@ -15,6 +15,7 @@ import {
   strategies,
 } from "metabase/admin/performance/constants/complex";
 import type { ModelWithClearableCache } from "metabase/admin/performance/types";
+import { DATA_PERMISSION_OPTIONS } from "metabase/admin/permissions/constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import {
   type DataPermission,
@@ -23,6 +24,7 @@ import {
   type EntityId,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
+import { permissionOptionsToIconPaths } from "metabase/admin/permissions/utils/icons";
 import { InteractiveEmbeddingSettings } from "metabase/admin/settings/components/EmbeddingSettings/InteractiveEmbeddingSettings";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type {
@@ -450,6 +452,10 @@ export const PLUGIN_REDUCERS: {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
+};
+
+export const PLUGIN_PERMISSIONS = {
+  permissionIconPaths: permissionOptionsToIconPaths(DATA_PERMISSION_OPTIONS),
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {

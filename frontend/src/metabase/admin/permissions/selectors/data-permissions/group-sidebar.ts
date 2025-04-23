@@ -9,17 +9,16 @@ import type { RawGroupRouteParams } from "../../types";
 
 import { getOrderedGroups } from "./groups";
 
-const getGroupRouteParams = (
-  _state: State,
-  props: { params: RawGroupRouteParams },
-) => {
-  const { groupId, databaseId, schemaName } = props.params;
-  return {
-    groupId: groupId != null ? parseInt(groupId) : null,
-    databaseId,
-    schemaName,
-  };
-};
+const getGroupRouteParams = createSelector(
+  (_state: State, props: { params: RawGroupRouteParams }) => props.params,
+  ({ groupId, databaseId, schemaName }) => {
+    return {
+      groupId: groupId != null ? parseInt(groupId) : null,
+      databaseId,
+      schemaName,
+    };
+  },
+);
 
 export const getGroupsSidebar = createSelector(
   getOrderedGroups,
@@ -48,4 +47,5 @@ export const getGroupsSidebar = createSelector(
       filterPlaceholder: t`Search for a group`,
     };
   },
+  { devModeChecks: { inputStabilityCheck: "never" } },
 );

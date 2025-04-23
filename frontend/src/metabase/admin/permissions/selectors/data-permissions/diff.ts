@@ -8,9 +8,11 @@ import type { Group } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 export const getIsDirty = createSelector(
-  (state: State) => state.admin.permissions.dataPermissions,
-  (state: State) => state.admin.permissions.originalDataPermissions,
-  (state: State) => state,
+  [
+    (state: State) => state.admin.permissions.dataPermissions,
+    (state: State) => state.admin.permissions.originalDataPermissions,
+    (state: State) => state,
+  ],
   (permissions, originalPermissions, state) =>
     !_.isEqual(permissions, originalPermissions) ||
     PLUGIN_DATA_PERMISSIONS.hasChanges.some((hasChanges) => hasChanges(state)),
