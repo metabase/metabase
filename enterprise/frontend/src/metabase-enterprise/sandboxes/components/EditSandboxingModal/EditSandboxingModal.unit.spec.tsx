@@ -166,7 +166,7 @@ describe("EditSandboxingModal", () => {
         expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
         await userEvent.click(
-          screen.getByText(
+          await screen.findByText(
             "Use a saved question to create a custom view for this table",
           ),
         );
@@ -216,7 +216,7 @@ describe("EditSandboxingModal", () => {
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
       await userEvent.click(
-        screen.getByText(
+        await screen.findByText(
           "Use a saved question to create a custom view for this table",
         ),
       );

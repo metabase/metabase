@@ -22,6 +22,7 @@ export const COMMON_DATABASE_FEATURES: DatabaseFeature[] = [
   "right-join",
   "inner-join",
   "full-join",
+  "saved-question-sandboxing",
 ];
 
 export const createMockDatabase = (opts?: Partial<Database>): Database => ({

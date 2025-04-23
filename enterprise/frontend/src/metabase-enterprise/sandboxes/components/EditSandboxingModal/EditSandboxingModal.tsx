@@ -5,12 +5,7 @@ import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import {
-  skipToken,
-  useGetCardQuery,
-  useGetDatabaseQuery,
-  useGetTableQuery,
-} from "metabase/api";
+import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
 import {
   QuestionPickerModal,
   getQuestionPickerValue,
@@ -136,11 +131,7 @@ const EditSandboxingModal = ({
     policy.table_id != null ? { id: policy.table_id } : skipToken,
   );
 
-  const { data: database } = useGetDatabaseQuery(
-    policyTable?.db_id != null ? { id: policyTable.db_id } : skipToken,
-  );
-
-  const hasSavedQuestionSandboxingFeature = database?.features?.includes(
+  const hasSavedQuestionSandboxingFeature = policyTable?.db?.features?.includes(
     "saved-question-sandboxing",
   );
 
