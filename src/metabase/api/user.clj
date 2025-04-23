@@ -19,7 +19,6 @@
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
    [metabase.sso.core :as sso]
-   [metabase.user-key-value.models.user-key-value :as user-key-value]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
