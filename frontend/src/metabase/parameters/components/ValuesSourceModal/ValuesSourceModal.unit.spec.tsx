@@ -625,10 +625,11 @@ describe("ValuesSourceModal", () => {
     });
 
     describe("card source", () => {
-      it("should show the card source for number parameters", async () => {
+      it("should show the card source for number parameters with dropdown list", async () => {
         await setup({
           parameter: createMockUiParameter({
             type: "number/=",
+            values_query_type: "list",
             values_source_type: "static-list",
           }),
           cards: [],
@@ -637,6 +638,21 @@ describe("ValuesSourceModal", () => {
         expect(
           screen.getByText("From another model or question"),
         ).toBeInTheDocument();
+      });
+
+      it("should not show the card source for number parameters with search box", async () => {
+        await setup({
+          parameter: createMockUiParameter({
+            type: "number/=",
+            values_query_type: "search",
+            values_source_type: "static-list",
+          }),
+          cards: [],
+        });
+
+        expect(
+          screen.queryByText("From another model or question"),
+        ).not.toBeInTheDocument();
       });
     });
 

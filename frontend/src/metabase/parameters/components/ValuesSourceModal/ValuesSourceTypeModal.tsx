@@ -23,8 +23,14 @@ import type Field from "metabase-lib/v1/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
-import { isValidSourceConfig } from "metabase-lib/v1/parameters/utils/parameter-source";
-import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
+import {
+  getQueryType,
+  isValidSourceConfig,
+} from "metabase-lib/v1/parameters/utils/parameter-source";
+import {
+  getParameterType,
+  isNumberParameter,
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
   Parameter,
   ParameterValue,
@@ -494,7 +500,11 @@ const getSourceTypeOptions = (
     ...(hasFields(parameter)
       ? [{ name: t`From connected fields`, value: null }]
       : []),
-    { name: t`From another model or question`, value: "card" },
+    ...(isNumberParameter(parameter) && getQueryType(parameter) === "search"
+      ? []
+      : ([
+          { name: t`From another model or question`, value: "card" },
+        ] as const)),
     { name: t`Custom list`, value: "static-list" },
   ];
 };
