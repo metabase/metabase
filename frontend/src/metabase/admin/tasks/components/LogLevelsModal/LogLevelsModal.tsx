@@ -7,7 +7,7 @@ import {
   useListLoggerPresetsQuery,
   useResetLogLevelsAdjustmentMutation,
 } from "metabase/api/logger";
-import { CodeBlock } from "metabase/components/CodeBlock";
+import { CodeEditor } from "metabase/components/CodeEditor";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
@@ -122,7 +122,7 @@ export const LogLevelsModal = () => {
           mah="35vh"
           mih={200}
         >
-          <CodeBlock
+          <CodeEditor
             className={S.code}
             language="json"
             value={json}
