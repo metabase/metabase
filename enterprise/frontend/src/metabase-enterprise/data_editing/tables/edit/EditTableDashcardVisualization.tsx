@@ -4,11 +4,10 @@ import { t } from "ttag";
 import {
   ActionIcon,
   Box,
-  Button,
+  Divider,
   Flex,
   Group,
   Icon,
-  Loader,
   Stack,
   Text,
   rem,
@@ -33,6 +32,7 @@ import { useTableEditingStateDashcardUpdateStrategy } from "./use-table-state-da
 import { useTableEditingUndoRedo } from "./use-table-undo-redo";
 
 type EditTableDashcardVisualizationProps = {
+  title: string;
   dashcardId: number;
   cardId: number;
   tableId: ConcreteTableId;
@@ -43,6 +43,7 @@ type EditTableDashcardVisualizationProps = {
 };
 
 export const EditTableDashcardVisualization = ({
+  title,
   dashcardId,
   cardId,
   tableId,
@@ -86,8 +87,52 @@ export const EditTableDashcardVisualization = ({
     question,
   });
 
+  const isActionsDisabled = isUndoLoading || isRedoLoading;
+
   return (
     <Stack className={cx(S.container, className)} gap={0}>
+      <Flex
+        p="0.5rem"
+        px="1rem"
+        style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+        justify="space-between"
+        align="center"
+      >
+        <Text fw="bold">{title}</Text>
+
+        <Group gap="sm" align="center">
+          <ActionIcon
+            size="md"
+            onClick={undo}
+            disabled={isActionsDisabled}
+            loading={isUndoLoading}
+          >
+            <Icon name="undo" tooltip={t`Undo changes`} />
+          </ActionIcon>
+          <ActionIcon
+            size="md"
+            onClick={redo}
+            disabled={isActionsDisabled}
+            loading={isRedoLoading}
+          >
+            <Icon name="redo" tooltip={t`Redo changes`} />
+          </ActionIcon>
+          {hasCreateAction && (
+            <Box h={rem(16)}>
+              <Divider orientation="vertical" h="100%" />
+            </Box>
+          )}
+          {hasCreateAction && (
+            <ActionIcon
+              size="md"
+              onClick={() => handleModalOpenAndExpandedRow()}
+              disabled={isActionsDisabled}
+            >
+              <Icon name="add" tooltip={t`New record`} />
+            </ActionIcon>
+          )}
+        </Group>
+      </Flex>
       <Box pos="relative" className={S.gridWrapper}>
         <EditTableDataGrid
           data={data}
@@ -102,48 +147,10 @@ export const EditTableDashcardVisualization = ({
       <Flex
         p="xs"
         px="1rem"
-        justify="space-between"
+        justify="flex-end"
         align="center"
         className={S.gridFooterDashcardVisualization}
       >
-        <Group
-          gap="xs"
-          mih={
-            rem(30) /* to avoid jumping when "New record" button is disabled */
-          }
-        >
-          <ActionIcon onClick={undo} disabled={isUndoLoading || isRedoLoading}>
-            {isUndoLoading ? (
-              <Loader size="xs" />
-            ) : (
-              <Icon
-                name="undo"
-                tooltip={t`Undo changes`}
-                c="var(--mb-color-brand)"
-              />
-            )}
-          </ActionIcon>
-          <ActionIcon onClick={redo} disabled={isUndoLoading || isRedoLoading}>
-            {isRedoLoading ? (
-              <Loader size="xs" />
-            ) : (
-              <Icon
-                name="redo"
-                tooltip={t`Redo changes`}
-                c="var(--mb-color-brand)"
-              />
-            )}
-          </ActionIcon>
-          {hasCreateAction && (
-            <Button
-              variant="subtle"
-              size="xs"
-              fz="sm"
-              leftSection={<Icon name="add" />}
-              onClick={() => handleModalOpenAndExpandedRow()}
-            >{t`New record`}</Button>
-          )}
-        </Group>
         <Text fz="sm" fw="bold">
           {getEditTableRowCountMessage(data)}
         </Text>

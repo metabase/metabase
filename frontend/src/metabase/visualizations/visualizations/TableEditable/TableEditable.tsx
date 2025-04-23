@@ -34,6 +34,7 @@ export class TableEditable extends Component<
   static disableReplaceCard = true;
   static disableSettingsConfig = true;
   static disableNavigateToNewCardFromDashboard = true;
+  static noHeader = true;
 
   static additionalDashcardActionButtons = [TableEditableConfigureActionButton];
 
@@ -133,6 +134,7 @@ export class TableEditable extends Component<
 
     return (
       <EditTableDashcardVisualization
+        title={card.name}
         dashcardId={dashcard.id}
         cardId={card.id}
         className={className}
