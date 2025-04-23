@@ -13,7 +13,10 @@ import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Button, Flex, Icon, Loader } from "metabase/ui";
 import type { LoggerPreset, TimeUnit } from "metabase-types/api";
-import { isErrorWithMessageResponse } from "metabase-types/guards";
+import {
+  isErrorWithMessageResponse,
+  isFormErrorResponse,
+} from "metabase-types/guards";
 
 import { DurationInput } from "./DurationInput";
 import S from "./LogLevelsModal.module.css";
@@ -133,7 +136,7 @@ export const LogLevelsModal = () => {
 
         {adjustLogLevelsError ? (
           <Box c="error" mt="md">
-            {getErrorMessage(adjustLogLevelsError)}
+            {getLogLevelsErrorMessage(adjustLogLevelsError)}
           </Box>
         ) : null}
 
@@ -165,12 +168,20 @@ function getPresetJson(preset: LoggerPreset) {
   return JSON.stringify(logLevels, null, 2);
 }
 
-function getErrorMessage(error: unknown) {
-  if (isErrorWithMessageResponse(error)) {
-    return error.data.message;
+function getErrorMessage(response: unknown) {
+  if (isErrorWithMessageResponse(response)) {
+    return response.data.message;
   }
 
   return t`Server error encountered`;
+}
+
+function getLogLevelsErrorMessage(response: unknown) {
+  if (isFormErrorResponse(response) && response.data.errors.log_levels) {
+    return response.data.errors.log_levels;
+  }
+
+  return getErrorMessage(response);
 }
 
 function isJsonValid(json: string): boolean {
