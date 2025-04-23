@@ -614,15 +614,14 @@
     (.trackColumnForAutoSizing ^SXSSFSheet sheet i)))
 
 (defn- init-workbook
+  "Iniitalizes the provided workbook, and returns the created sheet"
   [{:keys [workbook ordered-cols col-count col-settings format-rows? pivot?]}]
-  (let [workbook (or workbook (SXSSFWorkbook.))
-        sheet    (spreadsheet/add-sheet! workbook (tru "Query result"))]
+  (let [sheet    (spreadsheet/add-sheet! workbook (tru "Query result"))]
     (track-n-cols-for-autosizing! (or col-count (count ordered-cols)) sheet)
     (when (not pivot?)
       (setup-header-row! sheet (count ordered-cols))
       (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols col-settings format-rows?)))
-    {:workbook workbook
-     :sheet    sheet}))
+    sheet))
 
 (defn- create-formatters
   [cell-styles col-settings cols indexes]
@@ -642,7 +641,7 @@
    :col-formatters (create-formatters cell-styles col-settings cols col-indexes)
    :val-formatters (create-formatters cell-styles col-settings cols val-indexes)})
 
-(defn- generate-styles
+(defn* generate-styles
   [workbook viz-settings non-pivot-cols format-rows?]
   (let [data-format (. ^SXSSFWorkbook workbook createDataFormat)]
     {:cell-styles (compute-column-cell-styles workbook data-format viz-settings non-pivot-cols format-rows?)
@@ -650,10 +649,10 @@
 
 (defmethod qp.si/streaming-results-writer :xlsx
   [_ ^OutputStream os]
-  (let [workbook-data        (volatile! nil)
+  (let [workbook             (SXSSFWorkbook.)
+        workbook-sheet       (volatile! nil)
         styles               (volatile! nil)
-        pivot-data           (atom nil)
-        pivot-rows           (volatile! [])
+        pivot-data           (volatile! nil)
         pivot-grouping-index (volatile! nil)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot? pivot-export-options]
@@ -666,23 +665,24 @@
                                                                 pivot-export-options) ordered-cols))
               non-pivot-cols (pivot/columns-without-pivot-group ordered-cols)]
           (vreset! pivot-grouping-index (qp.pivot.postprocess/pivot-grouping-index (mapv :display_name ordered-cols)))
+          (def pivot-spec pivot-spec)
           (if pivot-spec
             ;; If we're generating a pivot table, just initialize the `pivot-data` volatile but not the workbook, yet
-            (reset! pivot-data
-                    {:settings             viz-settings
-                     :all-cols             (vec ordered-cols)
-                     :non-pivot-cols       non-pivot-cols
-                     :data                 {}
-                     :timezone             results_timezone
-                     :format-rows?         format-rows?
-                     :pivot-export-options pivot-export-options})
-            (let [{:keys [workbook sheet]}
-                  (init-workbook {:ordered-cols non-pivot-cols
-                                  :col-settings col-settings
-                                  :format-rows? true})]
+            (vreset! pivot-data
+                     {:settings             viz-settings
+                      :non-pivot-cols       non-pivot-cols
+                      :data                 {:cols (vec ordered-cols)
+                                             :rows (transient [])}
+                      :timezone             results_timezone
+                      :format-rows?         format-rows?
+                      :pivot-export-options pivot-export-options})
+            (let [sheet (init-workbook {:workbook     workbook
+                                        :ordered-cols non-pivot-cols
+                                        :col-settings col-settings
+                                        :format-rows? true})]
               (set-no-style-custom-helper! sheet)
               (vreset! styles (generate-styles workbook viz-settings non-pivot-cols format-rows?))
-              (vreset! workbook-data {:workbook workbook :sheet sheet})))))
+              (vreset! workbook-sheet sheet)))))
 
       (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
         (let [ordered-row          (vec (if output-order
@@ -696,63 +696,50 @@
                                      ;; We need to remove the pivot-grouping key if it's there, because we don't show
                                      ;; it in the export. `ordered-cols` is a parallel array, so we must remove the
                                      ;; corresponding col.
-                                     (map #(m/remove-nth @pivot-grouping-index %)))
-              {:keys [sheet]}      @workbook-data]
+                                     (map #(m/remove-nth @pivot-grouping-index %)))]
           (if @pivot-data
-            (vswap! pivot-rows conj ordered-row)
+            (vswap! pivot-data update-in [:data :rows] conj! ordered-row)
             (when (or (not group)
                       (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
               (let [{:keys [cell-styles typed-cell-styles]} @styles]
-                (add-row! sheet (inc row-num) row' ordered-cols' col-settings cell-styles typed-cell-styles)
+                (add-row! @workbook-sheet (inc row-num) row' ordered-cols' col-settings cell-styles typed-cell-styles)
                 (when (= (inc row-num) *auto-sizing-threshold*)
-                  (autosize-columns! sheet)))))))
+                  (autosize-columns! @workbook-sheet)))))))
 
       (finish! [_ {:keys [row_count]}]
         (when @pivot-data
-          ;; For pivoted exports, we pivot in-memory (same as CSVs) and then write the results to the
+          ;; For pivoted exports, we pivot in-memory lsame as CSVs) and then write the results to the
           ;; document all at once
-          (let [pivot-data           @pivot-data
-                pivot-export-options (:pivot-export-options pivot-data)
-                all-cols             (:all-cols pivot-data)
-                non-pivot-cols       (:non-pivot-cols pivot-data)
-                viz-settings         (:settings pivot-data)
-                ;; TODO - remove pivot-rows
-                rows @pivot-rows
-                workbook   (SXSSFWorkbook.)
+          (let [{:keys [settings non-pivot-cols pivot-export-options format-rows?]} @pivot-data
+                {:keys [pivot-rows pivot-cols pivot-measures]} pivot-export-options
 
                 {:keys [cell-styles typed-cell-styles]}
-                (generate-styles workbook viz-settings non-pivot-cols (:format-rows? pivot-data))
+                (generate-styles workbook settings non-pivot-cols format-rows?)
 
                 formatters (make-formatters cell-styles
-                                            (::mb.viz/column-settings viz-settings)
+                                            (::mb.viz/column-settings settings)
                                             non-pivot-cols
-                                            (:pivot-rows pivot-export-options)
-                                            (:pivot-cols pivot-export-options)
-                                            (:pivot-measures pivot-export-options))
+                                            pivot-rows
+                                            pivot-cols
+                                            pivot-measures)
                 output (qp.pivot.postprocess/build-pivot-output
-                        (->
-                         pivot-data
-                         (assoc-in [:data :rows] rows)
-                         (assoc-in [:data :cols] all-cols))
+                        (update-in @pivot-data [:data :rows] persistent!)
                         formatters)
-                {:keys [sheet] :as wb}
-                (init-workbook {:workbook     workbook
-                                :pivot?       true
-                                :col-count    (count (first output))
-                                :col-settings []
-                                :format-rows? true})]
+                sheet (init-workbook {:workbook     workbook
+                                      :pivot?       true
+                                      :col-count    (count (first output))
+                                      :col-settings []
+                                      :format-rows? true})]
+            (vreset! workbook-sheet sheet)
             (set-no-style-custom-helper! sheet)
-            (vreset! workbook-data wb)
             (write-pivot-table! sheet output typed-cell-styles)))
-
-        (let [{:keys [workbook sheet]} @workbook-data]
-          (when (or (nil? row_count)
-                    (< row_count *auto-sizing-threshold*)
-                    @pivot-data)
-            ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
-            (autosize-columns! sheet))
-          (try
-            (spreadsheet/save-workbook-into-stream! os workbook)
-            (finally
-              (.dispose ^SXSSFWorkbook workbook)
-              (.close os))))))))
+        (when (or (nil? row_count)
+                  (< row_count *auto-sizing-threshold*)
+                  @pivot-data)
+          ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
+          (autosize-columns! @workbook-sheet))
+        (try
+          (spreadsheet/save-workbook-into-stream! os workbook)
+          (finally
+            (.dispose ^SXSSFWorkbook workbook)
+            (.close os)))))))

@@ -92,38 +92,38 @@
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options pivot?]
                    :or   {format-rows? true
                           pivot?       false}} :data} viz-settings]
-        (let [col-names          (vec (streaming.common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
-              pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-index col-names)]
+        (let [col-names            (vec (streaming.common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
+              pivot-grouping-index (qp.pivot.postprocess/pivot-grouping-index col-names)]
           (cond
             (and pivot? pivot-export-options)
             (vreset! pivot-data
-                     {:settings viz-settings
-                      :data {:cols (vec ordered-cols)
-                             :rows (transient [])}
-                      :timezone results_timezone
-                      :format-rows? format-rows?
-                      :pivot-grouping-key pivot-grouping-key
+                     {:settings             viz-settings
+                      :data                 {:cols (vec ordered-cols)
+                                             :rows (transient [])}
+                      :timezone             results_timezone
+                      :format-rows?         format-rows?
+                      :pivot-grouping-index pivot-grouping-index
                       :pivot-export-options pivot-export-options})
-            ;; Non-pivoted export of pivot table: store the pivot-grouping-key so that the pivot group can be
+            ;; Non-pivoted export of pivot table: store the pivot-grouping-index so that the pivot group can be
             ;; removed from the exported data
             pivot-export-options
-            (vreset! pivot-data {:pivot-grouping-key pivot-grouping-key}))
+            (vreset! pivot-data {:pivot-grouping-index pivot-grouping-index}))
 
           (vreset! ordered-formatters
                    (mapv #(formatter/create-formatter results_timezone % viz-settings format-rows?) ordered-cols))
 
           ;; Write the column names for non-pivot tables
           (when (or (not pivot?) (not enable-pivoted-exports?))
-            (let [header (m/remove-nth (or pivot-grouping-key (inc (count col-names))) col-names)]
+            (let [header (m/remove-nth (or pivot-grouping-index (inc (count col-names))) col-names)]
               (write-csv writer [header])
               (.flush writer)))))
 
       (write-row! [_ row _row-num _ {:keys [output-order]}]
-        (let [ordered-row                       (if output-order
-                                                  (mapv (vec row) output-order)
-                                                  row)
-              {:keys [pivot-grouping-key data]} @pivot-data
-              pivot-group                       (get ordered-row pivot-grouping-key)]
+        (let [ordered-row                         (if output-order
+                                                    (mapv (vec row) output-order)
+                                                    row)
+              {:keys [pivot-grouping-index data]} @pivot-data
+              pivot-group                         (get ordered-row pivot-grouping-index)]
           (if (and data enable-pivoted-exports?)
             ;; For pivot tables, accumulate rows in memory in a transient
             (vswap! pivot-data update-in [:data :rows] conj! ordered-row)
@@ -133,7 +133,7 @@
                 (let [formatted-row (->> (perf/mapv (fn [formatter r]
                                                       (formatter (streaming.common/format-value r)))
                                                     @ordered-formatters ordered-row)
-                                         (m/remove-nth pivot-grouping-key))]
+                                         (m/remove-nth pivot-grouping-index))]
                   (write-csv writer [formatted-row])
                   (.flush writer)))
               ;; All other results: write directly to the CSV

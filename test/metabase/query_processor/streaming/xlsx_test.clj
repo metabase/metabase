@@ -12,9 +12,11 @@
    [metabase.util.json :as json])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
-   (com.sun.management ThreadMXBean)
-   (java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream)
-   (java.lang.management ManagementFactory)))
+   (java.io
+    BufferedInputStream
+    BufferedOutputStream
+    ByteArrayInputStream
+    ByteArrayOutputStream)))
 
 (set! *warn-on-reflection* true)
 
