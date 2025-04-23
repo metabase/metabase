@@ -3,12 +3,14 @@
    [clojure.string :as str]
    [environ.core :as env]
    [honey.sql.helpers :as sql.helpers]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as search.scoring]
    [metabase.search.appdb.specialization.postgres :as specialization.postgres]
    [metabase.search.config :as search.config]
+   [metabase.search.engine :as engine]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
    [metabase.search.ingestion :as search.ingestion]
@@ -148,9 +150,16 @@
 
 (defmethod search.engine/init! :search.engine/appdb
   [_ {:keys [re-populate?] :as opts}]
-  (let [created? (search.index/ensure-ready! opts)]
-    (when (or created? re-populate?)
-      (populate-index! :search/updating))))
+  (let [index-created (search.index/when-index-created)]
+    (if (and #p index-created (< #p (* 2 engine/reindex-schedule-seconds) #p (t/time-between (t/instant index-created) (t/instant) :seconds)))
+      (do
+        (log/debug "Forcing early reindex because existing index is old")
+        (search.engine/reindex! :search.engine/appdb {}))
+
+      (let [created? (search.index/ensure-ready! opts)]
+        (when (or created? re-populate?)
+          (log/debug "Populating index")
+          (populate-index! :search/updating))))))
 
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]

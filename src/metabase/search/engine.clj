@@ -1,6 +1,10 @@
 ;; The interface encapsulating the various search engine backends.
 (ns metabase.search.engine)
 
+(def reindex-schedule-seconds
+  "The default schedule for reindexing the search engine, in seconds."
+  3600)
+
 (defmulti supported-engine?
   "Does this instance support the given engine?"
   {:arglists '([engine])}

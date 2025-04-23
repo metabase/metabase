@@ -590,3 +590,27 @@
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "pending-timeout-test")
           (#'search.index/delete-obsolete-tables!))))))
+
+(deftest when-index-created
+  (when (search/supports-index?)
+    (binding [search.index/*index-version-id* "index-age-test"]
+      (try
+        (let [table-name (search.index/gen-table-name)
+              version @#'search.index/*index-version-id*]
+
+          (testing "Nil age if no active table"
+            (is (nil? (#'search.index/when-index-created))))
+
+          (testing "Returns age of active table"
+            (let [update-time (t/minus (t/offset-date-time) (t/days 2))]
+              (search.index/create-table! table-name)
+              (search-index-metadata/create-pending! :appdb version table-name)
+              (search-index-metadata/active-pending! :appdb version)
+              (t2/update! :model/SearchIndexMetadata
+                          :index_name  (name table-name)
+                          {:created_at  update-time})
+
+              (is (= update-time (#'search.index/when-index-created))))))
+        (finally
+          (t2/delete! :model/SearchIndexMetadata :version "index-age-test")
+          (#'search.index/delete-obsolete-tables!))))))
