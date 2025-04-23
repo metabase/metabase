@@ -1,3 +1,7 @@
+## [0.55.4-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.3-metabot...embedding-sdk-0.55.4-metabot) (2025-04-23)
+
+
+
 ## [0.55.3-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.2-metabot...embedding-sdk-0.55.3-metabot) (2025-04-22)
 
 
