@@ -24,6 +24,7 @@ const MetabotQuestionInner = () => {
           isSaveEnabled={false}
         >
           <InteractiveQuestionDefaultView
+            withChartTypeSelector
             title={
               <Stack gap="sm" mb="1rem">
                 <QuestionTitle />
