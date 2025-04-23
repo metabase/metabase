@@ -1,1 +1,1 @@
-export * from "./AutomaticDashboardApp"
+export * from "./AutomaticDashboardApp";

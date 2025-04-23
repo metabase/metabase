@@ -51,14 +51,16 @@ const SuggestionsList = ({
   <Box component="ol" my="sm">
     {_.keys(suggestions).map((s, index) => {
       const suggestionKey = s as keyof RelatedDashboardXRays;
+      const suggestionItem = suggestions[suggestionKey];
       return (
         <li key={index} className={CS.my2}>
           <SuggestionSectionHeading>
             {RELATED_CONTENT[suggestionKey].title}
           </SuggestionSectionHeading>
-          {suggestions[suggestionKey] &&
-            suggestions[suggestionKey].length > 0 &&
-            suggestions[suggestionKey].map((item, itemIndex) => (
+          {suggestionItem &&
+            Array.isArray(suggestionItem) &&
+            suggestionItem.length > 0 &&
+            suggestionItem.map((item, itemIndex) => (
               <Link
                 key={itemIndex}
                 to={item.url}
