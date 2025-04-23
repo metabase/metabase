@@ -24,7 +24,7 @@ Docs: [MetabaseProvider](./api/MetabaseProvider.html)
 
 `MetabaseProvider` also supports `eventHandlers`.
 
-Docs: [SdkEventHandlersConfig](./api/internal/SdkEventHandlersConfig.html)
+Docs: [SdkEventHandlersConfig](./api/SdkEventHandlersConfig.html)
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/config/config-with-event-handlers.tsx" snippet="example" %}
