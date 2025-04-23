@@ -15,6 +15,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       e2e_all: ${{ steps.changes.outputs.e2e_all }}
+      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
       backend_all: ${{ steps.changes.outputs.backend_all }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
@@ -79,6 +80,7 @@ jobs:
     secrets: inherit
     with:
       skip: ${{ needs.files-changed.outputs.frontend_all != 'true' }}
+      skip-lint: ${{ needs.files-changed.outputs.frontend_all != 'true' && needs.files-changed.outputs.e2e_specs != 'true' }}
 
   e2e-tests:
     needs: files-changed
