@@ -315,12 +315,9 @@
                    ["Gizmo" "529.7" "1080.18" "997.94" "227.06" "2834.88"]
                    ["Widget" "987.39" "1014.68" "912.2" "195.04" "3109.31"]
                    ["Grand totals" "2829.06" "4008.16" "3251.08" "1060.98" "11149.28"]]
-                  #{:unsaved-card-download
-                    :card-download
-                    :dashcard-download
+                  #{:unsaved-card-download :card-download :dashcard-download
                     :subscription-attachment
-                    :public-question-download
-                    :public-dashcard-download}]
+                    :public-question-download :public-dashcard-download}]
                  (->> (all-outputs! card {:export-format :csv :format-rows false :pivot true})
                       (group-by second)
                       ((fn [m] (update-vals m #(into #{} (mapv first %)))))
