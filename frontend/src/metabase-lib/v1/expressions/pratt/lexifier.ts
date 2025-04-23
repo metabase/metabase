@@ -1,7 +1,7 @@
 import type { SyntaxNodeRef } from "@lezer/common";
 
 import { unquoteString } from "../string";
-import { OPERATOR, tokenize } from "../tokenizer";
+import { PUNCTUATOR, tokenize } from "../tokenizer";
 
 import {
   ADD,
@@ -79,7 +79,7 @@ export function lexify(source: string) {
       return token(node, { type: BOOLEAN });
     }
 
-    if (node.type.name === OPERATOR.OpenParenthesis) {
+    if (node.type.name === PUNCTUATOR.OpenParenthesis) {
       const prev = lexs.at(-1);
       if (prev?.type === IDENTIFIER) {
         prev.type = CALL;
@@ -118,23 +118,23 @@ export function lexify(source: string) {
   };
 }
 
-const OPERATOR_TO_TYPE: Record<OPERATOR, NodeType> = {
-  [OPERATOR.Comma]: COMMA,
-  [OPERATOR.OpenParenthesis]: GROUP,
-  [OPERATOR.CloseParenthesis]: GROUP_CLOSE,
-  [OPERATOR.Plus]: ADD,
-  [OPERATOR.Minus]: SUB,
-  [OPERATOR.Multiply]: MULDIV_OP,
-  [OPERATOR.Divide]: MULDIV_OP,
-  [OPERATOR.Equal]: EQUALITY,
-  [OPERATOR.NotEqual]: EQUALITY,
-  [OPERATOR.LessThan]: COMPARISON,
-  [OPERATOR.GreaterThan]: COMPARISON,
-  [OPERATOR.GreaterThanEqual]: COMPARISON,
-  [OPERATOR.LessThanEqual]: COMPARISON,
-  [OPERATOR.Not]: LOGICAL_NOT,
-  [OPERATOR.And]: LOGICAL_AND,
-  [OPERATOR.Or]: LOGICAL_OR,
+const OPERATOR_TO_TYPE: Record<PUNCTUATOR, NodeType> = {
+  [PUNCTUATOR.Comma]: COMMA,
+  [PUNCTUATOR.OpenParenthesis]: GROUP,
+  [PUNCTUATOR.CloseParenthesis]: GROUP_CLOSE,
+  [PUNCTUATOR.Plus]: ADD,
+  [PUNCTUATOR.Minus]: SUB,
+  [PUNCTUATOR.Multiply]: MULDIV_OP,
+  [PUNCTUATOR.Divide]: MULDIV_OP,
+  [PUNCTUATOR.Equal]: EQUALITY,
+  [PUNCTUATOR.NotEqual]: EQUALITY,
+  [PUNCTUATOR.LessThan]: COMPARISON,
+  [PUNCTUATOR.GreaterThan]: COMPARISON,
+  [PUNCTUATOR.GreaterThanEqual]: COMPARISON,
+  [PUNCTUATOR.LessThanEqual]: COMPARISON,
+  [PUNCTUATOR.Not]: LOGICAL_NOT,
+  [PUNCTUATOR.And]: LOGICAL_AND,
+  [PUNCTUATOR.Or]: LOGICAL_OR,
 };
 
 export function parseOperatorType(op: string): NodeType | null {
