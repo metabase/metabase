@@ -641,7 +641,7 @@
    :col-formatters (create-formatters cell-styles col-settings cols col-indexes)
    :val-formatters (create-formatters cell-styles col-settings cols val-indexes)})
 
-(defn* generate-styles
+(defn- generate-styles
   [workbook viz-settings non-pivot-cols format-rows?]
   (let [data-format (. ^SXSSFWorkbook workbook createDataFormat)]
     {:cell-styles (compute-column-cell-styles workbook data-format viz-settings non-pivot-cols format-rows?)
