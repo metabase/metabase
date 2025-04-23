@@ -129,19 +129,10 @@ const downloadChart = async ({
   dashcardId,
 }: DownloadQueryResultsOpts) => {
   const fileName = getChartFileName(question);
-  const cardContainer = `[data-card-key='${getCardKey(question.id())}']`;
-  /**
-   * The same card can be added multiple times to the same dashboard
-   * so we need a unique identifier, which is the id of the dashcard.
-   *
-   * In order to keep downloads deterministic, we're using the one and
-   * the same selector as the node, which is the data-card-key.
-   */
   const chartSelector =
     dashcardId != null
-      ? `[data-dashcard-key='${dashcardId}'] ${cardContainer}`
-      : cardContainer;
-
+      ? `[data-dashcard-key='${dashcardId}']`
+      : `[data-card-key='${getCardKey(question.id())}']`;
   await saveChartImage(chartSelector, fileName);
 };
 
