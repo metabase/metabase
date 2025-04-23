@@ -119,7 +119,7 @@ describe("issue 13751", { tags: "@external" }, () => {
   it("should allow using strings in filter based on a custom column (metabase#13751)", () => {
     H.addCustomColumn();
     H.enterCustomColumnDetails({
-      formula: 'regexextract([State], "^C[A-Z]")',
+      formula: 'regexExtract([State], "^C[A-Z]")',
       name: CC_NAME,
     });
     cy.button("Done").should("not.be.disabled").click();
@@ -161,11 +161,11 @@ describe.skip(
     });
 
     it("should not remove regex escape characters (metabase#14517)", () => {
-      cy.log("Create custom column using `regexextract()`");
+      cy.log("Create custom column using `regexExtract()`");
       cy.findByLabelText("Custom Column").click();
       H.popover().within(() => {
         cy.get("[contenteditable='true']")
-          .type(`regexextract([State], "${ESCAPED_REGEX}")`)
+          .type(`regexExtract([State], "${ESCAPED_REGEX}")`)
           .blur();
 
         // It removes escaped characters already on blur
@@ -1633,7 +1633,7 @@ describe("issue 56596", () => {
   it("should not remove backslashes from escaped characters (metabase#56596)", () => {
     H.addCustomColumn();
     const expr = dedent`
-      regexextract([Vendor], "\\s.*")
+      regexExtract([Vendor], "\\s.*")
     `;
     H.enterCustomColumnDetails({
       formula: expr,

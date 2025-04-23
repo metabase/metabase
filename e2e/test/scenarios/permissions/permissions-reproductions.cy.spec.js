@@ -105,7 +105,7 @@ describe("postgres > user > query", { tags: "@external" }, () => {
     cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
   });
 
-  it("should handle the use of `regexextract` in a sandboxed table (metabase#14873)", () => {
+  it("should handle the use of `regexExtract` in a sandboxed table (metabase#14873)", () => {
     const CC_NAME = "Firstname";
     // We need ultra-wide screen to avoid scrolling (custom column is rendered at the last position)
     cy.viewport(2200, 1200);

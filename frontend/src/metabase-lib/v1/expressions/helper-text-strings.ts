@@ -544,7 +544,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "regex-match-first",
-    structure: "regexextract",
+    structure: "regexExtract",
     category: "string",
     description: () =>
       t`Extracts matching substrings according to a regular expression.`,
