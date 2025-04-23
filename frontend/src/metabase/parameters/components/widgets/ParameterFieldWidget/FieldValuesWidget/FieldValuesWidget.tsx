@@ -385,7 +385,7 @@ export const FieldValuesWidgetInner = forwardRef<
     !disableList &&
     shouldList({ parameter, fields, disableSearch }) &&
     valuesMode === "list";
-  const isLoading = loadingState !== "LOADED";
+  const isLoading = loadingState === "LOADING";
   const hasListValues = hasList({
     parameter,
     fields,
