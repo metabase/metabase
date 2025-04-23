@@ -20,7 +20,7 @@ import type {
   VirtualCard,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
-import type { VisualizerVizState } from "metabase-types/store/visualizer";
+import type { VisualizerVizDefinition } from "metabase-types/store/visualizer";
 
 import {
   trackCardCreated,
@@ -254,7 +254,7 @@ export const replaceCard =
   };
 
 export const addCardWithVisualization =
-  ({ visualization }: { visualization: VisualizerVizState }) =>
+  ({ visualization }: { visualization: VisualizerVizDefinition }) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const cardIds = getCardIdsFromColumnValueMappings(
       visualization.columnValuesMapping,
@@ -302,7 +302,7 @@ export const replaceCardWithVisualization =
     visualization,
   }: {
     dashcardId: DashCardId;
-    visualization: VisualizerVizState;
+    visualization: VisualizerVizDefinition;
   }) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const cardIds = getCardIdsFromColumnValueMappings(

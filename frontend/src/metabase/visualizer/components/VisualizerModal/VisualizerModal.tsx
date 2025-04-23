@@ -12,7 +12,7 @@ import { initializeVisualizer } from "metabase/visualizer/visualizer.slice";
 import type { CardId } from "metabase-types/api";
 import type {
   VisualizerDataSourceId,
-  VisualizerVizState,
+  VisualizerVizDefinition,
 } from "metabase-types/store/visualizer";
 
 import { Visualizer } from "../Visualizer";
@@ -22,7 +22,7 @@ import S from "./VisualizerModal.module.css";
 interface VisualizerModalProps {
   initialState?:
     | {
-        state: VisualizerVizState;
+        state: VisualizerVizDefinition;
       }
     | { cardId: CardId };
 }

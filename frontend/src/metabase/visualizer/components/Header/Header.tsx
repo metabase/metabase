@@ -12,14 +12,14 @@ import {
   getVisualizationTitle,
 } from "metabase/visualizer/selectors";
 import { setTitle } from "metabase/visualizer/visualizer.slice";
-import type { VisualizerVizState } from "metabase-types/store/visualizer";
+import type { VisualizerVizDefinition } from "metabase-types/store/visualizer";
 
 import { useVisualizerUi } from "../VisualizerUiContext";
 
 import S from "./Header.module.css";
 
 interface HeaderProps {
-  onSave: (visualization: VisualizerVizState) => void;
+  onSave: (visualization: VisualizerVizDefinition) => void;
   onClose: () => void;
   saveLabel?: string;
   allowSaveWhenPristine?: boolean;

@@ -1,4 +1,4 @@
-import type { VisualizerVizState } from "metabase-types/store/visualizer";
+import type { VisualizerVizDefinition } from "metabase-types/store/visualizer";
 
 /**
  * Ensures that the column is removed from the state if it is not used in any settings.
@@ -8,7 +8,7 @@ import type { VisualizerVizState } from "metabase-types/store/visualizer";
  * @param settingsKeys the settings keys to check against
  */
 export function removeColumnFromStateUnlessUsedElseWhere(
-  state: VisualizerVizState,
+  state: VisualizerVizDefinition,
   columnName: string,
   settingsKeys: string[],
 ) {

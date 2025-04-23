@@ -5,7 +5,7 @@ import {
   createMockDataset,
   createMockNumericColumn,
 } from "metabase-types/api/mocks";
-import type { VisualizerVizState } from "metabase-types/store/visualizer";
+import type { VisualizerVizDefinition } from "metabase-types/store/visualizer";
 
 import {
   createDataSource,
@@ -70,7 +70,7 @@ describe("funnel", () => {
   describe("addColumnToFunnel", () => {
     describe("regular funnel", () => {
       it("should add a metric column", () => {
-        const state: VisualizerVizState = {
+        const state: VisualizerVizDefinition = {
           display: "funnel",
           columns: [],
           settings: {},
@@ -95,7 +95,7 @@ describe("funnel", () => {
       });
 
       it("should not change the metric column if it's already set", () => {
-        const state: VisualizerVizState = {
+        const state: VisualizerVizDefinition = {
           display: "funnel",
           columns: [{ ...metricColumn, name: "COLUMN_1" }],
           settings: { "funnel.metric": "COLUMN_1" },
@@ -127,7 +127,7 @@ describe("funnel", () => {
       });
 
       it("should add a dimension column", () => {
-        const state: VisualizerVizState = {
+        const state: VisualizerVizDefinition = {
           display: "funnel",
           columns: [{ ...metricColumn, name: "COLUMN_1" }],
           settings: { "funnel.metric": "COLUMN_1" },
@@ -165,7 +165,7 @@ describe("funnel", () => {
       });
 
       it("should not change the dimension column if it's already set", () => {
-        const state: VisualizerVizState = {
+        const state: VisualizerVizDefinition = {
           display: "funnel",
           columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
           settings: { "funnel.dimension": "COLUMN_1" },
@@ -199,7 +199,7 @@ describe("funnel", () => {
 
     describe("scalar funnel", () => {
       it("should start a scalar funnel from clean state", () => {
-        const state: VisualizerVizState = {
+        const state: VisualizerVizDefinition = {
           display: "funnel",
           columns: [],
           settings: {},
@@ -227,7 +227,7 @@ describe("funnel", () => {
       });
 
       it("should add a new column to an existing scalar funnel", () => {
-        const state: VisualizerVizState = {
+        const state: VisualizerVizDefinition = {
           display: "funnel",
           columns: [
             createMockNumericColumn({ name: "METRIC" }),
@@ -281,7 +281,7 @@ describe("funnel", () => {
   describe("removeColumnFromFunnel", () => {
     describe("regular funnel", () => {
       it("should remove a metric column", () => {
-        const state: VisualizerVizState = {
+        const state: VisualizerVizDefinition = {
           display: "funnel",
           columns: [{ ...metricColumn, name: "COLUMN_1" }],
           settings: {
@@ -302,7 +302,7 @@ describe("funnel", () => {
       });
 
       it("should remove a dimension column", () => {
-        const state: VisualizerVizState = {
+        const state: VisualizerVizDefinition = {
           display: "funnel",
           columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
           settings: {
@@ -323,7 +323,7 @@ describe("funnel", () => {
       });
 
       it("should do nothing if a column isn't used", () => {
-        const state: VisualizerVizState = {
+        const state: VisualizerVizDefinition = {
           display: "funnel",
           columns: [{ ...metricColumn, name: "COLUMN_1" }],
           settings: {
@@ -349,7 +349,7 @@ describe("funnel", () => {
     });
 
     describe("scalar funnel", () => {
-      const initialState: VisualizerVizState = {
+      const initialState: VisualizerVizDefinition = {
         display: "funnel",
         columns: [
           createMockNumericColumn({ name: "METRIC" }),
@@ -419,7 +419,7 @@ describe("funnel", () => {
   describe("combineWithFunnel", () => {
     describe("regular funnel", () => {
       it("should set funnel.metric if it's undefined and there's one metric column", () => {
-        const state: VisualizerVizState = {
+        const state: VisualizerVizDefinition = {
           display: "funnel",
           columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
           settings: {
@@ -465,7 +465,7 @@ describe("funnel", () => {
       });
 
       it("should not change funnel.metric if it's already set", () => {
-        const state: VisualizerVizState = {
+        const state: VisualizerVizDefinition = {
           display: "funnel",
           columns: [{ ...metricColumn, name: "COLUMN_1" }],
           settings: {
@@ -492,7 +492,7 @@ describe("funnel", () => {
       });
 
       it("shouldn't set funnel.metric if it's undefined and there are multiple metric columns", () => {
-        const state: VisualizerVizState = {
+        const state: VisualizerVizDefinition = {
           display: "funnel",
           columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
           settings: {
@@ -519,7 +519,7 @@ describe("funnel", () => {
       });
 
       it("should set funnel.dimension if it's undefined and there's one dimension column", () => {
-        const state: VisualizerVizState = {
+        const state: VisualizerVizDefinition = {
           display: "funnel",
           columns: [{ ...metricColumn, name: "COLUMN_1" }],
           settings: {
@@ -563,7 +563,7 @@ describe("funnel", () => {
       });
 
       it("should not set funnel.dimension if it's undefined and there are multiple dimension columns", () => {
-        const state: VisualizerVizState = {
+        const state: VisualizerVizDefinition = {
           display: "funnel",
           columns: [{ ...metricColumn, name: "COLUMN_1" }],
           settings: {
@@ -592,7 +592,7 @@ describe("funnel", () => {
       });
 
       it("should not change funnel.dimension if it's already set", () => {
-        const state: VisualizerVizState = {
+        const state: VisualizerVizDefinition = {
           display: "funnel",
           columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
           settings: {
@@ -624,7 +624,7 @@ describe("funnel", () => {
     });
 
     describe("scalar funnel", () => {
-      const initialState: VisualizerVizState = {
+      const initialState: VisualizerVizDefinition = {
         display: "funnel",
         columns: [
           createMockNumericColumn({ name: "METRIC" }),
@@ -648,7 +648,7 @@ describe("funnel", () => {
       };
 
       it("should start a scalar funnel from clean state", () => {
-        const state: VisualizerVizState = {
+        const state: VisualizerVizDefinition = {
           display: "funnel",
           columns: [],
           settings: {},

@@ -40,7 +40,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import type { StoreDashcard } from "metabase-types/store";
-import type { VisualizerVizState } from "metabase-types/store/visualizer";
+import type { VisualizerVizDefinition } from "metabase-types/store/visualizer";
 
 import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
@@ -105,7 +105,7 @@ export interface DashCardProps {
 
   onEditVisualization?: (
     dashcard: StoreDashcard,
-    initialState: VisualizerVizState,
+    initialState: VisualizerVizDefinition,
   ) => void;
 }
 
@@ -324,11 +324,11 @@ function DashCardInner({
     }
 
     return () => {
-      let initialState: VisualizerVizState;
+      let initialState: VisualizerVizDefinition;
 
       if (isVisualizerDashboardCard(dashcard)) {
         initialState = dashcard.visualization_settings
-          ?.visualization as VisualizerVizState;
+          ?.visualization as VisualizerVizDefinition;
       } else if (series.length > 1) {
         initialState = getInitialStateForMultipleSeries(series);
       } else {

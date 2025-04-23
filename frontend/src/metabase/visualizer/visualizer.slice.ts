@@ -25,7 +25,7 @@ import type {
   VisualizerDataSource,
   VisualizerDataSourceId,
   VisualizerState,
-  VisualizerVizState,
+  VisualizerVizDefinition,
 } from "metabase-types/store/visualizer";
 
 import {
@@ -65,7 +65,7 @@ import {
   removeColumnFromPieChart,
 } from "./visualizations/pie";
 
-function getInitialVisualizerHistoryItem(): VisualizerVizState {
+function getInitialVisualizerHistoryItem(): VisualizerVizDefinition {
   return {
     display: null,
     columns: [],
@@ -91,7 +91,7 @@ function getInitialState(): VisualizerState {
 
 type InitVisualizerPayload =
   | {
-      state?: Partial<VisualizerVizState>;
+      state?: Partial<VisualizerVizDefinition>;
     }
   | { cardId: CardId };
 
@@ -115,7 +115,7 @@ const initializeFromState = async (
   {
     state: initialState = {},
   }: {
-    state?: Partial<VisualizerVizState>;
+    state?: Partial<VisualizerVizDefinition>;
   },
   dispatch: Dispatch,
 ) => {
@@ -543,7 +543,7 @@ const visualizerSlice = createSlice({
 });
 
 function maybeCombineDataset(
-  state: VisualizerVizState,
+  state: VisualizerVizDefinition,
   dataSource: VisualizerDataSource,
   dataset: Dataset,
 ) {
