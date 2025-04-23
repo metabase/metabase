@@ -126,10 +126,10 @@ export function HelpText({
       >
         <Box>
           {structure}
-          {args != null && (
+          {
             <>
               (
-              {args.map(({ name }, index) => (
+              {args?.map(({ name }, index) => (
                 <span key={index}>
                   <span
                     className={cx(S.arg, {
@@ -145,7 +145,7 @@ export function HelpText({
               ))}
               )
             </>
-          )}
+          }
         </Box>
         <UnstyledButton className={S.toggle} px="sm">
           <Icon
