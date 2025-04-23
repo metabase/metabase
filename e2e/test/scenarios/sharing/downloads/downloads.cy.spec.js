@@ -283,7 +283,7 @@ describe("scenarios > question > download", () => {
 
       H.filterWidget().contains("ID").click();
 
-      H.popover().within(() => H.fieldValuesInput().type("1"));
+      H.popover().within(() => H.fieldValuesCombobox().type("1"));
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filter").click();
@@ -407,7 +407,7 @@ describe("scenarios > question > download", () => {
     it("from query builder", () => {
       H.createQuestion(canSavePngQuestion, { visitQuestion: true });
 
-      cy.findByTestId("download-button").click();
+      cy.findByRole("button", { name: "Download results" }).click();
 
       H.popover().within(() => {
         cy.findByText(".png").click();
@@ -418,7 +418,7 @@ describe("scenarios > question > download", () => {
 
       H.createQuestion(cannotSavePngQuestion, { visitQuestion: true });
 
-      cy.findByTestId("download-button").click();
+      cy.findByRole("button", { name: "Download results" }).click();
 
       H.popover().within(() => {
         cy.findByText(".png").should("not.exist");

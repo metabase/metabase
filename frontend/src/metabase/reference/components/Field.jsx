@@ -97,7 +97,7 @@ const Field = ({
               </div>
             )}
           </div>
-          <div className={F.fieldDataType}>{field.base_type}</div>
+          <div className={F.fieldDataType}>{field.database_type}</div>
         </div>
         <div className={S.itemSubtitle}>
           <div className={F.fieldForeignKey}>

@@ -1,9 +1,4 @@
-import {
-  type CSSProperties,
-  type ComponentType,
-  useEffect,
-  useState,
-} from "react";
+import { type ComponentType, useEffect, useState } from "react";
 
 import {
   CollectionNotFoundError,
@@ -13,7 +8,11 @@ import {
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
-import type { SdkCollectionId } from "embedding-sdk/types/collection";
+import type {
+  MetabaseCollectionItem,
+  SdkCollectionId,
+} from "embedding-sdk/types/collection";
+import type { CommonStylingProps } from "embedding-sdk/types/props";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
 import { isNotNull } from "metabase/lib/types";
@@ -22,7 +21,6 @@ import { Stack } from "metabase/ui";
 import type {
   CollectionEssentials,
   CollectionId,
-  CollectionItem,
   CollectionItemModel,
 } from "metabase-types/api";
 
@@ -35,7 +33,7 @@ const USER_FACING_ENTITY_NAMES = [
 
 type UserFacingEntityName = (typeof USER_FACING_ENTITY_NAMES)[number];
 
-type CollectionBrowserListColumns =
+export type CollectionBrowserListColumns =
   | "type"
   | "name"
   | "lastEditedBy"
@@ -57,16 +55,42 @@ const ENTITY_NAME_MAP: Partial<
   model: "dataset",
 };
 
+/**
+ * @interface
+ * @expand
+ * @category CollectionBrowser
+ */
 export type CollectionBrowserProps = {
+  /**
+   * The numerical ID of the collection, "personal" for the user's personal collection, or "root" for the root collection. You can find this ID in the URL when accessing a collection in your Metabase instance. For example, the collection ID in `http://localhost:3000/collection/1-my-collection` would be `1`. Defaults to "personal"
+   */
   collectionId?: SdkCollectionId;
-  onClick?: (item: CollectionItem) => void;
+
+  /**
+   * The number of items to display per page. The default is 25.
+   */
   pageSize?: number;
+
+  /**
+   * The types of entities that should be visible. If not provided, all entities will be shown.
+   */
   visibleEntityTypes?: UserFacingEntityName[];
-  EmptyContentComponent?: ComponentType | null;
+
+  /**
+   * The columns to display in the collection items table. If not provided, all columns will be shown.
+   */
   visibleColumns?: CollectionBrowserListColumns[];
-  className?: string;
-  style?: CSSProperties;
-};
+
+  /**
+   * A component to display when there are no items in the collection.
+   */
+  EmptyContentComponent?: ComponentType | null;
+
+  /**
+   * A function to call when an item is clicked.
+   */
+  onClick?: (item: MetabaseCollectionItem) => void;
+} & CommonStylingProps;
 
 export const CollectionBrowserInner = ({
   collectionId = "personal",
@@ -91,13 +115,13 @@ export const CollectionBrowserInner = ({
     setCurrentCollectionId(baseCollectionId);
   }, [baseCollectionId]);
 
-  const onClickItem = (item: CollectionItem) => {
+  const onClickItem = (item: MetabaseCollectionItem) => {
     if (onClick) {
       onClick(item);
     }
 
     if (item.model === "collection") {
-      setCurrentCollectionId(item.id);
+      setCurrentCollectionId(item.id as CollectionId);
     }
   };
 
@@ -147,6 +171,12 @@ const CollectionBrowserWrapper = ({
   return <CollectionBrowserInner collectionId={id} {...restProps} />;
 };
 
+/**
+ * A component that allows you to browse collections and their items.
+ *
+ * @function
+ * @category CollectionBrowser
+ */
 export const CollectionBrowser = withPublicComponentWrapper(
   CollectionBrowserWrapper,
 );

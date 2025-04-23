@@ -32,6 +32,7 @@ import type {
   DisplayTheme,
   EmbedResourceDownloadOptions,
 } from "metabase/public/lib/types";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
@@ -46,8 +47,6 @@ import type {
 import type { SelectedTabId } from "metabase-types/store";
 
 import { EmbedFrame } from "../../components/EmbedFrame";
-
-import { DashboardContainer } from "./PublicOrEmbeddedDashboard.styled";
 
 interface InnerPublicOrEmbeddedDashboardViewProps {
   dashboard: Dashboard | null;
@@ -134,6 +133,8 @@ export function PublicOrEmbeddedDashboardView({
   );
 
   const dashboardHasCards = dashboard && visibleDashcards.length > 0;
+  const dashboardHasTabs = dashboard?.tabs && dashboard.tabs.length > 1;
+  const hasVisibleParameters = parameters.filter((p) => !p.hidden).length > 0;
 
   const tabHasCards =
     visibleDashcards.filter(
@@ -163,6 +164,8 @@ export function PublicOrEmbeddedDashboardView({
     [externalGetClickActionMode, navigateToNewCardFromDashboard],
   );
 
+  const isCompactHeader = !titled && !hasVisibleParameters && !dashboardHasTabs;
+
   return (
     <EmbedFrame
       name={dashboard && dashboard.name}
@@ -177,8 +180,7 @@ export function PublicOrEmbeddedDashboardView({
       enableParameterRequiredBehavior
       actionButtons={buttons ? <div className={CS.flex}>{buttons}</div> : null}
       dashboardTabs={
-        dashboard?.tabs &&
-        dashboard.tabs.length > 1 && <DashboardTabs dashboardId={dashboardId} />
+        dashboardHasTabs && <DashboardTabs dashboardId={dashboardId} />
       }
       background={background}
       bordered={bordered}
@@ -221,7 +223,7 @@ export function PublicOrEmbeddedDashboardView({
           }
 
           return (
-            <DashboardContainer>
+            <FullWidthContainer mt={isCompactHeader ? "xs" : "sm"}>
               <DashboardGridConnected
                 dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
                 isPublicOrEmbedded
@@ -236,11 +238,11 @@ export function PublicOrEmbeddedDashboardView({
                 withCardTitle={cardTitled}
                 clickBehaviorSidebarDashcard={null}
                 navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-                downloadsEnabled={downloadsEnabled.dashcard}
+                downloadsEnabled={downloadsEnabled.results}
                 autoScrollToDashcardId={undefined}
                 reportAutoScrolledToDashcard={_.noop}
               />
-            </DashboardContainer>
+            </FullWidthContainer>
           );
         }}
       </LoadingAndErrorWrapper>

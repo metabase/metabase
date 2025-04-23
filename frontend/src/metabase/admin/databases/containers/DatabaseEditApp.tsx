@@ -1,129 +1,79 @@
 import type { Location } from "history";
-import { type ComponentType, useState } from "react";
+import { type ComponentType, useEffect, useState } from "react";
+import { withRouter } from "react-router";
 import { replace } from "react-router-redux";
-import { useInterval, useMount } from "react-use";
+import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { useGetDatabaseQuery } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { GenericError } from "metabase/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import title from "metabase/hoc/Title";
-import { connect } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { connect, useDispatch, useSelector } from "metabase/lib/redux";
+import { PLUGIN_DB_ROUTING } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
-import Database from "metabase-lib/v1/metadata/Database";
 import type {
   DatabaseData,
   DatabaseId,
   Database as DatabaseType,
-  InitialSyncStatus,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { DatabaseConnectionInfoSection } from "../components/DatabaseConnectionInfoSection";
 import { DatabaseDangerZoneSection } from "../components/DatabaseDangerZoneSection";
-import type { DatabaseEditErrorType } from "../components/DatabaseEditConnectionForm";
 import { DatabaseModelFeaturesSection } from "../components/DatabaseModelFeaturesSection";
 import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
 import { NewDatabasePermissionsModal } from "../components/NewDatabasePermissionsModal";
-import {
-  deleteDatabase,
-  dismissSyncSpinner,
-  initializeDatabase,
-  reset,
-  selectEngine,
-  updateDatabase,
-} from "../database";
-import { getEditingDatabase, getInitializeError } from "../selectors";
+import { deleteDatabase, updateDatabase } from "../database";
 
 interface DatabaseEditAppProps {
   children: React.ReactNode;
-  database?: Database;
-  params: { databaseId: DatabaseId };
-  reset: () => void;
-  initializeDatabase: (databaseId: DatabaseId) => Promise<void>;
-  dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
+  params: { databaseId: string };
   updateDatabase: (
     database: { id: DatabaseId } & Partial<DatabaseType>,
   ) => Promise<void>;
   deleteDatabase: (databaseId: DatabaseId) => Promise<void>;
-  selectEngine: (engine: string) => void;
   location: Location;
-  isAdmin: boolean;
-  isModelPersistenceEnabled: boolean;
-  initializeError?: DatabaseEditErrorType;
-  replace: (path: string) => void;
 }
-
-const mapStateToProps = (state: State) => {
-  const database = getEditingDatabase(state);
-
-  return {
-    database: database ? new Database(database) : undefined,
-    initializeError: getInitializeError(state),
-    isAdmin: getUserIsAdmin(state),
-    isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
-  };
-};
 
 const mapDispatchToProps = {
-  dismissSyncSpinner,
-  initializeDatabase,
-  reset,
-  selectEngine,
   updateDatabase,
   deleteDatabase,
-  replace,
 };
-
-// loads the database into the redux state and polls until the
-// database has been successfully synced for the first time
-// ideally this should be ported to RTKQuery
-function useDatabaseInitializer(
-  reset: () => void,
-  initializeDatabase: (databaseId: DatabaseId) => Promise<void>,
-  databaseId: DatabaseId,
-  initialSyncStatus: InitialSyncStatus | undefined,
-) {
-  useMount(async () => {
-    reset();
-    initializeDatabase(databaseId);
-  });
-
-  // keep refetching the database until the sync status reached a terminal state
-  useInterval(
-    () => initializeDatabase(databaseId),
-    initialSyncStatus === "incomplete" ? 2000 : null,
-  );
-}
 
 function DatabaseEditAppInner({
   children,
-  database,
-  dismissSyncSpinner,
-  initializeDatabase,
-  initializeError,
-  isAdmin,
-  isModelPersistenceEnabled,
   params,
-  reset,
   updateDatabase,
   deleteDatabase,
   location,
-  replace,
 }: DatabaseEditAppProps) {
-  useDatabaseInitializer(
-    reset,
-    initializeDatabase,
-    params.databaseId,
-    database?.initial_sync_status,
+  const dispatch = useDispatch();
+  const isAdmin = useSelector(getUserIsAdmin);
+  const isModelPersistenceEnabled = useSetting("persisted-models-enabled");
+
+  const databaseId = parseInt(params.databaseId, 10);
+
+  const [pollingInterval, setPollingInterval] = useState<number>();
+  const {
+    currentData: database,
+    isLoading,
+    error,
+  } = useGetDatabaseQuery({ id: databaseId }, { pollingInterval });
+
+  useEffect(
+    function pollDatabaseWhileSyncing() {
+      const isSyncing = database?.initial_sync_status === "incomplete";
+      setPollingInterval(isSyncing ? 2000 : undefined);
+    },
+    [database?.initial_sync_status],
   );
 
-  const isLoading = !database?.id && !initializeError;
   const crumbs = _.compact([
     [t`Databases`, "/admin/databases"],
     database?.name && [database?.name],
@@ -133,10 +83,12 @@ function DatabaseEditAppInner({
   useMount(() => {
     if (location.query.created) {
       setIsPermissionModalOpened(true);
-      replace(location.pathname);
+      dispatch(replace(location.pathname));
     }
   });
   const onPermissionModalClose = () => setIsPermissionModalOpened(false);
+
+  PLUGIN_DB_ROUTING.useRedirectDestinationDatabase(database);
 
   return (
     <>
@@ -144,7 +96,7 @@ function DatabaseEditAppInner({
         <Box w="100%" maw="64.25rem" mx="auto" px="2rem">
           <Breadcrumbs className={CS.py4} crumbs={crumbs} />
 
-          <LoadingAndErrorWrapper loading={isLoading} error={initializeError}>
+          <LoadingAndErrorWrapper loading={isLoading} error={error}>
             {database && (
               <>
                 <ExistingDatabaseHeader database={database} />
@@ -156,15 +108,16 @@ function DatabaseEditAppInner({
                   gap={{ base: "2rem", sm: "5.5rem" }}
                   mb={{ base: "3rem", sm: "5.5rem" }}
                 >
-                  <DatabaseConnectionInfoSection
-                    database={database}
-                    dismissSyncSpinner={dismissSyncSpinner}
-                  />
+                  <DatabaseConnectionInfoSection database={database} />
 
                   <DatabaseModelFeaturesSection
                     database={database}
                     isModelPersistenceEnabled={isModelPersistenceEnabled}
                     updateDatabase={updateDatabase}
+                  />
+
+                  <PLUGIN_DB_ROUTING.DatabaseRoutingSection
+                    database={database}
                   />
 
                   <DatabaseDangerZoneSection
@@ -190,7 +143,8 @@ function DatabaseEditAppInner({
 }
 
 export const DatabaseEditApp = _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
+  withRouter,
+  connect(undefined, mapDispatchToProps),
   title(
     ({ database }: { database: DatabaseData }) => database && database.name,
   ),

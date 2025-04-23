@@ -64,7 +64,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     //       If we update UI in the future (for example: we show an error within a popup/modal), the test in current form could fail.
     cy.log("Making sure we display an error message in UI");
     // Same reasoning for regex as above
-    H.undoToast().contains(/^Error: Invalid site URL/);
+    H.undoToast().contains(/^Invalid site URL/);
   });
 
   it("should save a setting", () => {
@@ -104,21 +104,24 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
 
     cy.intercept("GET", "**/api/health", "ok").as("httpsCheck");
 
-    // settings have loaded, but there's no redirect setting visible
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Site URL");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Redirect to HTTPS").should("not.exist");
+    cy.findByTestId("admin-layout-content").within(() => {
+      cy.contains("Site Url");
+      cy.contains("Redirect to HTTPS").should("not.exist");
 
-    // switch site url to use https
-    cy.findByTestId("site-url-setting")
-      .findByRole("textbox", { name: "input-prefix" })
-      .click();
+      // switch site url to use https
+      cy.findByTestId("site-url-setting")
+        .findByRole("textbox", { name: "input-prefix" })
+        .click();
+    });
+
     H.popover().contains("https://").click();
 
     cy.wait("@httpsCheck");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Redirect to HTTPS").parent().parent().contains("Disabled");
+    cy.findByTestId("admin-layout-content")
+      .contains("Redirect to HTTPS")
+      .parent()
+      .parent()
+      .contains("Disabled");
 
     H.restore(); // avoid leaving https site url
   });
@@ -942,7 +945,7 @@ describe("scenarios > admin > localization", () => {
 
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
       cy.findByText("On").click();
 
       // ensure the date picker is ready
@@ -1293,19 +1296,24 @@ describe("admin > settings > updates", () => {
   });
 
   it("should show the updates page", () => {
-    cy.findByLabelText("Check for updates").should("be.visible");
+    cy.findByTestId("check-for-updates-setting")
+      .findByText("Check for updates")
+      .should("be.visible");
+
     cy.findByTestId("update-channel-setting")
       .findByText("Types of releases to check for")
       .should("be.visible");
 
     cy.findByTestId("settings-updates").within(() => {
-      cy.findByText("Metabase 1.86.76 is available. You're running 1.86.70");
+      cy.findByText("Metabase 1.86.76 is available. You're running 1.86.70.");
       cy.findByText("Some old feature").should("be.visible");
     });
 
     cy.log("hide most things if updates are turned off");
 
-    cy.findByLabelText("Check for updates").click();
+    cy.findByTestId("check-for-updates-setting")
+      .findByText("Check for updates")
+      .click();
 
     cy.findByTestId("settings-updates").within(() => {
       cy.findByText("Types of releases to check for").should("not.exist");
@@ -1318,7 +1326,7 @@ describe("admin > settings > updates", () => {
       cy.findByText(/Metabase 1\.86\.76 is available/).should("be.visible");
       cy.findByText("Some old feature").should("be.visible");
       cy.findByText("New latest feature").should("be.visible");
-      cy.findByText("Stable releases").click();
+      cy.findByDisplayValue("Stable releases").click();
     });
 
     H.popover().findByText("Beta releases").click();
@@ -1328,7 +1336,7 @@ describe("admin > settings > updates", () => {
         "be.visible",
       );
       cy.findByText("New beta feature").should("be.visible");
-      cy.findByText("Beta releases").click();
+      cy.findByDisplayValue("Beta releases").click();
     });
 
     H.popover().findByText("Nightly builds").click();

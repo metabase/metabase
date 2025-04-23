@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
+import type { EnterpriseSettings } from "metabase-types/api";
 
 import type { StringSetting } from "./IllustrationWidget";
 import { IllustrationWidget } from "./IllustrationWidget";

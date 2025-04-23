@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { updateQuestion } from "metabase/query_builder/actions";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
@@ -40,6 +41,13 @@ export function FilterHeaderButton({
     const newQuestion = question.setQuery(newQuery);
     dispatch(updateQuestion(newQuestion));
   };
+
+  useRegisterShortcut([
+    {
+      id: "query-builder-visualization-open-filter",
+      perform: toggle,
+    },
+  ]);
 
   return (
     <Button.Group>
