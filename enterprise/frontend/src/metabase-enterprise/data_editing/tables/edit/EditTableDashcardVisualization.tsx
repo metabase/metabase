@@ -23,6 +23,7 @@ import type {
 
 import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
+import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-editable-column-config";
 import { useTableActions } from "./use-table-actions";
@@ -70,10 +71,11 @@ export const EditTableDashcardVisualization = ({
     handleModalOpenAndExpandedRow,
   } = useTableCRUD({ tableId, datasetData: data, stateUpdateStrategy });
 
-  const { undo, redo, isUndoLoading, isRedoLoading } = useTableEditingUndoRedo({
-    tableId,
-    stateUpdateStrategy,
-  });
+  const { undo, redo, isUndoLoading, isRedoLoading, currentActionLabel } =
+    useTableEditingUndoRedo({
+      tableId,
+      stateUpdateStrategy,
+    });
 
   const columnsConfig = useEditableTableColumnConfigFromVisualizationSettings(
     visualizationSettings,
@@ -87,7 +89,7 @@ export const EditTableDashcardVisualization = ({
     question,
   });
 
-  const isActionsDisabled = isUndoLoading || isRedoLoading;
+  const shouldDisableActions = isUndoLoading || isRedoLoading;
 
   return (
     <Stack className={cx(S.container, className)} gap={0}>
@@ -104,7 +106,7 @@ export const EditTableDashcardVisualization = ({
           <ActionIcon
             size="md"
             onClick={undo}
-            disabled={isActionsDisabled}
+            disabled={shouldDisableActions}
             loading={isUndoLoading}
           >
             <Icon name="undo" tooltip={t`Undo changes`} />
@@ -112,7 +114,7 @@ export const EditTableDashcardVisualization = ({
           <ActionIcon
             size="md"
             onClick={redo}
-            disabled={isActionsDisabled}
+            disabled={shouldDisableActions}
             loading={isRedoLoading}
           >
             <Icon name="redo" tooltip={t`Redo changes`} />
@@ -126,7 +128,7 @@ export const EditTableDashcardVisualization = ({
             <ActionIcon
               size="md"
               onClick={() => handleModalOpenAndExpandedRow()}
-              disabled={isActionsDisabled}
+              disabled={shouldDisableActions}
             >
               <Icon name="add" tooltip={t`New record`} />
             </ActionIcon>
@@ -134,6 +136,10 @@ export const EditTableDashcardVisualization = ({
         </Group>
       </Flex>
       <Box pos="relative" className={S.gridWrapper}>
+        <EditTableDataOverlay
+          show={shouldDisableActions}
+          message={currentActionLabel ?? ""}
+        />
         <EditTableDataGrid
           data={data}
           fieldMetadataMap={tableFieldMetadataMap}
