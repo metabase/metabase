@@ -2116,6 +2116,15 @@
                        (legacy-ref->pMBQL a-ref))]
       (fix-column-with-ref column-ref (js.metadata/parse-column js-column)))))
 
+(defn ^:export legacy-column->type-info
+  "Parses a `legacy-column` into an object compatible with type checking functions. Unlike [[legacy-column->metadata]],
+  does not require a `query`. MLv2 columns remain unchanged.
+
+  > **Code health:** Legacy."
+  [column]
+  (cond-> column
+    (object? column) js.metadata/parse-column))
+
 (defn- js-cells-by
   "Given a `col-fn`, returns a function that will extract a JS object like
   `{col: {name: \"ID\", ...}, value: 12}` into a CLJS map like
