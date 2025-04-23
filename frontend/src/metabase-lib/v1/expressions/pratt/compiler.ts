@@ -12,7 +12,7 @@ import {
   isStringLiteral,
 } from "../literal";
 import type { Kind } from "../resolver";
-import type { ExpressionType, StartRule } from "../types";
+import type { ExpressionType } from "../types";
 
 import {
   ADD,
@@ -49,7 +49,7 @@ type CompileFn = (
 
 type Options = {
   resolver?: Resolver | null;
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
 };
 
 type Context = {
@@ -59,9 +59,18 @@ type Context = {
 
 export function compile(node: Node, options: Options) {
   return compileRoot(node, {
-    type: options.startRule,
+    type: getTypeForExpressionMode(options.expressionMode),
     resolver: options.resolver ?? fallbackResolver,
   });
+}
+
+function getTypeForExpressionMode(
+  expressionMode: Lib.ExpressionMode,
+): ExpressionType {
+  if (expressionMode === "filter") {
+    return "boolean";
+  }
+  return expressionMode;
 }
 
 function fallbackResolver(_kind: Kind, name: string, _node?: Node) {
@@ -133,22 +142,9 @@ function getKindForType(type: ExpressionType): Kind {
 function compileDimension(name: string, node: Node, ctx: Context) {
   assert(typeof name === "string", t`Invalid dimension name: ${name}`);
 
-  try {
-    const kind = getKindForType(ctx.type);
-    const dimension = ctx.resolver(kind, name, node);
-    return withNode(node, dimension);
-  } catch (err) {
-    const operator = getMBQLName(name);
-    const clause = operator && getClauseDefinition(operator);
-    if (clause && clause?.args.length === 0) {
-      return withNode(node, {
-        operator,
-        options: {},
-        args: [],
-      });
-    }
-    throw err;
-  }
+  const kind = getKindForType(ctx.type);
+  const dimension = ctx.resolver(kind, name, node);
+  return withNode(node, dimension);
 }
 
 function compileField(
