@@ -746,7 +746,6 @@
                                  (lib.metadata/field (qp.store/metadata-provider) id-or-name))
           allow-casting?       (and field-metadata
                                     (not (:qp/ignore-coercion options)))
-
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
                                           (concat source-table-aliases (->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
