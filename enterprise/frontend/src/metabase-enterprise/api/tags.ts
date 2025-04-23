@@ -1,1 +1,1 @@
-export const ENTERPRISE_TAG_TYPES = ["scim"] as const;
+export const ENTERPRISE_TAG_TYPES = ["scim", "gsheets-status"] as const;
