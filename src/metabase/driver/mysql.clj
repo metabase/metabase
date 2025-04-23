@@ -312,6 +312,10 @@
   ;; no-op as MySQL doesn't support cast to float
   value)
 
+(defmethod sql.qp/->integer :mysql
+  [_ value]
+  (h2x/maybe-cast :signed value))
+
 (defmethod sql.qp/integer-dbtype :mysql
   [_]
   :signed)

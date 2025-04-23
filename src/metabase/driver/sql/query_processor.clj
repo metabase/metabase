@@ -133,7 +133,7 @@
 
 (defmulti integer-dbtype
   "Return the name of the integer type we convert to in this database."
-  {:changelog-test/ignore true :added "0.55.0" :arglists '([driver])}
+  {:added "0.55.0" :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -143,7 +143,7 @@
 
 (defmulti cast-integer
   "Cast to integer"
-  {:changelog-test/ignore true :added "0.45.0" :arglists '([driver honeysql-expr])}
+  {:added "0.55.0" :arglists '([driver honeysql-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -151,7 +151,7 @@
   [driver value]
   (h2x/maybe-cast (integer-dbtype driver) value))
 
-(defn ->integer
+(defn coerce-integer
   "Convert honeysql numbers or text to integer, being smart about converting inline constants at compile-time."
   [driver h2x-expr]
   (let [inline (untyped-inline-value h2x-expr)]
@@ -177,6 +177,16 @@
       :else
       (ex-info (str "Cannot convert " (pr-str h2x-expr) " to integer.")
                {:value h2x-expr}))))
+
+(defmulti ->integer
+  "Cast to integer"
+  {:changelog-test/ignore true :added "0.45.0" :arglists '([driver honeysql-expr])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod ->integer :sql
+  [_ value]
+  (h2x/->integer value))
 
 (defmulti ->float
   "Cast to float."
@@ -704,10 +714,10 @@
                (->float driver honeysql-form)
 
                [:type/Text (:isa? :Coercion/String->Integer)]
-               (->integer driver honeysql-form)
+               (coerce-integer driver honeysql-form)
 
                [:type/Float (:isa? :Coercion/Float->Integer)]
-               (->integer driver honeysql-form)
+               (coerce-integer driver honeysql-form)
 
                :else honeysql-form)
       (when-not (= <> honeysql-form)
@@ -1105,7 +1115,7 @@
 
 (defmethod ->honeysql [:sql :integer]
   [driver [_ value]]
-  (->integer driver (->honeysql driver value)))
+  (coerce-integer driver (->honeysql driver value)))
 
 (defmethod ->honeysql [:sql :sum-where]
   [driver [_ arg pred]]
