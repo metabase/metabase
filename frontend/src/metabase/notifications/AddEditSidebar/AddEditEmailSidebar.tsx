@@ -101,7 +101,7 @@ export const AddEditEmailSidebar = ({
             onRecipientsChange={(recipients) =>
               onChannelPropertyChange("recipients", recipients)
             }
-            invalidRecipientText={(domains) =>
+            invalidRecipientText={() =>
               t`Only allowed domains are supported`
             }
           />
