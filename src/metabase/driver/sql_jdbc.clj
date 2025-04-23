@@ -275,7 +275,7 @@
   which can include using the `.setQueryTimeout` on a `PreparedStatement.` Use this instead of implementing
   driver/query-canceled so extracting the SQLException from an exception chain can happen once for jdbc-
   based drivers."
-  {:arglists '([driver ^SQLException e])}
+  {:added "0.53.12" :arglists '([driver ^SQLException e])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

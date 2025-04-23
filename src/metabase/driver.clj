@@ -1352,7 +1352,7 @@
 (defmulti query-canceled?
   "Test if an exception is due to a query being canceled due to user action. For JDBC drivers this can
   happen when setting `.setQueryTimeout`."
-  {:arglists '([driver ^Throwable e])}
+  {:added "0.53.12" :arglists '([driver ^Throwable e])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
