@@ -6,7 +6,6 @@ import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import type { DataPickerValue } from "metabase/common/components/DataPicker";
-import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
@@ -45,7 +44,7 @@ const mapEntityTypeFilterToDataPickerModels = (
 };
 
 export const InteractiveQuestionProvider = ({
-  questionId: initialQuestionId,
+  questionId,
   options = DEFAULT_OPTIONS,
   deserializedCard,
   componentPlugins,
@@ -62,17 +61,6 @@ export const InteractiveQuestionProvider = ({
   variant,
 }: InteractiveQuestionProviderProps) => {
   const targetCollection = _targetCollection || saveToCollection;
-
-  const {
-    id: questionId,
-    isLoading: isLoadingValidatedId,
-    isError: isCardIdError,
-  } = useValidatedEntityId({
-    type: "card",
-
-    // If the question is new, we won't have a question id yet.
-    id: initialQuestionId === "new" ? undefined : initialQuestionId,
-  });
 
   const handleCreateQuestion = useCreateQuestion();
   const handleSaveQuestion = useSaveQuestion();
@@ -147,8 +135,8 @@ export const InteractiveQuestionProvider = ({
   }, [question, variant, combinedPlugins]);
 
   const questionContext: InteractiveQuestionContextType = {
-    originalId: initialQuestionId,
-    isQuestionLoading: isQuestionLoading || isLoadingValidatedId,
+    originalId: questionId,
+    isQuestionLoading: isQuestionLoading,
     isQueryRunning,
     resetQuestion: loadAndQueryQuestion,
     onReset: loadAndQueryQuestion,
@@ -167,7 +155,6 @@ export const InteractiveQuestionProvider = ({
     modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypeFilter),
     isSaveEnabled,
     targetCollection,
-    isCardIdError,
     withDownloads,
     variant,
   };
