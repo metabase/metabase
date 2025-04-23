@@ -59,6 +59,7 @@ export const DashCardQuestionDownloadButton = ({
             )}
             loading={isDownloadingData}
             aria-label={t`Download results`}
+            variant="subtle"
           >
             <Icon name="download" />
           </ActionIcon>
