@@ -1,4 +1,4 @@
-import type { VisualizerState, VisualizerUiState } from "../visualizer";
+import type { VisualizerState } from "../visualizer";
 
 export const createMockVisualizerState = (
   opts?: Partial<VisualizerState>,
@@ -19,15 +19,5 @@ export const createMockVisualizerState = (
   loadingDatasets: {},
   error: null,
   draggedItem: null,
-  ...opts,
-});
-
-export const createMockVisualizerUiState = (
-  opts?: Partial<VisualizerUiState>,
-): VisualizerUiState => ({
-  expandedDataSources: {},
-  isDataSidebarOpen: true,
-  isVizSettingsSidebarOpen: false,
-  isSwapAffordanceVisible: false,
   ...opts,
 });

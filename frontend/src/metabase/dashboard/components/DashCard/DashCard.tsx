@@ -105,7 +105,7 @@ export interface DashCardProps {
 
   onEditVisualization?: (
     dashcard: StoreDashcard,
-    initialState: Partial<VisualizerVizState>,
+    initialState: VisualizerVizState,
   ) => void;
 }
 
@@ -324,11 +324,11 @@ function DashCardInner({
     }
 
     return () => {
-      let initialState: Partial<VisualizerVizState>;
+      let initialState: VisualizerVizState;
 
       if (isVisualizerDashboardCard(dashcard)) {
         initialState = dashcard.visualization_settings
-          ?.visualization as Partial<VisualizerVizState>;
+          ?.visualization as VisualizerVizState;
       } else if (series.length > 1) {
         initialState = getInitialStateForMultipleSeries(series);
       } else {

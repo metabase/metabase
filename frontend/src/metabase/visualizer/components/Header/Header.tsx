@@ -11,11 +11,10 @@ import {
   getIsRenderable,
   getVisualizationTitle,
 } from "metabase/visualizer/selectors";
-import {
-  setTitle,
-  toggleDataSideBar,
-} from "metabase/visualizer/visualizer.slice";
+import { setTitle } from "metabase/visualizer/visualizer.slice";
 import type { VisualizerVizState } from "metabase-types/store/visualizer";
+
+import { useVisualizerUi } from "../VisualizerUiContext";
 
 import S from "./Header.module.css";
 
@@ -35,6 +34,7 @@ export function Header({
   className,
 }: HeaderProps) {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
+  const { setDataSidebarOpen } = useVisualizerUi();
 
   const visualizerState = useSelector(getCurrentVisualizerState);
 
@@ -65,7 +65,7 @@ export function Header({
       className={className}
       data-testid="visualizer-header"
     >
-      <ActionIcon onClick={() => dispatch(toggleDataSideBar())}>
+      <ActionIcon onClick={() => setDataSidebarOpen((isOpen) => !isOpen)}>
         <Icon name="sidebar_open" />
       </ActionIcon>
       <EditableText

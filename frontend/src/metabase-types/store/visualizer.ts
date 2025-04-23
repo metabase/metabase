@@ -67,10 +67,3 @@ export interface VisualizerState extends VisualizerVizState {
   error: string | null;
   draggedItem: DraggedItem | null;
 }
-
-export interface VisualizerUiState {
-  expandedDataSources: Record<VisualizerDataSourceId, boolean>;
-  isDataSidebarOpen: boolean;
-  isVizSettingsSidebarOpen: boolean;
-  isSwapAffordanceVisible: boolean;
-}

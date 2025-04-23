@@ -98,7 +98,7 @@ interface DashboardGridState {
 
   visualizerModalStatus?: {
     dashcardId: number;
-    state: Partial<VisualizerVizState>;
+    state: VisualizerVizState;
   };
 }
 
@@ -487,7 +487,7 @@ class DashboardGridInner extends Component<
 
   onEditVisualization = (
     dashcard: BaseDashboardCard,
-    initialState: Partial<VisualizerVizState>,
+    initialState: VisualizerVizState,
   ) => {
     this.setState({
       visualizerModalStatus: {
