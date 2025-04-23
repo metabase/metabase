@@ -119,7 +119,8 @@
         (is (map? (:components response))))
 
       (testing "Response contains key components of API spec"
-        (let [response (mt/user-http-request :crowberto :get 200 "util/openapi")]
-          (is (contains? (:paths response) "/api/card"))
-          (is (contains? (:paths response) "/api/user"))
-          (is (contains? (:paths response) "/api/dashboard")))))))
+        (let [response (mt/user-http-request :crowberto :get 200 "util/openapi")
+              path-keys (set (map pr-str (keys (:paths response))))]
+          (is (contains? path-keys ":/api/card/"))
+          (is (contains? path-keys ":/api/user/"))
+          (is (contains? path-keys ":/api/dashboard/")))))))
