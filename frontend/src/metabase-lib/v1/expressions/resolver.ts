@@ -116,13 +116,19 @@ function nameMatcher(
     };
   }
 
-  // Match the exact matches first,
-  // then match exact matches ignoring case,
-  // then match matches with different separators
+  // Match the name in this order, expanding the search in every step:
+  // - exact matches, ie. [Foo] will Foo and nothing else, [Foo.Bar] will only match Foo.Bar, etc.
+  // - exact matches ignoring case, ie [FOO] will match foo and Foo, and [FOO.Bar] will match Foo.Bar and foo.BAR, etc.
+  // - matches different separators, ie [Foo.Bar] will match [Foo → Bar] and vice versa, but not [FOO → Bar]
+  // - matches different separators, case insensitively, ie [Foo.Bar] will match [Foo → Bar] and [FOO → Bar], etc.
+  //
+  // prettier-ignore this expression because this becomes
+  // unreadable when formatted.
   // prettier-ignore
   return (dimensions) =>
     dimensions.find(byName({ preserveSeparators: true, caseSensitive: true })) ??
     dimensions.find(byName({ preserveSeparators: true, caseSensitive: false })) ??
+    dimensions.find(byName({ preserveSeparators: false, caseSensitive: true })) ??
     dimensions.find(byName({ preserveSeparators: false, caseSensitive: false }));
 }
 
@@ -133,6 +139,9 @@ function equals(caseSensitive: boolean, a: string, b: string) {
   return a.toLowerCase() === b.toLowerCase();
 }
 
+// A cache for the displayInfo of metadata in the query.
+// The cache only lives for the duration of each compile phase,
+// so the query can not change in the meantime.
 function infoCache(options: Options) {
   const cache = new Map<
     Dimension,
