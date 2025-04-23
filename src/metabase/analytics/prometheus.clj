@@ -305,19 +305,19 @@
                      {:description "Number of concurrent notification sends."})
    (prometheus/counter :metabase-gsheets/connection-creation-began
                        {:description "How many times the instance has initiated a Google Sheets connection creation."})
-   (prometheus/counter :metabase-gsheets/connection-creation-ok
-                       {:description "How many times the instance has created a Google Sheets connection."})
    (prometheus/counter :metabase-gsheets/connection-creation-error
                        {:description "How many failures there were when creating a Google Sheets connection."
                         :labels [:reason]})
-   (prometheus/counter :metabase-gsheets/connection-deleted
-                       {:description "How many times the instance has deleted their Google Sheets connection."})
    (prometheus/counter :metabase-sdk/response
                        {:description "Number of SDK embedding responses by status code."
                         :labels [:status]})
    (prometheus/counter :metabase-embedding-iframe/response
                        {:description "Number of iframe embedding responses by status code."
-                        :labels [:status]})])
+                        :labels [:status]})
+   (prometheus/counter :metabase-gsheets/connection-deleted
+                       {:description "How many times the instance has deleted their Google Sheets connection."})
+   (prometheus/counter :metabase-gsheets/connection-manually-synced
+                       {:description "How many times the instance has manually sync'ed their Google Sheets connection."})])
 
 (defmulti known-labels
   "Implement this for a given metric to initialize it for the given set of label values."
