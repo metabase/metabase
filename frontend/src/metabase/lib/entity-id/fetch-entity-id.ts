@@ -44,7 +44,8 @@ export const fetchEntityId =
       unwrap: () => TranslateEntityIdResponse;
     }>);
 
-    if (isError || !data) {
+    const entityId = data?.[id];
+    if (isError || !entityId || entityId.status === "not-found") {
       return { id: null, isError: true };
     }
 
