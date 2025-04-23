@@ -117,13 +117,17 @@
   (let [collection-query {:select [:id]
                           :from :collection
                           :where [:= :name collection-name]}]
-    (-> (t2/select :model/Card :type [:in [:metric :model]] :collection_id [:in collection-query] {:order-by [:id]})
+    (-> (t2/select :model/Card
+                   :type [:in [:metric :model]]
+                   :collection_id [:in collection-query]
+                   :archived false
+                   {:order-by [:id]})
         (->> (filter mi/can-read?))
         (t2/hydrate :based_on_upload :creator :can_write :can_run_adhoc_query [:collection :is_personal])
         (api/present-in-trash-if-archived-directly (collection/trash-collection-id)))))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]
-    (let [collection-name "Usage analytics"]
-      (get-metrics-and-models collection-name)))
+    (let [collection-name "__METABOT__"]
+      (map #(dissoc % :result_metadata :creator :collection) (get-metrics-and-models collection-name))))
   -)

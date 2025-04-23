@@ -362,6 +362,8 @@
       (with-redefs [metabot-v3.tools.api/metabot-config {metabot-id {:collection-name collection-name}}]
         (mt/with-temp [:model/Collection {collection-id :id} {:name collection-name}
                        :model/Card {metric-id :id} (assoc metric-data :collection_id collection-id)
+                       :model/Card _ignored        (assoc metric-data :collection_id collection-id :archived true)
+                       :model/Card _ignored        (assoc model-data :collection_id collection-id :archived true)
                        :model/Card _ignored        metric-data
                        :model/Card _ignored        model-data
                        :model/Card {model-id :id}  (assoc model-data  :collection_id collection-id)]
