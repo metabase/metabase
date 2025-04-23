@@ -2,8 +2,8 @@ import type { AstPath } from "prettier";
 
 import * as Lib from "metabase-lib";
 
+import { EXPRESSION_OPERATORS } from "../config";
 import * as literal from "../literal";
-import { OPERATOR } from "../tokenizer";
 
 type Assertion<T> = T extends (expr: any) => expr is infer U ? U : never;
 type Lifted<T> = {
@@ -53,24 +53,8 @@ export const pathMatchers = lift({
   isSegmentMetadata: Lib.isSegmentMetadata,
 });
 
-export const OPERATORS = new Set([
-  OPERATOR.Plus,
-  OPERATOR.Minus,
-  OPERATOR.Multiply,
-  OPERATOR.Divide,
-
-  OPERATOR.Not,
-  OPERATOR.And,
-  OPERATOR.Or,
-
-  OPERATOR.Equal,
-  OPERATOR.NotEqual,
-  OPERATOR.GreaterThan,
-  OPERATOR.LessThan,
-  OPERATOR.GreaterThanEqual,
-  OPERATOR.LessThanEqual,
-]);
-
-export function isOperator(op: string): op is OPERATOR {
-  return OPERATORS.has(op as OPERATOR);
+export function isOperator(
+  op: string,
+): op is keyof typeof EXPRESSION_OPERATORS {
+  return op in EXPRESSION_OPERATORS;
 }
