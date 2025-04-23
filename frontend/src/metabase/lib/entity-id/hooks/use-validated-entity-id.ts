@@ -134,12 +134,12 @@ export const fetchEntityId =
   async (
     dispatch: Dispatch,
   ): Promise<ValidatedEntityIdReturned<TEntity, TReturnedId>> => {
-    if (!isBaseEntityID(id)) {
-      return { id: null, isError: true };
+    if (_.isNumber(id)) {
+      return { id: id as TReturnedId, isError: false };
     }
 
-    if (_.isNumber(id)) {
-      return { id, isError: false };
+    if (!isBaseEntityID(id)) {
+      return { id: null, isError: true };
     }
 
     const { data, isError } = await (dispatch(
@@ -156,5 +156,5 @@ export const fetchEntityId =
       return { id: null, isError: true };
     }
 
-    return { id: data[id].id as TReturnedId, isError: false };
+    return { id: data[id]?.id as TReturnedId, isError: false };
   };

@@ -154,7 +154,6 @@ export const InteractiveQuestionProvider = ({
     modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypeFilter),
     isSaveEnabled,
     targetCollection,
-    isCardIdError: false,
     withDownloads,
     variant,
   };

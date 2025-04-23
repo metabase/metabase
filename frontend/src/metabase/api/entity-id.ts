@@ -27,7 +27,9 @@ const validEntityTypes = [
 
 export type EntityType = (typeof validEntityTypes)[number];
 
-type TranslateEntityIdRequest = Partial<Record<EntityType, BaseEntityId[]>>;
+export type TranslateEntityIdRequest = Partial<
+  Record<EntityType, BaseEntityId[]>
+>;
 
 export type TranslateEntityIdResponseSuccess = {
   status: "ok";
