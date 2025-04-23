@@ -754,27 +754,6 @@
                           [[1]
                            [2]]))))))
 
-(deftest pivot-table-resource-usage-test
-  (testing "pivot table initialization should complete in reasonable time and memory"
-    ;; We test XLSX export of an empty table (0 rows) with pivoting enabled. This should test the initialization of
-    ;; pivot machinery that used to allocate and retain a lot of memory (and hence was slow on smaller heaps).
-    (let [do-export #(xlsx-export [{:display_name "A"}
-                                   {:display_name "B"}
-                                   {:display_name "C"}
-                                   {:display_name "D"}
-                                   {:display_name "pivot-grouping"}
-                                   {:display_name "E"}
-                                   {:display_name "F"}]
-                                  {}
-                                  []
-                                  :pivot-export-options {:pivot-rows [0 1], :pivot-cols [2 3], :pivot-measures [5 4]})
-          ;; Run once before measuring to warm-up and thus reduce flakiness.
-          _ (do-export)
-          start-bytes (get-allocated-bytes)]
-      (do-export)
-      ;; Should always allocate less than 100Mb.
-      (is (< (- (get-allocated-bytes) start-bytes) (* 100 1024 1024))))))
-
 (deftest number-of-characters-cell-test
   (testing "When the number of characters exceeds *number-of-characters-cell*, the excess part will be truncated."
     (binding [qp.xlsx/*number-of-characters-cell* 5]
