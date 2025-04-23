@@ -212,7 +212,7 @@ describe("NotificationCard", () => {
   });
 
   it("should render a table notification with 'rows created' event", () => {
-    const tableNotification = getTableNotificationItem("event/rows.created");
+    const tableNotification = getTableNotificationItem("event/row.created");
     const user = createMockUser();
 
     renderWithTheme(
@@ -236,7 +236,7 @@ describe("NotificationCard", () => {
   });
 
   it("should render a table notification with 'rows updated' event", () => {
-    const tableNotification = getTableNotificationItem("event/rows.updated");
+    const tableNotification = getTableNotificationItem("event/row.updated");
     const user = createMockUser();
 
     renderWithTheme(
@@ -256,7 +256,7 @@ describe("NotificationCard", () => {
   });
 
   it("should render a table notification with 'rows deleted' event", () => {
-    const tableNotification = getTableNotificationItem("event/rows.deleted");
+    const tableNotification = getTableNotificationItem("event/row.deleted");
     const user = createMockUser();
 
     renderWithTheme(
@@ -277,7 +277,7 @@ describe("NotificationCard", () => {
 
   it("should render a table notification with custom table name", () => {
     const tableNotification = getTableNotificationItem(
-      "event/rows.created",
+      "event/row.created",
       "Orders",
     );
     const user = createMockUser();

@@ -169,9 +169,9 @@
 
 (deftest filter-notifications-test
   (testing "getting table notifications will return only notifications of a table and action"
-    (doseq [event [:event/rows.created
-                   :event/rows.updated
-                   :event/rows.deleted]]
+    (doseq [event [:event/row.created
+                   :event/row.updated
+                   :event/row.deleted]]
       (notification.tu/with-system-event-notification!
         [_create-categories {:notification-system-event {:event_name event
                                                          :table_id   (mt/id :categories)}}]

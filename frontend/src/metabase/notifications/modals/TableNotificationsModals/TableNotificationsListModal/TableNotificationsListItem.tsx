@@ -131,11 +131,11 @@ export const TableNotificationsListItem = ({
 
 const formatTitle = (eventName: NotificationTriggerEvent): string => {
   switch (eventName) {
-    case "event/rows.created":
+    case "event/row.created":
       return t`Notify when new records are created`;
-    case "event/rows.updated":
+    case "event/row.updated":
       return t`Notify when records are updated`;
-    case "event/rows.deleted":
+    case "event/row.deleted":
       return t`Notify when records are deleted`;
     default:
       return t`Notification`;
