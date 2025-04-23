@@ -175,7 +175,7 @@ const nativeTimeQuestionDetails = {
   },
 };
 
-const getNativeTimeQuestionBasedQuestionDetails = card => ({
+const getNativeTimeQuestionBasedQuestionDetails = (card) => ({
   query: {
     "source-table": `card__${card.id}`,
     aggregation: [["count"]],
@@ -191,7 +191,7 @@ const parameterDetails = {
   sectionId: "temporal-unit",
 };
 
-const getParameterMapping = card => ({
+const getParameterMapping = (card) => ({
   card_id: card.id,
   parameter_id: parameterDetails.id,
   target: [
@@ -437,7 +437,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should connect a parameter to multiple questions within a dashcard and drill thru", () => {
-      createDashboardWithMultiSeriesCard().then(dashboard =>
+      createDashboardWithMultiSeriesCard().then((dashboard) =>
         H.visitDashboard(dashboard.id),
       );
 
@@ -484,7 +484,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     it("should pass a temporal unit with 'update dashboard filter' click behavior", () => {
       createDashboardWithMappedQuestion({
         extraQuestions: [nativeUnitQuestionDetails],
-      }).then(dashboard => {
+      }).then((dashboard) => {
         cy.wrap(dashboard.id).as("dashboardId");
         H.visitDashboard(dashboard.id);
       });
@@ -601,7 +601,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         dashboardDetails: {
           name: "Target dashboard",
         },
-      }).then(dashboard => cy.wrap(dashboard.id).as("targetDashboardId"));
+      }).then((dashboard) => cy.wrap(dashboard.id).as("targetDashboardId"));
       H.createDashboardWithQuestions({
         dashboardDetails: {
           name: "Source dashboard",
@@ -625,7 +625,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByText("UNIT").should("be.visible");
         cy.findByText(parameterDetails.name).should("not.exist");
       });
-      cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
         H.modal().within(() => {
           cy.findByPlaceholderText("e.g. http://acme.com/id/{{user_id}}").type(
             `http://localhost:4000/dashboard/${targetDashboardId}?${parameterDetails.slug}={{UNIT}}`,
@@ -654,7 +654,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
     it("should not allow to use temporal unit parameter values with SQL queries", () => {
       H.createNativeQuestion(nativeQuestionWithTextParameterDetails);
-      createDashboardWithMappedQuestion().then(dashboard =>
+      createDashboardWithMappedQuestion().then((dashboard) =>
         H.visitDashboard(dashboard.id),
       );
 
@@ -800,7 +800,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
   describe("parameter settings", () => {
     it("should be able to set available temporal units", () => {
-      createDashboardWithMappedQuestion().then(dashboard =>
+      createDashboardWithMappedQuestion().then((dashboard) =>
         H.visitDashboard(dashboard.id),
       );
 
@@ -827,7 +827,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should clear the default value if it is no longer within the allowed unit list", () => {
-      createDashboardWithMappedQuestion().then(dashboard =>
+      createDashboardWithMappedQuestion().then((dashboard) =>
         H.visitDashboard(dashboard.id),
       );
 
@@ -852,7 +852,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should be able to set the default value and make it required", () => {
-      createDashboardWithMappedQuestion().then(dashboard =>
+      createDashboardWithMappedQuestion().then((dashboard) =>
         cy.wrap(dashboard.id).as("dashboardId"),
       );
       H.visitDashboard("@dashboardId");
@@ -926,14 +926,14 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
   describe("query string parameters", () => {
     it("should be able to parse the parameter value from the url", () => {
-      createDashboardWithMappedQuestion().then(dashboard => {
+      createDashboardWithMappedQuestion().then((dashboard) => {
         H.visitDashboard(dashboard.id, { params: { unit_of_time: "year" } });
       });
       H.getDashboardCard().findByText("Created At: Year").should("be.visible");
     });
 
     it("should ignore invalid temporal unit values from the url", () => {
-      createDashboardWithMappedQuestion().then(dashboard => {
+      createDashboardWithMappedQuestion().then((dashboard) => {
         H.visitDashboard(dashboard.id, { params: { unit_of_time: "invalid" } });
       });
       H.filterWidget().within(() => {
@@ -953,7 +953,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
             },
           ],
         },
-      }).then(dashboard => {
+      }).then((dashboard) => {
         H.visitDashboard(dashboard.id, { params: { unit_of_time: "year" } });
       });
       H.filterWidget().findByText("Year").should("be.visible");
@@ -963,7 +963,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
   describe("permissions", () => {
     it("should add a temporal unit parameter and connect it to a card and drill thru", () => {
-      createDashboardWithMappedQuestion().then(dashboard => {
+      createDashboardWithMappedQuestion().then((dashboard) => {
         cy.signIn("nodata");
         H.visitDashboard(dashboard.id);
       });
@@ -984,7 +984,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should be able to use temporal unit parameters in a public dashboard", () => {
-      createDashboardWithMappedQuestion().then(dashboard => {
+      createDashboardWithMappedQuestion().then((dashboard) => {
         cy.request("POST", `/api/dashboard/${dashboard.id}/public_link`).then(
           ({ body: { uuid } }) => {
             cy.signOut();
@@ -1006,7 +1006,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
             [parameterDetails.slug]: "enabled",
           },
         },
-      }).then(dashboard => {
+      }).then((dashboard) => {
         H.visitEmbeddedPage({
           resource: { dashboard: dashboard.id },
           params: {},

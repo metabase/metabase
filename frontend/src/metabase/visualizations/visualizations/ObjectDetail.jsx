@@ -12,10 +12,14 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 
 const ObjectDetailProperties = {
-  uiName: t`Detail`,
+  get uiName() {
+    return t`Detail`;
+  },
   identifier: "object",
   iconName: "document",
-  noun: t`object`,
+  get noun() {
+    return t`object`;
+  },
   minSize: getMinSize("object"),
   defaultSize: getDefaultSize("object"),
   hidden: false,
@@ -25,12 +29,12 @@ const ObjectDetailProperties = {
     ...columnSettings({ hidden: true }),
     ...tableColumnSettings,
   },
-  columnSettings: column => {
+  columnSettings: (column) => {
     const settings = {
       column_title: {
         title: t`Column title`,
         widget: "input",
-        getDefault: column => displayNameForColumn(column),
+        getDefault: (column) => displayNameForColumn(column),
       },
       click_behavior: {},
 

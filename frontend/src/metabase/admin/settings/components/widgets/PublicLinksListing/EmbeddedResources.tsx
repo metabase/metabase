@@ -27,7 +27,7 @@ const DashboardEmbeddedResources = () => {
       >
         <PublicLinksListing<GetEmbeddableDashboard>
           data-testid="-embedded-dashboards-setting"
-          getUrl={dashboard => Urls.dashboard(dashboard)}
+          getUrl={(dashboard) => Urls.dashboard(dashboard)}
           noLinksMessage={t`No dashboards have been embedded yet.`}
           {...query}
         />
@@ -48,7 +48,7 @@ export const QuestionEmbeddedResources = () => {
       >
         <PublicLinksListing<GetEmbeddableCard>
           data-testid="-embedded-questions-setting"
-          getUrl={question => Urls.question(question)}
+          getUrl={(question) => Urls.question(question)}
           noLinksMessage={t`No questions have been embedded yet.`}
           {...query}
         />

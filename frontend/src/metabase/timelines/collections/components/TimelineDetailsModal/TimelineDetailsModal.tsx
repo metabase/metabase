@@ -70,7 +70,7 @@ const TimelineDetailsModal = ({
   const canWrite = timeline.collection?.can_write;
   const canGoBack = isArchive || !isOnlyTimeline;
 
-  const handleSearchChange: InputProps["onChange"] = e =>
+  const handleSearchChange: InputProps["onChange"] = (e) =>
     setInputText(e.target.value);
 
   return (
@@ -125,12 +125,12 @@ const getEvents = (
   isArchive: boolean,
 ) => {
   const chain = searchText
-    ? _.chain(events).filter(e => isEventMatch(e, searchText))
+    ? _.chain(events).filter((e) => isEventMatch(e, searchText))
     : _.chain(events);
 
   return chain
-    .filter(e => e.archived === isArchive)
-    .sortBy(e => parseTimestamp(e.timestamp))
+    .filter((e) => e.archived === isArchive)
+    .sortBy((e) => parseTimestamp(e.timestamp))
     .reverse()
     .value();
 };

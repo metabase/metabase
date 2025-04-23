@@ -16,7 +16,7 @@ import CollectionRow from "./components/CollectionRow";
 import SnippetCollectionFormModal from "./components/SnippetCollectionFormModal";
 
 if (hasPremiumFeature("snippet_collections")) {
-  PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push(snippetSidebar => ({
+  PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push((snippetSidebar) => ({
     icon: "folder",
     name: t`New folder`,
     onClick: () =>
@@ -30,7 +30,7 @@ if (hasPremiumFeature("snippet_collections")) {
   }));
 
   PLUGIN_SNIPPET_SIDEBAR_MODALS.push(
-    snippetSidebar =>
+    (snippetSidebar) =>
       snippetSidebar.state.modalSnippetCollection && (
         <Modal
           onClose={() =>
@@ -48,7 +48,7 @@ if (hasPremiumFeature("snippet_collections")) {
           />
         </Modal>
       ),
-    snippetSidebar =>
+    (snippetSidebar) =>
       snippetSidebar.state.permissionsModalCollectionId != null && (
         <Modal
           onClose={() =>

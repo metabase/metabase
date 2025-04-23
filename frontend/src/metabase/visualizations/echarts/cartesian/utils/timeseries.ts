@@ -100,23 +100,23 @@ export function computeTimeseriesDataInverval(
 
   // Always use 'day' when there's just one value.
   if (xValues.length === 1) {
-    return TIMESERIES_INTERVALS.find(i => i.unit === "day");
+    return TIMESERIES_INTERVALS.find((i) => i.unit === "day");
   }
 
   // run each interval's test function on each value
-  const valueLists = xValues.map(xValue => {
+  const valueLists = xValues.map((xValue) => {
     const parsed = parseTimestamp(xValue);
-    return TIMESERIES_INTERVALS.map(interval => interval.testFn(parsed));
+    return TIMESERIES_INTERVALS.map((interval) => interval.testFn(parsed));
   });
 
   // count the number of different values for each interval
-  const intervalCounts = _.zip(...valueLists).map(l => new Set(l).size);
+  const intervalCounts = _.zip(...valueLists).map((l) => new Set(l).size);
 
   // find the first interval that has multiple values. we'll subtract 1 to get the previous item later
-  let index = intervalCounts.findIndex(size => size !== 1);
+  let index = intervalCounts.findIndex((size) => size !== 1);
 
   // special case to check: did we get tripped up by the week interval?
-  const weekIndex = TIMESERIES_INTERVALS.findIndex(i => i.unit === "week");
+  const weekIndex = TIMESERIES_INTERVALS.findIndex((i) => i.unit === "week");
   if (index === weekIndex && intervalCounts[weekIndex + 1] === 1) {
     index = intervalCounts.findIndex(
       (size, index) => size !== 1 && index > weekIndex,
@@ -276,7 +276,7 @@ export function getTimezoneOrOffset(
 ): { timezone?: string; offsetMinutes?: number } {
   // Dashboard multiseries cards might have series with different timezones.
   const timezones = Array.from(
-    new Set(series.map(s => s.data.results_timezone)),
+    new Set(series.map((s) => s.data.results_timezone)),
   );
   if (timezones.length > 1) {
     showWarning?.(multipleTimezoneWarning(timezones).text);
@@ -301,4 +301,13 @@ export function getTimezoneOrOffset(
     timezone,
     offsetMinutes,
   };
+}
+
+export function normalizeDate(dayjsDate: Dayjs) {
+  return dayjs
+    .utc()
+    .year(dayjsDate.year())
+    .month(dayjsDate.month())
+    .date(dayjsDate.date())
+    .startOf("day");
 }

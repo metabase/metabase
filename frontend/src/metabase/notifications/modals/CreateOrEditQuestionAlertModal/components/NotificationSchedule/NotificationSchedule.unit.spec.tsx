@@ -4,7 +4,7 @@ import type { ScheduleDisplayType } from "metabase-types/api";
 import { setup } from "./setup";
 
 describe("NotificationSchedule", () => {
-  ["builder", "raw"].forEach(uiDisplayType => {
+  ["builder", "raw"].forEach((uiDisplayType) => {
     it(`${uiDisplayType} - should show warning when notification schedule is set to less than 10 minutes`, () => {
       setup({
         subscription: {

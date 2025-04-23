@@ -26,10 +26,11 @@ const ChartSettingFieldsPicker = ({
     onChange(moveElement(fields, oldIndex, newIndex));
   };
 
-  const calculateOptions = field => {
+  const calculateOptions = (field) => {
     return options.filter(
-      option =>
-        fields.findIndex(v => v === option.value) < 0 || option.value === field,
+      (option) =>
+        fields.findIndex((v) => v === option.value) < 0 ||
+        option.value === field,
     );
   };
 
@@ -40,7 +41,7 @@ const ChartSettingFieldsPicker = ({
       {fields?.length >= 0 ? (
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="droppable">
-            {provided => (
+            {(provided) => (
               <div {...provided.droppableProps} ref={provided.innerRef}>
                 {fields.map((field, fieldIndex) => {
                   return (
@@ -50,7 +51,7 @@ const ChartSettingFieldsPicker = ({
                       index={fieldIndex}
                       isDragDisabled={isDragDisabled}
                     >
-                      {provided => (
+                      {(provided) => (
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
@@ -66,7 +67,7 @@ const ChartSettingFieldsPicker = ({
                             key={fieldIndex}
                             value={field}
                             options={calculateOptions(field)}
-                            onChange={updatedField => {
+                            onChange={(updatedField) => {
                               const fieldsCopy = [...fields];
                               // this swaps the position of the existing value
                               const existingIndex =
@@ -83,7 +84,7 @@ const ChartSettingFieldsPicker = ({
                               onChange(fieldsCopy);
                             }}
                             onRemove={
-                              fields.filter(field => field != null).length >
+                              fields.filter((field) => field != null).length >
                                 1 ||
                               (fields.length > 1 && field == null)
                                 ? () =>
@@ -115,7 +116,7 @@ const ChartSettingFieldsPicker = ({
             className={cx(CS.textBrand, CS.textBold, CS.py1)}
             onClick={() => {
               const remaining = options.filter(
-                o => fields.indexOf(o.value) < 0,
+                (o) => fields.indexOf(o.value) < 0,
               );
               if (remaining.length === 1) {
                 // if there's only one unused option, use it

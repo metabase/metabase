@@ -17,7 +17,7 @@ const setup = ({ location }: { location: Location }) => {
     <MetabaseReduxProvider store={store}>{children}</MetabaseReduxProvider>
   );
 
-  const { result, rerender } = renderHook(props => useSetEmbedFont(props), {
+  const { result, rerender } = renderHook((props) => useSetEmbedFont(props), {
     wrapper: Wrapper,
     initialProps: { location },
   });

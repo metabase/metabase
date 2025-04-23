@@ -336,7 +336,7 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
     H.saveQuestion("Nested Model", { wrapId: true, idAlias: "nestedModelId" });
 
     cy.log("Make sure this works for the deeply nested models as well");
-    cy.get("@nestedModelId").then(nestedModelId => {
+    cy.get("@nestedModelId").then((nestedModelId) => {
       H.createQuestion(
         {
           type: "model",
@@ -1367,7 +1367,7 @@ describe("issue 32037", () => {
 
     H.tableInteractive().should("be.visible");
     cy.button("Save changes").should("not.exist");
-    cy.get("@modelPathname").then(modelPathname => {
+    cy.get("@modelPathname").then((modelPathname) => {
       cy.location("pathname").should("eq", modelPathname);
     });
   }
@@ -1432,5 +1432,32 @@ describe("issue 51925", () => {
         .first()
         .should("have.attr", "href", "https://example.com/6");
     });
+  });
+});
+
+describe("issue 56698", () => {
+  beforeEach(() => {
+    H.restore();
+  });
+
+  it("should create an editable ad-hoc query based on a read-only native model (metabase#56698)", () => {
+    cy.log("create a native model");
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(
+      {
+        name: "Native model",
+        native: { query: "select 1 union all select 2" },
+        type: "model",
+      },
+      { wrapId: true, idAlias: "modelId" },
+    );
+
+    cy.log("verify that we create an editable ad-hoc query");
+    cy.signIn("readonlynosql");
+    cy.get("@modelId").then((modelId) => H.visitModel(Number(modelId)));
+    H.assertQueryBuilderRowCount(2);
+    H.summarize();
+    H.rightSidebar().button("Done").click();
+    H.assertQueryBuilderRowCount(1);
   });
 });

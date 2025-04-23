@@ -1,6 +1,8 @@
 import {
   type ChangeEvent,
+  Children,
   type MouseEvent,
+  type ReactNode,
   useCallback,
   useMemo,
   useState,
@@ -8,22 +10,38 @@ import {
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
+import Markdown from "metabase/core/components/Markdown";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Input, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import type { HelpText, StartRule } from "metabase-lib/v1/expressions";
+import type { HelpText } from "metabase-lib/v1/expressions";
+
+import { HighlightExpressionSource } from "../HighlightExpression";
 
 import S from "./FunctionBrowser.module.css";
 import { getDatabase, getFilteredClauses, getSearchPlaceholder } from "./utils";
 
+const components = {
+  code(props: { children: ReactNode }) {
+    const children = Children.toArray(props.children);
+    if (!children.every((child) => typeof child === "string")) {
+      return <code>{children}</code>;
+    }
+
+    const source = children.join("").replace(/^\$/, "");
+
+    return <HighlightExpressionSource inline expression={source} />;
+  },
+};
+
 export function FunctionBrowser({
-  startRule,
+  expressionMode,
   reportTimezone,
   query,
   onClauseClick,
 }: {
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   reportTimezone?: string;
   onClauseClick?: (name: string) => void;
@@ -38,8 +56,9 @@ export function FunctionBrowser({
   );
 
   const filteredClauses = useMemo(
-    () => getFilteredClauses({ startRule, filter, database, reportTimezone }),
-    [filter, startRule, database, reportTimezone],
+    () =>
+      getFilteredClauses({ expressionMode, filter, database, reportTimezone }),
+    [filter, expressionMode, database, reportTimezone],
   );
 
   const isEmpty = filteredClauses.length === 0;
@@ -55,7 +74,7 @@ export function FunctionBrowser({
         size="sm"
         mb="sm"
         mx="md"
-        placeholder={getSearchPlaceholder(startRule)}
+        placeholder={getSearchPlaceholder(expressionMode)}
         value={filter}
         onChange={handleFilterChange}
         leftSection={<Icon name="search" />}
@@ -72,7 +91,7 @@ export function FunctionBrowser({
         {isEmpty && (
           <EmptyState message={t`Didn't find any results`} icon="search" />
         )}
-        {filteredClauses.map(group => (
+        {filteredClauses.map((group) => (
           <>
             <Text
               size="sm"
@@ -83,7 +102,7 @@ export function FunctionBrowser({
             >
               {group.displayName}
             </Text>
-            {group.clauses.map(clause => (
+            {group.clauses.map((clause) => (
               <FunctionBrowserItem
                 key={clause.name}
                 onClauseClick={onClauseClick}
@@ -129,7 +148,7 @@ function FunctionBrowserItem({
       </dt>
       <dd className={S.description}>
         <Text size="sm" c="var(--mb-color-text-medium)">
-          {clause.description}
+          <Markdown components={components}>{clause.description}</Markdown>
         </Text>
       </dd>
     </Box>

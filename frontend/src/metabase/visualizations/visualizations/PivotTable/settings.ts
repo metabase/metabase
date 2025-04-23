@@ -71,12 +71,14 @@ export const settings = {
     },
   },
   [COLUMN_SPLIT_SETTING]: {
-    section: t`Columns`,
+    get section() {
+      return t`Columns`;
+    },
     widget: "fieldsPartition",
     persistDefault: true,
     getHidden: ([{ data }]: [{ data: DatasetData }]) =>
       // hide the setting widget if there are invalid columns
-      !data || data.cols.some(col => !isColumnValid(col)),
+      !data || data.cols.some((col) => !isColumnValid(col)),
     getProps: (
       [{ data }]: [{ data: DatasetData }],
       settings: VisualizationSettings,
@@ -101,7 +103,7 @@ export const settings = {
         return undefined;
       }
       const columnsToPartition = data.cols.filter(
-        col => !isPivotGroupColumn(col),
+        (col) => !isPivotGroupColumn(col),
       );
       let setting: PivotTableColumnSplitSetting;
       if (storedValue == null) {
@@ -109,7 +111,7 @@ export const settings = {
           columnsToPartition,
           isDimension,
         );
-        const [first, second, ...rest] = _.sortBy(dimensions, col =>
+        const [first, second, ...rest] = _.sortBy(dimensions, (col) =>
           getIn(col, ["fingerprint", "global", "distinct-count"]),
         );
 
@@ -126,8 +128,8 @@ export const settings = {
           columns = [first, second];
           rows = rest;
         }
-        setting = _.mapObject({ rows, columns, values }, cols =>
-          cols.map(col => col.name),
+        setting = _.mapObject({ rows, columns, values }, (cols) =>
+          cols.map((col) => col.name),
         );
       } else {
         setting = updateValueWithCurrentColumns(
@@ -140,22 +142,32 @@ export const settings = {
     },
   },
   "pivot.show_row_totals": {
-    section: t`Columns`,
-    title: t`Show row totals`,
+    get section() {
+      return t`Columns`;
+    },
+    get title() {
+      return t`Show row totals`;
+    },
     widget: "toggle",
     default: true,
     inline: true,
   },
   "pivot.show_column_totals": {
-    section: t`Columns`,
-    title: t`Show column totals`,
+    get section() {
+      return t`Columns`;
+    },
+    get title() {
+      return t`Show column totals`;
+    },
     widget: "toggle",
     default: true,
     inline: true,
   },
   "pivot_table.column_widths": {},
   [COLUMN_FORMATTING_SETTING]: {
-    section: t`Conditional Formatting`,
+    get section() {
+      return t`Conditional Formatting`;
+    },
     widget: ChartSettingsTableFormatting,
     default: [],
     getDefault: (
@@ -165,11 +177,11 @@ export const settings = {
       const columnFormats = settings[COLUMN_FORMATTING_SETTING] ?? [];
 
       return columnFormats
-        .map(columnFormat => {
+        .map((columnFormat) => {
           const hasOnlyFormattableColumns =
             columnFormat.columns
               .map((columnName: string) =>
-                data.cols.find(column => column.name === columnName),
+                data.cols.find((column) => column.name === columnName),
               )
               .filter(Boolean) ?? [].every(isFormattablePivotColumn);
 
@@ -190,12 +202,12 @@ export const settings = {
     ): boolean => {
       const columnFormats = settings[COLUMN_FORMATTING_SETTING] ?? [];
 
-      return columnFormats.every(columnFormat => {
+      return columnFormats.every((columnFormat) => {
         const hasOnlyFormattableColumns =
           columnFormat.columns
-            .map(columnName =>
+            .map((columnName) =>
               (data.cols as DatasetColumn[]).find(
-                column => column.name === columnName,
+                (column) => column.name === columnName,
               ),
             )
             .filter(Boolean) ?? [].every(isFormattablePivotColumn);
@@ -216,13 +228,15 @@ export const settings = {
       };
     },
     getHidden: ([{ data }]: [{ data: DatasetData }]) =>
-      !data?.cols.some(col => isFormattablePivotColumn(col)),
+      !data?.cols.some((col) => isFormattablePivotColumn(col)),
   },
 };
 
 export const _columnSettings = {
   [COLUMN_SORT_ORDER]: {
-    title: t`Sort order`,
+    get title() {
+      return t`Sort order`;
+    },
     widget: ChartSettingIconRadio,
     inline: true,
     borderBottom: true,
@@ -242,7 +256,9 @@ export const _columnSettings = {
       source === "aggregation",
   },
   [COLUMN_SHOW_TOTALS]: {
-    title: t`Show totals`,
+    get title() {
+      return t`Show totals`;
+    },
     widget: "toggle",
     inline: true,
     getDefault: (
@@ -260,7 +276,7 @@ export const _columnSettings = {
       return rows
         .slice(0, -1)
         .some(
-          row =>
+          (row) =>
             _.isEqual(row, column.name) || _.isEqual(row, column.field_ref),
         );
     },
@@ -273,11 +289,13 @@ export const _columnSettings = {
       // to show totals a column needs to be:
       //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
       //  - not the last column
-      return !rows.slice(0, -1).some(row => _.isEqual(row, column.name));
+      return !rows.slice(0, -1).some((row) => _.isEqual(row, column.name));
     },
   },
   column_title: {
-    title: t`Column title`,
+    get title() {
+      return t`Column title`;
+    },
     widget: "input",
     getDefault: displayNameForColumn,
   },

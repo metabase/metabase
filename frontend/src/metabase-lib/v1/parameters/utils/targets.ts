@@ -97,7 +97,7 @@ function getParameterTargetFieldFromFieldRef(
   if (typeof fieldIdOrName === "number") {
     // performance optimization:
     // we can match by id directly without finding this column via query
-    return fields.find(field => field.id === fieldIdOrName);
+    return fields.find((field) => field.id === fieldIdOrName);
   }
 
   const { query, columns } = getParameterColumns(question, parameter);
@@ -106,7 +106,7 @@ function getParameterTargetFieldFromFieldRef(
     // query and metadata are not available: 1) no data permissions 2) embedding
     // there is no way to find the correct field so pick the first one matching by name
     return fields.find(
-      field => typeof field.id === "number" && field.name === fieldIdOrName,
+      (field) => typeof field.id === "number" && field.name === fieldIdOrName,
     );
   }
 
@@ -114,7 +114,7 @@ function getParameterTargetFieldFromFieldRef(
 
   for (const stageIndex of stageIndexes) {
     const stageColumns = columns
-      .filter(column => column.stageIndex === stageIndex)
+      .filter((column) => column.stageIndex === stageIndex)
       .map(({ column }) => column);
 
     const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
@@ -135,7 +135,7 @@ function getParameterTargetFieldFromFieldRef(
 
       // do not use `metadata.field(id)` because it only works for fields loaded
       // with the original table, not coming from model metadata
-      return fields.find(field => field.id === fieldValuesInfo.fieldId);
+      return fields.find((field) => field.id === fieldValuesInfo.fieldId);
     }
   }
 
@@ -206,12 +206,12 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
 }
 
 function getTemporalColumns(query: Lib.Query, stageIndex: number) {
-  const columns = Lib.breakouts(query, stageIndex).map(breakout => {
+  const columns = Lib.breakouts(query, stageIndex).map((breakout) => {
     return Lib.breakoutColumn(query, stageIndex, breakout);
   });
   const [group] = Lib.groupColumns(columns);
 
-  return columns.map(column => ({
+  return columns.map((column) => ({
     stageIndex,
     column,
     group,
@@ -219,14 +219,14 @@ function getTemporalColumns(query: Lib.Query, stageIndex: number) {
 }
 
 function getFilterableColumns(query: Lib.Query) {
-  return Lib.stageIndexes(query).flatMap(stageIndex => {
+  return Lib.stageIndexes(query).flatMap((stageIndex) => {
     const columns = Lib.filterableColumns(query, stageIndex);
     const groups = Lib.groupColumns(columns);
 
-    return groups.flatMap(group => {
+    return groups.flatMap((group) => {
       const columns = Lib.getColumnsFromColumnGroup(group);
 
-      return columns.map(column => ({
+      return columns.map((column) => ({
         stageIndex,
         column,
         group,

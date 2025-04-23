@@ -3,7 +3,7 @@ import { NativeQueryRightSidebar } from "metabase/query_builder/components/view/
 import { StructuredQueryRightSidebar } from "metabase/query_builder/components/view/View/StructuredQueryRightSidebar/StructuredQueryRightSidebar";
 import * as Lib from "metabase-lib";
 
-export const ViewRightSidebarContainer = props => {
+export const ViewRightSidebarContainer = (props) => {
   const {
     question,
     deselectTimelineEvents,

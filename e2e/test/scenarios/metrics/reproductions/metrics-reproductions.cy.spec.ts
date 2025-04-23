@@ -7,8 +7,8 @@ describe("issue 47058", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("GET", "/api/card/*/query_metadata", req =>
-      req.continue(() => new Promise(resolve => setTimeout(resolve, 1000))),
+    cy.intercept("GET", "/api/card/*/query_metadata", (req) =>
+      req.continue(() => new Promise((resolve) => setTimeout(resolve, 1000))),
     ).as("metadata");
 
     H.createQuestion({
@@ -118,7 +118,7 @@ describe("issue 44171", () => {
       cy.findByText("Total").click();
     });
     cy.button("Save changes").click();
-    cy.get<number>("@dashboardId").then(id => {
+    cy.get<number>("@dashboardId").then((id) => {
       H.visitDashboard(id);
     });
 
@@ -186,7 +186,7 @@ describe("issue 32037", () => {
 
     H.appBar().should("be.visible");
     cy.button("Save changes").should("not.exist");
-    cy.get("@metricPathname").then(metricPathname => {
+    cy.get("@metricPathname").then((metricPathname) => {
       cy.location("pathname").should("eq", metricPathname);
     });
   });

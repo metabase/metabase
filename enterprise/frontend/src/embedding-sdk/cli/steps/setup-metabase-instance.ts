@@ -6,7 +6,7 @@ import { INSTANCE_CONFIGURED_MESSAGE } from "../constants/messages";
 import type { CliOutput, CliStepMethod } from "../types/cli";
 import { retry } from "../utils/retry";
 
-export const setupMetabaseInstance: CliStepMethod = async state => {
+export const setupMetabaseInstance: CliStepMethod = async (state) => {
   const spinner = ora();
 
   // If the user tries to setup the instance manually

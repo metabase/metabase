@@ -35,10 +35,10 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   appearance: none;
   position: relative;
   display: inline-block;
-  color: ${props => props.currentColor ?? color("brand")};
+  color: ${(props) => props.currentColor ?? color("brand")};
   cursor: pointer;
-  width: ${props => (props.small ? "28px" : "48px")};
-  height: ${props => (props.small ? "17px" : "24px")};
+  width: ${(props) => (props.small ? "28px" : "48px")};
+  height: ${(props) => (props.small ? "17px" : "24px")};
   border-radius: 99px;
   border: 1px solid var(--mb-color-border);
   background-color: ${getBackgroundColor};
@@ -53,8 +53,8 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
 
   &:after {
     content: "";
-    width: ${props => (props.small ? "13px" : "20px")};
-    height: ${props => (props.small ? "13px" : "20px")};
+    width: ${(props) => (props.small ? "13px" : "20px")};
+    height: ${(props) => (props.small ? "13px" : "20px")};
     border-radius: 99px;
     position: absolute;
     top: 1px;

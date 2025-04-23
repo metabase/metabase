@@ -96,7 +96,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
     overrideWithQuestion?: Question;
     shouldUpdateUrl?: boolean;
   }) => void;
-  setNativeEditorSelectedRange: (range: SelectionRange) => void;
+  setNativeEditorSelectedRange: (range: SelectionRange[]) => void;
   openDataReferenceAtQuestion: (id: CardId) => void;
   openSnippetModalWithSelectedText: () => void;
   insertSnippet: (snippet: NativeQuerySnippet) => void;
@@ -236,7 +236,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
   };
 
   togglePromptVisibility = () => {
-    this.setState(prev => ({
+    this.setState((prev) => ({
       isPromptInputVisible: !prev.isPromptInputVisible,
     }));
   };
@@ -322,7 +322,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     ) : null;
 
     const canSaveSnippets = snippetCollections.some(
-      collection => collection.can_write,
+      (collection) => collection.can_write,
     );
 
     return (

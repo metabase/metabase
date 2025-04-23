@@ -393,7 +393,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
@@ -448,7 +448,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
@@ -508,7 +508,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
@@ -574,7 +574,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
@@ -635,7 +635,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
@@ -691,7 +691,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
@@ -748,7 +748,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
@@ -811,7 +811,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
@@ -874,7 +874,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
@@ -929,7 +929,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
@@ -986,7 +986,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
@@ -1043,7 +1043,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
@@ -1149,7 +1149,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
@@ -1211,7 +1211,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
@@ -1273,7 +1273,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
@@ -1344,7 +1344,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
@@ -1401,7 +1401,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
@@ -1459,7 +1459,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
@@ -1522,7 +1522,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
@@ -1586,7 +1586,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
@@ -1648,7 +1648,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
@@ -1706,7 +1706,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
@@ -1765,7 +1765,7 @@ describe.skip("scenarios > question", () => {
           toggleColumnPickerItems(["Value difference"]);
           H.popover().button("Done").click();
 
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,

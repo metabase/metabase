@@ -47,7 +47,7 @@ describe("scenarios > models metadata", () => {
 
       H.openColumnOptions("Subtotal");
       H.renameColumn("Subtotal", "Pre-tax");
-      H.setColumnType("No special type", "Cost");
+      H.setColumnType("No semantic type", "Currency");
       H.saveMetadataChanges();
 
       cy.log(
@@ -66,7 +66,7 @@ describe("scenarios > models metadata", () => {
 
       H.openColumnOptions("Subtotal");
       H.renameColumn("Subtotal", "Pre-tax");
-      H.setColumnType("No special type", "Cost");
+      H.setColumnType("No semantic type", "Currency");
 
       cy.findByTestId("dataset-edit-bar").button("Cancel").click();
       H.modal().button("Discard changes").click();
@@ -78,7 +78,7 @@ describe("scenarios > models metadata", () => {
       // Ensure back navigation works correctly metabase#55162
       H.openQuestionActions("Edit metadata");
       cy.go("back");
-      cy.get("@questionId").then(id => {
+      cy.get("@questionId").then((id) => {
         cy.location("pathname").should("equal", `/model/${id}-gui-model`);
       });
     });
@@ -89,7 +89,7 @@ describe("scenarios > models metadata", () => {
 
       H.openColumnOptions("Subtotal");
       H.renameColumn("Subtotal", "Pre-tax");
-      H.setColumnType("No special type", "Cost");
+      H.setColumnType("No semantic type", "Currency");
       H.saveMetadataChanges();
 
       cy.findAllByTestId("header-cell")
@@ -140,7 +140,7 @@ describe("scenarios > models metadata", () => {
 
     H.mapColumnTo({ table: "Orders", column: "Subtotal" });
     H.renameColumn("Subtotal", "Pre-tax");
-    H.setColumnType("No special type", "Cost");
+    H.setColumnType("No semantic type", "Currency");
     H.saveMetadataChanges();
 
     cy.findAllByTestId("header-cell")
@@ -172,8 +172,8 @@ describe("scenarios > models metadata", () => {
     H.openQuestionActions();
     H.popover().findByTextEnsureVisible("Edit metadata").click();
     H.openColumnOptions("USER_ID");
-    H.setColumnType("No special type", "Foreign Key");
-    H.sidebar().findByText("Select a target").click();
+    H.setColumnType("No semantic type", "Foreign Key");
+    H.sidebar().findByPlaceholderText("Select a target").click();
     H.popover().findByText("People → ID").click();
     H.saveMetadataChanges();
     // TODO: Not much to do with it at the moment beyond saving it.
@@ -223,7 +223,7 @@ describe("scenarios > models metadata", () => {
 
     H.openColumnOptions("SUBTOTAL");
     H.mapColumnTo({ table: "Orders", column: "Subtotal" });
-    H.setColumnType("No special type", "Cost");
+    H.setColumnType("No semantic type", "Currency");
     H.saveMetadataChanges();
 
     cy.log("Revision 1");
@@ -238,7 +238,7 @@ describe("scenarios > models metadata", () => {
     cy.log("Revision 2");
     H.openColumnOptions("TAX");
     H.mapColumnTo({ table: "Orders", column: "Tax" });
-    H.setColumnType("No special type", "Cost");
+    H.setColumnType("No semantic type", "Currency");
     H.saveMetadataChanges();
 
     cy.findAllByTestId("header-cell")
@@ -319,8 +319,8 @@ describe("scenarios > models metadata", () => {
         { wrapId: true, idAlias: "modelId" },
       );
 
-      cy.get("@modelId").then(modelId => {
-        H.setModelMetadata(modelId, field => {
+      cy.get("@modelId").then((modelId) => {
+        H.setModelMetadata(modelId, (field) => {
           if (field.display_name === "USER_ID") {
             return {
               ...field,
@@ -344,7 +344,7 @@ describe("scenarios > models metadata", () => {
     });
 
     it("should allow drills on FK columns", () => {
-      cy.get("@modelId").then(modelId => {
+      cy.get("@modelId").then((modelId) => {
         cy.visit(`/model/${modelId}`);
         cy.wait("@dataset");
 
@@ -375,7 +375,7 @@ describe("scenarios > models metadata", () => {
     });
 
     it("should show implicit joins on FK columns with real DB columns (#37067)", () => {
-      cy.get("@modelId").then(modelId => {
+      cy.get("@modelId").then((modelId) => {
         cy.visit(`/model/${modelId}`);
         cy.wait("@dataset");
 
@@ -408,8 +408,8 @@ describe("scenarios > models metadata", () => {
     });
 
     it("should allow drills on FK columns from dashboards (metabase#42130)", () => {
-      cy.get("@modelId").then(modelId => {
-        H.createDashboard().then(response => {
+      cy.get("@modelId").then((modelId) => {
+        H.createDashboard().then((response) => {
           const dashboardId = response.body.id;
           H.addOrUpdateDashboardCard({
             dashboard_id: dashboardId,
@@ -481,7 +481,7 @@ describe("scenarios > models metadata", () => {
       { idAlias: "modelId", wrapId: true },
     );
 
-    cy.get("@modelId").then(modelId => {
+    cy.get("@modelId").then((modelId) => {
       H.setModelMetadata(modelId, (field, index) => ({
         ...field,
         id: ORDERS.ID,

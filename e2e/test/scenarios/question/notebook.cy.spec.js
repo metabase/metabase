@@ -150,8 +150,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         url: "/api/dataset",
         middleware: true,
       },
-      req => {
-        req.on("response", res => {
+      (req) => {
+        req.on("response", (res) => {
           // Throttle the response to 500 Kbps to simulate a mobile 3G connection
           res.setThrottle(500);
         });
@@ -546,7 +546,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
         ({ body }) => {
-          const tableId = body.find(table => table.name === "products").id;
+          const tableId = body.find((table) => table.name === "products").id;
           H.openTable({
             database: WRITABLE_DB_ID,
             table: tableId,
@@ -796,7 +796,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       },
     );
 
-    cy.get("@metricId").then(metricId => {
+    cy.get("@metricId").then((metricId) => {
       const questionDetails = {
         query: {
           "source-table": ORDERS_ID,
@@ -834,7 +834,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       },
     );
 
-    cy.get("@metricId").then(metricId => {
+    cy.get("@metricId").then((metricId) => {
       const questionDetails = {
         query: {
           "source-table": `card__${metricId}`,
@@ -1000,7 +1000,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.findAllByTestId("notebook-cell-item")
       .filter(`:contains(${CUSTOM_COLUMN_LONG_NAME})`)
-      .then(items => {
+      .then((items) => {
         for (let index = 0; index < items.length; ++index) {
           cy.wrap(items[index]).within(() => {
             assertRemoveClauseIconSize();
@@ -1135,7 +1135,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       { visitQuestion: true, wrapId: true },
     );
 
-    cy.get("@questionId").then(PRODUCT_QUESTION_ID => {
+    cy.get("@questionId").then((PRODUCT_QUESTION_ID) => {
       cy.findByRole("button", { name: /Editor/ }).click();
       cy.findByRole("button", { name: /Visualization/ }).click();
 

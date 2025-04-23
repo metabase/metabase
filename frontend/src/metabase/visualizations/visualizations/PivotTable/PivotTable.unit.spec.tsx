@@ -59,7 +59,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
     );
   });
 
-  TEST_CASES.forEach(testCase => {
+  TEST_CASES.forEach((testCase) => {
     describe(` > ${testCase.name}`, () => {
       it("should render pivot table wrapper", async () => {
         setup({ isDashboard: testCase.isDashboard });
@@ -70,7 +70,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
         setup({ isDashboard: testCase.isDashboard });
 
         // all column names except 3, the pivot grouping, should be in the document
-        columnIndexes.forEach(colIndex => {
+        columnIndexes.forEach((colIndex) => {
           expect(
             screen.getByText(cols[colIndex].display_name),
           ).toBeInTheDocument();
@@ -80,8 +80,8 @@ describe("Visualizations > PivotTable > PivotTable", () => {
       it("should render column values", () => {
         setup({ isDashboard: testCase.isDashboard });
 
-        rows.forEach(rowData => {
-          columnIndexes.forEach(colIndex => {
+        rows.forEach((rowData) => {
+          columnIndexes.forEach((colIndex) => {
             expect(screen.getByTestId("pivot-table")).toHaveTextContent(
               rowData[colIndex].toString(),
             );
@@ -105,7 +105,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
 
         const COLLAPSED_COLUMN_INDEX = 1;
 
-        rows.forEach(row => {
+        rows.forEach((row) => {
           const totalsElement = screen.getByText(
             `Totals for ${row[COLLAPSED_COLUMN_INDEX]}`,
           );
@@ -154,7 +154,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
         await userEvent.click(toggleButton);
 
         //Ensure that collapsed data is now visible
-        columnIndexes.forEach(columnIndex => {
+        columnIndexes.forEach((columnIndex) => {
           expect(
             screen.getByText(LAST_ROW[columnIndex].toString()),
           ).toBeInTheDocument();

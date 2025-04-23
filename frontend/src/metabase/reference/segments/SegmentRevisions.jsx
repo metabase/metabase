@@ -24,7 +24,9 @@ import {
 } from "../selectors";
 
 const emptyStateData = {
-  message: t`There are no revisions for this segment`,
+  get message() {
+    return t`There are no revisions for this segment`;
+  },
 };
 
 const mapStateToProps = (state, props) => {
@@ -62,7 +64,7 @@ class SegmentRevisions extends Component {
     const userColorAssignments =
       user && Object.keys(revisions).length > 0
         ? assignUserColors(
-            Object.values(revisions).map(revision =>
+            Object.values(revisions).map((revision) =>
               getIn(revision, ["user", "id"]),
             ),
             user.id,
@@ -93,7 +95,7 @@ class SegmentRevisions extends Component {
                 >
                   <div>
                     {Object.values(revisions)
-                      .map(revision =>
+                      .map((revision) =>
                         revision && revision.diff ? (
                           <Revision
                             key={revision.id}

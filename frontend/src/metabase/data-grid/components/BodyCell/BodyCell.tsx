@@ -38,7 +38,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
     : String(value);
 
   const handleExpandClick: MouseEventHandler<HTMLButtonElement> = useCallback(
-    e => {
+    (e) => {
       e.stopPropagation();
       onExpand?.(columnId, formattedValue);
     },

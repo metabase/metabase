@@ -52,7 +52,7 @@ describe.skip("issue 12496", () => {
       .eq(picker)
       .find("input")
       .eq(input);
-  const setup = unit => {
+  const setup = (unit) => {
     H.createQuestion(
       {
         name: `Orders by Created At: ${unit}`,
@@ -276,7 +276,7 @@ describe("issue 20683", { tags: "@external" }, () => {
 
     H.popover().within(() => {
       cy.findByText("Created At").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByText("Previous").click();
       cy.findByText("Current").click();
       cy.findByText("Quarter").click();
@@ -526,7 +526,7 @@ describe("issue 45410", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should not overflow the last filter value with a chevron icon (metabase#45410)", () => {
+  it("should not overflow the last filter value with the info icon (metabase#45410)", () => {
     H.openPeopleTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
     H.clauseStepPopover().within(() => {
@@ -537,10 +537,10 @@ describe("issue 45410", () => {
       cy.findByText("abc2@example.com")
         .next("button")
         .then(([removeButton]) => {
-          cy.get("[data-combobox-chevron]").then(([chevronIcon]) => {
+          cy.icon("info_filled").then(([infoIcon]) => {
             const removeButtonRect = removeButton.getBoundingClientRect();
-            const chevronIconRect = chevronIcon.getBoundingClientRect();
-            expect(removeButtonRect.right).to.be.lte(chevronIconRect.left);
+            const infoIconRect = infoIcon.getBoundingClientRect();
+            expect(removeButtonRect.right).to.be.lte(infoIconRect.left);
           });
         });
     });
@@ -574,7 +574,7 @@ describe("issue 25378", () => {
 
     H.clauseStepPopover().within(() => {
       cy.findByText("Created At: Month").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByDisplayValue("days").click();
     });
     cy.findByRole("listbox").findByText("months").click();
@@ -584,7 +584,7 @@ describe("issue 25378", () => {
       cy.button("Add filter").click();
     });
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
   });
@@ -721,13 +721,13 @@ describe("issue 25994", () => {
 
     H.popover().within(() => {
       cy.findByText("Min of Created At: Day").click();
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
 
       // It doesn't really matter which dates we select so let's go with whatever is offered
       cy.button("Add filter").click();
     });
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
   });
@@ -815,8 +815,7 @@ describe("issue 27123", () => {
   });
 });
 
-// TODO: Unskip this test when we bring back expression type checking. See #31877.
-describe.skip("issue 29094", () => {
+describe("issue 29094", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -839,7 +838,7 @@ describe.skip("issue 29094", () => {
       H.enterCustomColumnDetails({ formula: "[Tax] * 22" });
       cy.realPress("Tab");
       cy.button("Done").should("be.disabled");
-      cy.findByText("Invalid expression").should("exist");
+      cy.findByText("Types are incompatible.").should("exist");
     });
   });
 });
@@ -1034,8 +1033,13 @@ describe("metabase#32985", () => {
 
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByPlaceholderText("Search by Email").type("foo");
+      cy.findByPlaceholderText("Search by Email or enter an ID").type("foo");
     });
+    H.popover()
+      .should("have.length", 2)
+      .last()
+      .findByText("No matching Email found.")
+      .should("be.visible");
   });
 });
 
@@ -1261,7 +1265,7 @@ describe("issue 44435", () => {
       },
     });
 
-    cy.findByTestId("filter-pill").then($pill => {
+    cy.findByTestId("filter-pill").then(($pill) => {
       const pillWidth = $pill[0].getBoundingClientRect().width;
       cy.window().its("innerWidth").should("be.gt", pillWidth);
     });
@@ -1386,7 +1390,7 @@ describe("issue 47887", () => {
 
     H.popover().within(() => {
       cy.findByLabelText("asdfdsa").click();
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
     });
   });
 });
@@ -1395,10 +1399,10 @@ describe("Issue 48851", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.viewport(1050, 300);
+    cy.viewport(1050, 500);
   });
 
-  const manyValues = Array(12)
+  const manyValues = Array(20)
     .fill(0)
     .map(() => Math.round(Math.random() * 1000_000_000_000).toString(36))
     .join(", ");
@@ -1412,12 +1416,11 @@ describe("Issue 48851", () => {
       cy.findByText("Is").click();
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
-    H.popover().last().findByText("Contains").click();
+    H.popover().eq(1).findByText("Contains").click();
+    H.popover().should("have.length", 1);
     H.popover()
-      .first()
       .findByPlaceholderText("Enter some text")
-      .type(manyValues, { timeout: 0 });
+      .type(manyValues, { force: true, timeout: 0 });
 
     H.popover().button("Add filter").should("be.visible");
   });
@@ -1439,7 +1442,7 @@ describe("issue 49321", () => {
     // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Contains").click();
 
-    H.popover().then($popover => {
+    H.popover().then(($popover) => {
       const { width } = $popover[0].getBoundingClientRect();
       cy.wrap(width).as("initialWidth");
     });
@@ -1448,8 +1451,8 @@ describe("issue 49321", () => {
       .findByPlaceholderText("Enter some text")
       .type("aaaaaaaaaa, bbbbbbbbbbb,");
 
-    cy.get("@initialWidth").then(initialWidth => {
-      H.popover().should($popover => {
+    cy.get("@initialWidth").then((initialWidth) => {
+      H.popover().should(($popover) => {
         const { width } = $popover[0].getBoundingClientRect();
         expect(width).to.eq(initialWidth);
       });
@@ -1582,11 +1585,11 @@ describe("issue 50731", () => {
 
     H.popover()
       .should("be.visible")
-      .and($element => {
+      .and(($element) => {
         const [container] = $element;
         const descendants = container.querySelectorAll("*");
 
-        descendants.forEach(descendant => {
+        descendants.forEach((descendant) => {
           H.assertDescendantNotOverflowsContainer(descendant, container);
         });
       });

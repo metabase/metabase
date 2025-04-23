@@ -49,6 +49,8 @@ export const getUnpinnedSection = () => {
 };
 
 export const openPinnedItemMenu = (name: string) => {
+  cy.log(`open pinned item menu: ${name}`);
+
   getPinnedSection().within(() => {
     cy.findByText(name)
       .closest("a")

@@ -20,7 +20,7 @@ const TestComponent = () => {
 
   return (
     <div>
-      {data.map(action => (
+      {data.map((action) => (
         <div key={action.id}>{action.name}</div>
       ))}
     </div>

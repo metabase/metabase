@@ -39,7 +39,7 @@ const useUserHasSeenAll = (id: string) => {
 
   const upsertBadge = useCallback(
     ({ value, key }: { value: boolean; key: string }) => {
-      setBadges(s => {
+      setBadges((s) => {
         const badgeAlreadyInArray =
           s.findIndex(([k, v]) => k === key && v === value) >= 0;
         if (badgeAlreadyInArray) {
@@ -52,7 +52,7 @@ const useUserHasSeenAll = (id: string) => {
     [],
   );
   const removeBadge = useCallback(({ key }: { key: string }) => {
-    setBadges(s => [...s.filter(([k]) => k !== key)]);
+    setBadges((s) => [...s.filter(([k]) => k !== key)]);
   }, []);
 
   const { value: seenBadges, setValue: setSeenBadges } = useUserKeyValue({
@@ -70,7 +70,7 @@ const useUserHasSeenAll = (id: string) => {
   }, [badges, seenBadges]);
 
   const handleUpdate = useCallback(() => {
-    if (!unseenBadges.every(b => seenBadges.includes(b))) {
+    if (!unseenBadges.every((b) => seenBadges.includes(b))) {
       setSeenBadges([...seenBadges, ...unseenBadges]);
     }
   }, [unseenBadges, seenBadges, setSeenBadges]);

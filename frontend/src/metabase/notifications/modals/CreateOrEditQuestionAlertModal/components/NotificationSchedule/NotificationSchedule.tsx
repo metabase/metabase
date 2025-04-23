@@ -38,7 +38,7 @@ export const NotificationSchedule = ({
   onScheduleChange,
   ...boxProps
 }: NotificationScheduleProps & BoxProps & HTMLAttributes<HTMLDivElement>) => {
-  const timezone = useSelector(state =>
+  const timezone = useSelector((state) =>
     getSetting(state, "report-timezone-short"),
   );
 

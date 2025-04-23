@@ -293,7 +293,7 @@
   "Get metrics on Collection usage."
   []
   (let [collections (t2/select :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
-        cards       (t2/select [:model/Card :collection_id] {:where (mi/exclude-internal-content-hsql :model/Card)})]
+        cards       (t2/select [:model/Card :collection_id :card_schema] {:where (mi/exclude-internal-content-hsql :model/Card)})]
     {:collections              (count collections)
      :cards_in_collections     (count (filter :collection_id cards))
      :cards_not_in_collections (count (remove :collection_id cards))
@@ -815,6 +815,11 @@
    {:name      :database-auth-providers
     :available (premium-features/enable-database-auth-providers?)
     :enabled   (premium-features/enable-database-auth-providers?)}
+   {:name      :database-routing
+    :available (premium-features/enable-database-routing?)
+    :enabled   (if (premium-features/enable-database-routing?)
+                 (t2/exists? :model/DatabaseRouter)
+                 false)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
     :enabled   (some? (get env/env :mb-config-file-path))}

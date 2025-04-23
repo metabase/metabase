@@ -858,6 +858,8 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :cache_preemptive               (premium-features/enable-preemptive-caching?)
                       :collection_cleanup             (premium-features/enable-collection-cleanup?)
                       :database_auth_providers        (premium-features/enable-database-auth-providers?)
+                      :database_routing               (premium-features/enable-database-routing?)
+                      :development-mode               (premium-features/development-mode?)
                       :config_text_file               (premium-features/enable-config-text-file?)
                       :content_verification           (premium-features/enable-content-verification?)
                       :dashboard_subscription_filters (premium-features/enable-dashboard-subscription-filters?)
@@ -1025,7 +1027,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   (deferred-tru "Which engine to use when performing search. Supported values are :in-place and :appdb")
   :visibility :internal
   :export?    false
-  :default    :appdb
+  :default    :in-place
   :type       :keyword)
 
 (defsetting experimental-search-weight-overrides

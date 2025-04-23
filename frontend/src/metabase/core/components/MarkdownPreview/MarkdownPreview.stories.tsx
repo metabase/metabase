@@ -9,7 +9,7 @@ export default {
   component: MarkdownPreview,
 };
 
-const Template: StoryFn<MarkdownPreviewProps> = args => {
+const Template: StoryFn<MarkdownPreviewProps> = (args) => {
   return (
     <Box w="200px">
       <MarkdownPreview {...args} />

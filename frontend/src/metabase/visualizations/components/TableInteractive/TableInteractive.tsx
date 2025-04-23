@@ -21,8 +21,13 @@ import { ErrorMessage } from "metabase/components/ErrorMessage";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { DataGrid } from "metabase/data-grid";
-import { ROW_ID_COLUMN_ID } from "metabase/data-grid/constants";
+import { DataGrid, type DataGridStylesProps } from "metabase/data-grid";
+import {
+  FOOTER_HEIGHT,
+  HEADER_HEIGHT,
+  ROW_HEIGHT,
+  ROW_ID_COLUMN_ID,
+} from "metabase/data-grid/constants";
 import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-instance";
 import type {
   BodyCellVariant,
@@ -35,6 +40,7 @@ import {
   memoize,
   useMemoizedCallback,
 } from "metabase/hooks/use-memoized-callback";
+import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -67,6 +73,7 @@ import {
 } from "./cells/HeaderCellWithColumnInfo";
 import { MiniBarCell } from "./cells/MiniBarCell";
 import { useObjectDetail } from "./hooks/use-object-detail";
+import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-columns-change";
 
 const getBodyCellVariant = (column: DatasetColumn): BodyCellVariant => {
   const isPill = isPK(column) || isFK(column);
@@ -98,7 +105,7 @@ interface TableProps extends VisualizationProps {
 }
 
 const getColumnOrder = (cols: DatasetColumn[], hasIndexColumn: boolean) => {
-  const dataColumns = cols.map(col => col.name);
+  const dataColumns = cols.map((col) => col.name);
   if (!hasIndexColumn) {
     return dataColumns;
   }
@@ -107,11 +114,15 @@ const getColumnOrder = (cols: DatasetColumn[], hasIndexColumn: boolean) => {
 
 const getColumnSizing = (
   cols: DatasetColumn[],
-  widths: number[] = [],
+  widths?: number[],
 ): ColumnSizingState => {
+  if (!widths) {
+    return {};
+  }
+
   return cols.reduce((acc: ColumnSizingState, column, index) => {
     const width = widths[index];
-    if (width != null) {
+    if (width != null && width > 0) {
       acc[column.name] = width;
     }
     return acc;
@@ -166,7 +177,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
     return (columnIndex: number) => {
       const col = cols[columnIndex];
-      const sortingState = sorting.find(sort => sort.id === col.name);
+      const sortingState = sorting.find((sort) => sort.id === col.name);
       if (!sortingState) {
         return undefined;
       }
@@ -179,10 +190,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cols, settings["table.row_index"]]);
 
+  const columnWidths = settings["table.column_widths"];
   const columnSizingMap = useMemo(() => {
-    return getColumnSizing(cols, settings["table.column_widths"]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cols, settings["table.column_widths"]]);
+    return getColumnSizing(cols, columnWidths);
+  }, [cols, columnWidths]);
 
   const onOpenObjectDetail = useObjectDetail(data);
 
@@ -218,9 +229,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   );
 
   const columnFormatters = useMemo(() => {
-    return cols.map(col => {
+    return cols.map((col) => {
       const columnSettings = settings.column?.(col);
-      const columnIndex = cols.findIndex(c => c.name === col.name);
+      const columnIndex = cols.findIndex((c) => c.name === col.name);
 
       return memoize((value, rowIndex) => {
         const clicked = getCellClickedObject(columnIndex, rowIndex);
@@ -250,7 +261,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
       const columnIndex = isPivoted
         ? getColumnIndexFromPivotedColumnId(columnId)
-        : data.cols.findIndex(col => col.name === columnId);
+        : data.cols.findIndex((col) => col.name === columnId);
 
       const formatter = columnFormatters[columnIndex];
       const formattedValue = formatter(
@@ -290,14 +301,14 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
       if (isClientSideSortingEnabled) {
         const currentSorting = sorting.find(
-          columnSorting => columnSorting.id === columnId,
+          (columnSorting) => columnSorting.id === columnId,
         );
 
         if (currentSorting == null) {
           setSorting([{ id: columnId, desc: true }]);
         } else if (currentSorting.desc) {
-          setSorting(prev =>
-            prev.map(sorting => {
+          setSorting((prev) =>
+            prev.map((sorting) => {
               if (sorting.id === columnId) {
                 return { ...sorting, desc: false };
               }
@@ -305,14 +316,16 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
             }),
           );
         } else {
-          setSorting(prev => prev.filter(sorting => sorting.id !== columnId));
+          setSorting((prev) =>
+            prev.filter((sorting) => sorting.id !== columnId),
+          );
         }
         return;
       }
 
       const columnIndex = isPivoted
         ? getColumnIndexFromPivotedColumnId(columnId)
-        : data.cols.findIndex(col => col.name === columnId);
+        : data.cols.findIndex((col) => col.name === columnId);
 
       if (columnIndex === -1) {
         return;
@@ -335,11 +348,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
       const enabledIndices = newColumns
         .map((col, index) => (col.enabled ? index : -1))
-        .filter(index => index !== -1);
+        .filter((index) => index !== -1);
 
       columnsOrder.forEach((columnName, orderIndex) => {
         const sourceIndex = newColumns.findIndex(
-          col => col.name === columnName,
+          (col) => col.name === columnName,
         );
         if (sourceIndex !== -1) {
           const targetIndex = enabledIndices[orderIndex];
@@ -355,12 +368,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         }
       });
 
-      const newEnabledColumns = newColumns.filter(col => col.enabled);
+      const newEnabledColumns = newColumns.filter((col) => col.enabled);
       const savedWidths = settings["table.column_widths"];
       const newWidths =
         Array.isArray(savedWidths) &&
         savedWidths.length === newEnabledColumns.length
-          ? newEnabledColumns.map(c => columnSizingMap[c.name])
+          ? newEnabledColumns.map((c) => columnSizingMap[c.name])
           : undefined;
 
       const settingsUpdate = {
@@ -408,9 +421,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return cols.map((col, columnIndex) => {
       const columnSettings = settings.column?.(col) ?? {};
 
-      const wrap = Boolean(columnSettings["text_wrapping"]);
+      const wrap =
+        !settings["table.pagination"] &&
+        Boolean(columnSettings["text_wrapping"]);
       const isMinibar = columnSettings["show_mini_bar"];
       const cellVariant = getBodyCellVariant(col);
+      const isImage = columnSettings["view_as"] === "image";
       const headerVariant = mode != null || isDashboard ? "light" : "outline";
       const getBackgroundColor = memoize(
         (value: RowValue, rowIndex: number) =>
@@ -441,9 +457,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         name: columnName,
         accessorFn: (row: RowValues) => row[columnIndex],
         cellVariant,
-        getCellClassName: value =>
+        getCellClassName: (value) =>
           cx("test-TableInteractive-cellWrapper", {
             [S.pivotedFirstColumn]: columnIndex === 0 && isPivoted,
+            [S.bodyCellWithImage]: isImage,
             "test-Table-ID": value != null && isID(col),
             "test-Table-FK": value != null && isFK(col),
             "test-TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
@@ -525,13 +542,22 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   ]);
 
   const handleColumnResize = useCallback(
-    (columnSizing: ColumnSizingState) => {
-      const newWidths = cols.map(col => columnSizing[col.name] ?? 0);
+    (columnName: string, width: number) => {
+      const columnIndex = cols.findIndex((col) => col.name === columnName);
+      if (columnIndex == null) {
+        return;
+      }
+      const columnWidthsSetting = (
+        settings["table.column_widths"] ?? []
+      ).slice();
+
+      columnWidthsSetting[columnIndex] = width;
+
       onUpdateVisualizationSettings({
-        "table.column_widths": newWidths,
+        "table.column_widths": columnWidthsSetting,
       });
     },
-    [cols, onUpdateVisualizationSettings],
+    [cols, onUpdateVisualizationSettings, settings],
   );
 
   const rowId: RowIdColumnOptions | undefined = useMemo(() => {
@@ -539,7 +565,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       settings["table._cell_background_getter"]?.(null, rowIndex),
     );
 
-    const hasAggregation = cols.some(column => column.source === "aggregation");
+    const hasAggregation = cols.some(
+      (column) => column.source === "aggregation",
+    );
     const isNotebookPreview = queryBuilderMode === "notebook";
     const isModelEditor = queryBuilderMode === "dataset";
     const hasObjectDetail =
@@ -600,6 +628,30 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     };
   }, [tableTheme, backgroundColor]);
 
+  const dataGridStyles: DataGridStylesProps["styles"] = useMemo(() => {
+    return {
+      footer: {
+        color: tableTheme.cell.textColor,
+      },
+    };
+  }, [tableTheme.cell.textColor]);
+
+  const pageSize: number | undefined = useMemo(() => {
+    if (settings["table.pagination"]) {
+      const availableSpaceForRows = Math.max(
+        height - (HEADER_HEIGHT + FOOTER_HEIGHT + getScrollBarSize()),
+        0,
+      );
+
+      const heightBasedPageSize = Math.floor(
+        availableSpaceForRows / ROW_HEIGHT,
+      );
+
+      return heightBasedPageSize > 0 ? heightBasedPageSize : undefined;
+    }
+    return undefined;
+  }, [height, settings]);
+
   const tableProps = useDataGridInstance({
     data: rows,
     rowId,
@@ -610,14 +662,13 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     theme: dataGridTheme,
     onColumnResize: handleColumnResize,
     onColumnReorder: handleColumnReordering,
+    pageSize,
   });
-  const { measureColumnWidths, virtualGrid } = tableProps;
+  const { virtualGrid } = tableProps;
 
-  useEffect(() => {
-    if (Object.values(columnSizingMap).length === 0) {
-      measureColumnWidths();
-    }
-  }, [cols, measureColumnWidths, columnSizingMap]);
+  // If the data changes we reset saved column widths as it is no longer relevant
+  // except for the case where question is converted from a model to a question and back.
+  useResetWidthsOnColumnsChange(onUpdateVisualizationSettings, data, question);
 
   const scrolledColumnRef = useRef<number | null>(null);
   useEffect(() => {
@@ -645,12 +696,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     virtualGrid,
   ]);
 
-  const handleScroll = useCallback(() => {
+  const handleWheel = useCallback(() => {
     if (clicked === null) {
       return;
     }
 
-    onVisualizationClick(undefined);
+    onVisualizationClick(null);
   }, [clicked, onVisualizationClick]);
 
   const emptyState = useMemo(
@@ -672,6 +723,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return <div ref={ref} className={className} />;
   }
 
+  const isColumnReorderingDisabled =
+    (isDashboard || mode == null || isRawTable) && !isSettings;
+
   return (
     <div
       ref={ref}
@@ -685,12 +739,14 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     >
       <DataGrid
         {...tableProps}
-        isSortingDisabled={isDashboard && !isSettings}
+        styles={dataGridStyles}
+        showRowsCount={isDashboard}
+        isColumnReorderingDisabled={isColumnReorderingDisabled}
         emptyState={emptyState}
         onBodyCellClick={handleBodyCellClick}
         onAddColumnClick={handleAddColumnButtonClick}
         onHeaderCellClick={handleHeaderCellClick}
-        onScroll={handleScroll}
+        onWheel={handleWheel}
       />
     </div>
   );

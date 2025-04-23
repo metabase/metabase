@@ -56,8 +56,8 @@ describe("nav > what's new notification", () => {
 
 function mockVersions({ currentVersion, versions = [] }) {
   const [latest, ...older] = versions;
-  cy.intercept("GET", "/api/session/properties", req => {
-    req.reply(res => {
+  cy.intercept("GET", "/api/session/properties", (req) => {
+    req.reply((res) => {
       res.body["version"] = { tag: currentVersion };
       res.body["version-info"] = createMockVersionInfo({ latest, older });
     });

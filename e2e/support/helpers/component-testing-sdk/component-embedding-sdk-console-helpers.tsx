@@ -16,7 +16,7 @@ export function mountSdkContentAndAssertNoKnownErrors(
   mountSdkContentOptions: MountSdkContentOptions = {},
 ) {
   // Monitor console errors, but don't log them in the Cypress runner UI.
-  cy.window().then(win => {
+  cy.window().then((win) => {
     cy.stub(win.console, "error").log(false).as("consoleError");
   });
 
@@ -29,8 +29,8 @@ export function mountSdkContentAndAssertNoKnownErrors(
     cy.findByTestId("loading-indicator").should("not.exist");
   });
 
-  cy.get<sinon.SinonStub>("@consoleError").should($console => {
-    const lifecycleErrors = $console.args.filter(args => {
+  cy.get<sinon.SinonStub>("@consoleError").should(($console) => {
+    const lifecycleErrors = $console.args.filter((args) => {
       const message = args.join(" ");
 
       const hasUnsafeLifecycleWarning = message.includes("UNSAFE_component");

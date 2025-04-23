@@ -203,3 +203,21 @@
 ;;; the `:expressions` definition map as found as a top-level key in an MBQL stage
 (mr/def ::expressions
   [:sequential {:min 1} [:ref ::expression.definition]])
+
+(mr/def ::positive-integer-or-numeric-expression
+  [:and
+   [:ref ::integer]
+   [:fn
+    {:error/message "positive integer literal or numeric expression"}
+    #(cond
+       (vector? %) ;; non-literal (checked above)
+       true
+
+       (not (int? %))
+       false
+
+       (not (pos? %))
+       false
+
+       :else
+       true)]])

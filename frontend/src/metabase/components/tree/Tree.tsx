@@ -39,7 +39,8 @@ function BaseTree({
       previousSelectedId !== selectedId && !expandedIds.has(selectedId);
     if (selectedItemChanged || !_.isEqual(data, prevData)) {
       setExpandedIds(
-        prev => new Set([...prev, ...getInitialExpandedIds(selectedId, data)]),
+        (prev) =>
+          new Set([...prev, ...getInitialExpandedIds(selectedId, data)]),
       );
     }
   }, [prevData, data, selectedId, previousSelectedId, expandedIds]);
@@ -47,9 +48,11 @@ function BaseTree({
   const handleToggleExpand = useCallback(
     (itemId: string | number) => {
       if (expandedIds.has(itemId)) {
-        setExpandedIds(prev => new Set([...prev].filter(id => id !== itemId)));
+        setExpandedIds(
+          (prev) => new Set([...prev].filter((id) => id !== itemId)),
+        );
       } else {
-        setExpandedIds(prev => new Set([...prev, itemId]));
+        setExpandedIds((prev) => new Set([...prev, itemId]));
       }
     },
     [expandedIds],

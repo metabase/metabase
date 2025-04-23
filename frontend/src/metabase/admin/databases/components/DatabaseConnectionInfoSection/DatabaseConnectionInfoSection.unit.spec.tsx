@@ -2,13 +2,12 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupDatabaseDismissSpinnerEndpoint,
   setupDatabaseEndpoints,
   setupDatabaseUsageInfoEndpoint,
 } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { Database, InitialSyncStatus } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
@@ -31,8 +30,8 @@ function setup({
       databases: [database],
     }),
   });
-  const metadata = getMetadata(state);
   setupDatabaseEndpoints(database);
+  setupDatabaseDismissSpinnerEndpoint(database);
   setupDatabaseUsageInfoEndpoint(database, {
     question: 0,
     dataset: 0,
@@ -42,22 +41,14 @@ function setup({
 
   mockEndpointsCb?.(database);
 
-  // Using mockResolvedValue since the `ActionButton` component
-  // this section is using expects these callbacks to be Promises
-  const dismissSyncSpinner = jest.fn().mockResolvedValue({});
-
   const utils = renderWithProviders(
-    <DatabaseConnectionInfoSection
-      database={checkNotNull(metadata.database(database.id))}
-      dismissSyncSpinner={dismissSyncSpinner}
-    />,
+    <DatabaseConnectionInfoSection database={database} />,
     { storeInitialState: state },
   );
 
   return {
     ...utils,
     database,
-    dismissSyncSpinner,
   };
 }
 
@@ -74,7 +65,7 @@ describe("DatabaseConnectionInfoSection", () => {
 
     it("should show error message if healthcheck returns errors", async () => {
       setup({
-        mockEndpointsCb: database => {
+        mockEndpointsCb: (database) => {
           fetchMock.get(
             `path:/api/database/${database.id}/healthcheck`,
             { body: { status: "error", message: "Test failure" } },
@@ -87,7 +78,7 @@ describe("DatabaseConnectionInfoSection", () => {
 
     it("should show error message if healthcheck HTTP request fails", async () => {
       setup({
-        mockEndpointsCb: database => {
+        mockEndpointsCb: (database) => {
           fetchMock.get(
             `path:/api/database/${database.id}/healthcheck`,
             { status: 500 },
@@ -136,7 +127,7 @@ describe("DatabaseConnectionInfoSection", () => {
         ).not.toBeInTheDocument();
       });
 
-      NOT_SYNCED_DB_STATUSES.forEach(initial_sync_status => {
+      NOT_SYNCED_DB_STATUSES.forEach((initial_sync_status) => {
         it(`is shown for a database with "${initial_sync_status}" sync status`, () => {
           setup({ database: createMockDatabase({ initial_sync_status }) });
 
@@ -148,13 +139,16 @@ describe("DatabaseConnectionInfoSection", () => {
 
         it(`can be dismissed for a database with "${initial_sync_status}" sync status (#20863)`, async () => {
           const database = createMockDatabase({ initial_sync_status });
-          const { dismissSyncSpinner } = setup({ database });
+          setup({ database });
 
           await userEvent.click(
             screen.getByText(/Dismiss sync spinner manually/i),
           );
 
-          expect(dismissSyncSpinner).toHaveBeenCalledWith(database.id);
+          expect(
+            fetchMock.calls(`path:/api/database/${database.id}/dismiss_spinner`)
+              .length,
+          ).toBe(1);
         });
       });
     });

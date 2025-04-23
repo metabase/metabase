@@ -11,7 +11,7 @@ import { getNextJsSetupMessages } from "../utils/get-nextjs-setup-message";
 import { checkIsInNextJsProject } from "../utils/nextjs-helpers";
 import { printEmptyLines, printWithPadding } from "../utils/print";
 
-export const showPostSetupSteps: CliStepMethod = async state => {
+export const showPostSetupSteps: CliStepMethod = async (state) => {
   const isNextJs = await checkIsInNextJsProject();
 
   const START_SERVER_STEP = `

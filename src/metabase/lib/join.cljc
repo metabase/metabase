@@ -290,9 +290,13 @@
           field-metadatas (if (= fields :all)
                             join-cols
                             (for [field-ref fields
-                                  :let [join-field (lib.options/update-options field-ref dissoc :join-alias)]]
-                              (assoc (lib.equality/find-matching-column join-field join-cols)
-                                     :lib/source-uuid (lib.options/uuid join-field))))
+                                  :let [join-field (lib.options/update-options field-ref dissoc :join-alias)
+                                        match      (lib.equality/find-matching-column join-field join-cols)]
+                                  :when match]
+                              (assoc match :lib/source-uuid (lib.options/uuid join-field))))
+          ;; If there was a `:fields` clause but none of them matched the `join-cols` then pretend it was `:fields :all`
+          ;; instead. That can happen if a model gets reworked and an old join clause remembers the old fields.
+          field-metadatas (if (empty? field-metadatas) join-cols field-metadatas)
           cols  (mapv (fn [field-metadata]
                         (->> (column-from-join-fields query stage-number field-metadata join-alias)
                              (adjust-ident join)
@@ -607,12 +611,10 @@
   ;; stage number is not currently used, but it is taken as a parameter for consistency with the rest of MLv2
   ([query         :- ::lib.schema/query
     _stage-number :- :int]
-   (let [database (lib.metadata/database query)
-         features (:features database)]
-     (into []
-           (comp (filter (partial contains? features))
-                 (map raw-join-strategy->strategy-option))
-           [:left-join :right-join :inner-join :full-join]))))
+   (into []
+         (comp (filter (partial lib.metadata/database-supports? query))
+               (map raw-join-strategy->strategy-option))
+         [:left-join :right-join :inner-join :full-join])))
 
 (mu/defn join-clause :- lib.join.util/PartialJoin
   "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
@@ -760,10 +762,7 @@
          join-aliases-to-ignore (into #{}
                                       (comp (map lib.join.util/current-join-alias)
                                             (drop-while #(not= % existing-join-alias)))
-                                      (joins query stage-number))
-         lhs-column-or-nil      (or lhs-column-or-nil
-                                    (when (join? join-or-joinable)
-                                      (standard-join-condition-lhs (first (join-conditions join-or-joinable)))))]
+                                      (joins query stage-number))]
      (->> (lib.metadata.calculation/visible-columns query stage-number
                                                     (lib.util/query-stage query stage-number)
                                                     {:include-implicitly-joinable? false})
@@ -802,9 +801,6 @@
                              join-or-joinable)
          join-alias        (when (join? join-or-joinable)
                              (lib.join.util/current-join-alias join-or-joinable))
-         rhs-column-or-nil (or rhs-column-or-nil
-                               (when (join? join-or-joinable)
-                                 (standard-join-condition-rhs (first (join-conditions join-or-joinable)))))
          rhs-column-or-nil (when rhs-column-or-nil
                              (cond-> rhs-column-or-nil
                                ;; Drop the :join-alias from the RHS if the joinable doesn't have one either.

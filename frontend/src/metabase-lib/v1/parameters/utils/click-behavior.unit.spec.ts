@@ -45,6 +45,7 @@ const FLOAT_CATEGORY_FIELD = createMockField({
   semantic_type: "type/Category",
   name: "FLOAT_CATEGORY",
   display_name: "Float Category",
+  has_field_values: "list",
 });
 
 const metadata = createMockMetadata({
@@ -220,7 +221,7 @@ describe("metabase/lib/click-behavior", () => {
           "type/Enum",
           "type/Text",
           "type/TextLike",
-        ].map(base_type => createMockColumn({ base_type })),
+        ].map((base_type) => createMockColumn({ base_type })),
         parameter: [
           "id",
           "category",
@@ -231,7 +232,7 @@ describe("metabase/lib/click-behavior", () => {
           "date/all-options",
           "date/month-year",
           "temporal-unit",
-        ].map(type => createMockParameter({ type })),
+        ].map((type) => createMockParameter({ type })),
         userAttribute: ["attr"],
       };
 
@@ -317,7 +318,7 @@ describe("metabase/lib/click-behavior", () => {
           );
 
           const filteredSources = {
-            column: sources.column.filter(column =>
+            column: sources.column.filter((column) =>
               sourceFilters.column(column, question),
             ),
             parameter: sources.parameter.filter(sourceFilters.parameter),
@@ -394,7 +395,7 @@ describe("metabase/lib/click-behavior", () => {
           const [{ sourceFilters }] = getTargetsForQuestion(question);
 
           const filteredSources = {
-            column: sources.column.filter(column =>
+            column: sources.column.filter((column) =>
               sourceFilters.column(column, question),
             ),
             parameter: sources.parameter.filter(sourceFilters.parameter),
@@ -483,7 +484,7 @@ describe("metabase/lib/click-behavior", () => {
           const [{ sourceFilters }] = getTargetsForQuestion(question);
 
           const filteredSources = {
-            column: sources.column.filter(column =>
+            column: sources.column.filter((column) =>
               sourceFilters.column(column, question),
             ),
             parameter: sources.parameter.filter(sourceFilters.parameter),

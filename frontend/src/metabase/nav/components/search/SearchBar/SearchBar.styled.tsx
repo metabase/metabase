@@ -60,7 +60,7 @@ export const SearchInputContainer = styled.div<{
     height: 2rem;
     border-radius: 99px;
     border-color: transparent;
-    ${props =>
+    ${(props) =>
       props.isActive &&
       css`
         width: 100%;
@@ -103,7 +103,7 @@ export const SearchInput = styled.input<{
     flex-grow: 0;
     padding: 0;
 
-    ${props =>
+    ${(props) =>
       props.isActive &&
       css`
         flex-grow: 1;
@@ -122,7 +122,7 @@ export const SearchIcon = styled(Icon)<{
   ${breakpointMaxSmall} {
     transition: margin 0.3s;
 
-    ${props =>
+    ${(props) =>
       props.isActive &&
       css`
         margin-left: ${ICON_MARGIN};

@@ -16,7 +16,7 @@ import {
 const isReactVersionSupported = (version: string) =>
   semver.satisfies(semver.coerce(version)!, "18.x || 19.x");
 
-export const checkIfReactProject: CliStepMethod = async state => {
+export const checkIfReactProject: CliStepMethod = async (state) => {
   const spinner = ora("Checking if this is a React project…").start();
 
   if (!(await hasPackageJson())) {

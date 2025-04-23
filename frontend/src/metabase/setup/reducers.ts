@@ -39,7 +39,7 @@ const initialState: SetupState = {
   user: getUserFromQueryParams(),
 };
 
-export const reducer = createReducer(initialState, builder => {
+export const reducer = createReducer(initialState, (builder) => {
   builder.addCase(loadUserDefaults.fulfilled, (state, { payload: user }) => {
     if (user) {
       state.user = user;
@@ -59,7 +59,7 @@ export const reducer = createReducer(initialState, builder => {
     state.locale = meta.arg;
     state.isLocaleLoaded = false;
   });
-  builder.addCase(updateLocale.fulfilled, state => {
+  builder.addCase(updateLocale.fulfilled, (state) => {
     state.isLocaleLoaded = true;
   });
   builder.addCase(submitUser.fulfilled, (state, { meta }) => {
@@ -85,7 +85,7 @@ export const reducer = createReducer(initialState, builder => {
     state.database = undefined;
     state.invite = meta.arg;
   });
-  builder.addCase(skipDatabase.pending, state => {
+  builder.addCase(skipDatabase.pending, (state) => {
     state.database = undefined;
     state.invite = undefined;
   });

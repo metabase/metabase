@@ -10,7 +10,7 @@ import { ChartTypeList, type ChartTypeListProps } from "./ChartTypeList";
 registerVisualizations();
 
 const VISUALIZATION_TEST_LABELS = DEFAULT_VIZ_ORDER.map(
-  display => visualizations.get(display)?.uiName,
+  (display) => visualizations.get(display)?.uiName,
 );
 
 const setup = ({

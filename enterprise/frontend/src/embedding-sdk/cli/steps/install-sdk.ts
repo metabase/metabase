@@ -60,7 +60,7 @@ const installPackage = async (packageName: string) => {
   }
 };
 
-export const installSdk: CliStepMethod = async state => {
+export const installSdk: CliStepMethod = async (state) => {
   const shouldStart = await toggle({
     message: "Would you like to install the SDK now?",
     default: true,

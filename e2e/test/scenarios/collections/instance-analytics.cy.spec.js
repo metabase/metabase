@@ -43,7 +43,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
       { requestTimeout: 15000 },
       () => {
         cy.log("saving edited question");
-        getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then(id => {
+        getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then((id) => {
           H.visitModel(id);
         });
 
@@ -60,7 +60,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
         cy.findByTestId("qb-header").findByText("Save").click();
 
-        cy.findByTestId("save-question-modal").within(modal => {
+        cy.findByTestId("save-question-modal").within((modal) => {
           cy.findByTestId("dashboard-and-collection-picker-button").findByText(
             "Custom reports",
           );
@@ -75,7 +75,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
         cy.log("saving copied question");
 
-        getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then(id => {
+        getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then((id) => {
           H.visitModel(id);
         });
 
@@ -99,7 +99,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
         cy.log("saving copied dashboard");
 
-        getItemId(ANALYTICS_COLLECTION_NAME, "Person overview").then(id => {
+        getItemId(ANALYTICS_COLLECTION_NAME, "Person overview").then((id) => {
           H.visitDashboard(id);
         });
 
@@ -130,7 +130,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
       visitCollection(ANALYTICS_COLLECTION_NAME);
 
-      cy.findAllByTestId("collection-entry").each(el => {
+      cy.findAllByTestId("collection-entry").each((el) => {
         if (el.text() === CUSTOM_REPORTS_COLLECTION_NAME) {
           cy.wrap(el).within(() => {
             cy.icon("ellipsis").click();
@@ -154,7 +154,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
       visitCollection("Our analytics");
 
-      cy.findAllByTestId("collection-entry").each(el => {
+      cy.findAllByTestId("collection-entry").each((el) => {
         if (el.text() === ANALYTICS_COLLECTION_NAME) {
           cy.wrap(el).within(() => {
             cy.icon("ellipsis").click();
@@ -172,9 +172,11 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
     it("should not allow editing analytics content (metabase#36228)", () => {
       // dashboard
-      getItemId(ANALYTICS_COLLECTION_NAME, METRICS_DASHBOARD_NAME).then(id => {
-        H.visitDashboard(id);
-      });
+      getItemId(ANALYTICS_COLLECTION_NAME, METRICS_DASHBOARD_NAME).then(
+        (id) => {
+          H.visitDashboard(id);
+        },
+      );
 
       cy.findByTestId("dashboard-header").within(() => {
         cy.findByText("Make a copy");
@@ -182,7 +184,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
       });
 
       // model
-      getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then(id => {
+      getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then((id) => {
         H.visitModel(id);
       });
 
@@ -195,7 +197,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
     });
 
     it("should not leak instance analytics database into SQL query builder (metabase#44856)", () => {
-      getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then(id => {
+      getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then((id) => {
         H.visitModel(id);
       });
 
@@ -208,7 +210,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
     });
 
     it("should not leak instance analytics database into permissions editor (metabase#44856)", () => {
-      getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then(id => {
+      getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then((id) => {
         H.visitModel(id);
       });
 
@@ -394,13 +396,13 @@ function getCollectionId(collectionName) {
 }
 
 function visitCollection(collectionName) {
-  getCollectionId(collectionName).then(id => {
+  getCollectionId(collectionName).then((id) => {
     cy.visit(`/collection/${id}`);
   });
 }
 
 function getItemId(collectionName, itemName) {
-  return getCollectionId(collectionName).then(id => {
+  return getCollectionId(collectionName).then((id) => {
     cy.request("GET", `/api/collection/${id}/items`).then(({ body }) => {
       const item = body.data.find(({ name }) => name === itemName);
       return item.id;

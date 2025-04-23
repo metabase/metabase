@@ -37,7 +37,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
     });
 
     it("works when both filters are enabled and their values are set through UI", () => {
-      cy.get("@dashboardId").then(dashboard_id => {
+      cy.get("@dashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
           params: {},
@@ -84,7 +84,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().click();
+          H.fieldValuesTextbox().click();
         });
 
       H.popover().button("Add filter").click();
@@ -100,7 +100,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
     });
 
     it("works when both filters are enabled and their values are set through UI with auto-apply filters disabled", () => {
-      cy.get("@dashboardId").then(dashboard_id => {
+      cy.get("@dashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
           params: {},
@@ -156,7 +156,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().click();
+          H.fieldValuesTextbox().click();
         });
       H.popover().button("Add filter").click();
 
@@ -174,7 +174,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
     });
 
     it("works when main filter's value is set through URL", () => {
-      cy.get("@dashboardId").then(dashboard_id => {
+      cy.get("@dashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
           params: {},
@@ -202,7 +202,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().click();
+          H.fieldValuesTextbox().click();
         });
 
       H.popover().button("Add filter").click();
@@ -218,7 +218,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
     });
 
     it("works when main filter's value is set through URL and when it is hidden at the same time", () => {
-      cy.get("@dashboardId").then(dashboard_id => {
+      cy.get("@dashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
           params: {},
@@ -247,7 +247,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().click();
+          H.fieldValuesTextbox().click();
         });
       H.popover().button("Add filter").click();
 
@@ -262,7 +262,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
     });
 
     it("works when main filter is locked", () => {
-      cy.get("@dashboardId").then(dashboard_id => {
+      cy.get("@dashboardId").then((dashboard_id) => {
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
           embedding_params: {
             city: "enabled",
@@ -285,7 +285,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().click();
+          H.fieldValuesTextbox().click();
         });
       H.popover().button("Add filter").click();
 
@@ -314,7 +314,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
     });
 
     it("works when both filters are enabled and their values are set through UI", () => {
-      cy.get("@guiDashboardId").then(dashboard_id => {
+      cy.get("@guiDashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
           params: {},
@@ -343,7 +343,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
     });
 
     it("works when main filter's value is set through URL", () => {
-      cy.get("@guiDashboardId").then(dashboard_id => {
+      cy.get("@guiDashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
           params: {},
@@ -373,7 +373,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
         cy.log("Make sure we can set multiple values");
         cy.window().then(
-          win =>
+          (win) =>
             (win.location.search = "?category=Widget&id_filter=4&id_filter=29"),
         );
 
@@ -418,7 +418,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
     });
 
     it("works when the default filter is hidden", () => {
-      cy.get("@guiDashboardId").then(dashboard_id => {
+      cy.get("@guiDashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
           params: {},
@@ -447,7 +447,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
     });
 
     it("works when the default filter is locked", () => {
-      cy.get("@guiDashboardId").then(dashboard_id => {
+      cy.get("@guiDashboardId").then((dashboard_id) => {
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
           embedding_params: {
             id_filter: "locked",
@@ -492,7 +492,7 @@ function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
 
 function searchFieldValuesFilter() {
   cy.findByTestId("parameter-value-dropdown").within(() => {
-    H.fieldValuesInput().type("An");
+    H.fieldValuesTextbox().type("An");
   });
 
   cy.findByTestId("field-values-widget").within(() => {

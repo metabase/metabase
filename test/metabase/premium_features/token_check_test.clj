@@ -156,11 +156,11 @@
       (t2/with-call-count [call-count]
         ;; First fetch, should trigger a DB call to fetch user count and db calls for other stats
         (#'token-check/fetch-token-status token)
-        (is (= 4 (call-count)))
+        (is (= 6 (call-count)))
 
         ;; Subsequent fetches with the same token should not trigger additional DB calls
         (#'token-check/fetch-token-status token)
-        (is (= 4 (call-count)))))))
+        (is (= 6 (call-count)))))))
 
 (deftest token-status-setting-test
   (testing "If a `premium-embedding-token` has been set, the `token-status` setting should return the response

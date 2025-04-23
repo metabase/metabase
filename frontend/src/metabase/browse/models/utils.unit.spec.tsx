@@ -44,7 +44,7 @@ describe("sortModels", () => {
       sort_direction: SortDirection.Asc,
     } as const;
     const sorted = sortModels(mockSearchResults, sortingOptions);
-    expect(sorted?.map(model => model.name)).toEqual(["A", "B", "C"]);
+    expect(sorted?.map((model) => model.name)).toEqual(["A", "B", "C"]);
   });
 
   it("can sort by name in descending order", () => {
@@ -53,7 +53,7 @@ describe("sortModels", () => {
       sort_direction: SortDirection.Desc,
     } as const;
     const sorted = sortModels(mockSearchResults, sortingOptions);
-    expect(sorted?.map(model => model.name)).toEqual(["C", "B", "A"]);
+    expect(sorted?.map((model) => model.name)).toEqual(["C", "B", "A"]);
   });
 
   it("can sort by collection path in ascending order", () => {
@@ -62,7 +62,7 @@ describe("sortModels", () => {
       sort_direction: SortDirection.Asc,
     } as const;
     const sorted = sortModels(mockSearchResults, sortingOptions);
-    expect(sorted?.map(model => model.name)).toEqual(["B", "A", "C"]);
+    expect(sorted?.map((model) => model.name)).toEqual(["B", "A", "C"]);
   });
 
   it("can sort by collection path in descending order", () => {
@@ -71,7 +71,7 @@ describe("sortModels", () => {
       sort_direction: SortDirection.Desc,
     } as const;
     const sorted = sortModels(mockSearchResults, sortingOptions);
-    expect(sorted?.map(model => model.name)).toEqual(["C", "A", "B"]);
+    expect(sorted?.map((model) => model.name)).toEqual(["C", "A", "B"]);
   });
 
   describe("secondary sort", () => {

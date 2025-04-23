@@ -18,9 +18,9 @@ export function setupDatabaseEndpoints(db: Database) {
   });
   setupSchemaEndpoints(db);
   setupDatabaseIdFieldsEndpoints(db);
-  db.tables?.forEach(table => setupTableEndpoints({ ...table, db }));
+  db.tables?.forEach((table) => setupTableEndpoints({ ...table, db }));
 
-  fetchMock.put(`path:/api/database/${db.id}`, async url => {
+  fetchMock.put(`path:/api/database/${db.id}`, async (url) => {
     const call = fetchMock.lastCall(url);
     const body = await call?.request?.json();
     return { ...db, ...body };
@@ -57,21 +57,21 @@ export function setupDatabasesEndpoints(
     { url: "path:/api/database", overwriteRoutes: false },
     { data: databases, total: databases.length },
   );
-  fetchMock.post("path:/api/database", async url => {
+  fetchMock.post("path:/api/database", async (url) => {
     const lastCall = fetchMock.lastCall(url);
     return await lastCall?.request?.json();
   });
 
-  databases.forEach(db => setupDatabaseEndpoints(db));
+  databases.forEach((db) => setupDatabaseEndpoints(db));
 }
 
 export const setupSchemaEndpoints = (db: Database) => {
-  const schemas = _.groupBy(db.tables ?? [], table => table.schema);
+  const schemas = _.groupBy(db.tables ?? [], (table) => table.schema);
   const schemaNames = Object.keys(schemas);
   fetchMock.get(`path:/api/database/${db.id}/schemas`, schemaNames);
   fetchMock.get(`path:/api/database/${db.id}/syncable_schemas`, schemaNames);
 
-  schemaNames.forEach(schema => {
+  schemaNames.forEach((schema) => {
     fetchMock.get(
       `path:/api/database/${db.id}/schema/${schema}`,
       schemas[schema],
@@ -80,10 +80,10 @@ export const setupSchemaEndpoints = (db: Database) => {
 };
 
 export function setupDatabaseIdFieldsEndpoints({ id, tables = [] }: Database) {
-  const fields = tables.flatMap(table =>
+  const fields = tables.flatMap((table) =>
     (table.fields ?? [])
-      .filter(field => isTypeFK(field.semantic_type))
-      .map(field => ({ ...field, table })),
+      .filter((field) => isTypeFK(field.semantic_type))
+      .map((field) => ({ ...field, table })),
   );
 
   fetchMock.get(`path:/api/database/${id}/idfields`, fields);
@@ -106,5 +106,11 @@ export function setupUnauthorizedDatabaseEndpoints(db: Database) {
 }
 
 export function setupUnauthorizedDatabasesEndpoints(dbs: Database[]) {
-  dbs.forEach(db => setupUnauthorizedDatabaseEndpoints(db));
+  dbs.forEach((db) => setupUnauthorizedDatabaseEndpoints(db));
+}
+
+export function setupDatabaseDismissSpinnerEndpoint(db: Database) {
+  fetchMock.post(`path:/api/database/${db.id}/dismiss_spinner`, {
+    status: 204,
+  });
 }

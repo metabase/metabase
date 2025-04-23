@@ -261,14 +261,14 @@ function tagDecorator() {
   });
 
   return ViewPlugin.define(
-    view => ({
+    (view) => ({
       tags: decorator.createDeco(view),
       update(state) {
         this.tags = decorator.updateDeco(state, this.tags);
       },
     }),
     {
-      decorations: instance => instance.tags,
+      decorations: (instance) => instance.tags,
     },
   );
 }
@@ -280,7 +280,7 @@ export function insertIndent({
   state: EditorState;
   dispatch: (tr: Transaction) => void;
 }) {
-  if (state.selection.ranges.some(r => !r.empty)) {
+  if (state.selection.ranges.some((r) => !r.empty)) {
     return indentMore({ state, dispatch });
   }
 

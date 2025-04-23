@@ -52,7 +52,7 @@ const LegacyChoropleth = ({
                 stroke="white"
                 strokeWidth={1}
                 fill={getColor(feature)}
-                onMouseMove={e =>
+                onMouseMove={(e) =>
                   onHoverFeature({
                     feature: feature,
                     event: e.nativeEvent,
@@ -62,7 +62,7 @@ const LegacyChoropleth = ({
                 className={cx({ [CS.cursorPointer]: !!onClickFeature })}
                 onClick={
                   onClickFeature
-                    ? e =>
+                    ? (e) =>
                         onClickFeature({
                           feature: feature,
                           event: e.nativeEvent,

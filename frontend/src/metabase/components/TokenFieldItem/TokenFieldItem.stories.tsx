@@ -18,7 +18,7 @@ const Wrapper = ({ children }: { children: JSX.Element | JSX.Element[] }) => (
   </div>
 );
 
-const Template: StoryFn<ComponentProps<typeof TokenFieldItem>> = args => {
+const Template: StoryFn<ComponentProps<typeof TokenFieldItem>> = (args) => {
   return (
     <Wrapper>
       <TokenFieldItem {...args} />
@@ -26,7 +26,7 @@ const Template: StoryFn<ComponentProps<typeof TokenFieldItem>> = args => {
   );
 };
 
-const ManyTemplate: StoryFn<ComponentProps<typeof TokenFieldItem>> = args => {
+const ManyTemplate: StoryFn<ComponentProps<typeof TokenFieldItem>> = (args) => {
   return (
     <Wrapper>
       <TokenFieldItem {...args}> {`${args.children} 1`} </TokenFieldItem>
@@ -38,7 +38,9 @@ const ManyTemplate: StoryFn<ComponentProps<typeof TokenFieldItem>> = args => {
   );
 };
 
-const AddonTemplate: StoryFn<ComponentProps<typeof TokenFieldItem>> = args => {
+const AddonTemplate: StoryFn<ComponentProps<typeof TokenFieldItem>> = (
+  args,
+) => {
   return (
     <Wrapper>
       <TokenFieldItem isValid={args.isValid}>

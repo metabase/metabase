@@ -42,7 +42,7 @@ const mapDispatchToProps = {
 
 function getCurrentTab(location: Location, tabs: ToolTab[]) {
   const parts = location.pathname.split("/");
-  const tab = tabs.find(tab => parts.some(part => part === tab.value));
+  const tab = tabs.find((tab) => parts.some((part) => part === tab.value));
   return tab?.value;
 }
 

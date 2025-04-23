@@ -102,7 +102,7 @@ function isPreviousALengthAssertion(node) {
           "have.length.lt",
           "have.length.within",
         ];
-        if (lengthAssertions.some(pattern => assertion === pattern)) {
+        if (lengthAssertions.some((pattern) => assertion === pattern)) {
           return true;
         }
       }

@@ -18,7 +18,7 @@ function isCustomSchedule(
   value: string,
   options: Array<{ value: string; label: string }>,
 ) {
-  const defaultSchedules = options.map(o => o.value);
+  const defaultSchedules = options.map((o) => o.value);
   return !defaultSchedules.includes(value);
 }
 

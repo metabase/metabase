@@ -19,8 +19,8 @@ export function getPieChartLegend(
     items,
   } = calculateLegendRowsWithColumns({
     items: getArrayFromMapValues(chartModel.sliceTree)
-      .filter(s => s.includeInLegend)
-      .map(s => {
+      .filter((s) => s.includeInLegend)
+      .map((s) => {
         return {
           name: s.name,
           percent:

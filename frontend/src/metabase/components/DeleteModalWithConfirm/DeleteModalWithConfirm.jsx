@@ -67,7 +67,7 @@ export default class DeleteModalWithConfirm extends Component {
                   checkedColor="danger"
                   uncheckedColor="danger"
                   checked={checked[index]}
-                  onChange={e =>
+                  onChange={(e) =>
                     this.setState({
                       checked: { ...checked, [index]: e.target.checked },
                     })

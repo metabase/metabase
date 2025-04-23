@@ -15,7 +15,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -250,17 +249,15 @@
                                     :limit        5})
                                  qp.compile/compile
                                  :query))
-
           native-query (mt/native-query {:query native-sub-query})
 
           ;; Let metadata-provider-with-cards-with-metadata-for-queries calculate the result-metadata.
-          metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])]
+          metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])
+          metadata-card     (lib.metadata/card metadata-provider 1)]
       (mt/with-temp
-        [:model/Card card (assoc {:dataset_query native-query}
-                                 :result_metadata
-                                 (-> (lib.metadata.protocols/metadatas metadata-provider :metadata/card [1])
-                                     first
-                                     :result-metadata))]
+        [:model/Card card {:dataset_query native-query
+                           :entity_id       (:entity-id metadata-card)
+                           :result_metadata (:result-metadata metadata-card)}]
         (let [card-query {:database (mt/id)
                           :type     "query"
                           :query    {:source-table (str "card__" (u/the-id card))}}]
@@ -475,6 +472,18 @@
                  (-> results
                      :data
                      (select-keys [:requested_timezone :results_timezone])))))))))
+
+(deftest databricks-stack-trace-test
+  (testing "exceptions with stacktraces should have the stacktrace removed"
+    (mt/test-driver :databricks
+      (let [res (mt/user-http-request :rasta :post 202 "dataset"
+                                      (lib/native-query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                                        "asdf;"))]
+        (is (= {:error_type "invalid-query"
+                :status "failed"
+                :class "class com.databricks.client.support.exceptions.ErrorException"}
+               (select-keys res [:error_type :status :class])))
+        (is (not (str/includes? (:error res) "\n\tat ")))))))
 
 (deftest ^:parallel pivot-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
@@ -746,6 +755,29 @@
     (is (=? {:databases [{:id (mt/id)}]
              :tables    empty?
              :fields    [{:id (mt/id :people :id)}]}
+            (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                  {:database (mt/id)
+                                   :type     :native
+                                   :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}}"
+                                              :template-tags
+                                              {"id" {:name         "id"
+                                                     :display-name "Id"
+                                                     :type         :dimension
+                                                     :dimension    [:field (mt/id :people :id) nil]
+                                                     :widget-type  :id
+                                                     :default      nil}}}})))))
+
+(deftest ^:parallel dataset-metadata-has-entity-ids-test
+  (testing "MBQL query"
+    (is (=? {:databases api.test-util/all-have-entity-ids?
+             :tables    api.test-util/all-have-entity-ids?
+             :fields    api.test-util/all-have-entity-ids?}
+            (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                  (mt/mbql-query products)))))
+  (testing "Parameterized native query"
+    (is (=? {:databases api.test-util/all-have-entity-ids?
+             :tables    api.test-util/all-have-entity-ids?
+             :fields    api.test-util/all-have-entity-ids?}
             (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
                                   {:database (mt/id)
                                    :type     :native

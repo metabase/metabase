@@ -173,7 +173,7 @@ const SettingsPane = ({
   getEmbeddedParameterVisibility,
 }: SettingsPaneProps) => (
   <div>
-    {tags.map(tag => (
+    {tags.map((tag) => (
       <div key={tag.id}>
         <TagEditorParam
           tag={tag}

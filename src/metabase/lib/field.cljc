@@ -124,7 +124,7 @@
                     {::temporal-unit unit})
                   (cond
                     (integer? id-or-name) (or (lib.equality/resolve-field-id query stage-number id-or-name)
-                                              {:lib/type :metadata/column, :name (str id-or-name)})
+                                              {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")})
                     join-alias            {:lib/type :metadata/column, :name (str id-or-name)}
                     :else                 (or (resolve-column-name query stage-number id-or-name)
                                               {:lib/type :metadata/column, :name (str id-or-name)})))]
@@ -186,10 +186,15 @@
                   {:lib/type        :metadata/column}
                   metadata
                   {:display-name (or (:display-name opts)
-                                     (lib.metadata.calculation/display-name query stage-number field-ref))})]
+                                     (lib.metadata.calculation/display-name query stage-number field-ref))})
+        default-type (fn [original default]
+                       (if (or (nil? original) (= original :type/*))
+                         default
+                         original))]
     (cond-> metadata
       source-uuid    (assoc :lib/source-uuid source-uuid)
-      base-type      (assoc :base-type base-type, :effective-type base-type)
+      base-type      (-> (assoc :base-type base-type)
+                         (update :effective-type default-type base-type))
       effective-type (assoc :effective-type effective-type)
       temporal-unit  (assoc ::temporal-unit temporal-unit)
       binning        (assoc ::binning binning)
@@ -423,7 +428,7 @@
 (defmethod lib.binning/available-binning-strategies-method :metadata/column
   [query _stage-number {:keys [effective-type fingerprint semantic-type] :as field-metadata}]
   (if (not= (:lib/source field-metadata) :source/expressions)
-    (let [binning?    (some-> query lib.metadata/database :features (contains? :binning))
+    (let [binning?    (lib.metadata/database-supports? query :binning)
           fingerprint (get-in fingerprint [:type :type/Number])
           existing    (lib.binning/binning field-metadata)
           strategies  (cond
@@ -767,6 +772,7 @@
   [:map
    [:field-id         [:maybe [:ref ::lib.schema.id/field]]]
    [:search-field-id  [:maybe [:ref ::lib.schema.id/field]]]
+   [:search-field     [:maybe [:ref ::lib.schema.metadata/column]]]
    [:has-field-values [:ref ::field-values-search-info.has-field-values]]])
 
 (mu/defn infer-has-field-values :- ::field-values-search-info.has-field-values
@@ -810,9 +816,11 @@
    column                :- ::lib.schema.metadata/column]
   (when column
     (let [column-field-id (:id column)
-          search-field-id (:id (search-field metadata-providerable column))]
+          search-column   (search-field metadata-providerable column)
+          search-field-id (:id search-column)]
       {:field-id (when (int? column-field-id) column-field-id)
        :search-field-id (when (int? search-field-id) search-field-id)
+       :search-field search-column
        :has-field-values (if column
                            (infer-has-field-values column)
                            :none)})))

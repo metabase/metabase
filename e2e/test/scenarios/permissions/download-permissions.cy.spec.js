@@ -178,7 +178,7 @@ describe("scenarios > admin > permissions > data > downloads", () => {
     it("lets user download results from native queries", () => {
       cy.signInAsNormalUser();
 
-      cy.get("@nativeQuestionId").then(id => {
+      cy.get("@nativeQuestionId").then((id) => {
         H.visitQuestion(id);
 
         H.downloadAndAssert(
@@ -212,7 +212,7 @@ describe("scenarios > admin > permissions > data > downloads", () => {
 
       cy.signInAsNormalUser();
 
-      cy.get("@nativeQuestionId").then(id => {
+      cy.get("@nativeQuestionId").then((id) => {
         H.visitQuestion(id);
 
         cy.findByText("Showing first 2,000 rows");
@@ -240,7 +240,7 @@ describe("scenarios > admin > permissions > data > downloads", () => {
 
       cy.signInAsNormalUser();
 
-      cy.get("@nativeQuestionId").then(id => {
+      cy.get("@nativeQuestionId").then((id) => {
         H.visitQuestion(id);
 
         H.downloadAndAssert(

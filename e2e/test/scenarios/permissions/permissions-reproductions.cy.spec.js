@@ -56,7 +56,7 @@ describe.skip("issue 13347", { tags: "@external" }, () => {
     );
   });
 
-  ["QB", "Native"].forEach(test => {
+  ["QB", "Native"].forEach((test) => {
     it(`${test.toUpperCase()} version:\n should be able to select question (from "Saved Questions") which belongs to the database user doesn't have data-permissions for (metabase#13347)`, () => {
       cy.signIn("none");
 
@@ -105,7 +105,7 @@ describe("postgres > user > query", { tags: "@external" }, () => {
     cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
   });
 
-  it("should handle the use of `regexextract` in a sandboxed table (metabase#14873)", () => {
+  it("should handle the use of `regexExtract` in a sandboxed table (metabase#14873)", () => {
     const CC_NAME = "Firstname";
     // We need ultra-wide screen to avoid scrolling (custom column is rendered at the last position)
     cy.viewport(2200, 1200);
@@ -196,7 +196,7 @@ describe("issue 19603", () => {
 
     // Archive second collection (nested under the first one)
     cy.request("GET", "/api/collection/").then(({ body }) => {
-      const { id } = body.find(c => c.slug === "second_collection");
+      const { id } = body.find((c) => c.slug === "second_collection");
 
       H.archiveCollection(id);
     });
@@ -491,7 +491,7 @@ describe("issue 22727", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
-    cy.findByTestId("save-question-modal").then(modal => {
+    cy.findByTestId("save-question-modal").then((modal) => {
       // This part reproduces https://github.com/metabase/metabase/issues/20717
       cy.findByText(/^Replace original qeustion/).should("not.exist");
 
@@ -655,7 +655,7 @@ describe("issue 24966", () => {
     cy.findByLabelText("Widget").click();
     cy.button("Add filter").click();
     cy.location("search").should("eq", "?text=Widget");
-    cy.get("@dashcardId").then(id => {
+    cy.get("@dashcardId").then((id) => {
       H.assertDatasetReqIsSandboxed({ requestAlias: `@dashcardQuery${id}` });
     });
   });

@@ -149,7 +149,7 @@ export const DropdownSidebarFilter = ({
                 <Stack mah={maxHeight}>
                   <ContentComponent
                     value={value}
-                    onChange={selected => onApplyFilter(selected)}
+                    onChange={(selected) => onApplyFilter(selected)}
                     width={popoverWidth}
                   />
                 </Stack>

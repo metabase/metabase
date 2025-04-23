@@ -53,7 +53,7 @@ const SchemaPane = ({
             </NodeListTitleText>
           </NodeListTitle>
           <ul>
-            {tables.map(table => (
+            {tables.map((table) => (
               <li key={table.id}>
                 <NodeListItemLink onClick={() => onItemClick("table", table)}>
                   <NodeListItemIcon name="table" />

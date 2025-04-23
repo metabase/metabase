@@ -9,7 +9,7 @@ const { admin } = USERS;
 const locales = ["en", "xx"];
 
 describe("scenarios > setup", () => {
-  locales.forEach(locale => {
+  locales.forEach((locale) => {
     beforeEach(() => H.restore("blank"));
 
     it(
@@ -438,7 +438,7 @@ describe("scenarios > setup (EE)", () => {
 
     H.main().findByText("Looking for more?").should("exist");
 
-    cy.wait("@tokenStatus").then(request => {
+    cy.wait("@tokenStatus").then((request) => {
       expect(request.response?.body.valid).to.equal(true);
     });
   });

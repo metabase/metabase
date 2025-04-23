@@ -1,4 +1,3 @@
-/* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectLocale"] }] */
 import { getLocaleToUse } from "./LocaleProvider";
 
 const expectLocale = ({

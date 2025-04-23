@@ -730,11 +730,11 @@ H.describeWithSnowplow("scenarios > collections > timelines", () => {
   });
 });
 
-const openMenu = name => {
+const openMenu = (name) => {
   return cy.findByText(name).parent().parent().icon("ellipsis").click();
 };
 
-const setFormattingSettings = settings => {
+const setFormattingSettings = (settings) => {
   cy.request("PUT", "api/setting/custom-formatting", {
     value: settings,
   });

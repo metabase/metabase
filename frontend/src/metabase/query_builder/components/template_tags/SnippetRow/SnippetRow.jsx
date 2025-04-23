@@ -49,7 +49,7 @@ class SnippetRowInner extends Component {
             onClick={
               snippet.archived
                 ? () => this.setState({ isOpen: true })
-                : e => {
+                : (e) => {
                     e.stopPropagation();
                     insertSnippet(snippet);
                   }

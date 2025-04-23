@@ -37,7 +37,7 @@ export const getNextJsSetupMessages = async ({
   if (hasNextJsCustomAppOrRootLayout) {
     const layoutSnippet = getNextJsPagesWrapperOrAppWrapperSnippet({
       router,
-      resolveImport: pathName =>
+      resolveImport: (pathName) =>
         getImportPathForRootLayout(componentPath, pathName),
     });
 
@@ -65,5 +65,5 @@ ${green(layoutSnippet)}`;
 
   snippets.push(afterSetupMessage);
 
-  return snippets.map(snippet => snippet.trim());
+  return snippets.map((snippet) => snippet.trim());
 };

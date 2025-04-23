@@ -24,7 +24,7 @@ export function mountInteractiveQuestion(
   cy.intercept("GET", "/api/card/*").as("getCard");
   cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-  cy.get<number>("@questionId").then(questionId => {
+  cy.get<number>("@questionId").then((questionId) => {
     mountSdkContent(
       <InteractiveQuestion questionId={questionId} {...extraProps} />,
       mountSdkContentOptions,
@@ -47,7 +47,7 @@ export function mountStaticQuestion(
   cy.intercept("GET", "/api/card/*").as("getCard");
   cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-  cy.get<number>("@questionId").then(questionId => {
+  cy.get<number>("@questionId").then((questionId) => {
     mountSdkContent(<StaticQuestion questionId={questionId} {...extraProps} />);
   });
 

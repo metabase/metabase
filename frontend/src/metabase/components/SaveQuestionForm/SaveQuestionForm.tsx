@@ -125,8 +125,8 @@ export const SaveQuestionForm = ({
                 title={t`Where do you want to save this?`}
                 collectionPickerModalProps={{
                   models,
-                  recentFilter: items =>
-                    items.filter(item => {
+                  recentFilter: (items) =>
+                    items.filter((item) => {
                       // narrow type and make sure it's a dashboard or
                       // collection that the user can write to
                       return item.model !== "table" && item.can_write;

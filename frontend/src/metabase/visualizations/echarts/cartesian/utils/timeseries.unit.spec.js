@@ -1,9 +1,18 @@
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
+
+// Enable timezone and UTC plugins
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { getVisualizationTransformed } from "metabase/visualizations";
 import {
   computeTimeseriesDataInverval,
   computeTimeseriesTicksInterval,
   getTimezoneOrOffset,
+  normalizeDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 import registerVisualizations from "metabase/visualizations/register";
 
@@ -91,7 +100,7 @@ describe("visualization.lib.timeseries", () => {
     TEST_CASES.map(([expectedUnit, expectedCount, data]) => {
       it(`should return ${expectedCount} ${expectedUnit}`, () => {
         const { unit, count } = computeTimeseriesDataInverval(
-          data.map(d => new Date(d)),
+          data.map((d) => new Date(d)),
         );
         expect(unit).toBe(expectedUnit);
         expect(count).toBe(expectedCount);
@@ -100,7 +109,7 @@ describe("visualization.lib.timeseries", () => {
 
     const units = ["minute", "hour", "day", "week", "month", "year"];
 
-    units.forEach(testUnit => {
+    units.forEach((testUnit) => {
       it(`should return one ${testUnit} when ${testUnit} interval is set`, () => {
         const { unit, count } = computeTimeseriesDataInverval(
           [
@@ -311,6 +320,26 @@ describe("visualization.lib.timeseries", () => {
       ];
       getTimezoneOrOffset(series, showWarningMock);
       expect(showWarningMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("normalizeDate", () => {
+    it("should normalize date to UTC at start of day", () => {
+      const date = dayjs("2023-05-15T14:30:45");
+      const normalized = normalizeDate(date);
+      expect(normalized.format()).toBe("2023-05-15T00:00:00Z");
+    });
+
+    it("should handle date before and after DST transition", () => {
+      // Before DST: 1 AM EST
+      const beforeDST = dayjs.tz("2023-03-12 01:00:00", "America/New_York");
+      const normalizedBefore = normalizeDate(beforeDST);
+      expect(normalizedBefore.format()).toBe("2023-03-12T00:00:00Z");
+
+      // After DST: 3 AM EDT (after springing forward)
+      const afterDST = dayjs.tz("2023-03-12 03:00:00", "America/New_York");
+      const normalizedAfter = normalizeDate(afterDST);
+      expect(normalizedAfter.format()).toBe("2023-03-12T00:00:00Z");
     });
   });
 });

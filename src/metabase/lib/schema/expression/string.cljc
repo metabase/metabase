@@ -27,8 +27,8 @@
 
 (mbql-clause/define-tuple-mbql-clause :replace :- :type/Text
   #_str [:schema [:ref ::expression/string]]
-  #_find [:schema [:ref ::expression/string]]
-  #_replace [:schema [:ref ::expression/string]])
+  #_find [:schema :string]
+  #_replace [:schema :string])
 
 (mbql-clause/define-catn-mbql-clause :substring :- :type/Text
   [:str [:schema [:ref ::expression/string]]]
@@ -36,9 +36,9 @@
   [:length [:? [:schema [:ref ::expression/integer]]]])
 
 (mbql-clause/define-tuple-mbql-clause :split-part :- :type/Text
-  [:schema [:ref ::expression/string]]
-  [:schema [:ref ::expression/string]]
-  [:schema [:ref ::expression/integer]])
+  #_text      [:schema [:ref ::expression/string]]
+  #_delimiter [:schema [:string {:min 1}]] ;; literal string
+  #_position  [:schema [:ref ::expression/positive-integer-or-numeric-expression]])
 
 (mbql-clause/define-catn-mbql-clause :concat :- :type/Text
   [:args [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])

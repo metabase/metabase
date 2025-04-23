@@ -47,7 +47,7 @@ const getDatabases = ({
   user,
   databases = [],
 }: DatabaseStatusProps): Database[] => {
-  return databases.filter(d => !d.is_sample && d.creator_id === user?.id);
+  return databases.filter((d) => !d.is_sample && d.creator_id === user?.id);
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

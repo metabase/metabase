@@ -19,9 +19,24 @@ import type {
 } from "metabase-types/api";
 
 const DEFAULT_CHANNELS_CONFIG = {
-  email: { name: t`Email`, type: "email" },
-  slack: { name: t`Slack`, type: "slack" },
-  http: { name: t`Http`, type: "http" },
+  email: {
+    get name() {
+      return t`Email`;
+    },
+    type: "email",
+  },
+  slack: {
+    get name() {
+      return t`Slack`;
+    },
+    type: "slack",
+  },
+  http: {
+    get name() {
+      return t`Http`;
+    },
+    type: "http",
+  },
 };
 
 interface NotificationChannelsPickerProps {
@@ -90,7 +105,7 @@ export const NotificationChannelsPicker = ({
     oldConfig: NotificationHandler,
     newConfig: NotificationHandler,
   ) => {
-    const updatedChannels = notificationHandlers.map(value =>
+    const updatedChannels = notificationHandlers.map((value) =>
       value === oldConfig ? newConfig : value,
     );
 
@@ -99,7 +114,7 @@ export const NotificationChannelsPicker = ({
 
   const onRemoveChannel = (channel: NotificationHandler) => {
     const updatedChannels = notificationHandlers.filter(
-      value => value !== channel,
+      (value) => value !== channel,
     );
 
     onChange(updatedChannels);
@@ -124,7 +139,7 @@ export const NotificationChannelsPicker = ({
             channel={emailHandler}
             users={usersListOptions}
             invalidRecipientText={getInvalidRecipientText}
-            onChange={newConfig => onChannelChange(emailHandler, newConfig)}
+            onChange={(newConfig) => onChannelChange(emailHandler, newConfig)}
           />
         </ChannelSettingsBlock>
       )}
@@ -138,14 +153,14 @@ export const NotificationChannelsPicker = ({
           <SlackChannelFieldNew
             channel={slackHandler}
             channelSpec={channels.slack}
-            onChange={newConfig => onChannelChange(slackHandler, newConfig)}
+            onChange={(newConfig) => onChannelChange(slackHandler, newConfig)}
           />
         </ChannelSettingsBlock>
       )}
 
       {userCanAccessSettings &&
         hookHandlers &&
-        hookHandlers.map(channel => (
+        hookHandlers.map((channel) => (
           <ChannelSettingsBlock
             key={`webhook-${channel.channel_id}`}
             title={

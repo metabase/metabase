@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import type { SelectOption } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
 
 import { SEARCH_LIMIT } from "./constants";
@@ -17,19 +16,8 @@ export function shouldSearch(
   return !isExtensionOfLastSearch || hasMoreValues;
 }
 
-export function getFilteredOptions(
-  options: SelectOption<string>[],
-  searchValue: string,
-  selectedValues: string[],
-) {
-  return options.filter(
-    option =>
-      option.value === searchValue || !selectedValues.includes(option.value),
-  );
-}
-
-export function getNothingFoundMessage(
-  columnDisplayName: string,
+export function getEmptyResultsMessage(
+  nothingFoundMessage: string | undefined,
   searchError: unknown,
   canSearch: boolean,
   isSearching: boolean,
@@ -39,6 +27,6 @@ export function getNothingFoundMessage(
   } else if (searchError) {
     return t`An error occurred.`;
   } else {
-    return t`No matching ${columnDisplayName} found.`;
+    return nothingFoundMessage;
   }
 }

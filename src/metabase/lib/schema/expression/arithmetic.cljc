@@ -222,5 +222,7 @@
     :type/Float))
 
 (mbql-clause/define-tuple-mbql-clause :integer :- :type/BigInteger
-  [:schema [:or [:ref ::expression/number]
-            [:ref ::expression/string]]])
+  [:schema [:ref ::expression/string]])
+
+(mbql-clause/define-tuple-mbql-clause :float :- :type/Float
+  [:schema [:ref ::expression/string]])

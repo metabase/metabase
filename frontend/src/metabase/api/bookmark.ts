@@ -14,7 +14,7 @@ import {
 } from "./tags";
 
 export const bookmarkApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listBookmarks: builder.query<Bookmark[], void>({
       query: () => ({
         method: "GET",
@@ -47,7 +47,7 @@ export const bookmarkApi = Api.injectEndpoints({
         ]),
     }),
     reorderBookmarks: builder.mutation<void, ReorderBookmarksRequest>({
-      query: body => ({
+      query: (body) => ({
         method: "PUT",
         url: `/api/bookmark/ordering`,
         body,

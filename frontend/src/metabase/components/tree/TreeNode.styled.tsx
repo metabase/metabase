@@ -15,15 +15,16 @@ interface TreeNodeRootProps {
 export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   display: flex;
   align-items: center;
-  color: ${props => (props.isSelected ? color("text-white") : color("brand"))};
-  background-color: ${props => (props.isSelected ? color("brand") : "unset")};
-  padding-left: ${props => props.depth + 0.5}rem;
+  color: ${(props) =>
+    props.isSelected ? color("text-white") : color("brand")};
+  background-color: ${(props) => (props.isSelected ? color("brand") : "unset")};
+  padding-left: ${(props) => props.depth + 0.5}rem;
   padding-right: 0.5rem;
   cursor: pointer;
   font-weight: 700;
 
   &:hover {
-    background-color: ${props =>
+    background-color: ${(props) =>
       props.isSelected ? color("brand") : lighten("brand", 0.6)};
   }
 `;
@@ -33,7 +34,7 @@ export const ExpandToggleButton = styled.button`
   padding: 0.5rem 0.25rem 0.5rem 0.25rem;
   display: block;
   color: inherit;
-  visibility: ${props => (props.hidden ? "hidden" : "visible")};
+  visibility: ${(props) => (props.hidden ? "hidden" : "visible")};
 `;
 
 interface ExpandToggleIconProps extends IconProps {
@@ -51,7 +52,7 @@ export const ExpandToggleIcon = styled(
 )`
   transition: transform 200ms;
 
-  ${props =>
+  ${(props) =>
     props.isExpanded &&
     css`
       transform: rotate(90deg);

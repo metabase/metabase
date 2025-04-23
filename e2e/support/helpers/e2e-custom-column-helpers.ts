@@ -60,10 +60,10 @@ export function enterCustomColumnDetails({
 }
 
 export function checkExpressionEditorHelperPopoverPosition() {
-  expressionEditorTextfield().then($target => {
+  expressionEditorTextfield().then(($target) => {
     const textfieldPosition = $target[0].getBoundingClientRect();
 
-    cy.findByTestId("expression-helper-popover").then($target => {
+    cy.findByTestId("expression-helper-popover").then(($target) => {
       const popoverPosition = $target[0].getBoundingClientRect();
 
       expect(textfieldPosition.top - popoverPosition.top).to.be.lessThan(
@@ -112,12 +112,17 @@ export const CustomExpressionEditor = {
       // CodeMirror elements in Cypress. realType() would work but some of the formulas
       // contain special characters that are not supported by realType().
       CustomExpressionEditor.get().findByRole("textbox").invoke("text", text);
+
+      // invoke("text") does not trigger the validator, so we need to trigger it manually
+      // by typing something
+      CustomExpressionEditor.type(" {backspace}");
+
       return CustomExpressionEditor;
     }
 
     const parts = text.replaceAll("{{", "{{}{{}").split(/(\{[^}]+\})/);
 
-    parts.forEach(part => {
+    parts.forEach((part) => {
       cy.wait(delay);
       switch (part.toLowerCase()) {
         case "":
@@ -182,8 +187,8 @@ export const CustomExpressionEditor = {
       const unexpanded = part.replaceAll(/→/g, "->");
 
       const alphabet =
-        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789^[]()-,.;_!@#$%&*+=/<>\" ':;\\";
-      if (unexpanded.split("").some(char => !alphabet.includes(char))) {
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789^[]()-,.;_!@#$%&*+=/<>\" ':;\\\n";
+      if (unexpanded.split("").some((char) => !alphabet.includes(char))) {
         throw new Error(
           `unknown character in CustomExpressionEditor.type in ${part}`,
         );
@@ -206,6 +211,7 @@ export const CustomExpressionEditor = {
     return cy.findByLabelText("Auto-format");
   },
   format() {
+    CustomExpressionEditor.formatButton().should("be.visible");
     CustomExpressionEditor.formatButton().click();
     return CustomExpressionEditor;
   },
@@ -226,7 +232,7 @@ export const CustomExpressionEditor = {
     // Get the multiline text content of the editor
     return CustomExpressionEditor.textbox()
       .get(".cm-line")
-      .then(lines => {
+      .then((lines) => {
         const text: string[] = [];
         lines.each((_, line) => {
           text.push(line.textContent ?? "");
@@ -269,7 +275,7 @@ export const CustomExpressionEditor = {
     return cy.findByTestId("expression-helper");
   },
   paste(content: string) {
-    CustomExpressionEditor.textbox().then(el => {
+    CustomExpressionEditor.textbox().then((el) => {
       const clipboardData = new DataTransfer();
       clipboardData.setData("text/plain", content);
 

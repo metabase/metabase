@@ -23,10 +23,10 @@ describe("useIsParameterPanelSticky", () => {
   let mockDisconnect: jest.Mock;
   let intersectionCallback: IntersectionObserverCallback | null = null;
 
-  const invokeIntersection = (ratio: number) => {
+  const invokeIntersection = (isIntersecting: boolean) => {
     act(() => {
       intersectionCallback?.(
-        [{ intersectionRatio: ratio } as IntersectionObserverEntry],
+        [{ isIntersecting } as IntersectionObserverEntry],
         {} as IntersectionObserver,
       );
     });
@@ -72,30 +72,26 @@ describe("useIsParameterPanelSticky", () => {
     expect(result.current.isStickyStateChanging).toBe(false);
   });
 
-  it("sets isSticky to true when intersectionRatio less than 1", async () => {
+  it("sets isSticky to true when isIntersecting is false", async () => {
     const { result } = setup();
 
     await waitFor(() => {
       expect(mockObserve).toHaveBeenCalledTimes(1);
     });
 
-    invokeIntersection(0.5);
+    invokeIntersection(false);
 
     expect(result.current.isSticky).toBe(true);
   });
 
-  it("sets isSticky to false when intersectionRatio is 1", async () => {
+  it("sets isSticky to false when isIntersecting is true", async () => {
     const { result } = setup();
 
     await waitFor(() => {
       expect(mockObserve).toHaveBeenCalledTimes(1);
     });
 
-    invokeIntersection(0.7);
-
-    expect(result.current.isSticky).toBe(true);
-
-    invokeIntersection(1);
+    invokeIntersection(true);
 
     expect(result.current.isSticky).toBe(false);
   });
@@ -109,7 +105,7 @@ describe("useIsParameterPanelSticky", () => {
       expect(mockObserve).toHaveBeenCalledTimes(1);
     });
 
-    invokeIntersection(0.7);
+    invokeIntersection(false);
 
     expect(result.current.isStickyStateChanging).toBe(true);
 
@@ -135,7 +131,7 @@ describe("useIsParameterPanelSticky", () => {
 function mockRaf() {
   const originalRaf = global.requestAnimationFrame;
 
-  global.requestAnimationFrame = callback => setTimeout(callback, 0);
+  global.requestAnimationFrame = (callback) => setTimeout(callback, 0);
 
   return function unmockRaf() {
     global.requestAnimationFrame = originalRaf;

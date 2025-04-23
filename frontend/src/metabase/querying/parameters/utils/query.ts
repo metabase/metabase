@@ -59,6 +59,10 @@ export function applyParameter(
     return query;
   }
 
+  if (stageIndex >= Lib.stageCount(query)) {
+    return query;
+  }
+
   if (isTemporalUnitParameter(type)) {
     return applyTemporalUnitParameter(query, stageIndex, target, value);
   } else {
@@ -120,7 +124,7 @@ function getParameterFilterClause(
   if (Lib.isNumeric(column)) {
     return getNumberParameterFilterClause(type, column, value);
   }
-  if (Lib.isString(column)) {
+  if (Lib.isStringOrStringLike(column)) {
     return getStringParameterFilterClause(type, column, value);
   }
 }
@@ -198,7 +202,7 @@ function applyTemporalUnitParameter(
   value: ParameterValueOrArray,
 ): Lib.Query {
   const breakouts = Lib.breakouts(query, stageIndex);
-  const columns = breakouts.map(breakout =>
+  const columns = breakouts.map((breakout) =>
     Lib.breakoutColumn(query, stageIndex, breakout),
   );
   const columnRef = target[1];
@@ -216,7 +220,7 @@ function applyTemporalUnitParameter(
   const breakout = breakouts[columnIndex];
   const buckets = Lib.availableTemporalBuckets(query, stageIndex, column);
   const bucket = buckets.find(
-    bucket => Lib.displayInfo(query, stageIndex, bucket).shortName === value,
+    (bucket) => Lib.displayInfo(query, stageIndex, bucket).shortName === value,
   );
   if (!bucket) {
     return query;

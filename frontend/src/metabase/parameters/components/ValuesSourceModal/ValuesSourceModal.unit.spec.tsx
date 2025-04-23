@@ -625,10 +625,26 @@ describe("ValuesSourceModal", () => {
     });
 
     describe("card source", () => {
-      it("should not should the card source for number parameters", async () => {
+      it("should show the card source for number parameters with dropdown list", async () => {
         await setup({
           parameter: createMockUiParameter({
             type: "number/=",
+            values_query_type: "list",
+            values_source_type: "static-list",
+          }),
+          cards: [],
+        });
+
+        expect(
+          screen.getByText("From another model or question"),
+        ).toBeInTheDocument();
+      });
+
+      it("should not show the card source for number parameters with search box", async () => {
+        await setup({
+          parameter: createMockUiParameter({
+            type: "number/=",
+            values_query_type: "search",
             values_source_type: "static-list",
           }),
           cards: [],
@@ -767,7 +783,7 @@ const setup = async ({
   if (hasCollectionAccess) {
     setupCollectionsEndpoints({ collections: [rootCollection] });
     setupCardsEndpoints(cards);
-    cards.forEach(card =>
+    cards.forEach((card) =>
       setupTableQueryMetadataEndpoint(
         createMockTable({
           id: `card__${card.id}`,

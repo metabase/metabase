@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import Humanize from "humanize-plus";
 import type { ReactNode } from "react";
 
@@ -96,8 +95,6 @@ export function formatNumber(
     return formatNumberCompact(number, options);
   } else if (options.number_style === "scientific") {
     return formatNumberScientific(number, options);
-  } else if (options.number_style === "duration") {
-    return formatDuration(number, options);
   } else {
     try {
       let nf;
@@ -315,32 +312,6 @@ function formatNumberScientific(
   } else {
     return exp;
   }
-}
-
-function formatDuration(
-  value: number | bigint,
-  _options: FormatNumberOptions,
-): string {
-  const duration = dayjs.duration(Number(value));
-  let str = "";
-
-  if (duration.days() > 0) {
-    str += `${duration.days()}d `;
-  }
-
-  if (duration.hours() > 0) {
-    str += `${duration.hours()}h `;
-  }
-
-  if (duration.minutes() > 0) {
-    str += `${duration.minutes()}m `;
-  }
-
-  if (duration.seconds() > 0) {
-    str += `${duration.seconds()}s `;
-  }
-
-  return str.trim();
 }
 
 /**

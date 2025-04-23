@@ -1,7 +1,10 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
@@ -22,6 +25,38 @@ describe("scenarios > visualizations > table", () => {
     // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText(option).click(clickOpts);
   }
+
+  it("should not be sortable when displays raw query results (metabase#19817)", () => {
+    H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+    cy.findByLabelText("Switch to data").click();
+    const initialColumnsOrder = ["Created At: Year", "Count"];
+
+    H.assertTableData({
+      columns: initialColumnsOrder,
+    });
+
+    H.tableHeaderColumn("Count").as("countHeaderInPreview");
+    H.moveDnDKitElementByAlias("@countHeaderInPreview", { horizontal: -100 });
+
+    H.assertTableData({
+      columns: initialColumnsOrder,
+    });
+
+    H.notebookButton().click();
+
+    cy.findAllByTestId("step-preview-button").eq(1).click();
+
+    H.assertTableData({
+      columns: initialColumnsOrder,
+    });
+
+    H.tableHeaderColumn("Count").as("countHeaderInNotebook");
+    H.moveDnDKitElementByAlias("@countHeaderInNotebook", { horizontal: -100 });
+
+    H.assertTableData({
+      columns: initialColumnsOrder,
+    });
+  });
 
   it("should allow changing column title when the field ref is the same except for the join-alias", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -87,6 +122,10 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should preserve set widths after reordering (VIZ-439)", () => {
+    cy.intercept(
+      "GET",
+      "/api/search?models=dataset&models=table&table_db_id=*",
+    ).as("getSearchResults");
     H.startNewNativeQuestion({
       query: 'select 1 "first_column", 2 "second_column"',
       display: "table",
@@ -94,6 +133,7 @@ describe("scenarios > visualizations > table", () => {
     });
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
+    cy.wait("@getSearchResults");
 
     H.tableHeaderColumn("first_column").invoke("outerWidth").as("firstWidth");
     H.tableHeaderColumn("second_column").invoke("outerWidth").as("secondWidth");
@@ -103,13 +143,13 @@ describe("scenarios > visualizations > table", () => {
     });
 
     const assertUnchangedWidths = () => {
-      cy.get("@firstWidth").then(firstWidth => {
+      cy.get("@firstWidth").then((firstWidth) => {
         H.tableHeaderColumn("first_column")
           .invoke("outerWidth")
           .should("eq", firstWidth);
       });
 
-      cy.get("@secondWidth").then(secondWidth => {
+      cy.get("@secondWidth").then((secondWidth) => {
         H.tableHeaderColumn("second_column")
           .invoke("outerWidth")
           .should("eq", secondWidth);
@@ -121,7 +161,7 @@ describe("scenarios > visualizations > table", () => {
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
     // Wait for column widths to be set
-    cy.wait(100);
+    cy.wait("@getSearchResults");
     assertUnchangedWidths();
   });
 
@@ -371,7 +411,7 @@ describe("scenarios > visualizations > table", () => {
       cy.findByPlaceholderText("Search by Password").blur();
     });
 
-    H.popover().then($popover => {
+    H.popover().then(($popover) => {
       expect(H.isScrollableHorizontally($popover[0])).to.be.false;
     });
   });
@@ -379,8 +419,8 @@ describe("scenarios > visualizations > table", () => {
   it("should show the slow loading text when the query is taking too long", () => {
     H.openOrdersTable({ mode: "notebook" });
 
-    cy.intercept("POST", "/api/dataset", req => {
-      req.on("response", res => {
+    cy.intercept("POST", "/api/dataset", (req) => {
+      req.on("response", (res) => {
         res.setDelay(10000);
       });
     });
@@ -413,12 +453,67 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     cy.findByTestId("public-link-input")
       .invoke("val")
       .should("not.be.empty")
-      .then(publicLink => {
+      .then((publicLink) => {
         cy.signOut();
         cy.visit(publicLink);
       });
 
     assertCanViewOrdersTableDashcard();
+  });
+
+  it("should allow enabling pagination in dashcard viz settings", () => {
+    // Page rows count is based on the available space which can differ depending on the platform and scroll bar system settings
+    const rowsRegex = /Rows \d+-\d+ of first 2000/;
+    const idCellSelector = '[data-column-id="ID"]';
+    const firstPageId = 6;
+    const secondPageId = 12;
+
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.dashboardCards()
+      .eq(0)
+      .as("tableDashcard")
+      .findByText(rowsRegex)
+      .should("not.exist");
+
+    cy.get("@tableDashcard").findByText("2000 rows");
+
+    // Enable pagination
+    H.editDashboard();
+    H.showDashcardVisualizationSettings(0);
+    H.modal().within(() => {
+      cy.findByText("Paginate results").click();
+      cy.findByText(rowsRegex);
+      cy.button("Done").click();
+    });
+
+    H.saveDashboard();
+
+    // Ensure pagination works
+    cy.get("@tableDashcard").findByText(rowsRegex);
+    cy.get(idCellSelector).should("contain", firstPageId);
+    cy.get(idCellSelector).should("not.contain", secondPageId);
+
+    cy.findByLabelText("Next page").click();
+    cy.get("@tableDashcard").findByText(rowsRegex);
+    cy.get(idCellSelector).should("contain", secondPageId);
+    cy.get(idCellSelector).should("not.contain", firstPageId);
+
+    cy.findByLabelText("Previous page").click();
+    cy.get("@tableDashcard").findByText(rowsRegex);
+    cy.get(idCellSelector).should("contain", firstPageId);
+    cy.get(idCellSelector).should("not.contain", secondPageId);
+
+    H.editDashboard();
+
+    // Ensure resizing change page size
+    H.resizeDashboardCard({ card: cy.get("@tableDashcard"), x: 600, y: 600 });
+    H.saveDashboard();
+    cy.get("@tableDashcard")
+      .findByText(rowsRegex)
+      .scrollIntoView()
+      .should("be.visible");
+    // Table got taller so elements from the second page have become visible
+    cy.get(idCellSelector).should("contain", secondPageId);
   });
 
   it("should support text wrapping setting", () => {
@@ -472,7 +567,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
         size_y: 12,
       },
     }).then(({ body: { dashboard_id } }) => {
-      const wrappedRowInitialHeight = 104.5;
+      const wrappedRowInitialHeight = 104;
       const updatedRowHeight = 87;
       H.visitDashboard(dashboard_id);
 
@@ -541,7 +636,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     cy.findAllByTestId("header-cell")
       .filter(":contains(ID)")
       .as("headerCell")
-      .then($cell => {
+      .then(($cell) => {
         const originalWidth = $cell[0].getBoundingClientRect().width;
         cy.wrap(originalWidth).as("originalWidth");
       });
@@ -561,8 +656,8 @@ describe("scenarios > visualizations > table > dashboards context", () => {
 
     H.saveDashboard();
 
-    cy.get("@originalWidth").then(originalWidth => {
-      cy.get("@headerCell").should($newCell => {
+    cy.get("@originalWidth").then((originalWidth) => {
+      cy.get("@headerCell").should(($newCell) => {
         const newWidth = $newCell[0].getBoundingClientRect().width;
         expect(newWidth).to.be.gte(originalWidth + resizeByWidth);
       });
@@ -571,8 +666,8 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     // Ensure it persists after page reload
     cy.reload();
 
-    cy.get("@originalWidth").then(originalWidth => {
-      cy.get("@headerCell").should($newCell => {
+    cy.get("@originalWidth").then((originalWidth) => {
+      cy.get("@headerCell").should(($newCell) => {
         const newWidth = $newCell[0].getBoundingClientRect().width;
         expect(newWidth).to.be.gte(originalWidth + resizeByWidth);
       });
@@ -688,9 +783,9 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
 
       H.getTable({ name: "many_data_types" }).then(
         ({ id: tableId, fields }) => {
-          const booleanField = fields.find(field => field.name === "boolean");
-          const stringField = fields.find(field => field.name === "string");
-          const idField = fields.find(field => field.name === "id");
+          const booleanField = fields.find((field) => field.name === "boolean");
+          const stringField = fields.find((field) => field.name === "string");
+          const idField = fields.find((field) => field.name === "id");
 
           H.visitQuestionAdhoc({
             dataset_query: {

@@ -16,11 +16,19 @@ import ReferenceHeader from "../../components/ReferenceHeader";
 import { getError, getLoading, getSegments } from "../../selectors";
 
 const emptyStateData = {
-  title: t`Segments are interesting subsets of tables`,
-  adminMessage: t`Defining common segments for your team makes it even easier to ask questions`,
-  message: t`Segments will appear here once your admins have created some`,
+  get title() {
+    return t`Segments are interesting subsets of tables`;
+  },
+  get adminMessage() {
+    return t`Defining common segments for your team makes it even easier to ask questions`;
+  },
+  get message() {
+    return t`Segments will appear here once your admins have created some`;
+  },
   image: "app/assets/img/segments-list",
-  adminAction: t`Learn how to create segments`,
+  get adminAction() {
+    return t`Learn how to create segments`;
+  },
 };
 
 interface SegmentListProps {
@@ -31,9 +39,9 @@ export function SegmentList({ style }: SegmentListProps) {
   const entities = useSelector(getSegments);
   const loading = useSelector(getLoading);
   const loadingError = useSelector(getError);
-  const adminLink = useSelector(state =>
+  const adminLink = useSelector((state) =>
     getDocsUrl(state, {
-      page: "data-modeling/segments-and-metrics",
+      page: "data-modeling/segments",
       anchor: "creating-a-segment",
     }),
   );
@@ -50,7 +58,7 @@ export function SegmentList({ style }: SegmentListProps) {
             <div className={cx(CS.wrapper, CS.wrapperTrim)}>
               <List>
                 {Object.values(entities).map(
-                  entity =>
+                  (entity) =>
                     entity &&
                     entity.id &&
                     entity.name && (

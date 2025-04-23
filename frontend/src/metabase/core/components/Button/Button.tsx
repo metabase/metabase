@@ -109,8 +109,8 @@ const BaseButton = forwardRef(function BaseButton(
   }: ButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
-  const variantClasses = BUTTON_VARIANTS.filter(variant => props[variant])
-    .map(variant => VARIANT_TO_CLASS_MAP[variant])
+  const variantClasses = BUTTON_VARIANTS.filter((variant) => props[variant])
+    .map((variant) => VARIANT_TO_CLASS_MAP[variant])
     .filter(isNotNull);
 
   return (

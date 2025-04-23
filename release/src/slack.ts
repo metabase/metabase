@@ -169,12 +169,25 @@ export function sendSlackMessage({ channelName = SLACK_CHANNEL_NAME, message }: 
   });
 }
 
-async function getSlackChannelId(channelName: string) {
+async function getSlackChannelId(
+  channelName: string,
+  cursor?: string,
+): Promise<string | undefined> {
   const response = await slack.conversations.list({
+    cursor,
     limit: 9999,
     exclude_archived: true,
   });
-  return response.channels?.find((channel) => channel.name === channelName)?.id;
+
+  const maybeChannelId = response.channels?.find(
+    channel => channel.name === channelName,
+  )?.id;
+  const nextCursor = response.response_metadata?.next_cursor;
+  if (!maybeChannelId && nextCursor) {
+    return await getSlackChannelId(channelName, nextCursor);
+  }
+
+  return maybeChannelId;
 }
 
 async function getExistingSlackMessage(version: string, channelName: string) {
@@ -370,7 +383,6 @@ export async function sendPublishCompleteMessage({
   const baseMessage = `:partydeploy: *${githubRunLink(`${getGenericVersion(version)} Release is Complete`, runId.toString(), owner, repo)}* :partydeploy:`;
 
   const fullMessage = `\n
-    • ${slackLink("EE Extra Build", `https://github.com/${owner}/metabase-ee-extra/pulls`)}
     • ${slackLink("Ops Issues", `https://github.com/${owner}/metabase-ops/issues`)} - ${mentionSlackTeam('successengineers')}
     • ${slackLink("Release Notes", `https://github.com/${owner}/${repo}/releases`)} - ${mentionSlackTeam('tech-writers')}`;
 

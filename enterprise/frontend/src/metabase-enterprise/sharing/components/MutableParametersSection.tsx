@@ -44,9 +44,9 @@ export const MutableParametersSection = ({
   );
 
   const setParameterValue = (id: ParameterId, value: any) => {
-    const parameter = parameters.find(parameter => parameter.id === id);
+    const parameter = parameters.find((parameter) => parameter.id === id);
     const filteredParameters = pulseParameters.filter(
-      parameter => parameter.id !== id,
+      (parameter) => parameter.id !== id,
     );
     const newParameters =
       value === PULSE_PARAM_USE_DEFAULT

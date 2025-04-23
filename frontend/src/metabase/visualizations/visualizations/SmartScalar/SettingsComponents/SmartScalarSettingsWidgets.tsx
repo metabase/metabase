@@ -68,7 +68,7 @@ export function SmartScalarComparisonWidget({
 
   const handleChangeComparison = useCallback(
     (comparison: SmartScalarComparison) => {
-      const nextValue = value.map(item =>
+      const nextValue = value.map((item) =>
         item.id === comparison.id ? comparison : item,
       );
       onChange(nextValue);
@@ -78,7 +78,7 @@ export function SmartScalarComparisonWidget({
 
   const handleRemoveComparison = useCallback(
     (comparison: SmartScalarComparison) => {
-      const nextValue = value.filter(item => item.id !== comparison.id);
+      const nextValue = value.filter((item) => item.id !== comparison.id);
       onChange(nextValue);
     },
     [value, onChange],

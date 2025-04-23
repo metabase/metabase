@@ -4,8 +4,17 @@ import Fuse from "fuse.js";
 import type Database from "metabase-lib/v1/metadata/Database";
 
 import { getHelpText } from "../helper-text-strings";
-import { TOKEN, tokenize } from "../tokenizer";
-import type { HelpText, MBQLClauseFunctionConfig, Token } from "../types";
+import {
+  CALL,
+  END_OF_INPUT,
+  FIELD,
+  IDENTIFIER,
+  OPERATORS,
+  STRING,
+  type Token,
+  lexify,
+} from "../pratt";
+import type { HelpText, MBQLClauseFunctionConfig } from "../types";
 
 import type { Completion } from "./types";
 
@@ -40,28 +49,20 @@ export function expressionClauseCompletion(
 
   return {
     type,
-    label: suggestionText(clause),
+    label: clause.displayName,
     displayLabel: clause.displayName,
     icon: "function",
     matches,
   };
 }
 
-const suggestionText = (func: MBQLClauseFunctionConfig) => {
-  const { displayName, args } = func;
-  const suffix = args.length > 0 ? "(" : " ";
-  return displayName + suffix;
-};
-
 function getSnippet(helpText: HelpText) {
-  const args = helpText.args
-    ?.filter(arg => arg.name !== "…")
-    ?.map(arg => "${" + arg.name + "}")
-    .join(", ");
+  const args =
+    helpText.args
+      ?.filter((arg) => arg.name !== "…")
+      ?.map((arg) => "${" + (arg.template ?? arg.name) + "}")
+      .join(", ") ?? "";
 
-  if (!args || args.length < 1) {
-    return `${helpText.structure}`;
-  }
   return `${helpText.structure}(${args})`;
 }
 
@@ -80,9 +81,9 @@ export function fuzzyMatcher(options: Completion[]) {
         .search(word)
         // .filter(result => (result.score ?? 0) <= 1)
         .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
-        .map(result => {
+        .map((result) => {
           result.item.matches =
-            result.matches?.flatMap(match => match.indices) ?? [];
+            result.matches?.flatMap((match) => match.indices) ?? [];
           return result.item;
         })
     );
@@ -90,9 +91,11 @@ export function fuzzyMatcher(options: Completion[]) {
 }
 
 export function tokenAtPos(source: string, pos: number): Token | null {
-  const { tokens } = tokenize(source);
+  const { tokens } = lexify(source);
 
-  const idx = tokens.findIndex(token => token.start <= pos && token.end >= pos);
+  const idx = tokens.findIndex(
+    (token) => token.start <= pos && token.end >= pos,
+  );
   if (idx === -1) {
     return null;
   }
@@ -100,11 +103,11 @@ export function tokenAtPos(source: string, pos: number): Token | null {
   const token = tokens[idx];
   const prevToken = tokens[idx - 1];
 
-  if (
-    prevToken &&
-    prevToken.type === TOKEN.String &&
-    prevToken.end - prevToken.start === 1
-  ) {
+  if (token.type === END_OF_INPUT) {
+    return null;
+  }
+
+  if (prevToken && prevToken.type === STRING && prevToken.length === 1) {
     // dangling single- or double-quote
     return null;
   }
@@ -113,13 +116,17 @@ export function tokenAtPos(source: string, pos: number): Token | null {
 }
 
 export function content(source: string, token: Token): string {
-  return source.slice(token.start, token.end);
+  return source.slice(token.pos, token.pos + token.length);
 }
 
 export function isIdentifier(token: Token | null) {
-  return token != null && token.type === TOKEN.Identifier;
+  return token != null && (token.type === IDENTIFIER || token.type === CALL);
+}
+
+export function isOperator(token: Token | null) {
+  return token != null && OPERATORS.has(token.type);
 }
 
 export function isFieldReference(token: Token | null) {
-  return token != null && token.type === TOKEN.Identifier && token.isReference;
+  return token != null && token.type === FIELD;
 }

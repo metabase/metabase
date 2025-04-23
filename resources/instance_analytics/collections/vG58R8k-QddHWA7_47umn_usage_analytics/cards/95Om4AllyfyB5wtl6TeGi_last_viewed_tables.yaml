@@ -369,6 +369,7 @@ serdes/meta:
   label: last_viewed_tables
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 metabase_version: vUNKNOWN (ad99d37)
 source_card_id: P6Ityjj7igswKh4NgZZjz

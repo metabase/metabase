@@ -45,13 +45,15 @@ const setup = ({
   );
 
   const header = screen.queryByTestId("tooltip-header");
-  const rowNames = screen.queryAllByTestId("row-name").map(el => el.innerHTML);
+  const rowNames = screen
+    .queryAllByTestId("row-name")
+    .map((el) => el.innerHTML);
   const rowValues = screen
     .queryAllByTestId("row-value")
-    .map(el => el.innerHTML);
+    .map((el) => el.innerHTML);
   const rowPercents = screen
     .queryAllByTestId("row-percent")
-    .map(el => el.innerHTML);
+    .map((el) => el.innerHTML);
 
   return {
     header,
@@ -86,7 +88,7 @@ describe("StackedDataTooltip", () => {
   });
 
   it("groups excessive tooltip rows", () => {
-    const bodyRows = _.range(10).map(rowNumber => ({
+    const bodyRows = _.range(10).map((rowNumber) => ({
       color: "red",
       name: `body row ${rowNumber}`,
       value: rowNumber * 100,

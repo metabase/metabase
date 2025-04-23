@@ -25,13 +25,13 @@ export default function AddMemberRow({ users, excludeIds, onCancel, onDone }) {
   const [text, setText] = useState("");
   const [selectedUsersById, setSelectedUsersById] = useState(new Map());
 
-  const handleRemoveUser = user => {
+  const handleRemoveUser = (user) => {
     const newSelectedUsersById = new Map(selectedUsersById);
     newSelectedUsersById.delete(user.id);
     setSelectedUsersById(newSelectedUsersById);
   };
 
-  const handleAddUser = user => {
+  const handleAddUser = (user) => {
     const newSelectedUsersById = new Map(selectedUsersById);
     newSelectedUsersById.set(user.id, user);
     setSelectedUsersById(newSelectedUsersById);
@@ -45,7 +45,7 @@ export default function AddMemberRow({ users, excludeIds, onCancel, onDone }) {
   const availableToSelectUsers = useMemo(
     () =>
       users.filter(
-        user => !selectedUsersById.has(user.id) && !excludeIds.has(user.id),
+        (user) => !selectedUsersById.has(user.id) && !excludeIds.has(user.id),
       ),
     [selectedUsersById, excludeIds, users],
   );
@@ -58,11 +58,11 @@ export default function AddMemberRow({ users, excludeIds, onCancel, onDone }) {
           value={text}
           isValid={selectedUsersById.size > 0}
           placeholder={t`Julie McMemberson`}
-          onChange={e => setText(e.target.value)}
+          onChange={(e) => setText(e.target.value)}
           onDone={handleDone}
           onCancel={onCancel}
         >
-          {Array.from(selectedUsersById.values()).map(user => (
+          {Array.from(selectedUsersById.values()).map((user) => (
             <div
               key={user.id}
               className={cx(

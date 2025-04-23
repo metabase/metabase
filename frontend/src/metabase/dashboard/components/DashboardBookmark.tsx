@@ -3,6 +3,7 @@ import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import { getDashboard } from "metabase/dashboard/selectors";
 import Bookmark from "metabase/entities/bookmarks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { DashboardId, Bookmark as IBookmark } from "metabase-types/api";
 
 export interface DashboardBookmarkProps {
@@ -37,6 +38,17 @@ export const DashboardBookmark = (): JSX.Element | null => {
     }
   };
 
+  useRegisterShortcut(
+    [
+      {
+        id: "dashboard-bookmark",
+        perform: () =>
+          isBookmarked ? handleDeleteBookmark() : handleCreateBookmark(),
+      },
+    ],
+    [isBookmarked],
+  );
+
   return (
     <BookmarkToggle
       isBookmarked={isBookmarked}
@@ -56,6 +68,6 @@ export const getIsBookmarked = ({
   dashboardId,
 }: IsBookmarkedSelectorProps) =>
   bookmarks.some(
-    bookmark =>
+    (bookmark) =>
       bookmark.type === "dashboard" && bookmark.item_id === dashboardId,
   );

@@ -38,7 +38,7 @@ function DashboardMoveModal({
       onClose={onClose}
       initialCollectionId={dashboard.collection_id ?? "root"}
       canMoveToDashboard={false}
-      onMove={async destination => {
+      onMove={async (destination) => {
         await setDashboardCollection({ id: dashboard.id }, destination, {
           notify: {
             message: (

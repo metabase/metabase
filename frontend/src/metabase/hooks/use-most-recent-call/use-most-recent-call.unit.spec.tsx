@@ -18,10 +18,10 @@ function TestComponent({
 
   useEffect(() => {
     fn(trigger)
-      .then(res => {
+      .then((res) => {
         setNum(res);
       })
-      .catch(err => {
+      .catch((err) => {
         setNum(err);
       });
   }, [fn, trigger]);
@@ -40,7 +40,7 @@ describe("useMostRecentCall", () => {
   it("should only ever resolve last call's promise", async () => {
     const resolveFnMap: Record<number, () => void> = {};
     const asyncFn: TestAsyncFn = (num: number) =>
-      new Promise(resolve => {
+      new Promise((resolve) => {
         resolveFnMap[num] = resolve.bind(null, num);
       });
 

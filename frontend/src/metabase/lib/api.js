@@ -286,9 +286,9 @@ export class Api extends EventEmitter {
     });
 
     return fetch(request)
-      .then(response => {
+      .then((response) => {
         const unreadResponse = response.clone();
-        return response.text().then(body => {
+        return response.text().then((body) => {
           if (options.json) {
             try {
               body = JSON.parse(body);
@@ -323,7 +323,7 @@ export class Api extends EventEmitter {
           }
         });
       })
-      .catch(error => {
+      .catch((error) => {
         if (signal.aborted) {
           throw { isCancelled: true };
         } else {
@@ -338,7 +338,7 @@ const instance = new Api();
 export default instance;
 export const { GET, POST, PUT, DELETE } = instance;
 
-export const setLocaleHeader = locale => {
+export const setLocaleHeader = (locale) => {
   /* `X-Metabase-Locale` is a header that the BE stores as *user* locale for the scope of the request.
    * We need it to localize downloads. It *currently* only work if there is a user, so it won't work
    * for public/static embedding.

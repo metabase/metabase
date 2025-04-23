@@ -222,7 +222,7 @@
     "question" [model_id]
     "dashboard" (let [dashboard (-> (t2/select-one :model/Dashboard :id model_id)
                                     (t2/hydrate :dashcards))]
-                  (map :card_id (:dashcards dashboard)))))
+                  (distinct (keep :card_id (:dashcards dashboard))))))
 
 (defn- refresh-schedule-cache!
   "Given a cache config with the :schedule strategy, preemptively rerun the query (and a fixed number of parameterized
@@ -298,7 +298,7 @@
      :schedule-refreshed   schedule-refresh-count
      :duration-refreshed   duration-refresh-count}))
 
-(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
+(task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc                                   "Refresh 'schedule' caches"}
   Cache [_ctx]
   (refresh-cache-configs!))

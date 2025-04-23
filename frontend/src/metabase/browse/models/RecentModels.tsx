@@ -42,7 +42,7 @@ export function RecentModels({
             <PinnedItemCard skeleton iconForSkeleton="model" />
           </Repeat>
         ) : (
-          models.map(model => (
+          models.map((model) => (
             <PinnedItemCard
               key={`model-${model.id}`}
               item={model}

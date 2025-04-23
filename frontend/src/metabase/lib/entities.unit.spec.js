@@ -37,7 +37,7 @@ function setup() {
   const store = configureStore({
     reducer,
     initialState,
-    middleware: getDefaultMiddleware =>
+    middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
         immutableCheck: false,
         serializableCheck: false,

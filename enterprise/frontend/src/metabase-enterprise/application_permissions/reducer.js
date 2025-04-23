@@ -13,7 +13,7 @@ const INITIALIZE_APPLICATION_PERMISSIONS =
   "metabase-enterprise/general-permissions/INITIALIZE_APPLICATION_PERMISSIONS";
 export const initializeApplicationPermissions = createThunkAction(
   INITIALIZE_APPLICATION_PERMISSIONS,
-  () => async dispatch => {
+  () => async (dispatch) => {
     dispatch(loadApplicationPermissions());
   },
 );

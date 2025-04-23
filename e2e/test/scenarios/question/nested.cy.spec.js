@@ -152,7 +152,7 @@ describe("scenarios > question > nested", () => {
       idAlias: "metricId",
     });
 
-    cy.get("@metricId").then(metricId => {
+    cy.get("@metricId").then((metricId) => {
       // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
       const baseQuestionDetails = {
         name: "12507",
@@ -207,7 +207,7 @@ describe("scenarios > question > nested", () => {
       query: ordersJoinProductsQuery,
     };
 
-    ["default", "remapped"].forEach(scenario => {
+    ["default", "remapped"].forEach((scenario) => {
       if (scenario === "remapped") {
         cy.log("Remap Product ID's display value to `title`");
         H.remapDisplayValueToFK({
@@ -223,7 +223,7 @@ describe("scenarios > question > nested", () => {
       cy.contains("37.65");
 
       // should handle multi-level nesting
-      cy.get("@nestedQuestionId").then(id => {
+      cy.get("@nestedQuestionId").then((id) => {
         visitNestedQueryAdHoc(id);
         cy.contains("37.65");
       });
@@ -431,7 +431,7 @@ describe("scenarios > question > nested", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^Sum of/).click();
       H.popover().findByText("VAL").click();
-      cy.wait("@dataset").then(xhr => {
+      cy.wait("@dataset").then((xhr) => {
         expect(xhr.response.body.error).not.to.exist;
       });
       cy.get("@consoleWarn").should(

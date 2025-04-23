@@ -18,6 +18,8 @@ The template lists example `database`, `user`, and `settings` sections for the [
 # You'll need to update (or remove) the `users` and `databases` sections.
 # The settings in `settings` include default values. We recommend removing
 # or commenting out settings that you don't set.
+# To use an env var, you can use a template string: "{{ env YOUR_ENV_VAR }}"
+# Note the quote marks wrapping the env var template.
 # For more on the configuration file, see:
 # https://www.metabase.com/docs/latest/configuring-metabase/config-file
 # For more on what each setting does, check out:
@@ -55,6 +57,15 @@ config:
       user: metabase
       password: metasample123
       dbname: sample
+  api-keys:
+  - name: Admin API key
+    group: admin
+    creator: first@example.com
+    key: mb_firsttestapikey123
+  - name: All Users API key
+    group: all-users
+    creator: first@example.com
+    key: mb_secondtestapikey456
   settings:
     admin-email: null
     aggregated-query-row-limit: null
@@ -217,7 +228,7 @@ config:
     saml-slo-enabled: false
     saml-user-provisioning-enabled: true
     scim-enabled: null
-    search-engine: appdb
+    search-engine: in-place
     search-typeahead-enabled: true
     send-new-sso-user-admin-email: null
     session-cookie-samesite: lax

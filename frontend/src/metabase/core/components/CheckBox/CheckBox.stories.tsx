@@ -9,7 +9,7 @@ export default {
   component: CheckBox,
 };
 
-const Template: StoryFn<typeof CheckBox> = args => {
+const Template: StoryFn<typeof CheckBox> = (args) => {
   const [{ checked }, updateArgs] = useArgs();
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {

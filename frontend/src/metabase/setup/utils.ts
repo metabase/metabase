@@ -13,7 +13,7 @@ export const getLocales = (
 ): Locale[] => {
   return _.chain(localeData)
     .map(([code, name]) => ({ code, name }))
-    .sortBy(locale => locale.name)
+    .sortBy((locale) => locale.name)
     .value();
 };
 

@@ -7,7 +7,7 @@ import { QuestionInfoSidebar } from "metabase/query_builder/components/view/side
 import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import TimelineSidebar from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
 
-export const NativeQueryRightSidebar = props => {
+export const NativeQueryRightSidebar = (props) => {
   const {
     question,
     toggleTemplateTagsEditor,

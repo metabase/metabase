@@ -40,15 +40,6 @@
   {:public_uuid       (str (random-uuid))
    :made_public_by_id (mt/user->id :crowberto)})
 
-(defn- native-query-with-template-tag []
-  {:database (mt/id)
-   :type     :native
-   :native   {:query         "SELECT count(*) AS Count FROM venues [[WHERE id = {{venue_id}}]]"
-              :template-tags {"venue_id" {:name         "venue_id"
-                                          :display-name "Venue ID"
-                                          :type         :number
-                                          :required     false}}}})
-
 (defn do-with-temp-public-card [m f]
   (let [m (merge (when-not (:dataset_query m)
                    {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})})
@@ -155,7 +146,7 @@
                    (client/client :get 404 (str "public/card/" uuid))))))))))
 
 (deftest public-queries-are-counted-test
-  (testing "GET /api/public/card/:uuid/query coutns as a public query"
+  (testing "GET /api/public/card/:uuid/query counts as a public query"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-card [{uuid :public_uuid}]
         (testing "should increment the public link query count when fetching a public Card"
@@ -367,19 +358,55 @@
 (deftest execute-public-card-with-parameters-test
   (testing "JSON-encoded MBQL parameters passed as a query parameter should work (#17019)"
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (with-temp-public-card [{uuid :public_uuid} {:dataset_query (native-query-with-template-tag)}]
-        (is (=? {:status     "completed"
-                 :json_query {:parameters [{:id    "_VENUE_ID_"
-                                            :name  "venue_id"
-                                            :slug  "venue_id"
-                                            :type  "number"
-                                            :value 2}]}}
-                (client/client :get 202 (str "public/card/" uuid "/query")
-                               :parameters (json/encode [{:id    "_VENUE_ID_"
-                                                          :name  "venue_id"
-                                                          :slug  "venue_id"
-                                                          :type  "number"
-                                                          :value 2}])))))
+      (with-temp-public-card [{uuid :public_uuid} {:dataset_query
+                                                   {:database (mt/id)
+                                                    :type     :native
+                                                    :native   {:query         "SELECT count(*) AS Count FROM venues [[WHERE id = {{venue_id}}]]"
+                                                               :template-tags {"venue_id" {:name         "venue_id"
+                                                                                           :display-name "Venue ID"
+                                                                                           :type         :number
+                                                                                           :required     false}}}}
+                                                   :parameters
+                                                   [{:id "_VENUE_ID_",
+                                                     :type :number/=,
+                                                     :target [:variable [:template-tag "venue_id"]],
+                                                     :name "Venue ID",
+                                                     :slug "venue_id"}]}]
+        (testing "typical invocation"
+          (is (=? {:status     "completed"
+                   :json_query {:parameters [{:id    "_VENUE_ID_"
+                                              :type  "number/="
+                                              :target ["variable" ["template-tag" "venue_id"]]
+                                              :value 2}]}}
+                  (client/client :get 202 (str "public/card/" uuid "/query")
+                                 :parameters (json/encode [{:id    "_VENUE_ID_"
+                                                            :type  "number/="
+                                                            :target ["variable" ["template-tag" "venue_id"]]
+                                                            :value 2}])))))
+        (testing "invocation with extra parameter properties"
+          (is (=? {:status     "completed"
+                   :json_query {:parameters [{:id    "_VENUE_ID_"
+                                              :name  "venue_id"
+                                              :slug  "venue_id"
+                                              :type  "number"
+                                              :target ["variable" ["template-tag" "venue_id"]]
+                                              :value 2}]}}
+                  (client/client :get 202 (str "public/card/" uuid "/query")
+                                 :parameters (json/encode [{:id    "_VENUE_ID_"
+                                                            :name  "venue_id"
+                                                            :slug  "venue_id"
+                                                            :type  "number"
+                                                            :target ["variable" ["template-tag" "venue_id"]]
+                                                            :value 2}])))))
+        (testing "invocation with minimum parameter properties"
+          (is (=? {:status     "completed"
+                   :json_query {:parameters [{:id    "_VENUE_ID_"
+                                              :type  "number/="
+                                              :target ["variable" ["template-tag" "venue_id"]]
+                                              :value 2}]}}
+                  (client/client :get 202 (str "public/card/" uuid "/query")
+                                 :parameters (json/encode [{:id    "_VENUE_ID_"
+                                                            :value 2}]))))))
 
       ;; see longer explanation in [[metabase.legacy-mbql.schema/parameter-types]]
       (testing "If the FE client is incorrectly passing in the parameter as a `:category` type, allow it for now"
@@ -1458,7 +1485,12 @@
               (is (= {:values          [[2] [3] [4] [5] [6]]
                       :has_more_values false}
                      (->> (client/client :get 200 (param-values-url :dashboard uuid (:category-id param-keys)))
-                          (chain-filter-test/take-n-values 5))))))
+                          (chain-filter-test/take-n-values 5))))
+              (testing "with constraints"
+                (is (= {:values          [[44]]
+                        :has_more_values false}
+                       (client/client :get 200 (param-values-url :dashboard uuid (:category-id param-keys))
+                                      (keyword (:id param-keys)) "7"))))))
 
           (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:query"
             (testing "parameter with source is a static list"
@@ -1871,7 +1903,8 @@
 ;; This test is same as [[metabase.api.dashboard-test/dashboard-param-values-param-fields-hydration-test]]
 ;; adjusted to run with PUBLIC dashboard.
 (deftest ^:synchronized public-dashboard-param-values-param-fields-hydration-test
-  (let [public-dashboard-uuid (str (random-uuid))]
+  (let [public-dashboard-uuid (str (random-uuid))
+        c1-eid                (u/generate-nano-id)]
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp
         [:model/Dashboard     d   {:name "D"
@@ -1893,24 +1926,24 @@
                                                :native   {:query "select * from people"}}]
                                     {:name "C1"
                                      :type :model
-                                     :database_id (mt/id)
+                                     :entity_id     c1-eid
+                                     :database_id   (mt/id)
                                      :dataset_query query
                                      :result_metadata
                                      (mapv (fn [{col-name :name :as meta}]
                                              ;; Map model's metadata to corresponding field id
-                                             (assoc meta :id  (mt/id :people (keyword (u/lower-case-en col-name)))))
-                                           (-> (qp/process-query query)
+                                             (assoc meta :id (mt/id :people (keyword (u/lower-case-en col-name)))))
+                                           (-> query
+                                               (assoc-in [:info :card-entity-id] c1-eid)
+                                               qp/process-query
                                                :data :results_metadata :columns))})
 
          :model/Card          c2 (let [query (mt/mbql-query nil
                                                {:source-table (str "card__" (:id c1))
                                                 :aggregation
                                                 [[:distinct [:field "STATE" {:base-type :type/Text}]]]})]
-                                   {:name "C2"
-                                    :database_id (mt/id)
-                                    :dataset_query query
-                                    :result_metadata (-> (qp/process-query query)
-                                                         :data :results_metadata :columns)})
+                                   (-> (mt/card-with-source-metadata-for-query query)
+                                       (assoc :name "C2")))
          :model/DashboardCard _dc1 {:dashboard_id       (:id d)
                                     :card_id            (:id c2)
                                     :parameter_mappings

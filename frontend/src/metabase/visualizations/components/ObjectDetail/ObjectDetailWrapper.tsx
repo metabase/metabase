@@ -2,8 +2,10 @@ import { useState } from "react";
 
 import Question from "metabase-lib/v1/Question";
 
-import { ObjectDetailFooter } from "./ObjectDetailFooter";
+import { PaginationFooter } from "../PaginationFooter/PaginationFooter";
+
 import { ObjectDetailView } from "./ObjectDetailView";
+import S from "./ObjectDetailWrapper.module.css";
 import { RootModal } from "./ObjectDetailWrapper.styled";
 import type { ObjectDetailProps } from "./types";
 
@@ -58,13 +60,14 @@ export function ObjectDetailWrapper({
         isDataApp={isDataApp}
       />
       {hasPagination && (
-        <ObjectDetailFooter
+        <PaginationFooter
+          className={S.pagination}
           data-testid="pagination-footer"
           start={currentObjectIndex}
           end={currentObjectIndex}
           total={data.rows.length}
-          onNextPage={() => setCurrentObjectIndex(prev => prev + 1)}
-          onPreviousPage={() => setCurrentObjectIndex(prev => prev - 1)}
+          onNextPage={() => setCurrentObjectIndex((prev) => prev + 1)}
+          onPreviousPage={() => setCurrentObjectIndex((prev) => prev - 1)}
           singleItem
         />
       )}

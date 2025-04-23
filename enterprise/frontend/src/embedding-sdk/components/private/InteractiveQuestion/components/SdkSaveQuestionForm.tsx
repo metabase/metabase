@@ -8,11 +8,32 @@ import { Stack, Title } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../context";
 
-export type SdkSaveQuestionFormProps = {
+/**
+ * @interface
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionSaveQuestionFormProps = {
+  /**
+   * Callback function executed when save is cancelled
+   */
   onCancel?: () => void;
 };
 
-export const SdkSaveQuestionForm = ({ onCancel }: SdkSaveQuestionFormProps) => {
+/**
+ * Form for saving a question, including title and description. When saved:
+ *
+ * - For existing questions: Calls {@link InteractiveQuestionProps.onSave}
+ * - Both callbacks receive the updated question object
+ * - Form can be cancelled via the {@link InteractiveQuestionSaveQuestionFormProps.onCancel}
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
+export const SdkSaveQuestionForm = ({
+  onCancel,
+}: InteractiveQuestionSaveQuestionFormProps) => {
   const { question, originalQuestion, onSave, onCreate, targetCollection } =
     useInteractiveQuestionContext();
 

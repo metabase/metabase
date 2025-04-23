@@ -8,7 +8,6 @@ import {
 } from "__support__/server-mocks";
 import {
   fireEvent,
-  mockScrollIntoView,
   renderWithProviders,
   screen,
   waitFor,
@@ -57,10 +56,6 @@ const setup = (props: AdminSettingInputProps<SettingKey>) => {
 };
 
 describe("AdminSettingInput", () => {
-  beforeAll(() => {
-    mockScrollIntoView();
-  });
-
   it("should not allow invalid settings", async () => {
     setup({
       title: "Fake Setting",
@@ -361,9 +356,7 @@ describe("AdminSettingInput", () => {
     expect(putUrl).toContain("/api/setting/humanization-strategy");
     expect(body).toStrictEqual({ value: "simple" });
 
-    const toast = await screen.findByText(
-      "Humanization Strategy changes saved",
-    );
+    const toast = await screen.findByText("Changes saved");
     expect(toast).toBeInTheDocument();
   });
 
@@ -388,11 +381,11 @@ describe("AdminSettingInput", () => {
     expect(putUrl).toContain("/api/setting/humanization-strategy");
     expect(body).toStrictEqual({ value: "simple" });
 
-    const toast = await screen.findByText("Error saving Humanization Strategy");
+    const toast = await screen.findByText("Error saving humanization-strategy");
     expect(toast).toBeInTheDocument();
   });
 
-  it("should display a notice isntead of input when a setting is set by an environment variable", async () => {
+  it("should display a notice instead of input when a setting is set by an environment variable", async () => {
     setup({
       title: "url",
       name: "site-url",
@@ -412,7 +405,7 @@ describe("AdminSettingInput", () => {
 async function findPut() {
   const calls = fetchMock.calls();
   const [putUrl, putDetails] =
-    calls.find(call => call[1]?.method === "PUT") ?? [];
+    calls.find((call) => call[1]?.method === "PUT") ?? [];
 
   const body = ((await putDetails?.body) as string) ?? "{}";
 

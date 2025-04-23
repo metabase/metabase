@@ -9,7 +9,7 @@ export const getNextId = (() => {
 
 export async function delay(duration: number) {
   await act(async () => {
-    await new Promise(resolve => setTimeout(resolve, duration));
+    await new Promise((resolve) => setTimeout(resolve, duration));
   });
 }
 

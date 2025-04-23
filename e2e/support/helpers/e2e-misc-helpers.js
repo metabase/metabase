@@ -8,7 +8,7 @@ export function typeAndBlurUsingLabel(label, value) {
 }
 
 export function visitAlias(alias) {
-  cy.get(alias).then(url => {
+  cy.get(alias).then((url) => {
     cy.visit(url);
   });
 }
@@ -45,10 +45,10 @@ export function runButtonOverlay() {
  */
 export function interceptPromise(method, path) {
   const state = {};
-  const promise = new Promise(resolve => {
+  const promise = new Promise((resolve) => {
     state.resolve = resolve;
   });
-  cy.intercept(method, path, req => {
+  cy.intercept(method, path, (req) => {
     return promise.then(() => {
       req.continue();
     });
@@ -75,7 +75,7 @@ const cypressWaitAllRecursive = (results, commands) => {
     return;
   }
 
-  return nextCommand.then(result => {
+  return nextCommand.then((result) => {
     results.push(result);
 
     if (nextCommand == null) {
@@ -105,7 +105,7 @@ export function visitQuestion(questionIdOrAlias) {
   }
 
   if (typeof questionIdOrAlias === "string") {
-    cy.get(questionIdOrAlias).then(id => visitQuestionById(id));
+    cy.get(questionIdOrAlias).then((id) => visitQuestionById(id));
   }
 }
 
@@ -171,7 +171,7 @@ export function visitDashboard(dashboardIdOrAlias, { params = {} } = {}) {
   }
 
   if (typeof dashboardIdOrAlias === "string") {
-    cy.get(dashboardIdOrAlias).then(id => visitDashboardById(id, { params }));
+    cy.get(dashboardIdOrAlias).then((id) => visitDashboardById(id, { params }));
   }
 }
 
@@ -195,7 +195,7 @@ function visitDashboardById(dashboard_id, config) {
     if (tabs?.length > 0 && validQuestions) {
       const firstTab = tabs[0];
       validQuestions = validQuestions.filter(
-        card => card.dashboard_tab_id === firstTab.id,
+        (card) => card.dashboard_tab_id === firstTab.id,
       );
     }
 
@@ -264,7 +264,7 @@ function dashboardHasQuestions(cards) {
 export function interceptIfNotPreviouslyDefined({ method, url, alias } = {}) {
   const aliases = Object.keys(cy.state("aliases") ?? {});
 
-  const isAlreadyDefined = aliases.find(a => a === alias);
+  const isAlreadyDefined = aliases.find((a) => a === alias);
 
   if (!isAlreadyDefined) {
     cy.intercept(method, url).as(alias);
@@ -357,7 +357,7 @@ export function saveSavedQuestion() {
   cy.intercept("PUT", "/api/card/**").as("updateQuestion");
   cy.findByText("Save").click();
 
-  cy.findByTestId("save-question-modal").within(modal => {
+  cy.findByTestId("save-question-modal").within((modal) => {
     cy.findByText("Save").click();
   });
   cy.wait("@updateQuestion");

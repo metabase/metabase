@@ -47,7 +47,7 @@ export function InteractiveEmbeddingSettings({
     updateSetting({ key: "enable-embedding-interactive" }, value);
   }
 
-  const quickStartUrl = useSelector(state =>
+  const quickStartUrl = useSelector((state) =>
     // eslint-disable-next-line no-unconditional-metabase-links-render -- This is used in admin settings
     getDocsUrl(state, {
       page: "embedding/interactive-embedding-quick-start-guide",

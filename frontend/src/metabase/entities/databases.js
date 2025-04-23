@@ -53,7 +53,7 @@ const Databases = createEntity({
   nameMany: "databases",
 
   rtk: {
-    getUseGetQuery: fetchType => {
+    getUseGetQuery: (fetchType) => {
       if (fetchType === "fetchDatabaseMetadata") {
         return {
           useGetQuery: useGetDatabaseMetadataQuery,
@@ -102,7 +102,7 @@ const Databases = createEntity({
       ),
     delete: ({ id }, dispatch) =>
       entityCompatibleQuery(id, dispatch, databaseApi.endpoints.deleteDatabase),
-    addSampleDatabase: dispatch =>
+    addSampleDatabase: (dispatch) =>
       entityCompatibleQuery(
         undefined,
         dispatch,
@@ -137,10 +137,10 @@ const Databases = createEntity({
       withCachedDataAndRequestState(
         ({ id }) => [...Databases.getObjectStatePath(id)],
         ({ id }) => [...Databases.getObjectStatePath(id), "idFields"],
-        entityQuery => Databases.getQueryKey(entityQuery),
+        (entityQuery) => Databases.getQueryKey(entityQuery),
       ),
       withNormalize(DatabaseSchema),
-    )(({ id, ...params }) => async dispatch => {
+    )(({ id, ...params }) => async (dispatch) => {
       const idFields = await entityCompatibleQuery(
         { id, ...params },
         dispatch,
@@ -151,10 +151,10 @@ const Databases = createEntity({
   },
 
   objectSelectors: {
-    getName: db => db && db.name,
-    getUrl: db => db && Urls.browseDatabase(db),
-    getIcon: db => ({ name: "database" }),
-    getColor: db => color("database"),
+    getName: (db) => db && db.name,
+    getUrl: (db) => db && Urls.browseDatabase(db),
+    getIcon: (db) => ({ name: "database" }),
+    getColor: (db) => color("database"),
   },
 
   selectors: {
@@ -167,21 +167,21 @@ const Databases = createEntity({
     getListUnfiltered: (state, { entityQuery }) => {
       const entityIds =
         Databases.selectors.getEntityIds(state, { entityQuery }) ?? [];
-      return entityIds.map(entityId =>
+      return entityIds.map((entityId) =>
         Databases.selectors.getObjectUnfiltered(state, { entityId }),
       );
     },
 
     getHasSampleDatabase: (state, props) =>
-      _.any(Databases.selectors.getList(state, props), db => db.is_sample),
+      _.any(Databases.selectors.getList(state, props), (db) => db.is_sample),
 
     getIdFields: createSelector(
       [
-        state => getMetadata(state).fieldsList(),
+        (state) => getMetadata(state).fieldsList(),
         (state, props) => props.databaseId,
       ],
       (fields, databaseId) =>
-        fields.filter(field => {
+        fields.filter((field) => {
           const dbId = field?.table?.db_id;
           const isRealField = !isVirtualCardId(field.table_id);
           return dbId === databaseId && isRealField && field.isPK();
