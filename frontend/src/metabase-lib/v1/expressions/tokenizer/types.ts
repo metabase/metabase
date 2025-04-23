@@ -15,6 +15,4 @@ export enum OPERATOR {
   Not = "not",
   And = "and",
   Or = "or",
-  True = "true",
-  False = "false",
 }

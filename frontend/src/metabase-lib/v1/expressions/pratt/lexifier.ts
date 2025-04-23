@@ -135,8 +135,6 @@ const OPERATOR_TO_TYPE: Record<OPERATOR, NodeType> = {
   [OPERATOR.Not]: LOGICAL_NOT,
   [OPERATOR.And]: LOGICAL_AND,
   [OPERATOR.Or]: LOGICAL_OR,
-  [OPERATOR.True]: BOOLEAN,
-  [OPERATOR.False]: BOOLEAN,
 };
 
 export function parseOperatorType(op: string): NodeType | null {
