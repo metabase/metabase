@@ -1618,7 +1618,7 @@
                (try (doto stmt
                       (.setQueryTimeout 1)
                       (.execute))
-                    (is false "Query successfully executed. Should sleep for 5s with a timeout of 1s")
+                    (throw (ex-info "Query successfully executed. Should sleep for 5s with a timeout of 1s" {}))
                     (catch Throwable e
                       (is (driver/query-canceled? :postgres e))))))))))))
 
