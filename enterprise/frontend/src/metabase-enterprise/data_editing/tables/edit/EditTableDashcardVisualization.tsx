@@ -1,6 +1,8 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
+import Modal from "metabase/components/Modal";
 import {
   ActionIcon,
   Box,
@@ -78,11 +80,18 @@ export const EditTableDashcardVisualization = ({
     visualizationSettings,
   );
 
-  const { hasCreateAction, hasDeleteAction, enabledRowActions } =
-    useTableActions({
-      cardId,
-      visualizationSettings,
-    });
+  const {
+    hasCreateAction,
+    hasDeleteAction,
+    enabledRowActions,
+    handleRowActionRun,
+    activeActionId,
+    handleExecuteModalClose,
+  } = useTableActions({
+    cardId,
+    visualizationSettings,
+    datasetData: data,
+  });
 
   const { getColumnSortDirection } = useTableSorting({
     question,
@@ -99,6 +108,7 @@ export const EditTableDashcardVisualization = ({
           columnsConfig={columnsConfig}
           getColumnSortDirection={getColumnSortDirection}
           rowActions={enabledRowActions}
+          onActionRun={handleRowActionRun}
         />
       </Box>
 
@@ -169,6 +179,19 @@ export const EditTableDashcardVisualization = ({
         isLoading={isInserting}
         columnsConfig={columnsConfig}
       />
+      <Modal
+        isOpen={isActionExecuteModalOpen}
+        onClose={handleExecuteModalClose}
+      >
+        <ActionExecuteModal
+          actionId={actionId}
+          initialValues={initialValues}
+          fetchInitialValues={fetchInitialValues}
+          shouldPrefetch
+          onClose={handleExecuteModalClose}
+          onSuccess={handleActionSuccess}
+        />
+      </Modal>
     </Stack>
   );
 };

@@ -1,49 +1,49 @@
 import type { ColumnDef } from "@tanstack/react-table";
+import type React from "react";
+import { t } from "ttag";
 
-import { RowIdCell } from "metabase/data-grid/components/RowIdCell/RowIdCell";
-import { RowIdHeaderCell } from "metabase/data-grid/components/RowIdHeaderCell/RowIdHeaderCell";
+import { BaseCell } from "metabase/data-grid";
+import S from "metabase/data-grid/components/RowIdCell/RowIdCell.module.css";
 import {
   MIN_COLUMN_WIDTH,
   ROW_ACTIONS_COLUMN_ID,
-  ROW_ID_COLUMN_ID,
 } from "metabase/data-grid/constants";
-import {
-  type RowActionsColumnConfig,
-  RowIdColumnOptions,
-  type RowIdVariant,
-} from "metabase/data-grid/types";
+import type { RowActionsColumnConfig } from "metabase/data-grid/types";
+import { Button, Group } from "metabase/ui";
 
-// TODO: implement this
 export const getActionsIdColumn = <TRow, TValue>({
   actions,
-  renderCell,
-}: RowActionsColumnConfig): ColumnDef<TRow, TValue> => {
+  onActionRun,
+}: RowActionsColumnConfig<TRow>): ColumnDef<TRow, TValue> => {
   return {
-    accessorFn: (_row, index) => index as TValue,
     id: ROW_ACTIONS_COLUMN_ID,
     minSize: MIN_COLUMN_WIDTH,
     enableSorting: false,
     enableResizing: true,
     enablePinning: true,
-    cell: ({ row, table }) => {
-      // HACK: When table has client-side sorting we cannot use row.index for the index column as it shows
-      // row index in the original dataset
-      const value = shouldShowIndex
-        ? table
-            .getSortedRowModel()
-            ?.flatRows?.findIndex((flatRow) => flatRow.id === row.id) + 1
-        : null;
+    cell: ({ row }) => {
       return (
-        <RowIdCell
-          canExpand={canExpand}
-          value={value}
-          backgroundColor={getBackgroundColor?.(row.index)}
-          onRowExpandClick={() => onRowExpandClick?.(row.index)}
-        />
+        <BaseCell data-testid="row-id-cell" className={S.root} align="right">
+          <Group>
+            {actions.map((action) => (
+              <Button
+                key={action.id}
+                variant="subtle"
+                onClick={() => onActionRun(action, row)}
+              >
+                {action.name}
+              </Button>
+            ))}
+          </Group>
+        </BaseCell>
       );
     },
     header: () => {
-      return <RowIdHeaderCell name={shouldShowIndex ? "#" : ""} />;
+      return (
+        <BaseCell className={S.root} hasHover={false} align="right">
+          {t`Row Actions`}
+        </BaseCell>
+      );
     },
   };
 };

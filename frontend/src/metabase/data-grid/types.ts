@@ -124,8 +124,9 @@ export interface RowIdColumnOptions {
   onRowExpandClick?: (rowIndex: number) => void;
 }
 
-export interface RowActionsColumnConfig {
+export interface RowActionsColumnConfig<TData> {
   actions: WritebackAction[];
+  onActionRun: (action: WritebackAction, row: Row<TData>) => void;
   renderCell?: (
     actions: WritebackAction[],
     rowIndex: number,
@@ -211,7 +212,7 @@ export interface DataGridOptions<TData = any, TValue = any> {
     children: React.ReactElement,
   ) => React.ReactElement;
 
-  rowActionsColumn?: RowActionsColumnConfig;
+  rowActionsColumn?: RowActionsColumnConfig<TData>;
 }
 
 export type CellAlign = "left" | "middle" | "right";

@@ -1,3 +1,4 @@
+import type { Row } from "@tanstack/react-table";
 import type React from "react";
 import { useCallback, useMemo } from "react";
 
@@ -38,6 +39,7 @@ type EditTableDataGridProps = {
     column: DatasetColumn,
   ) => OrderByDirection | undefined;
   rowActions?: WritebackAction[];
+  onActionRun?: (action: WritebackAction, row: Row<RowValues>) => void;
 };
 
 export const EditTableDataGrid = ({
@@ -48,6 +50,7 @@ export const EditTableDataGrid = ({
   columnsConfig,
   getColumnSortDirection,
   rowActions,
+  onActionRun,
 }: EditTableDataGridProps) => {
   const { cols, rows } = data;
 
@@ -162,7 +165,10 @@ export const EditTableDataGrid = ({
     columnSizingMap,
     columnsOptions,
     columnVisibility,
-    rowActionsColumn: rowActions ? { actions: rowActions } : undefined,
+    rowActionsColumn:
+      rowActions && onActionRun
+        ? { actions: rowActions, onActionRun }
+        : undefined,
   });
 
   const handleCellClick = useCallback(
