@@ -1,6 +1,6 @@
 import * as Lib from "metabase-lib";
 
-import { DiagnosticError } from "../errors";
+import { DiagnosticError } from "../../errors";
 
 export function checkLibDiagnostics({
   query,

@@ -2,10 +2,9 @@ import { msgid, ngettext } from "ttag";
 
 import * as Lib from "metabase-lib";
 
-import { getClauseDefinition } from "../config";
-import { DiagnosticError } from "../errors";
-import { getToken } from "../utils";
-import { visit } from "../visitor";
+import { getClauseDefinition } from "../../config";
+import { visit } from "../../visitor";
+import { error } from "../utils";
 
 export function checkArgCount({
   expressionParts,
@@ -30,13 +29,13 @@ export function checkArgCount({
       const minArgCount = args.length;
 
       if (argCount < minArgCount) {
-        throw new DiagnosticError(
+        error(
+          node,
           ngettext(
             msgid`Function ${displayName} expects at least ${minArgCount} argument`,
             `Function ${displayName} expects at least ${minArgCount} arguments`,
             minArgCount,
           ),
-          getToken(node),
         );
       }
     } else {
@@ -48,13 +47,13 @@ export function checkArgCount({
         operands.length < expectedArgsLength ||
         operands.length > maxArgCount
       ) {
-        throw new DiagnosticError(
+        error(
+          node,
           ngettext(
             msgid`Function ${displayName} expects ${expectedArgsLength} argument`,
             `Function ${displayName} expects ${expectedArgsLength} arguments`,
             expectedArgsLength,
           ),
-          getToken(node),
         );
       }
     }

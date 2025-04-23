@@ -3,6 +3,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseFeature, Expression } from "metabase-types/api";
 
 import type { DefinedClauseName } from "./config";
+import type { Token } from "./pratt";
 
 export type MBQLClauseCategory =
   | "logical"
@@ -68,4 +69,13 @@ export type MBQLClauseFunctionConfig = {
   name: DefinedClauseName;
 
   validator?: (...args: any) => string | undefined;
+};
+
+export type Hooks = {
+  error?: (error: Error) => void;
+  lexified?: (evt: { tokens: Token[] }) => void;
+  compiled?: (evt: {
+    expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
+    expressionClause: Lib.ExpressionClause;
+  }) => void;
 };
