@@ -570,15 +570,11 @@
                                          cards)
           readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]
       (for [card readable-cards]
-        ;; a native model can have columns with keys as semantic types only if a user configured them
-        (let [trust-semantic-keys? (and (= (:type card) :model)
-                                        (= (-> card :dataset_query :type) :native))]
-          (-> card
-              (card->virtual-table :include-fields? true
-                                   :databases dbs
-                                   :card-id->metadata-fields card-id->metadata-fields)
-              (assoc-dimension-options (-> card :database_id dbs))
-              (remove-nested-pk-fk-semantic-types {:trust-semantic-keys? trust-semantic-keys?})))))))
+        (-> card
+            (card->virtual-table :include-fields? true
+                                 :databases dbs
+                                 :card-id->metadata-fields card-id->metadata-fields)
+            (assoc-dimension-options (-> card :database_id dbs)))))))
 
 (api.macros/defendpoint :get "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."

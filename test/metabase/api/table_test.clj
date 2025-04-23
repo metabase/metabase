@@ -732,7 +732,7 @@
                                               :base_type      "type/BigInteger"
                                               :effective_type "type/BigInteger"
                                               :database_type  "BIGINT"
-                                              :semantic_type  nil
+                                              :semantic_type  "type/PK"
                                               :fingerprint    (name->fingerprint :id)
                                               :ident          (lib/native-ident "ID" (:entity_id card))
                                               :field_ref      ["field" "ID" {:base-type "type/BigInteger"}]}
