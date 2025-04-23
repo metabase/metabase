@@ -13,7 +13,7 @@ import {
   formatMetricName,
   formatSegmentName,
 } from "../identifier";
-import { parseOperatorType } from "../pratt";
+import { parsePunctuator } from "../pratt";
 import { type StartDelimiter, formatStringLiteral } from "../string";
 
 import { pathMatchers as check, isOperator } from "./utils";
@@ -362,7 +362,7 @@ function formatOperator(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {
 }
 
 function precedence(op: string): number {
-  return parseOperatorType(op)?.precedence ?? Infinity;
+  return parsePunctuator(op)?.precedence ?? Infinity;
 }
 
 function isLogicOperator(op: string) {

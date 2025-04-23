@@ -88,7 +88,7 @@ export function lexify(source: string) {
       return token(node, { type: GROUP });
     }
 
-    const type = parseOperatorType(node.type.name);
+    const type = parsePunctuator(node.type.name);
     if (type) {
       return token(node, { type });
     }
@@ -137,7 +137,7 @@ const OPERATOR_TO_TYPE: Record<PUNCTUATOR, NodeType> = {
   [PUNCTUATOR.Or]: LOGICAL_OR,
 };
 
-export function parseOperatorType(op: string): NodeType | null {
+export function parsePunctuator(op: string): NodeType | null {
   const lower = op.toLowerCase();
   if (lower in OPERATOR_TO_TYPE) {
     return OPERATOR_TO_TYPE[lower as keyof typeof OPERATOR_TO_TYPE];

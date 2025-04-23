@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
-import { COMPARISON, EQUALITY, parseOperatorType } from "../../pratt";
+import { COMPARISON, EQUALITY, parsePunctuator } from "../../pratt";
 import { visit } from "../../visitor";
 import { error } from "../utils";
 
@@ -17,7 +17,7 @@ export function checkComparisonOperatorArgs({
     }
 
     const { operator, args } = node;
-    const type = parseOperatorType(operator);
+    const type = parsePunctuator(operator);
     if (type !== COMPARISON && type !== EQUALITY) {
       return;
     }
