@@ -344,7 +344,7 @@ export const CreateOrEditQuestionAlertModal = ({
               });
             }}
             emailRecipientText={t`Email alerts to:`}
-            getInvalidRecipientText={(domains) =>
+            getInvalidRecipientText={() =>
               t`Only allowed domains are supported`
             }
           />
