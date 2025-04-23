@@ -92,6 +92,10 @@ export const ColumnsList = () => {
             {isExpanded && dataset && dataset.data.cols && (
               <Box ml={12} mt={2}>
                 {dataset.data.cols.map((column) => {
+                  if (column.expression_name === "pivot-grouping") {
+                    return null;
+                  }
+
                   const columnReference = referencedColumns.find((ref) =>
                     isReferenceToColumn(column, source.id, ref),
                   );
