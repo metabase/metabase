@@ -291,6 +291,10 @@
         (h2x/at-time-zone target-timezone)
         h2x/->timestamp)))
 
+(defmethod sql.qp/integer-dbtype :oracle
+  [_]
+  "NUMBER(p)")
+
 (def ^:private legacy-max-identifier-length
   "Maximal identifier length for Oracle < 12.2"
   30)
