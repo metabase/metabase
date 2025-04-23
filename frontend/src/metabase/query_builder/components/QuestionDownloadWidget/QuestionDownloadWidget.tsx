@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
@@ -27,6 +27,13 @@ type QuestionDownloadWidgetProps = {
     enablePivot: boolean;
   }) => void;
   disabled?: boolean;
+  formatPreference?: {
+    last_download_format: "csv" | "xlsx" | "json" | "png";
+    last_table_download_format: "csv" | "xlsx" | "json";
+  };
+  setFormatPreference?: (
+    value: typeof formatPreference,
+  ) => Promise<{ data?: unknown; error?: unknown }>;
 } & StackProps;
 
 const canPivotResults = (format: string, display: string) =>
@@ -38,6 +45,8 @@ export const QuestionDownloadWidget = ({
   result,
   onDownload,
   disabled = false,
+  formatPreference,
+  setFormatPreference,
   ...stackProps
 }: QuestionDownloadWidgetProps) => {
   const canDownloadPng = canSavePng(question.display());
@@ -45,7 +54,26 @@ export const QuestionDownloadWidget = ({
     ? [...exportFormats, exportFormatPng]
     : exportFormats;
 
-  const [format, setFormat] = useState<ExportFormat>(formats[0]);
+  const determineInitialFormat = () => {
+    if (!formatPreference) {
+      return formats[0];
+    }
+
+    const { last_download_format, last_table_download_format } =
+      formatPreference;
+
+    if (canDownloadPng) {
+      return formats.includes(last_download_format)
+        ? last_download_format
+        : formats[0];
+    }
+
+    return formats.includes(last_table_download_format)
+      ? last_table_download_format
+      : formats[0];
+  };
+
+  const [format, setFormat] = useState<ExportFormat>(determineInitialFormat());
   const canConfigurePivoting = canPivotResults(format, question.display());
 
   const [isPivoted, setIsPivoted] = useState(canConfigurePivoting);
@@ -57,13 +85,29 @@ export const QuestionDownloadWidget = ({
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDownloadWidgetMessageOverride(result) ??
     t`The maximum download size is 1 million rows.`;
 
-  const handleDownload = useCallback(() => {
+  const handleFormatChange = (newFormat: ExportFormat) => {
+    setFormat(newFormat);
+
+    // If user is logged in, save their preference to the KV store
+    if (setFormatPreference) {
+      const newPreference = {
+        last_download_format: newFormat,
+        last_table_download_format:
+          newFormat !== "png"
+            ? newFormat
+            : formatPreference.last_table_download_format,
+      };
+      setFormatPreference(newPreference);
+    }
+  };
+
+  const handleDownload = () => {
     onDownload({
       type: format,
       enableFormatting: isFormatted,
       enablePivot: isPivoted,
     });
-  }, [format, isFormatted, isPivoted, onDownload]);
+  };
 
   return (
     <Stack
@@ -79,7 +123,7 @@ export const QuestionDownloadWidget = ({
         isPivotingEnabled={isPivoted}
         canConfigureFormatting={canConfigureFormatting(format)}
         canConfigurePivoting={canConfigurePivoting}
-        onChangeFormat={setFormat}
+        onChangeFormat={handleFormatChange}
         onToggleFormatting={() => setIsFormatted((prev) => !prev)}
         onTogglePivoting={() => setIsPivoted((prev) => !prev)}
       />
