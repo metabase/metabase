@@ -117,7 +117,7 @@ export const LogLevelsModal = () => {
 
         <Box
           className={S.codeContainer}
-          // Using h + mah + mih to make the CodeBlock fill its parent vertically
+          // Using h + mah + mih to make the CodeEditor fill its parent vertically
           h="100vh"
           mah="35vh"
           mih={200}
