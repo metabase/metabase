@@ -79,7 +79,7 @@ jobs:
     uses: ./.github/workflows/frontend.yml
     secrets: inherit
     with:
-      skip: ${{ needs.files-changed.outputs.frontend_all != 'true' && needs.files-changed.outputs.e2e_specs != 'true' }}
+      skip: ${{ needs.files-changed.outputs.frontend_all != 'true' }}
       skip-lint: ${{ needs.files-changed.outputs.frontend_all != 'true' && needs.files-changed.outputs.e2e_specs != 'true' }}
 
   e2e-tests:
