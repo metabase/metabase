@@ -136,9 +136,32 @@
   [_ value]
   (h2x/->integer value))
 
+(defmulti ->float
+  "Cast to float."
+  {:changelog-test/ignore true :added "0.45.0" :arglists '([driver honeysql-expr])})
+
+(defmethod ->float :sql
+  [driver value]
+  ;; optimization: we don't need to cast a number literal that is already a `Float` or a `Double` to `FLOAT`. Other
+  ;; number literals can be converted to doubles in Clojure-land. Note that there is a little bit of a mismatch between
+  ;; FLOAT and DOUBLE here, but that's mostly because I'm not 100% sure which drivers have both types. In the future
+  ;; maybe we can fix this.
+  (cond
+    (float? value)
+    (h2x/with-database-type-info (inline-num value) "float")
+
+    (number? value)
+    (recur driver (double value))
+
+    (inline? value)
+    (recur driver (second value))
+
+    :else
+    (h2x/cast :float value)))
+
 (defmulti float-dbtype
   "Return the name of the floating point type we convert to in this database."
-  {:changelog-test/ignore true :added "0.55.0" :arglists '([driver])}
+  {:added "0.55.0" :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -148,7 +171,7 @@
 
 (defmulti cast-float
   "Cast to float."
-  {:changelog-test/ignore true :added "0.45.0" :arglists '([driver honeysql-expr])}
+  {:added "0.55.0" :arglists '([driver honeysql-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -161,7 +184,7 @@
     (when (inline? unwrapped)
       (second unwrapped))))
 
-(defn ->float
+(defn coerce-float
   "Convert honeysql numbers/strings to floats, being smart about converting inlines and constants at compile-time."
   [driver value]
   ;; The smarts of this function are to cast inline numbers and strings at
@@ -685,7 +708,7 @@
                (cast-temporal-byte driver coercion-strategy honeysql-form)
 
                [:type/Text (:isa? :Coercion/String->Float)]
-               (->float driver honeysql-form)
+               (coerce-float driver honeysql-form)
 
                :else honeysql-form)
       (when-not (= <> honeysql-form)
@@ -1054,34 +1077,31 @@
 
 (defn- safe-denominator
   "Make sure we're not trying to divide by zero."
-  [driver denominator]
-  (let [inline-value (untyped-inline-value denominator)]
-    (cond
+  [denominator]
+  (cond
     ;; try not to generate hairy nonsense like `CASE WHERE 7.0 = 0 THEN NULL ELSE 7.0` if we're dealing with number
     ;; literals and can determine this stuff ahead of time.
-      (nil? denominator)
-      nil
+    (and (number? denominator)
+         (zero? denominator))
+    nil
 
-      (not inline-value)
-      (h2x/with-database-type-info [:nullif denominator [:inline 0.0]] (float-dbtype driver))
+    (number? denominator)
+    (inline-num denominator)
 
-      (and (number? inline-value)
-           (zero? inline-value))
-      nil
+    (inline? denominator)
+    (recur (second denominator))
 
-      (number? inline-value)
-      denominator
-
-      :else
-      (ex-info (str "This won't make a good denominator: " (pr-str denominator))
-               {:value denominator}))))
+    :else
+    [:nullif denominator [:inline 0]]))
 
 (defmethod ->honeysql [:sql :/]
   [driver [_ & mbql-exprs]]
   (let [[numerator & denominators] (for [mbql-expr mbql-exprs]
-                                     (->float driver (->honeysql driver mbql-expr)))]
-    (into [:/ numerator]
-          (map #(safe-denominator driver %))
+                                     (->honeysql driver (if (integer? mbql-expr)
+                                                          (double mbql-expr)
+                                                          mbql-expr)))]
+    (into [:/ (->float driver numerator)]
+          (map safe-denominator)
           denominators)))
 
 (defmethod ->honeysql [:sql :float]
