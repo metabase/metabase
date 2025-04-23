@@ -14,14 +14,15 @@ describe("parameters/utils/field-filters", () => {
     const field = createMockField({
       isDate: () => false,
       isID: () => false,
-      isCategory: () => false,
       isCity: () => false,
       isState: () => false,
       isZipCode: () => false,
       isCountry: () => false,
-      isNumber: () => false,
+      isNumeric: () => false,
       isString: () => false,
+      isBoolean: () => false,
       isLocation: () => false,
+      isCoordinate: () => false,
     });
 
     const typelessDimension = createMockDimension({
@@ -47,7 +48,7 @@ describe("parameters/utils/field-filters", () => {
         { type: "category" },
         {
           type: "category",
-          field: () => ({ ...field, isCategory: () => true }),
+          field: () => ({ ...field, has_field_values: "list" }),
         },
       ],
       [
@@ -67,7 +68,7 @@ describe("parameters/utils/field-filters", () => {
           type: "number",
           field: () => ({
             ...field,
-            isNumber: () => true,
+            isNumeric: () => true,
             isCoordinate: () => false,
           }),
         },
@@ -79,7 +80,7 @@ describe("parameters/utils/field-filters", () => {
           field: () => ({
             ...field,
             isString: () => true,
-            isCategory: () => true,
+            has_field_values: "list",
           }),
         },
       ],
@@ -90,7 +91,7 @@ describe("parameters/utils/field-filters", () => {
           field: () => ({
             ...field,
             isString: () => true,
-            isCategory: () => true,
+            has_field_values: "list",
           }),
         },
       ],
@@ -114,11 +115,11 @@ describe("parameters/utils/field-filters", () => {
       });
     });
 
-    it("should return a predicate that evaluates to false for a coordinate dimension when given a number parameter", () => {
+    it("should return a predicate that evaluates to true for a coordinate dimension when given a number parameter", () => {
       const coordinateDimension = createMockDimension({
         field: () => ({
           ...field,
-          isNumber: () => true,
+          isNumeric: () => true,
           isCoordinate: () => true,
         }),
       });
@@ -126,7 +127,7 @@ describe("parameters/utils/field-filters", () => {
       const predicate = dimensionFilterForParameter(
         createMockParameter({ type: "number/between" }),
       );
-      expect(predicate(coordinateDimension)).toBe(false);
+      expect(predicate(coordinateDimension)).toBe(true);
     });
 
     it("should return a predicate that evaluates to false for a location dimension when given a category parameter", () => {

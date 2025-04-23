@@ -215,7 +215,7 @@ const SegmentFieldDetail = (props) => {
                     <Detail
                       id="base_type"
                       name={t`Data type`}
-                      description={entity.base_type}
+                      description={entity.database_type}
                     />
                   </li>
                 )}

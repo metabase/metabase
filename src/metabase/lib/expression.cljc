@@ -1,5 +1,5 @@
 (ns metabase.lib.expression
-  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace])
+  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace float])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -235,6 +235,7 @@
     ;; if there are explicit fields selected, add the expression to them
     (and (vector? (:fields stage))
          add-to-fields?)
+    ;; TODO: Construct this ref with lib/ref rather than hand-rolling it?
     (update :fields conj (lib.options/ensure-uuid [:expression {} (lib.util/expression-name expression)]))))
 
 (mu/defn expression :- ::lib.schema/query
@@ -275,7 +276,7 @@
 ;; Kondo gets confused
 #_{:clj-kondo/ignore [:unresolved-namespace :syntax]}
 (lib.common/defop / [x y & more])
-(lib.common/defop case [x y & more])
+(lib.common/defop case [cases] [cases fallback])
 (lib.common/defop coalesce [x y & more])
 (lib.common/defop abs [x])
 (lib.common/defop log [x])
@@ -324,6 +325,7 @@
 (lib.common/defop offset [x n])
 (lib.common/defop text [x])
 (lib.common/defop integer [x])
+(lib.common/defop float [x])
 
 (mu/defn value :- ::lib.schema.expression/expression
   "Creates a `:value` clause for the `literal`. Converts bigint literals to strings for serialization purposes."
@@ -488,9 +490,49 @@
      (some #(cyclic-definition node->children % (conj node-path node))
            (node->children node)))))
 
+(defn- aggregation-function?
+  [tag]
+  (lib.hierarchy/isa? tag ::lib.schema.aggregation/aggregation-clause-tag))
+
+(defn- aggregation-expr?
+  [expr]
+  (and (vector? expr) (-> expr first aggregation-function?)))
+
+(def ^:private window-function
+  #{:cum-count :cum-sum :offset})
+
+(defn- window-expression?
+  [expr]
+  (and (vector? expr) (-> expr first window-function boolean)))
+
+(defn- invalid-nesting
+  ([expr]
+   (invalid-nesting expr []))
+  ([expr path-tags]
+   (cond
+     (and (window-expression? expr)
+          (some aggregation-function? path-tags))
+     (first expr)
+
+     (and (aggregation-expr? expr)
+          (some (every-pred aggregation-function? (complement window-function)) path-tags))
+     (first expr)
+
+     (lib.util/clause? expr)
+     (some #(invalid-nesting % (conj path-tags (first expr))) (nnext expr)))))
+
+(comment
+  (invalid-nesting [:sum {:lib/uuid (str (random-uuid))}
+                    [:avg {:lib/uuid (str (random-uuid))}
+                     [:field {:lib/uuid (str (random-uuid))} 123]]])
+  (lib.hierarchy/isa? :sum ::lib.schema.aggregation/aggregation-clause-tag)
+  -)
+
 (mu/defn diagnose-expression :- [:maybe [:map [:message :string]]]
   "Checks `expr` for type errors and, if `expression-mode` is :expression and
   `expression-position` is provided, for cyclic references with other expressions.
+  As a special case, it checks that window functions are not embedded in each other
+  and in aggregation functions.
 
   - `expr` is a pMBQL expression usually created from a legacy MBQL expression created
   using the custom column editor in the FE. It is expected to have been normalized and
@@ -524,7 +566,22 @@
                                                          (assoc edited-name expr)
                                                          (update-vals referred-expressions))]
                                             (cyclic-definition deps)))]
-            {:message  (i18n/tru "Cycle detected: {0}" (str/join " → " dependency-path))
+            {:message (i18n/tru "Cycle detected: {0}" (str/join " → " dependency-path))
+             :friendly true})
+          (when-let [nested (invalid-nesting expr)]
+            {:message (i18n/tru "Embedding {0} in aggregation functions is not supported"
+                                ;; special names duplicated from
+                                ;; frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts
+                                (clojure.core/case nested
+                                  :avg            "Average"
+                                  :count-where    "CountIf"
+                                  :cum-count      "CumulativeCount"
+                                  :cum-sum        "CumulativeSum"
+                                  :distinct-where "DistinctIf"
+                                  :stddev         "StandardDeviation"
+                                  :sum-where      "SumIf"
+                                  :var            "Variance"
+                                  (-> nested name u/->camelCaseEn u/capitalize-first-char)))
              :friendly true})
           (when (and (= expression-mode :expression)
                      (lib.util.match/match-one expr :offset))

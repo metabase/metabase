@@ -1,7 +1,7 @@
 import type {
+  EnterpriseSettingKey,
+  EnterpriseSettingValue,
   SettingDefinition,
-  SettingKey,
-  SettingValue,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -16,7 +16,7 @@ export const settingsApi = Api.injectEndpoints({
         url: "/api/setting",
       }),
     }),
-    getSetting: builder.query<SettingValue, SettingKey>({
+    getSetting: builder.query<EnterpriseSettingValue, EnterpriseSettingKey>({
       query: (name) => ({
         method: "GET",
         url: `/api/setting/${encodeURIComponent(name)}`,
@@ -26,8 +26,8 @@ export const settingsApi = Api.injectEndpoints({
     updateSetting: builder.mutation<
       void,
       {
-        key: SettingKey;
-        value: SettingValue;
+        key: EnterpriseSettingKey;
+        value: EnterpriseSettingValue<EnterpriseSettingKey>;
       }
     >({
       query: ({ key, value }) => ({
@@ -38,7 +38,10 @@ export const settingsApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),
     }),
-    updateSettings: builder.mutation<void, Record<SettingKey, SettingValue>>({
+    updateSettings: builder.mutation<
+      void,
+      Record<EnterpriseSettingKey, EnterpriseSettingValue>
+    >({
       query: (settings) => ({
         method: "PUT",
         url: `/api/setting`,

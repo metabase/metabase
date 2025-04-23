@@ -6,6 +6,9 @@ on:
       skip:
         type: boolean
         default: false
+      skip-lint:
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-frontend
@@ -13,7 +16,7 @@ concurrency:
 
 jobs:
   fe-lint:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip-lint }}
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:

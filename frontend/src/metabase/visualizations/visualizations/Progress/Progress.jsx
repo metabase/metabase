@@ -70,14 +70,22 @@ export default class Progress extends Component {
       ],
     }),
     "progress.goal": {
-      section: t`Display`,
-      title: t`Goal`,
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Goal`;
+      },
       widget: "number",
       default: 0,
     },
     "progress.color": {
-      section: t`Display`,
-      title: t`Color`,
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Color`;
+      },
       widget: "color",
       default: color("accent1"),
     },

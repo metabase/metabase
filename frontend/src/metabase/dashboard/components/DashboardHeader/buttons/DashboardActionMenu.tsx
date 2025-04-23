@@ -1,11 +1,14 @@
 import { type JSX, type MouseEvent, forwardRef, useState } from "react";
 import { Link, type LinkProps, withRouter } from "react-router";
 import type { WithRouterProps } from "react-router/lib/withRouter";
+import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
+import { useDispatch } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Icon, Menu, Tooltip } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
@@ -40,6 +43,7 @@ const DashboardActionMenuInner = ({
 }: DashboardActionMenuProps &
   DashboardFullscreenControls &
   WithRouterProps): JSX.Element => {
+  const dispatch = useDispatch();
   const [opened, setOpened] = useState(false);
 
   const { refreshDashboard } = useRefreshDashboard({
@@ -51,6 +55,16 @@ const DashboardActionMenuInner = ({
   const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(
     dashboard,
     refreshDashboard,
+  );
+
+  useRegisterShortcut(
+    [
+      {
+        id: "dashboard-send-to-trash",
+        perform: () => dispatch(push(`${location?.pathname}/archive`)),
+      },
+    ],
+    [location.pathname],
   );
 
   return (

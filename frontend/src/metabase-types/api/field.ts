@@ -81,6 +81,7 @@ export interface Field {
   display_name: string;
   description: string | null;
 
+  database_type: string;
   base_type: string;
   effective_type?: string;
   semantic_type: string | null;
@@ -156,6 +157,12 @@ export interface SearchFieldValuesRequest {
   searchFieldId: FieldId;
   value: string;
   limit: number;
+}
+
+export interface GetRemappedFieldValueRequest {
+  fieldId: FieldId;
+  remappedFieldId: FieldId;
+  value: string;
 }
 
 export interface CreateFieldDimensionRequest {

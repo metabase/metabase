@@ -19,7 +19,7 @@ export interface DatabaseDetailFieldProps {
 const DatabaseDetailField = ({
   field,
   autoFocus,
-}: DatabaseDetailFieldProps): JSX.Element => {
+}: DatabaseDetailFieldProps): JSX.Element | null => {
   const override = FIELD_OVERRIDES[field.name];
   const type = getFieldType(field, override);
   const props = {
@@ -49,6 +49,8 @@ const DatabaseDetailField = ({
       return <DatabaseInfoField {...props} />;
     case "section":
       return <DatabaseSectionField {...props} />;
+    case "hidden":
+      return null;
     default:
       return <FormInput {...props} {...getInputProps(field)} nullable />;
   }

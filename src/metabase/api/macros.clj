@@ -568,7 +568,7 @@
   [request :- :map]
   (or (some-> (not-empty (:form-params request)) (update-keys keyword))
       (when-let [body (:body request)]
-        (when-not (instance? org.eclipse.jetty.server.HttpInput body)
+        (when-not (instance? org.eclipse.jetty.ee9.nested.HttpInput body)
           body))))
 
 (mu/defn- middleware-forms

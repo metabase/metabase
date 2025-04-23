@@ -4,7 +4,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.auth-provider :as auth-provider]
    [metabase.config :as config]
    [metabase.db :as mdb]
@@ -21,6 +20,7 @@
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]
    [metabase.util.snake-hating-map :refer [snake-hating-map?]])
   (:import
    (java.io ByteArrayInputStream)
@@ -287,10 +287,8 @@
 (defn available-drivers
   "Return a set of all currently available drivers."
   []
-  (set (for [driver (descendants driver/hierarchy :metabase.driver/driver)
-             :when  (and (driver/available? driver)
-                         (supported-in-environment? driver))]
-         driver)))
+  (into #{} (filter #(and (driver/available? %) (supported-in-environment? %)))
+        (descendants driver/hierarchy :metabase.driver/driver)))
 
 (mu/defn semantic-version-gte :- :boolean
   "Returns true if xv is greater than or equal to yv according to semantic versioning.
@@ -435,58 +433,62 @@
    if one was provided."
   {:added "0.42.0"}
   [driver conn-props]
-  (let [res (reduce (fn [acc conn-prop]
-                      ;; TODO: change this to expanded- and use that as the basis for all calcs below (not conn-prop)
-                      (let [expanded-props (case (keyword (:type conn-prop))
-                                             :secret
-                                             (expand-secret-conn-prop conn-prop)
+  (let [final-props
+        (persistent!
+         (reduce (fn [acc conn-prop]
+                   ;; TODO: change this to expanded- and use that as the basis for all calcs below (not conn-prop)
+                   (let [expanded-props (case (keyword (:type conn-prop))
+                                          :secret
+                                          (expand-secret-conn-prop conn-prop)
 
-                                             :info
-                                             (if-let [conn-prop' (resolve-info-conn-prop conn-prop)]
-                                               [conn-prop']
-                                               [])
+                                          :info
+                                          (if-let [conn-prop' (resolve-info-conn-prop conn-prop)]
+                                            [conn-prop']
+                                            [])
 
-                                             :checked-section
-                                             (resolve-checked-section-conn-prop conn-prop)
+                                          :checked-section
+                                          (resolve-checked-section-conn-prop conn-prop)
 
-                                             :schema-filters
-                                             (expand-schema-filters-prop conn-prop)
+                                          :schema-filters
+                                          (expand-schema-filters-prop conn-prop)
 
-                                             [conn-prop])]
-                        (-> (update acc ::final-props concat expanded-props)
-                            (update ::props-by-name merge (into {} (map (fn [p]
-                                                                          [(:name p) p])) expanded-props)))))
-                    {::final-props [] ::props-by-name {}}
-                    conn-props)
-        {::keys [final-props props-by-name]} res]
+                                          [conn-prop])]
+                     (reduce conj! acc expanded-props)))
+                 (transient [])
+                 conn-props))
+        props-by-name (reduce #(assoc %1 (:name %2) %2) {} final-props)]
     ;; now, traverse the visible-if-edges and update all visible-if entries with their full set of "transitive"
     ;; dependencies (if property x depends on y having a value, but y itself depends on z having a value, then x
     ;; should be hidden if y is)
     (mapv (fn [prop]
-            (let [v-ifs* (loop [props* [prop]
-                                acc    {}]
-                           (if (seq props*)
-                             (let [all-visible-ifs  (m/filter-kv
-                                                     (fn [prop-name v]
-                                                       (or (contains? props-by-name (->str prop-name))
-                                                            ;; If v is false then this depended on a removed :checked-section
-                                                            ;; and the dependency should be dropped.
-                                                           (not (false? v))))
-                                                     (apply merge (map :visible-if props*)))
-                                   transitive-props (map (comp (partial get props-by-name) ->str)
-                                                         (keys all-visible-ifs))
-                                   next-acc         (merge all-visible-ifs acc)
-                                   cyclic-props     (set/intersection (into #{} (keys all-visible-ifs))
-                                                                      (into #{} (keys acc)))]
-                               (if (empty? cyclic-props)
-                                 (recur transitive-props next-acc)
-                                 (-> (trs "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
-                                          driver cyclic-props)
-                                     (ex-info {:type               qp.error-type/driver
-                                               :driver             driver
-                                               :cyclic-visible-ifs cyclic-props})
-                                     throw)))
-                             acc))]
+            (let [v-ifs*
+                  (loop [props* [prop]
+                         acc    {}]
+                    (if (seq props*)
+                      (let [all-visible-ifs  (reduce
+                                              #(reduce-kv (fn [acc prop-name v]
+                                                            (if (or (contains? props-by-name (->str prop-name))
+                                                                    ;; If v is false then this depended on a removed :checked-section
+                                                                    ;; and the dependency should be dropped.
+                                                                    (not (false? v)))
+                                                              (assoc acc prop-name v)
+                                                              acc))
+                                                          %1 (:visible-if %2))
+                                              {} props*)
+                            visible-keys     (keys all-visible-ifs)
+                            transitive-props (perf/mapv (comp (partial get props-by-name) ->str) visible-keys)
+                            next-acc         (into acc all-visible-ifs)]
+                        (if-not (perf/some #(contains? acc %) visible-keys)
+                          (recur transitive-props next-acc)
+                          (let [cyclic-props (set/intersection (set visible-keys)
+                                                               (set (keys acc)))]
+                            (-> (trs "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
+                                     driver cyclic-props)
+                                (ex-info {:type               qp.error-type/driver
+                                          :driver             driver
+                                          :cyclic-visible-ifs cyclic-props})
+                                throw))))
+                      acc))]
               (cond-> prop
                 (seq v-ifs*) (assoc :visible-if v-ifs*)
                 (empty? v-ifs*) (dissoc :visible-if))))
@@ -518,36 +520,33 @@
     "starburst"
     "vertica"})
 
-(def partner-drivers
-  "The set of other drivers in the partnership program"
-  #{"firebolt" "materialize"})
-
 (defn driver-source
-  "Return the source type of the driver: official, partner, or community"
+  "Return the source type of the driver: official or community"
   [driver-name]
-  (cond
-    (contains? official-drivers driver-name) "official"
-    (contains? partner-drivers driver-name) "partner"
-    :else "community"))
+  (if (contains? official-drivers driver-name)
+    "official"
+    "community"))
 
 (defn available-drivers-info
   "Return info about all currently available drivers, including their connection properties fields and supported
   features. The output of `driver/connection-properties` is passed through `connection-props-server->client` before
   being returned, to handle any transformation between the server side and client side representation."
   []
-  (into {} (for [driver (available-drivers)
-                 :let   [props (try
-                                 (->> (driver/connection-properties driver)
-                                      (connection-props-server->client driver))
-                                 (catch Throwable e
-                                   (log/errorf e "Unable to determine connection properties for driver %s" driver)))]
-                 :when  props]
-             ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
-             [driver {:source {:type (driver-source (name driver))
-                               :contact (driver/contact-info driver)}
-                      :details-fields props
-                      :driver-name    (driver/display-name driver)
-                      :superseded-by  (driver/superseded-by driver)}])))
+  (persistent!
+   (reduce (fn [acc driver]
+             (if-some [props (try
+                               (->> (driver/connection-properties driver)
+                                    (connection-props-server->client driver))
+                               (catch Throwable e
+                                 (log/errorf e "Unable to determine connection properties for driver %s" driver)))]
+               ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
+               (assoc! acc driver {:source {:type (driver-source (name driver))
+                                            :contact (driver/contact-info driver)}
+                                   :details-fields props
+                                   :driver-name    (driver/display-name driver)
+                                   :superseded-by  (driver/superseded-by driver)})
+               acc))
+           (transient {}) (available-drivers))))
 
 (defsetting engines
   "Available database engines"

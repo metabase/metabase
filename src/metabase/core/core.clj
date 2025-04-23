@@ -30,6 +30,7 @@
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.queue :as queue]
    [metabase.util.system-info :as u.system-info])
   (:import
    (java.lang.management ManagementFactory)))
@@ -96,6 +97,7 @@
   "General application shutdown function which should be called once at application shutdown."
   []
   (log/info "Metabase Shutting Down ...")
+  (queue/stop-listeners!)
   (task/stop-scheduler!)
   (server/stop-web-server!)
   (analytics/shutdown!)
@@ -173,6 +175,7 @@
   (setting/migrate-encrypted-settings!)
   (database/check-health!)
   (task/start-scheduler!)
+  (queue/start-listeners!)
   (init-status/set-complete!)
   (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
         duration   (- (System/currentTimeMillis) start-time)]

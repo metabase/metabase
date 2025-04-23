@@ -39,6 +39,7 @@
 /docs/**/node_modules
 /docs/**/package.json
 /docs/**/yarn.lock
+/docs/embedding/sdk/api/
 /frontend/test/snapshots/*
 /e2e/snapshots/*
 /e2e/tmp/*
@@ -70,6 +71,7 @@
 /storybook-static
 /target
 /test-report-*
+/temp
 **/cli-snippets-tmp/**
 \#*\#
 bin/node_modules/
@@ -132,3 +134,4 @@ modules/drivers/*/.lsp/*
 
 .aider*
 /config.yml
+CLAUDE.local.md

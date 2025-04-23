@@ -1,15 +1,31 @@
 (ns metabase.util.retry
   "Support for in-memory, thread-blocking retrying."
   (:require
+   [malli.util :as mut]
    [metabase.config :as config]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]])
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr])
   (:import
    (io.github.resilience4j.core IntervalFunction)
    (io.github.resilience4j.retry Retry RetryConfig)
    (java.util.function Predicate)))
 
 (set! *warn-on-reflection* true)
+
+(mr/def ::retry-config
+  [:map
+   [:max-attempts             :int]
+   [:initial-interval-millis  :int]
+   [:multiplier               :float]
+   [:randomization-factor     :float]
+   [:max-interval-millis      :int]
+   [:retry-on-exception-pred  {:optional true} [:=> [:cat :any] :boolean]]
+   [:retry-on-result-pred     {:optional true} [:=> [:cat :any] :boolean]]])
+
+(mr/def ::retry-overrides
+  (mut/optional-keys [:ref ::retry-config]))
 
 (defsetting retry-max-attempts
   (deferred-tru "The maximum number of attempts for an event.")
@@ -85,11 +101,11 @@
                                       (apply f args)))]
        (.call (Retry/decorateCallable retry callable))))))
 
-(defn make
+(mu/defn make
   "Make a retrying function from `f` with the given `retry-config`.
 
     (let [retrier (retry/make retry-config)]
       (retrier f))"
-  [retry-config]
+  [retry-config :- ::retry-config]
   (fn [f]
     ((decorate f (random-exponential-backoff-retry (str (random-uuid)) retry-config)))))

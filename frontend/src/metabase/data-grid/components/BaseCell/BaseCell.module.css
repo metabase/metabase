@@ -1,8 +1,7 @@
 .root {
   overflow: hidden;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
   height: 100%;
   width: 100%;
   cursor: default;

@@ -14,11 +14,11 @@ import type { Dataset } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
+  getAllNativeEditorSelectedText,
   getCard,
   getFirstQueryResult,
   getIsResultDirty,
   getIsRunning,
-  getNativeEditorSelectedText,
   getOriginalQuestion,
   getOriginalQuestionWithParameterValues,
   getQueryResults,
@@ -283,7 +283,7 @@ export const runQuestionOrSelectedQuery =
 
     const query = question.query();
     const queryInfo = Lib.queryDisplayInfo(query);
-    const selectedText = getNativeEditorSelectedText(getState());
+    const selectedText = getAllNativeEditorSelectedText(getState());
     if (queryInfo.isNative && selectedText) {
       const selectedQuery = Lib.withNativeQuery(query, selectedText);
       dispatch(
