@@ -173,7 +173,6 @@ describe("scenarios > question > download", () => {
   });
 
   it("should remember the selected format across page reloads", () => {
-    // Create a simple test question
     H.createQuestion(
       {
         name: "Format Preference Test",
@@ -186,37 +185,30 @@ describe("scenarios > question > download", () => {
       { visitQuestion: true },
     );
 
-    // Intercept the API call that saves the format preference
     cy.intercept(
       "PUT",
       "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
     ).as("saveFormat");
 
-    // 1. Select xlsx format without downloading
     cy.findByRole("button", { name: "Download results" }).click();
     H.popover().within(() => {
       cy.findByText(".xlsx").click();
     });
 
-    // Wait for the preference to be saved
     cy.wait("@saveFormat");
 
-    // Reload and verify the format preference was saved
     cy.reload();
     cy.findByRole("button", { name: "Download results" }).click();
     H.popover().within(() => {
       cy.get("[data-checked='true']").should("contain", ".xlsx");
     });
 
-    // Select a different format
     H.popover().within(() => {
       cy.findByText(".json").click();
     });
 
-    // Wait for the preference to be saved
     cy.wait("@saveFormat");
 
-    // Reload and verify the new format preference persists
     cy.reload();
     cy.findByRole("button", { name: "Download results" }).click();
     H.popover().within(() => {
@@ -225,7 +217,6 @@ describe("scenarios > question > download", () => {
   });
 
   it("should remember the download format on dashboards", () => {
-    // Create a test question and dashboard
     H.createQuestion({
       name: "Dashboard Format Test",
       query: {
@@ -240,16 +231,13 @@ describe("scenarios > question > download", () => {
           dashboard_id: dashboardId,
         });
 
-        // Visit the dashboard
         H.visitDashboard(dashboardId);
 
-        // Intercept the API call that saves the format preference
         cy.intercept(
           "PUT",
           "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
-        ).as("saveFormatDash");
+        ).as("saveFormat");
 
-        // Select xlsx format without downloading
         H.getDashboardCard().realHover();
         H.getDashboardCardMenu().click();
         H.popover().within(() => {
@@ -259,10 +247,8 @@ describe("scenarios > question > download", () => {
           cy.findByText(".xlsx").click();
         });
 
-        // Wait for the preference to be saved
-        cy.wait("@saveFormatDash");
+        cy.wait("@saveFormat");
 
-        // Reload and verify format preference was saved
         cy.reload();
         H.getDashboardCard().realHover();
         H.getDashboardCardMenu().click();
@@ -273,15 +259,12 @@ describe("scenarios > question > download", () => {
           cy.get("[data-checked='true']").should("contain", ".xlsx");
         });
 
-        // Select a different format
         H.popover().within(() => {
           cy.findByText(".csv").click();
         });
 
-        // Wait for the preference to be saved
-        cy.wait("@saveFormatDash");
+        cy.wait("@saveFormat");
 
-        // Reload and verify the new format preference persists
         cy.reload();
         H.getDashboardCard().realHover();
         H.getDashboardCardMenu().click();
