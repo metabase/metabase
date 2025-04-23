@@ -8,7 +8,7 @@ interface Props {
 
 export const PresetPicker = ({ presets, onChange }: Props) => {
   return (
-    <Menu position="bottom-end" shadow="md" width={200}>
+    <Menu position="bottom-end" shadow="md" width={220}>
       <Menu.Target>
         <Button leftSection={<Icon name="snippet" />}>Load preset</Button>
       </Menu.Target>
