@@ -1032,15 +1032,19 @@
                :order-by [:a.table_name]}
               :dialect (sql.qp/quote-style driver)))
 
-;; MariaDB jdbc uses its `max_statement_time` mechanism to timeout. It is unclear which of these
-;; codes should be returned. Hibernate expects 3024, but in testing 1969 was observed.
-;; https://mariadb.com/kb/en/e1969/
-;; https://mariadb.com/kb/en/e3024/
-(defmethod sql-jdbc/impl-query-canceled? :mariadb [_ ^SQLException e]
-  (contains? #{1969 3024} (.getErrorCode e)))
-
 (defmethod sql-jdbc/impl-query-canceled? :mysql [_ ^SQLException e]
-  (or (= (.getErrorCode e) 1317)
-      ;; when we use MariaDB as the app-db the driver type is returned as `:mysql` so we also need
-      ;; to check for the different error code MariaDB uses
-      (sql-jdbc/impl-query-canceled? :mariadb e)))
+  ;; MariaDB and MySQL report different error codes for the timeout caused by using .setQueryTimeout. This happens because they
+  ;; use different mechanisms for causing this timeout. MySQL timesout and terminates the connection externally. MariaDB uses the
+  ;; max_statement_time configuration that can be passed to a SQL statement to set its.
+  ;;
+  ;; Docs for MariaDB:
+  ;; https://mariadb.com/kb/en/e1317/
+  ;; https://mariadb.com/kb/en/e1969/
+  ;; https://mariadb.com/kb/en/e3024/
+  ;;
+  ;; Docs for MySQL:
+  ;; https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
+  ;;
+  ;; MySQL can return 1317 and 3024, but 1969 is not an error code in the mysql reference. All of these codes make sense for MariaDB
+  ;; to return. Hibernate expects 3024, but in testing 1969 was observered.
+  (contains? #{1317 1969 3024} (.getErrorCode e)))
