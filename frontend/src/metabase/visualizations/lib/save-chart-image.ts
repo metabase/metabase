@@ -61,15 +61,17 @@ export const saveChartImage = async (selector: string, fileName: string) => {
     return;
   }
 
+  const PNG_CANVAS_SCALE = 2;
+
   const contentHeight = node.getBoundingClientRect().height;
   const contentWidth = node.getBoundingClientRect().width;
 
   const size = getFooterSize(contentWidth);
-  const FOOTER_HEIGHT = getFooterConfig(size).h;
+  const FOOTER_HEIGHT = getFooterConfig(size, PNG_CANVAS_SCALE).h;
 
   const { default: html2canvas } = await import("html2canvas-pro");
   const canvas = await html2canvas(node, {
-    scale: 2,
+    scale: PNG_CANVAS_SCALE,
     useCORS: true,
     height: contentHeight + FOOTER_HEIGHT,
     onclone: async (_doc: Document, node: HTMLElement) => {
@@ -79,7 +81,7 @@ export const saveChartImage = async (selector: string, fileName: string) => {
       node.style.borderRadius = "0px";
       node.style.border = "none";
 
-      const footer = createFooterElement(size);
+      const footer = createFooterElement(size, PNG_CANVAS_SCALE);
       node.appendChild(footer);
     },
   });
@@ -89,7 +91,7 @@ export const saveChartImage = async (selector: string, fileName: string) => {
       if (isStorybookActive) {
         // if we're running storybook we open the image in place
         // so we can test the export result with loki
-        openImageBlobOnStorybook({ canvas, blob });
+        openImageBlobOnStorybook({ canvas, blob, scale: PNG_CANVAS_SCALE });
       } else {
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
