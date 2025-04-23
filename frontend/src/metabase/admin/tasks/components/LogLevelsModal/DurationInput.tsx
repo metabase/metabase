@@ -3,9 +3,6 @@ import { t } from "ttag";
 import { Flex, Select, TextInput } from "metabase/ui";
 import type { TimeUnit } from "metabase-types/api";
 
-// we don't want to show nanoseconds in the dropdown
-type AllowedTimeUnit = Exclude<TimeUnit, "nanoseconds">;
-
 interface Props {
   duration: string;
   durationUnit: TimeUnit;
@@ -41,6 +38,9 @@ export const DurationInput = ({
     </Flex>
   );
 };
+
+// We don't want to show nanoseconds in the dropdown
+type AllowedTimeUnit = Exclude<TimeUnit, "nanoseconds">;
 
 // It intentionally is a function and not a module-level constant, so that `t` function works correctly
 function getData() {
