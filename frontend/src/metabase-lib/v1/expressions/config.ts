@@ -380,90 +380,6 @@ export const EXPRESSION_FUNCTIONS = defineClauses({
       return "boolean";
     },
   },
-  // boolean operators
-  and: {
-    displayName: "AND",
-    type: "boolean",
-    multiple: true,
-    args: ["boolean", "boolean"],
-    argType() {
-      return "boolean";
-    },
-  },
-  or: {
-    displayName: "OR",
-    type: "boolean",
-    multiple: true,
-    args: ["boolean", "boolean"],
-    argType() {
-      return "boolean";
-    },
-  },
-  not: {
-    displayName: "NOT",
-    type: "boolean",
-    args: ["boolean"],
-  },
-  // numeric operators
-  "*": {
-    displayName: "*",
-    type: "number",
-    args: ["number", "number"],
-    multiple: true,
-    argType(_index, _args, type) {
-      if (type === "aggregation") {
-        return "aggregation";
-      }
-      return "number";
-    },
-  },
-  "/": {
-    displayName: "/",
-    type: "number",
-    args: ["number", "number"],
-    multiple: true,
-    argType(_index, _args, type) {
-      if (type === "aggregation") {
-        return "aggregation";
-      }
-      return "number";
-    },
-  },
-  "-": {
-    displayName: "-",
-    type: "number",
-    args: ["number", "number"],
-    multiple: true,
-    argType(_index, _args, type) {
-      if (type === "aggregation") {
-        return "aggregation";
-      }
-      return "number";
-    },
-  },
-  "+": {
-    displayName: "+",
-    type: "number",
-    args: ["number", "number"],
-    multiple: true,
-    argType(_index, _args, type) {
-      if (type === "aggregation") {
-        return "aggregation";
-      }
-      return "number";
-    },
-  },
-  // comparison operators
-  "=": {
-    displayName: "=",
-    type: "boolean",
-    args: ["expression", "expression"],
-  },
-  "!=": {
-    displayName: "!=",
-    type: "boolean",
-    args: ["expression", "expression"],
-  },
   //"in` and `not-in` are aliases for `=` and `!="
   in: {
     displayName: "in",
@@ -476,26 +392,6 @@ export const EXPRESSION_FUNCTIONS = defineClauses({
     type: "boolean",
     args: ["expression", "expression"],
     multiple: true,
-  },
-  "<=": {
-    displayName: "<=",
-    type: "boolean",
-    args: ["expression", "expression"],
-  },
-  ">=": {
-    displayName: ">=",
-    type: "boolean",
-    args: ["expression", "expression"],
-  },
-  "<": {
-    displayName: "<",
-    type: "boolean",
-    args: ["expression", "expression"],
-  },
-  ">": {
-    displayName: ">",
-    type: "boolean",
-    args: ["expression", "expression"],
   },
   "get-year": {
     displayName: "year",
@@ -574,7 +470,116 @@ export const EXPRESSION_FUNCTIONS = defineClauses({
   },
 });
 
+export const EXPRESSION_OPERATORS = defineClauses({
+  // boolean operators
+  and: {
+    displayName: "AND",
+    type: "boolean",
+    multiple: true,
+    args: ["boolean", "boolean"],
+    argType() {
+      return "boolean";
+    },
+  },
+  or: {
+    displayName: "OR",
+    type: "boolean",
+    multiple: true,
+    args: ["boolean", "boolean"],
+    argType() {
+      return "boolean";
+    },
+  },
+  not: {
+    displayName: "NOT",
+    type: "boolean",
+    args: ["boolean"],
+  },
+  // numeric operators
+  "*": {
+    displayName: "*",
+    type: "number",
+    args: ["number", "number"],
+    multiple: true,
+    argType(_index, _args, type) {
+      if (type === "aggregation") {
+        return "aggregation";
+      }
+      return "number";
+    },
+  },
+  "/": {
+    displayName: "/",
+    type: "number",
+    args: ["number", "number"],
+    multiple: true,
+    argType(_index, _args, type) {
+      if (type === "aggregation") {
+        return "aggregation";
+      }
+      return "number";
+    },
+  },
+  "-": {
+    displayName: "-",
+    type: "number",
+    args: ["number", "number"],
+    multiple: true,
+    argType(_index, _args, type) {
+      if (type === "aggregation") {
+        return "aggregation";
+      }
+      return "number";
+    },
+  },
+  "+": {
+    displayName: "+",
+    type: "number",
+    args: ["number", "number"],
+    multiple: true,
+    argType(_index, _args, type) {
+      if (type === "aggregation") {
+        return "aggregation";
+      }
+      return "number";
+    },
+  },
+  // equality operators
+  "=": {
+    displayName: "=",
+    type: "boolean",
+    args: ["expression", "expression"],
+  },
+  "!=": {
+    displayName: "!=",
+    type: "boolean",
+    args: ["expression", "expression"],
+  },
+  // comparison operators
+  "<=": {
+    displayName: "<=",
+    type: "boolean",
+    args: ["expression", "expression"],
+  },
+  ">=": {
+    displayName: ">=",
+    type: "boolean",
+    args: ["expression", "expression"],
+  },
+  "<": {
+    displayName: "<",
+    type: "boolean",
+    args: ["expression", "expression"],
+  },
+  ">": {
+    displayName: ">",
+    type: "boolean",
+    args: ["expression", "expression"],
+  },
+});
+
 export const MBQL_CLAUSES = {
   ...AGGREGATION_FUNCTIONS,
   ...EXPRESSION_FUNCTIONS,
+  ...EXPRESSION_OPERATORS,
 };
