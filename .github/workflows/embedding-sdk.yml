@@ -1,12 +1,12 @@
 name: Embedding SDK
 
 on:
-  push:
-    branches:
-      - "master"
-      - "release-**"
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_call:
+    inputs:
+      artifact_name_ee:
+        type: string
+        description: "Name of the EE uberjar artifact"
+        required: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -29,7 +29,7 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
 
-  build:
+  build-sdk:
     needs: [files-changed]
     if: |
       !cancelled() &&
@@ -54,10 +54,10 @@ jobs:
           path: resources/embedding-sdk
 
   embedding-sdk-cli-snippets-type-check:
-    needs: [files-changed, build]
+    needs: [files-changed, build-sdk]
     if: |
       needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
-      needs.build.result == 'success'
+      needs.build-sdk.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -73,10 +73,10 @@ jobs:
         run: yarn run embedding-sdk:cli-snippets:type-check
 
   embedding-sdk-docs-snippets-type-check:
-    needs: [files-changed, build]
+    needs: [files-changed, build-sdk]
     if: |
       needs.files-changed.outputs.documentation == 'true' &&
-      needs.build.result == 'success'
+      needs.build-sdk.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -128,10 +128,11 @@ jobs:
 
   sdk-e2e-tests:
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml
-    needs: [build]
+    needs: [build-sdk]
     secrets: inherit
     with:
       cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+      artifact_name_ee: ${{ inputs.artifact_name_ee }}
 
   e2e-component-tests-embedding-sdk-cross-version:
     if: ${{ startsWith(inputs.branch, 'release-x.') }}
