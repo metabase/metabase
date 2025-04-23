@@ -87,15 +87,15 @@
 
 (defn- handle-conn-uri [details user account private-key-file]
   (let [existing-conn-uri (or (:connection-uri details)
+                              (when-let [sub (:subname details)]
+                                (format "jdbc:snowflake:%s" sub))
                               (format "jdbc:snowflake://%s.snowflakecomputing.com" account))
         opts-str (sql-jdbc.common/additional-opts->string :url
                                                           {:user (codec/url-encode user)
                                                            :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))})
         new-conn-uri (sql-jdbc.common/conn-str-with-additional-opts existing-conn-uri :url opts-str)]
     (-> details
-        (assoc :connection-uri new-conn-uri)
-        ;; The Snowflake driver uses the :account property, but we need to drop the region from it first
-        (assoc :account (first (str/split account #"\."))))))
+        (assoc :connection-uri new-conn-uri))))
 
 (defn- resolve-private-key
   "Convert the private-key secret properties into a private_key_file property in `details`.
@@ -194,12 +194,6 @@
     ;; https://support.snowflake.net/s/question/0D50Z00008WTOMCSA5/
     (-> (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
                 :subprotocol                                "snowflake"
-                ;; see https://github.com/metabase/metabase/issues/22133
-                :subname                                    (let [base-url (if (and use-hostname (string? host) (not (str/blank? host)))
-                                                                             (cond-> host
-                                                                               (not= (last host) \/) (str "/"))
-                                                                             (str account ".snowflakecomputing.com/"))]
-                                                              (str "//" base-url))
                 :client_metadata_request_use_connection_ctx true
                 :ssl                                        true
                 ;; keep open connections open indefinitely instead of closing them. See #9674 and
@@ -213,6 +207,15 @@
                 ;; [[metabase.public-settings/start-of-week]] Setting.
                 :week_start                                 (start-of-week-setting->snowflake-offset)}
                (-> details
+                   ;; see https://github.com/metabase/metabase/issues/22133
+                   (update :subname (fn [subname]
+                                      (if subname
+                                        subname
+                                        (let [base-url (if (and use-hostname (string? host) (not (str/blank? host)))
+                                                         (cond-> host
+                                                           (not= (last host) \/) (str "/"))
+                                                         (str account ".snowflakecomputing.com/"))]
+                                          (str "//" base-url)))))
                    ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead
                    ;; of `db`. If we run across `dbname`, correct our behavior
                    (set/rename-keys {:dbname :db})
