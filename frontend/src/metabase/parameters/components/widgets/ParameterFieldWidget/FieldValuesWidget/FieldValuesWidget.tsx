@@ -191,30 +191,32 @@ export const FieldValuesWidgetInner = forwardRef<
     setOptions([]);
 
     let newOptions: FieldValue[] = [];
-    let newValuesMode = valuesMode;
+    let hasMoreOptions = false;
     try {
       if (canUseDashboardEndpoints(dashboard)) {
-        const { values, has_more_values } =
-          await dispatchFetchDashboardParameterValues(query);
-        newOptions = values;
-        newValuesMode = has_more_values ? "search" : newValuesMode;
+        const result = await dispatchFetchDashboardParameterValues(query);
+        newOptions = result.values;
+        hasMoreOptions = result.has_more_values;
       } else if (canUseCardEndpoints(question)) {
-        const { values, has_more_values } =
-          await dispatchFetchCardParameterValues(query);
-        newOptions = values;
-        newValuesMode = has_more_values ? "search" : newValuesMode;
+        const result = await dispatchFetchCardParameterValues(query);
+        newOptions = result.values;
+        hasMoreOptions = result.has_more_values;
       } else if (canUseParameterEndpoints(parameter)) {
-        const { values, has_more_values } =
-          await dispatchFetchParameterValues(query);
-        newOptions = values;
-        newValuesMode = has_more_values ? "search" : newValuesMode;
+        const result = await dispatchFetchParameterValues(query);
+        newOptions = result.values;
+        hasMoreOptions = result.has_more_values;
       }
     } finally {
+      const canSearch = isSearchable({
+        parameter,
+        fields,
+        disableSearch,
+        disablePKRemappingForSearch,
+      });
       updateRemappings(newOptions);
-
       setOptions(newOptions);
+      setValuesMode(canSearch && hasMoreOptions ? "search" : valuesMode);
       setLoadingState("LOADED");
-      setValuesMode(newValuesMode);
     }
   };
 
@@ -383,7 +385,7 @@ export const FieldValuesWidgetInner = forwardRef<
     !disableList &&
     shouldList({ parameter, fields, disableSearch }) &&
     valuesMode === "list";
-  const isLoading = loadingState === "LOADING";
+  const isLoading = loadingState !== "LOADED";
   const hasListValues = hasList({
     parameter,
     fields,

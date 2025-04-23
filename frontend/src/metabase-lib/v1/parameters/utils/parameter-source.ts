@@ -11,7 +11,7 @@ import type { ParameterWithTemplateTagTarget } from "../types";
 
 import { deriveFieldOperatorFromParameter } from "./operators";
 import { getFields } from "./parameter-fields";
-import { getParameterType } from "./parameter-type";
+import { getParameterType, isStringParameter } from "./parameter-type";
 
 export const getQueryType = (
   parameter: ParameterWithTemplateTagTarget,
@@ -104,6 +104,10 @@ export const canSearchParameterValues = (
   parameter: Parameter,
   disablePKRemapping = false,
 ) => {
+  if (!isStringParameter(parameter)) {
+    return false;
+  }
+
   const operator = deriveFieldOperatorFromParameter(parameter);
   if (operator && isFuzzyOperator(operator) && !canUseCustomSource(parameter)) {
     return false;
