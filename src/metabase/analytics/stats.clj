@@ -818,7 +818,7 @@
    {:name      :database-routing
     :available (premium-features/enable-database-routing?)
     :enabled   (if (premium-features/enable-database-routing?)
-                 (t2/exists? :model/Database :router_database_id [:not= nil])
+                 (t2/exists? :model/DatabaseRouter)
                  false)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
