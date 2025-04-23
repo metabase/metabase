@@ -703,8 +703,8 @@ export const EXPRESSION_FUNCTIONS = new Set([
 export const OPERATORS = new Set([
   OPERATOR.Plus,
   OPERATOR.Minus,
-  OPERATOR.Star,
-  OPERATOR.Slash,
+  OPERATOR.Multiply,
+  OPERATOR.Divide,
 
   OPERATOR.Not,
   OPERATOR.And,
