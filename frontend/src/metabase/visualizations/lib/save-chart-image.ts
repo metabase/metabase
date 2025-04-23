@@ -76,7 +76,7 @@ export const saveChartImage = async ({
   const contentWidth = node.getBoundingClientRect().width;
 
   const size = getFooterSize(contentWidth);
-  const FOOTER_HEIGHT = getFooterConfig(size, PNG_CANVAS_SCALE).h;
+  const FOOTER_HEIGHT = getFooterConfig(size).h;
 
   const canvasHeight = includeBranding
     ? contentHeight + FOOTER_HEIGHT
@@ -95,7 +95,7 @@ export const saveChartImage = async ({
       node.style.border = "none";
 
       if (includeBranding) {
-        const footer = createFooterElement(size, PNG_CANVAS_SCALE);
+        const footer = createFooterElement(size);
         node.appendChild(footer);
       }
     },

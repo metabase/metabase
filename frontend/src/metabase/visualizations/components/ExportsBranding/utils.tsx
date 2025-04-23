@@ -30,7 +30,7 @@ const svgComponentToBase64 = (Component: JSX.Element): string => {
   return `data:image/svg+xml;base64,${encoded}`;
 };
 
-export const getFooterConfig = (size: FooterSize, scale: number) => {
+export const getFooterConfig = (size: FooterSize) => {
   const sizes = ["xs", "s", "m", "l", "xl", "xxl", "xxxl"];
   const sizeIndex = sizes.indexOf(size);
 
@@ -40,7 +40,7 @@ export const getFooterConfig = (size: FooterSize, scale: number) => {
   const heightValues = [32, 32, 52, 60, 84, 112, 144];
   const logoHeights = [16, 16, 20, 28, 36, 48, 64];
 
-  const getDimension = (values: number[]): number => values[sizeIndex] / scale;
+  const getDimension = (values: number[]): number => values[sizeIndex];
 
   return {
     fz: getDimension(fzValues),
@@ -51,8 +51,8 @@ export const getFooterConfig = (size: FooterSize, scale: number) => {
   };
 };
 
-export const createFooterElement = (size: FooterSize, scale: number) => {
-  const { fz, h, ly, m, p } = getFooterConfig(size, scale);
+export const createFooterElement = (size: FooterSize) => {
+  const { fz, h, ly, m, p } = getFooterConfig(size);
 
   const LOGO_ASCPECT_RATIO = 4.0625;
   const LOGO_HEIGHT = ly;
