@@ -79,6 +79,41 @@ jobs:
     secrets: inherit
     with:
       skip: ${{ needs.files-changed.outputs.frontend_all != 'true' }}
+      
+  # Build uberjar to be shared by all jobs
+  build-uberjar:
+    name: Build Uberjar ${{ matrix.edition }}
+    needs: [files-changed]
+    if: ${{ !cancelled() && (needs.files-changed.outputs.e2e_all == 'true' || needs.files-changed.outputs.backend_all == 'true') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        edition: [ee, oss]
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      INTERACTIVE: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: uberjar
+          java-version: 21
+          
+      - name: Build uberjar with ./bin/build.sh
+        timeout-minutes: 10
+        run: ./bin/build.sh
+        shell: bash
+        
+      - name: Prepare uberjar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          path: |
+            ./target/uberjar/metabase.jar
 
   e2e-tests:
     needs: files-changed
