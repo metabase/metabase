@@ -1,7 +1,7 @@
+import ReactDOMServer from "react-dom/server";
 import { t } from "ttag";
 
-import LogoLarge from "assets/img/exports-branded-logo-l.svg";
-import LogoSmall from "assets/img/exports-branded-logo-s.svg";
+import { BrandingLogo } from "./BrandingLogo";
 
 type FooterSize = "xs" | "s" | "m" | "l" | "xl" | "xxl" | "xxxl";
 
@@ -24,50 +24,50 @@ export const getFooterSize = (width: number): FooterSize => {
   return "xxxl";
 };
 
-const svgToDataUrl = async (svgUrl: string): Promise<string> => {
-  try {
-    const response = await fetch(svgUrl);
-    const svgText = await response.text();
-    const dataUrl = `data:image/svg+xml;base64,${btoa(svgText)}`;
-    return dataUrl;
-  } catch (error) {
-    console.error("Error converting SVG to data URL:", error);
-    return svgUrl;
-  }
+const svgComponentToBase64 = (Component: JSX.Element): string => {
+  const svgString = ReactDOMServer.renderToStaticMarkup(Component);
+  const encoded = Buffer.from(svgString, "utf-8").toString("base64");
+  return `data:image/svg+xml;base64,${encoded}`;
 };
 
 export const getFooterConfig = (size: FooterSize) => {
   const sizes = ["xs", "s", "m", "l", "xl", "xxl", "xxxl"];
   const sizeIndex = sizes.indexOf(size);
 
-  const fzValues = [8, 16, 12, 24, 32, 32, 48];
-  const marginValues = [0, 16, 8, 24, 32, 32, 48];
+  const fzValues = [11, 11, 12, 14, 17, 20, 28];
+  const marginValues = [0, 6, 8, 12, 16, 20, 32];
   const paddingValues = [8, 16, 24, 24, 32, 32, 48];
   const heightValues = [32, 32, 52, 60, 84, 112, 144];
+  const logoHeights = [16, 16, 20, 28, 36, 48, 64];
 
   return {
-    fz: fzValues[sizeIndex],
-    m: marginValues[sizeIndex],
-    p: paddingValues[sizeIndex],
-    h: heightValues[sizeIndex],
+    fz: fzValues[sizeIndex] / 16 / 2,
+    m: marginValues[sizeIndex] / 2,
+    p: paddingValues[sizeIndex] / 2,
+    h: heightValues[sizeIndex] / 2,
+    ly: logoHeights[sizeIndex] / 2,
   };
 };
 
-export const createFooterElement = async (size: FooterSize) => {
-  const { fz, h, m, p } = getFooterConfig(size);
+export const createFooterElement = (size: FooterSize) => {
+  const { fz, h, ly, m, p } = getFooterConfig(size);
+
+  const LOGO_ASCPECT_RATIO = 4.0625;
+  const LOGO_HEIGHT = ly;
+  const LOGO_WIDTH = LOGO_HEIGHT * LOGO_ASCPECT_RATIO;
+
+  const LogoComponent = (
+    <BrandingLogo width={LOGO_WIDTH} height={LOGO_HEIGHT} />
+  );
 
   const footer = document.createElement("div");
   footer.style.cssText = `
-    font-family: "Lato", sans-serif;
-    font-size: ${fz}px;
-    color: var(--mb-color-text-light);
     height: ${h}px;
     width: 100%;
     padding-inline: ${p}px;
     display: flex;
     align-items: center;
     justify-content: ${size === "xs" ? "center" : "flex-end"};
-    background-color: red; // FIXME: debugging only
     z-index: 1000;
     position: absolute;
     bottom: -${h}px;
@@ -77,17 +77,27 @@ export const createFooterElement = async (size: FooterSize) => {
   if (size !== "xs") {
     const footerText = document.createElement("span");
     footerText.textContent = t`Made with`;
-    footerText.style.marginInlineEnd = `${m}px`;
+    footerText.style.cssText = `
+      font-family: "Lato", sans-serif;
+      font-size: ${fz}rem;
+      color: var(--mb-color-text-medium);
+      display: inline-block;
+      margin-inline-end: ${m}px;
+      vertical-align: middle;
+      line-height: 1;
+    `;
     footer.appendChild(footerText);
   }
 
-  const logoUrl = size === "l" ? LogoLarge : LogoSmall;
-  const logoDataUrl = await svgToDataUrl(logoUrl);
+  const logoDataUrl = svgComponentToBase64(LogoComponent);
 
   const logo = document.createElement("img");
   logo.src = logoDataUrl;
   // eslint-disable-next-line no-literal-metabase-strings -- This is used only in non-whitelabeled instances!
   logo.alt = t`Metabase company logo`;
+  logo.width = LOGO_WIDTH;
+  logo.height = LOGO_HEIGHT;
+
   footer.appendChild(logo);
 
   return footer;

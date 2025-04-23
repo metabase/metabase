@@ -61,7 +61,9 @@ export const saveChartImage = async (selector: string, fileName: string) => {
     return;
   }
 
+  const contentHeight = node.getBoundingClientRect().height;
   const contentWidth = node.getBoundingClientRect().width;
+
   const size = getFooterSize(contentWidth);
   const FOOTER_HEIGHT = getFooterConfig(size).h;
 
@@ -69,7 +71,7 @@ export const saveChartImage = async (selector: string, fileName: string) => {
   const canvas = await html2canvas(node, {
     scale: 2,
     useCORS: true,
-    height: node.getBoundingClientRect().height + FOOTER_HEIGHT,
+    height: contentHeight + FOOTER_HEIGHT,
     onclone: async (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.classList.add(EmbedFrameS.WithThemeBackground);
@@ -77,7 +79,7 @@ export const saveChartImage = async (selector: string, fileName: string) => {
       node.style.borderRadius = "0px";
       node.style.border = "none";
 
-      const footer = await createFooterElement(size);
+      const footer = createFooterElement(size);
       node.appendChild(footer);
     },
   });
