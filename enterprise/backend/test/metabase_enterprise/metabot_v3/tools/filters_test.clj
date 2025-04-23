@@ -97,9 +97,8 @@
                                                                     :iso]
                                                                    1 2 3]
                                                                   [:=
-                                                                   [:field (mt/id :orders :created_at)
-                                                                    {:base-type :type/DateTimeWithLocalTZ
-                                                                     :temporal-unit :month-of-year}]
+                                                                   [:get-month [:field (mt/id :orders :created_at)
+                                                                                {:base-type :type/DateTimeWithLocalTZ}]]
                                                                    6 7 8]]
                                                          :breakout [[:field (mt/id :orders :created_at)
                                                                      {:base-type :type/DateTimeWithLocalTZ
@@ -211,9 +210,8 @@
                                                  :filter [:and
                                                           [:!= [:get-week [:field "CREATED_AT" {}] :iso] 1 2 3]
                                                           [:=
-                                                           [:field "CREATED_AT"
-                                                            {:base-type :type/DateTimeWithLocalTZ
-                                                             :temporal-unit :month-of-year}]
+                                                           [:get-month [:field "CREATED_AT"
+                                                                        {:base-type :type/DateTimeWithLocalTZ}]]
                                                            6 7 8]]
                                                  :breakout [[:field "PRODUCT_ID" {}]
                                                             [:field "CREATED_AT"
@@ -247,8 +245,11 @@
                     :query-id string?
                     :query (mt/mbql-query orders
                              {:source-table model-card-id
-                              :expressions {"Created At: Day of week" [:get-day-of-week [:field "CREATED_AT" {}] :iso]}
-                              :fields [[:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :day-of-month}]
+                              :expressions {"Created At: Day of month"
+                                            [:get-day [:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ}]],
+                                            "Created At: Day of week"
+                                            [:get-day-of-week [:field "CREATED_AT" {}] :iso]}
+                              :fields [[:expression "Created At: Day of month" {:base-type :type/Integer}]
                                        [:expression "Created At: Day of week" {:base-type :type/Integer}]
                                        [:field "TOTAL" {:base-type :type/Float}]]
                               :filter [:!= [:field "USER_ID" {}] 3 42]})}}

@@ -235,7 +235,7 @@
                                        [:= [:field %title {}] "3" "4"]
                                        [:!= [:field %rating {}] 3 4]
                                        [:= [:get-month [:field %created_at {}]] 4 5 9]
-                                       [:!= !day-of-month.products.created_at 14 15 19]
+                                       [:!= [:get-day [:field %products.created_at {}]] 14 15 19]
                                        [:= [:get-day-of-week [:field %created_at {}] :iso] 1 7]
                                        [:= [:get-year [:field %created_at {}]] 2008]]})
                     :result_columns

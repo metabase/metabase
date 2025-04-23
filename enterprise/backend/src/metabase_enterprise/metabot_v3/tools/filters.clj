@@ -9,11 +9,61 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]))
 
+(defn- apply-filter-bucket
+  [column bucket]
+  (case bucket
+    :second-of-minute (lib/get-second column)
+    :minute-of-hour   (lib/get-minute column)
+    :hour-of-day      (lib/get-hour column)
+    :day-of-week      (lib/get-day-of-week column :iso)
+    :day-of-month     (lib/get-day column)
+    :week-of-year     (lib/get-week column :iso)
+    :month-of-year    (lib/get-month column)
+    :quarter-of-year  (lib/get-quarter column)
+    :year-of-era      (lib/get-year column)
+    ;; these below work in queries but not in the UI
+    #_:millisecond
+    #_:second
+    #_:minute
+    #_:hour
+    #_:day
+    #_:week
+    #_:month
+    #_:quarter
+    #_:year
+    #_:day-of-year
+    (lib/with-temporal-bucket column bucket)))
+
+(defn- filter-bucketed-column
+  [{:keys [column bucket]}]
+  (cond-> column
+    (and bucket
+         (lib.types.isa/temporal? column))
+    (apply-filter-bucket bucket)))
+
 (defn- apply-bucket
   [column bucket]
   (case bucket
-    :week-of-year (lib/get-week column :iso)
+    ;; these two work in queries but not in the UI
     :day-of-week  (lib/get-day-of-week column :iso)
+    :week-of-year (lib/get-week column :iso)
+    #_:second-of-minute
+    #_:minute-of-hour
+    #_:hour-of-day
+    #_:day-of-month
+    #_:month-of-year
+    #_:quarter-of-year
+    #_:year-of-era
+    #_:millisecond
+    #_:second
+    #_:minute
+    #_:hour
+    #_:day
+    #_:week
+    #_:month
+    #_:quarter
+    #_:year
+    #_:day-of-year
     (lib/with-temporal-bucket column bucket)))
 
 (defn- bucketed-column
@@ -26,7 +76,7 @@
 (defn- add-filter
   [query llm-filter]
   (let [{:keys [operation value values]} llm-filter
-        expr (bucketed-column llm-filter)
+        expr (filter-bucketed-column llm-filter)
         filter
         (case operation
           :is-null                      (lib/is-null expr)
@@ -207,6 +257,7 @@
        (map (fn [[expr-or-column expr-name]]
               (if (expression? expr-or-column)
                 (lib/expression-ref query expr-name)
+                ;; bucketed columns don't work in the UI
                 expr-or-column)))
        (lib/with-fields query)))
 
@@ -227,10 +278,10 @@
         filter-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
         resolve-visible-column  #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
         resolve-order-by-column (fn [{:keys [field direction]}] {:field (resolve-visible-column field) :direction direction})
-        projection (map (comp (juxt bucketed-column (fn [{:keys [column bucket]}]
-                                                      (let [column (cond-> column
-                                                                     bucket (assoc :unit bucket))]
-                                                        (lib/display-name base-query -1 column :long))))
+        projection (map (comp (juxt filter-bucketed-column (fn [{:keys [column bucket]}]
+                                                             (let [column (cond-> column
+                                                                            bucket (assoc :unit bucket))]
+                                                               (lib/display-name base-query -1 column :long))))
                               resolve-visible-column)
                         fields)
         reduce-query (fn [query f coll] (reduce f query coll))
