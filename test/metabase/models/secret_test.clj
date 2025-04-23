@@ -66,7 +66,7 @@
       (is (= "titok"
              (secret/value-as-string :secret-test-driver {:keystore-id id} "keystore")))))
 
-  (testing "get-secret-string from value only from the database"
+  (testing "get-secret-string from value only from the database ignore protected-password **MetabasePass**"
     (mt/with-temp [:model/Secret {id :id} {:name       "private-key"
                                            :kind       ::secret/pem-cert
                                            :value      "titok"
