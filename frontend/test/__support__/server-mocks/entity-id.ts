@@ -14,12 +14,12 @@ type SUPPORTED_ENTITIES = {
   collection: CollectionId;
 };
 
-type EntityIdMappingParameter = {
+type EntityIdMappingParameter = Partial<{
   [EntityType in keyof SUPPORTED_ENTITIES]: Record<
     BaseEntityId,
     SUPPORTED_ENTITIES[EntityType]
   >;
-};
+}>;
 
 export function setupEntityIdEndpoint(
   entityIdMappings: EntityIdMappingParameter,
