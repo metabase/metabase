@@ -455,19 +455,19 @@
 
   This is based on the equivalent function in Docjure: [[spreadsheet/add-row!]], but adapted to support Metabase viz
   settings."
-  {:arglists '([sheet values cols col-settings cell-styles typed-cell-styles]
-               [sheet row-num values cols col-settings cell-styles typed-cell-styles])}
+  {:arglists '([sheet values cols viz-settings cell-styles typed-cell-styles]
+               [sheet row-num values cols viz-settings cell-styles typed-cell-styles])}
   (fn [sheet & _args]
     (class sheet)))
 
 ;; TODO this add-row! and the one below (For XSSFSheet) should be consolidated
 (defmethod add-row! org.apache.poi.xssf.streaming.SXSSFSheet
-  ([^SXSSFSheet sheet values cols col-settings cell-styles typed-cell-styles]
+  ([^SXSSFSheet sheet values cols viz-settings cell-styles typed-cell-styles]
    (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
                    0
                    (inc (.getLastRowNum sheet)))]
-     (add-row! ^SXSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles)))
-  ([^SXSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles]
+     (add-row! ^SXSSFSheet sheet row-num values cols viz-settings cell-styles typed-cell-styles)))
+  ([^SXSSFSheet sheet row-num values cols viz-settings cell-styles typed-cell-styles]
    (let [row     (.createRow sheet ^Integer row-num)
          ;; Using iterators here to efficiently go over multiple collections at once.
          val-it (.iterator ^Iterable values)
@@ -478,8 +478,7 @@
          (let [value (.next val-it)
                col (.next col-it)
                styles (.next sty-it)
-               settings     (or (get col-settings {::mb.viz/field-id (:id col)})
-                                (get col-settings {::mb.viz/column-name (:name col)}))
+               settings     (streaming.common/viz-settings-for-col col viz-settings)
                ;; value can be a column header (a string), so if the column is scaled, it'll try to do (* "count" 7)
                scaled-val   (if (and (number? value) (::mb.viz/scale settings))
                               (* value (::mb.viz/scale settings))
@@ -495,12 +494,12 @@
      row)))
 
 (defmethod add-row! org.apache.poi.xssf.usermodel.XSSFSheet
-  ([^XSSFSheet sheet values cols col-settings cell-styles typed-cell-styles]
+  ([^XSSFSheet sheet values cols viz-settings cell-styles typed-cell-styles]
    (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
                    0
                    (inc (.getLastRowNum sheet)))]
-     (add-row! ^XSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles)))
-  ([^XSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles]
+     (add-row! ^XSSFSheet sheet row-num values cols viz-settings cell-styles typed-cell-styles)))
+  ([^XSSFSheet sheet row-num values cols viz-settings cell-styles typed-cell-styles]
    (let [row     (.createRow sheet ^Integer row-num)
          ;; Using iterators here to efficiently go over multiple collections at once.
          val-it (.iterator ^Iterable values)
@@ -511,9 +510,7 @@
          (let [value (.next val-it)
                col (.next col-it)
                styles (.next sty-it)
-               id-or-name   (or (:id col) (:name col))
-               settings     (or (get col-settings {::mb.viz/field-id id-or-name})
-                                (get col-settings {::mb.viz/column-name id-or-name}))
+               settings     (streaming.common/viz-settings-for-col col viz-settings)
                ;; value can be a column header (a string), so if the column is scaled, it'll try to do (* "count" 7)
                scaled-val   (if (and (number? value) (::mb.viz/scale settings))
                               (* value (::mb.viz/scale settings))
@@ -530,20 +527,18 @@
 
 (defn write-pivot-table!
   "Writes pivoted data to the provided sheet as-is, without additional formatting applied."
-  [^SXSSFSheet sheet pivot-output typed-cell-styles]
+  [^SXSSFSheet sheet pivot-output typed-cell-styles viz-settings]
   (doseq [[row-idx row] (map-indexed vector pivot-output)]
     (let [^SXSSFRow excel-row (.createRow ^SXSSFSheet sheet ^Integer row-idx)]
       (doseq [[col-idx cell-data] (map-indexed vector row)]
-        (let [{:keys [col-settings col styles value]}
+        (let [{:keys [col styles value]}
               (if (map? cell-data)
                 cell-data
                 ;; Fallback: assume it's just a value, no metadata
                 {:value cell-data
                  :col   {}})
               ^Cell cell   (.createCell excel-row ^Integer col-idx)
-              id-or-name   (or (:id col) (:name col))
-              settings     (or (get col-settings {::mb.viz/field-id id-or-name})
-                               (get col-settings {::mb.viz/column-name id-or-name}))
+              settings     (streaming.common/viz-settings-for-col col viz-settings)
               scaled-val   (if (and (number? value) (::mb.viz/scale settings))
                              (* value (::mb.viz/scale settings))
                              value)
@@ -614,32 +609,31 @@
     (.trackColumnForAutoSizing ^SXSSFSheet sheet i)))
 
 (defn- init-workbook
-  "Iniitalizes the provided workbook, and returns the created sheet"
+  "Initializes the provided workbook, and returns the created sheet"
   [{:keys [workbook ordered-cols col-count col-settings format-rows? pivot?]}]
-  (let [sheet    (spreadsheet/add-sheet! workbook (tru "Query result"))]
+  (let [sheet (spreadsheet/add-sheet! workbook (tru "Query result"))]
     (track-n-cols-for-autosizing! (or col-count (count ordered-cols)) sheet)
     (when (not pivot?)
       (setup-header-row! sheet (count ordered-cols))
-      (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols col-settings format-rows?)))
+      (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols (or col-settings []) format-rows?)))
     sheet))
 
 (defn- create-formatters
-  [cell-styles col-settings cols indexes]
+  [cell-styles cols indexes]
   (let [cell-styles (vec cell-styles)
         cols        (vec cols)]
     (mapv (fn [idx]
             (fn [value]
-              {:col-settings col-settings
-               :col          (nth cols idx)
+              {:col          (nth cols idx)
                :value        value
                :styles       (nth cell-styles idx)}))
           indexes)))
 
 (defn- make-formatters
-  [cell-styles col-settings cols row-indexes col-indexes val-indexes]
-  {:row-formatters (create-formatters cell-styles col-settings cols row-indexes)
-   :col-formatters (create-formatters cell-styles col-settings cols col-indexes)
-   :val-formatters (create-formatters cell-styles col-settings cols val-indexes)})
+  [cell-styles cols row-indexes col-indexes val-indexes]
+  {:row-formatters (create-formatters cell-styles cols row-indexes)
+   :col-formatters (create-formatters cell-styles cols col-indexes)
+   :val-formatters (create-formatters cell-styles cols val-indexes)})
 
 (defn- generate-styles
   [workbook viz-settings non-pivot-cols format-rows?]
@@ -689,7 +683,6 @@
                                           (let [row-v (into [] row)]
                                             (for [i output-order] (row-v i)))
                                           row))
-              col-settings         (::mb.viz/column-settings viz-settings)
               group                (get row @pivot-grouping-index)
               [row' ordered-cols'] (cond->> [ordered-row ordered-cols]
                                      @pivot-grouping-index
@@ -702,13 +695,13 @@
             (when (or (not group)
                       (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
               (let [{:keys [cell-styles typed-cell-styles]} @styles]
-                (add-row! @workbook-sheet (inc row-num) row' ordered-cols' col-settings cell-styles typed-cell-styles)
+                (add-row! @workbook-sheet (inc row-num) row' ordered-cols' viz-settings cell-styles typed-cell-styles)
                 (when (= (inc row-num) *auto-sizing-threshold*)
                   (autosize-columns! @workbook-sheet)))))))
 
       (finish! [_ {:keys [row_count]}]
         (when @pivot-data
-          ;; For pivoted exports, we pivot in-memory lsame as CSVs) and then write the results to the
+          ;; For pivoted exports, we pivot in-memory (same as CSVs) and then write the results to the
           ;; document all at once
           (let [{:keys [settings non-pivot-cols pivot-export-options format-rows?]} @pivot-data
                 {:keys [pivot-rows pivot-cols pivot-measures]} pivot-export-options
@@ -717,7 +710,6 @@
                 (generate-styles workbook settings non-pivot-cols format-rows?)
 
                 formatters (make-formatters cell-styles
-                                            (::mb.viz/column-settings settings)
                                             non-pivot-cols
                                             pivot-rows
                                             pivot-cols
@@ -728,11 +720,10 @@
                 sheet (init-workbook {:workbook     workbook
                                       :pivot?       true
                                       :col-count    (count (first output))
-                                      :col-settings []
                                       :format-rows? true})]
             (vreset! workbook-sheet sheet)
             (set-no-style-custom-helper! sheet)
-            (write-pivot-table! sheet output typed-cell-styles)))
+            (write-pivot-table! sheet output typed-cell-styles settings)))
         (when (or (nil? row_count)
                   (< row_count *auto-sizing-threshold*)
                   @pivot-data)
