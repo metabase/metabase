@@ -2432,14 +2432,10 @@
   west > east, this indicates that the bounds cross the antimerdian, and so we must add two filter clauses, which are
   ORed together. In such cases, the first clause covers the range [west, 180.0] and the second covers [-180.0, east].
 
-  > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
-  However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
-  ideally refactored away."
+  > **Code health:** Single use. This is highly specialized in the UI, but should probably continue to exist."
   [a-query stage-number latitude-column longitude-column card-id  bounds]
   ;; (.log js/console "update-lat-lon-filter")
-  (let [bounds           (js->clj bounds :keywordize-keys true)
-        latitude-column  (legacy-column->metadata a-query stage-number latitude-column)
-        longitude-column (legacy-column->metadata a-query stage-number longitude-column)]
+  (let [bounds           (js->clj bounds :keywordize-keys true)]
     (lib.core/with-wrapped-native-query a-query stage-number card-id
       lib.core/update-lat-lon-filter latitude-column longitude-column bounds)))
 
@@ -2447,13 +2443,10 @@
   "Add or update a filter against `numeric-column`, based on the provided start and end values. **Removes** any existing
   filters for `numeric-column`.
 
-  > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
-  However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
-  ideally refactored away."
+  > **Code health:** Single use. This is highly specialized in the UI, but should probably continue to exist."
   [a-query stage-number numeric-column card-id start end]
-  (let [numeric-column (legacy-column->metadata a-query stage-number numeric-column)]
-    (lib.core/with-wrapped-native-query a-query stage-number card-id
-      lib.core/update-numeric-filter numeric-column start end)))
+  (lib.core/with-wrapped-native-query a-query stage-number card-id
+    lib.core/update-numeric-filter numeric-column start end))
 
 (defn ^:export update-temporal-filter
   "Add or update a filter against `temporal-column`, based on the provided start and end values.
@@ -2462,13 +2455,10 @@
   Modifies the temporal unit for any breakouts to on `temporal-column` to still be useful: If there are fewer than 4
   points (see [[metabase.lib.filter.update/temporal-filter-min-num-points]]), move to the next-smaller unit.
 
-  > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
-  However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
-  ideally refactored away."
+  > **Code health:** Single use. This is highly specialized in the UI, but should probably continue to exist."
   [a-query stage-number temporal-column card-id start end]
-  (let [temporal-column (legacy-column->metadata a-query stage-number temporal-column)]
-    (lib.core/with-wrapped-native-query a-query stage-number card-id
-      lib.core/update-temporal-filter temporal-column start end)))
+  (lib.core/with-wrapped-native-query a-query stage-number card-id
+    lib.core/update-temporal-filter temporal-column start end))
 
 (defn ^:export valid-filter-for?
   "Given two columns, returns true if `src-column` is a valid source to use for filtering `dst-column`.
