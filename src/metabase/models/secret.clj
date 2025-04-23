@@ -157,14 +157,15 @@
   [details conn-prop]
   (let [kws (->possible-secret-property-names (:name conn-prop))
         value (when-let [^String value (get details (:value kws))]
-                (bytes-without-uri-encoding value conn-prop))
+                ;; If the client sent us back protected-password then it should be ignored and value loaded from Secret.
+                (when (not= value protected-password)
+                  (bytes-without-uri-encoding value conn-prop)))
         has-path? (contains? details (:path kws))
-        has-value? (contains? details (:value kws))
         options (get details (:options kws))
         path (get details (:path kws))
         path-map (when has-path?
                    {:source :file-path :value path})
-        value-map (when has-value?
+        value-map (when value
                     {:source :uploaded :value value})
         secret-map (case (keyword options)
                      :local
@@ -175,15 +176,14 @@
 
                      ;; fallback
                      (cond
-                       has-value? value-map
+                       value value-map
                        has-path? path-map))]
     (when (and path (premium-features/is-hosted?))
       (throw (ex-info
               (tru "{0} (a local file path) cannot be used in Metabase hosted environment" (:path kws))
               {:invalid-db-details-entry (select-keys details [(:path kws)])})))
 
-    ;; If the client sent us back protected-password then it should be ignored and value loaded from Secret.
-    (when (and secret-map (not= (:value secret-map) protected-password))
+    (when secret-map
       (update secret-map :value #(some-> % codecs/to-bytes)))))
 
 (defn- resolve-secret-map
