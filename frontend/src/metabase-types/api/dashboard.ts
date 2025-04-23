@@ -81,8 +81,9 @@ export interface Dashboard {
   enable_embedding: boolean;
 
   /* For x-ray dashboards */
-  related: RelatedDashboardXRays;
-  more: string;
+  transient_name?: string;
+  related?: RelatedDashboardXRays;
+  more?: string | null;
 }
 
 export type RelatedDashboardXRays = {

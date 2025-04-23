@@ -30,6 +30,7 @@ import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
+import type { Dashboard as IDashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { FixedWidthContainer } from "../../components/Dashboard/DashboardComponents";
@@ -171,7 +172,7 @@ class AutomaticDashboardAppInner extends Component<AutomaticDashboardAppInnerPro
                       </ActionButton>
                     )}
                   </div>
-                  {this.props.tabs.length > 1 && (
+                  {dashboard && this.props.tabs.length > 1 && (
                     <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
                       <DashboardTabs dashboardId={dashboard.id} />
                     </div>
@@ -200,7 +201,67 @@ class AutomaticDashboardAppInner extends Component<AutomaticDashboardAppInnerPro
                 </FixedWidthContainer>
               </div>
             )}
-            <Dashboard isXray {...this.props} />
+            <Dashboard
+              isXray
+              dashboard={this.props.dashboard}
+              slowCards={this.props.slowCards}
+              parameterValues={this.props.parameterValues}
+              isHeaderVisible={this.props.isHeaderVisible}
+              selectedTabId={this.props.selectedTabId}
+              isNavigatingBackToDashboard={
+                this.props.isNavigatingBackToDashboard
+              }
+              dashboardId={this.props.dashboardId}
+              initialize={this.props.initialize}
+              cancelFetchDashboardCardData={
+                this.props.cancelFetchDashboardCardData
+              }
+              addCardToDashboard={this.props.addCardToDashboard}
+              addHeadingDashCardToDashboard={
+                this.props.addHeadingDashCardToDashboard
+              }
+              addMarkdownDashCardToDashboard={
+                this.props.addMarkdownDashCardToDashboard
+              }
+              addLinkDashCardToDashboard={this.props.addLinkDashCardToDashboard}
+              setEditingDashboard={this.props.setEditingDashboard}
+              setDashboardAttributes={this.props.setDashboardAttributes}
+              setSharing={this.props.setSharing}
+              toggleSidebar={this.props.toggleSidebar}
+              closeSidebar={this.props.closeSidebar}
+              setErrorPage={this.props.setErrorPage}
+              setParameterName={this.props.setParameterName}
+              setParameterType={this.props.setParameterType}
+              navigateToNewCardFromDashboard={
+                this.props.navigateToNewCardFromDashboard
+              }
+              setParameterDefaultValue={this.props.setParameterDefaultValue}
+              setParameterRequired={this.props.setParameterRequired}
+              setParameterTemporalUnits={this.props.setParameterTemporalUnits}
+              setParameterIsMultiSelect={this.props.setParameterIsMultiSelect}
+              setParameterQueryType={this.props.setParameterQueryType}
+              setParameterSourceType={this.props.setParameterSourceType}
+              setParameterSourceConfig={this.props.setParameterSourceConfig}
+              setParameterFilteringParameters={
+                this.props.setParameterFilteringParameters
+              }
+              showAddParameterPopover={this.props.showAddParameterPopover}
+              removeParameter={this.props.removeParameter}
+              onReplaceAllDashCardVisualizationSettings={
+                this.props.onReplaceAllDashCardVisualizationSettings
+              }
+              onUpdateDashCardVisualizationSettings={
+                this.props.onUpdateDashCardVisualizationSettings
+              }
+              onUpdateDashCardColumnSettings={
+                this.props.onUpdateDashCardColumnSettings
+              }
+              updateDashboardAndCards={this.props.updateDashboardAndCards}
+              setSidebar={this.props.setSidebar}
+              hideAddParameterPopover={this.props.hideAddParameterPopover}
+              fetchDashboard={this.props.fetchDashboard}
+              fetchDashboardCardData={this.props.fetchDashboardCardData}
+            />
           </div>
           {more && (
             <div className={cx(CS.flex, CS.justifyEnd, CS.px4, CS.pb4)}>
@@ -231,10 +292,12 @@ class AutomaticDashboardAppInner extends Component<AutomaticDashboardAppInnerPro
 export const AutomaticDashboardAppConnected = _.compose(
   connector,
   DashboardData,
-  title(({ dashboard }) => dashboard && dashboard.name),
+  title(
+    ({ dashboard }: { dashboard: IDashboard }) => dashboard && dashboard.name,
+  ),
 )(AutomaticDashboardAppInner);
 
-const TransientTitle = ({ dashboard }) =>
+const TransientTitle = ({ dashboard }: { dashboard: IDashboard }) =>
   dashboard.transient_name ? (
     <span>{dashboard.transient_name}</span>
   ) : dashboard.name ? (
@@ -243,7 +306,10 @@ const TransientTitle = ({ dashboard }) =>
 
 // Workaround until AutomaticDashboardApp is refactored to be a function component
 // (or even better, merged/generalized with DashboardApp)
-const AutomaticDashboardQueryParamsSync = ({ router, location }) => {
+const AutomaticDashboardQueryParamsSync = ({
+  router,
+  location,
+}: Pick<WithRouterProps, "router" | "location">) => {
   useDashboardUrlQuery(router, location);
   return null;
 };

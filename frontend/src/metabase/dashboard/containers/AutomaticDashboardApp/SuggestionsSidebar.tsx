@@ -8,7 +8,7 @@ import Card from "metabase/components/Card";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
-import { Box, Flex, Icon, Title, Tooltip } from "metabase/ui";
+import { Box, Flex, Icon, type IconName, Title, Tooltip } from "metabase/ui";
 import type { RelatedDashboardXRays } from "metabase-types/api";
 
 import S from "./AutomaticDashboardApp.module.css";
