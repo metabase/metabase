@@ -12,15 +12,17 @@ import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapp
 import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Button, Flex, Icon, Loader } from "metabase/ui";
-import type { LoggerPreset, TimeUnit } from "metabase-types/api";
-import {
-  isErrorWithMessageResponse,
-  isFormErrorResponse,
-} from "metabase-types/guards";
+import type { TimeUnit } from "metabase-types/api";
 
 import { DurationInput } from "./DurationInput";
 import S from "./LogLevelsModal.module.css";
 import { PresetPicker } from "./PresetPicker";
+import {
+  getErrorMessage,
+  getLogLevelsErrorMessage,
+  getPresetJson,
+  isJsonValid,
+} from "./utils";
 
 export const LogLevelsModal = () => {
   const dispatch = useDispatch();
@@ -160,35 +162,3 @@ export const LogLevelsModal = () => {
     </ModalContent>
   );
 };
-
-function getPresetJson(preset: LoggerPreset) {
-  const logLevels = Object.fromEntries(
-    preset.loggers.map(({ level, name }) => [name, level]),
-  );
-  return JSON.stringify(logLevels, null, 2);
-}
-
-function getErrorMessage(response: unknown) {
-  if (isErrorWithMessageResponse(response)) {
-    return response.data.message;
-  }
-
-  return t`Server error encountered`;
-}
-
-function getLogLevelsErrorMessage(response: unknown) {
-  if (isFormErrorResponse(response) && response.data.errors.log_levels) {
-    return response.data.errors.log_levels;
-  }
-
-  return getErrorMessage(response);
-}
-
-function isJsonValid(json: string): boolean {
-  try {
-    JSON.parse(json);
-    return true;
-  } catch (_error) {
-    return false;
-  }
-}
