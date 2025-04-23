@@ -84,11 +84,10 @@
 
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
-  (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
-        ordered-formatters (volatile! nil)
-        pivot-data         (atom nil)
-        pivot-rows         (volatile! [])
-        pivoted-export?    (volatile! nil)]
+  (let [writer                  (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
+        ordered-formatters      (volatile! nil)
+        pivot-data              (volatile! nil)
+        enable-pivoted-exports? (public-settings/enable-pivoted-exports)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options pivot?]
                    :or   {format-rows? true
@@ -97,47 +96,47 @@
               pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-index col-names)]
           (cond
             (and pivot? pivot-export-options)
-            (reset! pivot-data
-                    {:settings viz-settings
-                     :data {:cols (vec ordered-cols)
-                            :rows []}
-                     :timezone results_timezone
-                     :format-rows? format-rows?
-                     :pivot-grouping-key pivot-grouping-key
-                     :pivot-export-options pivot-export-options})
-            ;; Non-pivoted export of pivot table: sore the pivot-grouping-key so that the pivot group can be
+            (vreset! pivot-data
+                     {:settings viz-settings
+                      :data {:cols (vec ordered-cols)
+                             :rows (transient [])}
+                      :timezone results_timezone
+                      :format-rows? format-rows?
+                      :pivot-grouping-key pivot-grouping-key
+                      :pivot-export-options pivot-export-options})
+            ;; Non-pivoted export of pivot table: store the pivot-grouping-key so that the pivot group can be
             ;; removed from the exported data
             pivot-export-options
-            (reset! pivot-data {:pivot-grouping-key pivot-grouping-key}))
+            (vreset! pivot-data {:pivot-grouping-key pivot-grouping-key}))
 
           (vreset! ordered-formatters
                    (mapv #(formatter/create-formatter results_timezone % viz-settings format-rows?) ordered-cols))
 
-          (vreset! pivoted-export? (public-settings/enable-pivoted-exports))
-
-          ;; write the column names for non-pivot tables
-          (when (or (not pivot?) (not (public-settings/enable-pivoted-exports)))
+          ;; Write the column names for non-pivot tables
+          (when (or (not pivot?) (not enable-pivoted-exports?))
             (let [header (m/remove-nth (or pivot-grouping-key (inc (count col-names))) col-names)]
               (write-csv writer [header])
               (.flush writer)))))
 
       (write-row! [_ row _row-num _ {:keys [output-order]}]
-        (let [ordered-row (if output-order
-                            (mapv (vec row) output-order)
-                            row)
-              {:keys [pivot-grouping-key]} @pivot-data
-              group                    (get ordered-row pivot-grouping-key)]
-          (if (and (contains? @pivot-data :data) @pivoted-export?)
-            ;; TODO: try using a transient
-            (vswap! pivot-rows conj ordered-row)
-            (if group
-              (when (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group))
+        (let [ordered-row                       (if output-order
+                                                  (mapv (vec row) output-order)
+                                                  row)
+              {:keys [pivot-grouping-key data]} @pivot-data
+              pivot-group                       (get ordered-row pivot-grouping-key)]
+          (if (and data enable-pivoted-exports?)
+            ;; For pivot tables, accumulate rows in memory in a transient
+            (vswap! pivot-data update-in [:data :rows] conj! ordered-row)
+            (if pivot-group
+              ;; Non-pivoted pivot table: we have to remove the pivot-grouping column
+              (when (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int pivot-group))
                 (let [formatted-row (->> (perf/mapv (fn [formatter r]
                                                       (formatter (streaming.common/format-value r)))
                                                     @ordered-formatters ordered-row)
                                          (m/remove-nth pivot-grouping-key))]
                   (write-csv writer [formatted-row])
                   (.flush writer)))
+              ;; All other results: write directly to the CSV
               (let [formatted-row (perf/mapv (fn [formatter r]
                                                (formatter (streaming.common/format-value r)))
                                              @ordered-formatters ordered-row)]
@@ -145,26 +144,14 @@
                 (.flush writer))))))
 
       (finish! [_ _]
-        ;; TODO -- not sure we need to flush both
-        (when (and (contains? @pivot-data :data) @pivoted-export?)
-          (let [pivot-export-options (:pivot-export-options @pivot-data)
-                row-indexes (:pivot-rows pivot-export-options)
-                col-indexes (:pivot-cols pivot-export-options)
-                val-indexes (:pivot-measures pivot-export-options)
-                columns    (pivot/columns-without-pivot-group (-> @pivot-data :data :cols))
-                formatters (make-formatters
-                            columns
-                            row-indexes
-                            col-indexes
-                            val-indexes
-                            (:settings @pivot-data)
-                            (:timezone @pivot-data)
-                            (:format-rows? @pivot-data))
-                output     (qp.pivot.postprocess/build-pivot-output
-                            (assoc-in @pivot-data [:data :rows] @pivot-rows)
-                            formatters)]
+        (when (and (contains? @pivot-data :data) enable-pivoted-exports?)
+          (let [{:keys [data settings timezone format-rows? pivot-export-options]} @pivot-data
+                {:keys [pivot-rows pivot-cols pivot-measures]} pivot-export-options
+                columns (pivot/columns-without-pivot-group (:cols data))
+                formatters (make-formatters columns pivot-rows pivot-cols pivot-measures settings timezone format-rows?)
+                output (qp.pivot.postprocess/build-pivot-output
+                        (update-in @pivot-data [:data :rows] persistent!)
+                        formatters)]
             (doseq [xf-row output]
               (write-csv writer [xf-row]))))
-        (.flush writer)
-        (.flush os)
         (.close writer)))))

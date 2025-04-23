@@ -428,9 +428,6 @@
            (.. cell getCellStyle getDataFormatString))
          row)))
 
-(defn- get-allocated-bytes []
-  (.getCurrentThreadAllocatedBytes ^ThreadMXBean (ManagementFactory/getThreadMXBean)))
-
 (deftest export-format-test
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Different format strings are used for ints and numbers that round to ints (with 2 decimal places)"
