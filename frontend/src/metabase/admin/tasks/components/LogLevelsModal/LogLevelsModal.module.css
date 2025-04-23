@@ -4,3 +4,17 @@
   box-shadow: 0 2px 2px var(--mb-color-shadow);
   overflow: auto;
 }
+
+.code {
+  height: 100%;
+
+  :global {
+    .cm-focused {
+      outline: none;
+    }
+
+    .cm-editor {
+      height: 100%;
+    }
+  }
+}

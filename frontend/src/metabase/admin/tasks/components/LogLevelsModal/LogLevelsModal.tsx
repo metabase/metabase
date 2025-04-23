@@ -110,8 +110,15 @@ export const LogLevelsModal = () => {
           )}
         </Flex>
 
-        <Box className={S.codeContainer} mih={200} mah="50vh">
+        <Box
+          className={S.codeContainer}
+          // Using h + mah + mih to make the CodeBlock fill its parent vertically
+          h="100vh"
+          mah="35vh"
+          mih={200}
+        >
           <CodeBlock
+            className={S.code}
             language="json"
             value={json}
             onChange={(value) => setJson(value)}
