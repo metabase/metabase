@@ -151,7 +151,7 @@
 (defmethod search.engine/init! :search.engine/appdb
   [_ {:keys [re-populate?] :as opts}]
   (let [index-created (search.index/when-index-created)]
-    (if (and #p index-created (< #p (* 2 engine/reindex-schedule-seconds) #p (t/time-between (t/instant index-created) (t/instant) :seconds)))
+    (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
       (do
         (log/debug "Forcing early reindex because existing index is old")
         (search.engine/reindex! :search.engine/appdb {}))
