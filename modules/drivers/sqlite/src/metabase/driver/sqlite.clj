@@ -478,4 +478,10 @@
 
 (defmethod sql.qp/cast-integer :sqlite
   [driver value]
-  (h2x/maybe-cast (sql.qp/integer-dbtype driver) [:round value]))
+  ;; value can be either string or float
+  ;; if it's a float, coversion to float does nothing
+  ;; if it's a string, we can't round, so we need to convert to float first
+  (->> value
+       (h2x/maybe-cast "text")
+       (conj [:round])
+       (h2x/maybe-cast (sql.qp/integer-dbtype driver))))
