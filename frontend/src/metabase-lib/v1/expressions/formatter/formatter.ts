@@ -6,7 +6,7 @@ import { parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
 import { isa } from "metabase-lib/v1/types/utils/isa";
 
-import { FIELD_MARKERS, OPERATORS, getClauseDefinition } from "../config";
+import { OPERATORS, getClauseDefinition } from "../config";
 import {
   formatDimensionName,
   formatIdentifier,
@@ -311,7 +311,7 @@ function formatOperator(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {
     if (
       !Lib.isExpressionParts(arg) ||
       isValueOperator(arg.operator) ||
-      FIELD_MARKERS.has(arg.operator)
+      isDimensionOperator(arg.operator)
     ) {
       // Not a call expression so not an operator
       return ind([ln, recurse(path, print, path.node.args[index])]);
@@ -381,6 +381,11 @@ function isUnaryOperator(op: string) {
 
 function isValueOperator(op: string): op is "value" {
   return op === "value";
+}
+
+// For internal use only
+function isDimensionOperator(op: string): op is "dimension" {
+  return op === "dimension";
 }
 
 function formatValueExpression(

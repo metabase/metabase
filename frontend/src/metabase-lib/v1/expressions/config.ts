@@ -717,10 +717,3 @@ export const OPERATORS = new Set([
   OPERATOR.GreaterThanEqual,
   OPERATOR.LessThanEqual,
 ]);
-
-export const FIELD_MARKERS = new Set([
-  "dimension",
-  "field",
-  "segment",
-  "metric",
-]);
