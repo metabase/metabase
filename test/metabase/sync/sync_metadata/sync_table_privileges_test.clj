@@ -27,10 +27,9 @@
                           (fn [& args]
                             (let [{:keys [total-table-privileges]} (apply original-sync-table-privileges! args)]
                               (reset! synced-privileges total-table-privileges)))]
-              (binding [sync-table-privileges/*batch-size* 1000]
-                (sync-table-privileges/sync-table-privileges! (mt/db))
-                (testing "Correct number of privileges synced for batch size"
-                  (is (= 1 @synced-privileges))))))
+              (sync-table-privileges/sync-table-privileges! (mt/db))
+              (testing "Correct number of privileges synced with batch size in use"
+                (is (= 1 @synced-privileges)))))
           (let [table-id (t2/select-one-pk :model/Table :name "baz" :schema "foo")]
             (is (=? [{:table_id        table-id
                       :role            nil
@@ -52,10 +51,9 @@
                           (fn [& args]
                             (let [{:keys [total-table-privileges]} (apply original-sync-table-privileges! args)]
                               (reset! synced-privileges total-table-privileges)))]
-              (binding [sync-table-privileges/*batch-size* 1000]
-                (sync-table-privileges/sync-table-privileges! (mt/db))
-                (testing "Correct number of privileges synced for batch size"
-                  (is (= 1 @synced-privileges))))))
+              (sync-table-privileges/sync-table-privileges! (mt/db))
+              (testing "Correct number of privileges synced with batch size in use"
+                (is (= 1 @synced-privileges)))))
           (let [table-id (t2/select-one-pk :model/Table :name "baz" :schema nil)]
             (is (=? [{:table_id        table-id
                       :role            nil
