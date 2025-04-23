@@ -92,7 +92,7 @@ export const LogLevelsModal = () => {
   return (
     <ModalContent title={t`Customize log levels`} onClose={handleClose}>
       <form onSubmit={handleSubmit}>
-        <Flex align="flex-end" gap="md" justify="space-between" mb="xl">
+        <Flex align="flex-end" gap="md" justify="space-between" mb="md">
           <DurationInput
             duration={duration}
             durationUnit={durationUnit}

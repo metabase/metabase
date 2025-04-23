@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { Button, Icon, Menu } from "metabase/ui";
 import type { LoggerPreset } from "metabase-types/api";
 
@@ -10,7 +12,7 @@ export const PresetPicker = ({ presets, onChange }: Props) => {
   return (
     <Menu position="bottom-end" shadow="md" width={220}>
       <Menu.Target>
-        <Button leftSection={<Icon name="snippet" />}>Load preset</Button>
+        <Button leftSection={<Icon name="snippet" />}>{t`Load preset`}</Button>
       </Menu.Target>
 
       <Menu.Dropdown>
