@@ -146,8 +146,8 @@ describe("scenarios > alert", () => {
       const allowedDomain = "metabase.test";
       const deniedDomain = "metabase.example";
       const deniedEmail = `mailer@${deniedDomain}`;
-      const subscriptionError = `Only allowed domains are supported`;
-      const alertError = `Only allowed domains are supported`;
+      const subscriptionError = "Only allowed domains are supported";
+      const alertError = "Only allowed domains are supported";
 
       function addEmailRecipient(email) {
         cy.findByRole("textbox").click().type(`${email}`).blur();
