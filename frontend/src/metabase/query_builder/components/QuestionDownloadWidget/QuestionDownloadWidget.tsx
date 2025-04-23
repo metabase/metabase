@@ -18,6 +18,11 @@ import { canSavePng } from "metabase/visualizations";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
+type FormatPreference = {
+  last_download_format: ExportFormat;
+  last_table_download_format: ExportFormat;
+};
+
 type QuestionDownloadWidgetProps = {
   question: Question;
   result: Dataset;
@@ -27,12 +32,9 @@ type QuestionDownloadWidgetProps = {
     enablePivot: boolean;
   }) => void;
   disabled?: boolean;
-  formatPreference?: {
-    last_download_format: "csv" | "xlsx" | "json" | "png";
-    last_table_download_format: "csv" | "xlsx" | "json";
-  };
+  formatPreference?: FormatPreference;
   setFormatPreference?: (
-    value: typeof formatPreference,
+    preference: FormatPreference,
   ) => Promise<{ data?: unknown; error?: unknown }>;
 } & StackProps;
 
@@ -89,7 +91,7 @@ export const QuestionDownloadWidget = ({
     setFormat(newFormat);
 
     // If user is logged in, save their preference to the KV store
-    if (formatPreference && setFormatPreference) {
+    if (formatPreference !== undefined && setFormatPreference) {
       const newPreference = {
         last_download_format: newFormat,
         last_table_download_format:

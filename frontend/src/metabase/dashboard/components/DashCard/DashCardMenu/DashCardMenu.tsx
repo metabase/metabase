@@ -86,14 +86,15 @@ export const DashCardMenu = ({
     ? [...exportFormats, exportFormatPng]
     : exportFormats;
 
-  const userKV = useUserKeyValue({
-    namespace: "last_download_format",
-    key: "download_format_preference",
-    defaultValue: {
-      last_download_format: formats[0],
-      last_table_download_format: exportFormats[0],
-    },
-  });
+  const { value: formatPreference, setValue: setFormatPreference } =
+    useUserKeyValue({
+      namespace: "last_download_format",
+      key: "download_format_preference",
+      defaultValue: {
+        last_download_format: formats[0],
+        last_table_download_format: exportFormats[0],
+      },
+    });
 
   const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
     question,
@@ -132,8 +133,8 @@ export const DashCardMenu = ({
         <QuestionDownloadWidget
           question={question}
           result={result}
-          formatPreference={userKV.value}
-          setFormatPreference={userKV.setValue}
+          formatPreference={formatPreference}
+          setFormatPreference={setFormatPreference}
           onDownload={(opts) => {
             close();
             handleDownload(opts);

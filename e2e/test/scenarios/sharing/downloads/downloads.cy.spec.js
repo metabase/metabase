@@ -186,34 +186,41 @@ describe("scenarios > question > download", () => {
       { visitQuestion: true },
     );
 
+    // Intercept the API call that saves the format preference
+    cy.intercept(
+      "PUT",
+      "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+    ).as("saveFormat");
+
     // 1. Select xlsx format without downloading
     cy.findByRole("button", { name: "Download results" }).click();
     H.popover().within(() => {
       cy.findByText(".xlsx").click();
-      // Close popover without downloading
-      cy.get("body").click({ force: true });
     });
+
+    // Wait for the preference to be saved
+    cy.wait("@saveFormat");
 
     // Reload and verify the format preference was saved
     cy.reload();
     cy.findByRole("button", { name: "Download results" }).click();
     H.popover().within(() => {
-      cy.get("[aria-selected='true']").should("contain", ".xlsx");
+      cy.get("[data-checked='true']").should("contain", ".xlsx");
     });
-    cy.get("body").click({ force: true }); // Close the popover
 
-    // 2. Select a different format
-    cy.findByRole("button", { name: "Download results" }).click();
+    // Select a different format
     H.popover().within(() => {
       cy.findByText(".json").click();
-      cy.get("body").click({ force: true });
     });
+
+    // Wait for the preference to be saved
+    cy.wait("@saveFormat");
 
     // Reload and verify the new format preference persists
     cy.reload();
     cy.findByRole("button", { name: "Download results" }).click();
     H.popover().within(() => {
-      cy.get("[aria-selected='true']").should("contain", ".json");
+      cy.get("[data-checked='true']").should("contain", ".json");
     });
   });
 
@@ -236,46 +243,53 @@ describe("scenarios > question > download", () => {
         // Visit the dashboard
         H.visitDashboard(dashboardId);
 
+        // Intercept the API call that saves the format preference
+        cy.intercept(
+          "PUT",
+          "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+        ).as("saveFormatDash");
+
         // Select xlsx format without downloading
+        H.getDashboardCard().realHover();
         H.getDashboardCardMenu().click();
         H.popover().within(() => {
           cy.findByText("Download results").click();
         });
         H.popover().within(() => {
           cy.findByText(".xlsx").click();
-          // Close popover without downloading
-          cy.get("body").click({ force: true });
         });
+
+        // Wait for the preference to be saved
+        cy.wait("@saveFormatDash");
 
         // Reload and verify format preference was saved
         cy.reload();
+        H.getDashboardCard().realHover();
         H.getDashboardCardMenu().click();
         H.popover().within(() => {
           cy.findByText("Download results").click();
         });
         H.popover().within(() => {
-          cy.get("[aria-selected='true']").should("contain", ".xlsx");
+          cy.get("[data-checked='true']").should("contain", ".xlsx");
         });
-        cy.get("body").click({ force: true }); // Close the popover
 
         // Select a different format
-        H.getDashboardCardMenu().click();
-        H.popover().within(() => {
-          cy.findByText("Download results").click();
-        });
         H.popover().within(() => {
           cy.findByText(".csv").click();
-          cy.get("body").click({ force: true });
         });
+
+        // Wait for the preference to be saved
+        cy.wait("@saveFormatDash");
 
         // Reload and verify the new format preference persists
         cy.reload();
+        H.getDashboardCard().realHover();
         H.getDashboardCardMenu().click();
         H.popover().within(() => {
           cy.findByText("Download results").click();
         });
         H.popover().within(() => {
-          cy.get("[aria-selected='true']").should("contain", ".csv");
+          cy.get("[data-checked='true']").should("contain", ".csv");
         });
       });
     });
