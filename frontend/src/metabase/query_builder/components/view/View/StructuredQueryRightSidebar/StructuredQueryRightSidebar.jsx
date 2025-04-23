@@ -1,5 +1,6 @@
 import { match } from "ts-pattern";
 
+import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { SummarizeSidebar } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar";
@@ -11,10 +12,12 @@ export const StructuredQueryRightSidebar = ({
   hideTimelineEvents,
   isShowingQuestionInfoSidebar,
   isShowingQuestionSettingsSidebar,
+  isShowingAIQuestionAnalysisSidebar,
   isShowingSummarySidebar,
   isShowingTimelineSidebar,
   onCloseQuestionInfo,
   onCloseSummary,
+  onCloseAIQuestionAnalysisSidebar,
   onCloseTimelines,
   onOpenModal,
   onSave,
@@ -26,14 +29,27 @@ export const StructuredQueryRightSidebar = ({
   updateQuestion,
   visibleTimelineEventIds,
   xDomain,
-}) =>
-  match({
+}) => {
+  return match({
     isSaved: question.isSaved(),
     isShowingSummarySidebar,
     isShowingTimelineSidebar,
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
+    isShowingAIQuestionAnalysisSidebar,
   })
+    .with(
+      {
+        isShowingAIQuestionAnalysisSidebar: true,
+      },
+      () => (
+        <PLUGIN_AI_ENTITY_ANALYSIS.AIQuestionAnalysisSidebar
+          question={question}
+          timelines={timelines}
+          onClose={onCloseAIQuestionAnalysisSidebar}
+        />
+      ),
+    )
     .with(
       {
         isShowingSummarySidebar: true,
@@ -89,3 +105,4 @@ export const StructuredQueryRightSidebar = ({
       () => <QuestionSettingsSidebar question={question} />,
     )
     .otherwise(() => null);
+};

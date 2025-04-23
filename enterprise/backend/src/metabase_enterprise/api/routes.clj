@@ -7,6 +7,7 @@
   (:require
    [metabase-enterprise.advanced-config.api.logs]
    [metabase-enterprise.advanced-permissions.api.routes]
+   [metabase-enterprise.ai-entity-analysis.api]
    [metabase-enterprise.ai-sql-fixer.api]
    [metabase-enterprise.ai-sql-generation.api]
    [metabase-enterprise.api.routes.common :as ee.api.common]
@@ -39,6 +40,7 @@
    :collection-cleanup         (deferred-tru "Collection Cleanup")
    :ai-sql-fixer               (deferred-tru "AI SQL Fixer")
    :ai-sql-generation          (deferred-tru "AI SQL Generation")
+   :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
    :etl-connections            (deferred-tru "ETL Connections")
    :table-data-editing         (deferred-tru "Editing Table Data")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
@@ -69,6 +71,7 @@
   "/api/ee routes. The following routes are NICE and do follow the `/ee/<feature>/` naming convention. Please add new
   routes here and follow the convention."
   {"/advanced-permissions"       (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
+   "/ai-entity-analysis"         (premium-handler metabase-enterprise.ai-entity-analysis.api/routes :ai-entity-analysis)
    "/ai-sql-fixer"               (premium-handler metabase-enterprise.ai-sql-fixer.api/routes :ai-sql-fixer)
    "/ai-sql-generation"          (premium-handler metabase-enterprise.ai-sql-generation.api/routes :ai-sql-generation)
    "/audit-app"                  (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)

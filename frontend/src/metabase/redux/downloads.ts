@@ -6,8 +6,10 @@ import api, { GET, POST } from "metabase/lib/api";
 import { isWithinIframe, openSaveDialog } from "metabase/lib/dom";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
-import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
-import { getCardKey } from "metabase/visualizations/lib/utils";
+import {
+  getChartSelector,
+  saveChartImage,
+} from "metabase/visualizations/lib/image-exports";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
@@ -129,10 +131,10 @@ const downloadChart = async ({
   dashcardId,
 }: DownloadQueryResultsOpts) => {
   const fileName = getChartFileName(question);
-  const chartSelector =
-    dashcardId != null
-      ? `[data-dashcard-key='${dashcardId}']`
-      : `[data-card-key='${getCardKey(question.id())}']`;
+  const isDashcard = dashcardId != null;
+  const chartSelector = getChartSelector(
+    isDashcard ? { dashcardId } : { cardId: question.id() },
+  );
   await saveChartImage(chartSelector, fileName);
 };
 

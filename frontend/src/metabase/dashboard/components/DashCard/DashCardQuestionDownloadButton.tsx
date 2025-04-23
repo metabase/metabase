@@ -8,7 +8,7 @@ import { useStore } from "metabase/lib/redux";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import { ActionIcon, Icon, Popover, Tooltip } from "metabase/ui";
-import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
+import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/image-exports";
 import type Question from "metabase-lib/v1/Question";
 import type { DashCardId, DashboardId, Dataset } from "metabase-types/api";
 

@@ -1,6 +1,5 @@
 import React, {
   type ComponentType,
-  type Dispatch,
   type HTMLAttributes,
   type ReactNode,
   type SetStateAction,
@@ -34,6 +33,7 @@ import type {
   ModelFilterSettings,
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/core/components/Link";
+import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
@@ -56,6 +56,7 @@ import type {
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
+  DashCardId,
   Dashboard,
   DatabaseId,
   Database as DatabaseType,
@@ -70,9 +71,10 @@ import type {
   Pulse,
   Revision,
   TableId,
+  Timeline,
   User,
 } from "metabase-types/api";
-import type { AdminPathKey, State } from "metabase-types/store";
+import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
 
 import type {
   GetAuthProviders,
@@ -659,6 +661,37 @@ export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
   GenerateSqlQueryButton: PluginPlaceholder,
 };
 
+export interface AIDashboardAnalysisSidebarProps {
+  dashboard: Dashboard;
+  onClose?: () => void;
+  dashcardId?: DashCardId;
+}
+
+export interface AIQuestionAnalysisSidebarProps {
+  question: Question;
+  className?: string;
+  onClose?: () => void;
+  timelines?: Timeline[];
+}
+
+export type PluginAIEntityAnalysis = {
+  AIQuestionAnalysisButton: ComponentType<any>;
+  AIDashboardAnalysisButton: ComponentType<any>;
+  AIQuestionAnalysisSidebar: ComponentType<AIQuestionAnalysisSidebarProps>;
+  AIDashboardAnalysisSidebar: ComponentType<AIDashboardAnalysisSidebarProps>;
+  canAnalyzeDashboard: (dashboard: Dashboard) => boolean;
+  canAnalyzeQuestion: (question: Question) => boolean;
+};
+
+export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
+  AIQuestionAnalysisButton: PluginPlaceholder,
+  AIDashboardAnalysisButton: PluginPlaceholder,
+  AIQuestionAnalysisSidebar: PluginPlaceholder,
+  AIDashboardAnalysisSidebar: PluginPlaceholder,
+  canAnalyzeDashboard: () => false,
+  canAnalyzeQuestion: () => false,
+};
+
 export const PLUGIN_METABOT = {
   Metabot: () => null as React.ReactElement | null,
   defaultMetabotContextValue,
@@ -677,6 +710,20 @@ export const PLUGIN_METABOT = {
 
 export const PLUGIN_GO_MENU = {
   getMenuItems: (_dispatch: any) => [] as Array<any>,
+};
+
+type DashCardMenuItemGetter = (
+  question: Question,
+  dashcardId: DashCardId | undefined,
+  dispatch: Dispatch,
+) => (DashCardMenuItem & { key: string }) | null;
+
+export type PluginDashcardMenu = {
+  dashcardMenuItemGetters: DashCardMenuItemGetter[];
+};
+
+export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
+  dashcardMenuItemGetters: [],
 };
 
 export const PLUGIN_DB_ROUTING = {

@@ -83,6 +83,12 @@
 (defn- generate-sql-endpoint []
   (str (ai-proxy-base-url) "/v1/sql/generate"))
 
+(defn- analyze-chart-endpoint []
+  (str (ai-proxy-base-url) "/v1/analyze/chart/"))
+
+(defn- analyze-dashboard-endpoint []
+  (str (ai-proxy-base-url) "/v1/analyze/dashboard/"))
+
 (mu/defn request :- ::metabot-v3.client.schema/ai-proxy.response
   "Make a V2 request to the AI Proxy."
   [{:keys [context messages conversation-id session-id state]}
@@ -203,4 +209,51 @@
       (throw (ex-info (format "Error in request to AI service: unexpected status code: %d %s"
                               (:status response) (:reason-phrase response))
                       {:request (assoc options :body body)
+                       :response response})))))
+
+(def chart-analysis-schema
+  "Schema for chart analysis data input."
+  [:map
+   [:image_base64 :string]
+   [:chart {:optional true} [:map
+                             [:name {:optional true} [:maybe :string]]
+                             [:description {:optional true} [:maybe :string]]]]
+   [:timeline_events {:optional true} [:sequential [:map
+                                                    [:name :string]
+                                                    [:description {:optional true} [:maybe :string]]
+                                                    [:timestamp :string]]]]])
+
+(mu/defn analyze-chart
+  "Ask the AI service to analyze a chart image."
+  [chart-data :- chart-analysis-schema]
+  (let [url (analyze-chart-endpoint)
+        options (build-request-options chart-data)
+        response (post! url options)]
+    (if (= (:status response) 200)
+      (:body response)
+      (throw (ex-info (format "Error in chart analysis request to AI service: unexpected status code: %d %s"
+                              (:status response) (:reason-phrase response))
+                      {:request options
+                       :response response})))))
+
+(def dashboard-analysis-schema
+  "Schema for dashboard analysis data input."
+  [:map
+   [:image_base64 :string]
+   [:dashboard {:optional true} [:map
+                                 [:name {:optional true} [:maybe :string]]
+                                 [:description {:optional true} [:maybe :string]]
+                                 [:tab_name {:optional true} [:maybe :string]]]]])
+
+(mu/defn analyze-dashboard
+  "Ask the AI service to analyze a dashboard image."
+  [dashboard-data :- dashboard-analysis-schema]
+  (let [url (analyze-dashboard-endpoint)
+        options (build-request-options dashboard-data)
+        response (post! url options)]
+    (if (= (:status response) 200)
+      (:body response)
+      (throw (ex-info (format "Error in dashboard analysis request to AI service: unexpected status code: %d %s"
+                              (:status response) (:reason-phrase response))
+                      {:request options
                        :response response})))))
