@@ -124,17 +124,56 @@
   (and (vector? honeysql-expr)
        (= (first honeysql-expr) :inline)))
 
+(defn- untyped-inline-value [h2x]
+  (let [unwrapped (h2x/unwrap-typed-honeysql-form h2x)]
+    (when (inline? unwrapped)
+      (second unwrapped))))
+
 ;; this is the primary way to override behavior for a specific clause or object class.
 
-(defmulti ->integer
+(defmulti integer-dbtype
+  "Return the name of the integer type we convert to in this database."
+  {:changelog-test/ignore true :added "0.55.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod integer-dbtype :sql
+  [_driver]
+  "BIGINT")
+
+(defmulti cast-integer
   "Cast to integer"
   {:changelog-test/ignore true :added "0.45.0" :arglists '([driver honeysql-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod ->integer :sql
+(defmethod cast-integer :sql
   [_ value]
-  (h2x/->integer value))
+  (h2x/maybe-cast (integer-dbtype) value))
+
+(defn ->integer
+  "Convert honeysql numbers or text to integer, being smart about converting inline constants at compile-time."
+  [driver h2x-expr]
+  (let [inline (untyped-inline-value h2x-expr)]
+    (cond
+      (nil? h2x-expr)
+      nil
+
+      (h2x/is-of-type? h2x-expr (integer-dbtype driver))
+      h2x-expr
+
+      (not inline)
+      (cast-integer driver h2x-expr)
+
+      (number? inline)
+      (h2x/with-database-type-info (inline-num (long inline)) (integer-dbtype driver))
+
+      (string? inline)
+      (h2x/with-database-type-info (inline-num (Long/parseLong inline)) (integer-dbtype driver))
+
+      :else
+      (ex-info (str "Cannot convert " (pr-str h2x-expr) " to integer.")
+               {:value h2x-expr}))))
 
 (defmulti ->float
   "Cast to float."
@@ -1054,6 +1093,10 @@
     (into [:/ (->float driver numerator)]
           (map safe-denominator)
           denominators)))
+
+(defmethod ->honeysql [:sql :integer]
+  [driver [_ value]]
+  (->integer driver (->honeysql driver value)))
 
 (defmethod ->honeysql [:sql :sum-where]
   [driver [_ arg pred]]

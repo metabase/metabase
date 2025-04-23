@@ -43,7 +43,6 @@
                               :describe-fields           true
                               :describe-fks              true
                               :expression-literals       true
-                              :expressions/integer       true
                               :identifiers-with-spaces   false
                               :uuid-type                 false
                               :nested-field-columns      false
@@ -298,9 +297,9 @@
   [driver [_ field]]
   [:avg [:cast (sql.qp/->honeysql driver field) :float]])
 
-(defmethod sql.qp/->honeysql [:redshift :integer]
-  [driver [_ value]]
-  (->> (sql.qp/->honeysql driver value)
+(defmethod sql.qp/cast-integer :redshift
+  [_ value]
+  (->> value
        (h2x/maybe-cast "FLOAT8")
        (vector :round)
        (h2x/maybe-cast "BIGINT")))
