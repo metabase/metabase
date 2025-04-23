@@ -2,7 +2,8 @@ import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
-import { COMPARISON, EQUALITY, parsePunctuator } from "../../pratt";
+import { COMPARISON, EQUALITY } from "../../pratt";
+import { parsePunctuator } from "../../punctuator";
 import { visit } from "../../visitor";
 import { error } from "../utils";
 

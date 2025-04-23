@@ -1,28 +1,19 @@
 import type { SyntaxNodeRef } from "@lezer/common";
 
+import { PUNCTUATOR, parsePunctuator } from "../punctuator";
 import { unquoteString } from "../string";
-import { PUNCTUATOR, tokenize } from "../tokenizer";
+import { tokenize } from "../tokenizer";
 
 import {
-  ADD,
   BAD_TOKEN,
   BOOLEAN,
   CALL,
-  COMMA,
-  COMPARISON,
   END_OF_INPUT,
-  EQUALITY,
   FIELD,
   GROUP,
-  GROUP_CLOSE,
   IDENTIFIER,
-  LOGICAL_AND,
-  LOGICAL_NOT,
-  LOGICAL_OR,
-  MULDIV_OP,
   NUMBER,
   STRING,
-  SUB,
 } from "./syntax";
 import { type NodeType, Token } from "./types";
 
@@ -116,31 +107,4 @@ export function lexify(source: string) {
   return {
     tokens: lexs.sort((a, b) => a.pos - b.pos),
   };
-}
-
-const OPERATOR_TO_TYPE: Record<PUNCTUATOR, NodeType> = {
-  [PUNCTUATOR.Comma]: COMMA,
-  [PUNCTUATOR.OpenParenthesis]: GROUP,
-  [PUNCTUATOR.CloseParenthesis]: GROUP_CLOSE,
-  [PUNCTUATOR.Plus]: ADD,
-  [PUNCTUATOR.Minus]: SUB,
-  [PUNCTUATOR.Multiply]: MULDIV_OP,
-  [PUNCTUATOR.Divide]: MULDIV_OP,
-  [PUNCTUATOR.Equal]: EQUALITY,
-  [PUNCTUATOR.NotEqual]: EQUALITY,
-  [PUNCTUATOR.LessThan]: COMPARISON,
-  [PUNCTUATOR.GreaterThan]: COMPARISON,
-  [PUNCTUATOR.GreaterThanEqual]: COMPARISON,
-  [PUNCTUATOR.LessThanEqual]: COMPARISON,
-  [PUNCTUATOR.Not]: LOGICAL_NOT,
-  [PUNCTUATOR.And]: LOGICAL_AND,
-  [PUNCTUATOR.Or]: LOGICAL_OR,
-};
-
-export function parsePunctuator(op: string): NodeType | null {
-  const lower = op.toLowerCase();
-  if (lower in OPERATOR_TO_TYPE) {
-    return OPERATOR_TO_TYPE[lower as keyof typeof OPERATOR_TO_TYPE];
-  }
-  return null;
 }

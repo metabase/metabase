@@ -13,7 +13,7 @@ import {
   formatMetricName,
   formatSegmentName,
 } from "../identifier";
-import { parsePunctuator } from "../pratt";
+import { parsePunctuator } from "../punctuator";
 import { type StartDelimiter, formatStringLiteral } from "../string";
 
 import { pathMatchers as check, isOperator } from "./utils";
