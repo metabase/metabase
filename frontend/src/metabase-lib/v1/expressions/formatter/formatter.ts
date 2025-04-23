@@ -6,7 +6,7 @@ import { parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
 import { isa } from "metabase-lib/v1/types/utils/isa";
 
-import { OPERATORS, getClauseDefinition } from "../config";
+import { getClauseDefinition } from "../config";
 import {
   formatDimensionName,
   formatIdentifier,
@@ -15,9 +15,8 @@ import {
 } from "../identifier";
 import { parseOperatorType } from "../pratt";
 import { type StartDelimiter, formatStringLiteral } from "../string";
-import type { OPERATOR } from "../tokenizer";
 
-import { pathMatchers as check } from "./utils";
+import { pathMatchers as check, isOperator } from "./utils";
 
 export type ExpressionNode = Lib.ExpressionParts | Lib.ExpressionArg | null;
 
@@ -282,10 +281,6 @@ function formatExpressionOptions(options: Lib.ExpressionOptions): Doc | null {
     return formatStringLiteral("include-current");
   }
   return null;
-}
-
-function isOperator(operator: string): operator is OPERATOR {
-  return OPERATORS.has(operator as OPERATOR);
 }
 
 function formatOperator(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {

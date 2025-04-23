@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { OPERATOR } from "./tokenizer";
 import type { MBQLClauseFunctionConfig } from "./types";
 
 type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
@@ -698,22 +697,4 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "if",
   "case",
   "coalesce",
-]);
-
-export const OPERATORS = new Set([
-  OPERATOR.Plus,
-  OPERATOR.Minus,
-  OPERATOR.Multiply,
-  OPERATOR.Divide,
-
-  OPERATOR.Not,
-  OPERATOR.And,
-  OPERATOR.Or,
-
-  OPERATOR.Equal,
-  OPERATOR.NotEqual,
-  OPERATOR.GreaterThan,
-  OPERATOR.LessThan,
-  OPERATOR.GreaterThanEqual,
-  OPERATOR.LessThanEqual,
 ]);
