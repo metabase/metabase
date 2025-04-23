@@ -41,28 +41,6 @@
                 (in-ns ns-sym)
                 (eval (read-string " (pr-str (or code "::loaded")) ")))"))
 
-(defn- bootstrap-code
-  "Capture output and return it as strings along with the value from the orignal code."
-  [code-string]
-  (str "
-(let [o# (new java.io.StringWriter)
-      e# (new java.io.StringWriter)]
-  (binding [*out* o#
-            *err* e#]
-    {:value (do" code-string ")
-     :stdout (str o#)
-     :stderr (str e#)}))"))
-
-(defn eval-in-ns
-  "This insane code evals the code in the proper namespace.
-  It's basically a repl inside a repl."
-  [nns code]
-  (str "
-              (let [ns-sym (symbol \"" nns "\")]
-                (require ns-sym :reload)
-                (in-ns ns-sym)
-                (eval (read-string " (pr-str (or code "::no-op")) ")))"))
-
 (defn nrepl-eval
   "Evaluate Clojure code in a running nREPL server. With one arg, reads port from .nrepl-port file.
    With two args, uses the provided port number. Returns and formats the evaluation results."

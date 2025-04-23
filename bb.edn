@@ -163,20 +163,6 @@
    :task     (let [{:keys [arguments]} (cli/parse! (current-task))]
                (apply readability/check arguments))}
 
-  -code-is-readable
-  {:doc      "Check for unbalanced parens in the current file, given a starting line and ending line"
-   :requires [[mage.be-dev :refer [balanced-parens?]]]
-   :arg-schema [:or [:tuple [:string {:description "File to check"}]]
-                [:tuple
-                 [:string {:description "File to check"}]
-                 [:int {:description "A line in the file" :min 1}]]]
-   :examples [["./bin/mage -check-readable dev/src/dev.clj"
-               "Check file for readability"]
-              ["./bin/mage -check-readable dev/src/dev.clj 300"
-               "Check top level form containing line 300 for readability"]]
-   :task     (let [{:keys [arguments]} (cli/parse! (current-task))]
-               (apply readability-check arguments))}
-
   -example-calculator
   {;; `:doc` is a short docstring for the task, will be listed in `./bin/mage -h` and other help info
    :doc        "The sample task docstring"
