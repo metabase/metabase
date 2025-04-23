@@ -8,6 +8,10 @@ import { SettingHeader } from "../SettingHeader";
 
 import { BasicAdminSettingInput, SetByEnvVar } from "./AdminSettingInput";
 
+// The backend accepts a string array for multiple reply-to emails,
+// but currently the frontend only lets the user enter a single email.
+//
+// Issue with historical context: https://github.com/metabase/metabase/issues/22540
 export function EmailReplyToWidget() {
   const {
     value: initialValue,
@@ -35,7 +39,7 @@ export function EmailReplyToWidget() {
     <Stack data-testid="email-reply-to-setting">
       <SettingHeader
         id="email-reply-to"
-        title={t`Add Recipients as CC or BCC`}
+        title={t`Reply-To Address`}
         description={description}
       />
       {settingDetails?.is_env_setting && settingDetails?.env_name ? (
