@@ -191,32 +191,30 @@ export const FieldValuesWidgetInner = forwardRef<
     setOptions([]);
 
     let newOptions: FieldValue[] = [];
-    let hasMoreOptions = false;
+    let newValuesMode = valuesMode;
     try {
       if (canUseDashboardEndpoints(dashboard)) {
-        const result = await dispatchFetchDashboardParameterValues(query);
-        newOptions = result.values;
-        hasMoreOptions = result.has_more_values;
+        const { values, has_more_values } =
+          await dispatchFetchDashboardParameterValues(query);
+        newOptions = values;
+        newValuesMode = has_more_values ? "search" : newValuesMode;
       } else if (canUseCardEndpoints(question)) {
-        const result = await dispatchFetchCardParameterValues(query);
-        newOptions = result.values;
-        hasMoreOptions = result.has_more_values;
+        const { values, has_more_values } =
+          await dispatchFetchCardParameterValues(query);
+        newOptions = values;
+        newValuesMode = has_more_values ? "search" : newValuesMode;
       } else if (canUseParameterEndpoints(parameter)) {
-        const result = await dispatchFetchParameterValues(query);
-        newOptions = result.values;
-        hasMoreOptions = result.has_more_values;
+        const { values, has_more_values } =
+          await dispatchFetchParameterValues(query);
+        newOptions = values;
+        newValuesMode = has_more_values ? "search" : newValuesMode;
       }
     } finally {
-      const canSearch = isSearchable({
-        parameter,
-        fields,
-        disableSearch,
-        disablePKRemappingForSearch,
-      });
       updateRemappings(newOptions);
+
       setOptions(newOptions);
-      setValuesMode(canSearch && hasMoreOptions ? "search" : valuesMode);
       setLoadingState("LOADED");
+      setValuesMode(newValuesMode);
     }
   };
 
