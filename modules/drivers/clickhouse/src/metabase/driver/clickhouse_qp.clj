@@ -317,6 +317,16 @@
   [_ value]
   [:'toFloat64 value])
 
+(defmethod sql.qp/cast-integer :clickhouse
+  [driver value]
+  ;; value can be either string or float
+  ;; if it's a float, coversion to float does nothing
+  ;; if it's a string, we can't round, so we need to convert to float first
+  (->> value
+       (conj [:'toFloat64])
+       (conj [:round])
+       (h2x/maybe-cast (sql.qp/integer-dbtype driver))))
+
 (defmethod sql.qp/->honeysql [:clickhouse :value]
   [driver value]
   (let [[_ value {base-type :base_type}] value]
