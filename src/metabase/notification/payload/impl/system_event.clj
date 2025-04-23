@@ -151,5 +151,6 @@
 
 (defmethod notification.send/should-queue-notification? :notification/system-event
   [notification-info]
-  (when-let [condition (not-empty (:condition notification-info))]
-    (notification.condition/evaluate-expression condition (:event-info notification-info))))
+  (if-let [condition (not-empty (:condition notification-info))]
+    (notification.condition/evaluate-expression condition (:event_info notification-info))
+    true))

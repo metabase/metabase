@@ -134,7 +134,7 @@
 
 (deftest create-row-notification-webhook-test
   (test-row-notification!
-   :event/rows.created
+   :event/row.created
    (fn []
      (let [token  (:token (mt/user-http-request :crowberto
                                                 :post "ee/data-editing/webhook"

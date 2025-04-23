@@ -210,7 +210,8 @@
                                                           :db_id    db-id}}))
       (events/publish-event! bulk-event {:actor_id    user-id
                                          :row_changes row-changes
-                                         :args        {:table_id table-id}}))))
+                                         :args        {:table_id table-id
+                                                       :db_id    db-id}}))))
 
 (mu/defn perform-action-internal!
   "A more modern version of [[perform-action!]] that takes an existing context, and multiple arg-maps.
