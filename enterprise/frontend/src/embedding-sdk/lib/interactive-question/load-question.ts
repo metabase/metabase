@@ -7,6 +7,7 @@ import { getParameterValuesForQuestion } from "metabase/query_builder/actions/co
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
+import type { CardId } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 export const loadQuestionSdk =
@@ -20,9 +21,13 @@ export const loadQuestionSdk =
     dispatch: Dispatch,
     getState: GetState,
   ): Promise<{ question: Question; originalQuestion?: Question }> => {
-    const { id: questionId } = await dispatch(
+    const { id: questionId } = (await dispatch(
       fetchEntityId({ type: "card", id: initQuestionId }),
-    );
+    )) as { id: CardId | null };
+
+    if (!questionId && !deserializedCard) {
+      throw new Error("No question ID or data found.");
+    }
 
     const { card, originalCard } = await resolveCards({
       cardId: questionId ?? undefined,
