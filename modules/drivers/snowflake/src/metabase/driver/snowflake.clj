@@ -460,7 +460,7 @@
 
 (defmethod sql.qp/float-dbtype :snowflake
   [_]
-  "FLOAT")
+  :float)
 
 (defmethod sql.qp/->honeysql [:snowflake :split-part]
   [driver [_ text divider position]]

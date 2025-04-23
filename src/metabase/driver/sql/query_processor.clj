@@ -167,7 +167,7 @@
 
 (defmethod float-dbtype :sql
   [_driver]
-  "float")
+  :float)
 
 (defmulti cast-float
   "Cast to float."

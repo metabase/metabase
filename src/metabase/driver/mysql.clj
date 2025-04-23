@@ -312,7 +312,7 @@
 
 (defmethod sql.qp/float-dbtype :mysql
   [_]
-  "DOUBLE")
+  :double)
 
 (defmethod sql.qp/->float :mysql
   [_ value]
