@@ -256,7 +256,7 @@
                   :db_id  (u/the-id database)
                   :active true)))
 
-(mu/defn- adjusted-schemas :- [:map-of :string :string]
+(mu/defn- adjusted-schemas :- [:maybe [:map-of :string :string]]
   "Returns a map of schemas that should be adjusted to their new names."
   [driver
    database
