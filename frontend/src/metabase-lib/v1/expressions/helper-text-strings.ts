@@ -11,34 +11,6 @@ import type { Expression } from "metabase-types/api";
 
 import { isLiteral } from "./literal";
 
-const getDescriptionForNow: HelpTextConfig["description"] = (
-  database,
-  reportTimezone,
-) => {
-  const hasTimezoneFeatureFlag = database.features?.includes("set-timezone");
-  const timezone = hasTimezoneFeatureFlag ? reportTimezone : "UTC";
-  const nowAtTimezone = getNowAtTimezone(timezone, reportTimezone);
-
-  // H2 is the only DBMS we support where:
-  // · set-timezone isn't a feature, and
-  // · it's possible for now to be in the system timezone, not UTC.
-  // also H2 is not recommended for use in production, so for now we skip
-  // deeper logic to support displaying timestamps in it.
-  if (database.engine === "h2") {
-    return t`Returns the current timestamp (in milliseconds).`;
-  } else {
-    return t`Returns the current timestamp (in milliseconds). Currently ${nowAtTimezone} in ${timezone}.`;
-  }
-};
-
-const getNowAtTimezone = (
-  timezone: string | undefined,
-  reportTimezone: string | undefined,
-) =>
-  timezone && reportTimezone
-    ? moment().tz(reportTimezone).format("LT")
-    : moment().format("LT");
-
 // some of the structure names below are duplicated in src/metabase/lib/expression.cljc
 const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
@@ -1975,7 +1947,27 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     name: "now",
     structure: "now",
     category: "date",
-    description: getDescriptionForNow,
+    description(database, reportTimezone) {
+      const hasTimezoneFeatureFlag =
+        database.features?.includes("set-timezone");
+      const timezone = hasTimezoneFeatureFlag ? reportTimezone : "UTC";
+      const nowAtTimezone =
+        timezone && reportTimezone
+          ? moment().tz(reportTimezone).format("LT")
+          : moment().format("LT");
+
+      // H2 is the only DBMS we support where:
+      // · set-timezone isn't a feature, and
+      // · it's possible for now to be in the system timezone, not UTC.
+      // also H2 is not recommended for use in production, so for now we skip
+      // deeper logic to support displaying timestamps in it.
+      if (database.engine === "h2") {
+        return t`Returns the current timestamp (in milliseconds).`;
+      } else {
+        return t`Returns the current timestamp (in milliseconds). Currently ${nowAtTimezone} in ${timezone}.`;
+      }
+    },
+
     docsPage: "now",
   },
   {
