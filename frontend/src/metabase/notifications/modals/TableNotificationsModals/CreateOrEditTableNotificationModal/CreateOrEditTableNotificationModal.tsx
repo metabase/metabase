@@ -1,5 +1,5 @@
 import { skipToken } from "@reduxjs/toolkit/query";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { isEqual } from "underscore";
 
@@ -13,6 +13,7 @@ import {
 } from "metabase/api";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { AutoWidthSelect } from "metabase/components/Schedule/AutoWidthSelect";
 import CS from "metabase/css/core/index.css";
 import { alertIsValid } from "metabase/lib/notifications";
@@ -262,7 +263,21 @@ export const CreateOrEditTableNotificationModal = ({
     [requestBody, notification],
   );
 
-  useEscapeToCloseModal(onClose, { capture: false });
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+
+  const handleCloseAttempt = useCallback(() => {
+    if (hasChanges) {
+      setIsConfirmModalOpen(true);
+    } else {
+      onClose();
+    }
+  }, [hasChanges, onClose]);
+
+  const handleConfirmDiscard = useCallback(() => {
+    setIsConfirmModalOpen(false);
+    onClose();
+  }, [onClose]);
+  useEscapeToCloseModal(handleCloseAttempt, { capture: false });
 
   if (!isLoadingChannelInfo && channelSpec && !channelRequirementsMet) {
     return (
@@ -284,7 +299,7 @@ export const CreateOrEditTableNotificationModal = ({
       data-testid="table-notification-create"
       opened
       size="lg"
-      onClose={onClose}
+      onClose={handleCloseAttempt}
       padding="2.5rem"
       closeOnEscape={false}
       title={isEditMode ? t`Edit alert` : t`New alert`}
@@ -348,7 +363,10 @@ export const CreateOrEditTableNotificationModal = ({
         </AlertModalSettingsBlock>
       </Stack>
       <Flex justify="flex-end" px="2.5rem" pt="lg" className={CS.borderTop}>
-        <Button onClick={onClose} className={CS.mr2}>{t`Cancel`}</Button>
+        <Button
+          onClick={handleCloseAttempt}
+          className={CS.mr2}
+        >{t`Cancel`}</Button>
         <ButtonWithStatus
           titleForState={{
             default: isEditMode && hasChanges ? t`Save changes` : t`Done`,
@@ -357,6 +375,19 @@ export const CreateOrEditTableNotificationModal = ({
           onClickOperation={onCreateOrEditAlert}
         />
       </Flex>
+      {hasChanges && (
+        <ConfirmModal
+          size="md"
+          opened={isConfirmModalOpen}
+          title={t`Discard unsaved changes?`}
+          message={t`You have unsaved changes. Are you sure you want to discard them?`}
+          onClose={() => setIsConfirmModalOpen(false)}
+          onConfirm={handleConfirmDiscard}
+          confirmButtonText={t`Discard`}
+          closeButtonText={t`Cancel`}
+          confirmButtonPrimary={false}
+        />
+      )}
     </Modal>
   );
 };
