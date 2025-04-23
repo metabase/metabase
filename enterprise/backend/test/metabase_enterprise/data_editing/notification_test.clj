@@ -38,7 +38,7 @@
 
 (deftest create-row-notification-test
   (test-row-notification!
-   :event/rows.created
+   :event/row.created
    (fn []
      (mt/user-http-request
       :crowberto
@@ -70,7 +70,7 @@
 
 (deftest update-row-notification-test
   (test-row-notification!
-   :event/rows.updated
+   :event/row.updated
    (fn []
      (mt/user-http-request
       :crowberto
@@ -84,7 +84,7 @@
                                              [{:type "section",
                                                :text
                                                {:type "mrkdwn",
-                                                :text "*Crowberto Corv has updated a row from CATEGORIES*\n*Update:*\n• name : Updated Category"}}]}]
+                                                :text "*Crowberto Corv has updated a row from CATEGORIES*\n*Update:*\n• name : Updated Category\n• id : 1"}}]}]
                               :channel-id  "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
@@ -102,7 +102,7 @@
 
 (deftest delete-row-notification-test
   (test-row-notification!
-   :event/rows.deleted
+   :event/row.deleted
    (fn []
      (mt/user-http-request
       :crowberto
@@ -188,31 +188,32 @@
   (is (=? {:creator  {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :editor   {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :table    {:id 1 :name "orders"}
-           :records  [{:row {:ID 1 :STATUS "approved"} :changes {:STATUS {:before "pending" :after "approved"}}}]
+           :record   {:ID 1 :STATUS "approved"}
+           :changes  {:STATUS {:before "pending" :after "approved"}}
            :settings {}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
-                                           :payload      {:event_name :event/rows.created}
+                                           :payload      {:event_name :event/row.created}
                                            :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest example-payload-row-update-test
   (is (=? {:creator  {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :editor   {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :table    {:id 1 :name "orders"}
-           :records  [{:row {:ID 1 :STATUS "approved"} :changes {:STATUS {:before "pending" :after "approved"}}}]
-           :settings {}}
+           :record   {:ID 1 :STATUS "approved"}
+           :changes  {:STATUS {:before "pending" :after "approved"}}           :settings {}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
-                                           :payload      {:event_name :event/rows.updated}
+                                           :payload      {:event_name :event/row.updated}
                                            :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest example-payload-row-delete-test
   (is (=? {:creator  {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :editor   {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :table    {:id 1 :name "orders"}
-           :records  [{:row {:ID 1 :STATUS "approved"} :changes {:STATUS {:before "pending" :after "approved"}}}]
-           :settings {}}
+           :record   {:ID 1 :STATUS "approved"}
+           :changes  {:STATUS {:before "pending" :after "approved"}}           :settings {}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
-                                           :payload      {:event_name :event/rows.deleted}
+                                           :payload      {:event_name :event/row.deleted}
                                            :creator_id   (mt/user->id :crowberto)})))))

@@ -178,29 +178,39 @@
 
 (defn- row-update-event [{:keys [before after]}]
   (case [(some? before) (some? after)]
-    [false true]  :event/rows.created
-    [true  true]  :event/rows.updated
-    [true  false] :event/rows.deleted
+    [false true]  {:single :event/row.created
+                   :bulk   :event/rows.created}
+    [true  true]  {:single :event/row.updated
+                   :bulk   :event/rows.updated}
+    [true  false] {:single :event/row.deleted
+                   :bulk   :event/rows.deleted}
     ;; should not happen
     [false false] ::no-op))
 
 (defn- publish-effect-events! [{:keys [user-id effects]}]
-  (doseq [[event payloads] (->> effects
-                                (filter (comp #{:effect/row.modified} first))
-                                (map second)
-                                (group-by row-update-event)
-                                (remove (comp #{::no-op} key)))]
+  (doseq [[{single-event :single
+            bulk-event   :bulk} payloads] (->> effects
+                                               (filter (comp #{:effect/row.modified} first))
+                                               (map second)
+                                               (group-by row-update-event)
+                                               (remove (comp #{::no-op} key)))]
     ;; TODO will fix requiring-resolve when we remove all this table-action specific stuff, which has NO place here
     #_{:clj-kondo/ignore [:metabase/modules]}
     (doseq [[table-id payloads] (group-by :table-id payloads)
-            :let [pk-fields   ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/select-table-pk-fields) table-id)
+            :let [db-id       (:db-id (first payloads))
+                  pk-fields   ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/select-table-pk-fields) table-id)
                   row-changes (for [{:keys [before after]} payloads]
                                 {:pk     ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/get-row-pks) pk-fields after)
                                  :before before
                                  :after  after})]]
-      (events/publish-event! event {:actor_id    user-id
-                                    :row-changes row-changes
-                                    :args        {:table_id table-id}}))))
+      (doseq [row-change row-changes]
+        (events/publish-event! single-event {:actor_id   user-id
+                                             :row_change row-change
+                                             :args       {:table_id table-id
+                                                          :db_id    db-id}}))
+      (events/publish-event! bulk-event {:actor_id    user-id
+                                         :row_changes row-changes
+                                         :args        {:table_id table-id}}))))
 
 (mu/defn perform-action-internal!
   "A more modern version of [[perform-action!]] that takes an existing context, and multiple arg-maps.

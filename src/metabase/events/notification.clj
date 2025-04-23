@@ -20,9 +20,9 @@
   #{:event/user-invited
     :event/notification-create
     :event/slack-token-invalid
-    :event/rows.created
-    :event/rows.updated
-    :event/rows.deleted})
+    :event/row.created
+    :event/row.updated
+    :event/row.deleted})
 
 (def ^:private hydrate-transformer
   (mtx/transformer
@@ -138,13 +138,28 @@
 (mr/def :event/action.success [:merge ::action-events [:map [:outputs [:sequential :map]]]])
 (mr/def :event/action.failure [:merge ::action-events [:map [:message :string] [:info :map]]])
 
+(def ^:private row-change-schema
+  [:map
+   [:pk     :any]
+   [:before [:maybe :map]]
+   [:after  [:maybe :map]]])
+
+(def ^:private single-row-schema
+  [:map {:closed true}
+   [:args (into [:map [:db_id pos-int?]]
+                table-id-hydrate-schemas)]
+   [:row_change row-change-schema]])
+
 (def ^:private bulk-row-schema
   [:map {:closed true}
-   [:args (into [:map] table-id-hydrate-schemas)]
-   [:row-changes [:sequential [:map
-                               [:pk     :any]
-                               [:before [:maybe :map]]
-                               [:after  [:maybe :map]]]]]])
+   [:args (into [:map [:db_id pos-int?]]
+                table-id-hydrate-schemas)]
+   [:row_changes [:sequential row-change-schema]]])
+
+(def ^:private single-event (into single-row-schema actor-schema))
+(mr/def :event/row.created single-event)
+(mr/def :event/row.updated single-event)
+(mr/def :event/row.deleted single-event)
 
 (def ^:private bulk-event (into bulk-row-schema actor-schema))
 

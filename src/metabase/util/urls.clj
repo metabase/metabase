@@ -63,12 +63,19 @@
   [^Integer db-id]
   (format "%s/browse/%d" (site-url) db-id))
 
+(defn view-table-url
+  "Returns an appropriate URL to view a table.
+
+     (view-table-url 1 10) -> \"http://localhost:3000/question?db=1&table=10\""
+  [^Integer db-id ^Integer table-id]
+  (format "%s/question?db=%d&table=%d" (site-url) db-id table-id))
+
 (defn table-url
   "Returns an appropriate URL to view a table.
 
      (table-url 1 10) -> \"http://localhost:3000/question?db=1&table=10\""
   [^Integer db-id ^Integer table-id]
-  (format "%s/question?db=%d&table=%d" (site-url) db-id table-id))
+  (format "%s/databases/%d/table/%d" (site-url) db-id table-id))
 
 (defn public-card-prefix
   "URL prefix for a public Cards. Get the complete URL by adding the UUID to the end."

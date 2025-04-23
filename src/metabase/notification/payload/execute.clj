@@ -70,7 +70,7 @@
     "collection" (urls/collection-url id)
     "dashboard"  (urls/dashboard-url id)
     "database"   (urls/database-url id)
-    "table"      (urls/table-url db_id id)))
+    "table"      (urls/view-table-url db_id id)))
 
 (defn- link-card->text-part
   [{:keys [entity url] :as _link-card}]
