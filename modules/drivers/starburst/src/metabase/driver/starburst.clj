@@ -126,6 +126,10 @@
 ;;; |                                          Misc Implementations                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmethod sql.qp/->float :starburst
+  [_ value]
+  (h2x/cast :double value))
+
 (defmethod sql.qp/float-dbtype :starburst
   [_]
   :double)
