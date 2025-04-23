@@ -11,12 +11,13 @@ import { CodeBlock } from "metabase/components/CodeBlock";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Button, Flex, Icon, Loader, Menu } from "metabase/ui";
+import { Box, Button, Flex, Icon, Loader } from "metabase/ui";
 import type { LoggerPreset, TimeUnit } from "metabase-types/api";
 import { isErrorWithMessageResponse } from "metabase-types/guards";
 
 import { DurationInput } from "./DurationInput";
 import S from "./LogLevelsModal.module.css";
+import { PresetPicker } from "./PresetPicker";
 
 export const LogLevelsModal = () => {
   const dispatch = useDispatch();
@@ -100,26 +101,12 @@ export const LogLevelsModal = () => {
           />
 
           {presets.length > 0 && (
-            <Menu position="bottom-end" shadow="md" width={200}>
-              <Menu.Target>
-                <Button leftSection={<Icon name="snippet" />}>
-                  Load preset
-                </Button>
-              </Menu.Target>
-
-              <Menu.Dropdown>
-                {presets.map((preset) => (
-                  <Menu.Item
-                    key={preset.id}
-                    onClick={() => {
-                      setJson(getPresetJson(preset));
-                    }}
-                  >
-                    {preset.display_name}
-                  </Menu.Item>
-                ))}
-              </Menu.Dropdown>
-            </Menu>
+            <PresetPicker
+              presets={presets}
+              onChange={(preset) => {
+                setJson(getPresetJson(preset));
+              }}
+            />
           )}
         </Flex>
 
@@ -168,8 +155,7 @@ function getPresetJson(preset: LoggerPreset) {
   const logLevels = Object.fromEntries(
     preset.loggers.map(({ level, name }) => [name, level]),
   );
-  const json = JSON.stringify(logLevels, null, 2);
-  return json;
+  return JSON.stringify(logLevels, null, 2);
 }
 
 function getErrorMessage(error: unknown) {
