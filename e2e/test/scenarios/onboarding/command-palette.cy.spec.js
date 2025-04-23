@@ -414,7 +414,9 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
 
     cy.realPress("g").realPress("d");
     cy.location("pathname").should("contain", "browse/databases");
-    cy.realPress("Escape");
+
+    cy.realPress(["Meta", "["]);
+    H.navigationSidebar().should("be.visible");
 
     cy.realPress("[");
     H.navigationSidebar().should("not.be.visible");
