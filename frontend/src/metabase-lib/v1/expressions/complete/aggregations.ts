@@ -35,6 +35,7 @@ export function suggestAggregations({
 
   const database = getDatabase(query, metadata);
   const aggregations = Object.values(AGGREGATION_FUNCTIONS)
+    .sort((a, b) => a.name.localeCompare(b.name))
     .filter((clause) => clause && database?.hasFeature(clause.requiresFeature))
     .map((agg) =>
       expressionClauseCompletion(agg, {

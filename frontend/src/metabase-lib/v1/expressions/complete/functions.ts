@@ -43,6 +43,7 @@ export function suggestFunctions({
       const isOffsetInFilterExpression = isOffset && isFilterExpression;
       return !isOffsetInFilterExpression;
     })
+    .sort((a, b) => a.name.localeCompare(b.name))
     .map((func) =>
       expressionClauseCompletion(func, {
         type: "function",
