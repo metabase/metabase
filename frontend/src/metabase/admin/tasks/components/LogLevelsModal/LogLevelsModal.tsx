@@ -11,19 +11,11 @@ import { CodeBlock } from "metabase/components/CodeBlock";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
-import {
-  Box,
-  Button,
-  Flex,
-  Icon,
-  Loader,
-  Menu,
-  Select,
-  TextInput,
-} from "metabase/ui";
+import { Box, Button, Flex, Icon, Loader, Menu } from "metabase/ui";
 import type { LoggerPreset, TimeUnit } from "metabase-types/api";
 import { isErrorWithMessageResponse } from "metabase-types/guards";
 
+import { DurationInput } from "./DurationInput";
 import S from "./LogLevelsModal.module.css";
 
 export const LogLevelsModal = () => {
@@ -100,25 +92,12 @@ export const LogLevelsModal = () => {
     <ModalContent title={t`Customize log levels`} onClose={handleClose}>
       <form onSubmit={handleSubmit}>
         <Flex align="flex-end" gap="md" justify="space-between" mb="xl">
-          <Flex align="flex-end" gap="md">
-            <TextInput
-              label={t`Duration`}
-              placeholder={t`Duration`}
-              required
-              type="number"
-              value={duration}
-              w={80}
-              onChange={(event) => setDuration(event.target.value)}
-            />
-
-            <Select
-              data={getData()}
-              placeholder={t`Unit`}
-              value={durationUnit}
-              w={140}
-              onChange={setDurationUnit}
-            />
-          </Flex>
+          <DurationInput
+            duration={duration}
+            durationUnit={durationUnit}
+            onDurationChange={setDuration}
+            onDurationUnitChange={setDurationUnit}
+          />
 
           {presets.length > 0 && (
             <Menu position="bottom-end" shadow="md" width={200}>
@@ -184,25 +163,6 @@ export const LogLevelsModal = () => {
     </ModalContent>
   );
 };
-
-// It intentionally is a function and not a module-level constant, so that `t` function works correctly
-function getData() {
-  /**
-   * Using a Record, so that this gives compilation error when TimeUnit is extended,
-   * so that whoever changes that type does not forget to update this function.
-   */
-  const statusNames: { [T in TimeUnit]: { label: string; value: T } } = {
-    nanoseconds: { label: t`Nanoseconds`, value: "nanoseconds" },
-    microseconds: { label: t`Microseconds`, value: "microseconds" },
-    milliseconds: { label: t`Milliseconds`, value: "milliseconds" },
-    seconds: { label: t`Seconds`, value: "seconds" },
-    minutes: { label: t`Minutes`, value: "minutes" },
-    hours: { label: t`Hours`, value: "hours" },
-    days: { label: t`Days`, value: "days" },
-  };
-
-  return Object.values(statusNames);
-}
 
 function getPresetJson(preset: LoggerPreset) {
   const logLevels = Object.fromEntries(
