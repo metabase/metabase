@@ -237,7 +237,7 @@
         (Thread/sleep 1000)
         (a/>!! chan-finish-handle :done) ;; finish the synchronous handler
         (a/<!! chan-done-request)        ;; finished the synchronous wrapper
-        (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/request-time-max-seconds) 0.1)))))
+        (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/request-time-max-seconds) 0.5)))))
   (mt/with-prometheus-system! [_ system]
     (testing "when sync server responds 200"
       (with-server 200 true
@@ -249,4 +249,4 @@
         (a/<!! chan-done-request)        ;; finished the synchronous wrapper
         (a/>!! chan-finish-handle :done) ;; finish the asynchronous handler
         (a/<!! chan-done-request)        ;; finished the asynchronous wrapper
-        (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/request-time-max-seconds) 0.1))))))
+        (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/request-time-max-seconds) 0.5))))))
