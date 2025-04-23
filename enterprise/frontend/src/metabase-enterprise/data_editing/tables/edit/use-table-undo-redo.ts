@@ -96,5 +96,11 @@ export function useTableEditingUndoRedo({
     handleResponse("redo", response);
   }, [redoMutation, tableId, handleResponse]);
 
-  return { undo, redo, isUndoLoading, isRedoLoading };
+  const currentActionLabel = isUndoLoading
+    ? t`Undoing actions...`
+    : isRedoLoading
+      ? t`Redoing actions...`
+      : undefined;
+
+  return { undo, redo, isUndoLoading, isRedoLoading, currentActionLabel };
 }

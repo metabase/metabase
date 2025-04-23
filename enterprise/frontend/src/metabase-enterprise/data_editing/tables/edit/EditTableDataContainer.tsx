@@ -19,6 +19,7 @@ import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
 import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataHeader } from "./EditTableDataHeader";
+import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 import { useStandaloneTableQuery } from "./use-standalone-table-query";
 import { useTableCRUD } from "./use-table-crud";
@@ -76,10 +77,11 @@ export const EditTableDataContainer = ({
     handleModalOpenAndExpandedRow,
   } = useTableCRUD({ tableId, datasetData, stateUpdateStrategy });
 
-  const { undo, redo, isUndoLoading, isRedoLoading } = useTableEditingUndoRedo({
-    tableId,
-    stateUpdateStrategy,
-  });
+  const { undo, redo, isUndoLoading, isRedoLoading, currentActionLabel } =
+    useTableEditingUndoRedo({
+      tableId,
+      stateUpdateStrategy,
+    });
 
   useMount(() => {
     dispatch(closeNavbar());
@@ -94,6 +96,8 @@ export const EditTableDataContainer = ({
     // TODO: show error
     return null;
   }
+
+  const shouldDisableTable = isUndoLoading || isRedoLoading;
 
   return (
     <>
@@ -115,6 +119,10 @@ export const EditTableDataContainer = ({
         {isDatabaseTableEditingEnabled(database) ? (
           <>
             <Box pos="relative" className={S.gridWrapper}>
+              <EditTableDataOverlay
+                show={shouldDisableTable}
+                message={currentActionLabel ?? ""}
+              />
               <EditTableDataGrid
                 data={datasetData}
                 fieldMetadataMap={tableFieldMetadataMap}
