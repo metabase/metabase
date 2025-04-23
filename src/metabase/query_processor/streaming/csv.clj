@@ -128,7 +128,7 @@
             ;; For pivot tables, accumulate rows in memory in a transient
             (vswap! pivot-data update-in [:data :rows] conj! ordered-row)
             (if pivot-group
-              ;; Non-pivoted pivot table: we have to remove the pivot-grouping column
+              ;; Non-pivoted pivot table: we have to remove the pivot-grouping column
               (when (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int pivot-group))
                 (let [formatted-row (->> (perf/mapv (fn [formatter r]
                                                       (formatter (streaming.common/format-value r)))
