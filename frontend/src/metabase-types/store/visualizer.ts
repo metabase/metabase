@@ -60,15 +60,17 @@ export type VisualizerVizState = {
 
 export interface VisualizerState extends VisualizerVizState {
   initialState: VisualizerVizState;
-
   cards: Card[];
   datasets: Record<VisualizerDataSourceId, Dataset>;
-  expandedDataSources: Record<VisualizerDataSourceId, boolean>;
   loadingDataSources: Record<VisualizerDataSourceId, boolean>;
   loadingDatasets: Record<VisualizerDataSourceId, boolean>;
+  error: string | null;
+  draggedItem: DraggedItem | null;
+}
+
+export interface VisualizerUiState {
+  expandedDataSources: Record<VisualizerDataSourceId, boolean>;
   isDataSidebarOpen: boolean;
   isVizSettingsSidebarOpen: boolean;
   isSwapAffordanceVisible: boolean;
-  error: string | null;
-  draggedItem: DraggedItem | null;
 }

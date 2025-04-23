@@ -16,7 +16,10 @@ import { createMockRoutingState } from "./routing";
 import { createMockSettingsState } from "./settings";
 import { createMockSetupState } from "./setup";
 import { createMockUploadState } from "./upload";
-import { createMockVisualizerState } from "./visualizer";
+import {
+  createMockVisualizerState,
+  createMockVisualizerUiState,
+} from "./visualizer";
 
 export function createMockState<S extends Pick<SdkStoreState, "sdk">>(
   opts?: S,
@@ -45,6 +48,7 @@ export function createMockState(opts: any) {
       present: createMockVisualizerState(),
       future: [],
     },
+    visualizerUi: createMockVisualizerUiState(),
     modal: null,
     ...opts,
   };

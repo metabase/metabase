@@ -16,7 +16,7 @@ import type { SettingsState } from "./settings";
 import type { SetupState } from "./setup";
 import type { UndoState } from "./undo";
 import type { FileUploadState } from "./upload";
-import type { VisualizerState } from "./visualizer";
+import type { VisualizerState, VisualizerUiState } from "./visualizer";
 
 type ModalName = null | "collection" | "dashboard" | "action" | "help";
 
@@ -43,6 +43,7 @@ export interface State {
     present: VisualizerState;
     future: VisualizerState[];
   };
+  visualizerUi: VisualizerUiState;
 }
 
 export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;

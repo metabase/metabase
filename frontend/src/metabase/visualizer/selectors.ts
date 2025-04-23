@@ -15,7 +15,10 @@ import type {
   RawSeries,
   SingleSeries,
 } from "metabase-types/api";
-import type { VisualizerState } from "metabase-types/store/visualizer";
+import type {
+  VisualizerState,
+  VisualizerUiState,
+} from "metabase-types/store/visualizer";
 
 import {
   createDataSource,
@@ -31,6 +34,7 @@ type State = {
     present: VisualizerState;
     future: VisualizerState[];
   };
+  visualizerUi: VisualizerUiState;
 };
 
 // Private selectors
@@ -66,7 +70,7 @@ export const getLoadingDatasets = (state: State) =>
   getCurrentHistoryItem(state).loadingDatasets;
 
 export const getExpandedDataSources = (state: State) =>
-  getCurrentHistoryItem(state).expandedDataSources;
+  state.visualizerUi.expandedDataSources;
 
 export const getIsLoading = createSelector(
   [
@@ -85,13 +89,13 @@ export const getDraggedItem = (state: State) =>
   getCurrentHistoryItem(state).draggedItem;
 
 export const getIsDataSidebarOpen = (state: State) =>
-  getCurrentHistoryItem(state).isDataSidebarOpen;
+  state.visualizerUi.isDataSidebarOpen;
 
 export const getIsVizSettingsSidebarOpen = (state: State) =>
-  getCurrentHistoryItem(state).isVizSettingsSidebarOpen;
+  state.visualizerUi.isVizSettingsSidebarOpen;
 
 export const getIsSwapAffordanceVisible = (state: State) =>
-  getCurrentHistoryItem(state).isSwapAffordanceVisible;
+  state.visualizerUi.isSwapAffordanceVisible;
 
 export const getCanUndo = (state: State) => state.visualizer.past.length > 0;
 export const getCanRedo = (state: State) => state.visualizer.future.length > 0;

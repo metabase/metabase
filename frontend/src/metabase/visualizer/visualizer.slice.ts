@@ -25,6 +25,7 @@ import type {
   VisualizerDataSource,
   VisualizerDataSourceId,
   VisualizerState,
+  VisualizerUiState,
   VisualizerVizState,
 } from "metabase-types/store/visualizer";
 
@@ -84,12 +85,17 @@ function getInitialState(): VisualizerState {
     datasets: {},
     loadingDataSources: {},
     loadingDatasets: {},
+    error: null,
+    draggedItem: null,
+  };
+}
+
+function getInitialUiState(): VisualizerUiState {
+  return {
     expandedDataSources: {},
     isDataSidebarOpen: true,
     isVizSettingsSidebarOpen: false,
     isSwapAffordanceVisible: false,
-    error: null,
-    draggedItem: null,
   };
 }
 
@@ -167,9 +173,8 @@ const initializeFromCard = async (
   return getInitialStateForCardDataSource(card, dataset);
 };
 
-const ADD_DATA_SOURCE = "visualizer/dataImporter/addDataSource";
 export const addDataSource = createAsyncThunk(
-  ADD_DATA_SOURCE,
+  "visualizer/dataImporter/addDataSource",
   async (id: VisualizerDataSourceId, { dispatch, getState }) => {
     const { type, sourceId } = parseDataSourceId(id);
 
@@ -215,6 +220,21 @@ export const addDataSource = createAsyncThunk(
   },
 );
 
+export const removeDataSource = createAsyncThunk(
+  "visualizer/dataImporter/removeDataSource",
+  async (source: VisualizerDataSource, { dispatch, getState }) => {
+    const datasets = getState().visualizer.present.datasets;
+    const dataSourceIds = Object.keys(datasets);
+    const isLastDataSource =
+      dataSourceIds.filter((id) => id !== source.id).length === 0;
+    if (isLastDataSource) {
+      dispatch(closeVizSettingsSidebar());
+      dispatch(setSwapAffordanceVisible(false));
+    }
+    dispatch(_removeDataSource(source));
+  },
+);
+
 const fetchCard = createAsyncThunk<Card, CardId>(
   "visualizer/fetchCard",
   async (cardId, { dispatch }) => {
@@ -251,6 +271,7 @@ export const resetVisualizer = createThunkAction(
   CLEAR_HISTORY,
   () => (dispatch) => {
     dispatch(_resetVisualizer());
+    dispatch(_resetVisualizerUi());
     dispatch(clearHistory());
   },
 );
@@ -419,13 +440,12 @@ const visualizerSlice = createSlice({
         pieDropHandler(state, event);
       }
     },
-    removeDataSource: (state, action: PayloadAction<VisualizerDataSource>) => {
+    _removeDataSource: (state, action: PayloadAction<VisualizerDataSource>) => {
       const source = action.payload;
       if (source.type === "card") {
         const cardId = source.sourceId;
         state.cards = state.cards.filter((card) => card.id !== cardId);
       }
-      delete state.expandedDataSources[source.id];
       delete state.loadingDataSources[source.id];
       delete state.datasets[source.id];
       delete state.loadingDatasets[source.id];
@@ -433,8 +453,6 @@ const visualizerSlice = createSlice({
       const isLastDataSource = Object.keys(state.datasets).length === 0;
       if (isLastDataSource) {
         Object.assign(state, getInitialVisualizerHistoryItem());
-        state.isVizSettingsSidebarOpen = false;
-        state.isSwapAffordanceVisible = false;
       } else {
         const columnsToRemove: string[] = [];
         const columnVizSettings = state.display
@@ -479,28 +497,6 @@ const visualizerSlice = createSlice({
     setDraggedItem: (state, action: PayloadAction<DraggedItem | null>) => {
       state.draggedItem = action.payload;
     },
-    toggleDataSourceExpanded: (
-      state,
-      action: PayloadAction<VisualizerDataSourceId>,
-    ) => {
-      state.expandedDataSources[action.payload] =
-        !state.expandedDataSources[action.payload];
-    },
-    toggleDataSideBar: (state) => {
-      state.isDataSidebarOpen = !state.isDataSidebarOpen;
-    },
-    toggleVizSettingsSidebar: (state) => {
-      state.isVizSettingsSidebarOpen = !state.isVizSettingsSidebarOpen;
-    },
-    setSwapAffordanceVisible: (state, action: PayloadAction<boolean>) => {
-      state.isSwapAffordanceVisible = action.payload;
-    },
-    closeVizSettingsSidebar: (state) => {
-      state.isVizSettingsSidebarOpen = false;
-    },
-    closeDataSidebar: (state) => {
-      state.isDataSidebarOpen = false;
-    },
     _resetVisualizer: (state) => {
       Object.assign(state, getInitialState());
     },
@@ -543,7 +539,6 @@ const visualizerSlice = createSlice({
         }
 
         state.loadingDataSources[`card:${card.id}`] = false;
-        state.expandedDataSources[`card:${card.id}`] = true;
       })
       .addCase(fetchCard.rejected, (state, action) => {
         const cardId = action.meta.arg;
@@ -579,6 +574,51 @@ const visualizerSlice = createSlice({
   },
 });
 
+// UI state is stored in a separate slice,
+// so it's not tracked in visualizer state history
+const visualizerUiSlice = createSlice({
+  name: "visualizerUi",
+  initialState: getInitialUiState(),
+  reducers: {
+    toggleDataSourceExpanded: (
+      state,
+      action: PayloadAction<VisualizerDataSourceId>,
+    ) => {
+      state.expandedDataSources[action.payload] =
+        !state.expandedDataSources[action.payload];
+    },
+    toggleDataSideBar: (state) => {
+      state.isDataSidebarOpen = !state.isDataSidebarOpen;
+    },
+    toggleVizSettingsSidebar: (state) => {
+      state.isVizSettingsSidebarOpen = !state.isVizSettingsSidebarOpen;
+    },
+    setSwapAffordanceVisible: (state, action: PayloadAction<boolean>) => {
+      state.isSwapAffordanceVisible = action.payload;
+    },
+    closeVizSettingsSidebar: (state) => {
+      state.isVizSettingsSidebarOpen = false;
+    },
+    closeDataSidebar: (state) => {
+      state.isDataSidebarOpen = false;
+    },
+    _resetVisualizerUi: (state) => {
+      Object.assign(state, getInitialUiState());
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchCard.fulfilled, (state, action) => {
+        const card = action.payload;
+        state.expandedDataSources[`card:${card.id}`] = true;
+      })
+      .addCase(removeDataSource.pending, (state, action) => {
+        const source = action.meta.arg;
+        delete state.expandedDataSources[source.id];
+      });
+  },
+});
+
 function maybeCombineDataset(
   state: VisualizerVizState,
   dataSource: VisualizerDataSource,
@@ -606,7 +646,8 @@ function maybeCombineDataset(
   return state;
 }
 
-const { _resetVisualizer } = visualizerSlice.actions;
+const { _removeDataSource, _resetVisualizer } = visualizerSlice.actions;
+const { _resetVisualizerUi } = visualizerUiSlice.actions;
 
 export const {
   addColumn,
@@ -616,13 +657,6 @@ export const {
   setDisplay,
   setDraggedItem,
   handleDrop,
-  toggleDataSourceExpanded,
-  toggleDataSideBar,
-  toggleVizSettingsSidebar,
-  setSwapAffordanceVisible,
-  closeVizSettingsSidebar,
-  closeDataSidebar,
-  removeDataSource,
 } = visualizerSlice.actions;
 
 export const reducer = undoable(visualizerSlice.reducer, {
@@ -634,7 +668,7 @@ export const reducer = undoable(visualizerSlice.reducer, {
     removeColumn.type,
     setDisplay.type,
     handleDrop.type,
-    removeDataSource.type,
+    _removeDataSource.type,
     addDataSource.fulfilled.type,
   ]),
   undoType: undo.type,
@@ -642,3 +676,14 @@ export const reducer = undoable(visualizerSlice.reducer, {
   clearHistoryType: CLEAR_HISTORY,
   ignoreInitialState: true,
 });
+
+export const {
+  toggleDataSourceExpanded,
+  toggleDataSideBar,
+  toggleVizSettingsSidebar,
+  setSwapAffordanceVisible,
+  closeVizSettingsSidebar,
+  closeDataSidebar,
+} = visualizerUiSlice.actions;
+
+export const uiReducer = visualizerUiSlice.reducer;
