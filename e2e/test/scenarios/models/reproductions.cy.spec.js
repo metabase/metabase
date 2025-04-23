@@ -530,7 +530,7 @@ describe.skip("issue 22519", () => {
   });
 });
 
-describe("filtering based on the remapped column name should result in a correct query (metabase#22715)", () => {
+describe("filtering based on the remapped column name should result in a correct query (metabase#22715)", {tags: "@flaky"}, () => {
   function mapColumnTo({ table, column } = {}) {
     cy.findByText("Database column this maps to")
       .parent()
