@@ -326,9 +326,11 @@
                                    (map (partial into [:=]))
                                    (merge sync-tables-kv-args
                                           {:db_id (u/the-id database-or-id)}))}
-        ids (t2/select :model/Table where-clause)]
-    (doseq [ids' (partition-all *batch-size* ids)]
-      (t2/update! :model/Table :id [:in ids'] {:initial_sync_status "complete"}))))
+        ids (t2/select-fn-vec :id :model/Table where-clause)]
+    (reduce (fn [acc ids']
+              (+ acc (t2/update! :model/Table :id [:in ids'] {:initial_sync_status "complete"})))
+            0
+            (partition-all *batch-size* ids))))
 
 (defn set-initial-database-sync-complete!
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
