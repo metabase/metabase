@@ -163,7 +163,10 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
       name: Lib.displayInfo(query, stageIndex, targetColumn).longDisplayName,
       sourceFilters: {
         column: (sourceColumn) =>
-          Lib.isAssignableType(Lib.columnTypeInfo(sourceColumn), targetColumn),
+          Lib.isAssignableType(
+            Lib.legacyColumnTypeInfo(sourceColumn),
+            targetColumn,
+          ),
         parameter: (parameter) =>
           columnFilterForParameter(query, stageIndex, parameter)(targetColumn),
         userAttribute: () =>

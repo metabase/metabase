@@ -53,7 +53,9 @@ export const isTitle: TypeFn = TYPES.title_QMARK_;
 export const isURL: TypeFn = TYPES.URL_QMARK_;
 export const isZipCode: TypeFn = TYPES.zip_code_QMARK_;
 
-export function columnTypeInfo(column: DatasetColumn | Field): ColumnTypeInfo {
+export function legacyColumnTypeInfo(
+  column: DatasetColumn | Field,
+): ColumnTypeInfo {
   return ML.legacy_column__GT_type_info(column);
 }
 
