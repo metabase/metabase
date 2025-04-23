@@ -438,7 +438,6 @@ describe("scenarios > dashboard > visualizer", () => {
       H.verticalWell().findAllByTestId("well-item").should("have.length", 2);
 
       // Remove a column
-
       H.deselectColumnFromColumnsList(
         PRODUCTS_COUNT_BY_CREATED_AT.name,
         "Count",
@@ -465,9 +464,23 @@ describe("scenarios > dashboard > visualizer", () => {
       cy.get("@undoButton").click();
       H.goalLine().should("not.exist");
 
+      // Ensure UI state isn't tracked in history
+      cy.findByTestId("chartsettings-sidebar").should("be.visible");
+
       // Redo goal line
       cy.get("@redoButton").click();
       H.goalLine().should("exist");
+
+      cy.button("Add to dashboard").click();
+    });
+
+    // Ensure history set is reset
+    H.showDashcardVisualizerModal(1);
+
+    H.modal().within(() => {
+      cy.get("@undoButton").should("be.disabled");
+      cy.get("@redoButton").should("be.disabled");
+      cy.findByTestId("chartsettings-sidebar").should("not.be.visible");
     });
   });
 
