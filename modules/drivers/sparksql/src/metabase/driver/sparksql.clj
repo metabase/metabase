@@ -250,3 +250,7 @@
 (defmethod sql.qp/quote-style :sparksql
   [_driver]
   :mysql)
+
+(defmethod sql.qp/cast-integer :sparksql
+  [driver value]
+  (h2x/maybe-cast (sql.qp/integer-dbtype driver) [:round value]))
