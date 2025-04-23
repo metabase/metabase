@@ -733,8 +733,7 @@
   nil)
 
 (defmethod ->honeysql [:sql :field]
-  [driver [_ id-or-name {:keys [database-type] :as options}
-           :as field-clause]]
+  [driver [_ id-or-name options :as field-clause]]
   (try
     (let [source-table-aliases (field-source-table-aliases field-clause)
           source-nfc-path      (field-nfc-path field-clause)
