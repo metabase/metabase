@@ -817,7 +817,9 @@
     :enabled   (premium-features/enable-database-auth-providers?)}
    {:name      :database-routing
     :available (premium-features/enable-database-routing?)
-    :enabled   (t2/exists? :model/Database :router_database_id [:not= nil])}
+    :enabled   (if (premium-features/enable-database-routing?)
+                 (t2/exists? :model/Database :router_database_id [:not= nil])
+                 false)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
     :enabled   (some? (get env/env :mb-config-file-path))}
