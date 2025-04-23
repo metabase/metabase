@@ -17,12 +17,7 @@ export const PresetPicker = ({ presets, onChange }: Props) => {
 
       <Menu.Dropdown>
         {presets.map((preset) => (
-          <Menu.Item
-            key={preset.id}
-            onClick={() => {
-              onChange(preset);
-            }}
-          >
+          <Menu.Item key={preset.id} onClick={() => onChange(preset)}>
             {preset.display_name}
           </Menu.Item>
         ))}
