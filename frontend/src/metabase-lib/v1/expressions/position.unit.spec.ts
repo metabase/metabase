@@ -48,19 +48,19 @@ describe("enclosingFunction", () => {
     const result = {
       name: "concat",
       from: 0,
-      to: 26,
+      to: 27,
       arg: {
-        from: 21,
-        to: 26,
+        from: 22,
+        to: 27,
         index: 2,
       },
     };
-    expect(setup("concat(First,Middle, |Last ")).toEqual(result);
-    expect(setup("concat(First,Middle, L|ast ")).toEqual(result);
-    expect(setup("concat(First,Middle, La|st ")).toEqual(result);
-    expect(setup("concat(First,Middle, Las|t ")).toEqual(result);
-    expect(setup("concat(First,Middle, Last| ")).toEqual(result);
-    expect(setup("concat(First,Middle, Last |")).toEqual(result);
+    expect(setup("concat(First, Middle, |Last ")).toEqual(result);
+    expect(setup("concat(First, Middle, L|ast ")).toEqual(result);
+    expect(setup("concat(First, Middle, La|st ")).toEqual(result);
+    expect(setup("concat(First, Middle, Las|t ")).toEqual(result);
+    expect(setup("concat(First, Middle, Last| ")).toEqual(result);
+    expect(setup("concat(First, Middle, Last |")).toEqual(result);
   });
 
   it("should handle nested function calls", () => {
@@ -73,6 +73,38 @@ describe("enclosingFunction", () => {
     expect(setup("1|")).toEqual(null);
     expect(setup("2 +|")).toEqual(null);
     expect(setup("X OR|")).toEqual(null);
+  });
+
+  it("should return undefined for functions with no arguments", () => {
+    expect(setup("Count|()")).not.toEqual(null);
+    expect(setup("|Count")).toEqual(null);
+    expect(setup("C|ount")).toEqual(null);
+    expect(setup("Co|unt")).toEqual(null);
+    expect(setup("Cou|nt")).toEqual(null);
+    expect(setup("Coun|t")).toEqual(null);
+    expect(setup("Count| + 1")).toEqual(null);
+
+    expect(setup("no|w()")).not.toEqual(null);
+    expect(setup("|now")).toEqual(null);
+    expect(setup("n|ow")).toEqual(null);
+    expect(setup("no|w")).toEqual(null);
+    expect(setup("now|")).toEqual(null);
+
+    expect(setup("|now + 1")).toEqual(null);
+    expect(setup("n|ow + 1")).toEqual(null);
+    expect(setup("no|w + 1")).toEqual(null);
+    expect(setup("now| + 1")).toEqual(null);
+
+    expect(setup("concat(n|ow, 'bar')")).toEqual({
+      name: "concat",
+      from: 0,
+      to: 18,
+      arg: {
+        index: 0,
+        from: 7,
+        to: 10,
+      },
+    });
   });
 
   it("should handle empty input", () => {

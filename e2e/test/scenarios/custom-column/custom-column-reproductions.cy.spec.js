@@ -1655,6 +1655,184 @@ describe("issue 56596", () => {
   });
 });
 
+describe("issue 55300", () => {
+  describe("fields", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsNormalUser();
+
+      const questionDetails = {
+        query: {
+          "source-table": PRODUCTS_ID,
+          fields: [["field", PRODUCTS.ID, null]],
+          expressions: {
+            now: ["field", PRODUCTS.CREATED_AT, null],
+            Count: ["+", 1, 1],
+          },
+        },
+      };
+
+      H.createQuestion(questionDetails, { visitQuestion: true });
+      H.openNotebook();
+    });
+
+    it("should be possible to disambiguate between fields and no-argument functions (metabase#55300)", () => {
+      H.getNotebookStep("expression").icon("add").click();
+      H.CustomExpressionEditor.type("now() > now");
+
+      cy.log("Move cursor over now");
+      H.CustomExpressionEditor.type("{leftarrow}");
+      H.CustomExpressionEditor.helpTextHeader().should("not.exist");
+
+      cy.log("Move cursor over now()");
+      H.CustomExpressionEditor.type("{home}");
+      H.CustomExpressionEditor.helpTextHeader().should("contain", "now()");
+
+      H.CustomExpressionEditor.format();
+      H.CustomExpressionEditor.value().should("equal", "now() > [now]");
+    });
+
+    it("should be possible to disambiguate between fields and no-argument aggregations (metabase#55300)", () => {
+      H.summarize({ mode: "notebook" });
+      H.popover().findByText("Custom Expression").click();
+
+      H.CustomExpressionEditor.type("Count() + Sum(Count)");
+
+      cy.log("Move cursor over Count");
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(2));
+      H.CustomExpressionEditor.helpTextHeader().should("contain", "Sum");
+
+      cy.log("Move cursor over Count()");
+      H.CustomExpressionEditor.type("{home}");
+      H.CustomExpressionEditor.helpTextHeader().should("contain", "Count()");
+
+      H.CustomExpressionEditor.format();
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "Count() + Sum([Count])",
+      );
+    });
+  });
+
+  describe("segments", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+
+      H.createSegment({
+        name: "now",
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+        },
+      });
+
+      H.createSegment({
+        name: "Count",
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+        },
+      });
+
+      const questionDetails = {
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      };
+
+      H.createQuestion(questionDetails, { visitQuestion: true });
+      H.openNotebook();
+    });
+
+    it("should be possible to disambiguate between segments and no-argument functions (metabase#55300)", () => {
+      H.addCustomColumn();
+
+      H.CustomExpressionEditor.type("case(now, now(), 0)");
+
+      cy.log("Move cursor over now()");
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(7));
+      H.CustomExpressionEditor.helpTextHeader().should("contain", "now()");
+
+      cy.log("Move cursor over now");
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(13));
+      H.CustomExpressionEditor.helpTextHeader().should("contain", "case");
+
+      H.CustomExpressionEditor.format();
+      H.CustomExpressionEditor.value().should("equal", "case([now], now(), 0)");
+    });
+
+    it("should be possible to disambiguate between segments and no-argument aggregations (metabase#55300)", () => {
+      H.summarize({ mode: "notebook" });
+      H.popover().findByText("Custom Expression").click();
+
+      H.CustomExpressionEditor.type("Sum(case(Count, Count(), 0))");
+
+      cy.log("Move cursor over now()");
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(7));
+      H.CustomExpressionEditor.helpTextHeader().should("contain", "Count()");
+
+      cy.log("Move cursor over now");
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(18));
+      H.CustomExpressionEditor.helpTextHeader().should("contain", "case");
+
+      H.CustomExpressionEditor.format();
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "Sum(case([Count], Count(), 0))",
+      );
+    });
+  });
+
+  describe("metrics", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+
+      H.createQuestion({
+        name: "Count",
+        type: "metric",
+        description: "A metric",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+      });
+
+      const questionDetails = {
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      };
+
+      H.createQuestion(questionDetails, { visitQuestion: true });
+      H.openNotebook();
+    });
+
+    it("should be possible to disambiguate between metrics and no-argument aggregations (metabase#55300)", () => {
+      H.summarize({ mode: "notebook" });
+      H.popover().findByText("Custom Expression").click();
+
+      H.CustomExpressionEditor.type("Count + Count()");
+
+      cy.log("Move cursor over Count()");
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(5));
+      H.CustomExpressionEditor.helpTextHeader().should("contain", "Count()");
+
+      cy.log("Move cursor over Count");
+      H.CustomExpressionEditor.type("{home}");
+      H.CustomExpressionEditor.helpTextHeader().should("not.exist");
+
+      H.CustomExpressionEditor.format();
+      H.CustomExpressionEditor.value().should("equal", "[Count] + Count()");
+    });
+  });
+});
+
 describe("issue 55687", () => {
   beforeEach(() => {
     H.restore();
