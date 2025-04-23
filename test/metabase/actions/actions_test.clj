@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.actions.actions-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [metabase.actions.actions :as actions]
    [metabase.actions.execution :as actions.execution]
    [metabase.actions.models :as action]
@@ -41,12 +40,11 @@
       (with-actions-test-data-and-actions-permissively-enabled!
         (let [response (actions/perform-action! :row/create
                                                 (assoc (mt/mbql-query categories) :create-row {(format-field-name :name) "created_row"}))]
-          (is (=? (walk/keywordize-keys
-                   {:created-row {(format-field-name :id)   76
-                                  (format-field-name :name) "created_row"}})
+          (is (=? {:created-row {(format-field-name :id)   76
+                                 (format-field-name :name) "created_row"}}
                   response)
               "Create should return the entire row")
-          (let [created-id (get-in response [:created-row (keyword (format-field-name :id))])]
+          (let [created-id (get-in response [:created-row (format-field-name :id)])]
             (is (= "created_row" (-> (mt/rows (mt/run-mbql-query categories {:filter [:= $id created-id]})) last last))
                 "The record at created-id should now have its name set to \"created_row\"")))))))
 
@@ -261,9 +259,8 @@
       (with-actions-test-data-and-actions-permissively-enabled!
         (is (= 75
                (categories-row-count)))
-        (is (= (walk/keywordize-keys
-                {:created-rows [{(format-field-name :id) 76, (format-field-name :name) "NEW_A"}
-                                {(format-field-name :id) 77, (format-field-name :name) "NEW_B"}]})
+        (is (= {:created-rows [{(format-field-name :id) 76, (format-field-name :name) "NEW_A"}
+                               {(format-field-name :id) 77, (format-field-name :name) "NEW_B"}]}
                (actions/perform-action! :bulk/create
                                         {:database (mt/id)
                                          :table-id (mt/id :categories)
@@ -449,7 +446,7 @@
           ;; that happen in the DW since they often can't be enforced in the frontend client OR in the backend without
           ;; actually hitting the DW
           (testing "Should validate that every row has required PK columns"
-            (is (thrown-with-msg? Exception (re-pattern (format "Row is missing required primary key column. Required \\(%s\\); got \\(%s\\)"
+            (is (thrown-with-msg? Exception (re-pattern (format "Row is missing required primary key column. Required #\\{%s\\}; got #\\{%s\\}"
                                                                 (pr-str (clojure.core/name (format-field-name :id)))
                                                                 (pr-str (clojure.core/name (format-field-name :name)))))
                                   (update-categories! [{id 1, name "Seed Bowl"}
@@ -607,9 +604,8 @@
                         (assoc (mt/mbql-query ants)
                                :create-row {(format-field-name :id) "5cba6f11-2325-400f-8f2e-82fbdc6f181c"
                                             (format-field-name :name) "created_row"}))]
-          (is (=? (walk/keywordize-keys
-                   {:created-row {(format-field-name :id)   #uuid "5cba6f11-2325-400f-8f2e-82fbdc6f181c"
-                                  (format-field-name :name) "created_row"}})
+          (is (=? {:created-row {(format-field-name :id) #uuid "5cba6f11-2325-400f-8f2e-82fbdc6f181c"
+                                 (format-field-name :name) "created_row"}}
                   response)
               "Create should return the entire row")
           (is (= "created_row"
