@@ -172,6 +172,115 @@ describe("scenarios > question > download", () => {
     );
   });
 
+  it("should remember the selected format across page reloads", () => {
+    // Create a simple test question
+    H.createQuestion(
+      {
+        name: "Format Preference Test",
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 5,
+        },
+        display: "table",
+      },
+      { visitQuestion: true },
+    );
+
+    // 1. Select xlsx format without downloading
+    cy.findByRole("button", { name: "Download results" }).click();
+    H.popover().within(() => {
+      cy.findByText(".xlsx").click();
+      // Close popover without downloading
+      cy.get("body").click({ force: true });
+    });
+
+    // Reload and verify the format preference was saved
+    cy.reload();
+    cy.findByRole("button", { name: "Download results" }).click();
+    H.popover().within(() => {
+      cy.get("[aria-selected='true']").should("contain", ".xlsx");
+    });
+    cy.get("body").click({ force: true }); // Close the popover
+
+    // 2. Select a different format
+    cy.findByRole("button", { name: "Download results" }).click();
+    H.popover().within(() => {
+      cy.findByText(".json").click();
+      cy.get("body").click({ force: true });
+    });
+
+    // Reload and verify the new format preference persists
+    cy.reload();
+    cy.findByRole("button", { name: "Download results" }).click();
+    H.popover().within(() => {
+      cy.get("[aria-selected='true']").should("contain", ".json");
+    });
+  });
+
+  it("should remember the download format on dashboards", () => {
+    // Create a test question and dashboard
+    H.createQuestion({
+      name: "Dashboard Format Test",
+      query: {
+        "source-table": ORDERS_ID,
+        limit: 5,
+      },
+      display: "table",
+    }).then(({ body: { id: questionId } }) => {
+      H.createDashboard().then(({ body: { id: dashboardId } }) => {
+        H.addOrUpdateDashboardCard({
+          card_id: questionId,
+          dashboard_id: dashboardId,
+        });
+
+        // Visit the dashboard
+        H.visitDashboard(dashboardId);
+
+        // Select xlsx format without downloading
+        H.getDashboardCardMenu().click();
+        H.popover().within(() => {
+          cy.findByText("Download results").click();
+        });
+        H.popover().within(() => {
+          cy.findByText(".xlsx").click();
+          // Close popover without downloading
+          cy.get("body").click({ force: true });
+        });
+
+        // Reload and verify format preference was saved
+        cy.reload();
+        H.getDashboardCardMenu().click();
+        H.popover().within(() => {
+          cy.findByText("Download results").click();
+        });
+        H.popover().within(() => {
+          cy.get("[aria-selected='true']").should("contain", ".xlsx");
+        });
+        cy.get("body").click({ force: true }); // Close the popover
+
+        // Select a different format
+        H.getDashboardCardMenu().click();
+        H.popover().within(() => {
+          cy.findByText("Download results").click();
+        });
+        H.popover().within(() => {
+          cy.findByText(".csv").click();
+          cy.get("body").click({ force: true });
+        });
+
+        // Reload and verify the new format preference persists
+        cy.reload();
+        H.getDashboardCardMenu().click();
+        H.popover().within(() => {
+          cy.findByText("Download results").click();
+        });
+        H.popover().within(() => {
+          cy.get("[aria-selected='true']").should("contain", ".csv");
+        });
+      });
+    });
+  });
+
   it("respects renamed columns in self-joins", () => {
     const idLeftRef = [
       "field",
