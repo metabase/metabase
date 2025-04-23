@@ -165,8 +165,11 @@
       (not inline)
       (cast-integer driver h2x-expr)
 
-      (number? inline)
-      (h2x/with-database-type-info (inline-num (long inline)) (integer-dbtype driver))
+      (float? inline)
+      (h2x/with-database-type-info (inline-num (Math/round ^Double inline)) (integer-dbtype driver))
+
+      (int? inline)
+      (h2x/with-database-type-info (inline-num inline) (integer-dbtype driver))
 
       (string? inline)
       (h2x/with-database-type-info (inline-num (Long/parseLong inline)) (integer-dbtype driver))
