@@ -138,6 +138,10 @@ export const fetchEntityId =
       return { id: id as TReturnedId, isError: false };
     }
 
+    if (id === "new") {
+      return { id: null, isError: false };
+    }
+
     if (!isBaseEntityID(id)) {
       return { id: null, isError: true };
     }

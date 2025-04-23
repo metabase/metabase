@@ -21,11 +21,11 @@ export const loadQuestionSdk =
     dispatch: Dispatch,
     getState: GetState,
   ): Promise<{ question: Question; originalQuestion?: Question }> => {
-    const { id: questionId } = (await dispatch(
+    const { id: questionId, isError } = (await dispatch(
       fetchEntityId({ type: "card", id: initQuestionId }),
-    )) as { id: CardId | null };
+    )) as { id: CardId | null; isError: boolean };
 
-    if (!questionId && !deserializedCard) {
+    if (isError && !deserializedCard) {
       throw new Error("No question ID or data found.");
     }
 
