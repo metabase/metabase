@@ -123,7 +123,7 @@ export const MBQL_CLAUSES = defineClauses({
     displayName: `substring`,
     type: "string",
     args: ["string", "number", "number"],
-    validator: function (_arg: any, start: number, _length: any) {
+    validator(_arg: any, start: number, _length: any) {
       if (start <= 0) {
         return t`Expected positive integer but found ${start}`;
       }
@@ -133,7 +133,7 @@ export const MBQL_CLAUSES = defineClauses({
     displayName: "splitPart",
     type: "string",
     args: ["string", "string", "number"],
-    validator: function (_arg: any, _delimeter: string, position: number) {
+    validator(_arg: any, _delimeter: string, position: number) {
       if (position < 1) {
         return t`Expected positive integer but found ${position}`;
       }
@@ -371,7 +371,7 @@ export const MBQL_CLAUSES = defineClauses({
     type: "any", // ideally we'd dynamically infer it from the first argument
     args: ["any", "number"],
     requiresFeature: "window-functions/offset",
-    validator: function (_expr: any, offset: number) {
+    validator(_expr: any, offset: number) {
       if (offset === 0) {
         return t`Row offset cannot be zero`;
       }
