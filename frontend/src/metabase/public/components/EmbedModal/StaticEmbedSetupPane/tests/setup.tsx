@@ -41,8 +41,8 @@ const TextEditorMock = ({
   );
 };
 
-jest.mock("metabase/components/CodeBlock", () => ({
-  CodeBlock: TextEditorMock,
+jest.mock("metabase/components/CodeEditor", () => ({
+  CodeEditor: TextEditorMock,
 }));
 
 export const FONTS_MOCK_VALUES = [

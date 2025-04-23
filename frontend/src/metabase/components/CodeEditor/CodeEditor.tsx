@@ -15,7 +15,7 @@ import {
   useHighlightText,
 } from "./utils";
 
-export type Props = {
+type Props = {
   className?: string;
   highlightRanges?: { start: number; end: number }[];
   language: CodeLanguage;
