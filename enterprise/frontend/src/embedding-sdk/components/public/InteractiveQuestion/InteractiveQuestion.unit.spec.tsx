@@ -358,7 +358,7 @@ describe("InteractiveQuestion", () => {
     });
   });
 
-  it("should not show  when loading with an entity ID (metabase#57059)", async () => {
+  it("should not flash an error when loading with an entity ID (metabase#57059)", async () => {
     setup({ cardId: TEST_ENTITY_ID });
 
     await waitForLoaderToBeRemoved();
