@@ -475,3 +475,7 @@
   [_ ^ResultSet rs _ ^Integer i]
   (fn []
     (sqlite-handle-timestamp rs i)))
+
+(defmethod sql.qp/cast-integer :sqlite
+  [driver value]
+  (h2x/maybe-cast (sql.qp/integer-dbtype driver) [:round value]))
