@@ -1,5 +1,4 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { goBack } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -10,8 +9,7 @@ import {
 import { CodeEditor } from "metabase/components/CodeEditor";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
-import { useDispatch } from "metabase/lib/redux";
-import { Box, Button, Flex, Icon, Loader } from "metabase/ui";
+import { Box, Button, Flex, Icon, Loader, Tooltip } from "metabase/ui";
 import type { TimeUnit } from "metabase-types/api";
 
 import { DurationInput } from "./DurationInput";
@@ -24,8 +22,11 @@ import {
   isJsonValid,
 } from "./utils";
 
-export const LogLevelsModal = () => {
-  const dispatch = useDispatch();
+interface Props {
+  onClose: () => void;
+}
+
+export const LogLevelsModal = ({ onClose }: Props) => {
   const {
     data: presets = [],
     error: presetsError,
@@ -44,15 +45,11 @@ export const LogLevelsModal = () => {
   const isValid = isDurationValid && isJsonValid(json);
   const isLoading = isLoadingAdjust || isLoadingReset;
 
-  const handleClose = () => {
-    dispatch(goBack());
-  };
-
   const handleReset = async () => {
     const response = await reset();
 
     if (!response.error) {
-      handleClose();
+      onClose();
     }
   };
 
@@ -66,7 +63,7 @@ export const LogLevelsModal = () => {
     });
 
     if (!response.error) {
-      handleClose();
+      onClose();
     }
   };
 
@@ -81,7 +78,7 @@ export const LogLevelsModal = () => {
 
   if (presetsError || isLoadingPresets) {
     return (
-      <ModalContent title={t`Customize log levels`} onClose={handleClose}>
+      <ModalContent title={t`Customize log levels`} onClose={onClose}>
         <LoadingAndErrorWrapper
           error={presetsError}
           loading={isLoadingPresets}
@@ -91,7 +88,7 @@ export const LogLevelsModal = () => {
   }
 
   return (
-    <ModalContent title={t`Customize log levels`} onClose={handleClose}>
+    <ModalContent title={t`Customize log levels`} onClose={onClose}>
       <form onSubmit={handleSubmit}>
         <Flex align="flex-end" gap="md" justify="space-between" mb="md">
           <DurationInput
@@ -138,21 +135,29 @@ export const LogLevelsModal = () => {
           </Box>
         ) : null}
 
-        <Flex gap="md" justify="flex-end" mt="xl">
-          <Flex align="center">{isLoading && <Loader size="sm" />}</Flex>
+        <Flex align="center" gap="md" justify="space-between" mt="xl">
+          <Tooltip
+            label={t`Available log levels: ${["off", "fatal", "error", "warn", "info", "debug", "trace"].join(", ")}`}
+          >
+            <Icon name="info_filled" />
+          </Tooltip>
 
-          <Button
-            disabled={isLoading}
-            leftSection={<Icon name="revert" />}
-            type="button"
-            onClick={handleReset}
-          >{t`Reset to defaults`}</Button>
+          <Flex gap="md" justify="flex-end">
+            <Flex align="center">{isLoading && <Loader size="sm" />}</Flex>
 
-          <Button
-            disabled={isLoading || !isValid}
-            type="submit"
-            variant="filled"
-          >{t`Save`}</Button>
+            <Button
+              disabled={isLoading}
+              leftSection={<Icon name="revert" />}
+              type="button"
+              onClick={handleReset}
+            >{t`Reset to defaults`}</Button>
+
+            <Button
+              disabled={isLoading || !isValid}
+              type="submit"
+              variant="filled"
+            >{t`Save`}</Button>
+          </Flex>
         </Flex>
       </form>
     </ModalContent>
