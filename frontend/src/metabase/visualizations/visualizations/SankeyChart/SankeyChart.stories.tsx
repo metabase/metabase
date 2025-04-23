@@ -2,6 +2,7 @@ import type { StoryFn } from "@storybook/react";
 
 import { IsomorphicVisualizationStory } from "__support__/storybook";
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
+import { getColorShades } from "metabase/ui/utils/colors";
 
 import * as data from "./stories-data";
 
@@ -81,6 +82,14 @@ export const SankeyEdgeLabelsFull = {
   render: Template,
   args: {
     rawSeries: data.sankeyEdgeLabelsFull,
+  },
+};
+
+export const SankeyEdgeLabelsFullDarkBackground = {
+  render: Template,
+  args: {
+    rawSeries: data.sankeyEdgeLabelsFull,
+    theme: { colors: { "bg-white": getColorShades("#2d2d3d") } },
   },
 };
 

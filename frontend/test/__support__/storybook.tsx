@@ -75,10 +75,12 @@ export const SdkVisualizationWrapper = ({
 export interface IsomorphicVisualizationStoryProps {
   // Use `any` on purpose to avoid type casting of imported json snapshots of raw series
   rawSeries: RawSeries | any;
+  theme?: MantineThemeOverride;
 }
 
 export const IsomorphicVisualizationStory = ({
   rawSeries,
+  theme,
 }: IsomorphicVisualizationStoryProps) => {
   return (
     <Box display="inline-block">
@@ -90,7 +92,7 @@ export const IsomorphicVisualizationStory = ({
         />
       </Box>
       <Box w={1000} h={600} style={{ border: "1px solid black" }} mt={4}>
-        <VisualizationWrapper>
+        <VisualizationWrapper theme={theme}>
           <Visualization rawSeries={rawSeries} width={500} />
         </VisualizationWrapper>
       </Box>
