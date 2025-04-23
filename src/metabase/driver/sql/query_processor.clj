@@ -703,6 +703,12 @@
                [:type/Text (:isa? :Coercion/String->Float)]
                (->float driver honeysql-form)
 
+               [:type/Text (:isa? :Coercion/String->Integer)]
+               (->integer driver honeysql-form)
+
+               [:type/Float (:isa? :Coercion/Float->Integer)]
+               (->integer driver honeysql-form)
+
                :else honeysql-form)
       (when-not (= <> honeysql-form)
         (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>))))))

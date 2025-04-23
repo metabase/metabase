@@ -9,7 +9,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
-(deftest string-to-number-coercion-test
+(deftest string-to-float-coercion-test
   (mt/test-drivers
     (mt/normal-drivers)
     (mt/dataset
@@ -29,4 +29,45 @@
                    (->> (qp.store/with-metadata-provider mp
                           (qp/process-query query))
                         (mt/formatted-rows [3.0])
+                        ffirst)))))))))
+
+(deftest string-to-integer-coercion-test
+  (mt/test-drivers
+    (mt/normal-drivers)
+    (mt/dataset
+      string-nums-db
+      (doseq [[human-col col res] [["integer" :int_col   10M]]]
+        (let [mp (lib.tu/merged-mock-metadata-provider
+                  (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                  {:fields [{:id                (mt/id :string_nums col)
+                             :coercion-strategy :Coercion/String->Integer
+                             :effective-type    :type/Integer}]})
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :string_nums)))
+                        (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :string_nums col)))))]
+          (testing (format "String->Integer coercion works with %s" human-col)
+            (is (= res
+                   (->> (qp.store/with-metadata-provider mp
+                          (qp/process-query query))
+                        (mt/rows)
+                        ffirst)))))))))
+
+(deftest float-to-integer-coercion-test
+  (mt/test-drivers
+    (mt/normal-drivers)
+    (mt/dataset
+      rounding-nums-db
+      (doseq [[human-col col res] [["floats that round up"   :float_up_col   15M]
+                                   ["floats that round down" :float_down_col 10M]]]
+        (let [mp (lib.tu/merged-mock-metadata-provider
+                  (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                  {:fields [{:id                (mt/id :nums col)
+                             :coercion-strategy :Coercion/Float->Integer
+                             :effective-type    :type/Integer}]})
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :nums)))
+                        (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :nums col)))))]
+          (testing (format "String->Integer coercion works with %s" human-col)
+            (is (= res
+                   (->> (qp.store/with-metadata-provider mp
+                          (qp/process-query query))
+                        (mt/rows)
                         ffirst)))))))))
