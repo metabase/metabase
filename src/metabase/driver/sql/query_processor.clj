@@ -148,8 +148,8 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod cast-integer :sql
-  [_ value]
-  (h2x/maybe-cast (integer-dbtype) value))
+  [driver value]
+  (h2x/maybe-cast (integer-dbtype driver) value))
 
 (defn ->integer
   "Convert honeysql numbers or text to integer, being smart about converting inline constants at compile-time."
