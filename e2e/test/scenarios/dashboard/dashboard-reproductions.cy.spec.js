@@ -469,6 +469,7 @@ describe("issue 17879", () => {
         ).click();
       });
 
+      // test linting changes
       cy.findByText("Done").click();
 
       H.saveDashboard();
