@@ -3,6 +3,9 @@ import { t } from "ttag";
 import { Flex, Select, TextInput } from "metabase/ui";
 import type { TimeUnit } from "metabase-types/api";
 
+// we don't want to show nanoseconds in the dropdown
+type AllowedTimeUnit = Exclude<TimeUnit, "nanoseconds">;
+
 interface Props {
   duration: string;
   durationUnit: TimeUnit;
@@ -45,8 +48,7 @@ function getData() {
    * Using a Record, so that this gives compilation error when TimeUnit is extended,
    * so that whoever changes that type does not forget to update this function.
    */
-  const statusNames: { [T in TimeUnit]: { label: string; value: T } } = {
-    nanoseconds: { label: t`Nanoseconds`, value: "nanoseconds" },
+  const statusNames: { [T in AllowedTimeUnit]: { label: string; value: T } } = {
     microseconds: { label: t`Microseconds`, value: "microseconds" },
     milliseconds: { label: t`Milliseconds`, value: "milliseconds" },
     seconds: { label: t`Seconds`, value: "seconds" },
