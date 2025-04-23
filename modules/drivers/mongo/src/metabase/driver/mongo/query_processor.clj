@@ -251,7 +251,7 @@
       {"$toLong" field-name}
 
       (isa? coercion :Coercion/Float->Integer)
-      {"$round" field-name}
+      {"$toLong" {"$round" field-name}}
 
       :else field-name)))
 
