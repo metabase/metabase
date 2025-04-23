@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useAdminSetting } from "metabase/api/utils";
 import { Stack } from "metabase/ui";
@@ -7,32 +8,33 @@ import { SettingHeader } from "../SettingHeader";
 
 import { BasicAdminSettingInput, SetByEnvVar } from "./AdminSettingInput";
 
-const stringValue = (value: boolean): "true" | "false" => `${value}`;
-
-export function BccToggleWidget() {
+export function EmailReplyToWidget() {
   const {
     value: initialValue,
     updateSetting,
     description,
     isLoading,
     settingDetails,
-  } = useAdminSetting("bcc-enabled?");
+  } = useAdminSetting("email-reply-to");
 
   if (isLoading) {
     return null;
   }
 
-  const handleChange = (newValue: boolean) => {
-    if (newValue === initialValue) {
+  const handleChange = (newValue: any) => {
+    if (_.isEqual([newValue], initialValue)) {
       return;
     }
-    updateSetting({ key: "bcc-enabled?", value: newValue });
+    updateSetting({
+      key: "email-reply-to",
+      value: newValue ? [newValue] : null,
+    });
   };
 
   return (
-    <Stack data-testid="bcc-enabled?-setting">
+    <Stack data-testid="email-reply-to-setting">
       <SettingHeader
-        id="bcc-enabled?"
+        id="email-reply-to"
         title={t`Add Recipients as CC or BCC`}
         description={description}
       />
@@ -40,17 +42,10 @@ export function BccToggleWidget() {
         <SetByEnvVar varName={settingDetails.env_name} />
       ) : (
         <BasicAdminSettingInput
-          name="bcc-enabled?"
-          inputType="radio"
-          value={stringValue(Boolean(initialValue))}
-          onChange={(newValue) => handleChange(newValue === "true")}
-          options={[
-            { value: "true", label: t`BCC - Hide recipients` },
-            {
-              value: "false",
-              label: t`CC - Disclose recipients`,
-            },
-          ]}
+          name="email-reply-to"
+          inputType="text"
+          value={initialValue ? initialValue[0] : ""}
+          onChange={handleChange}
         />
       )}
     </Stack>

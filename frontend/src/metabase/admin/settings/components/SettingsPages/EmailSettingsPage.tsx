@@ -10,6 +10,7 @@ import { Stack } from "metabase/ui";
 import { SMTPConnectionCard } from "../Email/SMTPConnectionCard";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { BccToggleWidget } from "../widgets/BccToggleWidget";
+import { EmailReplyToWidget } from "../widgets/EmailReplyToWidget";
 
 export function EmailSettingsPage() {
   const isHosted = useSelector(getIsHosted);
@@ -41,12 +42,13 @@ export function EmailSettingsPage() {
         placeholder="metabase@yourcompany.com"
         inputType="text"
       />
-      <AdminSettingInput
+      <EmailReplyToWidget />
+      {/* <AdminSettingInput
         name="email-reply-to"
         title={t`Reply-To Address`}
         placeholder="metabase-replies@yourcompany.com"
         inputType="text"
-      />
+      /> */}
       <BccToggleWidget />
       {/* <AdminSettingInput
         name="bcc-enabled?"
