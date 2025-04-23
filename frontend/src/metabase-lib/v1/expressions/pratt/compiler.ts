@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { type NumberValue, parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
 
-import { getClauseDefinition, getMBQLName, isDefinedClause } from "../config";
+import { getClauseDefinition, getMBQLName, isDefinedClause } from "../clause";
 import { CompileError, isExpressionError } from "../errors";
 import {
   isBigIntLiteral,

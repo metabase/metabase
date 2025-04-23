@@ -6,7 +6,7 @@ import { parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
 import { isa } from "metabase-lib/v1/types/utils/isa";
 
-import { getClauseDefinition } from "../config";
+import { getClauseDefinition } from "../clause";
 import {
   formatDimensionName,
   formatIdentifier,
