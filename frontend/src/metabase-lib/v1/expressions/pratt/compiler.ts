@@ -142,22 +142,9 @@ function getKindForType(type: ExpressionType): Kind {
 function compileDimension(name: string, node: Node, ctx: Context) {
   assert(typeof name === "string", t`Invalid dimension name: ${name}`);
 
-  try {
-    const kind = getKindForType(ctx.type);
-    const dimension = ctx.resolver(kind, name, node);
-    return withNode(node, dimension);
-  } catch (err) {
-    const operator = getMBQLName(name);
-    const clause = operator && getClauseDefinition(operator);
-    if (clause && clause?.args.length === 0) {
-      return withNode(node, {
-        operator,
-        options: {},
-        args: [],
-      });
-    }
-    throw err;
-  }
+  const kind = getKindForType(ctx.type);
+  const dimension = ctx.resolver(kind, name, node);
+  return withNode(node, dimension);
 }
 
 function compileField(

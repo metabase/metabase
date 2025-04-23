@@ -337,7 +337,7 @@ describe("if printWidth = Infinity, it should return the same results as the sin
 
   it("should format function calls", async () => {
     await all({
-      now: op("now"),
+      "now()": op("now"),
       "trim([User → Name])": op("trim", fields.people.NAME),
       'coalesce([User → Name], ",")': op("coalesce", fields.people.NAME, ","),
       'concat("http://mysite.com/user/", [User ID], "/")': op(
@@ -553,16 +553,16 @@ describe("if printWidth = Infinity, it should return the same results as the sin
 
   it("should format aggregation functions", async () => {
     await all({
-      Count: op("count"),
+      "Count()": op("count"),
       "Sum([Total])": op("sum", fields.orders.TOTAL),
-      "1 - Count": op("-", 1, op("count")),
+      "1 - Count()": op("-", 1, op("count")),
       "Sum([Total] * 2)": op("sum", op("*", fields.orders.TOTAL, 2)),
       "1 - Sum([Total] * 2)": op(
         "-",
         1,
         op("sum", op("*", fields.orders.TOTAL, 2)),
       ),
-      "1 - Sum([Total] * 2) / Count": op(
+      "1 - Sum([Total] * 2) / Count()": op(
         "-",
         1,
         op("/", op("sum", op("*", fields.orders.TOTAL, 2)), op("count")),

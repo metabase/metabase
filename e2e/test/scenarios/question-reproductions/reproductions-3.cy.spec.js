@@ -1146,7 +1146,7 @@ describe("issue 33441", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.addCustomColumn();
     H.enterCustomColumnDetails({
-      formula: 'datetimeDiff([Created At] , now, "days")',
+      formula: 'datetimeDiff([Created At] , now(), "days")',
       name: "Date",
     });
     H.popover().within(() => {
