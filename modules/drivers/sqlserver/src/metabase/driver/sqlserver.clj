@@ -859,3 +859,7 @@
 (defmethod sql.params.substitution/->replacement-snippet-info [:sqlserver UUID]
   [_driver this]
   {:replacement-snippet (format "'%s'" (str this))})
+
+(defmethod sql.qp/cast-integer :sqlserver
+  [driver value]
+  (h2x/maybe-cast (sql.qp/integer-dbtype driver) [:round value 0]))
