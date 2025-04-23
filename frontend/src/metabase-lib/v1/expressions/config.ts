@@ -27,7 +27,7 @@ function defineClauses<const T extends Record<string, ConfigInput>>(
   return result;
 }
 
-export const MBQL_CLAUSES = defineClauses({
+export const AGGREGATION_FUNCTIONS = defineClauses({
   // aggregation functions
   count: { displayName: "Count", type: "aggregation", args: [] },
   "cum-count": {
@@ -90,6 +90,21 @@ export const MBQL_CLAUSES = defineClauses({
     args: ["number", "number"],
     requiresFeature: "percentile-aggregations",
   },
+  offset: {
+    displayName: "Offset",
+    type: "any", // ideally we'd dynamically infer it from the first argument
+    args: ["any", "number"],
+    requiresFeature: "window-functions/offset",
+    validator(_expr: any, offset: number) {
+      if (offset === 0) {
+        return t`Row offset cannot be zero`;
+      }
+    },
+    hasOptions: true,
+  },
+});
+
+export const EXPRESSION_FUNCTIONS = defineClauses({
   // cast functions
   text: {
     displayName: "text",
@@ -365,18 +380,6 @@ export const MBQL_CLAUSES = defineClauses({
       return "boolean";
     },
   },
-  offset: {
-    displayName: "Offset",
-    type: "any", // ideally we'd dynamically infer it from the first argument
-    args: ["any", "number"],
-    requiresFeature: "window-functions/offset",
-    validator(_expr: any, offset: number) {
-      if (offset === 0) {
-        return t`Row offset cannot be zero`;
-      }
-    },
-    hasOptions: true,
-  },
   // boolean operators
   and: {
     displayName: "AND",
@@ -571,6 +574,11 @@ export const MBQL_CLAUSES = defineClauses({
   },
 });
 
+export const MBQL_CLAUSES = {
+  ...AGGREGATION_FUNCTIONS,
+  ...EXPRESSION_FUNCTIONS,
+};
+
 export type DefinedClauseName = keyof typeof MBQL_CLAUSES;
 
 export function isDefinedClause(name: string): name is DefinedClauseName {
@@ -606,95 +614,3 @@ export function getMBQLName(
   // case-insensitive
   return EXPRESSION_TO_MBQL_NAME.get(expressionName.trim().toLowerCase());
 }
-
-export const AGGREGATION_FUNCTIONS = new Set([
-  // count-where/sum-where must come before count/sum
-  "count-where",
-  "sum-where",
-  "count",
-  "cum-count",
-  "sum",
-  "cum-sum",
-  "distinct",
-  "distinct-where",
-  "stddev",
-  "offset",
-  "avg",
-  "median",
-  "min",
-  "max",
-  "share",
-  "var",
-  "percentile",
-]);
-
-export const EXPRESSION_FUNCTIONS = new Set([
-  // cast
-  "text",
-  "integer",
-  "float",
-  "date",
-  // string
-  "lower",
-  "upper",
-  "substring",
-  "split-part",
-  "regex-match-first",
-  "path",
-  "concat",
-  "replace",
-  "trim",
-  "rtrim",
-  "ltrim",
-  "length",
-  "domain",
-  "subdomain",
-  "host",
-  "month-name",
-  "quarter-name",
-  "day-name",
-  // number
-  "abs",
-  "floor",
-  "ceil",
-  "round",
-  "sqrt",
-  "power",
-  "log",
-  "exp",
-  "datetime-diff",
-  // date/time
-  "get-year",
-  "get-quarter",
-  "get-month",
-  "get-week",
-  "get-day",
-  "get-day-of-week",
-  "get-hour",
-  "get-minute",
-  "get-second",
-  "datetime-add",
-  "datetime-subtract",
-  "now",
-  "convert-timezone",
-  // boolean
-  "in",
-  "not-in",
-  "contains",
-  "ends-with",
-  "starts-with",
-  "between",
-  "time-interval",
-  "relative-time-interval",
-  "relative-datetime",
-  "interval",
-  "is-null",
-  "not-null",
-  "is-empty",
-  "not-empty",
-  "does-not-contain",
-  // other
-  "if",
-  "case",
-  "coalesce",
-]);

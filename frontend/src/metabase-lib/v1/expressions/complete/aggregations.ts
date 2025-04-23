@@ -1,10 +1,9 @@
 import type { CompletionContext } from "@codemirror/autocomplete";
 
-import { isNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { AGGREGATION_FUNCTIONS, getClauseDefinition } from "../config";
+import { AGGREGATION_FUNCTIONS } from "../config";
 import { GROUP } from "../pratt";
 import { getDatabase } from "../utils";
 
@@ -35,9 +34,7 @@ export function suggestAggregations({
   }
 
   const database = getDatabase(query, metadata);
-  const aggregations = Array.from(AGGREGATION_FUNCTIONS)
-    .map(getClauseDefinition)
-    .filter(isNotNull)
+  const aggregations = Object.values(AGGREGATION_FUNCTIONS)
     .filter((clause) => clause && database?.hasFeature(clause.requiresFeature))
     .map((agg) =>
       expressionClauseCompletion(agg, {

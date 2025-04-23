@@ -7,18 +7,10 @@ import {
   EXPRESSION_FUNCTIONS,
   type HelpText,
   type MBQLClauseFunctionConfig,
-  getClauseDefinition,
 } from "metabase-lib/v1/expressions";
 import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-
-const EXPRESSION_CLAUSES = Array.from(EXPRESSION_FUNCTIONS)
-  .map(getClauseDefinition)
-  .filter(isNotNull);
-const AGGREGATION_CLAUSES = Array.from(AGGREGATION_FUNCTIONS)
-  .map(getClauseDefinition)
-  .filter(isNotNull);
 
 export function getSearchPlaceholder(expressionMode: Lib.ExpressionMode) {
   if (expressionMode === "expression" || expressionMode === "filter") {
@@ -33,10 +25,10 @@ function getClauses(
   expressionMode: Lib.ExpressionMode,
 ): MBQLClauseFunctionConfig[] {
   if (expressionMode === "expression" || expressionMode === "filter") {
-    return EXPRESSION_CLAUSES;
+    return Object.values(EXPRESSION_FUNCTIONS);
   }
   if (expressionMode === "aggregation") {
-    return AGGREGATION_CLAUSES;
+    return Object.values(AGGREGATION_FUNCTIONS);
   }
   return [];
 }
