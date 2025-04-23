@@ -580,7 +580,7 @@
                                     {"case 1" [:case
                                                [[[:< [:expression "zero"] 0]
                                                  [:expression "zero"]]
-                                                [[:= false [:expression "MyTrue"]]
+                                                [[:expression "MyFalse"]
                                                  [:expression "zero"]]
                                                 [[:= "foo" [:expression "foo"]]
                                                  [:expression "12345"]]]
