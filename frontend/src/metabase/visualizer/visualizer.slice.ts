@@ -39,7 +39,6 @@ import {
   extractReferencedColumns,
   getColumnVizSettings,
   getDataSourceIdFromNameRef,
-  getDefaultVisualizationName,
   getInitialStateForCardDataSource,
   parseDataSourceId,
 } from "./utils";
@@ -71,9 +70,7 @@ function getInitialVisualizerHistoryItem(): VisualizerHistoryItem {
     display: null,
     columns: [],
     columnValuesMapping: {},
-    settings: {
-      "card.title": getDefaultVisualizationName(),
-    },
+    settings: {},
   };
 }
 
@@ -90,6 +87,7 @@ function getInitialState(): VisualizerState {
     expandedDataSources: {},
     isDataSidebarOpen: true,
     isVizSettingsSidebarOpen: false,
+    isSwapAffordanceVisible: false,
     error: null,
     draggedItem: null,
   };
@@ -436,6 +434,7 @@ const visualizerSlice = createSlice({
       if (isLastDataSource) {
         Object.assign(state, getInitialVisualizerHistoryItem());
         state.isVizSettingsSidebarOpen = false;
+        state.isSwapAffordanceVisible = false;
       } else {
         const columnsToRemove: string[] = [];
         const columnVizSettings = state.display
@@ -493,6 +492,9 @@ const visualizerSlice = createSlice({
     toggleVizSettingsSidebar: (state) => {
       state.isVizSettingsSidebarOpen = !state.isVizSettingsSidebarOpen;
     },
+    setSwapAffordanceVisible: (state, action: PayloadAction<boolean>) => {
+      state.isSwapAffordanceVisible = action.payload;
+    },
     closeVizSettingsSidebar: (state) => {
       state.isVizSettingsSidebarOpen = false;
     },
@@ -514,9 +516,6 @@ const visualizerSlice = createSlice({
           };
         }
         Object.assign(state, initialState);
-        if (!state.settings?.["card.title"]) {
-          state.settings["card.title"] = getDefaultVisualizationName();
-        }
       })
       .addCase(addDataSource.fulfilled, (state, action) => {
         const nextState = action.payload;
@@ -620,6 +619,7 @@ export const {
   toggleDataSourceExpanded,
   toggleDataSideBar,
   toggleVizSettingsSidebar,
+  setSwapAffordanceVisible,
   closeVizSettingsSidebar,
   closeDataSidebar,
   removeDataSource,

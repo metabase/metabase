@@ -20,7 +20,6 @@ import type { VisualizerState } from "metabase-types/store/visualizer";
 import {
   createDataSource,
   extractReferencedColumns,
-  getDefaultVisualizationName,
   mergeVisualizerData,
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
@@ -53,7 +52,7 @@ export const getCards = (state: State) => getCurrentHistoryItem(state).cards;
 
 export function getVisualizationTitle(state: State) {
   const settings = getVisualizerRawSettings(state);
-  return settings["card.title"] ?? getDefaultVisualizationName();
+  return settings["card.title"];
 }
 
 export function getVisualizationType(state: State) {
@@ -90,6 +89,9 @@ export const getIsDataSidebarOpen = (state: State) =>
 
 export const getIsVizSettingsSidebarOpen = (state: State) =>
   getCurrentHistoryItem(state).isVizSettingsSidebarOpen;
+
+export const getIsSwapAffordanceVisible = (state: State) =>
+  getCurrentHistoryItem(state).isSwapAffordanceVisible;
 
 export const getCanUndo = (state: State) => state.visualizer.past.length > 0;
 export const getCanRedo = (state: State) => state.visualizer.future.length > 0;

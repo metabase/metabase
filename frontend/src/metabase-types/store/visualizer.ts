@@ -68,6 +68,7 @@ export interface VisualizerState extends VisualizerHistoryItem {
   loadingDatasets: Record<VisualizerDataSourceId, boolean>;
   isDataSidebarOpen: boolean;
   isVizSettingsSidebarOpen: boolean;
+  isSwapAffordanceVisible: boolean;
   error: string | null;
   draggedItem: DraggedItem | null;
 }

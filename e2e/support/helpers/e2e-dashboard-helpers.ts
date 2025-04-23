@@ -331,6 +331,12 @@ export function openDashboardMenu(option?: string) {
   }
 }
 
+export function assertDashboardCardTitle(index: number, title: string) {
+  getDashboardCard(index)
+    .findByTestId("legend-caption-title")
+    .should("have.text", title);
+}
+
 export const dashboardHeader = () => {
   return cy.findByTestId("dashboard-header");
 };

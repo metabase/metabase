@@ -54,7 +54,7 @@ const EditableText = forwardRef(function EditableText(
   ref: Ref<HTMLDivElement>,
 ) {
   const [inputValue, setInputValue] = useState(initialValue ?? "");
-  const [submitValue, setSubmitValue] = useState(initialValue ?? "");
+  const [submitValue, setSubmitValue] = useState(initialValue);
   const [isInFocus, setIsInFocus] = useState(isEditing);
   const displayValue = inputValue ? inputValue : placeholder;
   const submitOnBlur = useRef(true);

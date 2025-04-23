@@ -176,39 +176,49 @@ describe("scenarios > dashboard > visualizer", () => {
     createDashboardWithVisualizerDashcards();
     H.editDashboard();
 
-    H.findDashCardAction(H.getDashboardCard(0), "Edit visualization").click();
+    // Rename the first card and check
+    // My chart -> "Renamed chart"
+    H.showDashcardVisualizerModal(0);
     H.modal().within(() => {
-      cy.findByDisplayValue("My chart")
-        .type("{selectall}{del}Renamed chart")
-        .blur();
-      cy.button("Save").click();
+      cy.findByDisplayValue("My chart").clear().type("Renamed chart").blur();
     });
-    H.getDashboardCard(0).within(() => {
-      cy.findByText("Renamed chart").should("exist");
-      cy.findByText("My chart").should("not.exist");
-    });
+    H.saveDashcardVisualizerModal();
+    H.assertDashboardCardTitle(0, "Renamed chart");
 
-    H.showDashcardVisualizerModalSettings(3);
+    // Rename the third card and check
+    // PRODUCTS_COUNT_BY_CREATED_AT.name -> "Another chart"
+    H.showDashcardVisualizerModal(3);
     H.modal().within(() => {
       cy.findByDisplayValue(PRODUCTS_COUNT_BY_CREATED_AT.name)
-        .type("{selectall}{del}Another chart")
+        .clear()
+        .type("Another chart")
         .blur();
-      cy.button("Save").click();
     });
-    H.getDashboardCard(3).within(() => {
-      cy.findByText("Another chart").should("exist");
-      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("not.exist");
-    });
+    H.saveDashcardVisualizerModal();
+    H.assertDashboardCardTitle(3, "Another chart");
 
+    // Clear the second card title
+    // My category chart -> ""
+    H.showDashcardVisualizerModal(1);
+    H.modal().within(() => {
+      cy.findByTestId("visualizer-title").clear().blur();
+    });
+    H.saveDashcardVisualizerModal();
+    H.assertDashboardCardTitle(1, "");
+
+    // Save the dashboard
     H.saveDashboard();
 
-    H.getDashboardCard(0).within(() => {
-      cy.findByText("Renamed chart").should("exist");
-      cy.findByText("My chart").should("not.exist");
-    });
-    H.getDashboardCard(3).within(() => {
-      cy.findByText("Another chart").should("exist");
-      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("not.exist");
+    // Check that the card titles are still good
+    H.assertDashboardCardTitle(0, "Renamed chart");
+    H.assertDashboardCardTitle(1, "");
+    H.assertDashboardCardTitle(3, "Another chart");
+
+    // Making sure the title is empty (not "My new visualization")
+    H.editDashboard();
+    H.showDashcardVisualizerModal(1);
+    H.modal().within(() => {
+      cy.findByTestId("visualizer-title").should("have.text", "");
     });
   });
 

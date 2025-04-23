@@ -3,13 +3,14 @@ import { useMemo } from "react";
 import { useGetCardQuery } from "metabase/api";
 import ButtonGroup from "metabase/core/components/ButtonGroup";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Button, Icon } from "metabase/ui";
 import {
   getVisualizationType,
   getVisualizerPrimaryColumn,
 } from "metabase/visualizer/selectors";
 import { parseDataSourceId } from "metabase/visualizer/utils";
+import { setSwapAffordanceVisible } from "metabase/visualizer/visualizer.slice";
 import type { VisualizerDataSource } from "metabase-types/store/visualizer";
 
 import S from "./DatasetsListItem.module.css";
@@ -28,9 +29,17 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
 
   const currentDisplay = useSelector(getVisualizationType);
   const primaryColumn = useSelector(getVisualizerPrimaryColumn);
+  const dispatch = useDispatch();
 
   const { sourceId } = parseDataSourceId(item.id);
   const { data } = useGetCardQuery({ id: sourceId });
+
+  const showSwapAffordance = () => {
+    dispatch(setSwapAffordanceVisible(true));
+  };
+  const hideSwapAffordance = () => {
+    dispatch(setSwapAffordanceVisible(false));
+  };
 
   const metadata = useMemo(
     () => ({
@@ -66,11 +75,13 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
         onClick={() => {
           onSwap?.(item);
         }}
+        onMouseOver={showSwapAffordance}
+        onMouseOut={hideSwapAffordance}
         leftSection={
           <Icon color="inherit" className={S.TableIcon} name="table2" mr="xs" />
         }
       >
-        <Ellipsified>{item.name}</Ellipsified>
+        <Ellipsified style={{ height: 17 }}>{item.name}</Ellipsified>
       </Button>
       {selected ? (
         <Button
