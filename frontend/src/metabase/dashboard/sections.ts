@@ -199,17 +199,23 @@ const getKpiLargeChartBelowLayout: LayoutFn = (position) => {
 export const layoutOptions: SectionLayout[] = [
   {
     id: "kpi_grid",
-    label: t`KPI grid`,
+    get label() {
+      return t`KPI grid`;
+    },
     getLayout: getKpiGridLayout,
   },
   {
     id: "large_chart_kpi_right",
-    label: t`Large chart w/ KPIs to the right`,
+    get label() {
+      return t`Large chart w/ KPIs to the right`;
+    },
     getLayout: getLargeChartKpiColLayout,
   },
   {
     id: "kpi_chart_below",
-    label: t`KPIs w/ large chart below`,
+    get label() {
+      return t`KPIs w/ large chart below`;
+    },
     getLayout: getKpiLargeChartBelowLayout,
   },
 ];

@@ -1100,9 +1100,7 @@
 
 (defmethod ->honeysql [:sql :sum-where]
   [driver [_ arg pred]]
-  [:sum [:case
-         (->honeysql driver pred) (->honeysql driver arg)
-         :else                    [:inline 0.0]]])
+  (->honeysql driver [:sum [:case [[pred arg]] {:default 0.0}]]))
 
 (defmethod ->honeysql [:sql :count-where]
   [driver [_ pred]]
@@ -1115,8 +1113,7 @@
 (defmethod ->honeysql [:sql :distinct-where]
   [driver [_ arg pred]]
   [::h2x/distinct-count
-   [:case
-    (->honeysql driver pred) (->honeysql driver arg)]])
+   (->honeysql driver [:case [[pred arg]]])])
 
 (defmethod ->honeysql [:sql :trim]
   [driver [_ arg]]

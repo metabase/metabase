@@ -16,7 +16,6 @@ import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import {
   type ExpressionError,
-  type StartRule,
   diagnoseAndCompile,
   format,
   getClauseDefinition,
@@ -43,7 +42,7 @@ type EditorProps = {
   clause?: Lib.Expressionable | null;
   query: Lib.Query;
   stageIndex: number;
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
   expressionIndex?: number;
   reportTimezone?: string;
   readOnly?: boolean;
@@ -65,7 +64,7 @@ const FB_HEIGHT_WITH_HEADER = FB_HEIGHT + 48;
 export function Editor(props: EditorProps) {
   const {
     id,
-    startRule = "expression",
+    expressionMode = "expression",
     stageIndex,
     query,
     expressionIndex,
@@ -114,7 +113,7 @@ export function Editor(props: EditorProps) {
   });
 
   const extensions = useExtensions({
-    startRule,
+    expressionMode,
     query,
     stageIndex,
     expressionIndex,
@@ -133,12 +132,8 @@ export function Editor(props: EditorProps) {
       return;
     }
 
-    const text =
-      clause.args.length > 0 ? `${clause.displayName}()` : clause.displayName;
-    const len =
-      clause.args.length > 0
-        ? clause.displayName.length + 1 // + 1 for the parenthesis
-        : clause.displayName.length;
+    const text = `${clause.displayName}()`;
+    const len = clause.displayName.length + 1; // + 1 for the parenthesis
 
     view?.focus();
     view?.dispatch(
@@ -208,7 +203,7 @@ export function Editor(props: EditorProps) {
       {isFunctionBrowserOpen && (
         <LayoutSidebar h={hasHeader ? FB_HEIGHT_WITH_HEADER : FB_HEIGHT}>
           <FunctionBrowser
-            startRule={startRule}
+            expressionMode={expressionMode}
             reportTimezone={reportTimezone}
             query={query}
             onClauseClick={handleFunctionBrowserClauseClick}
@@ -228,7 +223,7 @@ export function Editor(props: EditorProps) {
 
 function useExpression({
   clause,
-  startRule,
+  expressionMode,
   stageIndex,
   query,
   expressionIndex,
@@ -297,7 +292,7 @@ function useExpression({
 
       const { error, expressionClause: clause } = diagnoseAndCompile({
         source,
-        startRule,
+        expressionMode,
         query,
         stageIndex,
         metadata,
@@ -313,7 +308,7 @@ function useExpression({
     [
       query,
       stageIndex,
-      startRule,
+      expressionMode,
       metadata,
       handleChange,
       debouncedOnChange,

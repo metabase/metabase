@@ -54,7 +54,7 @@ type FormatOptions = {
 };
 
 export async function formatExpressionParts(
-  root: Lib.ExpressionParts,
+  root: Lib.ExpressionParts | Lib.ExpressionArg,
   options: FormatOptions = {},
 ) {
   // prettier expects us to pass a string, but we have the AST already
@@ -414,11 +414,6 @@ function formatValueExpression(
 }
 
 function formatCallExpression(callee: string, args: Doc[]): Doc {
-  // If there are no arguments, render just the name
-  if (args.length === 0) {
-    return displayName(callee);
-  }
-
   // render a call expression as
   //
   //   callee(arg1, arg2, ...)
