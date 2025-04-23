@@ -40,7 +40,11 @@ export function createMockState(opts: any) {
     settings: createMockSettingsState(),
     setup: createMockSetupState(),
     upload: createMockUploadState(),
-    visualizer: createMockVisualizerState(),
+    visualizer: {
+      past: [],
+      present: createMockVisualizerState(),
+      future: [],
+    },
     modal: null,
     ...opts,
   };
