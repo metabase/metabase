@@ -46,7 +46,7 @@ import {
   isRecentCollectionItem,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
+import type { VisualizerVizState } from "metabase-types/store/visualizer";
 
 import type { SetDashCardAttributesOpts } from "../actions";
 import {
@@ -98,7 +98,7 @@ interface DashboardGridState {
 
   visualizerModalStatus?: {
     dashcardId: number;
-    state: Partial<VisualizerHistoryItem>;
+    state: Partial<VisualizerVizState>;
   };
 }
 
@@ -487,7 +487,7 @@ class DashboardGridInner extends Component<
 
   onEditVisualization = (
     dashcard: BaseDashboardCard,
-    initialState: Partial<VisualizerHistoryItem>,
+    initialState: Partial<VisualizerVizState>,
   ) => {
     this.setState({
       visualizerModalStatus: {
@@ -558,7 +558,7 @@ class DashboardGridInner extends Component<
     );
   }
 
-  onVisualizerModalSave = (visualization: VisualizerHistoryItem) => {
+  onVisualizerModalSave = (visualization: VisualizerVizState) => {
     const { visualizerModalStatus } = this.state;
 
     if (!visualizerModalStatus) {

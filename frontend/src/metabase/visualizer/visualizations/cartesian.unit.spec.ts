@@ -7,7 +7,7 @@ import {
   createMockDatetimeColumn,
   createMockNumericColumn,
 } from "metabase-types/api/mocks";
-import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
+import type { VisualizerVizState } from "metabase-types/store/visualizer";
 
 import {
   copyColumn,
@@ -62,7 +62,7 @@ describe("cartesian", () => {
     });
 
     it("should add a metric column", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizState = {
         display: "bar",
         columns: [],
         settings: {},
@@ -91,7 +91,7 @@ describe("cartesian", () => {
     });
 
     it("should add a dimenion column", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizState = {
         display: "bar",
         columns: [],
         settings: {},
@@ -120,7 +120,7 @@ describe("cartesian", () => {
     });
 
     it("should do nothing if the column is already in the state", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizState = {
         display: "bar",
         columns: [{ ...column1, name: "COLUMN_1" }],
         settings: {
@@ -161,7 +161,7 @@ describe("cartesian", () => {
     // TODO Enable when VIZ-652 is closed
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip("should do nothing if the column can't be used in a chart", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizState = {
         columns: [],
         settings: {},
         columnValuesMapping: {},
@@ -183,7 +183,7 @@ describe("cartesian", () => {
 
     describe("for scatter", () => {
       it("should add columns in the right order", () => {
-        const state: VisualizerHistoryItem = {
+        const state: VisualizerVizState = {
           columns: [],
           settings: {},
           columnValuesMapping: {},
@@ -260,7 +260,7 @@ describe("cartesian", () => {
     const dimension2 = createMockDatetimeColumn({ id: 4, name: "date" });
 
     it("should remove a metric from a single series chart", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizState = {
         display: "bar",
         columns: [
           { ...metric1, name: "COLUMN_1" },
@@ -303,7 +303,7 @@ describe("cartesian", () => {
     });
 
     it("should remove a metric from a multi series chart", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizState = {
         display: "bar",
         columns: [
           { ...metric1, name: "COLUMN_1" },
@@ -372,7 +372,7 @@ describe("cartesian", () => {
     });
 
     it("should remove a dimension from a single series chart", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizState = {
         display: "bar",
         columns: [
           { ...metric1, name: "COLUMN_1" },
@@ -415,7 +415,7 @@ describe("cartesian", () => {
     });
 
     it("should remove a dimension from a multi series chart", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizState = {
         display: "bar",
         columns: [
           { ...metric1, name: "COLUMN_1" },
@@ -486,7 +486,7 @@ describe("cartesian", () => {
 
   describe("combineWithCartesianChart", () => {
     it("should add metric and dimension columns", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizState = {
         display: "bar",
         columns: [
           createMockNumericColumn({ name: "COLUMN_1", display_name: "Count" }),
@@ -554,7 +554,7 @@ describe("cartesian", () => {
     });
 
     it("should add multiple metrics and dimensions", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizState = {
         display: "bar",
         columns: [
           createMockNumericColumn({ name: "COLUMN_1", display_name: "Count" }),
@@ -669,7 +669,7 @@ describe("cartesian", () => {
     ]);
 
     it("should add a column", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizState = {
         columns: [],
         settings: {},
         columnValuesMapping: {},
@@ -697,7 +697,7 @@ describe("cartesian", () => {
     });
 
     it("should replace a column", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizState = {
         columns: [],
         settings: {},
         columnValuesMapping: {},
@@ -735,7 +735,7 @@ describe("cartesian", () => {
     });
 
     it("should not replace a column that's used as a metric", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizState = {
         columns: [],
         settings: {},
         columnValuesMapping: {},
@@ -794,7 +794,7 @@ describe("cartesian", () => {
     });
 
     it("should not delete a column that is used as a metric", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizState = {
         columns: [],
         settings: {},
         columnValuesMapping: {},
@@ -837,7 +837,7 @@ describe("cartesian", () => {
     });
 
     it("should not delete a column that is used as the bubble", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizState = {
         columns: [],
         settings: {},
         columnValuesMapping: {},
@@ -888,7 +888,7 @@ describe("cartesian", () => {
     });
 
     it("should not delete a column that's used as a dimension", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizState = {
         columns: [],
         settings: {},
         columnValuesMapping: {},

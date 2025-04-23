@@ -13,7 +13,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { Button, Flex } from "metabase/ui";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import type { Dashboard, VirtualDashboardCard } from "metabase-types/api";
-import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
+import type { VisualizerVizState } from "metabase-types/store/visualizer";
 
 import type { VisualizationProps } from "../types";
 
@@ -39,7 +39,7 @@ function DashCardPlaceholderInner({
     setQuestionPickerOpen(false);
   };
 
-  const handleSelectVisualization = (visualization: VisualizerHistoryItem) => {
+  const handleSelectVisualization = (visualization: VisualizerVizState) => {
     dispatch(
       replaceCardWithVisualization({ dashcardId: dashcard.id, visualization }),
     );

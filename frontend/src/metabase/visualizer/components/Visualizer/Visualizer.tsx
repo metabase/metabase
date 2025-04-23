@@ -29,7 +29,7 @@ import {
 } from "metabase/visualizer/visualizer.slice";
 import type {
   DraggedItem,
-  VisualizerHistoryItem,
+  VisualizerVizState,
 } from "metabase-types/store/visualizer";
 
 import { DataImporter } from "../DataImporter";
@@ -66,7 +66,7 @@ const isVerticalDraggedItem = (draggedItem: DraggedItem | null) => {
 
 interface VisualizerProps {
   className?: string;
-  onSave: (visualization: VisualizerHistoryItem) => void;
+  onSave: (visualization: VisualizerVizState) => void;
   onClose: () => void;
   saveLabel?: string;
   allowSaveWhenPristine?: boolean;

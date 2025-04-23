@@ -15,12 +15,12 @@ import {
   setTitle,
   toggleDataSideBar,
 } from "metabase/visualizer/visualizer.slice";
-import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
+import type { VisualizerVizState } from "metabase-types/store/visualizer";
 
 import S from "./Header.module.css";
 
 interface HeaderProps {
-  onSave: (visualization: VisualizerHistoryItem) => void;
+  onSave: (visualization: VisualizerVizState) => void;
   onClose: () => void;
   saveLabel?: string;
   allowSaveWhenPristine?: boolean;

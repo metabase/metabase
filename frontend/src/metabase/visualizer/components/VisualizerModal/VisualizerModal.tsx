@@ -11,7 +11,7 @@ import { initializeVisualizer } from "metabase/visualizer/visualizer.slice";
 import type { CardId } from "metabase-types/api";
 import type {
   VisualizerDataSourceId,
-  VisualizerHistoryItem,
+  VisualizerVizState,
 } from "metabase-types/store/visualizer";
 
 import { Visualizer } from "../Visualizer";
@@ -21,7 +21,7 @@ import S from "./VisualizerModal.module.css";
 interface VisualizerModalProps {
   initialState?:
     | {
-        state?: Partial<VisualizerHistoryItem>;
+        state?: Partial<VisualizerVizState>;
         extraDataSources?: VisualizerDataSourceId[];
       }
     | { cardId: CardId };

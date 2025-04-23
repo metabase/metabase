@@ -51,15 +51,15 @@ export type VisualizerColumnValueSource =
   | VisualizerColumnReference
   | VisualizerDataSourceNameReference;
 
-export type VisualizerHistoryItem = {
+export type VisualizerVizState = {
   display: VisualizationDisplay | null;
   columns: DatasetColumn[];
   columnValuesMapping: Record<string, VisualizerColumnValueSource[]>;
   settings: VisualizationSettings;
 };
 
-export interface VisualizerState extends VisualizerHistoryItem {
-  initialState: VisualizerHistoryItem;
+export interface VisualizerState extends VisualizerVizState {
+  initialState: VisualizerVizState;
 
   cards: Card[];
   datasets: Record<VisualizerDataSourceId, Dataset>;

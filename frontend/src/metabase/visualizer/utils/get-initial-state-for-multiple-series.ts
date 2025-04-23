@@ -3,7 +3,7 @@ import type { Card, DatasetColumn, RawSeries } from "metabase-types/api";
 import type {
   VisualizerColumnReference,
   VisualizerDataSource,
-  VisualizerHistoryItem,
+  VisualizerVizState,
 } from "metabase-types/store/visualizer";
 
 import {
@@ -58,7 +58,7 @@ function mapColumnVizSettings(
 function processColumnsForDataSource(
   dataSource: VisualizerDataSource,
   columns: DatasetColumn[],
-  state: VisualizerHistoryItem,
+  state: VisualizerVizState,
 ): ColumnInfo[] {
   const columnInfos: ColumnInfo[] = [];
 
@@ -91,7 +91,7 @@ function processColumnsForDataSource(
 export function getInitialStateForMultipleSeries(rawSeries: RawSeries) {
   const mainCard = rawSeries[0].card;
 
-  const state: VisualizerHistoryItem = {
+  const state: VisualizerVizState = {
     display: mainCard.display,
     columns: [],
     columnValuesMapping: {},

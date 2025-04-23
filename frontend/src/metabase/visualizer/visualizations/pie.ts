@@ -17,13 +17,13 @@ import {
 import type { Dataset, DatasetColumn } from "metabase-types/api";
 import type {
   VisualizerDataSource,
-  VisualizerHistoryItem,
+  VisualizerVizState,
 } from "metabase-types/store/visualizer";
 
 import { removeColumnFromStateUnlessUsedElseWhere } from "./utils";
 
 export const pieDropHandler = (
-  state: VisualizerHistoryItem,
+  state: VisualizerVizState,
   { active, over }: DragEndEvent,
 ) => {
   if (!over || !isDraggedColumnItem(active)) {
@@ -85,7 +85,7 @@ export const pieDropHandler = (
 };
 
 export function addColumnToPieChart(
-  state: VisualizerHistoryItem,
+  state: VisualizerVizState,
   column: DatasetColumn,
 ) {
   const metric = state.settings["pie.metric"];
@@ -100,7 +100,7 @@ export function addColumnToPieChart(
 }
 
 export function removeColumnFromPieChart(
-  state: VisualizerHistoryItem,
+  state: VisualizerVizState,
   columnName: string,
 ) {
   const dimensions = Array.isArray(state.settings["pie.dimension"])
@@ -124,7 +124,7 @@ export function removeColumnFromPieChart(
 }
 
 export function combineWithPieChart(
-  state: VisualizerHistoryItem,
+  state: VisualizerVizState,
   { data }: Dataset,
   dataSource: VisualizerDataSource,
 ) {
