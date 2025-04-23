@@ -13,20 +13,20 @@ export function getPresetJson(preset: LoggerPreset) {
   return JSON.stringify(logLevels, null, 2);
 }
 
-export function getErrorMessage(response: unknown) {
-  if (isErrorWithMessageResponse(response)) {
-    return response.data.message;
-  }
-
-  return t`Server error encountered`;
-}
-
 export function getLogLevelsErrorMessage(response: unknown) {
   if (isFormErrorResponse(response) && response.data.errors.log_levels) {
     return response.data.errors.log_levels;
   }
 
   return getErrorMessage(response);
+}
+
+export function getErrorMessage(response: unknown) {
+  if (isErrorWithMessageResponse(response)) {
+    return response.data.message;
+  }
+
+  return t`Server error encountered`;
 }
 
 export function isJsonValid(json: string): boolean {
