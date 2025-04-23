@@ -355,7 +355,7 @@ describe("issue 20963", () => {
 
     H.startNewNativeQuestion();
 
-    // Creat a snippet
+    // Create a snippet
     cy.icon("snippet").click();
     cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
@@ -530,93 +530,97 @@ describe.skip("issue 22519", () => {
   });
 });
 
-describe("filtering based on the remapped column name should result in a correct query (metabase#22715)", {tags: "@flaky"}, () => {
-  function mapColumnTo({ table, column } = {}) {
-    cy.findByText("Database column this maps to")
-      .parent()
-      .contains("None")
-      .click();
+describe(
+  "filtering based on the remapped column name should result in a correct query (metabase#22715)",
+  { tags: "@flaky" },
+  () => {
+    function mapColumnTo({ table, column } = {}) {
+      cy.findByText("Database column this maps to")
+        .parent()
+        .contains("None")
+        .click();
 
-    H.popover().findByText(table).click();
-    H.popover().findByText(column).click();
-  }
+      H.popover().findByText(table).click();
+      H.popover().findByText(column).click();
+    }
 
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("PUT", "/api/card/*").as("updateModel");
+    beforeEach(() => {
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.intercept("PUT", "/api/card/*").as("updateModel");
 
-    H.restore();
-    cy.signInAsAdmin();
+      H.restore();
+      cy.signInAsAdmin();
 
-    H.createNativeQuestion({
-      native: {
-        query:
-          'select 1 as "ID", current_timestamp::datetime as "ALIAS_CREATED_AT"',
-      },
-    }).then(({ body: { id } }) => {
-      // Visit the question to first load metadata
-      H.visitQuestion(id);
+      H.createNativeQuestion({
+        native: {
+          query:
+            'select 1 as "ID", current_timestamp::datetime as "ALIAS_CREATED_AT"',
+        },
+      }).then(({ body: { id } }) => {
+        // Visit the question to first load metadata
+        H.visitQuestion(id);
 
-      // Turn the question into a model
-      cy.request("PUT", `/api/card/${id}`, { type: "model" });
+        // Turn the question into a model
+        cy.request("PUT", `/api/card/${id}`, { type: "model" });
 
-      // Let's go straight to the model metadata editor
-      cy.visit(`/model/${id}/metadata`);
-      // Without this Cypress fails to remap the column because an element becomes detached from the DOM.
-      // This is caused by the DatasetFieldMetadataSidebar component rerendering mulitple times.
-      cy.findByText("Database column this maps to");
-      cy.wait(5000);
+        // Let's go straight to the model metadata editor
+        cy.visit(`/model/${id}/metadata`);
+        // Without this Cypress fails to remap the column because an element becomes detached from the DOM.
+        // This is caused by the DatasetFieldMetadataSidebar component rerendering mulitple times.
+        cy.findByText("Database column this maps to");
+        cy.wait(5000);
 
-      // The first column `ID` is automatically selected
-      mapColumnTo({ table: "Orders", column: "ID" });
+        // The first column `ID` is automatically selected
+        mapColumnTo({ table: "Orders", column: "ID" });
 
-      cy.findByText("ALIAS_CREATED_AT").click();
+        cy.findByText("ALIAS_CREATED_AT").click();
 
-      // Without this Cypress fails to remap the column because an element becomes detached from the DOM.
-      // This is caused by the DatasetFieldMetadataSidebar component rerendering mulitple times.
-      cy.wait(5000);
-      mapColumnTo({ table: "Orders", column: "Created At" });
+        // Without this Cypress fails to remap the column because an element becomes detached from the DOM.
+        // This is caused by the DatasetFieldMetadataSidebar component rerendering mulitple times.
+        cy.wait(5000);
+        mapColumnTo({ table: "Orders", column: "Created At" });
 
-      // Make sure the column name updated before saving
-      cy.findByDisplayValue("Created At");
+        // Make sure the column name updated before saving
+        cy.findByDisplayValue("Created At");
 
-      cy.button("Save changes").click();
-      cy.wait("@updateModel");
+        cy.button("Save changes").click();
+        cy.wait("@updateModel");
 
-      cy.visit(`/model/${id}`);
-      cy.wait("@dataset");
+        cy.visit(`/model/${id}`);
+        cy.wait("@dataset");
+      });
     });
-  });
 
-  it("when done through the column header action (metabase#22715-1)", () => {
-    H.tableHeaderClick("Created At");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter by this column").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Today").click();
-
-    cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Today").should("not.exist");
-
-    cy.get("[data-testid=cell-data]")
-      .should("have.length", 4)
-      .and("contain", "Created At");
-  });
-
-  it("when done through the filter trigger (metabase#22715-2)", () => {
-    H.filter();
-    H.popover().within(() => {
-      cy.findByText("Created At").click();
+    it("when done through the column header action (metabase#22715-1)", () => {
+      H.tableHeaderClick("Created At");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Filter by this column").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Today").click();
+
+      cy.wait("@dataset");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Today").should("not.exist");
+
+      cy.get("[data-testid=cell-data]")
+        .should("have.length", 4)
+        .and("contain", "Created At");
     });
-    H.runButtonOverlay().click();
-    cy.wait("@dataset");
-    cy.get("[data-testid=cell-data]")
-      .should("have.length", 4)
-      .and("contain", "Created At");
-  });
-});
+
+    it("when done through the filter trigger (metabase#22715-2)", () => {
+      H.filter();
+      H.popover().within(() => {
+        cy.findByText("Created At").click();
+        cy.findByText("Today").click();
+      });
+      H.runButtonOverlay().click();
+      cy.wait("@dataset");
+      cy.get("[data-testid=cell-data]")
+        .should("have.length", 4)
+        .and("contain", "Created At");
+    });
+  },
+);
 
 describe("issue 23024", () => {
   function addModelToDashboardAndVisit() {
