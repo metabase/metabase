@@ -53,7 +53,16 @@ export const saveDomImageStyles = css`
   }
 `;
 
-export const saveChartImage = async (selector: string, fileName: string) => {
+interface Opts {
+  selector: string;
+  fileName: string;
+  includeBranding: boolean;
+}
+export const saveChartImage = async ({
+  selector,
+  fileName,
+  includeBranding,
+}: Opts) => {
   const node = document.querySelector(selector);
 
   if (!node || !(node instanceof HTMLElement)) {
@@ -69,11 +78,15 @@ export const saveChartImage = async (selector: string, fileName: string) => {
   const size = getFooterSize(contentWidth);
   const FOOTER_HEIGHT = getFooterConfig(size, PNG_CANVAS_SCALE).h;
 
+  const canvasHeight = includeBranding
+    ? contentHeight + FOOTER_HEIGHT
+    : contentHeight;
+
   const { default: html2canvas } = await import("html2canvas-pro");
   const canvas = await html2canvas(node, {
     scale: PNG_CANVAS_SCALE,
     useCORS: true,
-    height: contentHeight + FOOTER_HEIGHT,
+    height: canvasHeight,
     onclone: async (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.classList.add(EmbedFrameS.WithThemeBackground);
@@ -81,8 +94,10 @@ export const saveChartImage = async (selector: string, fileName: string) => {
       node.style.borderRadius = "0px";
       node.style.border = "none";
 
-      const footer = createFooterElement(size, PNG_CANVAS_SCALE);
-      node.appendChild(footer);
+      if (includeBranding) {
+        const footer = createFooterElement(size, PNG_CANVAS_SCALE);
+        node.appendChild(footer);
+      }
     },
   });
 
