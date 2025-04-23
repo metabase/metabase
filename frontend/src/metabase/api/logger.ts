@@ -17,7 +17,7 @@ export const loggerApi = Api.injectEndpoints({
         body,
       }),
     }),
-    resetLogLevelsAdjustment: builder.mutation<void, void>({
+    resetLogLevels: builder.mutation<void, void>({
       query: () => ({
         url: "/api/logger/adjustment",
         method: "DELETE",
@@ -29,5 +29,5 @@ export const loggerApi = Api.injectEndpoints({
 export const {
   useListLoggerPresetsQuery,
   useAdjustLogLevelsMutation,
-  useResetLogLevelsAdjustmentMutation,
+  useResetLogLevelsMutation,
 } = loggerApi;

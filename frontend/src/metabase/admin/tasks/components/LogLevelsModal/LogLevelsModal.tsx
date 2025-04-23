@@ -5,7 +5,7 @@ import { t } from "ttag";
 import {
   useAdjustLogLevelsMutation,
   useListLoggerPresetsQuery,
-  useResetLogLevelsAdjustmentMutation,
+  useResetLogLevelsMutation,
 } from "metabase/api/logger";
 import { CodeEditor } from "metabase/components/CodeEditor";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
@@ -31,14 +31,10 @@ export const LogLevelsModal = () => {
     error: presetsError,
     isLoading: isLoadingPresets,
   } = useListLoggerPresetsQuery();
-  const [
-    adjustLogLevels,
-    { error: adjustLogLevelsError, isLoading: isLoadingAdjustLogLevels },
-  ] = useAdjustLogLevelsMutation();
-  const [
-    resetLogLevelsAdjustment,
-    { error: resetError, isLoading: isLoadingReset },
-  ] = useResetLogLevelsAdjustmentMutation();
+  const [adjust, { error: adjustError, isLoading: isLoadingAdjust }] =
+    useAdjustLogLevelsMutation();
+  const [reset, { error: resetError, isLoading: isLoadingReset }] =
+    useResetLogLevelsMutation();
 
   const [duration, setDuration] = useState("60");
   const [durationUnit, setDurationUnit] = useState<TimeUnit>("minutes");
@@ -46,14 +42,14 @@ export const LogLevelsModal = () => {
   const durationNumber = parseInt(duration, 10);
   const isDurationValid = Number.isFinite(durationNumber);
   const isValid = isDurationValid && isJsonValid(json);
-  const isLoading = isLoadingAdjustLogLevels || isLoadingReset;
+  const isLoading = isLoadingAdjust || isLoadingReset;
 
   const handleClose = () => {
     dispatch(goBack());
   };
 
   const handleReset = async () => {
-    const response = await resetLogLevelsAdjustment();
+    const response = await reset();
 
     if (!response.error) {
       handleClose();
@@ -63,7 +59,7 @@ export const LogLevelsModal = () => {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
-    const response = await adjustLogLevels({
+    const response = await adjust({
       duration: durationNumber,
       duration_unit: durationUnit,
       log_levels: JSON.parse(json),
@@ -136,9 +132,9 @@ export const LogLevelsModal = () => {
           </Box>
         ) : null}
 
-        {adjustLogLevelsError ? (
+        {adjustError ? (
           <Box c="error" mt="md">
-            {getLogLevelsErrorMessage(adjustLogLevelsError)}
+            {getLogLevelsErrorMessage(adjustError)}
           </Box>
         ) : null}
 
