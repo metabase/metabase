@@ -89,7 +89,7 @@ export const QuestionDownloadWidget = ({
     setFormat(newFormat);
 
     // If user is logged in, save their preference to the KV store
-    if (setFormatPreference) {
+    if (formatPreference && setFormatPreference) {
       const newPreference = {
         last_download_format: newFormat,
         last_table_download_format:
