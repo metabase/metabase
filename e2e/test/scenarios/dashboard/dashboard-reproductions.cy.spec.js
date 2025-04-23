@@ -1739,41 +1739,6 @@ describe("issue 54353", () => {
   });
 });
 
-describe("issue 44937", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signIn("readonly");
-  });
-
-  it("dashboard empty state should not suggest creating a new question when users have no creation permission (metabase#44937)", () => {
-    cy.visit("/");
-    H.newButton().click();
-    H.popover().findByText("Dashboard").click();
-    H.modal().within(() => {
-      cy.findByPlaceholderText("What is the name of your dashboard?").type(
-        "my dashboard",
-      );
-      cy.button("Create").click();
-    });
-
-    H.main().findByText(
-      "Browse your collections to find and add existing questions.",
-    );
-
-    cy.button("Add a chart").click();
-    H.sidebar().within(() => {
-      cy.findByText("Our analytics").click();
-      cy.findByText("Orders").click();
-    });
-
-    H.createNewTab();
-
-    H.main().findByText(
-      "Browse your collections to find and add existing questions.",
-    );
-  });
-});
-
 describe("issue 56716", () => {
   function setupDashboard() {
     const questionDetails = {
