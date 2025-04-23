@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver.databricks :as databricks]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [toucan2.core :as t2]))
@@ -281,6 +282,35 @@
                          :additional-options "IgnoreTransactions=0;bla=1"}
                         (sql-jdbc.conn/connection-details->spec :databricks)
                         :subname))))))
+
+(deftest multi-level-schema-test
+  (mt/test-driver
+    :databricks
+    (let [details (get (mt/db) :details)
+          multi-pattern (str (:catalog details) "." (:schema-filters-patterns details))]
+      (mt/with-temp [:model/Database {db-id :id :as db} {:engine :databricks :details details}]
+        (mt/with-db
+          db
+          (testing "With multi-level-schema default (off)"
+            (sync/sync-database! (mt/db))
+            (is (= #{"test-data"} (t2/select-fn-set :schema :model/Table :db_id (mt/id))))
+            (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))))
+        (testing "With multi-level-schema on"
+          (t2/update! :model/Database db-id {:details (assoc details
+                                                             :multi-level-schema true
+                                                             :schema-filters-patterns multi-pattern)})
+          (mt/with-db
+            (t2/select-one :model/Database db-id)
+            (sync/sync-database! (mt/db))
+            (is (= #{(str (:catalog details) ".test-data")} (t2/select-fn-set :schema :model/Table :db_id (mt/id))))
+            (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))))
+        (testing "With multi-level-schema off"
+          (t2/update! :model/Database db-id {:details (assoc details :multi-level-schema false)})
+          (mt/with-db
+            (t2/select-one :model/Database db-id)
+            (sync/sync-database! (mt/db))
+            (is (= #{"test-data"} (t2/select-fn-set :schema :model/Table :db_id (mt/id))))
+            (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))))))))
 
 (deftest can-connect-test
   (mt/test-driver

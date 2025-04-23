@@ -56,6 +56,9 @@ driver:
         placeholder: default
         helper-text: Specify the catalog to connect to.
         required: true
+      - merge:
+        - multi-level-schema
+        - display-name: Multi Catalog Support
       - name: schema-filters
         type: schema-filters
         display-name: Schemas
