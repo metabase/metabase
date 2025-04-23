@@ -39,8 +39,11 @@ export const DurationInput = ({
   );
 };
 
-// We don't want to show nanoseconds in the dropdown
-type AllowedTimeUnit = Exclude<TimeUnit, "nanoseconds">;
+// Some options are not practically useful
+type AllowedTimeUnit = Exclude<
+  TimeUnit,
+  "nanoseconds" | "microseconds" | "milliseconds"
+>;
 
 // It intentionally is a function and not a module-level constant, so that `t` function works correctly
 function getData() {
@@ -49,8 +52,6 @@ function getData() {
    * so that whoever changes that type does not forget to update this function.
    */
   const statusNames: { [T in AllowedTimeUnit]: { label: string; value: T } } = {
-    microseconds: { label: t`Microseconds`, value: "microseconds" },
-    milliseconds: { label: t`Milliseconds`, value: "milliseconds" },
     seconds: { label: t`Seconds`, value: "seconds" },
     minutes: { label: t`Minutes`, value: "minutes" },
     hours: { label: t`Hours`, value: "hours" },
