@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
-import { fetchEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
+import { fetchEntityId } from "metabase/lib/entity-id/fetch-entity-id";
 import { resolveCards } from "metabase/query_builder/actions";
 import { getParameterValuesForQuestion } from "metabase/query_builder/actions/core/parameterUtils";
 import { loadMetadataForCard } from "metabase/questions/actions";
