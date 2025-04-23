@@ -26,7 +26,6 @@ export function MetabaseLinksToggleDescription() {
       <Popover.Dropdown>
         <Stack p="md" gap="sm" maw="26rem">
           <Text size="sm">
-            {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
             {t`This affects all links in the product experience (outside of the admin panel) that point to Metabase.com URLs.`}
           </Text>
           <Text size="sm">

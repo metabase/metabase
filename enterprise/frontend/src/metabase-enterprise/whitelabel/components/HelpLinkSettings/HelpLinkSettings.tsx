@@ -80,7 +80,6 @@ export const HelpLinkSettings = () => {
         inputType="radio"
         value={helpLinkSetting}
         options={[
-          // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
           { label: t`Link to Metabase help`, value: "metabase" },
           { label: t`Hide it`, value: "hidden" },
           { label: t`Go to a custom destination...`, value: "custom" },
