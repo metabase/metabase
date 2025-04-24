@@ -35,6 +35,7 @@ import { ViewMainContainer } from "../ViewMainContainer";
 import { ViewRightSidebarContainer } from "../ViewRightSidebarContainer";
 
 import S from "./View.module.css";
+import { useModelRowActions } from "./use-model-row-actions";
 
 const ViewInner = forwardRef(function _ViewInner(props, ref) {
   const {
@@ -88,6 +89,11 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
     isShowingDataReference,
     isShowingSnippetSidebar,
   } = props;
+
+  const { enabledRowActions } = useModelRowActions({
+    question,
+    datasetData: result,
+  });
 
   // if we don't have a question at all or no databases then we are initializing, so keep it simple
   if (!question || !databases) {
@@ -225,6 +231,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
           <ViewMainContainer
             showLeftSidebar={showLeftSidebar}
             showRightSidebar={showRightSidebar}
+            enabledRowActions={enabledRowActions}
             {...props}
           />
           <ViewSidebar

@@ -160,6 +160,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     getColumnSortDirection: getServerColumnSortDirection,
     onVisualizationClick,
     onUpdateVisualizationSettings,
+    rowActions,
+    onActionRun,
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -669,6 +671,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onColumnResize: handleColumnResize,
     onColumnReorder: handleColumnReordering,
     pageSize,
+    rowActionsColumn:
+      rowActions && onActionRun
+        ? { actions: rowActions, onActionRun }
+        : undefined,
   });
   const { virtualGrid } = tableProps;
 
