@@ -158,7 +158,7 @@
                                   (group-by row-update-event)
                                   (remove (comp #{::no-op} key)))]
       (doseq [[table-id payloads] (group-by :table-id payloads)
-              :let [row-changes (for [{:keys [before after :as diff]} payloads]
+              :let [row-changes (for [{:keys [before after] :as diff} payloads]
                                   {:pk     (diff->pk diff)
                                    :before before
                                    :after  after})]]
