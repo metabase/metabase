@@ -9,7 +9,6 @@ import {
   END_OF_INPUT,
   FIELD,
   IDENTIFIER,
-  OPERATORS,
   STRING,
   type Token,
   lexify,
@@ -121,10 +120,6 @@ export function content(source: string, token: Token): string {
 
 export function isIdentifier(token: Token | null) {
   return token != null && (token.type === IDENTIFIER || token.type === CALL);
-}
-
-export function isOperator(token: Token | null) {
-  return token != null && OPERATORS.has(token.type);
 }
 
 export function isFieldReference(token: Token | null) {

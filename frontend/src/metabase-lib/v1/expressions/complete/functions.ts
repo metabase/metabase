@@ -4,7 +4,13 @@ import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { EXPRESSION_FUNCTIONS } from "../config";
-import { GROUP } from "../pratt";
+import {
+  GROUP,
+  LOGICAL_AND,
+  LOGICAL_NOT,
+  LOGICAL_OR,
+  type Token,
+} from "../pratt";
 import { getDatabase } from "../utils";
 
 import {
@@ -13,7 +19,6 @@ import {
   fuzzyMatcher,
   isFieldReference,
   isIdentifier,
-  isOperator,
   tokenAtPos,
 } from "./util";
 
@@ -60,7 +65,7 @@ export function suggestFunctions({
 
     if (
       !token ||
-      !(isIdentifier(token) || isOperator(token)) ||
+      !isPotentialFunctionPrefix(token) ||
       isFieldReference(token)
     ) {
       return null;
@@ -79,4 +84,10 @@ export function suggestFunctions({
       options,
     };
   };
+}
+
+const PREFIX_OPERATORS = new Set([LOGICAL_OR, LOGICAL_AND, LOGICAL_NOT]);
+
+function isPotentialFunctionPrefix(token: Token) {
+  return isIdentifier(token) || PREFIX_OPERATORS.has(token.type);
 }
