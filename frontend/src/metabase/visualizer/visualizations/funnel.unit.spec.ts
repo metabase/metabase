@@ -102,7 +102,7 @@ describe("funnel", () => {
           columnValuesMapping: {
             COLUMN_1: [
               {
-                sourceId: "card:1",
+                sourceEntityId: "card:1",
                 name: "COLUMN_1",
                 originalName: "count",
               },
@@ -133,7 +133,11 @@ describe("funnel", () => {
           settings: { "funnel.metric": "COLUMN_1" },
           columnValuesMapping: {
             COLUMN_1: [
-              { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
+              {
+                sourceEntityId: "card:1",
+                name: "COLUMN_1",
+                originalName: "count",
+              },
             ],
           },
         };
@@ -172,7 +176,7 @@ describe("funnel", () => {
           columnValuesMapping: {
             COLUMN_1: [
               {
-                sourceId: "card:1",
+                sourceEntityId: "card:1",
                 name: "COLUMN_1",
                 originalName: "count",
               },
@@ -239,7 +243,11 @@ describe("funnel", () => {
           },
           columnValuesMapping: {
             METRIC: [
-              { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
+              {
+                sourceEntityId: "card:1",
+                name: "COLUMN_1",
+                originalName: "count",
+              },
             ],
             DIMENSION: [createDataSourceNameRef(dataSource.id)],
           },
@@ -289,7 +297,11 @@ describe("funnel", () => {
           },
           columnValuesMapping: {
             COLUMN_1: [
-              { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
+              {
+                sourceEntityId: "card:1",
+                name: "COLUMN_1",
+                originalName: "count",
+              },
             ],
           },
         };
@@ -310,7 +322,11 @@ describe("funnel", () => {
           },
           columnValuesMapping: {
             COLUMN_1: [
-              { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
+              {
+                sourceEntityId: "card:1",
+                name: "COLUMN_1",
+                originalName: "count",
+              },
             ],
           },
         };
@@ -331,7 +347,11 @@ describe("funnel", () => {
           },
           columnValuesMapping: {
             COLUMN_1: [
-              { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
+              {
+                sourceEntityId: "card:1",
+                name: "COLUMN_1",
+                originalName: "count",
+              },
             ],
           },
         };
@@ -362,8 +382,12 @@ describe("funnel", () => {
         },
         columnValuesMapping: {
           METRIC: [
-            { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
-            { sourceId: "card:2", name: "COLUMN_2", originalName: "sum" },
+            {
+              sourceEntityId: "card:1",
+              name: "COLUMN_1",
+              originalName: "count",
+            },
+            { sourceEntityId: "card:2", name: "COLUMN_2", originalName: "sum" },
           ],
           DIMENSION: [
             createDataSourceNameRef(dataSource.id),
@@ -428,7 +452,7 @@ describe("funnel", () => {
           columnValuesMapping: {
             COLUMN_1: [
               {
-                sourceId: "card:1",
+                sourceEntityId: "card:1",
                 name: "COLUMN_1",
                 originalName: "category",
               },
@@ -473,7 +497,11 @@ describe("funnel", () => {
           },
           columnValuesMapping: {
             COLUMN_1: [
-              { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
+              {
+                sourceEntityId: "card:1",
+                name: "COLUMN_1",
+                originalName: "count",
+              },
             ],
           },
         };
@@ -500,7 +528,11 @@ describe("funnel", () => {
           },
           columnValuesMapping: {
             COLUMN_1: [
-              { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
+              {
+                sourceEntityId: "card:1",
+                name: "COLUMN_1",
+                originalName: "count",
+              },
             ],
           },
         };
@@ -528,7 +560,7 @@ describe("funnel", () => {
           columnValuesMapping: {
             COLUMN_1: [
               {
-                sourceId: "card:1",
+                sourceEntityId: "card:1",
                 name: "COLUMN_1",
                 originalName: "count",
               },
@@ -571,7 +603,11 @@ describe("funnel", () => {
           },
           columnValuesMapping: {
             COLUMN_1: [
-              { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
+              {
+                sourceEntityId: "card:1",
+                name: "COLUMN_1",
+                originalName: "count",
+              },
             ],
           },
         };
@@ -601,7 +637,7 @@ describe("funnel", () => {
           columnValuesMapping: {
             COLUMN_1: [
               {
-                sourceId: "card:1",
+                sourceEntityId: "card:1",
                 name: "COLUMN_1",
                 originalName: "category",
               },
@@ -637,8 +673,12 @@ describe("funnel", () => {
         },
         columnValuesMapping: {
           METRIC: [
-            { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
-            { sourceId: "card:2", name: "COLUMN_2", originalName: "sum" },
+            {
+              sourceEntityId: "card:1",
+              name: "COLUMN_1",
+              originalName: "count",
+            },
+            { sourceEntityId: "card:2", name: "COLUMN_2", originalName: "sum" },
           ],
           DIMENSION: [
             createDataSourceNameRef(dataSource.id),

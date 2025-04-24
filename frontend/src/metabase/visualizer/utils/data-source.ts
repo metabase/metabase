@@ -10,26 +10,28 @@ import { extractReferencedColumns } from "./column";
 
 export function createDataSource(
   type: VisualizerDataSourceType,
-  sourceId: number,
+  sourceEntityId: string,
   name: string,
 ): VisualizerDataSource {
   return {
-    id: `${type}:${sourceId}`,
-    sourceId,
+    id: `${type}:${sourceEntityId}`,
+    sourceEntityId,
     type,
     name,
   };
 }
 
 export function parseDataSourceId(id: VisualizerDataSourceId) {
-  const [type, sourceId] = id.split(":");
-  return { type, sourceId: Number(sourceId) };
+  const [type, sourceEntityId] = id.split(":");
+  return { type, sourceEntityId };
 }
 
 export function isDataSourceId(id: string): id is VisualizerDataSourceId {
   try {
-    const { type, sourceId } = parseDataSourceId(id as VisualizerDataSourceId);
-    return type === "card" && Number.isSafeInteger(sourceId);
+    const { type, sourceEntityId } = parseDataSourceId(
+      id as VisualizerDataSourceId,
+    );
+    return type === "card" && sourceEntityId != null;
   } catch {
     return false;
   }
@@ -56,15 +58,15 @@ export function getDataSourceIdFromNameRef(str: string) {
   return dataSourceId;
 }
 
-export function getCardIdsFromColumnValueMappings(
+export function getCardEntityIdsFromColumnValueMappings(
   columnValuesMapping: Record<string, VisualizerColumnValueSource[]>,
 ) {
   const referencedColumns = extractReferencedColumns(columnValuesMapping);
   const usedDataSourceIds = Array.from(
-    new Set(referencedColumns.map((ref) => ref.sourceId)),
+    new Set(referencedColumns.map((ref) => ref.sourceEntityId)),
   );
   return usedDataSourceIds.map((id) => {
-    const { sourceId } = parseDataSourceId(id);
-    return sourceId;
+    const { sourceEntityId } = parseDataSourceId(id);
+    return sourceEntityId;
   });
 }

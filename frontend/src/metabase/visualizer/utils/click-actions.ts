@@ -55,7 +55,7 @@ function findColumnCardId(
   if (!valueSource || isDataSourceNameRef(valueSource)) {
     return;
   }
-  return parseDataSourceId(valueSource.sourceId).sourceId;
+  return parseDataSourceId(valueSource.sourceEntityId).sourceEntityId;
 }
 
 function findRealColumn(
@@ -69,8 +69,12 @@ function findRealColumn(
     return;
   }
 
-  const cardId = parseDataSourceId(valueSource.sourceId).sourceId;
-  const cardSeries = originalSeries.find((series) => series.card.id === cardId);
+  const cardEntityId = parseDataSourceId(
+    valueSource.sourceEntityId,
+  ).sourceEntityId;
+  const cardSeries = originalSeries.find(
+    (series) => series.card.entity_id === cardEntityId,
+  );
 
   return cardSeries?.data?.cols?.find(
     (col) => col.name === valueSource.originalName,

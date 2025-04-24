@@ -15,14 +15,14 @@ describe("mergeData", () => {
       columnValuesMapping: {
         COLUMN_1: [
           {
-            sourceId: "card:73",
+            sourceEntityId: "card:73",
             originalName: "RATING",
             name: "COLUMN_1",
           },
         ],
         COLUMN_2: [
           {
-            sourceId: "card:73",
+            sourceEntityId: "card:73",
             originalName: "count",
             name: "COLUMN_2",
           },
@@ -32,7 +32,7 @@ describe("mergeData", () => {
       dataSources: [
         {
           id: "card:73",
-          sourceId: 73,
+          sourceEntityId: 73,
           type: "card",
           name: "bar chart yo",
         },

@@ -14,13 +14,17 @@ registerVisualizations();
 describe("updateSettingsForDisplay", () => {
   const columnValuesMapping = {
     COLUMN_1: [
-      { sourceId: "card:45", originalName: "CREATED_AT", name: "COLUMN_1" },
+      {
+        sourceEntityId: "card:45",
+        originalName: "CREATED_AT",
+        name: "COLUMN_1",
+      },
     ],
     COLUMN_2: [
-      { sourceId: "card:45", originalName: "category", name: "COLUMN_2" },
+      { sourceEntityId: "card:45", originalName: "category", name: "COLUMN_2" },
     ],
     COLUMN_3: [
-      { sourceId: "card:45", originalName: "count", name: "COLUMN_3" },
+      { sourceEntityId: "card:45", originalName: "count", name: "COLUMN_3" },
     ],
   } as Record<string, VisualizerColumnValueSource[]>;
 
@@ -260,9 +264,21 @@ describe("updateSettingsForDisplay", () => {
       const columnValuesMapping: Record<string, VisualizerColumnValueSource[]> =
         {
           METRIC: [
-            { sourceId: "card:1", originalName: "views", name: "COLUMN_1" },
-            { sourceId: "card:2", originalName: "checkout", name: "COLUMN_2" },
-            { sourceId: "card:3", originalName: "done", name: "COLUMN_3" },
+            {
+              sourceEntityId: "card:1",
+              originalName: "views",
+              name: "COLUMN_1",
+            },
+            {
+              sourceEntityId: "card:2",
+              originalName: "checkout",
+              name: "COLUMN_2",
+            },
+            {
+              sourceEntityId: "card:3",
+              originalName: "done",
+              name: "COLUMN_3",
+            },
           ],
           DIMENSION: [
             createDataSourceNameRef("card:1"),

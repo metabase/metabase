@@ -99,7 +99,7 @@ export const getReferencedColumns = createSelector(
  * Returns a list of data sources that are used in the current visualization.
  */
 export const getDataSources = createSelector([getCards], (cards) =>
-  cards.map((card) => createDataSource("card", card.id, card.name)),
+  cards.map((card) => createDataSource("card", card.entity_id, card.name)),
 );
 
 export const getUsedDataSources = createSelector(
@@ -109,7 +109,7 @@ export const getUsedDataSources = createSelector(
       return dataSources;
     }
     const usedDataSourceIds = new Set(
-      referencedColumns.map((ref) => ref.sourceId),
+      referencedColumns.map((ref) => ref.sourceEntityId),
     );
     return dataSources.filter((dataSource) =>
       usedDataSourceIds.has(dataSource.id),

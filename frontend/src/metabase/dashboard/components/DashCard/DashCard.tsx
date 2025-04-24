@@ -107,7 +107,7 @@ export interface DashCardProps {
   onEditVisualization?: (
     dashcard: StoreDashcard,
     initialState: Partial<VisualizerHistoryItem>,
-    cardIdByEntityId?: Record<BaseEntityId, number>,
+    cardIdByEntityId?: Record<string, number>,
   ) => void;
 }
 

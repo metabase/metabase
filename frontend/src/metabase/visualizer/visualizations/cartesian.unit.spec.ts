@@ -131,7 +131,7 @@ describe("cartesian", () => {
             {
               name: "COLUMN_1",
               originalName: column1.name,
-              sourceId: dataSource.id,
+              sourceEntityId: dataSource.id,
             },
           ],
         },
@@ -269,14 +269,14 @@ describe("cartesian", () => {
         columnValuesMapping: {
           COLUMN_1: [
             {
-              sourceId: dataSource1.id,
+              sourceEntityId: dataSource1.id,
               name: "COLUMN_1",
               originalName: "count",
             },
           ],
           COLUMN_2: [
             {
-              sourceId: dataSource1.id,
+              sourceEntityId: dataSource1.id,
               name: "COLUMN_2",
               originalName: "created_at",
             },
@@ -314,28 +314,28 @@ describe("cartesian", () => {
         columnValuesMapping: {
           COLUMN_1: [
             {
-              sourceId: dataSource1.id,
+              sourceEntityId: dataSource1.id,
               name: "COLUMN_1",
               originalName: "count",
             },
           ],
           COLUMN_2: [
             {
-              sourceId: dataSource1.id,
+              sourceEntityId: dataSource1.id,
               name: "COLUMN_2",
               originalName: "created_at",
             },
           ],
           COLUMN_3: [
             {
-              sourceId: dataSource2.id,
+              sourceEntityId: dataSource2.id,
               name: "COLUMN_3",
               originalName: "avg",
             },
           ],
           COLUMN_4: [
             {
-              sourceId: dataSource2.id,
+              sourceEntityId: dataSource2.id,
               name: "COLUMN_4",
               originalName: "date",
             },
@@ -381,14 +381,14 @@ describe("cartesian", () => {
         columnValuesMapping: {
           COLUMN_1: [
             {
-              sourceId: dataSource1.id,
+              sourceEntityId: dataSource1.id,
               name: "COLUMN_1",
               originalName: "count",
             },
           ],
           COLUMN_2: [
             {
-              sourceId: dataSource1.id,
+              sourceEntityId: dataSource1.id,
               name: "COLUMN_2",
               originalName: "created_at",
             },
@@ -426,28 +426,28 @@ describe("cartesian", () => {
         columnValuesMapping: {
           COLUMN_1: [
             {
-              sourceId: dataSource1.id,
+              sourceEntityId: dataSource1.id,
               name: "COLUMN_1",
               originalName: "count",
             },
           ],
           COLUMN_2: [
             {
-              sourceId: dataSource1.id,
+              sourceEntityId: dataSource1.id,
               name: "COLUMN_2",
               originalName: "created_at",
             },
           ],
           COLUMN_3: [
             {
-              sourceId: dataSource2.id,
+              sourceEntityId: dataSource2.id,
               name: "COLUMN_3",
               originalName: "avg",
             },
           ],
           COLUMN_4: [
             {
-              sourceId: dataSource2.id,
+              sourceEntityId: dataSource2.id,
               name: "COLUMN_4",
               originalName: "date",
             },
@@ -497,11 +497,15 @@ describe("cartesian", () => {
         ],
         columnValuesMapping: {
           COLUMN_1: [
-            { sourceId: "card:1", name: "COLUMN_1", originalName: "Count" },
+            {
+              sourceEntityId: "card:1",
+              name: "COLUMN_1",
+              originalName: "Count",
+            },
           ],
           COLUMN_2: [
             {
-              sourceId: "card:1",
+              sourceEntityId: "card:1",
               name: "COLUMN_2",
               originalName: "Created At",
             },
@@ -569,18 +573,22 @@ describe("cartesian", () => {
         ],
         columnValuesMapping: {
           COLUMN_1: [
-            { sourceId: "card:1", name: "COLUMN_1", originalName: "Count" },
+            {
+              sourceEntityId: "card:1",
+              name: "COLUMN_1",
+              originalName: "Count",
+            },
           ],
           COLUMN_2: [
             {
-              sourceId: "card:1",
+              sourceEntityId: "card:1",
               name: "COLUMN_2",
               originalName: "Created At",
             },
           ],
           COLUMN_3: [
             {
-              sourceId: "card:1",
+              sourceEntityId: "card:1",
               name: "COLUMN_3",
               originalName: "Category",
             },

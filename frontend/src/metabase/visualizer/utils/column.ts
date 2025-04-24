@@ -11,14 +11,19 @@ export function isReferenceToColumn(
   dataSourceId: VisualizerDataSourceId,
   ref: VisualizerColumnReference,
 ) {
-  return dataSourceId === ref.sourceId && column.name === ref.originalName;
+  return (
+    dataSourceId === ref.sourceEntityId && column.name === ref.originalName
+  );
 }
 
 export function compareColumnReferences(
   r1: VisualizerColumnReference,
   r2: VisualizerColumnReference,
 ) {
-  return r1.sourceId === r2.sourceId && r1.originalName === r2.originalName;
+  return (
+    r1.sourceEntityId === r2.sourceEntityId &&
+    r1.originalName === r2.originalName
+  );
 }
 
 function checkColumnMappingExists(
@@ -60,7 +65,7 @@ export function createVisualizerColumnReference(
   }
 
   return {
-    sourceId: dataSource.id,
+    sourceEntityId: dataSource.id,
     originalName: column.name,
     name: `COLUMN_${nameIndex}`,
   };

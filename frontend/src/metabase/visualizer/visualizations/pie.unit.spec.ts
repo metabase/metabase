@@ -55,7 +55,7 @@ describe("pie", () => {
         columnValuesMapping: {
           COLUMN_1: [
             {
-              sourceId: "card:1",
+              sourceEntityId: "card:1",
               name: "COLUMN_1",
               originalName: "count",
             },
@@ -98,7 +98,7 @@ describe("pie", () => {
         columnValuesMapping: {
           COLUMN_1: [
             {
-              sourceId: "card:1",
+              sourceEntityId: "card:1",
               name: "COLUMN_1",
               originalName: "count",
             },
@@ -144,7 +144,7 @@ describe("pie", () => {
         columnValuesMapping: {
           COLUMN_1: [
             {
-              sourceId: "card:1",
+              sourceEntityId: "card:1",
               name: "COLUMN_1",
               originalName: "count",
             },
@@ -167,7 +167,7 @@ describe("pie", () => {
         columnValuesMapping: {
           COLUMN_1: [
             {
-              sourceId: "card:1",
+              sourceEntityId: "card:1",
               name: "COLUMN_1",
               originalName: "count",
             },
@@ -190,7 +190,7 @@ describe("pie", () => {
         columnValuesMapping: {
           COLUMN_1: [
             {
-              sourceId: "card:1",
+              sourceEntityId: "card:1",
               name: "COLUMN_1",
               originalName: "count",
             },
@@ -224,7 +224,11 @@ describe("pie", () => {
         },
         columnValuesMapping: {
           COLUMN_1: [
-            { sourceId: "card:1", name: "COLUMN_1", originalName: "category" },
+            {
+              sourceEntityId: "card:1",
+              name: "COLUMN_1",
+              originalName: "category",
+            },
           ],
         },
       };
@@ -264,7 +268,11 @@ describe("pie", () => {
         },
         columnValuesMapping: {
           COLUMN_1: [
-            { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
+            {
+              sourceEntityId: "card:1",
+              name: "COLUMN_1",
+              originalName: "count",
+            },
           ],
         },
       };
@@ -291,7 +299,11 @@ describe("pie", () => {
         },
         columnValuesMapping: {
           COLUMN_1: [
-            { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
+            {
+              sourceEntityId: "card:1",
+              name: "COLUMN_1",
+              originalName: "count",
+            },
           ],
         },
       };
@@ -316,7 +328,11 @@ describe("pie", () => {
         settings: { "pie.metric": "COLUMN_1" },
         columnValuesMapping: {
           COLUMN_1: [
-            { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
+            {
+              sourceEntityId: "card:1",
+              name: "COLUMN_1",
+              originalName: "count",
+            },
           ],
         },
       };
@@ -350,7 +366,11 @@ describe("pie", () => {
         settings: { "pie.metric": "COLUMN_1" },
         columnValuesMapping: {
           COLUMN_1: [
-            { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
+            {
+              sourceEntityId: "card:1",
+              name: "COLUMN_1",
+              originalName: "count",
+            },
           ],
         },
       };
@@ -375,7 +395,11 @@ describe("pie", () => {
         settings: { "pie.dimension": ["COLUMN_1"] },
         columnValuesMapping: {
           COLUMN_1: [
-            { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
+            {
+              sourceEntityId: "card:1",
+              name: "COLUMN_1",
+              originalName: "count",
+            },
           ],
         },
       };

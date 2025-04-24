@@ -103,7 +103,7 @@ type InitVisualizerPayload =
   | {
       state?: Partial<VisualizerHistoryItem>;
       extraDataSources?: VisualizerDataSourceId[];
-      cardIdByEntityId?: Record<BaseEntityId, number>;
+      cardIdByEntityId?: Record<string, number>;
     }
   | { cardId: CardId };
 
@@ -126,7 +126,7 @@ const initializeFromState = async (
   }: {
     state?: Partial<VisualizerHistoryItem>;
     extraDataSources?: VisualizerDataSourceId[];
-    cardIdByEntityId?: Record<BaseEntityId, number>;
+    cardIdByEntityId?: Record<string, number>;
   },
   dispatch: Dispatch,
 ) => {
@@ -134,7 +134,7 @@ const initializeFromState = async (
     ? extractReferencedColumns(initialState.columnValuesMapping)
     : [];
   const dataSourceIds = Array.from(
-    new Set(columnRefs.map((ref) => ref.sourceId)),
+    new Set(columnRefs.map((ref) => ref.sourceEntityId)),
   );
   if (extraDataSources.length > 0) {
     dataSourceIds.push(...extraDataSources);
@@ -142,9 +142,8 @@ const initializeFromState = async (
   await Promise.all(
     dataSourceIds
       .map((sourceId) => {
-        const [, cardId] = sourceId.split(":");
-
-        // const cardId = cardIdByEntityId[cardEntityId]
+        const [, cardEntityId] = sourceId.split(":");
+        const cardId = cardIdByEntityId[cardEntityId];
         return [
           dispatch(fetchCard(Number(cardId))),
           dispatch(fetchCardQuery(Number(cardId))),
@@ -182,7 +181,7 @@ const initializeFromCard = async (
 export const addDataSource = createAsyncThunk(
   "visualizer/dataImporter/addDataSource",
   async (id: VisualizerDataSourceId, { dispatch, getState }) => {
-    const { type, sourceId } = parseDataSourceId(id);
+    const { type, sourceEntityId } = parseDataSourceId(id);
 
     const state = getCurrentVisualizerState(getState());
 
@@ -204,13 +203,15 @@ export const addDataSource = createAsyncThunk(
         return getInitialStateForCardDataSource(card, dataset);
       }
 
-      dataSource = createDataSource("card", card.id, card.name);
+      dataSource = createDataSource("card", card.entity_id, card.name);
     } else {
       throw new Error(`Unsupported data source type: ${type}`);
     }
 
     if (!dataSource || !dataset) {
-      throw new Error(`Could not get data source or dataset for: ${sourceId}`);
+      throw new Error(
+        `Could not get data source or dataset for: ${sourceEntityId}`,
+      );
     }
 
     const computedSettings = getVisualizerComputedSettings(getState());
@@ -441,7 +442,7 @@ const visualizerHistoryItemSlice = createSlice({
                 const dataSourceId = getDataSourceIdFromNameRef(valueSource);
                 return dataSourceId !== source.id;
               }
-              return valueSource.sourceId !== source.id;
+              return valueSource.sourceEntityId !== source.id;
             });
             if (nextValueSources.length === 0) {
               columnsToRemove.push(columnName);
@@ -550,7 +551,11 @@ const visualizerSlice = createSlice({
             datasetMap: state.datasets,
             dataSourceMap: Object.fromEntries(
               state.cards.map((card) => {
-                const dataSource = createDataSource("card", card.id, card.name);
+                const dataSource = createDataSource(
+                  "card",
+                  card.entity_id,
+                  card.name,
+                );
                 return [dataSource.id, dataSource];
               }),
             ),
@@ -560,8 +565,9 @@ const visualizerSlice = createSlice({
       .addCase(removeDataSource, (state, action) => {
         const source = action.payload;
         if (source.type === "card") {
-          const cardId = source.sourceId;
-          state.cards = state.cards.filter((card) => card.id !== cardId);
+          state.cards = state.cards.filter(
+            (card) => card.entity_id !== source.sourceEntityId,
+          );
         }
         delete state.expandedDataSources[source.id];
         delete state.loadingDataSources[source.id];
@@ -593,11 +599,12 @@ const visualizerSlice = createSlice({
         } else {
           state.cards.push(card);
         }
-        state.loadingDataSources[`card:${card.id}`] = false;
-        state.expandedDataSources[`card:${card.id}`] = true;
+        state.loadingDataSources[`card:${card.entity_id}`] = false;
+        state.expandedDataSources[`card:${card.entity_id}`] = true;
         maybeUpdateHistory(state, action);
       })
       .addCase(fetchCard.rejected, (state, action) => {
+        // FIXME: use entityId
         const cardId = action.meta.arg;
         if (cardId) {
           state.loadingDataSources[`card:${cardId}`] = false;
@@ -605,11 +612,13 @@ const visualizerSlice = createSlice({
         state.error = action.error.message || "Failed to fetch card";
       })
       .addCase(fetchCardQuery.pending, (state, action) => {
+        // FIXME: use entityId
         const cardId = action.meta.arg;
         state.loadingDatasets[`card:${cardId}`] = true;
         state.error = null;
       })
       .addCase(fetchCardQuery.fulfilled, (state, action) => {
+        // FIXME: use entityId
         const cardId = action.meta.arg;
         const dataset = action.payload;
         state.datasets[`card:${cardId}`] = dataset;
@@ -617,6 +626,7 @@ const visualizerSlice = createSlice({
         maybeUpdateHistory(state, action);
       })
       .addCase(fetchCardQuery.rejected, (state, action) => {
+        // FIXME: use entityId
         const cardId = action.meta.arg;
         if (cardId) {
           state.loadingDatasets[`card:${cardId}`] = false;
@@ -631,7 +641,11 @@ const visualizerSlice = createSlice({
 
         const dataSourceMap = Object.fromEntries(
           cards.map((card) => {
-            const dataSource = createDataSource("card", card.id, card.name);
+            const dataSource = createDataSource(
+              "card",
+              card.entity_id,
+              card.name,
+            );
             return [dataSource.id, dataSource];
           }),
         );

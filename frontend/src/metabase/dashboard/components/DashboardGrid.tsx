@@ -100,7 +100,7 @@ interface DashboardGridState {
   visualizerModalStatus?: {
     dashcardId: number;
     state: Partial<VisualizerHistoryItem>;
-    cardIdByEntityId?: Record<BaseEntityId, number>;
+    cardIdByEntityId?: Record<string, number>;
   };
 }
 
@@ -490,7 +490,7 @@ class DashboardGridInner extends Component<
   onEditVisualization = (
     dashcard: BaseDashboardCard,
     initialState: Partial<VisualizerHistoryItem>,
-    cardIdByEntityId?: Record<BaseEntityId, number>,
+    cardIdByEntityId?: Record<string, number>,
   ) => {
     this.setState({
       visualizerModalStatus: {

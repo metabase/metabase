@@ -1,5 +1,4 @@
 import type {
-  BaseEntityId,
   Card,
   Dataset,
   DatasetColumn,
@@ -8,18 +7,17 @@ import type {
 } from "metabase-types/api";
 
 export type VisualizerDataSourceType = "card";
-export type VisualizerDataSourceId =
-  `${VisualizerDataSourceType}:${BaseEntityId}`;
+export type VisualizerDataSourceId = `${VisualizerDataSourceType}:${string}`;
 
 export type VisualizerDataSource = {
   id: VisualizerDataSourceId;
-  sourceId: number;
+  sourceEntityId: string;
   type: VisualizerDataSourceType;
   name: string;
 };
 
 export type VisualizerColumnReference = {
-  sourceId: VisualizerDataSourceId;
+  sourceEntityId: VisualizerDataSourceId;
   name: string; // in combined dataset
   originalName: string; // in original dataset
 };

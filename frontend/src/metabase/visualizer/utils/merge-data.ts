@@ -61,7 +61,7 @@ export function mergeVisualizerData({
 
   const referencedColumnValuesMap: Record<string, RowValues> = {};
   referencedColumns.forEach((ref) => {
-    const dataset = datasets[ref.sourceId];
+    const dataset = datasets[ref.sourceEntityId];
     if (!dataset) {
       return;
     }

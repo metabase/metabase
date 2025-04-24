@@ -19,7 +19,7 @@ export function shouldSplitVisualizerSeries(
         if (isDataSourceNameRef(mapping[0])) {
           return;
         }
-        return mapping[0]?.sourceId;
+        return mapping[0]?.sourceEntityId;
       })
       .filter(isNotNull),
   );
@@ -44,7 +44,7 @@ export function splitVisualizerSeries(
       .map((valueSources) => {
         const [valueSource] = valueSources;
         if (!isDataSourceNameRef(valueSource)) {
-          return valueSource.sourceId;
+          return valueSource.sourceEntityId;
         }
       })
       .filter(isNotNull),
@@ -59,7 +59,7 @@ export function splitVisualizerSeries(
       columnValuesMapping[columnName].some(
         (valueSource) =>
           !isDataSourceNameRef(valueSource) &&
-          valueSource.sourceId === dataSourceId,
+          valueSource.sourceEntityId === dataSourceId,
       ),
     );
 
