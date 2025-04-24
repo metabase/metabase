@@ -16,7 +16,7 @@ import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
-import type { FilterPickerWidgetProps } from "../types";
+import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 export function NumberFilterPicker({
   query,
@@ -24,6 +24,7 @@ export function NumberFilterPicker({
   column,
   filter,
   isNew,
+  withAddButton,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -55,13 +56,16 @@ export function NumberFilterPicker({
     setValues(getDefaultValues(newOperator, values));
   };
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-
+  const handleSubmit = (opts: FilterChangeOpts) => {
     const filter = getFilterClause(operator, values);
     if (filter) {
-      onChange(filter);
+      onChange(filter, opts);
     }
+  };
+
+  const handleFormSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    handleSubmit({ run: true });
   };
 
   return (
@@ -69,7 +73,7 @@ export function NumberFilterPicker({
       component="form"
       w={WIDTH}
       data-testid="number-filter-picker"
-      onSubmit={handleSubmit}
+      onSubmit={handleFormSubmit}
     >
       <FilterPickerHeader
         columnName={columnInfo.longDisplayName}
@@ -91,7 +95,12 @@ export function NumberFilterPicker({
           hasMultipleValues={hasMultipleValues}
           onChange={setValues}
         />
-        <FilterPickerFooter isNew={isNew} canSubmit={isValid} />
+        <FilterPickerFooter
+          isNew={isNew}
+          isValid={isValid}
+          withAddButton={withAddButton}
+          onSubmit={handleSubmit}
+        />
       </div>
     </Box>
   );

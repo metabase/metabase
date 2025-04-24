@@ -30,7 +30,7 @@ export function DateFilterPicker({
     });
 
   const handleChange = (value: DatePickerValue) => {
-    onChange(getFilterClause(value));
+    onChange(getFilterClause(value), { run: true });
   };
 
   return (
