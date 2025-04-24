@@ -1,7 +1,6 @@
 (ns metabase.actions.actions
   "Code related to the new writeback Actions."
   (:require
-   [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [metabase.actions.events :as actions.events]
    [metabase.api.common :as api]
@@ -177,6 +176,32 @@
   [action-or-id]
   (check-actions-enabled-for-database! (api/check-404 (database-for-action action-or-id))))
 
+(defn- row-update-event [{:keys [before after]}]
+  (case [(some? before) (some? after)]
+    [false true]  :event/rows.created
+    [true  true]  :event/rows.updated
+    [true  false] :event/rows.deleted
+    ;; should not happen
+    [false false] ::no-op))
+
+(defn- publish-effect-events! [{:keys [user-id effects]}]
+  (doseq [[event payloads] (->> effects
+                                (filter (comp #{:effect/row.modified} first))
+                                (map second)
+                                (group-by row-update-event)
+                                (remove (comp #{::no-op} key)))]
+    ;; TODO will fix requiring-resolve when we remove all this table-action specific stuff, which has NO place here
+    #_{:clj-kondo/ignore [:metabase/modules]}
+    (doseq [[table-id payloads] (group-by :table-id payloads)
+            :let [pk-fields   ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/select-table-pk-fields) table-id)
+                  row-changes (for [{:keys [before after]} payloads]
+                                {:pk     ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/get-row-pks) pk-fields after)
+                                 :before before
+                                 :after  after})]]
+      (events/publish-event! event {:actor_id    user-id
+                                    :row_changes row-changes
+                                    :args        {:table_id table-id}}))))
+
 (mu/defn perform-action-internal!
   "A more modern version of [[perform-action!]] that takes an existing context, and multiple arg-maps.
    Assumes (for now) that the schemas have been checked and args coerced, etc. Also doesn't do perms checks yet.
@@ -195,6 +220,8 @@
         (let [{context-after :context, :keys [outputs]} <>]
           (doseq [k [:invocation-id :invocation-scope :user-id]]
             (assert (= (k context-before) (k context-after)) (format "Output context must not change %s" k)))
+          ;; We might in future want effects to propagate all the up to the root scope ¯\_(ツ)_/¯
+          (publish-effect-events! context-after)
           (actions.events/publish-action-success! action-kw context-after outputs)))
       ;; Err on the side of visibility. We may want to handle Errors differently when we polish Internal Tools.
       (catch Throwable e
@@ -256,34 +283,6 @@
             ;;      or define a per-action reduction (e.g. totally the number of rows updated, for bulk events)
             (assert (= 1 (count outputs)) "The legacy action APIs do not support multiple outputs")
             (first outputs)))))))
-
-;; TODO will fix requiring-resolve when we remove all this table-action specific stuff, which has NO place here
-#_{:clj-kondo/ignore [:metabase/modules]}
-(defn perform-with-effects!
-  "Fire the expected events used to send notifications if the underlying actions modified table data."
-  [action-kw args-map & {:as opts}]
-  (let [qry-context       ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/qry-context) args-map)
-        pk->db-row-before ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/query-previous-rows) action-kw qry-context)]
-    (u/prog1 (perform-action! action-kw args-map opts)
-      ;; process the "data has changed" side effects
-      (let [pk->db-row-after ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/query-latest-rows) action-kw qry-context <>)
-            all-pks          (set/union (set (keys pk->db-row-before))
-                                        (set (keys pk->db-row-after)))
-            row-changes      (for [pk all-pks
-                                   :let [before (get pk->db-row-before pk)
-                                         after  (get pk->db-row-after pk)]
-                                   :when (not= before after)]
-                               {:pk     pk
-                                :before before
-                                :after  after})]
-        (->> {:actor_id    api/*current-user-id*
-              :row-changes row-changes
-              :args        (u/snake-keys args-map)}
-             (events/publish-event!
-              (case action-kw
-                :bulk/create :event/rows.created
-                :bulk/update :event/rows.updated
-                :bulk/delete :event/rows.deleted)))))))
 
 ;;;; Action definitions.
 
