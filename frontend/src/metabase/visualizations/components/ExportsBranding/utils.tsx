@@ -1,7 +1,7 @@
 import ReactDOMServer from "react-dom/server";
 import { t } from "ttag";
 
-import { BrandingLogo } from "./BrandingLogo";
+import BrandingLogo from "metabase/public/components/EmbedFrame/LogoBadge/metabase_logo_with_text.svg?component";
 
 type FooterSize = "xs" | "s" | "m" | "l" | "xl" | "xxl" | "xxxl";
 
