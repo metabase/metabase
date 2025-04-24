@@ -14,6 +14,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { getNextId } from "__support__/utils";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { checkNotNull } from "metabase/lib/types";
 import type { LoggerPreset } from "metabase-types/api";
