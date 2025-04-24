@@ -12,7 +12,7 @@ import {
   createFooterElement,
   getFooterConfig,
   getFooterSize,
-} from "../components/ExportsBranding/utils";
+} from "./exports-branding-utils";
 
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";

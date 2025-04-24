@@ -29,6 +29,7 @@ const svgComponentToBase64 = (Component: JSX.Element): string => {
   const encoded = Buffer.from(svgString, "utf-8").toString("base64");
   return `data:image/svg+xml;base64,${encoded}`;
 };
+
 type FooterConfig = {
   /** Font size */
   fz: number;
