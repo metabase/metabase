@@ -1,0 +1,179 @@
+name: Run e2e flake fix check
+
+on:
+  workflow_dispatch:
+    inputs:
+      spec:
+        description: "Relative path of the target spec"
+        type: string
+        required: true
+      burn_in:
+        description: "Number of times to run the test"
+        type: string
+        required: false
+        default: "20"
+      grep:
+        description: "Grep and filter tests to run in isolation"
+        type: string
+        required: false
+      mb_edition:
+        description: 'Set MB_EDITION env var to "ee" (enterprise) or "oss" (open-source)'
+        type: string
+        required: false
+        default: "ee"
+      qa_db:
+        description: "Select the type of Database you want to run your tests with"
+        type: choice
+        required: false
+        default: "none"
+        options:
+          - none
+          - sql
+          - mongo
+      enable_network_throttling:
+        description: "Enable network throttling simulation (4g slow like in chrome dev tools)"
+        type: boolean
+        required: false
+        default: true
+  pull_request:
+    types: [labeled]
+
+jobs:
+  # Job that runs when a PR is labeled with "flake-fix"
+  check-label:
+    if: github.event_name == 'pull_request' && github.event.label.name == 'flake-fix'
+    runs-on: ubuntu-22.04
+    outputs:
+      spec_path: ${{ steps.find-spec.outputs.spec_path }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+      - name: Find modified spec files
+        id: find-spec
+        if: steps.changes.outputs.e2e_specs == 'true'
+        run: |
+          # Get the list of changed files that match e2e specs
+          CHANGED_FILES=$(${{ steps.changes.outputs.e2e_specs_files }})
+
+          # If multiple files are changed, use the first spec file
+          SPEC_PATH=$(echo "$CHANGED_FILES" | head -n 1)
+          echo "Found spec file: $SPEC_PATH"
+          echo "spec_path=$SPEC_PATH" >> $GITHUB_OUTPUT
+
+      - name: Fail if no spec files found
+        if: steps.filter.outputs.e2e_specs != 'true'
+        run: |
+          echo "No e2e spec files changed in this PR. Manual workflow trigger required."
+          exit 1
+
+  # Summary job for manual trigger
+  workflow-summary-manual:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate workflow summary
+        run: |
+          echo '**Inputs:**' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo '- `current branch`: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `spec`: ${{ inputs.spec }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `burn_in`: ${{ inputs.burn_in }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `grep`: "${{ inputs.grep }}"' >> $GITHUB_STEP_SUMMARY
+          echo '- `qa_db`: "${{ inputs.qa_db }}"' >> $GITHUB_STEP_SUMMARY
+          echo '- `enable_network_throttling`: "${{ inputs.enable_network_throttling }}"' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo '**Triggering:**' >> $GITHUB_STEP_SUMMARY
+          echo '- Master branch' >> $GITHUB_STEP_SUMMARY
+          echo '- Current branch: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
+
+  # Summary job for automatic trigger via PR label
+  workflow-summary-auto:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    needs: [check-label]
+    if: github.event_name == 'pull_request' && success('check-label')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate workflow summary
+        run: |
+          echo '**Inputs:**' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo '- `current branch`: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `spec`: ${{ needs.check-label.outputs.spec_path }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `burn_in`: "20" (default)' >> $GITHUB_STEP_SUMMARY
+          echo '- `grep`: ""' >> $GITHUB_STEP_SUMMARY
+          echo '- `qa_db`: "none" (default)' >> $GITHUB_STEP_SUMMARY
+          echo '- `enable_network_throttling`: "true" (default)' >> $GITHUB_STEP_SUMMARY
+          echo '- `Trigger`: PR labeled with "flake-fix"' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo '**Triggering:**' >> $GITHUB_STEP_SUMMARY
+          echo '- Master branch' >> $GITHUB_STEP_SUMMARY
+          echo '- Current branch: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
+
+  # Run the test on master branch
+  run-on-master:
+    name: Run on master branch
+    if: github.event_name == 'workflow_dispatch'
+    needs: [workflow-summary-manual]
+    uses: ./.github/workflows/e2e-stress-test-flake-fix.yml@master
+    with:
+      spec: ${{ inputs.spec }}
+      burn_in: ${{ inputs.burn_in }}
+      grep: ${{ inputs.grep }}
+      mb_edition: ${{ inputs.mb_edition }}
+      qa_db: ${{ inputs.qa_db }}
+      enable_network_throttling: ${{ inputs.enable_network_throttling }}
+
+  # Run the test on current branch (for manual trigger)
+  run-on-current-branch:
+    name: Run on current branch
+    if: github.event_name == 'workflow_dispatch'
+    needs: [workflow-summary-manual]
+    uses: ./.github/workflows/e2e-stress-test-flake-fix.yml@${{ github.ref_name }}
+    with:
+      spec: ${{ inputs.spec }}
+      burn_in: ${{ inputs.burn_in }}
+      grep: ${{ inputs.grep }}
+      mb_edition: ${{ inputs.mb_edition }}
+      qa_db: ${{ inputs.qa_db }}
+      enable_network_throttling: ${{ inputs.enable_network_throttling }}
+
+  # Run the test on master branch (for PR label trigger)
+  run-on-master-auto:
+    name: Run on master branch (auto)
+    if: github.event_name == 'pull_request' && success('check-label')
+    needs: [workflow-summary-auto, check-label]
+    uses: ./.github/workflows/e2e-stress-test-flake-fix.yml@master
+    with:
+      spec: ${{ needs.check-label.outputs.spec_path }}
+      burn_in: '20'
+      grep: ''
+      mb_edition: 'ee'
+      qa_db: 'none'
+      enable_network_throttling: true
+
+  # Run the test on current branch (for PR label trigger)
+  run-on-current-branch-auto:
+    name: Run on current branch (auto)
+    if: github.event_name == 'pull_request' && success('check-label')
+    needs: [workflow-summary-auto, check-label]
+    uses: ./.github/workflows/e2e-stress-test-flake-fix.yml@${{ github.ref_name }}
+    with:
+      spec: ${{ needs.check-label.outputs.spec_path }}
+      burn_in: '20'
+      grep: ''
+      mb_edition: 'ee'
+      qa_db: 'none'
+      enable_network_throttling: true
