@@ -116,7 +116,8 @@
                    ;; grab the equivalent column from returned-columns here instead
                    new-column (and column-ref
                                    (->> (lib.metadata.calculation/returned-columns query stage-number)
-                                        (lib.equality/find-matching-column query stage-number column-ref)))
+                                        (lib.equality/find-matching-column query stage-number column-ref)
+                                        (merge (select-keys column [:effective-type :semantic-type]))))
                    context (cond-> context
                              (and column column-ref new-column) (assoc :column new-column))
                    {:keys [query stage-number]} (lib.query/wrap-native-query-with-mbql
