@@ -19,6 +19,7 @@ H.describeWithSnowplow(
       const testFile = H.VALID_CSV_FILES[0];
       const EMPTY_SCHEMA_NAME = "empty_uploads";
 
+      cy.log("test change!");
       cy.intercept("PUT", "/api/setting/*").as("saveSettings");
       cy.intercept("GET", "/api/database").as("databaseList");
 
