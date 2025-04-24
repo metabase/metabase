@@ -26,17 +26,30 @@ import {
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 import { Button, Group, Icon, Stack, Text } from "metabase/ui";
+import type { ApiKey, Group as IGroup } from "metabase-types/api";
 
 import { AddRow } from "./AddRow";
 import { DeleteModalTrigger, EditGroupButton } from "./GroupsListing.styled";
 
 // ------------------------------------------------------------ Add Group ------------------------------------------------------------
 
-function AddGroupRow({ text, onCancelClicked, onCreateClicked, onTextChange }) {
-  const textIsValid = text?.trim().length;
+interface AddGroupRowProps {
+  text: string;
+  onCancelClicked: () => void;
+  onCreateClicked: () => void;
+  onTextChange: (text: string) => void;
+}
+
+function AddGroupRow({
+  text,
+  onCancelClicked,
+  onCreateClicked,
+  onTextChange,
+}: AddGroupRowProps) {
+  const textIsValid = Boolean(text?.trim().length);
   return (
     <tr>
-      <td colSpan="3" style={{ padding: 0 }}>
+      <td colSpan={3} style={{ padding: 0 }}>
         <AddRow
           value={text}
           isValid={textIsValid}
@@ -57,12 +70,19 @@ function AddGroupRow({ text, onCancelClicked, onCreateClicked, onTextChange }) {
 
 // ------------------------------------------------------------ Groups Table: editing ------------------------------------------------------------
 
+interface DeleteGroupModalProps {
+  group: IGroup;
+  apiKeys: ApiKey[];
+  onConfirm?: (group: IGroup) => void;
+  onClose?: () => void;
+}
+
 function DeleteGroupModal({
   group,
   apiKeys,
   onConfirm = () => {},
   onClose = () => {},
-}) {
+}: DeleteGroupModalProps) {
   const apiKeysCount = apiKeys.length;
   const hasApiKeys = apiKeys.length > 0;
 
@@ -113,12 +133,19 @@ function DeleteGroupModal({
   );
 }
 
+interface ActionsPopoverProps {
+  group: IGroup;
+  apiKeys: ApiKey[];
+  onEditGroupClicked: (group: IGroup) => void;
+  onDeleteGroupClicked: (group: IGroup) => void;
+}
+
 function ActionsPopover({
   group,
   apiKeys,
   onEditGroupClicked,
   onDeleteGroupClicked,
-}) {
+}: ActionsPopoverProps) {
   return (
     <PopoverWithTrigger
       className={CS.block}
@@ -143,13 +170,21 @@ function ActionsPopover({
   );
 }
 
+interface EditingGroupRowProps {
+  group: IGroup;
+  textHasChanged: boolean;
+  onTextChange: (text: string) => void;
+  onCancelClicked: () => void;
+  onDoneClicked: () => void;
+}
+
 function EditingGroupRow({
   group,
   textHasChanged,
   onTextChange,
   onCancelClicked,
   onDoneClicked,
-}) {
+}: EditingGroupRowProps) {
   const textIsValid = group.name && group.name.length;
   return (
     <tr className={cx(CS.bordered, CS.borderBrand, CS.rounded)}>
@@ -181,6 +216,18 @@ function EditingGroupRow({
 
 // ------------------------------------------------------------ Groups Table: not editing ------------------------------------------------------------
 
+interface GroupRowProps {
+  group: IGroup;
+  groupBeingEdited: IGroup | null;
+  index: number;
+  apiKeys: ApiKey[];
+  onEditGroupClicked: (group: IGroup) => void;
+  onDeleteGroupClicked: (group: IGroup) => void;
+  onEditGroupTextChange: (text: string) => void;
+  onEditGroupCancelClicked: () => void;
+  onEditGroupDoneClicked: () => void;
+}
+
 function GroupRow({
   group,
   groupBeingEdited,
@@ -191,7 +238,7 @@ function GroupRow({
   onEditGroupTextChange,
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
-}) {
+}: GroupRowProps) {
   const colors = getGroupRowColors();
   const backgroundColor = colors[index % colors.length];
   const showActionsButton = !isDefaultGroup(group) && !isAdminGroup(group);
@@ -241,7 +288,7 @@ function GroupRow({
   );
 }
 
-const ApiKeyCount = ({ apiKeys }) => {
+const ApiKeyCount = ({ apiKeys }: { apiKeys: ApiKey[] }) => {
   if (!apiKeys?.length) {
     return null;
   }
@@ -262,6 +309,21 @@ const getGroupRowColors = () => [
   color("accent1"),
 ];
 
+interface GroupsTableProps {
+  groups: IGroup[];
+  text: string;
+  groupBeingEdited: IGroup | null;
+  showAddGroupRow: boolean;
+  onAddGroupCanceled: () => void;
+  onAddGroupCreateButtonClicked: () => void;
+  onAddGroupTextChanged: (text: string) => void;
+  onEditGroupClicked: (group: IGroup) => void;
+  onDeleteGroupClicked: (group: IGroup) => void;
+  onEditGroupTextChange: (text: string) => void;
+  onEditGroupCancelClicked: () => void;
+  onEditGroupDoneClicked: () => void;
+}
+
 function GroupsTable({
   groups,
   text,
@@ -275,7 +337,7 @@ function GroupsTable({
   onEditGroupTextChange,
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
-}) {
+}: GroupsTableProps) {
   const { isLoading, data: apiKeys } = useListApiKeysQuery();
 
   if (isLoading) {
@@ -293,7 +355,7 @@ function GroupsTable({
         />
       ) : null}
       {groups &&
-        groups.map((group, index) => (
+        groups.map((group: IGroup, index: number) => (
           <GroupRow
             key={group.id}
             group={group}
@@ -318,8 +380,26 @@ function GroupsTable({
 
 // ------------------------------------------------------------ Logic ------------------------------------------------------------
 
-export default class GroupsListing extends Component {
-  constructor(props, context) {
+interface GroupsListingProps {
+  groups: IGroup[];
+  isAdmin: boolean;
+  create: (group: { name: string }) => Promise<void>;
+  update: (group: { id: number; name: string }) => Promise<void>;
+  delete: (group: IGroup) => Promise<void>;
+}
+
+interface GroupsListingState {
+  text: string;
+  showAddGroupRow: boolean;
+  groupBeingEdited: IGroup | null;
+  alertMessage: string | null;
+}
+
+export class GroupsListing extends Component<
+  GroupsListingProps,
+  GroupsListingState
+> {
+  constructor(props: GroupsListingProps, context: any) {
     super(props, context);
     this.state = {
       text: "",
@@ -329,7 +409,7 @@ export default class GroupsListing extends Component {
     };
   }
 
-  alert(alertMessage) {
+  alert(alertMessage: string) {
     this.setState({ alertMessage });
   }
 
@@ -347,7 +427,7 @@ export default class GroupsListing extends Component {
         showAddGroupRow: false,
         text: "",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating group:", error);
       if (error.data && typeof error.data === "string") {
         this.alert(error.data);
@@ -355,7 +435,7 @@ export default class GroupsListing extends Component {
     }
   }
 
-  onAddGroupTextChanged(newText) {
+  onAddGroupTextChanged(newText: string) {
     this.setState({
       text: newText,
     });
@@ -369,7 +449,7 @@ export default class GroupsListing extends Component {
     });
   }
 
-  onEditGroupClicked(group) {
+  onEditGroupClicked(group: IGroup) {
     this.setState({
       groupBeingEdited: { ...group },
       text: "",
@@ -377,8 +457,13 @@ export default class GroupsListing extends Component {
     });
   }
 
-  onEditGroupTextChange(newText) {
+  onEditGroupTextChange(newText: string) {
     const { groupBeingEdited } = this.state;
+
+    if (!groupBeingEdited) {
+      throw new Error("Group being edited not found");
+    }
+
     this.setState({
       groupBeingEdited: { ...groupBeingEdited, name: newText },
     });
@@ -395,6 +480,14 @@ export default class GroupsListing extends Component {
     const group = this.state.groupBeingEdited;
     const originalGroup = _.findWhere(groups, { id: group.id });
 
+    if (!originalGroup) {
+      throw new Error("Original group not found");
+    }
+
+    if (!group) {
+      throw new Error("Group not found");
+    }
+
     // if name hasn't changed there is nothing to do
     if (originalGroup.name === group.name) {
       this.setState({ groupBeingEdited: null });
@@ -403,7 +496,7 @@ export default class GroupsListing extends Component {
       try {
         await this.props.update({ id: group.id, name: group.name.trim() });
         this.setState({ groupBeingEdited: null });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error updating group name:", error);
         if (error.data && typeof error.data === "string") {
           this.alert(error.data);
@@ -413,10 +506,10 @@ export default class GroupsListing extends Component {
   }
 
   // TODO: move this to Redux
-  async onDeleteGroupClicked(group) {
+  async onDeleteGroupClicked(group: IGroup) {
     try {
       await this.props.delete(group);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting group: ", error);
       if (error.data && typeof error.data === "string") {
         this.alert(error.data);
@@ -431,10 +524,10 @@ export default class GroupsListing extends Component {
     return (
       <AdminPaneLayout
         title={t`Groups`}
-        buttonText={isAdmin ? t`Create a group` : null}
+        buttonText={isAdmin ? t`Create a group` : undefined}
         buttonAction={
           this.state.showAddGroupRow
-            ? null
+            ? undefined
             : this.onCreateAGroupButtonClicked.bind(this)
         }
         description={t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`}
