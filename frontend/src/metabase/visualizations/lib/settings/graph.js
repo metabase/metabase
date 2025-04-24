@@ -846,10 +846,16 @@ export const GRAPH_AXIS_SETTINGS = {
       vizSettings["graph.y_axis.auto_range"] !== false,
   },
   "graph.y_axis.split_number": {
-    section: t`Axes`,
-    group: t`Y-axis`,
+    get section() {
+      return t`Axes`;
+    },
+    get group() {
+      return t`Y-axis`;
+    },
     index: 7,
-    title: t`Approximate number of intervals`,
+    get title() {
+      return t`Approximate number of intervals`;
+    },
     widget: "number",
     placeholder: "auto",
   },
