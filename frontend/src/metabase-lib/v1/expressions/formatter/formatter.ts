@@ -294,14 +294,14 @@ function formatOperator(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {
     `Expected operator but got ${node.operator}`,
   );
 
-  const shouldPrefixOperator =
+  const operatorGoesOnNewline =
     node.operator === "and" || node.operator === "or";
 
   const args = node.args.map((arg, index) => {
-    const ln = index === 0 || shouldPrefixOperator ? "" : line;
+    const ln = index === 0 || operatorGoesOnNewline ? "" : line;
 
     function ind(doc: Doc) {
-      if (index === 0 || shouldPrefixOperator) {
+      if (index === 0 || operatorGoesOnNewline) {
         return doc;
       }
       return indent(doc);
@@ -358,7 +358,7 @@ function formatOperator(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {
     return [displayName(node.operator), " ", args[0]];
   }
 
-  if (shouldPrefixOperator) {
+  if (operatorGoesOnNewline) {
     return group(join([line, displayName(node.operator), " "], args));
   } else {
     return group(join([" ", displayName(node.operator)], args));
