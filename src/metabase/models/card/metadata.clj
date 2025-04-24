@@ -297,5 +297,5 @@ saved later when it is ready."
   (when-let [invalid (seq (remove #(or (nil? (:ident %))
                                        (valid-ident? % card))
                                   cols))]
-    (throw (ex-info "Some columns in :result_metadata have bad :idents!"
-                    {:invalid invalid}))))
+    (log/warnf "Some columns in :result_metadata (card %d %s %s) have bad :idents! Query %s and bad columns %s"
+               (:id card) (:entity_id card) (str (:type card)) (:dataset_query card) invalid)))
