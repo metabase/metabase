@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -39,37 +40,40 @@ export const DataModel = ({ params }: Props) => {
         />
       </Box>
 
-      {(!tableId || !fieldId) && (
-        <Flex align="center" bg="accent-gray-light" flex="1" justify="center">
-          {!tableId && (
-            <EmptyState
-              illustrationElement={<img src={EmptyDashboardBot} />}
-              title={t`Start by selecting data to model`}
-              message={t`Browse your databases to find the table you’d like to edit.`}
-            />
-          )}
+      {match({ tableId, fieldId })
+        .with({ tableId: undefined }, () => (
+          <Flex align="center" bg="accent-gray-light" flex="1" justify="center">
+            <Box maw={320}>
+              <EmptyState
+                illustrationElement={<img src={EmptyDashboardBot} />}
+                title={t`Start by selecting data to model`}
+                message={t`Browse your databases to find the table you’d like to edit.`}
+              />
+            </Box>
+          </Flex>
+        ))
+        .with({ fieldId: undefined }, () => (
+          <Flex align="center" bg="accent-gray-light" flex="1" justify="center">
+            <Box maw={320}>
+              <EmptyState
+                illustrationElement={<img src={EmptyDashboardBot} />}
+                title={t`Edit the table and fields`}
+                message={t`Select a field to edit it. Then change the display name, semantic type or filtering behavior.`}
+              />
+            </Box>
+          </Flex>
+        ))
+        .otherwise(() => (
+          <Flex bg="accent-gray-light" flex="1">
+            <Box flex="0 0 400px" px="xl" py="lg">
+              <FieldSection fieldId={fieldId} />
+            </Box>
 
-          {tableId && !fieldId && (
-            <EmptyState
-              illustrationElement={<img src={EmptyDashboardBot} />}
-              title={t`Edit the table and fields`}
-              message={t`Select a field to edit it. Then change the display name, semantic type or filtering behavior.`}
-            />
-          )}
-        </Flex>
-      )}
-
-      {tableId && fieldId && (
-        <Flex bg="accent-gray-light" flex="1">
-          <Box flex="0 0 400px" px="xl" py="lg">
-            <FieldSection fieldId={fieldId} />
-          </Box>
-
-          <Box flex="1" p="xl" pl={0}>
-            <PreviewSection fieldId={fieldId} />
-          </Box>
-        </Flex>
-      )}
+            <Box flex="1" p="xl" pl={0}>
+              <PreviewSection fieldId={fieldId} />
+            </Box>
+          </Flex>
+        ))}
     </Flex>
   );
 };
