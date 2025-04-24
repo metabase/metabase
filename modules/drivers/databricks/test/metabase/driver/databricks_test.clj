@@ -18,147 +18,151 @@
    [metabase.test.data.interface :as tx]
    [toucan2.core :as t2]))
 
+(defn- maybe-qualify-schema
+  [schema]
+  (let [multi-level? (tx/db-test-env-var :databricks :multi-level-schema false)
+        catalog (get-in (mt/db) [:details :catalog])]
+    (cond->> schema multi-level? (str catalog "."))))
+
 ;; Because the datasets that are tested are preloaded, it is fine just to modify the database details to sync other schemas.
 (deftest ^:parallel sync-test
   (mt/test-driver
     :databricks
-    (let [multi-level? (tx/db-test-env-var :databricks :multi-level-schema false)
-          catalog (get-in (mt/db) [:details :catalog])
-          maybe-prefix (fn [schema]
-                         (cond->> schema multi-level? (str catalog ".")))]
-      (testing "`driver/describe-database` implementation returns expected results for inclusion of test-data schema."
-        (is (= {:tables
-                #{{:name "venues", :schema (maybe-prefix "test-data"), :description nil}
-                  {:name "checkins", :schema (maybe-prefix "test-data"), :description nil}
-                  {:name "users", :schema (maybe-prefix "test-data"), :description nil}
-                  {:name "people", :schema (maybe-prefix "test-data"), :description nil}
-                  {:name "categories", :schema (maybe-prefix "test-data"), :description nil}
-                  {:name "reviews", :schema (maybe-prefix "test-data"), :description nil}
-                  {:name "orders", :schema (maybe-prefix "test-data"), :description nil}
-                  {:name "products", :schema (maybe-prefix "test-data"), :description nil}}}
-               (driver/describe-database :databricks (mt/db)))))
-      (testing "`driver/describe-database` returns expected results for `all` schema filters."
-        (let [actual-tables (driver/describe-database :databricks (-> (mt/db)
-                                                                      (update :details dissoc :schema-filters-patterns)
-                                                                      (update :details assoc  :schema-filters-type "all")))]
-          (testing "tables from multiple schemas were found"
-            (are [name schema] (contains? (:tables actual-tables)
-                                          {:name name, :schema schema, :description nil})
-              "venues"   (maybe-prefix "test-data")
-              "checkins" (maybe-prefix "test-data")
-              "airport"  (maybe-prefix "airports")
-              "bird"     (maybe-prefix "bird-flocks")))
-          (testing "information_schema is excluded"
-            (is (empty? (filter #(str/includes? "information_schema" (:schema %)) (:tables actual-tables)))))))
-      (testing "`driver/describe-database` returns expected results for `exclusion` schema filters."
-        (let [actual-tables (driver/describe-database :databricks (update (mt/db) :details assoc
-                                                                          :schema-filters-patterns (maybe-prefix "test-data")
-                                                                          :schema-filters-type "exclusion"))]
-          (testing "tables from multiple schemas were found"
-            (is (not (contains? (set (map :schema (:tables actual-tables))) (maybe-prefix "test-data"))))
-            (is (contains? (:tables actual-tables) {:name "airport", :schema (maybe-prefix "airports"), :description nil}))
-            (is (contains? (:tables actual-tables) {:name "bird", :schema (maybe-prefix "bird-flocks"), :description nil}))))))))
+    (testing "`driver/describe-database` implementation returns expected results for inclusion of test-data schema."
+      (is (= {:tables
+              #{{:name "venues", :schema (maybe-qualify-schema "test-data"), :description nil}
+                {:name "checkins", :schema (maybe-qualify-schema "test-data"), :description nil}
+                {:name "users", :schema (maybe-qualify-schema "test-data"), :description nil}
+                {:name "people", :schema (maybe-qualify-schema "test-data"), :description nil}
+                {:name "categories", :schema (maybe-qualify-schema "test-data"), :description nil}
+                {:name "reviews", :schema (maybe-qualify-schema "test-data"), :description nil}
+                {:name "orders", :schema (maybe-qualify-schema "test-data"), :description nil}
+                {:name "products", :schema (maybe-qualify-schema "test-data"), :description nil}}}
+             (driver/describe-database :databricks (mt/db)))))
+    (testing "`driver/describe-database` returns expected results for `all` schema filters."
+      (let [actual-tables (driver/describe-database :databricks (-> (mt/db)
+                                                                    (update :details dissoc :schema-filters-patterns)
+                                                                    (update :details assoc  :schema-filters-type "all")))]
+        (testing "tables from multiple schemas were found"
+          (are [name schema] (contains? (:tables actual-tables)
+                                        {:name name, :schema schema, :description nil})
+            "venues"   (maybe-qualify-schema "test-data")
+            "checkins" (maybe-qualify-schema "test-data")
+            "airport"  (maybe-qualify-schema "airports")
+            "bird"     (maybe-qualify-schema "bird-flocks")))
+        (testing "information_schema is excluded"
+          (is (empty? (filter #(str/includes? "information_schema" (:schema %)) (:tables actual-tables)))))))
+    (testing "`driver/describe-database` returns expected results for `exclusion` schema filters."
+      (let [actual-tables (driver/describe-database :databricks (update (mt/db) :details assoc
+                                                                        :schema-filters-patterns (maybe-qualify-schema "test-data")
+                                                                        :schema-filters-type "exclusion"))]
+        (testing "tables from multiple schemas were found"
+          (is (not (contains? (set (map :schema (:tables actual-tables))) (maybe-qualify-schema "test-data"))))
+          (is (contains? (:tables actual-tables) {:name "airport", :schema (maybe-qualify-schema "airports"), :description nil}))
+          (is (contains? (:tables actual-tables) {:name "bird", :schema (maybe-qualify-schema "bird-flocks"), :description nil})))))))
 
 (deftest ^:parallel describe-fields-test
   (mt/test-driver
     :databricks
-    (let [fields (vec (driver/describe-fields :databricks (mt/db) {:schema-names ["test-data"]
+    (let [fields (vec (driver/describe-fields :databricks (mt/db) {:schema-names [(maybe-qualify-schema "test-data")]
                                                                    :table-names ["orders"]}))]
       (testing "Underlying query returns only fields from selected catalog"
         (is (= 9 (count fields))))
       (testing "Expected fields are returned"
-        (is (= #{{:table-schema "test-data"
-                  :table-name "orders"
-                  :pk? true
-                  :name "id"
-                  :database-type "int"
-                  :database-position 0
-                  :base-type :type/Integer
-                  :json-unfolding false}
-                 {:table-schema "test-data"
-                  :table-name "orders"
-                  :pk? false
-                  :name "user_id"
-                  :database-type "int"
-                  :database-position 1
-                  :base-type :type/Integer
-                  :json-unfolding false}
-                 {:table-schema "test-data"
-                  :table-name "orders"
-                  :pk? false
-                  :name "product_id"
-                  :database-type "int"
-                  :database-position 2
-                  :base-type :type/Integer
-                  :json-unfolding false}
-                 {:table-schema "test-data"
-                  :table-name "orders"
-                  :pk? false
-                  :name "subtotal"
-                  :database-type "double"
-                  :database-position 3
-                  :base-type :type/Float
-                  :json-unfolding false}
-                 {:table-schema "test-data"
-                  :table-name "orders"
-                  :pk? false
-                  :name "tax"
-                  :database-type "double"
-                  :database-position 4
-                  :base-type :type/Float
-                  :json-unfolding false}
-                 {:table-schema "test-data"
-                  :table-name "orders"
-                  :pk? false
-                  :name "total"
-                  :database-type "double"
-                  :database-position 5
-                  :base-type :type/Float
-                  :json-unfolding false}
-                 {:table-schema "test-data"
-                  :table-name "orders"
-                  :pk? false
-                  :name "discount"
-                  :database-type "double"
-                  :database-position 6
-                  :base-type :type/Float
-                  :json-unfolding false}
-                 {:table-schema "test-data"
-                  :table-name "orders"
-                  :pk? false
-                  :name "created_at"
-                  :database-type "timestamp"
-                  :database-position 7
-                  :base-type :type/DateTimeWithLocalTZ
-                  :json-unfolding false}
-                 {:table-schema "test-data"
-                  :table-name "orders"
-                  :pk? false
-                  :name "quantity"
-                  :database-type "int"
-                  :database-position 8
-                  :base-type :type/Integer
-                  :json-unfolding false}}
+        (is (= (into #{}
+                     (map #(update % :table-schema maybe-qualify-schema))
+                     #{{:table-schema "test-data"
+                        :table-name "orders"
+                        :pk? true
+                        :name "id"
+                        :database-type "int"
+                        :database-position 0
+                        :base-type :type/Integer
+                        :json-unfolding false}
+                       {:table-schema "test-data"
+                        :table-name "orders"
+                        :pk? false
+                        :name "user_id"
+                        :database-type "int"
+                        :database-position 1
+                        :base-type :type/Integer
+                        :json-unfolding false}
+                       {:table-schema "test-data"
+                        :table-name "orders"
+                        :pk? false
+                        :name "product_id"
+                        :database-type "int"
+                        :database-position 2
+                        :base-type :type/Integer
+                        :json-unfolding false}
+                       {:table-schema "test-data"
+                        :table-name "orders"
+                        :pk? false
+                        :name "subtotal"
+                        :database-type "double"
+                        :database-position 3
+                        :base-type :type/Float
+                        :json-unfolding false}
+                       {:table-schema "test-data"
+                        :table-name "orders"
+                        :pk? false
+                        :name "tax"
+                        :database-type "double"
+                        :database-position 4
+                        :base-type :type/Float
+                        :json-unfolding false}
+                       {:table-schema "test-data"
+                        :table-name "orders"
+                        :pk? false
+                        :name "total"
+                        :database-type "double"
+                        :database-position 5
+                        :base-type :type/Float
+                        :json-unfolding false}
+                       {:table-schema "test-data"
+                        :table-name "orders"
+                        :pk? false
+                        :name "discount"
+                        :database-type "double"
+                        :database-position 6
+                        :base-type :type/Float
+                        :json-unfolding false}
+                       {:table-schema "test-data"
+                        :table-name "orders"
+                        :pk? false
+                        :name "created_at"
+                        :database-type "timestamp"
+                        :database-position 7
+                        :base-type :type/DateTimeWithLocalTZ
+                        :json-unfolding false}
+                       {:table-schema "test-data"
+                        :table-name "orders"
+                        :pk? false
+                        :name "quantity"
+                        :database-type "int"
+                        :database-position 8
+                        :base-type :type/Integer
+                        :json-unfolding false}})
                (set fields)))))))
 
 (deftest ^:parallel describe-fks-test
   (mt/test-driver
     :databricks
-    (let [fks (vec (driver/describe-fks :databricks (mt/db) {:schema-names ["test-data"]
+    (let [fks (vec (driver/describe-fks :databricks (mt/db) {:schema-names [(maybe-qualify-schema "test-data")]
                                                              :table-names ["orders"]}))]
       (testing "Only fks from current catalog are registered"
         (is (= 2 (count fks))))
       (testing "Expected fks are returned"
-        (is (= #{{:fk-table-schema "test-data"
+        (is (= #{{:fk-table-schema (maybe-qualify-schema "test-data")
                   :fk-table-name "orders"
                   :fk-column-name "product_id"
-                  :pk-table-schema "test-data"
+                  :pk-table-schema (maybe-qualify-schema "test-data")
                   :pk-table-name "products"
                   :pk-column-name "id"}
-                 {:fk-table-schema "test-data"
+                 {:fk-table-schema (maybe-qualify-schema "test-data")
                   :fk-table-name "orders"
                   :fk-column-name "user_id"
-                  :pk-table-schema "test-data"
+                  :pk-table-schema (maybe-qualify-schema "test-data")
                   :pk-table-name "people"
                   :pk-column-name "id"}}
                (set fks)))))))
