@@ -1,11 +1,12 @@
 (ns ^:mb/driver-tests metabase.query-processor.middleware.metrics-test
   (:require
+
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
+   [metabase.driver :as driver]   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
@@ -948,6 +949,8 @@
     :var
     (aggregate-col-1st-arg-fn lib/var)]])
 
+(defmethod driver/database-supports? [:starburst :test/inaccurate-approx-percentile] [_ _ _] true)
+
 (deftest metric-comparison-test
   (doseq [[feature operator aggregate] tested-aggregations]
     (mt/test-drivers
@@ -975,18 +978,22 @@
                metric-card
                {:type :metric
                 :dataset_query (lib.convert/->legacy-MBQL metric-query)}]
-              (let [query (-> base-query
-                              aggregate)
+              (let [query @(def qq (-> base-query
+                                       aggregate))
                     result (qp/process-query query)
-                    metric-query (-> base-query
-                                     (lib/aggregate (lib.metadata/metric mp (:id metric-card))))
+                    metric-query @(def mq (-> base-query
+                                              (lib/aggregate (lib.metadata/metric mp (:id metric-card)))))
                     metric-result (qp/process-query metric-query)
                     breakout-val->ag-val (into {} (mt/rows metric-result))
                     results-combined (mapv (fn [[breakout-val _ag-val :as row]]
                                              (conj row (get breakout-val->ag-val breakout-val)))
                                            (mt/rows result))]
                 (is (every? (fn [[_ aggregation-value metric-value]]
-                              (< (abs (- aggregation-value metric-value)) 0.01))
+                              (< (abs (- aggregation-value metric-value))
+                                 (if (and (#{:percentile :median} operator)
+                                          (driver/database-supports? driver/*driver* :test/inaccurate-approx-percentile nil))
+                                   1
+                                   0.01)))
                             results-combined))))))))))
 
 (deftest next-stage-reference-test
