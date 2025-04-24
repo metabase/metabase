@@ -8,8 +8,11 @@ import {
   defineMetabaseAuthConfig,
   defineMetabaseTheme,
 } from "embedding-sdk";
+import {
+  type IframeAuthConfig,
+  authenticateWithIframe,
+} from "embedding-sdk/store/auth/iframe";
 import type { SdkInteractiveEmbedRouteProps } from "metabase/embedding-sdk/types/iframe-interactive-embedding";
-import { isWithinIframe } from "metabase/lib/dom";
 import { Box, Center, Loader } from "metabase/ui";
 
 import {
@@ -18,15 +21,10 @@ import {
 } from "../../hooks/useSdkInteractiveEmbedSettings";
 import { SdkInteractiveEmbedProvider } from "../SdkInteractiveEmbedProvider";
 
-type SimpleInteractivePostMessageAction = {
-  type: "metabase.embed.authenticate";
-  payload: { apiKey: string };
-};
-
 export const SdkInteractiveEmbedRoute = ({
   params: { settings: settingsKey },
 }: SdkInteractiveEmbedRouteProps) => {
-  const [apiKey, setApiKey] = useState("");
+  const [config, setConfig] = useState<IframeAuthConfig | null>(null);
 
   const settings = useSdkInteractiveEmbedSettings(settingsKey);
   const { theme } = settings ?? {};
@@ -34,9 +32,9 @@ export const SdkInteractiveEmbedRoute = ({
   const authConfig = useMemo(() => {
     return defineMetabaseAuthConfig({
       metabaseInstanceUrl: window.location.origin,
-      apiKey,
+      ...(config?.type === "apiKey" && { apiKey: config.apiKey }),
     });
-  }, [apiKey]);
+  }, [config]);
 
   const derivedTheme = useMemo(() => {
     return defineMetabaseTheme({
@@ -52,31 +50,10 @@ export const SdkInteractiveEmbedRoute = ({
   }, [theme]);
 
   useEffect(() => {
-    if (isWithinIframe()) {
-      // Send a message to the parent to indicate that the embed is waiting for authentication
-      window.parent.postMessage({ type: "metabase.embed.waitingForAuth" }, "*");
+    const { promise, cleanup } = authenticateWithIframe();
+    promise.then(setConfig);
 
-      // TODO: verify the sender's origin for security
-      const receiveMessage = (event: MessageEvent) => {
-        const action: SimpleInteractivePostMessageAction | null = event.data;
-
-        if (!action) {
-          return;
-        }
-
-        // If the message is an authentication request, set the API key.
-        // TODO: use a more secure method of authentication than API keys.
-        if (action.type === "metabase.embed.authenticate") {
-          setApiKey(action.payload.apiKey);
-        }
-      };
-
-      window.addEventListener("message", receiveMessage);
-
-      return () => {
-        window.removeEventListener("message", receiveMessage);
-      };
-    }
+    return cleanup;
   }, []);
 
   // TODO: improve error handling
@@ -84,10 +61,14 @@ export const SdkInteractiveEmbedRoute = ({
     return <div>Invalid settings!</div>;
   }
 
-  if (!apiKey) {
+  const ready =
+    (config?.type === "apiKey" && config.apiKey) || config?.type === "sso";
+
+  if (!ready) {
     return (
       <Center h="100%" mih="100vh">
-        <Loader />
+        <Loader mr="md" />
+        <div>authenticating...</div>
       </Center>
     );
   }

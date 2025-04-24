@@ -1,14 +1,22 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
-import type { SdkState, SdkStoreState } from "embedding-sdk/store/types";
+import type {
+  MetabaseAuthConfig,
+  MetabaseFetchRequestTokenFn,
+} from "embedding-sdk";
+import type {
+  SdkErrorComponent,
+  SdkState,
+  SdkStoreState,
+} from "embedding-sdk/store/types";
 import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
-import type { MetabaseFetchRequestTokenFn } from "embedding-sdk/types/refresh-token";
-import type { SdkErrorComponent } from "embedding-sdk/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import { createAsyncThunk } from "metabase/lib/redux";
 
 import { initAuth, refreshTokenAsync } from "./auth";
+import { authenticateWithIframe } from "./auth/iframe";
+import { authTokenStorage } from "./auth/saml-token-storage";
 import { getSessionTokenState } from "./selectors";
 
 const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
@@ -32,9 +40,21 @@ const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
-  async (url: string, { dispatch, getState }) => {
+  async (
+    {
+      instanceUrl,
+      isIframe = false,
+    }: {
+      instanceUrl: MetabaseAuthConfig["metabaseInstanceUrl"];
+      isIframe: boolean;
+    },
+    { dispatch, getState },
+  ) => {
+    // necessary to ensure that we don't use a popup every time the user
+    // refreshes the page
+    const storedAuthToken = authTokenStorage.get();
     const state = getSessionTokenState(getState() as SdkStoreState);
-    const token = state?.token;
+    const token = storedAuthToken ?? state?.token;
 
     const isTokenValid = token && token.exp * 1000 >= Date.now();
 
@@ -42,9 +62,24 @@ export const getOrRefreshSession = createAsyncThunk(
       return token;
     }
 
-    return dispatch(refreshTokenAsync(url)).unwrap();
+    if (!isIframe) {
+      return dispatch(refreshTokenAsync(instanceUrl)).unwrap();
+    }
+
+    if (isIframe) {
+      const config = await authenticateWithIframe().promise;
+
+      if (config?.type !== "sso") {
+        return null;
+      }
+
+      return config.refreshToken;
+    }
   },
 );
+
+const SET_IS_IFRAME = "sdk/SET_IS_IFRAME";
+export const setIsNewIframeEmbedding = createAction<boolean>(SET_IS_IFRAME);
 
 const SET_PLUGINS = "sdk/SET_PLUGINS";
 export const setPlugins = createAction<MetabasePluginsConfig | null>(

@@ -55,9 +55,9 @@ export function getSdkUsageProblem(
   options: SdkProblemOptions,
 ): SdkUsageProblem | null {
   const { isEnabled, hasTokenFeature, authConfig } = options;
-  const { authProviderUri, apiKey } = authConfig;
+  const { apiKey } = authConfig;
 
-  const isSSO = !!authProviderUri;
+  const isSSO = !apiKey;
   const isApiKey = !!apiKey;
   const isLocalhost = getIsLocalhost();
   const hasJwtProviderUriProperty = "jwtProviderUri" in authConfig;

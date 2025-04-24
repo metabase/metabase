@@ -125,6 +125,34 @@
   (api/check (sso-settings/saml-enabled)
              [400 (tru "SAML has not been enabled and/or configured")]))
 
+(defn construct-redirect-url
+  "Constructs a redirect URL from request parameters.
+   Parameters:
+   - req: The request object containing params, headers, etc.
+   Returns: The constructed redirect URL with appropriate query parameters"
+  [req]
+  (let [redirect (get-in req [:params :redirect])
+        origin (get-in req [:headers "origin"])
+        embedding-sdk-header? (sso-utils/is-embedding-sdk-header? req)]
+    (cond
+      ;; Case 1: Embedding SDK header is present - use ACS URL with token and origin
+      embedding-sdk-header?
+      (str (acs-url) "?token=true&origin=" (java.net.URLEncoder/encode origin "UTF-8"))
+
+      ;; Case 2: No redirect parameter
+      (nil? redirect)
+      (do
+        (log/warn "Warning: expected `redirect` param, but none is present")
+        (public-settings/site-url))
+
+      ;; Case 3: Redirect is a relative URI
+      (sso-utils/relative-uri? redirect)
+      (str (public-settings/site-url) redirect)
+
+      ;; Case 4: Redirect is an absolute URI
+      :else
+      redirect)))
+
 (defmethod sso.i/sso-get :saml
   ;; Initial call that will result in a redirect to the IDP along with information about how the IDP can authenticate
   ;; and redirect them back to us
@@ -132,25 +160,26 @@
   (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
   (let [redirect (get-in req [:params :redirect])
-        redirect-url (if (nil? redirect)
-                       (do
-                         (log/warn "Warning: expected `redirect` param, but none is present")
-                         (public-settings/site-url))
-                       (if (sso-utils/relative-uri? redirect)
-                         (str (public-settings/site-url) redirect)
-                         redirect))]
-    (sso-utils/check-sso-redirect redirect-url)
+        embedding-sdk-header? (sso-utils/is-embedding-sdk-header? req)
+        redirect-url (construct-redirect-url req)]
+    (sso-utils/check-sso-redirect redirect)
     (try
-      (let [idp-url      (sso-settings/saml-identity-provider-uri)
-            relay-state  (u/encode-base64 redirect-url)]
-        (saml/idp-redirect-response {:request-id       (str "id-" (random-uuid))
-                                     :sp-name          (sso-settings/saml-application-name)
-                                     :issuer           (sso-settings/saml-application-name)
-                                     :acs-url          (acs-url)
-                                     :idp-url          idp-url
-                                     :credential       (sp-cert-keystore-details)
-                                     :relay-state      relay-state
-                                     :protocol-binding :post}))
+      (let [idp-url     (sso-settings/saml-identity-provider-uri)
+            relay-state (u/encode-base64 redirect-url)
+            response    (saml/idp-redirect-response {:request-id       (str "id-" (random-uuid))
+                                                     :sp-name          (sso-settings/saml-application-name)
+                                                     :issuer           (sso-settings/saml-application-name)
+                                                     :acs-url          (acs-url)
+                                                     :idp-url          idp-url
+                                                     :credential       (sp-cert-keystore-details)
+                                                     :relay-state      relay-state
+                                                     :protocol-binding :post})]
+        (if embedding-sdk-header?
+          {:status 200
+           :body {:url (get-in response [:headers "location"])
+                  :method "saml"}
+           :headers {"Content-Type" "application/json"}}
+          response))
       (catch Throwable e
         (let [msg (trs "Error generating SAML request")]
           (log/error e msg)
@@ -163,8 +192,8 @@
                       {:status-code 500}))))
 
 (defn- unwrap-user-attributes
-  "For some reason all of the user attributes coming back from the saml library are wrapped in a list, instead of 'Ryan',
-  it's ('Ryan'). This function discards the list if there's just a single item in it."
+  "For some reason all of the user attributes coming back from the saml library are wrapped in a list, instead of 'Oisin',
+  it's ('Oisin'). This function discards the list if there's just a single item in it."
   [m]
   (m/map-vals (fn [maybe-coll]
                 (if (and (coll? maybe-coll)
@@ -181,16 +210,91 @@
                       {:status-code 401})))
     attrs))
 
+(defn- process-relay-state-params
+  "Process the RelayState to extract continue URL and related parameters"
+  [relay-state]
+  (let [;; Extract and decode continue URL
+        continue-url (u/ignore-exceptions
+                       (when-let [s (some-> relay-state u/decode-base64)]
+                         (when-not (str/blank? s)
+                           s)))
+        ;; Check if token is requested and remove parameter
+        token-requested? (and continue-url
+                              (re-find #"[?&]token=true" continue-url))
+        url-without-token (when continue-url
+                            (str/replace continue-url #"[?&]token=true(&|$)" "$1"))
+        ;; Extract origin parameter
+        origin-param (when url-without-token
+                       (second (re-find #"[?&]origin=([^&]+)" url-without-token)))
+        origin (if origin-param
+                 (try
+                   (java.net.URLDecoder/decode origin-param "UTF-8")
+                   (catch Exception _
+                     "*"))
+                 "*")
+        ;; Remove origin parameter
+        clean-continue-url (if (and url-without-token origin-param)
+                             (str/replace url-without-token #"[?&]origin=[^&]+(&|$)" "$1")
+                             url-without-token)]
+    {:continue-url continue-url
+     :token-requested? token-requested?
+     :clean-continue-url clean-continue-url
+     :origin origin}))
+
+(defn- create-token-response
+  "Create a token response with HTML and JavaScript to post the auth message"
+  [session origin continue-url]
+  (let [current-time (quot (System/currentTimeMillis) 1000)
+        expiration-time (+ current-time 86400)]
+    {:status 200
+     :headers {"Content-Type" "text/html"}
+     :body (str "<!DOCTYPE html>
+<html>
+<head>
+  <title>Authentication Complete</title>
+  <script>
+    const authData = {
+      id: \"" (:key session) "\",
+      exp: " expiration-time ",
+      iat: " current-time ",
+      status: \"ok\"
+    };
+    if (window.opener) {
+      try {
+        window.opener.postMessage({
+          type: 'SAML_AUTH_COMPLETE',
+          authData: authData
+        }, '" origin "');
+
+        setTimeout(function() {
+          window.close();
+        }, 500);
+      } catch(e) {
+        console.error('Error sending message:', e);
+        document.body.innerHTML += '<p>Error: ' + e.message + '</p>';
+      }
+    } else {
+      window.location.href = '" continue-url "';
+    }
+  </script>
+</head>
+<body style=\"background-color: white; margin: 20px; padding: 20px;\">
+  <h3>Authentication complete</h3>
+  <p>This window should close automatically.</p>
+  <p>If it doesn't close, please click the button below:</p>
+  <button onclick=\"window.close()\">Close Window</button>
+</body>
+</html>")}))
 (defmethod sso.i/sso-post :saml
   ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
   ;; `(get-in saml-info [:assertions :attrs])
   [{:keys [params], :as request}]
   (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
-  (let [continue-url  (u/ignore-exceptions
-                        (when-let [s (some-> (:RelayState params) u/decode-base64)]
-                          (when-not (str/blank? s)
-                            s)))]
+
+  ;; Process continue URL and extract needed parameters
+  (let [{:keys [continue-url token-requested? clean-continue-url origin]} (process-relay-state-params (:RelayState params))]
+
     (sso-utils/check-sso-redirect continue-url)
     (try
       (let [saml-response (saml/validate-response request
@@ -222,7 +326,9 @@
                             :user-attributes attrs
                             :device-info     (request/device-info request)})
             response      (response/redirect (or continue-url (public-settings/site-url)))]
-        (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))
+        (if token-requested?
+          (create-token-response session origin clean-continue-url)
+          (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
       (catch Throwable e
         (log/error e "SAML response validation failed")
         (throw (ex-info (tru "Unable to log in: SAML response validation failed")

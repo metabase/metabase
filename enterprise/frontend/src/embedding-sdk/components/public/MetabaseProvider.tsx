@@ -95,6 +95,9 @@ export interface MetabaseProviderProps
 interface InternalMetabaseProviderProps extends MetabaseProviderProps {
   store: Store<SdkStoreState, Action>;
   classNames?: { portalContainer?: string };
+
+  /** Are in the new sdk-based iframe embedding ? */
+  isIframe?: boolean;
 }
 
 export const MetabaseProviderInternal = ({
@@ -110,9 +113,10 @@ export const MetabaseProviderInternal = ({
   errorComponent,
   loaderComponent,
   allowConsoleLog,
+  isIframe = false,
 }: InternalMetabaseProviderProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
-  useInitData({ authConfig, allowConsoleLog });
+  useInitData({ authConfig, allowConsoleLog, isIframe });
 
   useEffect(() => {
     if (fontFamily) {
