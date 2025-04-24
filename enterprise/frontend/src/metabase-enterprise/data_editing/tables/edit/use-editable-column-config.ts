@@ -36,9 +36,8 @@ export function useEditableTableColumnConfigFromVisualizationSettings(
     const readonlyColumnSet = new Set<string>();
     const hiddenColumnSet = new Set<string>();
 
-    for (let i = 0; i < columnSettings.length; i++) {
-      const column = columnSettings[i];
-
+    for (const column of columnSettings) {
+      columnOrder.push(column.name);
       columnOrder.push(column.name);
       columnVisibilityMap[column.name] = column.enabled;
 
