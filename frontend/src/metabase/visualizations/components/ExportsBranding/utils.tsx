@@ -29,8 +29,26 @@ const svgComponentToBase64 = (Component: JSX.Element): string => {
   const encoded = Buffer.from(svgString, "utf-8").toString("base64");
   return `data:image/svg+xml;base64,${encoded}`;
 };
+type FooterConfig = {
+  /** Font size */
+  fz: number;
+  /** Margin between the text and the logo (if any) */
+  m: number;
+  /** Footer padding */
+  p: number;
+  /** Footer height */
+  h: number;
+  /** Logo height */
+  ly: number;
+};
 
-export const getFooterConfig = (size: FooterSize) => {
+/**
+ * Returns a configuration object for footer layout based on the given size.
+ *
+ * @param size - The desired footer size (e.g., 's', 'm', 'l', etc.)
+ * @returns An object containing font size, margin, padding, height, and logo height.
+ */
+export const getFooterConfig = (size: FooterSize): FooterConfig => {
   const sizes = ["xs", "s", "m", "l", "xl", "xxl", "xxxl"];
   const sizeIndex = sizes.indexOf(size);
 
