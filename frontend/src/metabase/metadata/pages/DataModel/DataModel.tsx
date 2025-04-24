@@ -1,5 +1,9 @@
 import * as Urls from "metabase/lib/urls";
-import { Box, Flex, Title } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
+
+import { FieldSection } from "./FieldSection";
+import { PreviewSection } from "./PreviewSection";
+import { TableSection } from "./TableSection";
 
 interface RouteParams {
   databaseId?: string;
@@ -23,21 +27,23 @@ export const DataModel = ({ params }: Props) => {
   return (
     <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`}>
       <Box flex="0 0 400px" px="xl" py="lg">
-        <Title mb="md" order={2}>
-          Data model
-        </Title>
+        <TableSection
+          databaseId={databaseId}
+          fieldId={fieldId}
+          schemaId={schemaId}
+          tableId={tableId}
+        />
+      </Box>
 
-        <Box>
-          <Box>Database: {databaseId ?? "undefined"}</Box>
-          <Box>Schema: {schemaId ?? "undefined"}</Box>
-          <Box>Table: {tableId ?? "undefined"}</Box>
-          <Box>Field: {fieldId ?? "undefined"}</Box>
+      <Flex bg="accent-gray-light" flex="1">
+        <Box flex="0 0 400px" px="xl" py="lg">
+          <FieldSection fieldId={fieldId} />
         </Box>
-      </Box>
 
-      <Box bg="accent-gray-light" flex="1">
-        Main container
-      </Box>
+        <Box flex="1" p="xl" pl={0}>
+          <PreviewSection fieldId={fieldId} />
+        </Box>
+      </Flex>
     </Flex>
   );
 };
