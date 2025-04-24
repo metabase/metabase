@@ -60,7 +60,7 @@ jobs:
         if: steps.changes.outputs.e2e_specs == 'true'
         run: |
           # Get the list of changed files that match e2e specs
-          CHANGED_FILES=$(${{ steps.changes.outputs.e2e_specs_files }})
+          CHANGED_FILES=$(echo '${{ steps.changes.outputs.e2e_specs_files }}')
 
           # If multiple files are changed, use the first spec file
           SPEC_PATH=$(echo "$CHANGED_FILES" | head -n 1)
@@ -132,13 +132,16 @@ jobs:
     steps:
       - name: Trigger workflow on master
         run: |
+          SPEC_PATH="${{ inputs.spec }}"
+          echo "Using spec path: $SPEC_PATH"
+          
           gh workflow run e2e-stress-test-flake-fix.yml \
-            -f spec='${{ inputs.spec }}' \
-            -f burn_in='${{ inputs.burn_in }}' \
-            -f grep='${{ inputs.grep }}' \
-            -f mb_edition='${{ inputs.mb_edition }}' \
-            -f qa_db='${{ inputs.qa_db }}' \
-            -f enable_network_throttling='${{ inputs.enable_network_throttling }}' \
+            -f spec="$SPEC_PATH" \
+            -f burn_in="${{ inputs.burn_in }}" \
+            -f grep="${{ inputs.grep }}" \
+            -f mb_edition="${{ inputs.mb_edition }}" \
+            -f qa_db="${{ inputs.qa_db }}" \
+            -f enable_network_throttling="${{ inputs.enable_network_throttling }}" \
             -r master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -172,13 +175,16 @@ jobs:
     steps:
       - name: Trigger workflow on master
         run: |
+          SPEC_PATH="${{ needs.check-label.outputs.spec_path }}"
+          echo "Using spec path: $SPEC_PATH"
+          
           gh workflow run e2e-stress-test-flake-fix.yml \
-            -f spec='${{ needs.check-label.outputs.spec_path }}' \
-            -f burn_in='20' \
-            -f grep='' \
-            -f mb_edition='ee' \
-            -f qa_db='none' \
-            -f enable_network_throttling='true' \
+            -f spec="$SPEC_PATH" \
+            -f burn_in="20" \
+            -f grep="" \
+            -f mb_edition="ee" \
+            -f qa_db="none" \
+            -f enable_network_throttling="true" \
             -r master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -192,13 +198,16 @@ jobs:
     steps:
       - name: Trigger workflow on current branch
         run: |
+          SPEC_PATH="${{ needs.check-label.outputs.spec_path }}"
+          echo "Using spec path: $SPEC_PATH"
+          
           gh workflow run e2e-stress-test-flake-fix.yml \
-            -f spec='${{ needs.check-label.outputs.spec_path }}' \
-            -f burn_in='20' \
-            -f grep='' \
-            -f mb_edition='ee' \
-            -f qa_db='none' \
-            -f enable_network_throttling='true' \
+            -f spec="$SPEC_PATH" \
+            -f burn_in="20" \
+            -f grep="" \
+            -f mb_edition="ee" \
+            -f qa_db="none" \
+            -f enable_network_throttling="true" \
             -r ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
