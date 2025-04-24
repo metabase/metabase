@@ -17,11 +17,7 @@ import { error } from "../utils";
 const left = [FIELD, STRING, NUMBER, BOOLEAN, IDENTIFIER, GROUP_CLOSE];
 const right = [FIELD, STRING, NUMBER, BOOLEAN, IDENTIFIER, GROUP];
 
-export function checkMissingCommasInArgumentList({
-  tokens,
-}: {
-  tokens: Token[];
-}) {
+export function checkMismatchedSiblings({ tokens }: { tokens: Token[] }) {
   for (let index = 1; index < tokens.length; index++) {
     const token = tokens[index];
     const prevToken = tokens[index - 1];
