@@ -5,17 +5,17 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
-import { CacheDurationUnit } from "metabase-types/api";
 import {
-  createMockSettings,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
-import {
+  CacheDurationUnit,
   createMockCacheConfig,
   createMockCacheConfigWithDoNotCacheStrategy,
   createMockCacheConfigWithDurationStrategy,
   createMockCacheConfigWithMultiplierStrategy,
-} from "metabase-types/api/mocks/performance";
+} from "metabase-types/api";
+import {
+  createMockSettings,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
