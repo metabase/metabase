@@ -81,8 +81,10 @@
 
 (defmethod sql.qp/->honeysql [:databricks ::h2x/identifier]
   [_driver [tag identifier-type components :as _identifier]]
-  (let [components (if (and (contains? #{:field :table} identifier-type)
-                            (>= (count components) 2))
+  (let [components (if (or (and (= identifier-type :table)
+                                (>= (count components) 2))
+                           (and (= identifier-type :field)
+                                (>= (count components) 3)))
                      ;; period is an illegal character for identifiers in databricks so if it's present we can split and
                      ;; quote safely.
                      (let [first-split (split-catalog+schema (first components))]
