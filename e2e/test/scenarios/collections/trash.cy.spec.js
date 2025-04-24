@@ -952,6 +952,7 @@ function ensureBookmarkVisible(bookmark) {
 }
 
 function dragAndDrop(subjectEl, targetEl) {
+  cy.log("local test helper");
   const dataTransfer = new DataTransfer();
   subjectEl.trigger("dragstart", { dataTransfer });
   targetEl.trigger("drop", { dataTransfer });
