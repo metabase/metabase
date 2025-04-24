@@ -53,6 +53,7 @@ jobs:
         with:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
+          list-files: shell
 
       - name: Find modified spec files
         id: find-spec
