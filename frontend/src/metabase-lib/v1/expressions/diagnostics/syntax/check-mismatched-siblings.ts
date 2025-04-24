@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import type { Token } from "../../pratt";
 import {
   BAD_TOKEN,
   BOOLEAN,
@@ -11,6 +10,7 @@ import {
   IDENTIFIER,
   NUMBER,
   STRING,
+  type Token,
 } from "../../pratt";
 import { error } from "../utils";
 
