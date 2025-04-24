@@ -10135,6 +10135,11 @@ eslint-plugin-testing-library@^5.11.1:
   dependencies:
     "@typescript-eslint/utils" "^5.58.0"
 
+eslint-plugin-ttag@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/eslint-plugin-ttag/-/eslint-plugin-ttag-1.1.0.tgz#171fe563d1c8fffcd7dbc6a910640cef68767100"
+  integrity sha512-PsqYMiKL9QTXSnJYD+EbiRigKy6nZRBOdjCkuep/zqN5jS4wTFYqFEG9N7S4EOicd5fMaUhpQNWWhql7i+KU6w==
+
 eslint-scope@5.1.1, eslint-scope@^5.1.1:
   version "5.1.1"
   resolved "https://registry.yarnpkg.com/eslint-scope/-/eslint-scope-5.1.1.tgz#e786e59a66cb92b3f6c1fb0d508aab174848f48c"
