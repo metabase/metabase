@@ -22,18 +22,18 @@ import type { StaticEmbedSetupPaneProps } from "../StaticEmbedSetupPane";
 import { StaticEmbedSetupPane } from "../StaticEmbedSetupPane";
 
 const TextEditorMock = ({
-  code,
   highlightRanges,
+  value,
 }: {
-  code: string;
   highlightRanges?: { start: number; end: number }[];
+  value: string;
 }) => {
   const highlightedTexts = highlightRanges?.map((range) =>
-    code.slice(range.start, range.end),
+    value.slice(range.start, range.end),
   );
   return (
     <>
-      <div data-testid="text-editor-mock">{code}</div>
+      <div data-testid="text-editor-mock">{value}</div>
       <div data-testid="text-editor-mock-highlighted-code">
         {highlightedTexts}
       </div>
