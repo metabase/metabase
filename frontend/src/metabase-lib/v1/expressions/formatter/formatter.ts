@@ -369,8 +369,7 @@ function precedence(op: string): number {
 }
 
 function isUnaryOperator(op: Lib.ExpressionOperator) {
-  const clause = getClauseDefinition(op);
-  return clause && clause?.args.length === 1;
+  return getClauseDefinition(op)?.args.length === 1;
 }
 
 function formatValueExpression(
