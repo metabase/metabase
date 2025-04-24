@@ -67,7 +67,7 @@ jobs:
           echo "spec_path=$SPEC_PATH" >> $GITHUB_OUTPUT
 
       - name: Fail if no spec files found
-        if: steps.filter.outputs.e2e_specs != 'true'
+        if: steps.changes.outputs.e2e_specs != 'true'
         run: |
           echo "No e2e spec files changed in this PR. Manual workflow trigger required."
           exit 1
