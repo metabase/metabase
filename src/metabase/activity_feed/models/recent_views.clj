@@ -74,9 +74,8 @@
                   {:order-by [[:timestamp :desc]]})
        (group-by (juxt :model :model_id))
        ;; skip the first row for each group, since it's the most recent
-       (mapcat (fn [[_ rows]] (drop 1 rows)))
-       (map :id)
-       set))
+       (into #{} (comp (mapcat (fn [[_ rows]] (drop 1 rows)))
+                       (map :id)))))
 
 (def rv-models
   "These are models for which we will retrieve recency."

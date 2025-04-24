@@ -988,14 +988,44 @@
 ;; When rendering expressions, the FE calls [[expression-parts]], which returns a kind of AST for the expression.
 ;; This form is deliberately different from the MBQL representation.
 
+(defn- expression-parts-like?
+  "Test if [[x]] has the shape expression-parts, possible with missing :lib/type."
+  [x]
+  (and (map? x)
+       (:operator x)
+       (:args x)
+       (or
+        (and
+         (not (:lib/type x))
+         (not (:type x)))
+        (= (:lib/type x) :mbql/expression-parts)
+        (= (:type x) :mbql/expression-parts))))
+
+(defn- expression-parts-js->cljs
+  "When coming from js the expression parts will have no :lib/type, so we need to add
+   it back in recursively for each node down the path."
+  [x]
+  (as-> x parts
+    (js->clj parts :keywordize-keys true)
+    (walk/postwalk
+     #(cond-> %
+        (expression-parts-like? %) (assoc :lib/type :mbql/expression-parts))
+     parts)))
+
 (defn ^:export expression-clause
   "Returns a standalone expression clause for the given `operator`, `options`, and list of arguments."
-  [an-operator args options]
-  (-> (lib.core/expression-clause
-       (keyword an-operator)
-       args
-       (js->clj options :keywordize-keys true))
-      lib.core/normalize))
+  ([x]
+   (-> x
+       expression-parts-js->cljs
+       lib.core/expression-clause
+       lib.core/normalize))
+  ([an-operator args]
+   (expression-clause an-operator args {}))
+  ([an-operator args options]
+   (expression-clause {:lib/type :mbql/expression-parts
+                       :operator (keyword an-operator)
+                       :args args
+                       :options options})))
 
 (defn ^:export expression-parts
   "Returns an AST for `an-expression-clause`.
@@ -2335,40 +2365,12 @@
   [a-query stage-number a-filter-clause]
   (lib.core/filter-args-display-name a-query stage-number a-filter-clause))
 
-(defn ^:export expression-clause-for-legacy-expression
-  "Convert `legacy-expression` into a modern expression clause.
-
-  > **Code health:** Legacy, Single use. We should refactor away the round trip through legacy expressions and make the
-  expression parser understand MLv2 expressions."
-  [a-query stage-number legacy-expression]
-  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [expr (js->clj legacy-expression :keywordize-keys true)
-          expr (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))]
-      (lib.core/normalize (lib.convert/->pMBQL expr)))))
-
-(defn ^:export legacy-expression-for-expression-clause
-  "Convert `an-expression-clause` into a legacy expression.
-
-  When processing aggregation clauses with custom expressions, any `aggregation-options` wrapper is thrown away. (The
-  options specify extras like the name of the aggregation expression.)
-
-  > **Code health:** Legacy, Single use. We should refactor away the round trip through legacy expressions and make the
-  expression parser understand MLv2 expressions."
-  [a-query stage-number an-expression-clause]
-  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [legacy-expr (-> an-expression-clause lib.convert/->legacy-MBQL)]
-      (clj->js (cond-> legacy-expr
-                 (and (vector? legacy-expr)
-                      (#{:aggregation-options} (first legacy-expr)))
-                 (get 1))
-               :keyword-fn u/qualified-name))))
-
 (defn ^:export diagnose-expression
   "Checks `legacy-expression` for type errors and possibly for cyclic references to other expressions.
 
   - `expression-mode` specifies what type of thing `expr` is: an \"expression\" (custom column),
     an \"aggregation\" expression, or a \"filter\" condition.
-  - `legacy-expression` is a legacy MBQL expression created using the custom column editor in the FE.
+  - `expression` is an expression created using the custom column editor in the FE.
   - `expression-position` is provided when editing an existing custom column, and `nil` otherwise.
 
   Cyclic references are checked only when `expression-mode` is `\"expression\"` and `expression-position` is non-`nil`.
@@ -2376,20 +2378,16 @@
 
   Returns an i18n error message describing the problem, or `nil` (JS `null`) if there are no issues.
 
-  > **Code health:** Legacy, Single use. The expression parser should be refactored to support MLv2 expressions, and
-  then several of these functions for dealing with legacy can be removed."
-  [a-query stage-number expression-mode legacy-expression expression-position]
-  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [expr (as-> legacy-expression expr
-                 (js->clj expr :keywordize-keys true)
-                 (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))
-                 (lib.convert/->pMBQL expr)
-                 (lib.core/normalize expr))]
-      (-> (lib.expression/diagnose-expression a-query stage-number
-                                              (keyword expression-mode)
-                                              expr
-                                              expression-position)
-          clj->js))))
+  > **Code health:** Single use."
+  [a-query stage-number expression-mode an-expression expression-position]
+  (let [expr (-> an-expression
+                 (js->clj :keywordize-keys true)
+                 lib.normalize/normalize)]
+    (-> (lib.expression/diagnose-expression a-query stage-number
+                                            (keyword expression-mode)
+                                            expr
+                                            expression-position)
+        clj->js)))
 
 ;; TODO: [[field-values-search-info]] seems over-specific - I feel like we can do a better job of extracting search info
 ;; from arbitrary entities, akin to [[display-info]].

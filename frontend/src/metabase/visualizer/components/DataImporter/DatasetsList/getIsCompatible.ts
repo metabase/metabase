@@ -27,6 +27,14 @@ function compareTypeAndName(
   return column.semantic_type === field.semantic_type;
 }
 
+function comparedId(column: DatasetColumn | undefined, field: Field): boolean {
+  if (!column) {
+    return false;
+  }
+
+  return column.id === field.id;
+}
+
 interface CompatibilityParameters {
   currentDataset: {
     display?: VisualizationDisplay;
@@ -56,11 +64,9 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
     return false;
   }
 
-  const idAndNameMatcher = (field: Field) =>
-    compareIdAndName(primaryColumn, field);
-
-  const typeMatcher = (field: Field) =>
-    compareTypeAndName(primaryColumn, field);
+  const idAndNameMatcher = (f: Field) => compareIdAndName(primaryColumn, f);
+  const idMatcher = (f: Field) => comparedId(primaryColumn, f);
+  const typeMatcher = (f: Field) => compareTypeAndName(primaryColumn, f);
 
   if (currentDisplay === "scalar") {
     return (
@@ -73,7 +79,7 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
   }
 
   if (isNumber(primaryColumn) || isString(primaryColumn)) {
-    return fields.some(idAndNameMatcher) || fields.some(typeMatcher);
+    return fields.some(idMatcher) || fields.some(typeMatcher);
   }
 
   if (isDate(primaryColumn)) {

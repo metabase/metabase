@@ -3,6 +3,7 @@ import {
   NumberColumn,
   StringColumn,
 } from "__support__/visualizations";
+import type { Field } from "metabase-types/api";
 import { createMockColumn, createMockField } from "metabase-types/api/mocks";
 
 import { getIsCompatible } from "./getIsCompatible";
@@ -258,5 +259,55 @@ describe("getIsCompatible", () => {
         },
       }),
     ).toBe(true);
+  });
+
+  it("should only accept columns with same id and same type", () => {
+    const primaryColumn = createMockColumn(
+      NumberColumn({
+        id: 1,
+      }),
+    );
+
+    const dateField = createMockField(
+      DateTimeColumn({
+        id: 42,
+        name: "create at",
+      }),
+    );
+
+    const sameIdAndType = createMockField(
+      NumberColumn({
+        id: 1,
+      }),
+    );
+
+    const differentIdAndType = createMockField(
+      StringColumn({
+        id: 2,
+      }),
+    );
+
+    const differentIdSameType = createMockField(
+      StringColumn({
+        id: 3,
+      }),
+    );
+
+    const allDifferent = createMockField(
+      StringColumn({
+        id: 4,
+      }),
+    );
+
+    const isCompatible = (fields: Field[]) =>
+      getIsCompatible({
+        currentDataset: { display: "line", primaryColumn },
+        targetDataset: { display: "line", fields },
+      });
+
+    expect(isCompatible([dateField, sameIdAndType])).toBe(true);
+    expect(isCompatible([dateField, differentIdAndType])).toBe(false);
+    expect(isCompatible([dateField, differentIdSameType])).toBe(false);
+    expect(isCompatible([dateField, allDifferent])).toBe(false);
   });
 });

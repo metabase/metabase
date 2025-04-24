@@ -56,7 +56,7 @@ export const UnarchivedBulkActions = ({
   useRegisterShortcut(
     [
       {
-        id: "collection-trash",
+        id: "collection-send-items-to-trash",
         perform: () => {
           handleBulkArchive();
         },

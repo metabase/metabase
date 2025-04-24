@@ -16,10 +16,10 @@ import {
   shouldSplitVisualizerSeries,
 } from "metabase/visualizer/utils";
 import {
-  isCategory,
   isDate,
   isDimension,
   isMetric,
+  isString,
 } from "metabase-lib/v1/types/utils/isa";
 import type { Dataset, DatasetColumn } from "metabase-types/api";
 import type {
@@ -328,9 +328,9 @@ function removeDimensionFromMultiSeriesChart(
     state.settings["graph.dimensions"] = originalDimensions.filter(
       (name) => !isDate(dimensionColumnMap[name]),
     );
-  } else if (isCategory(column)) {
+  } else if (isString(column)) {
     state.settings["graph.dimensions"] = originalDimensions.filter(
-      (name) => !isCategory(dimensionColumnMap[name]),
+      (name) => !isString(dimensionColumnMap[name]),
     );
   }
 

@@ -73,8 +73,9 @@
               ;; don't compare `database_type`, it's wrong for Redshift, see upstream bug
               ;; https://github.com/aws/amazon-redshift-jdbc-driver/issues/118 ... not really important here anyway
               :cols (mapv (fn [col-name]
-                            (-> (qp.test-util/native-query-col :venues col-name)
-                                (dissoc :database_type)))
+                            (let [col (-> (qp.test-util/native-query-col :venues col-name)
+                                          (dissoc :database_type))]
+                              (assoc col :ident (lib/native-ident (:name col) "AAAAAAAAAAAAAAAAAAAAA"))))
                           [:id :longitude :category_id :price :name :latitude])}
              (mt/format-rows-by
               [int 4.0 int int str 4.0]
@@ -88,7 +89,11 @@
                         :limit        5}))
                     (update :cols (fn [cols]
                                     (mapv (fn [col]
-                                            (dissoc col :database_type))
+                                            (-> col
+                                                (dissoc :database_type)
+                                                ;; Overwrite the idents to make the card eid fixed.
+                                                (update :ident #(str "native[AAAAAAAAAAAAAAAAAAAAA]__"
+                                                                     (subs % 31)))))
                                           cols)))))))))))
 
 (defn breakout-results [& {:keys [has-source-metadata? native-source?]
@@ -1011,6 +1016,7 @@
                                                         :type :model
                                                         :name "Model 1"
                                                         :database-id (mt/id)
+                                                        :entity-id     (u/generate-nano-id)
                                                         :dataset-query query}]})
               (check-result (mt/run-mbql-query nil
                               {:source-table "card__1"})))))))))
@@ -1696,14 +1702,18 @@
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           card-query (-> (lib/query mp (lib.metadata/table mp (mt/id "orders")))
                          (lib/order-by (lib.metadata/field mp (mt/id "orders" "created_at")))
-                         (lib/limit 1))
+                         (lib/limit 1)
+                         lib/->legacy-MBQL)
           results (qp/process-query card-query)]
       (mt/with-temp [:model/Card {card-id :id} {:type :question
                                                 :dataset_query {:native (get-in results [:data :native_form])
                                                                 :database (mt/id)
                                                                 :type :native}
-                                                :result_metadata (get-in results [:data :results_metadata :columns])
-                                                :name "Spaces in Name"}]
+                                                :name          "Spaces in Name"
+                                                :entity_id     "yZvzZlw8lRkATwq8w8fDi"
+                                                :result_metadata
+                                                (for [col (get-in results [:data :results_metadata :columns])]
+                                                  (assoc col :ident (lib/native-ident (:name col) "yZvzZlw8lRkATwq8w8fDi")))}]
         (let [created-at-pred (every-pred (comp #{"Created At"} :display-name) (comp #{"Spaces in Name"} :source-alias))
               query (as-> (lib/query mp (lib.metadata/table mp (mt/id "products"))) $q
                       (lib/join $q (lib/join-clause (lib.metadata/card mp card-id)))
