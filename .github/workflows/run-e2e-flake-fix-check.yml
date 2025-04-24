@@ -155,13 +155,16 @@ jobs:
     steps:
       - name: Trigger workflow on current branch
         run: |
+          SPEC_PATH="${{ inputs.spec }}"
+          echo "Using spec path: $SPEC_PATH"
+          
           gh workflow run e2e-stress-test-flake-fix.yml \
-            -f spec='${{ inputs.spec }}' \
-            -f burn_in='${{ inputs.burn_in }}' \
-            -f grep='${{ inputs.grep }}' \
-            -f mb_edition='${{ inputs.mb_edition }}' \
-            -f qa_db='${{ inputs.qa_db }}' \
-            -f enable_network_throttling='${{ inputs.enable_network_throttling }}' \
+            -f spec="$SPEC_PATH" \
+            -f burn_in="${{ inputs.burn_in }}" \
+            -f grep="${{ inputs.grep }}" \
+            -f mb_edition="${{ inputs.mb_edition }}" \
+            -f qa_db="${{ inputs.qa_db }}" \
+            -f enable_network_throttling="${{ inputs.enable_network_throttling }}" \
             -r ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
