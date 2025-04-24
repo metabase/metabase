@@ -78,6 +78,8 @@ export const saveChartImage = async ({
   const size = getFooterSize(contentWidth);
   const FOOTER_HEIGHT = getFooterConfig(size).h;
 
+  // Appending the any element to the node does not automatically increase the
+  // canvas height. We have to manually calculate it or the footer will not be visible.
   const canvasHeight = includeBranding
     ? contentHeight + FOOTER_HEIGHT
     : contentHeight;
