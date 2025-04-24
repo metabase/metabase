@@ -1,4 +1,5 @@
 (ns lint-migrations-file
+  "This is cljc because it is used from both Clojure (:clj) and Babashka (:bb). Not cljs!"
   (:require
    [change-set.strict]
    [clj-yaml.core :as yaml]
@@ -10,6 +11,7 @@
   (:import
    [clojure.lang ExceptionInfo]))
 
+#_:clj-kondo/ignore
 (set! *warn-on-reflection* true)
 
 (comment change-set.strict/keep-me)
@@ -22,10 +24,11 @@
 (defn- validation-error? [e]
   (::validation-error (ex-data e)))
 
-;; just print ordered maps like normal maps.
-(defmethod print-method flatland.ordered.map.OrderedMap
-  [m writer]
-  (print-method (into {} m) writer))
+#?(:bb ::no-op
+   :clj ;; just print ordered maps like normal maps.
+   (defmethod print-method flatland.ordered.map.OrderedMap
+     [m writer]
+     (print-method (into {} m) writer)))
 
 (defn- require-database-change-log! [migrations]
   (when-not (contains? migrations :databaseChangeLog)
@@ -100,6 +103,7 @@
                                 (map #(get-in % [:changeSet :id]))
                                 seq)]
      (throw (validation-error
+             #_:clj-kondo/ignore
              (format "Migration(s) [%s] uses invalid types (in %s)"
                      (str/join "," (map #(str "'" % "'") using-types?))
                      (str/join "," (map #(str "'" % "'") target-types)))
@@ -158,15 +162,21 @@
 (def ^:private filename
   "../../resources/migrations/001_update_migrations.yaml")
 
+#_:clj-kondo/ignore
+(def ^:private bb-filename
+  "resources/migrations/001_update_migrations.yaml")
+
 (defn- migrations []
-  (let [file (io/file filename)]
+  (let [file #_:clj-kondo/ignore (io/file #?(:bb bb-filename :clj filename))]
     (assert (.exists file) (format "%s does not exist" filename))
     (letfn [(fix-vals [x]
                       ;; convert any lazy seqs to regular vectors and maps
               (cond (map? x)        (update-vals x fix-vals)
                     (sequential? x) (mapv fix-vals x)
                     :else           x))]
-      (fix-vals (yaml/parse-string (slurp file))))))
+      (fix-vals (yaml/parse-string
+                 #_:clj-kondo/ignore
+                 (slurp file))))))
 
 (defn- validate-all []
   (validate-migrations (migrations)))
@@ -180,19 +190,25 @@
   (try
     (validate-all)
     (println "Ok.")
+    #_:clj-kondo/ignore
     (System/exit 0)
     (catch ExceptionInfo e
       (if (validation-error? e)
         (do
           (println)
+          #_:clj-kondo/ignore
           (printf "Error:\t%s\n" (.getMessage e))
+          #_:clj-kondo/ignore
           (printf "Details:\n\n %s" (with-out-str (pprint/pprint (dissoc (ex-data e) ::validation-error))))
           (println))
         (do
           (pprint/pprint (Throwable->map e))
           (println (.getMessage e))))
+      #_:clj-kondo/ignore
       (System/exit 1))
-    (catch Throwable e
-      (pprint/pprint (Throwable->map e))
-      (println (.getMessage e))
-      (System/exit 1))))
+    (catch #_:clj-kondo/ignore
+     Throwable e
+           (pprint/pprint (Throwable->map e))
+           (println (.getMessage e))
+           #_:clj-kondo/ignore
+           (System/exit 1))))
