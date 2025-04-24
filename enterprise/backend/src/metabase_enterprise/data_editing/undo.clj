@@ -119,11 +119,11 @@
 
 (defn- update-table-data!
   "Revert the underlying table data."
-  [undo? batch]
+  [undo? user-id batch]
   (doseq [[[table-id category] sub-batch] (u/group-by (juxt :table_id categorize) batch)
           :let [rows (batch->rows undo? sub-batch)]]
     (case (if undo? (invert category) category)
-      :create (try (data-editing/perform-bulk-action! :bulk/create table-id rows)
+      :create (try (data-editing/perform-bulk-action! :bulk/create user-id table-id rows)
                    (catch Exception e
                      ;; Sometimes cols don't support a custom value being provided, e.g., GENERATED ALWAYS AS IDENTITY
                      (throw (ex-info "Failed to un-delete row(s)"
@@ -132,8 +132,8 @@
                                       :table-id  table-id
                                       :pks       (map :row_pk batch)}
                                      e))))
-      :update (data-editing/perform-bulk-action! :bulk/update table-id rows)
-      :delete (data-editing/perform-bulk-action! :bulk/delete table-id rows))))
+      :update (data-editing/perform-bulk-action! :bulk/update user-id table-id rows)
+      :delete (data-editing/perform-bulk-action! :bulk/delete user-id table-id rows))))
 
 (defn- undo*! [undo? user-id table-id]
   (let [batch (next-batch undo? user-id table-id)]
@@ -150,7 +150,7 @@
                                                :user-id  user-id
                                                :table-id table-id}))
       :else
-      (do (update-table-data! undo? batch)
+      (do (update-table-data! undo? user-id batch)
           (t2/update! :model/Undo
                       {:batch_num (:batch_num (first batch))}
                       {:undone undo?})

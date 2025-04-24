@@ -65,25 +65,10 @@
   (check-permissions)
   (if (empty? rows)
     {:updated []}
-    (let [rows'        (data-editing/apply-coercions table-id rows)
-          pk-fields    (data-editing/select-table-pk-fields table-id)
-          pks->db-row  (data-editing/query-db-rows table-id pk-fields rows')
-          user-id      api/*current-user-id*]
-      ;; If this fails, we probably have another bug like the type-mismatch issue we had here:
-      ;; https://linear.app/metabase/issue/WRK-281/undo-deletes-a-record-instead-of-reverting-the-edits
-      ;; TODO this bombs in [[metabase-enterprise.data-editing.api-test/editing-allowed-test]] because we
-      ;;      haven't done the perms check yet.
-      #_(assert (every? (fn [row] (get pks->db-row (data-editing/get-row-pks pk-fields row))) rows')
-                "Able to look up the existing values of these rows, for system events")
-      (data-editing/perform-bulk-action! :bulk/update table-id rows')
-      ;; TODO this should also become a subscription to the "data written" system event
-      (let [row-pk->old-new-values (->> (for [row rows']
-                                          (let [pks (data-editing/get-row-pks pk-fields row)]
-                                            [pks [(get pks->db-row pks)
-                                                  row]]))
-                                        (into {}))]
-        (undo/track-change! user-id {table-id row-pk->old-new-values}))
-
+    (let [user-id   api/*current-user-id*
+          rows'     (data-editing/apply-coercions table-id rows)
+          pk-fields (data-editing/select-table-pk-fields table-id)
+          _         (data-editing/perform-bulk-action! :bulk/update user-id table-id rows')]
       (invalidate-field-values! table-id rows')
       {:updated (vals (data-editing/query-db-rows table-id pk-fields rows'))})))
 
@@ -94,23 +79,9 @@
    {}
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (check-permissions)
-  (let [pk-fields              (data-editing/select-table-pk-fields table-id)
-        pks->db-rows           (data-editing/query-db-rows table-id pk-fields rows)
-        ;; If this fails, we probably have another bug like the type-mismatch issue we had here:
-        ;; https://linear.app/metabase/issue/WRK-281/undo-deletes-a-record-instead-of-reverting-the-edits
-        ;; TODO this bombs in [[metabase-enterprise.data-editing.api-test/editing-allowed-test]] because we
-        ;;      haven't done the perms check yet.
-        _                      nil #_(assert (every? (fn [row] (get pks->db-rows (data-editing/get-row-pks pk-fields row))) rows)
-                                             "Able to look up the existing values of these rows, for system events")
-        res                    (data-editing/perform-bulk-action! :bulk/delete table-id rows)
-        user-id                api/*current-user-id*
-        row-pk->old-new-values (->> (for [row rows]
-                                      (let [pks (data-editing/get-row-pks pk-fields row)]
-                                        [pks [(get pks->db-rows pks) nil]]))
-                                    (into {}))]
-    ;; TODO this should also become a subscription to the "data written" system event
-    (undo/track-change! user-id {table-id row-pk->old-new-values})
-    res))
+  (let [user-id   api/*current-user-id*
+        _         (data-editing/perform-bulk-action! :bulk/delete user-id table-id rows)]
+    {:success true}))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust
 ;; model (e.g are admins trusted with writing arbitrary SQL cases anyway, will non admins ever call this?)
