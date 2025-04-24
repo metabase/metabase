@@ -17,13 +17,13 @@ import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import {
   getIsLoading,
-  getIsSwapAffordanceVisible,
   getVisualizationType,
   getVisualizerRawSeries,
 } from "metabase/visualizer/selectors";
 import type { RawSeries } from "metabase-types/api";
 
 import { TabularPreviewModal } from "../TabularPreviewModal";
+import { useVisualizerUi } from "../VisualizerUiContext";
 
 import { HorizontalWell } from "./HorizontalWell";
 import { ScatterFloatingWell } from "./ScatterFloatingWell";
@@ -51,10 +51,10 @@ interface VisualizationCanvasProps {
 
 export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
   const [isTabularPreviewOpen, setTabularPreviewOpen] = useState(false);
+  const { isSwapAffordanceVisible } = useVisualizerUi();
 
   const display = useSelector(getVisualizationType);
   const isLoading = useSelector(getIsLoading);
-  const isSwapAffordanceVisible = useSelector(getIsSwapAffordanceVisible);
 
   let rawSeries = useSelector(getVisualizerRawSeries);
   if (display && isCartesianChart(display)) {

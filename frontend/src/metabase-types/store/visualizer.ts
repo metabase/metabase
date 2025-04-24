@@ -51,30 +51,19 @@ export type VisualizerColumnValueSource =
   | VisualizerColumnReference
   | VisualizerDataSourceNameReference;
 
-export type VisualizerHistoryItem = {
+export type VisualizerVizDefinition = {
   display: VisualizationDisplay | null;
   columns: DatasetColumn[];
   columnValuesMapping: Record<string, VisualizerColumnValueSource[]>;
   settings: VisualizationSettings;
 };
 
-export type VisualizerCommonState = {
+export interface VisualizerState extends VisualizerVizDefinition {
+  initialState: VisualizerVizDefinition;
   cards: Card[];
   datasets: Record<VisualizerDataSourceId, Dataset>;
-  expandedDataSources: Record<VisualizerDataSourceId, boolean>;
   loadingDataSources: Record<VisualizerDataSourceId, boolean>;
   loadingDatasets: Record<VisualizerDataSourceId, boolean>;
-  isDataSidebarOpen: boolean;
-  isVizSettingsSidebarOpen: boolean;
-  isSwapAffordanceVisible: boolean;
   error: string | null;
   draggedItem: DraggedItem | null;
-};
-
-export interface VisualizerState extends VisualizerCommonState {
-  past: VisualizerHistoryItem[];
-  present: VisualizerHistoryItem;
-  future: VisualizerHistoryItem[];
-
-  initialState: VisualizerHistoryItem;
 }

@@ -81,7 +81,7 @@ const EditableText = forwardRef(function EditableText(
     (event: FocusEvent<HTMLTextAreaElement>) => {
       setIsInFocus(false);
 
-      if (!isOptional && !inputValue) {
+      if (!isOptional && !inputValue && submitValue) {
         setInputValue(submitValue);
       } else if (inputValue !== submitValue && submitOnBlur.current) {
         setSubmitValue(inputValue);
@@ -105,7 +105,7 @@ const EditableText = forwardRef(function EditableText(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Escape") {
         event.stopPropagation(); // don't close modal
-        setInputValue(submitValue);
+        setInputValue(submitValue ?? "");
         submitOnBlur.current = false;
         event.currentTarget.blur();
       } else if (event.key === "Enter" && !isMultiline) {

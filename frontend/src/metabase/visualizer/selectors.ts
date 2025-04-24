@@ -1,7 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
-import { utf8_to_b64 } from "metabase/lib/encoding";
 import {
   extractRemappings,
   getVisualization,
@@ -16,10 +15,7 @@ import type {
   RawSeries,
   SingleSeries,
 } from "metabase-types/api";
-import type {
-  VisualizerHistoryItem,
-  VisualizerState,
-} from "metabase-types/store/visualizer";
+import type { VisualizerState } from "metabase-types/store/visualizer";
 
 import {
   createDataSource,
@@ -29,7 +25,13 @@ import {
   splitVisualizerSeries,
 } from "./utils";
 
-type State = { visualizer: VisualizerState };
+type State = {
+  visualizer: {
+    past: VisualizerState[];
+    present: VisualizerState;
+    future: VisualizerState[];
+  };
+};
 
 // Private selectors
 
@@ -46,7 +48,7 @@ const getVisualizerColumnValuesMapping = (state: State) =>
 export const getVisualizerRawSettings = (state: State) =>
   getCurrentHistoryItem(state).settings;
 
-export const getCards = (state: State) => state.visualizer.cards;
+export const getCards = (state: State) => getCurrentHistoryItem(state).cards;
 
 export function getVisualizationTitle(state: State) {
   const settings = getVisualizerRawSettings(state);
@@ -57,16 +59,17 @@ export function getVisualizationType(state: State) {
   return getCurrentHistoryItem(state).display ?? undefined;
 }
 
-export const getDatasets = (state: State) => state.visualizer.datasets;
+export const getDatasets = (state: State) =>
+  getCurrentHistoryItem(state).datasets;
 
 export const getLoadingDatasets = (state: State) =>
-  state.visualizer.loadingDatasets;
-
-export const getExpandedDataSources = (state: State) =>
-  state.visualizer.expandedDataSources;
+  getCurrentHistoryItem(state).loadingDatasets;
 
 export const getIsLoading = createSelector(
-  [(state) => state.visualizer.loadingDataSources, getLoadingDatasets],
+  [
+    (state) => getCurrentHistoryItem(state).loadingDataSources,
+    getLoadingDatasets,
+  ],
   (loadingDataSources, loadingDatasets) => {
     return (
       Object.values(loadingDataSources).includes(true) ||
@@ -75,19 +78,10 @@ export const getIsLoading = createSelector(
   },
 );
 
-export const getDraggedItem = (state: State) => state.visualizer.draggedItem;
+export const getDraggedItem = (state: State) =>
+  getCurrentHistoryItem(state).draggedItem;
 
-export const getIsDataSidebarOpen = (state: State) =>
-  state.visualizer.isDataSidebarOpen;
-
-export const getIsVizSettingsSidebarOpen = (state: State) =>
-  state.visualizer.isVizSettingsSidebarOpen;
-
-export const getIsSwapAffordanceVisible = (state: State) =>
-  state.visualizer.isSwapAffordanceVisible;
-
-// #0 is state before its actually initialized, hence the > 1
-export const getCanUndo = (state: State) => state.visualizer.past.length > 1;
+export const getCanUndo = (state: State) => state.visualizer.past.length > 0;
 export const getCanRedo = (state: State) => state.visualizer.future.length > 0;
 
 export const getReferencedColumns = createSelector(
@@ -262,34 +256,6 @@ export const getIsDirty = createSelector(
     return !_.isEqual(state, initialState);
   },
 );
-
-export const getVisualizerUrlHash = createSelector(
-  [getCurrentVisualizerState],
-  (state) => getStateHash(state),
-);
-
-export const getPastVisualizerUrlHashes = createSelector(
-  [(state) => state.visualizer.past],
-  (items) => items.map(getStateHash),
-);
-
-export const getFutureVisualizerUrlHashes = createSelector(
-  [(state) => state.visualizer.future],
-  (items) => items.map(getStateHash),
-);
-
-function getStateHash(state: VisualizerHistoryItem) {
-  return checkIfStateDirty(state) ? utf8_to_b64(JSON.stringify({ state })) : "";
-}
-
-function checkIfStateDirty(state: VisualizerHistoryItem) {
-  return (
-    !!state.display ||
-    state.columns.length > 0 ||
-    Object.keys(state.settings).length > 0 ||
-    Object.keys(state.columnValuesMapping).length > 0
-  );
-}
 
 export const getIsRenderable = createSelector(
   [getVisualizationType, getVisualizerRawSeries, getVisualizerComputedSettings],

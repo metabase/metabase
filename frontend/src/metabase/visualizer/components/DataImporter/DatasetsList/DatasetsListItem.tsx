@@ -3,15 +3,16 @@ import { useMemo } from "react";
 import { useGetCardQuery } from "metabase/api";
 import ButtonGroup from "metabase/core/components/ButtonGroup";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { Button, Icon } from "metabase/ui";
 import {
   getVisualizationType,
   getVisualizerPrimaryColumn,
 } from "metabase/visualizer/selectors";
 import { parseDataSourceId } from "metabase/visualizer/utils";
-import { setSwapAffordanceVisible } from "metabase/visualizer/visualizer.slice";
 import type { VisualizerDataSource } from "metabase-types/store/visualizer";
+
+import { useVisualizerUi } from "../../VisualizerUiContext";
 
 import S from "./DatasetsListItem.module.css";
 import { getIsCompatible } from "./getIsCompatible";
@@ -19,27 +20,21 @@ import { getIsCompatible } from "./getIsCompatible";
 interface DatasetsListItemProps {
   item: VisualizerDataSource;
   onSwap?: (item: VisualizerDataSource) => void;
-  onAdd?: (item: VisualizerDataSource) => void;
+  onToggle?: (item: VisualizerDataSource) => void;
   onRemove?: (item: VisualizerDataSource) => void;
   selected: boolean;
 }
 
 export const DatasetsListItem = (props: DatasetsListItemProps) => {
-  const { selected, item, onSwap, onAdd, onRemove } = props;
+  const { selected, item, onSwap, onToggle, onRemove } = props;
+
+  const { setSwapAffordanceVisible } = useVisualizerUi();
 
   const currentDisplay = useSelector(getVisualizationType);
   const primaryColumn = useSelector(getVisualizerPrimaryColumn);
-  const dispatch = useDispatch();
 
   const { sourceId } = parseDataSourceId(item.id);
   const { data } = useGetCardQuery({ id: sourceId });
-
-  const showSwapAffordance = () => {
-    dispatch(setSwapAffordanceVisible(true));
-  };
-  const hideSwapAffordance = () => {
-    dispatch(setSwapAffordanceVisible(false));
-  };
 
   const metadata = useMemo(
     () => ({
@@ -75,8 +70,8 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
         onClick={() => {
           onSwap?.(item);
         }}
-        onMouseOver={showSwapAffordance}
-        onMouseOut={hideSwapAffordance}
+        onMouseOver={() => setSwapAffordanceVisible(true)}
+        onMouseOut={() => setSwapAffordanceVisible(false)}
         leftSection={
           <Icon color="inherit" className={S.TableIcon} name="table2" mr="xs" />
         }
@@ -104,7 +99,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
             rightSection={<Icon name="add" />}
             onClick={(e) => {
               e.stopPropagation();
-              onAdd?.(item);
+              onToggle?.(item);
             }}
           />
         )

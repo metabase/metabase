@@ -13,11 +13,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
-import {
-  getDraggedItem,
-  getIsDataSidebarOpen,
-  getIsVizSettingsSidebarOpen,
-} from "metabase/visualizer/selectors";
+import { getDraggedItem } from "metabase/visualizer/selectors";
 import {
   isDraggedWellItem,
   isValidDraggedItem,
@@ -29,7 +25,8 @@ import {
 } from "metabase/visualizer/visualizer.slice";
 import type {
   DraggedItem,
-  VisualizerHistoryItem,
+  VisualizerDataSourceId,
+  VisualizerVizDefinition,
 } from "metabase-types/store/visualizer";
 
 import { DataImporter } from "../DataImporter";
@@ -37,6 +34,7 @@ import { DragOverlay as VisualizerDragOverlay } from "../DragOverlay";
 import { Footer } from "../Footer";
 import { Header } from "../Header";
 import { VisualizationCanvas } from "../VisualizationCanvas";
+import { VisualizerUiProvider, useVisualizerUi } from "../VisualizerUiContext";
 import { VizSettingsSidebar } from "../VizSettingsSidebar/VizSettingsSidebar";
 
 import S from "./Visualizer.module.css";
@@ -66,21 +64,21 @@ const isVerticalDraggedItem = (draggedItem: DraggedItem | null) => {
 
 interface VisualizerProps {
   className?: string;
-  onSave: (visualization: VisualizerHistoryItem) => void;
+  initialDataSources?: VisualizerDataSourceId[];
+  onSave: (visualization: VisualizerVizDefinition) => void;
   onClose: () => void;
   saveLabel?: string;
   allowSaveWhenPristine?: boolean;
 }
 
-export const Visualizer = (props: VisualizerProps) => {
+const VisualizerInner = (props: VisualizerProps) => {
   const { className, onSave, saveLabel, allowSaveWhenPristine, onClose } =
     props;
+
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
+  const { isDataSidebarOpen, isVizSettingsSidebarOpen } = useVisualizerUi();
 
   const draggedItem = useSelector(getDraggedItem);
-  const isDataSidebarOpen = useSelector(getIsDataSidebarOpen);
-  const isVizSettingsSidebarOpen = useSelector(getIsVizSettingsSidebarOpen);
-
   const dispatch = useDispatch();
 
   const canvasSensor = useSensor(PointerSensor, {
@@ -88,7 +86,7 @@ export const Visualizer = (props: VisualizerProps) => {
   });
 
   useUnmount(() => {
-    dispatch(resetVisualizer({ full: true }));
+    dispatch(resetVisualizer());
   });
 
   useEffect(() => {
@@ -193,5 +191,16 @@ export const Visualizer = (props: VisualizerProps) => {
         </DragOverlay>
       </Box>
     </DndContext>
+  );
+};
+
+export const Visualizer = ({
+  initialDataSources,
+  ...props
+}: VisualizerProps) => {
+  return (
+    <VisualizerUiProvider initialDataSources={initialDataSources}>
+      <VisualizerInner {...props} />
+    </VisualizerUiProvider>
   );
 };
