@@ -340,12 +340,12 @@
   [[{:keys [info], :as first-query} & more-queries] :- [:sequential ::lib.schema/query]
    rff                                              :- ::qp.schema/rff
    column-mapping-fn                                :- ::column-mapping-fn]
-  (let [first-query (cond-> first-query
-                      (seq info) qp/userland-query-with-default-constraints)]
-    (let [{:keys [rff execute reduce]} (append-queries-rff-and-fns info rff more-queries column-mapping-fn)]
-      (binding [qp.pipeline/*execute* (or execute qp.pipeline/*execute*)
-                qp.pipeline/*reduce*  (or reduce qp.pipeline/*reduce*)]
-        (qp/process-query first-query rff)))))
+  (let [{:keys [rff execute reduce]} (append-queries-rff-and-fns info rff more-queries column-mapping-fn)
+        first-query                  (cond-> first-query
+                                       (seq info) qp/userland-query-with-default-constraints)]
+    (binding [qp.pipeline/*execute* (or execute qp.pipeline/*execute*)
+              qp.pipeline/*reduce*  (or reduce qp.pipeline/*reduce*)]
+      (qp/process-query first-query rff))))
 
 (mu/defn- column-name-pivot-options :- ::pivot-opts
   "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
