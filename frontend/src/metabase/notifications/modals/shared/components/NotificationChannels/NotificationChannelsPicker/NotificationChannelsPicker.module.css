@@ -1,11 +1,11 @@
 .customTemplateRoot {
-  --mb-color-border: transparent;
+  border: none;
 
   color: var(--mb-color-text-primary);
 }
 
 .customTemplateControl {
-  --mb-color-border: transparent;
+  border: none;
 
   padding: 0;
 }
@@ -21,4 +21,9 @@
   path {
     stroke-width: 0.75;
   }
+}
+
+.customTemplateItem,
+.customTemplateChevron {
+  border: none !important;
 }

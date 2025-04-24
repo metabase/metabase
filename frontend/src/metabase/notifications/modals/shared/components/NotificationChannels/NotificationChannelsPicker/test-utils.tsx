@@ -27,6 +27,18 @@ export interface SetupOpts {
   webhooksResult?: NotificationChannel[];
   notificationHandlers?: NotificationHandler[];
   onChange?: jest.Mock;
+  defaultTemplates?: Record<
+    string,
+    {
+      channel_type: string;
+      details: {
+        type: string;
+        subject?: string;
+        body: string;
+      };
+    }
+  > | null;
+  enableTemplates?: boolean;
 }
 
 export const setup = ({
@@ -38,6 +50,8 @@ export const setup = ({
   webhooksResult = [],
   notificationHandlers = [],
   onChange = jest.fn(),
+  defaultTemplates = null,
+  enableTemplates = false,
 }: SetupOpts = {}) => {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({
@@ -101,6 +115,8 @@ export const setup = ({
       getInvalidRecipientText={(domains) =>
         `You're only allowed to email notifications to addresses ending in ${domains}`
       }
+      defaultTemplates={defaultTemplates}
+      enableTemplates={enableTemplates}
     />,
     {
       storeInitialState: {
