@@ -237,10 +237,6 @@
 
        ([[errors successes]]
         (when (seq errors)
-          ;; TODO Disabled due to errors about not being in a transaction block (?)
-          ;;      Returning the errors also causes issues in some cases, I guess from `with-jdbc-transaction` closing.
-          ;;      Well, this eager throw is consistent with how this action behaved previously.
-          (throw (:error (first errors)))
           (.rollback conn))
         [errors successes])
 
@@ -445,7 +441,7 @@
 ;;;; Bulk actions
 
 (defn- perform-bulk-action-with-repeated-single-row-actions!
-  [{:keys [driver database context action rows xform]
+  [{:keys [database action proc rows xform]
     :or   {xform identity}}]
   (with-jdbc-transaction [conn (u/the-id database)]
     ;; TODO accumulate snapshots from row actions
@@ -460,23 +456,18 @@
           (.rollback conn))
         [errors results])
 
-       ([[errors results] [row-index inputs]]
+       ([[errors results] [row-index query]]
         (try
-          (let [result (do-nested-transaction
-                        driver
-                        conn
-                        (fn []
-                          ;; This is bypassing `actions/perform-action-internal!` to suppress events etc.
-                          (actions/perform-action!* action context inputs)))]
+          ;; Note that each row action takes care of reverting itself.
+          (let [result (do-nested-transaction (:engine database) conn #(proc action database query))]
             [errors (conj results result)])
           (catch Throwable e
+            (log/error e)
             [(conj errors {:index row-index, :error (ex-message e)})
              results]))))
      rows)))
 
-;;;; `:bulk/create`
-
-(defn- batch-execution-by-table-id! [{:keys [context inputs row-action validate-fn input-fn]}]
+(defn- batch-execution-by-table-id! [{:keys [inputs row-fn row-action validate-fn input-fn]}]
   (let [databases (into #{} (map (comp actions/cached-database-via-table-id :table-id)) inputs)
         _         (when-not (= 1 (count databases))
                     (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
@@ -493,12 +484,13 @@
       (doseq [{:keys [table-id rows]} inputs]
         (validate-fn database table-id rows)))
     (perform-bulk-action-with-repeated-single-row-actions!
-     {:context  context
-      :driver   driver
+     {:driver   driver
       :database database
       :action   row-action
+      :proc     row-fn
       :rows     inputs
-      :xform    (map #(map (partial input-fn database (:table-id %)) (:rows %)))})))
+      ;; We're not yet batching per table, due to the "mapcat". Need to rework the row functions.
+      :xform   (mapcat #(map (partial input-fn database (:table-id %)) (:rows %)))})))
 
 (mr/def ::bulk-row-input
   [:map
@@ -510,23 +502,21 @@
   [_action context inputs :- [:sequential ::bulk-row-input]]
   (let [[errors results]
         (batch-execution-by-table-id!
-         {:context    context
-          :row-action :row/create
+         {:row-action :row/create
+          :row-fn     row-create!*
           :inputs     inputs
           :input-fn   (fn [database table-id row]
                         {:database   (u/the-id database)
                          :type       :query
                          :query      {:source-table table-id}
-                         :create-row row})})
-        outputs (mapcat :outputs results)]
+                         :create-row row})})]
     (when (seq errors)
       (throw (ex-info (tru "Error(s) inserting rows.")
                       {:status-code 400
                        :errors      errors
-                       :outputs     outputs
-                       :effects     (mapcat :effects results)})))
-    {:context (subsume-effects context results)
-     :outputs [{:created-rows (mapv :created-row outputs)}]}))
+                       :results     results})))
+    {:context (record-mutations context results)
+     :outputs [{:created-rows (map :after results)}]}))
 
 ;;;; Shared stuff for both `:bulk/delete` and `:bulk/update`
 
@@ -613,9 +603,9 @@
   [_action context inputs :- [:sequential ::bulk-row-input]]
   (let [[errors results]
         (batch-execution-by-table-id!
-         {:context       context
-          :inputs        inputs
+         {:inputs        inputs
           :row-action    :row/delete
+          :row-fn        row-delete!*
           :validate-fn   (fn [database table-id rows]
                            (let [pk-name->id (table-id->pk-field-name->id (:id database) table-id)]
                              (check-consistent-row-keys rows)
@@ -631,9 +621,8 @@
       (throw (ex-info (tru "Error(s) deleting rows.")
                       {:status-code 400
                        :errors      errors
-                       :outputs     (mapcat :outputs results)
-                       :effects     (mapcat (comp :effects :context) results)})))
-    {:context (subsume-effects context results)
+                       :results     results})))
+    {:context (record-mutations context results)
      :outputs [{:success true}]}))
 
 ;;;; `bulk/update`
@@ -666,29 +655,27 @@
   [_action context inputs :- [:sequential ::bulk-row-input]]
   (let [[errors results]
         (batch-execution-by-table-id!
-         {:context     context
-          :inputs      inputs
-          :row-action  :row/update
-          :input-fn    (fn [database table-id row]
-                         ;; We could optimize the worst case a bit by pre-validating all the rows.
-                         ;; But in the happy case, this saves a bit of memory (and some lines of code).
-                         (let [db-id            (:id database)
-                               pk-name->id      (table-id->pk-field-name->id db-id table-id)
-                               pk-names         (set (keys pk-name->id))
-                               _                (check-row-has-all-pk-columns row pk-names)
-                               _                (check-row-has-some-non-pk-columns row pk-names)
-                               pk-column->value (select-keys row pk-names)]
-                           {:database   db-id
-                            :type       :query
-                            :query      {:source-table table-id
-                                         :filter       (row->mbql-filter-clause pk-name->id pk-column->value)}
-                            :update-row (apply dissoc row pk-names)}))})
-        outputs (mapcat :outputs results)]
+         {:inputs     inputs
+          :row-action :row/update
+          :row-fn     row-update!*
+          :input-fn   (fn [database table-id row]
+                        ;; We could optimize the worst case a bit by pre-validating all the rows.
+                        ;; But in the happy case, this saves a bit of memory (and some lines of code).
+                        (let [db-id            (:id database)
+                              pk-name->id      (table-id->pk-field-name->id db-id table-id)
+                              pk-names         (set (keys pk-name->id))
+                              _                (check-row-has-all-pk-columns row pk-names)
+                              _                (check-row-has-some-non-pk-columns row pk-names)
+                              pk-column->value (select-keys row pk-names)]
+                          {:database   db-id
+                           :type       :query
+                           :query      {:source-table table-id
+                                        :filter       (row->mbql-filter-clause pk-name->id pk-column->value)}
+                           :update-row (apply dissoc row pk-names)}))})]
     (when (seq errors)
       (throw (ex-info (tru "Error(s) updating rows.")
                       {:status-code 400
                        :errors      errors
-                       :outputs     outputs
-                       :effects     (mapcat (comp :effects :context) results)})))
-    {:context (subsume-effects context results)
-     :outputs [{:rows-updated (apply + (map :rows-updated outputs))}]}))
+                       :results     results})))
+    {:context (record-mutations context results)
+     :outputs [{:rows-updated (count results)}]}))
