@@ -181,12 +181,17 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
 
       - name: Trigger workflow on master
         run: |
           SPEC_PATH="${{ needs.check-label.outputs.spec_path }}"
           echo "Using spec path: $SPEC_PATH"
 
+          # Using explicit master branch
+          echo "Using branch: master"
+          
           gh workflow run e2e-stress-test-flake-fix.yml \
             -f spec="$SPEC_PATH" \
             -f burn_in="20" \
@@ -206,12 +211,18 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
 
       - name: Trigger workflow on current branch
         run: |
           SPEC_PATH="${{ needs.check-label.outputs.spec_path }}"
           echo "Using spec path: $SPEC_PATH"
 
+          # For PR contexts, we need to use the head ref instead of github.ref
+          BRANCH_REF="${{ github.event.pull_request.head.ref || github.ref_name }}"
+          echo "Using branch: $BRANCH_REF"
+          
           gh workflow run e2e-stress-test-flake-fix.yml \
             -f spec="$SPEC_PATH" \
             -f burn_in="20" \
@@ -219,6 +230,6 @@ jobs:
             -f mb_edition="ee" \
             -f qa_db="none" \
             -f enable_network_throttling="true" \
-            -r ${{ github.ref_name }}
+            -r "$BRANCH_REF"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
