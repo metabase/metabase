@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -12,6 +12,10 @@ import {
   LegendRoot,
 } from "./Legend.styled";
 import LegendItem from "./LegendItem";
+
+const POPOVER_BORDER = 1;
+const POPOVER_PADDING = 8;
+const POPOVER_OFFSET = POPOVER_BORDER + POPOVER_PADDING;
 
 const propTypes = {
   className: PropTypes.string,
@@ -48,10 +52,6 @@ const Legend = ({
 }) => {
   const targetRef = useRef();
   const [isOpened, setIsOpened] = useState(null);
-
-  const togglePopover = useCallback(() => {
-    setIsOpened(!isOpened);
-  }, [isOpened, setIsOpened]);
 
   const items = isReversed ? _.clone(originalItems).reverse() : originalItems;
 
@@ -94,11 +94,12 @@ const Legend = ({
           width="target"
           opened={isOpened}
           onDismiss={() => setIsOpened(false)}
-          position="top-start"
+          offset={POPOVER_OFFSET}
+          placement="top-start"
         >
           <Popover.Target>
             <LegendLinkContainer ref={targetRef} isVertical={isVertical}>
-              <LegendLink onMouseDown={togglePopover}>
+              <LegendLink onMouseDown={() => setIsOpened(true)}>
                 {t`And ${overflowLength} more`}
               </LegendLink>
             </LegendLinkContainer>
