@@ -58,7 +58,7 @@
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
                      (is (=? {:subject "Table CATEGORIES has a new row"
-                              :message [{"Crowberto Corv has created a row for CATEGORIES" true
+                              :body    [{"Crowberto Corv has created a row for CATEGORIES" true
                                          "NAME: New Category" true}]}
                              (mt/summarize-multipart-single-email
                               email
@@ -90,7 +90,7 @@
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
                      (is (=? {:subject "Table CATEGORIES has been updated"
-                              :message [{"Crowberto Corv has updated a row in CATEGORIES" true
+                              :body    [{"Crowberto Corv has updated a row in CATEGORIES" true
                                          "NAME: Updated Category"                         true}]}
                              (mt/summarize-multipart-single-email
                               email
@@ -122,7 +122,7 @@
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
                      (is (=? {:subject "Table CATEGORIES has a row deleted"
-                              :message [{"Crowberto Corv has deleted a row from CATEGORIES" true
+                              :body    [{"Crowberto Corv has deleted a row from CATEGORIES" true
                                          "NAME: African" true}]}
                              (mt/summarize-multipart-single-email
                               email
@@ -157,7 +157,7 @@
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
                      (is (=? {:subject "Table CATEGORIES has a new row"
-                              :message [{"Crowberto Corv has created a row for CATEGORIES" true
+                              :body    [{"Crowberto Corv has created a row for CATEGORIES" true
                                          "NAME: New Category" true}]}
                              (mt/summarize-multipart-single-email
                               email
@@ -218,16 +218,15 @@
                                            :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest preview-notification-test
-  (is (= {:subject "Meta Bot has created a row for orders",
-          :recipients ["bot@metabase.com"],
-          :message-type "attachments",
-          :message
-          [{:type "text/html; charset=utf-8", :content "Created 1 records"}],
-          :recipient-type nil}
-         (mt/user-http-request :crowberto :post 200 "notification/preview_template"
-                               {:template     {:channel_type :channel/email
-                                               :details {:type    :email/handlebars-text
-                                                         :subject "{{editor.first_name}} {{editor.last_name}} has created a row for {{table.name}}"
-                                                         :body    "Created {{count records}} records"}}
-                                :notification {:payload_type :notification/system-event
-                                               :payload      {:event_name :event/rows.created}}}))))
+  (is (=? {:context  (mt/malli=? :map)
+           :rendered {:from    "notifications@metabase.com"
+                      :bcc     ["bot@metabase.com"]
+                      :subject "Meta Bot has created a row for orders"
+                      :body    [{:type "text/html; charset=utf-8" :content "Created 1 records"}]}}
+          (mt/user-http-request :crowberto :post 200 "notification/preview_template"
+                                {:template     {:channel_type :channel/email
+                                                :details {:type    :email/handlebars-text
+                                                          :subject "{{editor.first_name}} {{editor.last_name}} has created a row for {{table.name}}"
+                                                          :body    "Created {{count records}} records"}}
+                                 :notification {:payload_type :notification/system-event
+                                                :payload      {:event_name :event/rows.created}}}))))

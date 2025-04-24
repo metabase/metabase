@@ -15,7 +15,7 @@
                                            email-smtp-port    587
                                            bcc-enabled?       false]
           (channel/send! {:type :channel/email} {:subject      "Test"
-                                                 :recipients   ["ngoc@metabase.com"]
+                                                 :to           ["ngoc@metabase.com"]
                                                  :message-type :html
                                                  :message      "Test message"})
           (is (=? {:to ["ngoc@metabase.com"]}

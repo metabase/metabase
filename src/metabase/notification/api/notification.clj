@@ -17,6 +17,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -183,7 +184,7 @@
   [_route _query body :- ::models.notification/NotificationWithPayload]
   (api/create-check :model/Notification body)
   {:payload (sample-payload body)
-   :schema (api.macros/schema->json-schema (notification/notification-payload-schema body))})
+   :schema  (api.macros/schema->json-schema (notification/notification-payload-schema body))})
 
 (defn- sample-recipient
   [channel-type]
@@ -200,19 +201,24 @@
      :details {:value "#metabase-example-channel"}}))
 
 (api.macros/defendpoint :post "/preview_template"
-  "Return the payload of a notification"
+  "Preview a notification payload. Optionally can provide a custom input for rendering"
   [_route _query
-   {:keys [notification template]} :- [:map
-                                       [:notification ::models.notification/NotificationWithPayload]
-                                       [:template ::models.channel/ChannelTemplate]]]
+   {:keys [notification template custom_context]} :- [:map
+                                                      [:notification ::models.notification/NotificationWithPayload]
+                                                      [:template ::models.channel/ChannelTemplate]
+                                                      [:payload {:optional true} :any]]]
   (api/create-check :model/Notification notification)
-  (let [sample-notification-payload (sample-payload notification)]
-    (def sample-notification-payload)
-    (first (channel/render-notification
-            (:channel_type template)
-            #p sample-notification-payload
-            template
-            [(sample-recipient (:channel_type template))]))))
+  (let [sample-notification-context (or (and custom_context ;; use the custom payload if provided, but make sure it conforms our schema
+                                             (api/check-400 (mr/validate (notification/notification-payload-schema notification) custom_context)
+                                                            "Payload does not match schema")
+                                             custom_context)
+                                        (sample-payload notification))]
+    {:context  sample-notification-context
+     :rendered (first (channel/render-notification
+                       (:channel_type template)
+                       sample-notification-context
+                       template
+                       [(sample-recipient (:channel_type template))]))}))
 
 (defn- notify-notification-updates!
   "Send notification emails based on changes between updated and existing notification"

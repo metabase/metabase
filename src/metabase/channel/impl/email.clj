@@ -27,22 +27,17 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private EmailMessage
-  [:map
-   [:subject                         :string]
-   [:recipients                      [:sequential ms/Email]]
-   [:message-type                    [:enum :attachments :html :text]]
-   [:message                         :any]
-   [:recipient-type {:optional true} [:maybe (ms/enum-keywords-and-strings :cc :bcc)]]])
+  :map
+  #_[:map
+     [:subject                         :string]
+     [:recipients                      [:sequential ms/Email]]
+     [:message-type                    [:enum :attachments :html :text]]
+     [:message                         :any]
+     [:recipient-type {:optional true} [:maybe (ms/enum-keywords-and-strings :cc :bcc)]]])
 
 (mu/defmethod channel/send! :channel/email
-  [_channel {:keys [subject recipients message-type message recipient-type]} :- EmailMessage]
-  (email/send-message-or-throw! {:subject      subject
-                                 :recipients   recipients
-                                 :message-type message-type
-                                 :message      message
-                                 :bcc?         (if recipient-type
-                                                 (= :bcc recipient-type)
-                                                 (email/bcc-enabled?))}))
+  [_channel email :- EmailMessage]
+  (email/send-postal-message-or-throw! email))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                        Render Utils                                             ;;
@@ -111,11 +106,14 @@
   ([subject recipients message]
    (construct-email subject recipients message nil))
   ([subject recipients message recipient-type]
-   {:subject        subject
-    :recipients     recipients
-    :message-type   :attachments
-    :message        message
-    :recipient-type recipient-type}))
+   (email/email-message->postal-message
+    {:subject        subject
+     :recipients     recipients
+     :message-type   :attachments
+     :message        message
+     :bcc?           (if recipient-type
+                       (= :bcc recipient-type)
+                       (email/bcc-enabled?))})))
 
 (defn- recipients->emails
   [recipients]
