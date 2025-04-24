@@ -8,6 +8,10 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:dynamic *batch-size*
+  "Size of partition of table privileges insert."
+  20000)
+
 (mu/defn sync-table-privileges!
   "Sync the `table_privileges` table with the privileges in the database.
 
@@ -27,4 +31,7 @@
           (t2/delete! :model/TablePrivileges :table_id [:in {:select [:t.id]
                                                              :from   [[:metabase_table :t]]
                                                              :where  [:= :t.db_id (:id database)]}])
-          {:total-table-privileges (t2/insert! :model/TablePrivileges rows-with-table-id)})))))
+          {:total-table-privileges (reduce (fn [acc rows']
+                                             (+ acc (t2/insert! :model/TablePrivileges rows')))
+                                           0
+                                           (partition-all *batch-size* rows-with-table-id))})))))
