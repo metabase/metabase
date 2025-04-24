@@ -153,7 +153,7 @@ export function BasicAdminSettingInput({
     case "radio":
       return (
         <Radio.Group id={name} value={localValue} onChange={handleChange}>
-          <Stack gap="xs">
+          <Stack gap="sm">
             {options?.map(({ label, value }) => (
               <Radio key={value} value={value} label={label} />
             ))}
