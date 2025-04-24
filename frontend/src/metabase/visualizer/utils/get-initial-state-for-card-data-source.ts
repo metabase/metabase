@@ -1,3 +1,4 @@
+import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { isNotNull } from "metabase/lib/types";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
@@ -37,7 +38,7 @@ function pickColumnsFromTableToBarChart(
 
   // using "every" to break the loop early
   originalColumns.every((column) => {
-    if (column.expression_name === "pivot-grouping") {
+    if (isPivotGroupColumn(column)) {
       // skip pivot grouping column
       return true;
     }

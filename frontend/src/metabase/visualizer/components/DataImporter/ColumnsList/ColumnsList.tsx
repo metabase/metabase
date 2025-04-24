@@ -1,6 +1,7 @@
 import { useDraggable } from "@dnd-kit/core";
 import { t } from "ttag";
 
+import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, Icon, Loader, Text } from "metabase/ui";
 import { DRAGGABLE_ID } from "metabase/visualizer/constants";
@@ -92,7 +93,7 @@ export const ColumnsList = () => {
             {isExpanded && dataset && dataset.data.cols && (
               <Box ml={12} mt={2}>
                 {dataset.data.cols.map((column) => {
-                  if (column.expression_name === "pivot-grouping") {
+                  if (isPivotGroupColumn(column)) {
                     return null;
                   }
 
