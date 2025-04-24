@@ -58,6 +58,7 @@ interface Opts {
   fileName: string;
   includeBranding: boolean;
 }
+
 export const saveChartImage = async ({
   selector,
   fileName,
