@@ -61,7 +61,11 @@ describe("scenarios > embedding-sdk > popovers", () => {
 
     getSdkRoot().within(() => {
       cy.log("click on the legend overflow");
-      cy.findByText(/And \d+ more/).click();
+      cy.findByText("And 39 more").click();
     });
+
+    cy.log("check that the popover is showing chart legends");
+    H.popover().findByText("IA").should("be.visible");
+    H.popover().findByText("ID").should("be.visible");
   });
 });
