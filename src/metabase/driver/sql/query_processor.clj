@@ -141,13 +141,13 @@
   [_driver]
   "BIGINT")
 
-(defmulti cast-integer
+(defmulti ->integer
   "Cast to integer"
-  {:added "0.55.0" :arglists '([driver honeysql-expr])}
+  {:changelog-test/ignore true :added "0.45.0" :arglists '([driver honeysql-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod cast-integer :sql
+(defmethod ->integer :sql
   [driver value]
   (h2x/maybe-cast (integer-dbtype driver) value))
 
@@ -163,7 +163,7 @@
       h2x-expr
 
       (not inline)
-      (cast-integer driver h2x-expr)
+      (->integer driver h2x-expr)
 
       (float? inline)
       (h2x/with-database-type-info (inline-num (Math/round ^Double inline)) (integer-dbtype driver))
@@ -177,16 +177,6 @@
       :else
       (ex-info (str "Cannot convert " (pr-str h2x-expr) " to integer.")
                {:value h2x-expr}))))
-
-(defmulti ->integer
-  "Cast to integer"
-  {:changelog-test/ignore true :added "0.45.0" :arglists '([driver honeysql-expr])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod ->integer :sql
-  [_ value]
-  (h2x/->integer value))
 
 (defmulti ->float
   "Cast to float."

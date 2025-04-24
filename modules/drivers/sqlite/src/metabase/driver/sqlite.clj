@@ -476,7 +476,7 @@
   (fn []
     (sqlite-handle-timestamp rs i)))
 
-(defmethod sql.qp/cast-integer :sqlite
+(defmethod sql.qp/->integer :sqlite
   [driver value]
   ;; value can be either string or float
   ;; if it's a float, coversion to float does nothing

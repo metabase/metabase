@@ -317,13 +317,13 @@
   [_ value]
   [:'toFloat64 value])
 
-(defmethod sql.qp/cast-integer :clickhouse
+(defmethod sql.qp/->integer :clickhouse
   [driver value]
   ;; value can be either string or float
   ;; if it's a float, coversion to float does nothing
   ;; if it's a string, we can't round, so we need to convert to float first
   (->> value
-       (conj [:'toFloat64])
+       (sql.qp/->float driver)
        (conj [:round])
        (h2x/maybe-cast (sql.qp/integer-dbtype driver))))
 

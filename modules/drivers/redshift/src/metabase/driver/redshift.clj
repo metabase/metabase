@@ -297,10 +297,10 @@
   [driver [_ field]]
   [:avg [:cast (sql.qp/->honeysql driver field) :float]])
 
-(defmethod sql.qp/cast-integer :redshift
-  [_ value]
+(defmethod sql.qp/->integer :redshift
+  [driver value]
   (->> value
-       (h2x/maybe-cast "FLOAT8")
+       (sql.qp/->float driver)
        (vector :round)
        (h2x/maybe-cast "BIGINT")))
 
