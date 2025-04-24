@@ -103,6 +103,32 @@ export const notificationApi = Api.injectEndpoints({
         body,
       }),
     }),
+    getDefaultNotificationTemplate: builder.query<
+      Record<
+        string,
+        {
+          channel_type: string;
+          details: {
+            type: string;
+            subject?: string;
+            body: string;
+          };
+        }
+      >,
+      {
+        notification: {
+          payload_type: string;
+          payload: Record<string, unknown>;
+        };
+        channel_types: string[];
+      }
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/notification/default_template",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -118,6 +144,7 @@ export const {
   useUnsubscribeFromNotificationMutation,
   useSendUnsavedNotificationMutation,
   useGetNotificationPayloadExampleMutation,
+  useGetDefaultNotificationTemplateQuery,
 } = notificationApi;
 
 export const useTableNotificationsQuery = (
