@@ -104,7 +104,7 @@
   ;; TODO make this work for multi instances by using the metabase_cluster_lock table
   ;; https://github.com/metabase/metabase/pull/56173/files
   (locking #'perform-bulk-action!
-    (actions/perform-with-effects!
+    (actions/perform-action!
      action-kw
      {:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
       :table-id table-id
@@ -130,44 +130,3 @@
     ;;      We'll actually delete this whole method, it'll just become an :editable/insert action invocation.
     ((requiring-resolve 'metabase-enterprise.data-editing.undo/track-change!) user-id {table-id row-pk->old-new-values})
     res))
-
-(defn qry-context
-  "TODO remove this hacky glue"
-  [args-map]
-  ;; These assumptions about the shape of args-map are not generally true
-  (let [table-id  (:table-id args-map)                      ;
-        pk-fields (when table-id (select-table-pk-fields table-id))
-        rows      (:arg args-map)]
-    (when (and table-id pk-fields (seq rows))
-      {:table-id  table-id
-       :pk-fields pk-fields
-       :rows      rows})))
-
-(defn query-previous-rows
-  "TODO fix all this hackery"
-  [action-kw {:keys [table-id pk-fields rows]}]
-  (case action-kw
-    (:bulk/update :bulk/delete)
-    (query-db-rows table-id pk-fields rows)
-
-    :bulk/create
-    {}
-
-    ;; action does not relate to row updates
-    (throw (ex-info "See, this doesn't make sense" {:dumb :hack}))))
-
-(defn query-latest-rows
-  "TODO fix all this hackery"
-  [action-kw {:keys [table-id pk-fields rows]} result]
-  (case action-kw
-    :bulk/delete
-    {}
-
-    :bulk/update
-    (query-db-rows table-id pk-fields rows)
-
-    :bulk/create
-    (query-db-rows table-id pk-fields (map #(update-keys % keyword) (:created-rows result)))
-
-    ;; action does not relate to row updates
-    (throw (ex-info "See, this doesn't make sense" {:dumb :hack}))))

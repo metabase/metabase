@@ -24,8 +24,7 @@
   cached-database
   cached-database-via-table-id
   perform-action!
-  perform-action!*
-  perform-with-effects!]
+  perform-action!*]
  [metabase.actions.error
   incorrect-value-type
   violate-foreign-key-constraint
