@@ -199,7 +199,7 @@
                                  :before before
                                  :after  after})]]
       (events/publish-event! event {:actor_id    user-id
-                                    :row-changes row-changes
+                                    :row_changes row-changes
                                     :args        {:table_id table-id}}))))
 
 (mu/defn perform-action-internal!

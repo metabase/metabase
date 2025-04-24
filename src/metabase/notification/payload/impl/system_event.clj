@@ -82,7 +82,7 @@
          :event_info {:actor       ?actor
                       :args        {:table_id ?table_id
                                     :table    {:name ?table_name}}
-                      :row-changes ?row-changes}}
+                      :row_changes ?row-changes}}
         {:payload_type :notification/system-event
          :context      {:event_name ?event_name}
          :editor       {:first_name  (:first_name ?actor)
