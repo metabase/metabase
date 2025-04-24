@@ -31,7 +31,7 @@ import {
 } from "../people";
 import { getMembershipsByUser } from "../selectors";
 
-import PeopleListRow from "./PeopleListRow";
+import { PeopleListRow } from "./PeopleListRow";
 
 const mapStateToProps = (state: State) => ({
   currentUser: getUser(state),
@@ -168,12 +168,17 @@ const PeopleListInner = ({
 
   const handleChange = async (
     groupId: GroupId,
-    membershipData: Member,
+    membershipData: Partial<Member>,
     userId: User["id"],
   ) => {
     const membership = membershipsByUser[userId].find(
       (membership: Member) => membership.group_id === groupId,
     );
+    if (!membership) {
+      console.error("Tried to update a membership that does not exist");
+      return;
+    }
+
     const updatedMembership = {
       ...membership,
       ...membershipData,
@@ -210,9 +215,7 @@ const PeopleListInner = ({
     )?.membership_id;
 
     if (!membershipId) {
-      console.error(
-        "Tried to remove membership from a group which the user is not in.",
-      );
+      console.error("Tried to remove a membership that does not exist");
       return;
     }
 
@@ -284,7 +287,7 @@ const PeopleListInner = ({
                 isAdmin={isAdmin}
                 onAdd={(groupId: GroupId) => handleAdd(groupId, user.id)}
                 onRemove={(groupId: GroupId) => handleRemove(groupId, user.id)}
-                onChange={(groupId: GroupId, membershipData: Member) =>
+                onChange={(groupId: GroupId, membershipData: Partial<Member>) =>
                   handleChange(groupId, membershipData, user.id)
                 }
                 isConfirmModalOpen={Boolean(modalContent)}

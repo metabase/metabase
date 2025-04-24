@@ -12,7 +12,10 @@ export interface BaseUser {
   common_name: string;
   email: string;
   locale: string | null;
+  // TODO: check e2e tests if this attribute is ever added to a user... i'm not seeing it always defined
   google_auth: boolean;
+  // TODO: check e2e tests if this attribute is ever added to a user... i'm not seeing it always
+  ldap_auth?: boolean;
   is_active: boolean;
   is_qbnewb: boolean;
   is_superuser: boolean;
@@ -20,6 +23,7 @@ export interface BaseUser {
   date_joined: string;
   last_login: string;
   first_login: string;
+  updated_at: string;
 }
 
 export interface User extends BaseUser {

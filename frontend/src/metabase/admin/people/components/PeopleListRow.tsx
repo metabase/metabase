@@ -15,13 +15,27 @@ import { getFullName } from "metabase/lib/user";
 import { PLUGIN_ADMIN_USER_MENU_ITEMS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon, Tooltip } from "metabase/ui";
+import type { Group, GroupId, Member, User } from "metabase-types/api";
 
 import MembershipSelect from "./MembershipSelect";
 import { RefreshLink } from "./PeopleListRow.styled";
 
 const enablePasswordLoginKey = "enable-password-login";
 
-const PeopleListRow = ({
+interface PeopleListRowProps {
+  user: User;
+  showDeactivated: boolean;
+  groups: Group[];
+  userMemberships: Member[];
+  isCurrentUser: boolean;
+  isAdmin: boolean;
+  onAdd: (groupId: GroupId) => void;
+  onChange: (groupId: GroupId, membershipData: Partial<Member>) => void;
+  onRemove: (groupId: GroupId) => void;
+  isConfirmModalOpen: boolean;
+}
+
+export const PeopleListRow = ({
   user,
   showDeactivated,
   groups,
@@ -32,7 +46,7 @@ const PeopleListRow = ({
   onRemove,
   onChange,
   isConfirmModalOpen,
-}) => {
+}: PeopleListRowProps) => {
   const membershipsByGroupId = useMemo(
     () =>
       userMemberships?.reduce((acc, membership) => {
@@ -136,12 +150,7 @@ const PeopleListRow = ({
   );
 };
 
-/**
- *
- * @param {import("metabase-types/api").User} user
- * @returns {string}
- */
-function getName(user) {
+function getName(user: User): string {
   const name = getFullName(user);
 
   if (!name) {
@@ -150,5 +159,3 @@ function getName(user) {
 
   return name;
 }
-
-export default PeopleListRow;
