@@ -35,7 +35,7 @@ export const getFooterConfig = (size: FooterSize) => {
   const sizeIndex = sizes.indexOf(size);
 
   const fzValues = [6, 6, 8, 12, 14, 16, 20];
-  const marginValues = [0, 6, 8, 12, 16, 20, 32];
+  const marginValues = [0, 4, 6, 6, 12, 14, 20];
   const paddingValues = [8, 16, 24, 24, 32, 32, 48];
   const heightValues = [32, 32, 52, 60, 84, 112, 144];
   const logoHeights = [16, 16, 20, 28, 36, 48, 64];
