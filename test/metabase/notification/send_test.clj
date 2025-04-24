@@ -181,6 +181,7 @@
 
 (def ^:private fake-email-notification
   {:subject "test-message"
+   :from    "hi@metabase.com"
    :to      ["whoever@example.com"]
    :body    [{:type "text/html"
               :content "test message"}]})
