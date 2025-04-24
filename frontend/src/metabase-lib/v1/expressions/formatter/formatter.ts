@@ -294,7 +294,8 @@ function formatOperator(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {
     `Expected operator but got ${node.operator}`,
   );
 
-  const shouldPrefixOperator = isLogicOperator(node.operator);
+  const shouldPrefixOperator =
+    node.operator === "and" || node.operator === "or";
 
   const args = node.args.map((arg, index) => {
     const ln = index === 0 || shouldPrefixOperator ? "" : line;
