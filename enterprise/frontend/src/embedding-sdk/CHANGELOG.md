@@ -1,3 +1,12 @@
+## [0.54.8](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.7...embedding-sdk-0.54.8) (2025-04-24)
+
+
+### Bug Fixes
+
+* **sdk:** Ensure that questions don't flicker when fetching entity IDs ([#57073](https://github.com/metabase/metabase/issues/57073)) ([#57129](https://github.com/metabase/metabase/issues/57129)) ([1640558](https://github.com/metabase/metabase/commit/16405584d1b78c7c8f8ead4e6772194f29301e9e))
+
+
+
 ## [0.54.7](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.6...embedding-sdk-0.54.7) (2025-04-23)
 
 
