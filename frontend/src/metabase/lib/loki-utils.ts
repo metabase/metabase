@@ -1,16 +1,15 @@
 export const openImageBlobOnStorybook = ({
   canvas,
   blob,
-  scale,
 }: {
   canvas: HTMLCanvasElement;
   blob: Blob;
-  scale: number;
 }) => {
   const imgElement = document.createElement("img");
   imgElement.src = URL.createObjectURL(blob);
-  imgElement.width = canvas.width / scale;
-  imgElement.height = canvas.height / scale;
+  // scale to /2 to compensate `scale:2` in html2canvas
+  imgElement.width = canvas.width / 2;
+  imgElement.height = canvas.height / 2;
 
   const root: HTMLElement = document.querySelector("#storybook-root")!;
   const imageDownloaded = document.createElement("div");

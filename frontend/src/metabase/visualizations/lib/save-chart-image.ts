@@ -70,8 +70,6 @@ export const saveChartImage = async ({
     return;
   }
 
-  const PNG_CANVAS_SCALE = 2;
-
   const contentHeight = node.getBoundingClientRect().height;
   const contentWidth = node.getBoundingClientRect().width;
 
@@ -86,7 +84,7 @@ export const saveChartImage = async ({
 
   const { default: html2canvas } = await import("html2canvas-pro");
   const canvas = await html2canvas(node, {
-    scale: PNG_CANVAS_SCALE,
+    scale: 2,
     useCORS: true,
     height: canvasHeight,
     onclone: async (_doc: Document, node: HTMLElement) => {
@@ -108,7 +106,7 @@ export const saveChartImage = async ({
       if (isStorybookActive) {
         // if we're running storybook we open the image in place
         // so we can test the export result with loki
-        openImageBlobOnStorybook({ canvas, blob, scale: PNG_CANVAS_SCALE });
+        openImageBlobOnStorybook({ canvas, blob });
       } else {
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
