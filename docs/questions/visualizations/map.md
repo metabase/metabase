@@ -162,7 +162,7 @@ If you want to connect the region column in a custom region map to a dashboard f
 - **Grid map**: If you click on a grid cell, you'll get an option to zoom in further into a cell.
 - **World region map and US states region maps**: If your unaggregated data also contains latitude/longitude coordinates for each data point (in addition to the region name), then you'll get an option to zoom into a specific region, which will create a grid map of data points in that region binned by latitude/longitude. This only applies to the built-in region maps, not custom region maps.
 
-### Save as default view
+### Set as default view
 
 On pin and grid maps, the map resets to the default view every time the page is refreshed. To control what is displayed when someone opens a map (e.g. center around a specific point, with a specific level of zoom), adjusted your map orientation. This will be the new default view that the map returns to after a page refresh.
 
