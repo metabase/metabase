@@ -82,6 +82,7 @@
                               :expression-literals      true
                               :expressions/text         true
                               :expressions/integer      true
+                              :expressions/float        true
                               :expressions/date         true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
@@ -422,15 +423,13 @@
 
 ;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
 ;; name, but first fetches database enum types so we have access to them.
-(defmethod driver/describe-fields :postgres
-  [driver database & args]
+(defmethod sql-jdbc.sync/describe-fields-pre-process-xf :postgres
+  [_driver database & _args]
   (let [enums (enum-types database)]
-    (eduction
-     (map (fn [{:keys [database-type] :as col}]
-            (cond-> col
-              (contains? enums database-type)
-              (assoc :base-type :type/PostgresEnum))))
-     (apply (get-method driver/describe-fields :sql-jdbc) driver database args))))
+    (map (fn [{:keys [database-type] :as col}]
+           (cond-> col
+             (contains? enums database-type)
+             (assoc :base-type :type/PostgresEnum))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
@@ -645,6 +644,10 @@
 (defmethod sql.qp/->honeysql [:postgres :integer]
   [driver [_ value]]
   (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
+
+(defmethod sql.qp/->honeysql [:postgres :float]
+  [driver [_ value]]
+  (h2x/maybe-cast "DOUBLE PRECISION" (sql.qp/->honeysql driver value)))
 
 (defn- format-regex-match-first [_fn [identifier pattern]]
   (let [[identifier-sql & identifier-args] (sql/format-expr identifier {:nested true})

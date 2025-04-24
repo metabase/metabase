@@ -1,5 +1,9 @@
+import type * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseFeature, Expression } from "metabase-types/api";
+
+import type { DefinedClauseName } from "./config";
+import type { Token } from "./pratt";
 
 export type MBQLClauseCategory =
   | "logical"
@@ -15,13 +19,13 @@ export interface HelpText {
   category: MBQLClauseCategory;
   args?: HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
   description: string;
-  example: Expression;
+  example: Lib.ExpressionParts;
   structure: string;
   docsPage?: string;
 }
 
 export interface HelpTextConfig {
-  name: string;
+  name: DefinedClauseName;
   category: MBQLClauseCategory;
   args?: HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
   description: (database: Database, reportTimezone?: string) => string;
@@ -35,8 +39,6 @@ interface HelpTextArg {
   example: Expression | ["args", Expression[]];
   template?: string;
 }
-
-export type StartRule = "expression" | "boolean" | "aggregation";
 
 type MBQLClauseFunctionReturnType =
   | "aggregation"
@@ -60,16 +62,20 @@ export type MBQLClauseFunctionConfig = {
   displayName: string;
   type: MBQLClauseFunctionReturnType;
   args: ExpressionType[];
-  argType?(
-    index: number,
-    args: unknown[],
-    type: ExpressionType,
-  ): ExpressionType;
+  argType(index: number, args: unknown[], type: ExpressionType): ExpressionType;
   requiresFeature?: DatabaseFeature;
   hasOptions?: boolean;
   multiple?: boolean;
-  name?: string;
+  name: DefinedClauseName;
 
   validator?: (...args: any) => string | undefined;
 };
-export type MBQLClauseMap = Record<string, MBQLClauseFunctionConfig>;
+
+export type Hooks = {
+  error?: (error: Error) => void;
+  lexified?: (evt: { tokens: Token[] }) => void;
+  compiled?: (evt: {
+    expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
+    expressionClause: Lib.ExpressionClause;
+  }) => void;
+};

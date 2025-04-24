@@ -49,6 +49,7 @@
    "CollectionBookmark"
    "CollectionPermissionGraphRevision"
    "ConnectionImpersonation"
+   "DatabaseRouter"
    "DashboardBookmark"
    "DataPermissions"
    "FieldUsage"

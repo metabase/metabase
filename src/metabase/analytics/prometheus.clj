@@ -16,7 +16,6 @@
    [jvm-hiccup-meter.core :as hiccup-meter]
    [metabase.analytics.settings :refer [prometheus-server-port]]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.server.core :as server]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -30,7 +29,6 @@
     MemoryPoolsExports
     StandardExports
     ThreadExports)
-   (io.prometheus.client.jetty JettyStatisticsCollector)
    (java.util ArrayList List)
    (javax.management ObjectName)
    (org.eclipse.jetty.server Server)))
@@ -194,11 +192,41 @@
 
 (defn- jetty-collectors
   []
-  ;; when in dev you might not have a server setup
-  (when (server/instance)
-    [(collector/named {:namespace "metabase_webserver"
-                       :name      "jetty_stats"}
-                      (JettyStatisticsCollector. (.getHandler (server/instance))))]))
+  [(prometheus/counter :jetty/requests-total
+                       {:description "Number of requests"})
+   (prometheus/gauge :jetty/requests-active
+                     {:description "Number of requests currently active"})
+   (prometheus/gauge :jetty/requests-max
+                     {:description "Maximum number of requests that have been active at once"})
+   (prometheus/gauge :jetty/request-time-max-seconds
+                     {:description "Maximum time spent executing a request"})
+   (prometheus/counter :jetty/request-time-seconds-total
+                       {:description "Total time spent executing requests"})
+   (prometheus/counter :jetty/dispatched-total
+                       {:description "Number of requests handled"})
+   (prometheus/gauge :jetty/dispatched-active
+                     {:description "Number of active requests being handled"})
+   (prometheus/gauge :jetty/dispatched-active-max
+                     {:descrption "Maximum number of active requests handled"})
+   (prometheus/gauge :jetty/dispatched-time-max
+                     {:description "Maximum time spent dispatching a request"})
+   (prometheus/counter :jetty/dispatched-time-seconds-total
+                       {:descrption "Total time spent handling requests"})
+   (prometheus/counter :jetty/async-requests-total
+                       {:descrption "Totql number of async requests"})
+   (prometheus/gauge :jetty/async-requests-waiting
+                     {:description "Currently waiting async requests"})
+   (prometheus/gauge :jetty/async-requests-waiting-max
+                     {:description "Maximum number of waiting async requests"})
+   (prometheus/counter :jetty/async-dispatches-total
+                       {:description "Number of requests that have been asynchronously dispatched"})
+   (prometheus/counter :jetty/expires-total
+                       {:descpription "Number of async requests that have expired"})
+   (prometheus/counter :jetty/responses-total
+                       {:descrption "Total response grouped by status code"
+                        :labels [:code]})
+   (prometheus/counter :jetty/responses-bytes-total
+                       {:description "Total number of bytes across all responses"})])
 
 (defn- product-collectors
   []
@@ -212,14 +240,6 @@
                        {:description "Number of emails sent."})
    (prometheus/counter :metabase-email/message-errors
                        {:description "Number of errors when sending emails."})
-   (prometheus/counter :metabase-sdk/response-ok
-                       {:description "Number of successful SDK requests."})
-   (prometheus/counter :metabase-sdk/response-error
-                       {:description "Number of errors when responding to SDK requests."})
-   (prometheus/counter :metabase-embedding-iframe/response-ok
-                       {:description "Number of successful iframe embedding requests."})
-   (prometheus/counter :metabase-embedding-iframe/response-error
-                       {:description "Number of errors when responding to iframe embedding requests."})
    (prometheus/counter :metabase-scim/response-ok
                        {:description "Number of successful responses from SCIM endpoints"})
    (prometheus/counter :metabase-scim/response-error
@@ -238,6 +258,10 @@
                        {:description "Number of errors encountered when indexing for search"})
    (prometheus/counter :metabase-search/index-ms
                        {:description "Total number of ms indexing took"})
+   (prometheus/histogram :metabase-search/index-duration-ms
+                         {:description "Duration in milliseconds that indexing jobs take."
+      ;; 1ms -> 10minutes
+                          :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/gauge :metabase-search/queue-size
                      {:description "Number of updates on the search indexing queue."})
    (prometheus/counter :metabase-search/response-ok
@@ -282,13 +306,19 @@
                      {:description "Number of concurrent notification sends."})
    (prometheus/counter :metabase-gsheets/connection-creation-began
                        {:description "How many times the instance has initiated a Google Sheets connection creation."})
-   (prometheus/counter :metabase-gsheets/connection-creation-ok
-                       {:description "How many times the instance has created a Google Sheets connection."})
    (prometheus/counter :metabase-gsheets/connection-creation-error
                        {:description "How many failures there were when creating a Google Sheets connection."
                         :labels [:reason]})
+   (prometheus/counter :metabase-sdk/response
+                       {:description "Number of SDK embedding responses by status code."
+                        :labels [:status]})
+   (prometheus/counter :metabase-embedding-iframe/response
+                       {:description "Number of iframe embedding responses by status code."
+                        :labels [:status]})
    (prometheus/counter :metabase-gsheets/connection-deleted
-                       {:description "How many times the instance has deleted their Google Sheets connection."})])
+                       {:description "How many times the instance has deleted their Google Sheets connection."})
+   (prometheus/counter :metabase-gsheets/connection-manually-synced
+                       {:description "How many times the instance has manually sync'ed their Google Sheets connection."})])
 
 (defmulti known-labels
   "Implement this for a given metric to initialize it for the given set of label values."
@@ -337,11 +367,11 @@
     (when @jvm-hiccup-thread (@jvm-hiccup-thread))
     (reset! jvm-hiccup-thread
             (hiccup-meter/start-hiccup-meter
-             #(prometheus/observe (:registry system) :metabase_application/jvm_hiccups (/ % 1e6))))
+             #(some-> (:registry system) (prometheus/observe :metabase_application/jvm_hiccups (/ % 1e6)))))
     (when @jvm-alloc-rate-thread (@jvm-alloc-rate-thread))
     (reset! jvm-alloc-rate-thread
             (alloc-rate-meter/start-alloc-rate-meter
-             #(prometheus/observe (:registry system) :metabase_application/jvm_allocation_rate %)))
+             #(some-> (:registry system) (prometheus/observe :metabase_application/jvm_allocation_rate %))))
     registry))
 
 (defn- start-web-server!

@@ -51,6 +51,7 @@ describe("scenarios > collection defaults", () => {
       cy.findByTestId("new-collection-modal").then((modal) => {
         cy.findByPlaceholderText("My new fantastic collection").type(
           "Test collection",
+          { force: true },
         );
         cy.findByLabelText("Description").type("Test collection description");
         cy.findByTestId("collection-picker-button")
