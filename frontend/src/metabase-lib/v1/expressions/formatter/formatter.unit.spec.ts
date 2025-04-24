@@ -374,12 +374,6 @@ describe("if printWidth = Infinity, it should return the same results as the sin
     });
   });
 
-  it("should format expression references", async () => {
-    await all({
-      "[foo]": op("expression", "foo"),
-    });
-  });
-
   it("should format function calls", async () => {
     await all({
       "now()": op("now"),
