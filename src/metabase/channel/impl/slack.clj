@@ -201,8 +201,6 @@
                         ;; TODO: the context here does not nescessarily have the same shape as payload, needs to rethink this
                         (channel.template/default-template :notification/system-event context channel-type))]
     (assert template (str "No template found for event " event-name))
-    (if-not template
-      []
-      (for [channel-id (map notification-recipient->channel-id recipients)]
-        {:channel-id  channel-id
-         :attachments [(text->markdown-block (channel.template/render-template template notification-payload))]}))))
+    (for [channel-id (map notification-recipient->channel-id recipients)]
+      {:channel-id  channel-id
+       :attachments [(text->markdown-block (channel.template/render-template template notification-payload))]})))

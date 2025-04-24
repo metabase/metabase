@@ -33,17 +33,16 @@
 
 (defn- rasta-alert-message
   [& [data]]
-  (merge {:subject        "Alert: Test card has results"
-          :recipients     #{"rasta@metabase.com"}
-          :message-type   :attachments
-          :recipient-type nil
-          :message        [{pulse.test-util/card-name true}
-                           ;; card static-viz
-                           pulse.test-util/png-attachment
-                           ;; icon
-                           pulse.test-util/png-attachment
-                           ;; alert always includes result as csv
-                           pulse.test-util/csv-attachment]}
+  (merge {:subject "Alert: Test card has results"
+          :from    "notifications@metabase.com"
+          :bcc     #{"rasta@metabase.com"}
+          :body    [{pulse.test-util/card-name true}
+                    ;; card static-viz
+                    pulse.test-util/png-attachment
+                    ;; icon
+                    pulse.test-util/png-attachment
+                    ;; alert always includes result as csv
+                    pulse.test-util/csv-attachment]}
          data))
 
 (defn do-with-pulse-for-card
@@ -231,12 +230,12 @@
            :assert
            {:email
             (fn [_ [email]]
-              (is (= (rasta-alert-message {:message [{pulse.test-util/card-name                            true
-                                                      "More results have been included"                    false
-                                                      "ID</th>"                                            true
-                                                      "<a href=\\\"https://testmb.com/dashboard/" false}
-                                                     pulse.test-util/png-attachment
-                                                     pulse.test-util/csv-attachment]})
+              (is (= (rasta-alert-message {:body [{pulse.test-util/card-name                            true
+                                                   "More results have been included"                    false
+                                                   "ID</th>"                                            true
+                                                   "<a href=\\\"https://testmb.com/dashboard/" false}
+                                                  pulse.test-util/png-attachment
+                                                  pulse.test-util/csv-attachment]})
                      (mt/summarize-multipart-single-email
                       email
                       test-card-regex
@@ -272,11 +271,11 @@
            :assert
            {:email
             (fn [_ [email]]
-              (is (= (rasta-alert-message {:message [{pulse.test-util/card-name         true
-                                                      "More results have been included" false
-                                                      "ID</th>"                         true}
-                                                     pulse.test-util/png-attachment
-                                                     pulse.test-util/csv-attachment]})
+              (is (= (rasta-alert-message {:body [{pulse.test-util/card-name         true
+                                                   "More results have been included" false
+                                                   "ID</th>"                         true}
+                                                  pulse.test-util/png-attachment
+                                                  pulse.test-util/csv-attachment]})
                      (mt/summarize-multipart-single-email
                       email
                       test-card-regex
@@ -293,9 +292,9 @@
         {:email
          (fn [_ [email]]
            (is (= ;; There's no PNG with a table visualization, so only assert on one png (the dashboard icon)
-                (rasta-alert-message {:message [{pulse.test-util/card-name true}
-                                                pulse.test-util/png-attachment
-                                                pulse.test-util/xls-attachment]})
+                (rasta-alert-message {:body [{pulse.test-util/card-name true}
+                                             pulse.test-util/png-attachment
+                                             pulse.test-util/xls-attachment]})
                 (mt/summarize-multipart-single-email email test-card-regex))))}})))
 
 ;; Not really sure how this is significantly different from `xls-test`
@@ -311,10 +310,10 @@
         :assert
         {:email
          (fn [_ [email]]
-           (is (= (rasta-alert-message {:message [{pulse.test-util/card-name true}
-                                                  pulse.test-util/png-attachment
-                                                  pulse.test-util/png-attachment
-                                                  pulse.test-util/xls-attachment]})
+           (is (= (rasta-alert-message {:body [{pulse.test-util/card-name true}
+                                               pulse.test-util/png-attachment
+                                               pulse.test-util/png-attachment
+                                               pulse.test-util/xls-attachment]})
                   (mt/summarize-multipart-single-email email test-card-regex))))}})))
 
 (deftest ensure-constraints-test
@@ -335,7 +334,7 @@
          (is (= true (some? email))
              "Should have a message in the inbox")
          (when email
-           (let [filename (-> email :message last :content)
+           (let [filename (-> email :body last :content)
                  exists?  (some-> filename io/file .exists)]
              (testing "File should exist"
                (is (= true
@@ -365,7 +364,7 @@
       :assert
       {:email
        (fn [_ [email]]
-         (is (= (rasta-alert-message {:recipients #{"rasta@metabase.com" "crowberto@metabase.com"}})
+         (is (= (rasta-alert-message {:bcc #{"rasta@metabase.com" "crowberto@metabase.com"}})
                 (mt/summarize-multipart-single-email email test-card-regex))))}})))
 
 (deftest rows-alert-test
@@ -381,11 +380,11 @@
              :assert
              {:email
               (fn [_ [email]]
-                (is (= (rasta-alert-message {:message [{pulse.test-util/card-name true
-                                                        "More results have been included" false}
-                                                       pulse.test-util/png-attachment
-                                                       pulse.test-util/png-attachment
-                                                       pulse.test-util/csv-attachment]})
+                (is (= (rasta-alert-message {:body [{pulse.test-util/card-name true
+                                                     "More results have been included" false}
+                                                    pulse.test-util/png-attachment
+                                                    pulse.test-util/png-attachment
+                                                    pulse.test-util/csv-attachment]})
                        (mt/summarize-multipart-single-email email test-card-regex #"More results have been included"))))
 
               :slack
@@ -418,11 +417,11 @@
              :assert
              {:email
               (fn [_ [email]]
-                (is (= (rasta-alert-message {:message [{pulse.test-util/card-name         true
-                                                        "More results have been included" false
-                                                        "ID</th>"                         true}
-                                                       pulse.test-util/png-attachment
-                                                       pulse.test-util/csv-attachment]})
+                (is (= (rasta-alert-message {:body [{pulse.test-util/card-name         true
+                                                     "More results have been included" false
+                                                     "ID</th>"                         true}
+                                                    pulse.test-util/png-attachment
+                                                    pulse.test-util/csv-attachment]})
                        (mt/summarize-multipart-single-email email test-card-regex
                                                             #"More results have been included"
                                                             #"ID</th>"))))}})))
@@ -446,11 +445,11 @@
              {:email
               (fn [_ [email]]
                 (is (= (rasta-alert-message {:subject "Alert: Test card has reached its goal"
-                                             :message [{pulse.test-util/card-name true
-                                                        "This question has reached its goal of 5\\.9\\." true}
-                                                       pulse.test-util/png-attachment
-                                                       pulse.test-util/png-attachment
-                                                       pulse.test-util/csv-attachment]})
+                                             :body [{pulse.test-util/card-name true
+                                                     "This question has reached its goal of 5\\.9\\." true}
+                                                    pulse.test-util/png-attachment
+                                                    pulse.test-util/png-attachment
+                                                    pulse.test-util/csv-attachment]})
                        (mt/summarize-multipart-single-email email test-card-regex
                                                             #"This question has reached its goal of 5\.9\."))))}}
 
@@ -502,11 +501,11 @@
              {:email
               (fn [_ [email]]
                 (is (= (rasta-alert-message {:subject "Alert: Test card has gone below its goal"
-                                             :message [{pulse.test-util/card-name true
-                                                        "This question has gone below its goal of 1\\.1\\." true}
-                                                       pulse.test-util/png-attachment
-                                                       pulse.test-util/png-attachment
-                                                       pulse.test-util/csv-attachment]})
+                                             :body [{pulse.test-util/card-name true
+                                                     "This question has gone below its goal of 1\\.1\\." true}
+                                                    pulse.test-util/png-attachment
+                                                    pulse.test-util/png-attachment
+                                                    pulse.test-util/csv-attachment]})
                        (mt/summarize-multipart-single-email email test-card-regex
                                                             #"This question has gone below its goal of 1\.1\."))))}}
 

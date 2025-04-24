@@ -28,10 +28,9 @@
 (defn- construct-email
   [& [data]]
   (merge {:subject        (format "Alert: %s has results" notification.tu/default-card-name)
-          :recipients     #{"rasta@metabase.com"}
-          :message-type   :attachments
-          :recipient-type nil
-          :message        [{notification.tu/default-card-name true}
+          :bcc            #{"rasta@metabase.com"}
+          :from           "notifications@metabase.com"
+          :body           [{notification.tu/default-card-name true}
                            ;; icon
                            notification.tu/png-attachment
                            notification.tu/csv-attachment]}
@@ -59,12 +58,12 @@
                {:channel/email
                 (fn [[email]]
                   (is (= (construct-email
-                          {:message [{notification.tu/default-card-name true
-                                      "Manage your subscriptions"       true
-                                      card-content                      true}
-                                     ;; icon
-                                     notification.tu/png-attachment
-                                     notification.tu/csv-attachment]})
+                          {:body [{notification.tu/default-card-name true
+                                   "Manage your subscriptions"       true
+                                   card-content                      true}
+                                  ;; icon
+                                  notification.tu/png-attachment
+                                  notification.tu/csv-attachment]})
                          (mt/summarize-multipart-single-email
                           email
                           card-name-regex
@@ -114,13 +113,13 @@
        {:channel/email
         (fn [[email]]
           (is (= (construct-email
-                  {:message [{notification.tu/default-card-name true
-                              "Manage your subscriptions"       true}
-                             ;; static viz
-                             notification.tu/png-attachment
-                             ;; icon
-                             notification.tu/png-attachment
-                             notification.tu/csv-attachment]})
+                  {:body [{notification.tu/default-card-name true
+                           "Manage your subscriptions"       true}
+                          ;; static viz
+                          notification.tu/png-attachment
+                          ;; icon
+                          notification.tu/png-attachment
+                          notification.tu/csv-attachment]})
                  (mt/summarize-multipart-single-email
                   email
                   card-name-regex
@@ -161,11 +160,11 @@
                  {:channel/email
                   (fn [[email]]
                     (is (= (construct-email
-                            {:message [{notification.tu/default-card-name true
-                                        "Manage your subscriptions"       true}
-                                      ;; icon
-                                       notification.tu/png-attachment
-                                       notification.tu/csv-attachment]})
+                            {:body [{notification.tu/default-card-name true
+                                     "Manage your subscriptions"       true}
+                                           ;; icon
+                                    notification.tu/png-attachment
+                                    notification.tu/csv-attachment]})
                            (mt/summarize-multipart-single-email
                             email
                             card-name-regex
@@ -225,7 +224,7 @@
             ;; this will fail if the query has a limit
             ;; follow up in https://metaboat.slack.com/archives/C064QMXEV9N/p1734522146075659
             (is (= 11
-                   (some->> email :message (m/find-first #(= "text/csv" (:content-type %))) :content slurp str/split-lines count))))})))))
+                   (some->> email :body (m/find-first #(= "text/csv" (:content-type %))) :content slurp str/split-lines count))))})))))
 
 (deftest multiple-email-recipients-test
   (notification.tu/with-card-notification
@@ -243,7 +242,7 @@
       (fn [emails]
         (is (= #{#{"ngoc@metabase.com"} #{"crowberto@metabase.com" "rasta@metabase.com"}}
                (->> emails
-                    (map (comp set :recipients))
+                    (map (comp set :bcc))
                     set))))})))
 
 (deftest send-condition-has-result-test
@@ -344,7 +343,7 @@
         (fn [[email]]
           (is (= (construct-email
                   {:subject "Alert: Card notification test card has reached its goal"
-                   :message [{notification.tu/default-card-name true
+                   :body    [{notification.tu/default-card-name true
                               "This question has reached its goal of 5\\.9\\." true}
                              notification.tu/png-attachment
                              notification.tu/png-attachment
@@ -395,7 +394,7 @@
         (fn [[email]]
           (is (= (construct-email
                   {:subject "Alert: Card notification test card has gone below its goal"
-                   :message [{notification.tu/default-card-name true
+                   :body    [{notification.tu/default-card-name true
                               "This question has gone below its goal of 1\\.1\\." true}
                              notification.tu/png-attachment
                              notification.tu/png-attachment
@@ -428,12 +427,12 @@
       (fn [[email]]
         (testing "email is sent correctly"
           (is (= (construct-email
-                  {:recipients #{"ngoc@metabase.com"}
-                   :message [{notification.tu/default-card-name true
-                              "Manage your subscriptions"       false
-                              "Unsubscribe"                     true}
-                             notification.tu/png-attachment
-                             notification.tu/csv-attachment]})
+                  {:bcc  #{"ngoc@metabase.com"}
+                   :body [{notification.tu/default-card-name true
+                           "Manage your subscriptions"       false
+                           "Unsubscribe"                     true}
+                          notification.tu/png-attachment
+                          notification.tu/csv-attachment]})
                  (mt/summarize-multipart-single-email
                   email
                   card-name-regex
@@ -441,7 +440,7 @@
                   #"Unsubscribe"))))
 
         (testing "the unsubscribe url is correct"
-          (let [url    (re-find #"https://[^/]+/unsubscribe[^\"]*" (-> email :message first :content))
+          (let [url    (re-find #"https://[^/]+/unsubscribe[^\"]*" (-> email :body first :content))
                 params (codec/form-decode (second (str/split url #"\?")))]
             (is (int? (parse-long (get params "notification-handler-id"))))
             (is (= "ngoc@metabase.com" (get params "email")))
@@ -515,7 +514,7 @@
 
 (defn- email->attachment-line-count
   [email]
-  (let [attachment (m/find-first #(= "text/csv" (:content-type %)) (:message email))]
+  (let [attachment (m/find-first #(= "text/csv" (:content-type %)) (:body email))]
     (if attachment
       (with-open [rdr (io/reader (:content attachment))]
         (count (line-seq rdr)))
