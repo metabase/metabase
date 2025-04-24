@@ -122,58 +122,82 @@ jobs:
           echo '' >> $GITHUB_STEP_SUMMARY
           echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
 
-  # Run the test on master branch
-  run-on-master:
+  # Run the test on master branch (for manual trigger)
+  run-on-master-manual:
     name: Run on master branch
     if: github.event_name == 'workflow_dispatch'
     needs: [workflow-summary-manual]
-    uses: ./.github/workflows/e2e-stress-test-flake-fix.yml@master
-    with:
-      spec: ${{ inputs.spec }}
-      burn_in: ${{ inputs.burn_in }}
-      grep: ${{ inputs.grep }}
-      mb_edition: ${{ inputs.mb_edition }}
-      qa_db: ${{ inputs.qa_db }}
-      enable_network_throttling: ${{ inputs.enable_network_throttling }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Trigger workflow on master
+        run: |
+          gh workflow run e2e-stress-test-flake-fix.yml \
+            -f spec='${{ inputs.spec }}' \
+            -f burn_in='${{ inputs.burn_in }}' \
+            -f grep='${{ inputs.grep }}' \
+            -f mb_edition='${{ inputs.mb_edition }}' \
+            -f qa_db='${{ inputs.qa_db }}' \
+            -f enable_network_throttling='${{ inputs.enable_network_throttling }}' \
+            -r master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Run the test on current branch (for manual trigger)
-  run-on-current-branch:
+  run-on-current-branch-manual:
     name: Run on current branch
     if: github.event_name == 'workflow_dispatch'
     needs: [workflow-summary-manual]
-    uses: ./.github/workflows/e2e-stress-test-flake-fix.yml@${{ github.ref_name }}
-    with:
-      spec: ${{ inputs.spec }}
-      burn_in: ${{ inputs.burn_in }}
-      grep: ${{ inputs.grep }}
-      mb_edition: ${{ inputs.mb_edition }}
-      qa_db: ${{ inputs.qa_db }}
-      enable_network_throttling: ${{ inputs.enable_network_throttling }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Trigger workflow on current branch
+        run: |
+          gh workflow run e2e-stress-test-flake-fix.yml \
+            -f spec='${{ inputs.spec }}' \
+            -f burn_in='${{ inputs.burn_in }}' \
+            -f grep='${{ inputs.grep }}' \
+            -f mb_edition='${{ inputs.mb_edition }}' \
+            -f qa_db='${{ inputs.qa_db }}' \
+            -f enable_network_throttling='${{ inputs.enable_network_throttling }}' \
+            -r ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Run the test on master branch (for PR label trigger)
   run-on-master-auto:
     name: Run on master branch (auto)
     if: github.event_name == 'pull_request' && success('check-label')
     needs: [workflow-summary-auto, check-label]
-    uses: ./.github/workflows/e2e-stress-test-flake-fix.yml@master
-    with:
-      spec: ${{ needs.check-label.outputs.spec_path }}
-      burn_in: '20'
-      grep: ''
-      mb_edition: 'ee'
-      qa_db: 'none'
-      enable_network_throttling: true
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Trigger workflow on master
+        run: |
+          gh workflow run e2e-stress-test-flake-fix.yml \
+            -f spec='${{ needs.check-label.outputs.spec_path }}' \
+            -f burn_in='20' \
+            -f grep='' \
+            -f mb_edition='ee' \
+            -f qa_db='none' \
+            -f enable_network_throttling='true' \
+            -r master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Run the test on current branch (for PR label trigger)
   run-on-current-branch-auto:
     name: Run on current branch (auto)
     if: github.event_name == 'pull_request' && success('check-label')
     needs: [workflow-summary-auto, check-label]
-    uses: ./.github/workflows/e2e-stress-test-flake-fix.yml@${{ github.ref_name }}
-    with:
-      spec: ${{ needs.check-label.outputs.spec_path }}
-      burn_in: '20'
-      grep: ''
-      mb_edition: 'ee'
-      qa_db: 'none'
-      enable_network_throttling: true
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Trigger workflow on current branch
+        run: |
+          gh workflow run e2e-stress-test-flake-fix.yml \
+            -f spec='${{ needs.check-label.outputs.spec_path }}' \
+            -f burn_in='20' \
+            -f grep='' \
+            -f mb_edition='ee' \
+            -f qa_db='none' \
+            -f enable_network_throttling='true' \
+            -r ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
