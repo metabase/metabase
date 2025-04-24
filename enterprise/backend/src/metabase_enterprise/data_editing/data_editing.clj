@@ -10,6 +10,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
 (defn select-table-pk-fields
@@ -74,8 +75,7 @@
                qp/userland-query-with-default-constraints
                qp/process-query
                :data
-               qp-result->row-map
-               (m/index-by #(get-row-pks pk-fields %))))))))
+               qp-result->row-map))))))
 
 (defn apply-coercions
   "For fields that have a coercion_strategy, apply the coercion function (defined in data-editing.coerce) to the corresponding value in each row.
@@ -101,7 +101,7 @@
 (defn perform-bulk-action!
   "Operates on rows in the database, supply an action-kw: :bulk/create, :bulk/update, :bulk/delete.
   The input `rows` is given different semantics depending on the action type, see actions/perform-action!."
-  [action-kw user-id table-id rows]
+  [action-kw user-id table-id rows & {:keys [existing-context]}]
   ;; TODO make this work for multi instances by using the metabase_cluster_lock table
   ;; https://github.com/metabase/metabase/pull/56173/files
   (locking #'perform-bulk-action!
@@ -110,8 +110,13 @@
           [{:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
             :table-id table-id
             :arg      rows}]
-          {:policy  :data-editing
-           :user-id user-id})
+          {:policy           :data-editing
+           :existing-context (if existing-context
+                               (assoc existing-context :user-id user-id)
+                               (let [iid (nano-id/nano-id)]
+                                 {:invocation-id    iid
+                                  :invocation-scope [[:grid/edit iid]]
+                                  :user-id          user-id}))})
          :effects
          (filter (comp #{:effect/row.modified} first))
          (map second))))
@@ -121,8 +126,7 @@
   Expects rows that are acceptable directly by [[actions/perform-action!]]. If casts or reversing coercion strategy
   are required, that work must be done before calling this function."
   [user-id table-id rows]
-  ;; TODO make sure we're always passed a user, and remove this fallback
-  ;;      hard to make a business case for anonymous lemur's inserting data
+  (api/check-500 user-id)
   (let [res (perform-bulk-action! :bulk/create user-id table-id rows)]
     {:created-rows (map :after res)}))
 
@@ -137,17 +141,18 @@
     [false false] ::no-op))
 
 (defmethod actions/handle-effects!* :effect/row.modified
-  [_ user-id diffs]
-  (let [table->fields (u/group-by identity select-table-pk-fields (distinct (map :table-id diffs)))
-        diff->pk      (->> (u/for-map [{:keys [table-id before after] :as diff} diffs
+  [_ {:keys [user-id invocation-scope]} diffs]
+  (let [table->fields (u/group-by identity select-table-pk-fields concat (distinct (map :table-id diffs)))
+        diff->pk      (u/for-map [{:keys [table-id before after] :as diff} diffs
+                                  :when (or before after)]
+                        [diff (get-row-pks (table->fields table-id) (or after before))])]
+    ;; undo snapshots, but only if we're not executing an undo
+    (when-not (some (comp #{"undo"} namespace first) invocation-scope)
+      ((requiring-resolve 'metabase-enterprise.data-editing.undo/track-change!)
+       user-id (u/for-map [[table-id diffs] (group-by :table-id diffs)]
+                 [table-id (u/for-map [{:keys [before after] :as diff} diffs
                                        :when (or before after)]
-                                      [diff (get-row-pks (table->fields table-id) (or after before))]))]
-    ;; undo snapshots
-    ((requiring-resolve 'metabase-enterprise.data-editing.undo/track-change!)
-     user-id (u/for-map [[table-id diffs] (group-by :table-id diffs)]
-                        [table-id (u/for-map [{:keys [before after] :as diff} diffs
-                                              :when (or before after)]
-                                             [(diff->pk diff) [before after]])]))
+                             [(diff->pk diff) [before after]])])))
     ;; table notification system events
     (doseq [[event payloads] (->> diffs
                                   (group-by row-update-event)

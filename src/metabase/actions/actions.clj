@@ -180,13 +180,14 @@
 
 (defmulti handle-effects!*
   "Trigger bulk side effects in response to individual effects within actions, e.g. table row modified system events."
-  {:arglists '([effect-type user-id payloads]), :added "internal-tools"}
-  (fn [effect-type _user-id _payloads]
+  {:arglists '([effect-type context payloads]), :added "internal-tools"}
+  (fn [effect-type _context _payloads]
     (keyword effect-type)))
 
-(defn- handle-effects! [{:keys [user-id effects]}]
-  (doseq [[event-type payloads] (u/group-by first second effects)]
-    (handle-effects!* event-type user-id payloads)))
+(defn- handle-effects! [{:keys [effects] :as context}]
+  (let [sans-effects (dissoc context :effects)]
+    (doseq [[event-type payloads] (u/group-by first second effects)]
+      (handle-effects!* event-type sans-effects payloads))))
 
 (mu/defn perform-action-internal!
   "A more modern version of [[perform-action!]] that takes an existing context, and multiple arg-maps.
@@ -199,7 +200,7 @@
    & {:as _opts}]
   (let [invocation-id  (nano-id/nano-id)
         context-before (-> (assoc ctx :invocation-id invocation-id)
-                           (update :invocation-scope u/conjv invocation-id))]
+                           (update :invocation-scope u/conjv [action-kw invocation-id]))]
     (actions.events/publish-action-invocation! action-kw context-before inputs)
     (try
       (u/prog1 (perform-action!* action-kw context-before inputs)
@@ -241,7 +242,7 @@
   `action`."
   [action
    arg-maps
-   & {:keys [policy user-id]
+   & {:keys [policy existing-context]
       :or   {policy :model-action}}]
   (let [action-kw (keyword action)
         spec      (action-arg-map-spec action-kw)
@@ -271,7 +272,7 @@
       (when (= :model-action policy)
         (doseq [arg-map arg-maps]
           (qp.perms/check-query-action-permissions* arg-map)))
-      (let [result (let [context {:user-id (api/check-500 (or user-id api/*current-user-id*))}]
+      (let [result (let [context (or existing-context {:user-id (api/check-500 api/*current-user-id*)})]
                      (if-not driver
                        (perform-action-internal! action-kw context arg-maps)
                        (driver/with-driver driver

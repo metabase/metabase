@@ -4,6 +4,7 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as methodical]
+   [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/Undo [_model] :data_edit_undo_chain)
@@ -121,9 +122,12 @@
   "Revert the underlying table data."
   [undo? user-id batch]
   (doseq [[[table-id category] sub-batch] (u/group-by (juxt :table_id categorize) batch)
-          :let [rows (batch->rows undo? sub-batch)]]
+          :let [rows (batch->rows undo? sub-batch)
+                iid  (nano-id/nano-id)
+                opts {:existing-context {:invocation_id iid
+                                         :invocation-scope [[(if undo? :undo/undo :undo/redo) iid]]}}]]
     (case (if undo? (invert category) category)
-      :create (try (data-editing/perform-bulk-action! :bulk/create user-id table-id rows)
+      :create (try (data-editing/perform-bulk-action! :bulk/create user-id table-id rows opts)
                    (catch Exception e
                      ;; Sometimes cols don't support a custom value being provided, e.g., GENERATED ALWAYS AS IDENTITY
                      (throw (ex-info "Failed to un-delete row(s)"
@@ -132,8 +136,8 @@
                                       :table-id  table-id
                                       :pks       (map :row_pk batch)}
                                      e))))
-      :update (data-editing/perform-bulk-action! :bulk/update user-id table-id rows)
-      :delete (data-editing/perform-bulk-action! :bulk/delete user-id table-id rows))))
+      :update (data-editing/perform-bulk-action! :bulk/update user-id table-id rows opts)
+      :delete (data-editing/perform-bulk-action! :bulk/delete user-id table-id rows opts))))
 
 (defn- undo*! [undo? user-id table-id]
   (let [batch (next-batch undo? user-id table-id)]
