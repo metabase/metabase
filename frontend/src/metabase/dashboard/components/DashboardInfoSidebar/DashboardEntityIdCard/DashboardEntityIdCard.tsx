@@ -51,29 +51,29 @@ export const DashboardEntityIdCard = ({
 
       <Collapse in={opened} role="list">
         <Divider mb="0.75rem" />
-        <Group
-          justify="space-between"
-          className={Styles.EntityId}
-          role="listitem"
-          aria-label="This dashboard"
-        >
-          <Text>{t`This dashboard`}</Text>
-          <EntityCopyButton entityId={dashboard.entity_id} />
-        </Group>
-        {tabs?.map((tab) =>
-          tab.entity_id ? (
-            <Group
-              justify="space-between"
-              key={tab.id}
-              className={Styles.EntityId}
-              role="listitem"
-              aria-label={tab.name}
-            >
-              <Text>{tab.name}</Text>
-              <EntityCopyButton entityId={tab.entity_id} />
-            </Group>
-          ) : null,
-        )}
+        <Stack gap="0.5rem">
+          <Group
+            justify="space-between"
+            role="listitem"
+            aria-label={t`This dashboard`}
+          >
+            <Text>{t`This dashboard`}</Text>
+            <EntityCopyButton entityId={dashboard.entity_id} />
+          </Group>
+          {tabs?.map((tab) =>
+            tab.entity_id ? (
+              <Group
+                justify="space-between"
+                key={tab.id}
+                role="listitem"
+                aria-label={tab.name}
+              >
+                <Text>{tab.name}</Text>
+                <EntityCopyButton entityId={tab.entity_id} />
+              </Group>
+            ) : null,
+          )}
+        </Stack>
       </Collapse>
     </SidesheetCard>
   );
