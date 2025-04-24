@@ -335,10 +335,6 @@
   [driver [_ field]]
   [:'varPop (sql.qp/->honeysql driver field)])
 
-(defmethod sql.qp/->float :clickhouse
-  [_ value]
-  [:'toFloat64 value])
-
 (defmethod sql.qp/float-dbtype :clickhouse
   [_]
   :Float64)

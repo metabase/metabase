@@ -136,32 +136,15 @@
   [_ value]
   (h2x/->integer value))
 
-(defmulti ->float
-  "Cast to float."
-  {:changelog-test/ignore true :added "0.45.0" :arglists '([driver honeysql-expr])})
-
-(defmethod ->float :sql
-  [driver value]
-  ;; optimization: we don't need to cast a number literal that is already a `Float` or a `Double` to `FLOAT`. Other
-  ;; number literals can be converted to doubles in Clojure-land. Note that there is a little bit of a mismatch between
-  ;; FLOAT and DOUBLE here, but that's mostly because I'm not 100% sure which drivers have both types. In the future
-  ;; maybe we can fix this.
-  (cond
-    (float? value)
-    (h2x/with-database-type-info (inline-num value) "float")
-
-    (number? value)
-    (recur driver (double value))
-
-    (inline? value)
-    (recur driver (second value))
-
-    :else
-    (h2x/cast :float value)))
-
 (defmulti float-dbtype
   "Return the name of the floating point type we convert to in this database."
   {:added "0.55.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmulti ->float
+  "Cast to float."
+  {:changelog-test/ignore true :added "0.45.0" :arglists '([driver honeysql-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -169,13 +152,7 @@
   [_driver]
   :float)
 
-(defmulti cast-float
-  "Cast to float."
-  {:added "0.55.0" :arglists '([driver honeysql-expr])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod cast-float :sql
+(defmethod ->float :sql
   [driver value]
   (h2x/maybe-cast (float-dbtype driver) value))
 
@@ -198,7 +175,7 @@
       value
 
       (not inline)
-      (cast-float driver value)
+      (->float driver value)
 
       (number? inline)
       (h2x/with-database-type-info (inline-num (double inline)) (float-dbtype driver))
@@ -1100,13 +1077,13 @@
                                      (->honeysql driver (if (integer? mbql-expr)
                                                           (double mbql-expr)
                                                           mbql-expr)))]
-    (into [:/ (->float driver numerator)]
+    (into [:/ (coerce-float driver numerator)]
           (map safe-denominator)
           denominators)))
 
 (defmethod ->honeysql [:sql :float]
   [driver [_ value]]
-  (->float driver (->honeysql driver value)))
+  (coerce-float driver (->honeysql driver value)))
 
 (defmethod ->honeysql [:sql :sum-where]
   [driver [_ arg pred]]

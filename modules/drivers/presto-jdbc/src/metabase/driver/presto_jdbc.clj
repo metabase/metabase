@@ -143,10 +143,6 @@
   [_ [_ t]]
   (h2x/cast :time (u.date/format-sql (t/local-time t))))
 
-(defmethod sql.qp/->float :presto-jdbc
-  [_ value]
-  (h2x/cast :double value))
-
 (defmethod sql.qp/float-dbtype :presto-jdbc
   [_]
   :double)

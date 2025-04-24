@@ -12,8 +12,6 @@ title: Driver interface changelog
 
 - Added the multi-method `float-dbtype` which returns the name of the float type we coerce to for coercion strategies and the `float()` custom expression function.
 
-- Added the multi-method `cast-float` which casts text and integers to floats.
-
 - Added a feature `:expressions/float` for drivers that support casting text to floats.
 
 ## Metabase 0.54.0

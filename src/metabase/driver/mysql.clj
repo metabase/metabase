@@ -314,11 +314,6 @@
   [_]
   :double)
 
-(defmethod sql.qp/->float :mysql
-  [_ value]
-  ;; no-op as MySQL doesn't support cast to float
-  value)
-
 (defmethod sql.qp/->integer :mysql
   [_ value]
   (h2x/maybe-cast :signed value))

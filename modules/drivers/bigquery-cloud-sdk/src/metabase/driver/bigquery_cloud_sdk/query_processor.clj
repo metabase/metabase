@@ -573,10 +573,6 @@
         (datetime target-timezone)
         (with-temporal-type :datetime))))
 
-(defmethod sql.qp/->float :bigquery-cloud-sdk
-  [_ value]
-  (h2x/cast :float64 value))
-
 (defmethod sql.qp/float-dbtype :bigquery-cloud-sdk
   [_]
   :float64)
