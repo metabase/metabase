@@ -565,3 +565,19 @@
            {:channel/email
             (fn [emails]
               (is (= 11 (email->attachment-line-count (first emails)))))}))))))
+
+(deftest audit-alert-send-event-test
+  (testing "When we send an alert, we also log the event:"
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:audit-app}
+       (notification.tu/with-card-notification [notification {:handlers [{:channel_type :channel/email,
+                                                                          :recipients [{:type :notification-recipient/user
+                                                                                        :user_id (mt/user->id :rasta)}]}]}]
+         (notification/send-notification! notification :notification/sync? true)
+         (is (=? {:topic    :alert-send
+                  :user_id  (mt/user->id :crowberto)
+                  :model    "Pulse"
+                  :model_id (:id notification)
+                  :details  {:recipients [{:id (mt/user->id :rasta)}]
+                             :filters    nil}}
+                 (mt/latest-audit-log-entry :alert-send (:id notification)))))))))

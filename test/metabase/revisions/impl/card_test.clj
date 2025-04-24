@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.revisions.impl.card :as impl.card]
    [metabase.revisions.init]
    [metabase.revisions.models.revision :as revision]
