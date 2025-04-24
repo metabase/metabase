@@ -1,9 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
-import { createQuery } from "metabase-lib/test-helpers";
+import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import type { StartRule } from "../types";
+import { query, stageIndex } from "../test/shared";
 
 import { diagnose, diagnoseAndCompile } from "./diagnostics";
 
@@ -11,18 +11,16 @@ describe("diagnostics", () => {
   describe("diagnose", () => {
     function setup({
       expression,
-      startRule = "expression",
+      expressionMode = "expression",
       metadata,
     }: {
       expression: string;
-      startRule?: StartRule;
+      expressionMode?: Lib.ExpressionMode;
       metadata?: Metadata;
     }) {
-      const query = createQuery();
-      const stageIndex = -1;
       return diagnose({
         source: expression,
-        startRule,
+        expressionMode,
         query,
         stageIndex,
         metadata,
@@ -31,22 +29,29 @@ describe("diagnostics", () => {
 
     function err(
       expression: string,
-      startRule: StartRule = "expression",
+      expressionMode: Lib.ExpressionMode = "expression",
       metadata?: Metadata,
     ) {
-      return setup({ expression, startRule, metadata })?.message;
+      return setup({ expression, expressionMode, metadata })?.message;
     }
 
-    it("should catch mismatched parentheses", () => {
+    it("should catch mismatched parentheses after function", () => {
       expect(err("FLOOR [Price]/2)")).toBe(
         "Expecting an opening parenthesis after function FLOOR",
+      );
+      expect(err("LOWER [Vendor]")).toBe(
+        "Expecting an opening parenthesis after function LOWER",
       );
     });
 
     it("should catch missing parentheses", () => {
-      expect(err("LOWER [Vendor]")).toBe(
-        "Expecting an opening parenthesis after function LOWER",
-      );
+      expect(err("(")).toBe("Expecting a closing parenthesis");
+      expect(err("(()")).toBe("Expecting a closing parenthesis");
+      expect(err("((()")).toBe("Expecting a closing parenthesis");
+
+      expect(err(")")).toBe("Expecting an opening parenthesis");
+      expect(err("())")).toBe("Expecting an opening parenthesis");
+      expect(err("()))")).toBe("Expecting an opening parenthesis");
     });
 
     it("should catch invalid characters", () => {
@@ -54,7 +59,7 @@ describe("diagnostics", () => {
     });
 
     it("should catch unterminated string literals", () => {
-      expect(err('[Category] = "widget')).toBe("Missing closing quotes");
+      expect(err('[Category] = "widget')).toBe("Missing closing string quote");
     });
 
     it("should catch unterminated field reference", () => {
@@ -66,7 +71,7 @@ describe("diagnostics", () => {
     });
 
     it("should show the correct number of function arguments in a custom expression", () => {
-      expect(err("between([Tax])", "boolean")).toBe(
+      expect(err("between([Tax])", "filter")).toBe(
         "Function between expects 3 arguments",
       );
     });
@@ -283,17 +288,95 @@ describe("diagnostics", () => {
       expect(err(`"foo"`)).toBeUndefined();
       expect(err(`true`)).toBeUndefined();
     });
+
+    describe("mathematical notation", () => {
+      it.each([
+        "1E",
+        "1e",
+        "1.2E",
+        "1.2e",
+        "1E+",
+        "1e+",
+        "1.2E+",
+        "1.2e+",
+        "1E-",
+        "1e-",
+        "1.2E-",
+        "1.2e-",
+        "1.2e-",
+        ".1E",
+        ".1e",
+        ".1E+",
+        ".1e+",
+        ".1E-",
+        ".1e-",
+        ".1E-",
+        "2e",
+        "3e+",
+        "4E-",
+        "4E-",
+      ])("handles missing exponents for %s", (expression) => {
+        expect(err(expression)).toBe("Missing exponent");
+      });
+    });
+
+    describe("string quotes", () => {
+      it.each([`"single`, `'double`, `"foo\\"`, `'foo\\'`])(
+        "reject missing string quotes for %s",
+        (expression) => {
+          expect(err(expression)).toBe("Missing closing string quote");
+        },
+      );
+    });
+
+    describe("field quotes", () => {
+      it.each([
+        `[foo`,
+        `[foo \\[`,
+        `[foo \\]`,
+        `[foo \\] bar`,
+        `[foo \\[ bar`,
+        `[foo \\[ bar \\]`,
+      ])("reject missing closing field quotes for %s", (expression) => {
+        expect(err(expression)).toBe("Missing a closing bracket");
+      });
+
+      it.each([`foo]`, `foo   ]`])(
+        "reject missing field quotes for %s",
+        (expression) => {
+          expect(err(expression)).toMatch(/^Missing an opening bracket for /);
+        },
+      );
+
+      it.each([`[`, `[]`])("reject missing field name for %s", (expression) => {
+        expect(err(expression)).toBe("Expected a field name");
+      });
+    });
+
+    describe("bad tokens", () => {
+      it.each([`.`, `1°`, `@`, `#`, `%`, `@`, `(])`])(
+        "should reject bad tokens like %s",
+        (expression) => {
+          expect(err(expression)).toMatch(/^Invalid character/);
+        },
+      );
+
+      it.each([`$#`, `$#@`, `$#@$`, `$#@$#`])(
+        "should reject bad tokens like %s",
+        (expression) => {
+          expect(err(expression)).toMatch(/^Invalid expression/);
+        },
+      );
+    });
   });
 
   describe("diagnoseAndCompile", () => {
     function setup({ expression }: { expression: string }) {
-      const query = createQuery();
-      const stageIndex = -1;
       return diagnoseAndCompile({
         source: expression,
         query,
         stageIndex,
-        startRule: "expression",
+        expressionMode: "expression",
       });
     }
 

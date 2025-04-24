@@ -8,6 +8,8 @@ title: Driver interface changelog
 
 - Added a feature `:expression-literals` for drivers that support expressions consisting of a single string, number, or boolean literal value.
 
+- Added a new abstract driver mix-in `:metabase.driver.sql.query-processor.boolean-is-comparison/boolean-is-comparison` that can be inherited by drivers that require boolean literal constants to be converted to comparison expressions in the top level of WHERE, AND, OR, NOT, and CASE clauses.
+
 - Added the multi-method `float-dbtype` which returns the name of the float type we coerce to for coercion strategies and the `float()` custom expression function.
 
 - Added the multi-method `cast-float` which casts text and integers to floats.

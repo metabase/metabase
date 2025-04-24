@@ -19,9 +19,24 @@ import type {
 } from "metabase-types/api";
 
 const DEFAULT_CHANNELS_CONFIG = {
-  email: { name: t`Email`, type: "email" },
-  slack: { name: t`Slack`, type: "slack" },
-  http: { name: t`Http`, type: "http" },
+  email: {
+    get name() {
+      return t`Email`;
+    },
+    type: "email",
+  },
+  slack: {
+    get name() {
+      return t`Slack`;
+    },
+    type: "slack",
+  },
+  http: {
+    get name() {
+      return t`Http`;
+    },
+    type: "http",
+  },
 };
 
 interface NotificationChannelsPickerProps {
