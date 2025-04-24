@@ -1,4 +1,4 @@
-import { type ComponentProps, useCallback, useEffect } from "react";
+import { type ComponentProps, useCallback, useEffect, useMemo } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
@@ -7,11 +7,12 @@ import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Modal } from "metabase/ui";
 import { getIsDirty } from "metabase/visualizer/selectors";
+import { getDataSourceIdsFromColumnValueMappings } from "metabase/visualizer/utils";
 import { initializeVisualizer } from "metabase/visualizer/visualizer.slice";
 import type { CardId } from "metabase-types/api";
 import type {
   VisualizerDataSourceId,
-  VisualizerHistoryItem,
+  VisualizerVizDefinition,
 } from "metabase-types/store/visualizer";
 
 import { Visualizer } from "../Visualizer";
@@ -21,8 +22,7 @@ import S from "./VisualizerModal.module.css";
 interface VisualizerModalProps {
   initialState?:
     | {
-        state?: Partial<VisualizerHistoryItem>;
-        extraDataSources?: VisualizerDataSourceId[];
+        state: VisualizerVizDefinition;
       }
     | { cardId: CardId };
 }
@@ -60,6 +60,22 @@ export function VisualizerModal({
     }
   }, [open, wasOpen, initialState, dispatch]);
 
+  const initialDataSources = useMemo(() => {
+    if (!initialState) {
+      return;
+    }
+    if ("cardId" in initialState) {
+      const id: VisualizerDataSourceId = `card:${initialState.cardId}`;
+      return [id];
+    }
+    if (initialState?.state?.columnValuesMapping) {
+      return getDataSourceIdsFromColumnValueMappings(
+        initialState.state.columnValuesMapping,
+      );
+    }
+    return;
+  }, [initialState]);
+
   return (
     <>
       <Modal
@@ -70,11 +86,14 @@ export function VisualizerModal({
         onClose={onModalClose}
         padding={0}
       >
-        <Visualizer
-          className={S.VisualizerRoot}
-          {...otherProps}
-          onClose={onModalClose}
-        />
+        {open && (
+          <Visualizer
+            className={S.VisualizerRoot}
+            {...otherProps}
+            initialDataSources={initialDataSources}
+            onClose={onModalClose}
+          />
+        )}
       </Modal>
       {modalContent}
     </>

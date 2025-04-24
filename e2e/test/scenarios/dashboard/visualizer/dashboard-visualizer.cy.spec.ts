@@ -398,6 +398,92 @@ describe("scenarios > dashboard > visualizer", () => {
     });
   });
 
+  it("should allow navigating through change history", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+
+    H.editDashboard();
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
+
+    H.modal().within(() => {
+      cy.findByLabelText("Back").as("undoButton");
+      cy.findByLabelText("Forward").as("redoButton");
+
+      cy.get("@undoButton").should("be.disabled");
+      cy.get("@redoButton").should("be.disabled");
+
+      H.switchToAddMoreData();
+      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+      H.switchToColumnsList();
+
+      // Undo adding a new data source
+      cy.get("@redoButton").should("be.disabled");
+      cy.get("@undoButton").click();
+      cy.get("@undoButton").should("be.disabled");
+
+      H.dataImporter().within(() => {
+        cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
+        cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("not.exist");
+      });
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 1);
+
+      // Redo adding a new data source
+      cy.get("@redoButton").click();
+      cy.get("@redoButton").should("be.disabled");
+
+      H.dataImporter().within(() => {
+        cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
+        cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
+      });
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 2);
+
+      // Remove a column
+      H.deselectColumnFromColumnsList(
+        PRODUCTS_COUNT_BY_CREATED_AT.name,
+        "Count",
+      );
+
+      // Undo removing a column
+      cy.get("@redoButton").should("be.disabled");
+      cy.get("@undoButton").click();
+
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 2);
+
+      // Redo removing a column
+      cy.get("@redoButton").click();
+      cy.get("@redoButton").should("be.disabled");
+
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 1);
+
+      // Change viz settings (add goal line)
+      cy.findByText("Settings").click();
+      cy.findByTestId("chartsettings-sidebar").findByText("Goal line").click();
+      H.goalLine().should("exist");
+
+      // Undo goal line
+      cy.get("@undoButton").click();
+      H.goalLine().should("not.exist");
+
+      // Ensure UI state isn't tracked in history
+      cy.findByTestId("chartsettings-sidebar").should("be.visible");
+
+      // Redo goal line
+      cy.get("@redoButton").click();
+      H.goalLine().should("exist");
+
+      cy.button("Add to dashboard").click();
+    });
+
+    // Ensure history set is reset
+    H.showDashcardVisualizerModal(1);
+
+    H.modal().within(() => {
+      cy.get("@undoButton").should("be.disabled");
+      cy.get("@redoButton").should("be.disabled");
+      cy.findByTestId("chartsettings-sidebar").should("not.be.visible");
+    });
+  });
+
   describe("cartesian charts", () => {
     it("should allow to change viz settings", () => {
       createDashboardWithVisualizerDashcards();

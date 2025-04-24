@@ -11,16 +11,15 @@ import {
   getIsRenderable,
   getVisualizationTitle,
 } from "metabase/visualizer/selectors";
-import {
-  setTitle,
-  toggleDataSideBar,
-} from "metabase/visualizer/visualizer.slice";
-import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
+import { setTitle } from "metabase/visualizer/visualizer.slice";
+import type { VisualizerVizDefinition } from "metabase-types/store/visualizer";
+
+import { useVisualizerUi } from "../VisualizerUiContext";
 
 import S from "./Header.module.css";
 
 interface HeaderProps {
-  onSave: (visualization: VisualizerHistoryItem) => void;
+  onSave: (visualization: VisualizerVizDefinition) => void;
   onClose: () => void;
   saveLabel?: string;
   allowSaveWhenPristine?: boolean;
@@ -35,6 +34,7 @@ export function Header({
   className,
 }: HeaderProps) {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
+  const { setDataSidebarOpen } = useVisualizerUi();
 
   const visualizerState = useSelector(getCurrentVisualizerState);
 
@@ -65,7 +65,7 @@ export function Header({
       className={className}
       data-testid="visualizer-header"
     >
-      <ActionIcon onClick={() => dispatch(toggleDataSideBar())}>
+      <ActionIcon onClick={() => setDataSidebarOpen((isOpen) => !isOpen)}>
         <Icon name="sidebar_open" />
       </ActionIcon>
       <EditableText
@@ -84,6 +84,7 @@ export function Header({
         <Tooltip label={t`Back`}>
           <Button
             size="sm"
+            aria-label={t`Back`}
             disabled={!canUndo}
             onClick={undo}
             leftSection={
@@ -97,6 +98,7 @@ export function Header({
         <Tooltip label={t`Forward`}>
           <Button
             size="sm"
+            aria-label={t`Forward`}
             disabled={!canRedo}
             onClick={redo}
             leftSection={
