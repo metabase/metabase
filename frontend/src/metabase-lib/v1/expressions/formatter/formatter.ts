@@ -259,7 +259,6 @@ function formatFunctionCall(
   print: Print,
 ): Doc {
   const { node } = path;
-  const name = node.operator;
 
   const args = node.args.map((arg: ExpressionNode) =>
     recurse(path, print, arg),
@@ -270,7 +269,28 @@ function formatFunctionCall(
     args.push(options);
   }
 
-  return formatCallExpression(name, args);
+  // render a call expression as
+  //
+  //   callee(arg1, arg2, ...)
+  //
+  // or, when not enough space
+  //
+  //   callee(
+  //     arg1,
+  //     arg2,
+  //     ...
+  //   )
+  return group([
+    displayName(node.operator),
+    "(",
+    indent([
+      // indent args
+      softline,
+      join([",", line], args),
+    ]),
+    softline,
+    ")",
+  ]);
 }
 
 function formatExpressionOptions(options: Lib.ExpressionOptions): Doc | null {
@@ -408,31 +428,6 @@ function formatValueExpression(
     }
   }
   return recurse(path, print, node.args[0]);
-}
-
-function formatCallExpression(callee: string, args: Doc[]): Doc {
-  // render a call expression as
-  //
-  //   callee(arg1, arg2, ...)
-  //
-  // or, when not enough space
-  //
-  //   callee(
-  //     arg1,
-  //     arg2,
-  //     ...
-  //   )
-  return group([
-    displayName(callee),
-    "(",
-    indent([
-      // indent args
-      softline,
-      join([",", line], args),
-    ]),
-    softline,
-    ")",
-  ]);
 }
 
 /**
