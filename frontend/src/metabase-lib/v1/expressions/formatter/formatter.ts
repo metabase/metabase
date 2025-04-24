@@ -136,7 +136,7 @@ function print(
   } else if (check.isExpressionParts(path)) {
     if (isOperator(path.node.operator)) {
       return formatOperator(path, print);
-    } else if (isDimension(path.node.operator)) {
+    } else if (isDimensionOperator(path.node.operator)) {
       return formatDimension(path);
     } else if (isValueOperator(path.node.operator)) {
       return formatValueExpression(path, print);
@@ -223,13 +223,14 @@ function formatSegment(
   return formatSegmentName(displayInfo.displayName);
 }
 
-function isDimension(op: string): op is "dimension" {
+// For internal use only
+function isDimensionOperator(op: string): op is "dimension" {
   return op === "dimension";
 }
 
 function formatDimension(path: AstPath<Lib.ExpressionParts>): Doc {
   const { node } = path;
-  assert(isDimension(node.operator), "Expected dimension");
+  assert(isDimensionOperator(node.operator), "Expected dimension");
 
   const name = node.args[0];
   assert(typeof name === "string", "Expected expression name to be a string");
@@ -376,11 +377,6 @@ function isUnaryOperator(op: Lib.ExpressionOperator) {
 
 function isValueOperator(op: string): op is "value" {
   return op === "value";
-}
-
-// For internal use only
-function isDimensionOperator(op: string): op is "dimension" {
-  return op === "dimension";
 }
 
 function formatValueExpression(
