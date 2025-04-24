@@ -22,6 +22,10 @@ interface Props {
 
 const DATA_MODEL_APP_NAV_BAR_HEIGHT = 53;
 
+// TODO: remove this in Milestone 2
+// https://linear.app/metabase/project/up-level-admin-metadata-editing-0399213bee40
+const PREVIEW_ENABLED = false;
+
 export const DataModel = ({ params }: Props) => {
   const databaseId = Urls.extractEntityId(params.databaseId);
   const schemaId = params.schemaId;
@@ -66,9 +70,11 @@ export const DataModel = ({ params }: Props) => {
             <FieldSection fieldId={fieldId} />
           </Box>
 
-          <Box flex="1" p="xl" pl={0}>
-            <PreviewSection fieldId={fieldId} />
-          </Box>
+          {PREVIEW_ENABLED && (
+            <Box flex="1" p="xl" pl={0}>
+              <PreviewSection fieldId={fieldId} />
+            </Box>
+          )}
         </Flex>
       )}
     </Flex>
