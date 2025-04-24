@@ -216,14 +216,14 @@
                    :message "me like we were"}
                   {:namespace 'metabase.util.log.capture-test
                    :level     :debug
-                   :e         nil
                    :ctx       {:we/will "fix"}
+                   :e         nil
                    :message   "a bug"}]
                  (util-trace-messages)))
           (is (= [{:namespace 'metabase.util.log.capture-test
                    :level     :debug
+                   :ctx       {:we/will "fix"}
                    :e         nil
-                   :ctx       nil
                    :message   "a bug"}]
                  (test-debug-messages))))))))
 

@@ -76,6 +76,8 @@
                                         f2 (capture-fn a-message message-level-int)]
                                     (cond
                                       (and f1 f2) (fn [e message ctx]
+                                                    ;; If this stacks multiple times, then f1 will call everything in
+                                                    ;; the log-capture stack.
                                                     (f1 e message ctx)
                                                     (f2 e message ctx))
                                       f1          f1
