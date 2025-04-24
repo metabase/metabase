@@ -485,6 +485,12 @@
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
+(defmulti arbitrary-select-query
+  "Generate a native query that selects some arbitrary sql from the top 3 rows from a Table with `table-name`"
+  {:arglists `([driver table-name to-insert])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Helper Functions for Creating New Definitions                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+

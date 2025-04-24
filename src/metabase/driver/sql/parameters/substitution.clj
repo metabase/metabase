@@ -378,3 +378,15 @@
   [_ {:keys [content]}]
   {:prepared-statement-args nil
    :replacement-snippet     content})
+
+(defmulti time-grouping->replacement-snippet-info
+  {:arglists '([driver column temporal-unit])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod time-grouping->replacement-snippet-info :sql
+  [driver column {:keys [value]}]
+  (honeysql->replacement-snippet-info driver
+                                      (if (= value params/no-value)
+                                        [:raw column]
+                                        (sql.qp/date driver (keyword value) [:raw column]))))

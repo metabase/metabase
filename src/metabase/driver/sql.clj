@@ -34,7 +34,8 @@
                  :metadata/key-constraints
                  :window-functions/cumulative
                  :window-functions/offset
-                 :distinct-where]]
+                 :distinct-where
+                 :native-temporal-units]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
 (defmethod driver/database-supports? [:sql :persist-models-enabled]
