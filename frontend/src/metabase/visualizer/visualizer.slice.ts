@@ -12,6 +12,7 @@ import { createAsyncThunk } from "metabase/lib/redux";
 import { copy } from "metabase/lib/utils";
 import { isCartesianChart } from "metabase/visualizations";
 import type {
+  BaseEntityId,
   Card,
   CardId,
   Dataset,
@@ -102,6 +103,7 @@ type InitVisualizerPayload =
   | {
       state?: Partial<VisualizerHistoryItem>;
       extraDataSources?: VisualizerDataSourceId[];
+      cardIdByEntityId?: Record<BaseEntityId, number>;
     }
   | { cardId: CardId };
 
@@ -120,9 +122,11 @@ const initializeFromState = async (
   {
     state: initialState = {},
     extraDataSources = [],
+    cardIdByEntityId = {},
   }: {
     state?: Partial<VisualizerHistoryItem>;
     extraDataSources?: VisualizerDataSourceId[];
+    cardIdByEntityId?: Record<BaseEntityId, number>;
   },
   dispatch: Dispatch,
 ) => {
@@ -139,6 +143,8 @@ const initializeFromState = async (
     dataSourceIds
       .map((sourceId) => {
         const [, cardId] = sourceId.split(":");
+
+        // const cardId = cardIdByEntityId[cardEntityId]
         return [
           dispatch(fetchCard(Number(cardId))),
           dispatch(fetchCardQuery(Number(cardId))),
@@ -160,9 +166,15 @@ const initializeFromCard = async (
   ]);
   const { cards, datasets } = getState().visualizer;
   const card = cards.find((card) => card.id === cardId);
-  const dataset = datasets[`card:${cardId}`];
-  if (!card || !dataset) {
-    throw new Error(`Card or dataset not found for ID: ${cardId}`);
+  if (!card) {
+    throw new Error(`Card not found for ID: ${cardId}`);
+  }
+  const dataset = datasets[`card:${card.entity_id}`];
+
+  if (!dataset) {
+    throw new Error(
+      `Dataset not found for ID: ${cardId} with entity_id: ${card.entity_id}`,
+    );
   }
   return getInitialStateForCardDataSource(card, dataset);
 };

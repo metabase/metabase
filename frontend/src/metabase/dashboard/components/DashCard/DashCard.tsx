@@ -31,6 +31,7 @@ import {
 } from "metabase/visualizer/utils";
 import { getInitialStateForMultipleSeries } from "metabase/visualizer/utils/get-initial-state-for-multiple-series";
 import type {
+  BaseEntityId,
   Card,
   CardId,
   DashCardId,
@@ -106,6 +107,7 @@ export interface DashCardProps {
   onEditVisualization?: (
     dashcard: StoreDashcard,
     initialState: Partial<VisualizerHistoryItem>,
+    cardIdByEntityId?: Record<BaseEntityId, number>,
   ) => void;
 }
 
@@ -338,7 +340,13 @@ function DashCardInner({
         );
       }
 
-      onEditVisualization?.(dashcard, initialState);
+      const cardIdByEntityId = Object.fromEntries(
+        series
+          .map(({ card }) => [card.entity_id, card.id])
+          .filter(([entityId]) => entityId != null),
+      );
+
+      onEditVisualization?.(dashcard, initialState, cardIdByEntityId);
     };
   }, [dashcard, series, onEditVisualization]);
 

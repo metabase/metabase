@@ -36,6 +36,7 @@ import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import {
   type BaseDashboardCard,
+  type BaseEntityId,
   type Card,
   type CardId,
   type DashCardId,
@@ -99,6 +100,7 @@ interface DashboardGridState {
   visualizerModalStatus?: {
     dashcardId: number;
     state: Partial<VisualizerHistoryItem>;
+    cardIdByEntityId?: Record<BaseEntityId, number>;
   };
 }
 
@@ -488,11 +490,13 @@ class DashboardGridInner extends Component<
   onEditVisualization = (
     dashcard: BaseDashboardCard,
     initialState: Partial<VisualizerHistoryItem>,
+    cardIdByEntityId?: Record<BaseEntityId, number>,
   ) => {
     this.setState({
       visualizerModalStatus: {
         dashcardId: dashcard.id,
         state: initialState,
+        cardIdByEntityId,
       },
     });
 
@@ -587,7 +591,10 @@ class DashboardGridInner extends Component<
       <VisualizerModal
         onSave={this.onVisualizerModalSave}
         onClose={this.onVisualizerModalClose}
-        initialState={{ state: visualizerModalStatus.state }}
+        initialState={{
+          state: visualizerModalStatus.state,
+          cardIdByEntityId: visualizerModalStatus.cardIdByEntityId,
+        }}
         saveLabel={t`Save`}
       />
     );

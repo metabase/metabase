@@ -8,7 +8,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Modal } from "metabase/ui";
 import { getIsDirty } from "metabase/visualizer/selectors";
 import { initializeVisualizer } from "metabase/visualizer/visualizer.slice";
-import type { CardId } from "metabase-types/api";
+import type { BaseEntityId, CardId } from "metabase-types/api";
 import type {
   VisualizerDataSourceId,
   VisualizerHistoryItem,
@@ -23,6 +23,7 @@ interface VisualizerModalProps {
     | {
         state?: Partial<VisualizerHistoryItem>;
         extraDataSources?: VisualizerDataSourceId[];
+        cardIdByEntityId?: Record<BaseEntityId, number>
       }
     | { cardId: CardId };
 }
