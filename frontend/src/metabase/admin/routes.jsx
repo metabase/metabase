@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { IndexRedirect, IndexRoute } from "react-router";
+import { IndexRedirect, IndexRoute, Redirect } from "react-router";
 import { t } from "ttag";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
@@ -92,7 +92,35 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         path="datamodel-v2"
         component={createAdminRouteGuard("data-model")}
       >
-        <IndexRoute component={DataModel} />
+        <Route title={t`Table Metadata`} component={DataModelApp}>
+          <IndexRedirect to="database" />
+          <Route path="database" component={DataModel} />
+          <Route path="database/:databaseId" component={DataModel} />
+          <Route
+            path="database/:databaseId/schema/:schemaId"
+            component={DataModel}
+          />
+          <Route
+            path="database/:databaseId/schema/:schemaId/table/:tableId"
+            component={DataModel}
+          />
+          <Route
+            path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+            component={DataModel}
+          />
+          <Redirect
+            from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
+            to="database/:databaseId/schema/:schemaId/table/:tableId"
+          />
+          <Redirect
+            from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
+            to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+          />
+          <Route path="segments" component={SegmentListApp} />
+          <Route path="segment/create" component={SegmentApp} />
+          <Route path="segment/:id" component={SegmentApp} />
+          <Route path="segment/:id/revisions" component={RevisionHistoryApp} />
+        </Route>
       </Route>
       {/* PEOPLE */}
       <Route path="people" component={createAdminRouteGuard("people")}>
