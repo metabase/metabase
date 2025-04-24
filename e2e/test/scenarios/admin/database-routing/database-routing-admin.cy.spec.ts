@@ -370,6 +370,35 @@ describe("admin > database > database routing", () => {
         .should("have.attr", "data-combobox-disabled", "true");
     });
 
+    it("should highlight that a dabtabase has routing enabled on the permissions pages", () => {
+      cy.log("setup");
+      cy.request("PUT", "/api/database/2", {
+        settings: { "database-enable-actions": false },
+      });
+      configurDbRoutingViaAPI({
+        router_database_id: 2,
+        user_attribute: "role",
+      });
+
+      cy.log("should highlight on group perms page at db level");
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+      cy.findByTestId("permission-table")
+        .findByText("(Database routing enabled)")
+        .should("exist");
+
+      cy.log("should highlight on group perms page at table level");
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}/database/2`);
+      cy.findByTestId("permissions-editor-breadcrumbs")
+        .findByText("(Database routing enabled)")
+        .should("exist");
+
+      cy.log("should highlight on group perms page at table level");
+      cy.visit("/admin/permissions/data/database/2");
+      cy.findByTestId("permissions-editor-breadcrumbs")
+        .findByText("(Database routing enabled)")
+        .should("exist");
+    });
+
     describe("feature visibility", () => {
       it("should only show db routing for valid database types", () => {
         cy.log("should not show for sample databases");
