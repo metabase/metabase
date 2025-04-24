@@ -38,7 +38,7 @@
   []
   (when (search/supports-index?)
     (quick-task/submit-task!
-     (cluster-lock/with-cluster-lock
+     (cluster-lock/with-cluster-lock ::search-init-lock
        (try
          (let [timer (u/start-timer)
                report (search/init-index! {:force-reset? false, :re-populate? false})
