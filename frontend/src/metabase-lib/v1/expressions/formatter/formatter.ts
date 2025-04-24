@@ -385,11 +385,7 @@ function precedence(op: string): number {
   return parsePunctuator(op)?.precedence ?? Infinity;
 }
 
-function isLogicOperator(op: string) {
-  return op === "and" || op === "or";
-}
-
-function isUnaryOperator(op: string) {
+function isUnaryOperator(op: Lib.ExpressionOperator) {
   const clause = getClauseDefinition(op);
   return clause && clause?.args.length === 1;
 }
@@ -430,10 +426,7 @@ function formatValueExpression(
   return recurse(path, print, node.args[0]);
 }
 
-/**
- * Format the name of an expression clause.
- */
-function displayName(name: string): string {
-  const clause = getClauseDefinition(name);
-  return clause?.displayName ?? name;
+function displayName(name: Lib.ExpressionOperator): string {
+  assert(name !== "value", "Unexpected value clause");
+  return getClauseDefinition(name)?.displayName ?? name;
 }

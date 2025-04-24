@@ -54,7 +54,7 @@ export const pathMatchers = lift({
 });
 
 export function isOperator(
-  op: string,
+  op: Lib.ExpressionOperator,
 ): op is keyof typeof EXPRESSION_OPERATORS {
   return op in EXPRESSION_OPERATORS;
 }
