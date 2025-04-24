@@ -17,13 +17,10 @@ env:
   TEST_SUITES: |
     [
       "metabase-nodejs-react-sdk-embedding-sample-e2e",
-      "metabase-nextjs-sdk-embedding-sample-e2e",
-      "shoppy-e2e"
+      "metabase-nextjs-sdk-embedding-sample-e2e"
     ]
   TEST_SUITES_TO_RUN_IN_MASTER_ONLY: |
-    [
-      "shoppy-e2e"
-    ]
+    []
   SAMPLE_APP_MAIN_BRANCH_NAME: "main"
   SAMPLE_APP_STABLE_RELEASE_BRANCH_NAME_SUFFIX: "stable"
 
