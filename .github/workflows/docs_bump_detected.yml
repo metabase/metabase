@@ -24,6 +24,9 @@ jobs:
             echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
           fi
 
+      - name: branch name 2
+        run: echo "2 Branch is ${GITHUB_HEAD_REF:-${GITHUB_REF##*/
+
       - name: Trigger repo dispatch
         uses: actions/github-script@v7
         with:
