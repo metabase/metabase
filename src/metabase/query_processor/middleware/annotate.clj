@@ -26,6 +26,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (def ^:private Col
@@ -80,13 +81,33 @@
                          :first-row        (first rows)
                          :type             qp.error-type/qp}))))))
 
+;; FIXME: Remove this logic once these code paths are identified! This can be replaced with simple logging, no need
+;; for holding on to the context once the existing cases are debugged.
+(defonce ^{:private true
+           :doc "These cases are showing up in logs on stats but the stack traces were too truncated to be useful.
+
+                So this captures the most recent 5 in an atom to debug at the Stats REPL.
+
+                They're in reverse order, ie. the first one is the most recent."}
+  last-5-missing-native-card-eids
+  (atom []))
+
+(defn- log-missing-card-eid!
+  [query cols]
+  (let [ex (ex-info "Native query without card-entity-id" {:query query, :cols cols})]
+    (log/warn ex "Native query without card-entity-id")
+    (swap! last-5-missing-native-card-eids #(into [ex] (take 4) %))))
+
 (defn annotate-native-cols
   "Given metadata columns and the `entity_id` of the card, annotate the metadata with full details.
 
   Do not call this from other namespaces; it is exposed only to support
   [[metabase.query-processor.test-util/metadata->native-form]]."
-  [cols card-entity-id]
+  [cols card-entity-id query]
   (let [unique-name-fn (mbql.u/unique-name-generator)]
+    (when (and (seq cols)
+               (empty? card-entity-id))
+      (log-missing-card-eid! query cols))
     (mapv (fn [{col-name :name :as driver-col-metadata}]
             (let [col-name (name col-name)]
               (merge
@@ -105,9 +126,9 @@
           cols)))
 
 (defmethod column-info :native
-  [{{:keys [card-entity-id]} :info :as _query} {:keys [cols rows] :as _results}]
+  [{{:keys [card-entity-id]} :info :as query} {:keys [cols rows] :as _results}]
   (check-driver-native-columns cols rows)
-  (annotate-native-cols cols card-entity-id))
+  (annotate-native-cols cols card-entity-id query))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Adding :cols info for MBQL queries                                       |
@@ -719,7 +740,7 @@
     ((take 1) conj)]
    (fn combine [result base-types truncated-rows]
      (let [metadata (update metadata :cols
-                            (comp #(annotate-native-cols % (-> query :info :card-entity-id))
+                            (comp #(annotate-native-cols % (-> query :info :card-entity-id) query)
                                   (fn [cols]
                                     (map (fn [col base-type]
                                            (-> col
@@ -756,7 +777,7 @@
         (rff metadata))
       ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
       ;; queries...
-      (let [metadata (cond-> (update metadata :cols annotate-native-cols card-entity-id)
+      (let [metadata (cond-> (update metadata :cols annotate-native-cols card-entity-id query)
                        ;; annotate-native-cols ensures that column refs are present which we need to match metadata
                        (seq model-metadata)
                        (update :cols merge-model-metadata model-metadata card-entity-id)
