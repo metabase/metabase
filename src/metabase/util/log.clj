@@ -49,44 +49,38 @@
          (lambdaisland.glogi/log logger# level# nil s#)
          a#))))
 
-;; MDC helpers
-
-(defn- ->str
-  [val] ^String
-  (if-some val
-    (if (keyword? val)
-      (str (symbol val)) ;; fastest way to get a fully-quallified keyword as a string
-      (.toString ^Object val))
-    ""))
-
-(defn- ->k-str
-  [val] ^String
-  (u.format/colorize 'cyan (->str val)))
-
-(defn- format-context [ctx]
-  (persistent!
-   (reduce-kv (fn [m k v]
-                (assoc! m (->k-str k) (->str v)))
-              (transient {})
-              ctx)))
-
-(defn mdc-assoc!
-  "Take a context map and put it into the MDC. Keys and values will be stringified."
-  [ctx]
-  (doseq [[k v] (format-context ctx)
-          :when (some? v)]
-    (MDC/put ^String k ^String v)))
-
 (defmacro with-context
-  "Set the context map for the form. Only sets context for non-`nil` values!
-   Values will be stringified."
-  [ctx & body]
-  `(let [og# (MDC/getCopyOfContextMap)]
-     (mdc-assoc! ~ctx)
-     (try
-       (do ~@body)
-       (finally
-         (MDC/setContextMap og#)))))
+  "Executes body with the given context map and message prefix in ThreadContext.
+   The context map's keys and values are added to the ThreadContext individually.
+   Preserves any existing context values and restores them after execution.
+
+   The keys in context-map should be keywords.
+
+   Example usage:
+   (with-context {:notification_id 1}
+     (log/infof \"Hello\"))
+
+   ThreadContext will contain: {\"notification_id\" \"1\"} and stack \"Notification 1\""
+  [context-map & body]
+  (macros/case
+    :clj `(let [ctx-map# ~context-map
+                ctx-keys# (keys ctx-map#)
+                ;; Store original values before modifying
+                original-values# (into {}
+                                       (keep (fn [k#]
+                                               (when-let [v# (ThreadContext/get (name k#))]
+                                                 [(name k#) v#])))
+                                       ctx-keys#)]
+            (try
+              (doseq [k# ctx-keys#]
+                (ThreadContext/put (name k#) (str (get ctx-map# k#))))
+              ~@body
+              (finally
+                (doseq [k# ctx-keys#]
+                  (if-let [original# (find original-values# (name k#))]
+                    (ThreadContext/put (name k#) (val original#))
+                    (ThreadContext/remove (name k#)))))))
+    :cljs ~@body))
 
 (defn parse-args
   "Parses args for [[trace]], [[debug]], [[info]], [[warn]], [[error]], [[fatal]]
@@ -319,34 +313,3 @@
   [& body]
   `(binding [clojure.tools.logging/*logger-factory* clojure.tools.logging.impl/disabled-logger-factory]
      ~@body))
-
-(defmacro with-context
-  "Executes body with the given context map and message prefix in ThreadContext.
-   The context map's keys and values are added to the ThreadContext individually.
-   Preserves any existing context values and restores them after execution.
-
-   Example usage:
-   (with-context {:notification_id 1}
-     (log/infof \"Hello\"))
-
-   ThreadContext will contain: {\"notification_id\" \"1\"} and stack \"Notification 1\""
-  [context-map & body]
-  (macros/case
-    :clj `(let [ctx-map# ~context-map
-                ctx-keys# (keys ctx-map#)
-                ;; Store original values before modifying
-                original-values# (into {}
-                                       (keep (fn [k#]
-                                               (when-let [v# (ThreadContext/get (name k#))]
-                                                 [(name k#) v#])))
-                                       ctx-keys#)]
-            (try
-              (doseq [k# ctx-keys#]
-                (ThreadContext/put (name k#) (str (get ctx-map# k#))))
-              ~@body
-              (finally
-                (doseq [k# ctx-keys#]
-                  (if-let [original# (find original-values# (name k#))]
-                    (ThreadContext/put (name k#) (val original#))
-                    (ThreadContext/remove (name k#)))))))
-    :cljs ~@body))
