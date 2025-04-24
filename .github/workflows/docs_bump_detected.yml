@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Print changed docs files
+      - name: Report changed docs files exist
         run: |
           echo "A change in the docs directory was detected."
 
@@ -24,40 +24,16 @@ jobs:
             echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
           fi
 
-      - name: List Workflows in docs.metabase.github.io
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-        run: |
-          curl -L \
-          -H "Accept: application/vnd.github+json" \
-          -H "Authorization: token ${GH_TOKEN}" \
-          -H "X-GitHub-Api-Version: 2022-11-28" \
-          https://api.github.com/repos/metabase/docs.metabase.github.io/actions/workflows
-
-      - name: Get workflow id for process_docs_changes.yml
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-        run: |
-          WORKFLOW_ID=$(curl -L \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: token ${GH_TOKEN}" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            https://api.github.com/repos/metabase/docs.metabase.github.io/actions/workflows | \
-            jq -r '.workflows[] | select(.path | endswith("process_docs_changes.yml")) .id')
-          echo $WORKFLOW_ID
-          echo "WORKFLOW_ID=$WORKFLOW_ID" >> $GITHUB_ENV
-
-      - name: Read Workflow ID
-        run: |
-          echo 'workflow id:' "$WORKFLOW_ID"
-
-      - name: Trigger Workflow in `metabase/docs.metabase.github.io`
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-        run: |
-          echo "Triggering workflow in metabase/docs.metabase.github.io with branch: $BRANCH_NAME"
-          curl -X POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: token ${GH_TOKEN}" \
-            "https://api.github.com/repos/metabase/docs.metabase.github.io/actions/workflows/$WORKFLOW_ID/dispatches" \
-            -d "{\"ref\": \"github_action_to_read_from_main_metabase\", \"inputs\": {\"branch_name\": \"$BRANCH_NAME\"}}"
+      - name: Trigger repo dispatch
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: | #js
+            github.rest.repos.createDispatchEvent({
+              owner: "${{ github.repository_owner }}",
+              repo: "docs.metabase.github.io",
+              event_type: "docs_update",
+              client_payload: {
+                branch_name: process.env.BRANCH_NAME  // This needs to match the workflow file
+              }
+            });
