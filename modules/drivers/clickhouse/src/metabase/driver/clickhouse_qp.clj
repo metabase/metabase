@@ -339,6 +339,11 @@
   [_]
   :Float64)
 
+(defmethod sql.qp/->float :clickhouse
+  [_ value]
+  ;; casting in clickhouse does not properly handle NULL; this function does
+  (h2x/with-database-type-info [:'toFloat64 value] :Float64))
+
 (defmethod sql.qp/->honeysql [:clickhouse :value]
   [driver value]
   (let [[_ value {base-type :base_type}] value]
