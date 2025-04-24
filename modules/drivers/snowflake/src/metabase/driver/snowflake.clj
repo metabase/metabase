@@ -931,3 +931,6 @@
       :else
       [(format "show columns in database %s"
                (sql.u/quote-name driver :database (:db details)))])))
+
+(defmethod sql-jdbc/impl-query-canceled? :snowflake [_ e]
+  (= (sql-jdbc/get-sql-state e) "57014"))

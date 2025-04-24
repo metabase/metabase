@@ -1365,3 +1365,12 @@
   {:added "0.55.0" :arglists '([driver database schema])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti query-canceled?
+  "Test if an exception is due to a query being canceled due to user action. For JDBC drivers this can
+  happen when setting `.setQueryTimeout`."
+  {:added "0.53.12" :arglists '([driver ^Throwable e])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod query-canceled? ::driver [_ _] false)
