@@ -139,7 +139,6 @@
     "ttag": "1.7.21",
     "typescript": "^5.4.5",
     "underscore": "~1.13.3",
-    "use-debounce": "^10.0.0",
     "yup": "^0.32.11"
   },
   "devDependencies": {
@@ -338,7 +337,6 @@
     "typedoc-plugin-dt-links": "^2.0.0",
     "typedoc-plugin-mdn-links": "^5.0.1",
     "typedoc-plugin-merge-modules": "^7.0.0",
-    "typedoc-plugin-missing-exports": "^4.0.0",
     "typedoc-plugin-redirect": "^1.2.0",
     "typescript-plugin-css-modules": "^5.1.0",
     "webpack": "5.94.0",

@@ -6,6 +6,7 @@ import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupGdriveGetFolderEndpoint,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -58,6 +59,7 @@ async function setup({
     collection: createMockCollection(ROOT_COLLECTION),
     collectionItems: [],
   });
+  setupGdriveGetFolderEndpoint({ status: "active" });
   fetchMock.get("path:/api/bookmark", []);
 
   const storeInitialState = createMockState({

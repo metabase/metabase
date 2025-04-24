@@ -2,7 +2,7 @@ import { jt, t } from "ttag";
 
 import { useSdkSelector } from "embedding-sdk/store";
 import { getErrorComponent } from "embedding-sdk/store/selectors";
-import type { SdkErrorComponentProps } from "embedding-sdk/store/types";
+import type { SdkErrorComponentProps } from "embedding-sdk/types";
 import Alert from "metabase/core/components/Alert";
 import { color } from "metabase/lib/colors";
 import { Box, Center, Code } from "metabase/ui";

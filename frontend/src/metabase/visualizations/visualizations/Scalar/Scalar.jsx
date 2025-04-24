@@ -63,7 +63,9 @@ export class Scalar extends Component {
 
   static settings = {
     ...fieldSetting("scalar.field", {
-      title: t`Field to show`,
+      get title() {
+        return t`Field to show`;
+      },
       getDefault: ([
         {
           data: { cols },
@@ -149,6 +151,7 @@ export class Scalar extends Component {
       totalNumGridCols,
       fontFamily,
       rawSeries,
+      showTitle = true,
     } = this.props;
 
     if (rawSeries.length > 1) {
@@ -242,6 +245,7 @@ export class Scalar extends Component {
         </ScalarContainer>
 
         {isDashboard &&
+          showTitle &&
           (showSmallTitle ? (
             <LabelIcon
               data-testid="scalar-title-icon"

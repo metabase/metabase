@@ -33,7 +33,7 @@ Unsigned parameters, such as appearance settings, should be added directly to yo
 
 ## Adding a filter widget to a static embed
 
-You can use **editable parameters** to add [filter widgets](https://www.metabase.com/glossary/filter_widget) to embedded dashboards or SQL questions.
+You can use **editable parameters** to add [filter widgets](https://www.metabase.com/glossary/filter-widget) to embedded dashboards or SQL questions.
 
 1. Go to your dashboard or SQL question. Make sure you've set up a [dashboard filter](../dashboards/filters.md) or [SQL variable](../questions/native-editor/sql-parameters.md).
 2. Click on the **sharing icon** > **Embed this item in an application**.
