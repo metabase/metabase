@@ -22,6 +22,7 @@ import { createMockLoggerPreset } from "metabase-types/api/mocks/logger";
 import { LogLevelsModal } from "./LogLevelsModal";
 
 const PRESET_A = createMockLoggerPreset({
+  id: String(getNextId()),
   display_name: "Preset MySQL",
   loggers: [
     { name: "metabase.driver", level: "debug" },
@@ -30,6 +31,7 @@ const PRESET_A = createMockLoggerPreset({
 });
 
 const PRESET_B = createMockLoggerPreset({
+  id: String(getNextId()),
   display_name: "Preset H2",
   loggers: [
     { name: "metabase.driver", level: "error" },

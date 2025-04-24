@@ -1,5 +1,3 @@
-import { getNextId } from "__support__/utils";
-
 import type { LoggerPreset } from "../logger";
 
 export function createMockLoggerPreset(
@@ -7,7 +5,7 @@ export function createMockLoggerPreset(
 ): LoggerPreset {
   return {
     display_name: "Logger preset",
-    id: String(getNextId()),
+    id: "1",
     loggers: [],
     ...preset,
   };
