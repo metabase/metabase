@@ -27,13 +27,13 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private EmailMessage
-  :map
-  #_[:map
-     [:subject                         :string]
-     [:recipients                      [:sequential ms/Email]]
-     [:message-type                    [:enum :attachments :html :text]]
-     [:message                         :any]
-     [:recipient-type {:optional true} [:maybe (ms/enum-keywords-and-strings :cc :bcc)]]])
+  [:map
+   [:from                            ms/Email]
+   [:bcc            {:optional true} [:sequential ms/Email]]
+   [:to             {:optional true} [:sequential ms/Email]]
+   [:subject                         :string]
+   [:body                            :any]
+   [:reply-to       {:optional true} :any]])
 
 (mu/defmethod channel/send! :channel/email
   [_channel email :- EmailMessage]
