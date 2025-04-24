@@ -40,6 +40,7 @@ import CS from "metabase/css/core/index.css";
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
+import { DataModel } from "metabase/metadata/pages/DataModel";
 import {
   PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_TOOLS,
@@ -84,6 +85,14 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           <Route path="segment/:id" component={SegmentApp} />
           <Route path="segment/:id/revisions" component={RevisionHistoryApp} />
         </Route>
+      </Route>
+      {/* TODO: replace this at the end of Milestone 1 */}
+      {/* https://linear.app/metabase/project/up-level-admin-metadata-editing-0399213bee40 */}
+      <Route
+        path="datamodel-v2"
+        component={createAdminRouteGuard("data-model")}
+      >
+        <IndexRoute component={DataModel} />
       </Route>
       {/* PEOPLE */}
       <Route path="people" component={createAdminRouteGuard("people")}>
