@@ -12,10 +12,6 @@ export interface BaseUser {
   common_name: string;
   email: string;
   locale: string | null;
-  // TODO: check e2e tests if this attribute is ever added to a user... i'm not seeing it always defined
-  google_auth: boolean;
-  // TODO: check e2e tests if this attribute is ever added to a user... i'm not seeing it always
-  ldap_auth?: boolean;
   is_active: boolean;
   is_qbnewb: boolean;
   is_superuser: boolean;
@@ -27,14 +23,13 @@ export interface BaseUser {
 }
 
 export interface User extends BaseUser {
-  google_auth: boolean;
   login_attributes: Record<UserAttribute, UserAttribute> | null;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
   is_installer: boolean;
   has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;
   personal_collection_id: CollectionId;
-  sso_source: "saml" | null;
+  sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | null;
   custom_homepage: {
     dashboard_id: DashboardId;
   } | null;

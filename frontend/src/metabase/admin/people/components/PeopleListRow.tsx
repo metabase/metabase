@@ -74,12 +74,12 @@ export const PeopleListRow = ({
         <span className={cx(CS.ml2, CS.textBold)}>{getName(user)}</span>
       </td>
       <td>
-        {user.google_auth ? (
+        {user.sso_source === "google" ? (
           <Tooltip label={t`Signed up via Google`}>
             <Icon name="google" />
           </Tooltip>
         ) : null}
-        {user.ldap_auth ? (
+        {user.sso_source === "ldap" ? (
           <Tooltip label={t`Signed up via LDAP`}>
             <Icon name="ldap" />
           </Tooltip>
