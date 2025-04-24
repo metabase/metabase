@@ -115,7 +115,7 @@
   "Channel Template schema."
   [:merge
    [:map
-    [:channel_type [:fn #(= "channel" (-> % keyword namespace))]]]
+    [:channel_type {:decode/string keyword} [:fn #(= "channel" (-> % keyword namespace))]]]
    [:multi {:dispatch :channel_type}
     [:channel/email
      [:map

@@ -142,12 +142,11 @@
 
 (defn- rasta-dashsub-message
   [& [data]]
-  (merge {:subject       "Aviary KPIs"
-          :recipients    #{"rasta@metabase.com"}
-          :message-type  :attachments,
-          :message        [{"Aviary KPIs" true}
-                           pulse.test-util/png-attachment]
-          :recipient-type nil}
+  (merge {:subject "Aviary KPIs"
+          :from    "notifications@metabase.com"
+          :bcc     #{"rasta@metabase.com"}
+          :body    [{"Aviary KPIs" true}
+                    pulse.test-util/png-attachment]}
          data))
 
 (defn do-with-dashboard-fixture-for-dashboard
@@ -304,24 +303,24 @@
     {:email
      (fn [_ [email]]
        (is (= (rasta-dashsub-message
-               {:message [{;; No "Pulse:" prefix
-                           "Aviary KPIs" true
-                           ;; Includes dashboard description
-                           "How are the birds doing today?" true
-                           ;; Includes name of subscription creator
-                           "Sent by Rasta Toucan" true
-                           ;; Includes everything
-                           "More results have been included" false
-                           ;; Inline table
-                           "ID</th>" true
-                           ;; Links to source dashboard
-                           "<a class=\\\"title\\\" href=\\\"https://testmb.com/dashboard/\\d+\\\"" true
-                           ;; Links to Metabase instance
-                           "Sent from <a href=\\\"https://testmb.com\\\"" true
-                           ;; Links to subscription management page in account settings
-                           "\\\"https://testmb.com/account/notifications\\\"" true
-                           "Manage your subscriptions" true}
-                          pulse.test-util/png-attachment]})
+               {:body [{;; No "Pulse:" prefix
+                        "Aviary KPIs" true
+                        ;; Includes dashboard description
+                        "How are the birds doing today?" true
+                        ;; Includes name of subscription creator
+                        "Sent by Rasta Toucan" true
+                        ;; Includes everything
+                        "More results have been included" false
+                        ;; Inline table
+                        "ID</th>" true
+                        ;; Links to source dashboard
+                        "<a class=\\\"title\\\" href=\\\"https://testmb.com/dashboard/\\d+\\\"" true
+                        ;; Links to Metabase instance
+                        "Sent from <a href=\\\"https://testmb.com\\\"" true
+                        ;; Links to subscription management page in account settings
+                        "\\\"https://testmb.com/account/notifications\\\"" true
+                        "Manage your subscriptions" true}
+                       pulse.test-util/png-attachment]})
               (mt/summarize-multipart-single-email email
                                                    #"Aviary KPIs"
                                                    #"How are the birds doing today?"
@@ -377,9 +376,9 @@
     {:email
      (fn [_ [email]]
        (testing "Markdown cards are included in email subscriptions"
-         (is (= (rasta-dashsub-message {:message [{"Aviary KPIs" true
-                                                   "header"      true}
-                                                  pulse.test-util/png-attachment]})
+         (is (= (rasta-dashsub-message {:body [{"Aviary KPIs" true
+                                                "header"      true}
+                                               pulse.test-util/png-attachment]})
                 (mt/summarize-multipart-single-email email #"Aviary KPIs"
                                                      #"header")))))
 
@@ -420,9 +419,9 @@
     {:email
      (fn [_ [email]]
        (testing "Markdown cards are included in email subscriptions"
-         (is (= (rasta-dashsub-message {:message [{"Aviary KPIs"                 true
-                                                   "header, quote isn't escaped" true}
-                                                  pulse.test-util/png-attachment]})
+         (is (= (rasta-dashsub-message {:body [{"Aviary KPIs"                 true
+                                                "header, quote isn't escaped" true}
+                                               pulse.test-util/png-attachment]})
                 (mt/summarize-multipart-single-email email #"Aviary KPIs"
                                                      #"header, quote isn't escaped")))))
 
@@ -463,9 +462,9 @@
       {:email
        (fn [_ [email]]
          (testing "Markdown cards are included in email subscriptions"
-           (is (= (rasta-dashsub-message {:message [{"Aviary KPIs" true
-                                                     "<a class=\\\"title\\\" href=\\\"https://testmb.com/dashboard/\\d+\\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\\\"" true}
-                                                    pulse.test-util/png-attachment]})
+           (is (= (rasta-dashsub-message {:body [{"Aviary KPIs" true
+                                                  "<a class=\\\"title\\\" href=\\\"https://testmb.com/dashboard/\\d+\\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\\\"" true}
+                                                 pulse.test-util/png-attachment]})
                   (mt/summarize-multipart-single-email email #"Aviary KPIs"
                                                        #"<a class=\"title\" href=\"https://testmb.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\"")))))
 
@@ -1053,7 +1052,7 @@
       (is (= "<h1>dashboard description</h1>"
              (->> (pulse.test-util/with-captured-channel-send-messages!
                     (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
-                  :channel/email first :message first :content
+                  :channel/email first :body first :content
                   (re-find #"<h1>dashboard description</h1>")))))))
 
 (deftest attachments-test
@@ -1064,9 +1063,9 @@
     :assert
     {:email
      (fn [_ [email]]
-       (is (= (rasta-dashsub-message {:message [{"Aviary KPIs" true}
-                                                pulse.test-util/png-attachment
-                                                pulse.test-util/csv-attachment]})
+       (is (= (rasta-dashsub-message {:body [{"Aviary KPIs" true}
+                                             pulse.test-util/png-attachment
+                                             pulse.test-util/csv-attachment]})
               (mt/summarize-multipart-single-email email #"Aviary KPIs"))))}}
 
    "xlsx"
@@ -1074,9 +1073,9 @@
     :assert
     {:email
      (fn [_ [email]]
-       (is (= (rasta-dashsub-message {:message [{"Aviary KPIs" true}
-                                                pulse.test-util/png-attachment
-                                                pulse.test-util/xls-attachment]})
+       (is (= (rasta-dashsub-message {:body [{"Aviary KPIs" true}
+                                             pulse.test-util/png-attachment
+                                             pulse.test-util/xls-attachment]})
               (mt/summarize-multipart-single-email email #"Aviary KPIs"))))}}
 
    "no result should not include csv"
@@ -1085,11 +1084,11 @@
     :assert
     {:email
      (fn [_ [email]]
-       (is (= (rasta-dashsub-message {:message [{"Aviary KPIs" true}
-                                                ;; no result
-                                                pulse.test-util/png-attachment
-                                                ;; icon
-                                                pulse.test-util/png-attachment]})
+       (is (= (rasta-dashsub-message {:body [{"Aviary KPIs" true}
+                                             ;; no result
+                                             pulse.test-util/png-attachment
+                                             ;; icon
+                                             pulse.test-util/png-attachment]})
               (mt/summarize-multipart-single-email email
                                                    #"Aviary KPIs"))))}}))
 
@@ -1121,11 +1120,11 @@
                                                    :pulse_channel_id pc-id}]
     (testing "Able to send pulse with multi series card without rendering error #46892"
       (let [error-msg (str @#'body/error-rendered-message)]
-        (is (= (rasta-dashsub-message {:message [{error-msg false}
-                                                 ;; no result
-                                                 pulse.test-util/png-attachment
-                                                 ;; icon
-                                                 pulse.test-util/png-attachment]})
+        (is (= (rasta-dashsub-message {:body [{error-msg false}
+                                              ;; no result
+                                              pulse.test-util/png-attachment
+                                              ;; icon
+                                              pulse.test-util/png-attachment]})
                (-> (pulse.test-util/with-captured-channel-send-messages!
                      (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
                    :channel/email
@@ -1156,10 +1155,10 @@
      :model/PulseChannelRecipient _                    {:user_id          (pulse.test-util/rasta-id)
                                                         :pulse_channel_id pc-id}]
     (testing "Archived cards are not included in the result #47649"
-      (is (= (rasta-dashsub-message {:message [{"My Precious Card" true
-                                                "Archived Card"    false}
-                                               ;; active card result
-                                               pulse.test-util/png-attachment]})
+      (is (= (rasta-dashsub-message {:body [{"My Precious Card" true
+                                             "Archived Card"    false}
+                                            ;; active card result
+                                            pulse.test-util/png-attachment]})
              (-> (pulse.test-util/with-captured-channel-send-messages!
                    (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
                  :channel/email
@@ -1215,8 +1214,8 @@
                                   (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))]
               ;; Test email channel
               (is (= (rasta-dashsub-message
-                      {:message [{pulse.test-util/card-name true}
-                                 pulse.test-util/png-attachment]})
+                      {:body [{pulse.test-util/card-name true}
+                              pulse.test-util/png-attachment]})
                      (mt/summarize-multipart-single-email
                       (first (:channel/email pulse-results))
                       #"Test card")))

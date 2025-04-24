@@ -6,8 +6,10 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
+   [metabase.channel.models.channel :as models.channel]
    [metabase.channel.template.core :as channel.template]
    [metabase.events :as events]
    [metabase.models.interface :as mi]
@@ -15,6 +17,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -166,13 +169,55 @@
     (events/publish-event! :event/notification-create {:object notification :user-id api/*current-user-id*})
     notification))
 
+(defn- sample-payload
+  "Generate a sample payload for a notification."
+  [notification]
+  (case (:payload_type notification)
+    :notification/system-event
+    (mu/generate-example (notification/notification-payload-schema notification))
+
+    ;; else
+    (notification/notification-payload notification)))
+
 (api.macros/defendpoint :post "/payload"
   "Return the payload of a notification"
   [_route _query body :- ::models.notification/NotificationWithPayload]
   (api/create-check :model/Notification body)
-  (let [payload-schema (notification/notification-payload-schema body)]
-    {:payload (mu/generate-example payload-schema)
-     :schema (api.macros/schema->json-schema payload-schema)}))
+  {:payload (sample-payload body)
+   :schema  (api.macros/schema->json-schema (notification/notification-payload-schema body))})
+
+(defn- sample-recipient
+  [channel-type]
+  (case channel-type
+    :channel/email
+    {:type :notification-recipient/user
+     :user_id 13371337
+     :user    {:first_name "Bot"
+               :last_name  "Meta"
+               :email      "bot@metabase.com"}}
+
+    :channel/slack
+    {:type :notificaiton-recipient/raw-value
+     :details {:value "#metabase-example-channel"}}))
+
+(api.macros/defendpoint :post "/preview_template"
+  "Preview a notification payload. Optionally can provide a custom input for rendering"
+  [_route _query
+   {:keys [notification template custom_context]} :- [:map
+                                                      [:notification ::models.notification/NotificationWithPayload]
+                                                      [:template ::models.channel/ChannelTemplate]
+                                                      [:payload {:optional true} :any]]]
+  (api/create-check :model/Notification notification)
+  (let [sample-notification-context (if custom_context
+                                      (let [custom_context (update custom_context :payload_type keyword)]
+                                        (mu/validate-throw (notification/notification-payload-schema notification) custom_context))
+                                      (sample-payload notification))]
+    {:context  sample-notification-context
+     :rendered (first (channel/render-notification
+                       (:channel_type template)
+                       sample-notification-context
+                       template
+                       [(sample-recipient (:channel_type template))]))}))
 
 (defn- notify-notification-updates!
   "Send notification emails based on changes between updated and existing notification"

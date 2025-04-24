@@ -180,10 +180,11 @@
            :numberOfSuccessfulCallsWithoutRetryAttempt])))
 
 (def ^:private fake-email-notification
-  {:subject      "test-message"
-   :recipients   ["whoever@example.com"]
-   :message-type :text
-   :message      "test message body"})
+  {:subject "test-message"
+   :from    "hi@metabase.com"
+   :to      ["whoever@example.com"]
+   :body    [{:type "text/html"
+              :content "test message"}]})
 
 (def ^:private test-retry-configuration
   (assoc @#'notification.send/default-retry-config

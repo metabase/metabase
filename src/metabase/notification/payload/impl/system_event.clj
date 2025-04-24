@@ -36,7 +36,9 @@
   dispatch-on-event-info)
 
 (mr/def ::rows.bulk
-  [:map
+  [:map {:closed true}
+   [:payload_type [:= :notification/system-event]]
+   [:context      :map]
    [:creator [:map {:gen/return {:first_name  "Meta"
                                  :last_name   "Bot"
                                  :common_name "Meta Bot"

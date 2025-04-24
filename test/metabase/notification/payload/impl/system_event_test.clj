@@ -117,11 +117,10 @@
                                                                  {:first_name "Ngoc" :email "ngoc@metabase.com"}
                                                                  sent-from-setup?))
                                   :channel/email first))]
-                  (is (= {:recipients     #{"crowberto@metabase.com"}
-                          :message-type   :attachments
-                          :subject        expected-subject
-                          :message        [(zipmap (map str regexes) (repeat true))]
-                          :recipient-type :cc}
+                  (is (= {:to      #{"crowberto@metabase.com"}
+                          :from    "notifications@metabase.com"
+                          :subject expected-subject
+                          :body    [(zipmap (map str regexes) (repeat true))]}
                          (apply mt/summarize-multipart-single-email email regexes)))))]
     (testing "sent from invite page"
       (check false
@@ -166,11 +165,10 @@
                                                                                            :user-id (:id rasta)}))
                                       :channel/email
                                       first)]
-                      (is (= {:recipients     #{(:email rasta)}
-                              :message-type   :attachments
-                              :subject        "You set up an alert"
-                              :message        [(zipmap (map str regexes) (repeat true))]
-                              :recipient-type :cc}
+                      (is (= {:to      #{(:email rasta)}
+                              :from    "notifications@metabase.com"
+                              :subject "You set up an alert"
+                              :body    [(zipmap (map str regexes) (repeat true))]}
                              (apply mt/summarize-multipart-single-email email regexes))))))]
 
       (doseq [[send-condition condition-regex]
@@ -190,11 +188,10 @@
                                     (events/publish-event! :event/slack-token-invalid {}))
                                   :channel/email
                                   first))]
-                  (is (= {:recipients     recipients
-                          :message-type   :attachments
-                          :subject        "Your Slack connection stopped working"
-                          :message        [(zipmap (map str regexes) (repeat true))]
-                          :recipient-type :cc}
+                  (is (= {:to      recipients
+                          :from    "notifications@metabase.com"
+                          :subject "Your Slack connection stopped working"
+                          :body    [(zipmap (map str regexes) (repeat true))]}
                          (apply mt/summarize-multipart-single-email email regexes)))))
         admin-emails (t2/select-fn-set :email :model/User :is_superuser true)]
     (testing "send to admins with a link to setting page"
