@@ -60,7 +60,7 @@
         return;
       }
 
-      if (event.data.type === "metabase.embed.waitingForAuth") {
+      if (event.data.type === "metabase.embed.askToAuthenticate") {
         const payload = {
           type: "metabase.embed.authenticate",
           payload: { apiKey: this.apiKey },
