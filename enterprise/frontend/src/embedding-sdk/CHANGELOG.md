@@ -1,3 +1,14 @@
+## [0.53.14](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.13...embedding-sdk-0.53.14) (2025-04-24)
+
+
+### Bug Fixes
+
+* **sdk:** Ensure that questions don't flicker when fetching entity IDs ([#57130](https://github.com/metabase/metabase/issues/57130)) ([4ed2c08](https://github.com/metabase/metabase/commit/4ed2c0861c874150fe09c45aab96ecd5edeac8ae)), closes [#57073](https://github.com/metabase/metabase/issues/57073)
+* **sdk:** fix dataset endpoint being called on every re-render ([#56234](https://github.com/metabase/metabase/issues/56234)) ([0137be5](https://github.com/metabase/metabase/commit/0137be5ea0fe3632921d6690a715489dee96b471)), closes [#56100](https://github.com/metabase/metabase/issues/56100)
+* **sdk:** use instance locale if no locale is passed ([#56683](https://github.com/metabase/metabase/issues/56683)) ([#56874](https://github.com/metabase/metabase/issues/56874)) ([77bce68](https://github.com/metabase/metabase/commit/77bce68f250a20b7fd85ecee1a1f24a891402f52))
+
+
+
 ## [0.53.13](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.12...embedding-sdk-0.53.13) (2025-04-04)
 
 
