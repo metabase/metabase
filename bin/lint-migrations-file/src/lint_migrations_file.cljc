@@ -24,7 +24,7 @@
 (defn- validation-error? [e]
   (::validation-error (ex-data e)))
 
-#?(:bb :no-op
+#?(:bb ::no-op
    :clj ;; just print ordered maps like normal maps.
    (defmethod print-method flatland.ordered.map.OrderedMap
      [m writer]
@@ -207,8 +207,8 @@
       #_:clj-kondo/ignore
       (System/exit 1))
     (catch #_:clj-kondo/ignore
-        Throwable e
-        (pprint/pprint (Throwable->map e))
-        (println (.getMessage e))
-        #_:clj-kondo/ignore
-        (System/exit 1))))
+     Throwable e
+           (pprint/pprint (Throwable->map e))
+           (println (.getMessage e))
+           #_:clj-kondo/ignore
+           (System/exit 1))))
