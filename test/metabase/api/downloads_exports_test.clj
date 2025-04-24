@@ -151,7 +151,7 @@
                 (pulse.test-util/with-captured-channel-send-messages!
                   (pulse.send/send-pulse! pulse)))
               :channel/email vec)
-        msgs (get-in m [:channel/email 0 :message])]
+        msgs (get-in m [:channel/email 0 :body])]
     (first (keep
             (fn [{:keys [type content-type content]}]
               (when (and
