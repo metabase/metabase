@@ -3,6 +3,7 @@ import { t } from "ttag";
 import {
   BAD_TOKEN,
   BOOLEAN,
+  CALL,
   END_OF_INPUT,
   FIELD,
   GROUP,
@@ -15,7 +16,7 @@ import {
 import { error } from "../utils";
 
 const left = [FIELD, STRING, NUMBER, BOOLEAN, IDENTIFIER, GROUP_CLOSE];
-const right = [FIELD, STRING, NUMBER, BOOLEAN, IDENTIFIER, GROUP];
+const right = [FIELD, STRING, NUMBER, BOOLEAN, IDENTIFIER, GROUP, CALL];
 
 export function checkMismatchedSiblings({ tokens }: { tokens: Token[] }) {
   for (let index = 1; index < tokens.length; index++) {

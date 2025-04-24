@@ -78,12 +78,17 @@ describe("diagnostics", () => {
 
     describe("sibling tokens validation", () => {
       const left = ["[Total]", '"string"', "42", "(10 + 5)", "true"];
-      const right = ["[Total]", '"string"', "42", "(10 + 5)", "tax"];
+      const right = [
+        ["[Total]", "[Total]"],
+        ['"string"', '"string"'],
+        ["42", "42"],
+        ["(10 + 5)", "("],
+        ["tax", "tax"],
+        ["ceil(10.5)", "ceil"],
+      ];
 
       for (const leftToken of left) {
-        for (const rightToken of right) {
-          const errToken = rightToken.startsWith("(") ? "(" : rightToken;
-
+        for (const [rightToken, errToken] of right) {
           it(`should catch mismatched adjecent tokens in: ${leftToken} ${rightToken}`, () => {
             expect(err(`${leftToken} ${rightToken}`)).toBe(
               `Expecting operator but got ${errToken} instead`,
