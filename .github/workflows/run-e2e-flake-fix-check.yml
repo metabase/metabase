@@ -130,11 +130,13 @@ jobs:
     needs: [workflow-summary-manual]
     runs-on: ubuntu-22.04
     steps:
+      - uses: actions/checkout@v4
+
       - name: Trigger workflow on master
         run: |
           SPEC_PATH="${{ inputs.spec }}"
           echo "Using spec path: $SPEC_PATH"
-          
+
           gh workflow run e2e-stress-test-flake-fix.yml \
             -f spec="$SPEC_PATH" \
             -f burn_in="${{ inputs.burn_in }}" \
@@ -153,11 +155,13 @@ jobs:
     needs: [workflow-summary-manual]
     runs-on: ubuntu-22.04
     steps:
+      - uses: actions/checkout@v4
+
       - name: Trigger workflow on current branch
         run: |
           SPEC_PATH="${{ inputs.spec }}"
           echo "Using spec path: $SPEC_PATH"
-          
+
           gh workflow run e2e-stress-test-flake-fix.yml \
             -f spec="$SPEC_PATH" \
             -f burn_in="${{ inputs.burn_in }}" \
@@ -176,11 +180,13 @@ jobs:
     needs: [workflow-summary-auto, check-label]
     runs-on: ubuntu-22.04
     steps:
+      - uses: actions/checkout@v4
+
       - name: Trigger workflow on master
         run: |
           SPEC_PATH="${{ needs.check-label.outputs.spec_path }}"
           echo "Using spec path: $SPEC_PATH"
-          
+
           gh workflow run e2e-stress-test-flake-fix.yml \
             -f spec="$SPEC_PATH" \
             -f burn_in="20" \
@@ -199,11 +205,13 @@ jobs:
     needs: [workflow-summary-auto, check-label]
     runs-on: ubuntu-22.04
     steps:
+      - uses: actions/checkout@v4
+
       - name: Trigger workflow on current branch
         run: |
           SPEC_PATH="${{ needs.check-label.outputs.spec_path }}"
           echo "Using spec path: $SPEC_PATH"
-          
+
           gh workflow run e2e-stress-test-flake-fix.yml \
             -f spec="$SPEC_PATH" \
             -f burn_in="20" \
