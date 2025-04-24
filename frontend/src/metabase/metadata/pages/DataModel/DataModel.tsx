@@ -1,4 +1,3 @@
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -28,6 +27,7 @@ export const DataModel = ({ params }: Props) => {
   const schemaId = params.schemaId;
   const tableId = Urls.extractEntityId(params.tableId);
   const fieldId = Urls.extractEntityId(params.fieldId);
+  const isEmptyStateShown = tableId == null || fieldId == null;
 
   return (
     <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`}>
@@ -40,40 +40,37 @@ export const DataModel = ({ params }: Props) => {
         />
       </Box>
 
-      {match({ tableId, fieldId })
-        .with({ tableId: undefined }, () => (
-          <Flex align="center" bg="accent-gray-light" flex="1" justify="center">
-            <Box maw={320}>
-              <EmptyState
-                illustrationElement={<img src={EmptyDashboardBot} />}
-                title={t`Start by selecting data to model`}
-                message={t`Browse your databases to find the table you’d like to edit.`}
-              />
-            </Box>
-          </Flex>
-        ))
-        .with({ fieldId: undefined }, () => (
-          <Flex align="center" bg="accent-gray-light" flex="1" justify="center">
-            <Box maw={320}>
-              <EmptyState
-                illustrationElement={<img src={EmptyDashboardBot} />}
-                title={t`Edit the table and fields`}
-                message={t`Select a field to edit it. Then change the display name, semantic type or filtering behavior.`}
-              />
-            </Box>
-          </Flex>
-        ))
-        .otherwise(() => (
-          <Flex bg="accent-gray-light" flex="1">
-            <Box flex="0 0 400px" px="xl" py="lg">
-              <FieldSection fieldId={fieldId} />
-            </Box>
+      {isEmptyStateShown && (
+        <Flex align="center" bg="accent-gray-light" flex="1" justify="center">
+          <Box maw={320}>
+            <EmptyState
+              illustrationElement={<img src={EmptyDashboardBot} />}
+              title={
+                tableId
+                  ? t`Edit the table and fields`
+                  : t`Start by selecting data to model`
+              }
+              message={
+                tableId
+                  ? t`Select a field to edit it. Then change the display name, semantic type or filtering behavior.`
+                  : t`Browse your databases to find the table you’d like to edit.`
+              }
+            />
+          </Box>
+        </Flex>
+      )}
 
-            <Box flex="1" p="xl" pl={0}>
-              <PreviewSection fieldId={fieldId} />
-            </Box>
-          </Flex>
-        ))}
+      {!isEmptyStateShown && (
+        <Flex bg="accent-gray-light" flex="1">
+          <Box flex="0 0 400px" px="xl" py="lg">
+            <FieldSection fieldId={fieldId} />
+          </Box>
+
+          <Box flex="1" p="xl" pl={0}>
+            <PreviewSection fieldId={fieldId} />
+          </Box>
+        </Flex>
+      )}
     </Flex>
   );
 };
