@@ -241,10 +241,11 @@
   `action` being performed. [[action-arg-map-spec]] returns the specific spec used to validate `arg-map` for a given
   `action`."
   [action
-   arg-maps
+   arg-map-or-maps
    & {:keys [policy existing-context]
       :or   {policy :model-action}}]
   (let [action-kw (keyword action)
+        arg-maps  (if (map? arg-map-or-maps) [arg-map-or-maps] arg-map-or-maps)
         spec      (action-arg-map-spec action-kw)
         arg-maps  (map (partial normalize-action-arg-map action-kw) arg-maps)
         errors    (for [arg-map arg-maps
