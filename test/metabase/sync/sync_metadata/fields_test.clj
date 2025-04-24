@@ -11,6 +11,7 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.fks :as sync-fks]
+   [metabase.sync.util :as sync-util]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -310,7 +311,7 @@
      {:field-name "continent_id", :base-type :type/Integer :fk :continent}]
     [["Ghana" 1]]]])
 
-(deftest sync-fks-and-fields-test
+(deftest ^:synchronized sync-fks-and-fields-test
   (testing (str "[[sync-fields/sync-fields-for-table!]] and [[sync-fks/sync-fks-for-table!]] should sync fields and fks"
                 "in the same way that [[sync-fields/sync-fields!]] and [[sync-fks/sync-fks!]] do")
     (mt/test-drivers (mt/normal-drivers-with-feature :metadata/key-constraints)
@@ -328,7 +329,18 @@
                 ;; 1. delete the fields that were just synced
                 (t2/delete! :model/Field :table_id [:in (map :id tables)])
                 ;; 2. sync the metadata for each table
-                (sync-fields-and-fks!)
+                (if (= "for entire DB" message)
+                  (let [tables-updated (atom nil)
+                        original-set-initial-table-sync-complete-for-db! sync-util/set-initial-table-sync-complete-for-db!]
+                    (with-redefs [sync-util/set-initial-table-sync-complete-for-db!
+                                  (fn [& args]
+                                    (let [r (apply original-set-initial-table-sync-complete-for-db! args)]
+                                      (reset! tables-updated r)
+                                      r))]
+                      (sync-fields-and-fks!)
+                      (testing "Correct number fo tables updated by set-initial-table-sync-complete-for-db! in batches"
+                        (is (= 2 @tables-updated)))))
+                  (sync-fields-and-fks!))
                 (let [continent-id-field (t2/select-one :model/Field :%lower.name "id" :table_id (mt/id :continent))]
                   (is (= [{:name "continent_id", :semantic_type :type/FK, :fk_target_field_id (u/the-id continent-id-field)}
                           {:name "id",           :semantic_type :type/PK, :fk_target_field_id nil}
