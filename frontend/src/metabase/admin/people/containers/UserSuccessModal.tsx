@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { useEffect } from "react";
 import { push } from "react-router-redux";
