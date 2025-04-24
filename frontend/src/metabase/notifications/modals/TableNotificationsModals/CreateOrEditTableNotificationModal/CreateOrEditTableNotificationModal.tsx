@@ -25,11 +25,12 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { ChannelSetupModal } from "metabase/notifications/modals/shared/ChannelSetupModal";
 import { AlertModalSettingsBlock } from "metabase/notifications/modals/shared/components/AlertModalSettingsBlock/AlertModalSettingsBlock";
 import { AlertTriggerIcon } from "metabase/notifications/modals/shared/components/AlertTriggerIcon";
+import type { SupportedChannelKey } from "metabase/notifications/modals/shared/components/NotificationChannels/NotificationChannelsPicker/NotificationChannelsPicker";
 import { NotificationChannelsPicker } from "metabase/notifications/modals/shared/components/NotificationChannels/NotificationChannelsPicker/NotificationChannelsPicker";
 import { getDefaultTableNotificationRequest } from "metabase/notifications/utils";
 import { addUndo } from "metabase/redux/undo";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
-import { Button, Flex, Modal, Stack } from "metabase/ui";
+import { Button, Flex, Icon, Modal, Stack, Text, rem } from "metabase/ui";
 import type {
   CreateTableNotificationRequest,
   NotificationHandler,
@@ -96,6 +97,66 @@ type CreateOrEditTableNotificationModalProps = {
     }
 );
 
+interface PreviewMessagePanelProps {
+  opened: boolean;
+  onClose: () => void;
+  channelType?: SupportedChannelKey;
+}
+
+const PreviewMessagePanel = ({
+  opened,
+  onClose,
+  channelType,
+}: PreviewMessagePanelProps) => {
+  if (!opened) {
+    return null;
+  }
+
+  return (
+    <Flex
+      direction="column"
+      h="100%"
+      w="50%"
+      style={{
+        // position: "absolute",
+        // right: 0,
+        // top: 0,
+        // bottom: 0,
+        height: "100%",
+        borderLeft: "1px solid red",
+        flexGrow: 1,
+        // backgroundColor: "white",
+        // zIndex: 10,
+      }}
+    >
+      <Flex
+        p="md"
+        // justify="space-between"
+        gap="1rem"
+        align="center"
+        style={{ borderBottom: "1px solid var(--mantine-color-gray-3)" }}
+      >
+        <Icon
+          name="close"
+          size={16}
+          style={{ cursor: "pointer" }}
+          onClick={onClose}
+        />
+        <Text fw={600} size="lg">{t`Preview Message`}</Text>
+      </Flex>
+      <Flex p="md" direction="column" style={{ flex: 1, overflow: "auto" }}>
+        {channelType && (
+          <Text size="sm" c="dimmed">
+            {channelType === "email"
+              ? t`Email preview will be displayed here`
+              : t`Slack message preview will be displayed here`}
+          </Text>
+        )}
+      </Flex>
+    </Flex>
+  );
+};
+
 export const CreateOrEditTableNotificationModal = ({
   tableId,
   notification,
@@ -106,10 +167,15 @@ export const CreateOrEditTableNotificationModal = ({
   const dispatch = useDispatch();
   const user = useSelector(getUser);
   const userCanAccessSettings = useSelector(canAccessSettings);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewChannelType, setPreviewChannelType] = useState<
+    SupportedChannelKey | undefined
+  >();
 
   const [requestBody, setRequestBody] = useState<
     CreateTableNotificationRequest | UpdateTableNotificationRequest | null
   >(null);
+  console.log(notification, requestBody);
 
   // State to store the template JSON for the current event_name
   const [templateJson, setTemplateJson] = useState<string>("");
@@ -285,6 +351,16 @@ export const CreateOrEditTableNotificationModal = ({
   }, [onClose]);
   useEscapeToCloseModal(handleCloseAttempt, { capture: false });
 
+  const handlePreviewClick = useCallback((channelType: SupportedChannelKey) => {
+    setPreviewChannelType(channelType);
+    setPreviewOpen(true);
+  }, []);
+
+  const handlePreviewClose = useCallback(() => {
+    setPreviewOpen(false);
+    setPreviewChannelType(undefined);
+  }, []);
+
   if (!isLoadingChannelInfo && channelSpec && !channelRequirementsMet) {
     return (
       <ChannelSetupModal
@@ -304,7 +380,8 @@ export const CreateOrEditTableNotificationModal = ({
     <Modal
       data-testid="table-notification-create"
       opened
-      size="lg"
+      // size={previewOpen ? "calc(180% + 2rem)" : "xl"}
+      size={previewOpen ? rem(900) : rem(600)}
       onClose={handleCloseAttempt}
       padding="2.5rem"
       closeOnEscape={false}
@@ -313,61 +390,83 @@ export const CreateOrEditTableNotificationModal = ({
         body: {
           paddingLeft: 0,
           paddingRight: 0,
+          // position: "relative",
         },
+        // inner: {
+        //   transition: "width 0.3s ease",
+        // },
       }}
     >
-      <Stack gap="xl" mt="1.5rem" mb="2rem" px="2.5rem">
-        <AlertModalSettingsBlock
-          title={t`What do you want to be notified about?`}
-        >
-          <Flex gap="lg" align="center">
-            <AlertTriggerIcon />
-            <AutoWidthSelect
-              data-testid="notification-event-select"
-              data={triggerOptions}
-              value={requestBody.payload.event_name}
-              onChange={(value) => {
-                if (value) {
-                  const selectedOption =
-                    NOTIFICATION_TRIGGER_OPTIONS_MAP[
-                      value as NotificationTriggerEvent
-                    ];
-                  if (selectedOption) {
-                    setRequestBody({
-                      ...requestBody,
-                      payload: {
-                        ...requestBody.payload,
-                        event_name: selectedOption.value.eventName,
-                      },
-                    });
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: previewOpen ? "1fr 1fr" : "1fr",
+          transition: "grid-template-columns 0.3s ease",
+        }}
+      >
+        <Stack gap="xl" mt="1.5rem" mb="2rem" px="2.5rem">
+          <AlertModalSettingsBlock
+            title={t`What do you want to be notified about?`}
+          >
+            <Flex gap="lg" align="center">
+              <AlertTriggerIcon />
+              <AutoWidthSelect
+                data-testid="notification-event-select"
+                data={triggerOptions}
+                value={requestBody.payload.event_name}
+                onChange={(value) => {
+                  if (value) {
+                    const selectedOption =
+                      NOTIFICATION_TRIGGER_OPTIONS_MAP[
+                        value as NotificationTriggerEvent
+                      ];
+                    if (selectedOption) {
+                      setRequestBody({
+                        ...requestBody,
+                        payload: {
+                          ...requestBody.payload,
+                          event_name: selectedOption.value.eventName,
+                        },
+                      });
+                    }
                   }
-                }
+                }}
+              />
+            </Flex>
+          </AlertModalSettingsBlock>
+          <AlertModalSettingsBlock
+            title={t`Where do you want to send the alerts?`}
+            contentProps={{ style: { overflow: "visible" } }}
+          >
+            <NotificationChannelsPicker
+              enableTemplates
+              notificationHandlers={requestBody.handlers}
+              channels={channelSpec ? channelSpec.channels : undefined}
+              onChange={(newHandlers: NotificationHandler[]) => {
+                setRequestBody({
+                  ...requestBody,
+                  handlers: newHandlers,
+                });
               }}
+              formattedJsonTemplate={templateJson}
+              defaultTemplates={defaultTemplates}
+              // onPreviewClick={handlePreviewClick}
+              getInvalidRecipientText={(domains) =>
+                t`You're only allowed to email alerts to addresses ending in ${domains}`
+              }
             />
-          </Flex>
-        </AlertModalSettingsBlock>
-        <AlertModalSettingsBlock
-          title={t`Where do you want to send the alerts?`}
-          contentProps={{ style: { overflow: "visible" } }}
-        >
-          <NotificationChannelsPicker
-            enableTemplates
-            notificationHandlers={requestBody.handlers}
-            channels={channelSpec ? channelSpec.channels : undefined}
-            onChange={(newHandlers: NotificationHandler[]) => {
-              setRequestBody({
-                ...requestBody,
-                handlers: newHandlers,
-              });
-            }}
-            formattedJsonTemplate={templateJson}
-            defaultTemplates={defaultTemplates}
-            getInvalidRecipientText={(domains) =>
-              t`You're only allowed to email alerts to addresses ending in ${domains}`
-            }
+          </AlertModalSettingsBlock>
+        </Stack>
+
+        {/* Preview Message Panel */}
+        {previewOpen && (
+          <PreviewMessagePanel
+            opened={true}
+            onClose={handlePreviewClose}
+            channelType={previewChannelType}
           />
-        </AlertModalSettingsBlock>
-      </Stack>
+        )}
+      </div>
       <Flex justify="flex-end" px="2.5rem" pt="lg" className={CS.borderTop}>
         <Button
           onClick={handleCloseAttempt}
@@ -381,6 +480,7 @@ export const CreateOrEditTableNotificationModal = ({
           onClickOperation={onCreateOrEditAlert}
         />
       </Flex>
+
       {hasChanges && (
         <ConfirmModal
           size="md"
