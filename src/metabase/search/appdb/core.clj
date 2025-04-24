@@ -18,6 +18,7 @@
    [metabase.search.settings :as search.settings]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
+   [metabase.util.cluster-lock :as cluster-lock]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
