@@ -17,6 +17,7 @@
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.postgres.ddl :as postgres.ddl]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -1191,3 +1192,6 @@
 (defmethod driver.sql/default-database-role :postgres
   [_ _]
   "NONE")
+
+(defmethod sql-jdbc/impl-query-canceled? :postgres [_ e]
+  (= (sql-jdbc/get-sql-state e) "57014"))

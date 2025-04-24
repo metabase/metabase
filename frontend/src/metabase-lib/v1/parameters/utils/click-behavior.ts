@@ -162,21 +162,18 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
       target,
       name: Lib.displayInfo(query, stageIndex, targetColumn).longDisplayName,
       sourceFilters: {
-        column: (sourceColumn, sourceQuestion) => {
-          const sourceQuery = sourceQuestion.query();
-          const stageIndex = -1;
-
-          return Lib.isAssignableType(
-            Lib.fromLegacyColumn(sourceQuery, stageIndex, sourceColumn),
+        column: (sourceColumn) =>
+          Lib.isAssignableType(
+            Lib.legacyColumnTypeInfo(sourceColumn),
             targetColumn,
-          );
-        },
+          ),
         parameter: (parameter) =>
           columnFilterForParameter(query, stageIndex, parameter)(targetColumn),
         userAttribute: () =>
-          Lib.isString(targetColumn) ||
-          Lib.isCategory(targetColumn) ||
-          Lib.isBoolean(targetColumn),
+          Lib.isStringOrStringLike(targetColumn) ||
+          Lib.isNumeric(targetColumn) ||
+          Lib.isBoolean(targetColumn) ||
+          Lib.isDateOrDateTime(targetColumn),
       },
     };
   });

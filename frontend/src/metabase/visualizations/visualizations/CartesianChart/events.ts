@@ -876,7 +876,7 @@ export const getBrushData = (
     const nextQuery = Lib.updateTemporalFilter(
       query,
       stageIndex,
-      column,
+      Lib.fromLegacyColumn(query, stageIndex, column),
       question.id(),
       new Date(start).toISOString(),
       new Date(end).toISOString(),
@@ -893,7 +893,7 @@ export const getBrushData = (
   const nextQuery = Lib.updateNumericFilter(
     query,
     stageIndex,
-    column,
+    Lib.fromLegacyColumn(query, stageIndex, column),
     question.id(),
     start,
     end,
