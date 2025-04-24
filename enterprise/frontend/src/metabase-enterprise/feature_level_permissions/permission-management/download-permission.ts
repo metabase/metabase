@@ -22,6 +22,10 @@ import {
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
+import tenKIcon from "metabase/ui/components/icons/Icon/icons/10k.svg";
+import oneMIcon from "metabase/ui/components/icons/Icon/icons/1m.svg";
+import closeIcon from "metabase/ui/components/icons/Icon/icons/close.svg";
+import permissionsLimitedIcon from "metabase/ui/components/icons/Icon/icons/permissions_limited.svg";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -45,6 +49,7 @@ export const DOWNLOAD_PERMISSION_OPTIONS = {
     label: t`No`,
     value: DataPermissionValue.NONE,
     icon: "close",
+    iconPath: closeIcon,
     iconColor: "danger",
   },
   limited: {
@@ -52,6 +57,7 @@ export const DOWNLOAD_PERMISSION_OPTIONS = {
     label: t`10 thousand rows`,
     value: DataPermissionValue.LIMITED,
     icon: "10k",
+    iconPath: tenKIcon,
     iconColor: "accent7",
   },
   full: {
@@ -59,6 +65,7 @@ export const DOWNLOAD_PERMISSION_OPTIONS = {
     label: t`1 million rows`,
     value: DataPermissionValue.FULL,
     icon: "1m",
+    iconPath: oneMIcon,
     iconColor: "accent7",
   },
   controlled: {
@@ -66,6 +73,7 @@ export const DOWNLOAD_PERMISSION_OPTIONS = {
     label: t`Granular`,
     value: DataPermissionValue.CONTROLLED,
     icon: "permissions_limited",
+    iconPath: permissionsLimitedIcon,
     iconColor: "warning",
   },
 };

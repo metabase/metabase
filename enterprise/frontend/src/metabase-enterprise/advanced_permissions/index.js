@@ -2,6 +2,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DataPermissionValue } from "metabase/admin/permissions/types";
+import { permissionOptionsToIconPaths } from "metabase/admin/permissions/utils/icons";
 import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
@@ -16,8 +17,11 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS,
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATA_PERMISSIONS,
+  PLUGIN_PERMISSIONS,
   PLUGIN_REDUCERS,
 } from "metabase/plugins";
+import closeIcon from "metabase/ui/components/icons/Icon/icons/close.svg";
+import databaseIcon from "metabase/ui/components/icons/Icon/icons/database.svg";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ImpersonationModal } from "./components/ImpersonationModal";
@@ -33,6 +37,7 @@ const IMPERSONATED_PERMISSION_OPTION = {
   label: t`Impersonated`,
   value: DataPermissionValue.IMPERSONATED,
   icon: "database",
+  iconPath: databaseIcon,
   iconColor: "warning",
 };
 
@@ -41,6 +46,7 @@ const BLOCK_PERMISSION_OPTION = {
   label: t`Blocked`,
   value: DataPermissionValue.BLOCKED,
   icon: "close",
+  iconPath: closeIcon,
   iconColor: "danger",
 };
 
@@ -147,6 +153,14 @@ if (hasPremiumFeature("advanced_permissions")) {
 
   PLUGIN_DATA_PERMISSIONS.shouldRestrictNativeQueryPermissions =
     shouldRestrictNativeQueryPermissions;
+
+  PLUGIN_PERMISSIONS.permissionIconPaths = {
+    ...PLUGIN_PERMISSIONS.permissionIconPaths,
+    ...permissionOptionsToIconPaths({
+      impersonated: IMPERSONATED_PERMISSION_OPTION,
+      blocked: BLOCK_PERMISSION_OPTION,
+    }),
+  };
 }
 
 const getDatabaseViewImpersonationModalUrl = (entityId, groupId) => {

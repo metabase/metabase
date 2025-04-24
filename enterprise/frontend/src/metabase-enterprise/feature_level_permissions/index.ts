@@ -1,10 +1,13 @@
+import { permissionOptionsToIconPaths } from "metabase/admin/permissions/utils/icons";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_PERMISSIONS,
 } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { getFeatureLevelDataPermissions } from "./permission-management";
+import { DOWNLOAD_PERMISSION_OPTIONS } from "./permission-management/download-permission";
 import {
   canDownloadResults,
   getDownloadWidgetMessageOverride,
@@ -35,5 +38,10 @@ if (hasPremiumFeature("advanced_permissions")) {
 
   PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps = {
     exclude_uneditable_details: true,
+  };
+
+  PLUGIN_PERMISSIONS.permissionIconPaths = {
+    ...PLUGIN_PERMISSIONS.permissionIconPaths,
+    ...permissionOptionsToIconPaths(DOWNLOAD_PERMISSION_OPTIONS),
   };
 }

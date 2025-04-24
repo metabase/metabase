@@ -4,7 +4,10 @@ import { Fragment, memo, useState } from "react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Toggle from "metabase/core/components/Toggle";
 import { lighten } from "metabase/lib/colors";
-import { Icon, Tooltip } from "metabase/ui";
+import { Tooltip } from "metabase/ui";
+import chevrondownIcon from "metabase/ui/components/icons/Icon/icons/chevrondown.svg";
+
+const chevrondownIconPath = new URL(chevrondownIcon).pathname;
 
 import {
   ActionsList,
@@ -78,11 +81,14 @@ export const PermissionsSelect = memo(function PermissionsSelect({
         </Tooltip>
       )}
 
-      <Icon
-        style={{ visibility: isDisabled ? "hidden" : "visible" }}
-        name="chevrondown"
-        size={16}
-        color={lighten("text-light", 0.15)}
+      <div
+        style={{
+          width: 16,
+          height: 16,
+          maskImage: `url("${chevrondownIconPath}")`,
+          background: lighten("text-light", 0.15),
+          visibility: isDisabled ? "hidden" : "visible",
+        }}
       />
     </PermissionsSelectRoot>
   );

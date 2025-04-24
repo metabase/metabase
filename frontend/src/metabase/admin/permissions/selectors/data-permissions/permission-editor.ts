@@ -91,17 +91,16 @@ export const getDataPermissions = (state: State) =>
 const getOriginalDataPermissions = (state: State) =>
   state.admin.permissions.originalDataPermissions;
 
-const getGroupRouteParams = (
-  _state: State,
-  props: { params: RawGroupRouteParams },
-) => {
-  const { groupId, databaseId, schemaName } = props.params;
-  return {
-    groupId: groupId != null ? parseInt(groupId) : undefined,
-    databaseId: databaseId != null ? parseInt(databaseId) : undefined,
-    schemaName,
-  };
-};
+const getGroupRouteParams = createSelector(
+  (_state: State, props: { params: RawGroupRouteParams }) => props.params,
+  ({ groupId, databaseId, schemaName }) => {
+    return {
+      groupId: groupId != null ? parseInt(groupId) : undefined,
+      databaseId: databaseId != null ? parseInt(databaseId) : undefined,
+      schemaName,
+    };
+  },
+);
 
 const getEditorEntityName = (
   { databaseId, schemaName }: DataRouteParams,

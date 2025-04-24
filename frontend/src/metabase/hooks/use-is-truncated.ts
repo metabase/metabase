@@ -5,10 +5,12 @@ import resizeObserver from "metabase/lib/resize-observer";
 
 type UseIsTruncatedProps = {
   disabled?: boolean;
+  isResizeable?: boolean;
 };
 
 export const useIsTruncated = <E extends Element>({
   disabled = false,
+  isResizeable = true,
 }: UseIsTruncatedProps = {}) => {
   const ref = useRef<E | null>(null);
   const [isTruncated, setIsTruncated] = useState(false);
@@ -18,6 +20,11 @@ export const useIsTruncated = <E extends Element>({
 
     if (!element || disabled) {
       return;
+    }
+
+    if (isResizeable) {
+      setIsTruncated(getIsTruncated(element));
+      return () => {};
     }
 
     const handleResize = () => {
@@ -30,7 +37,7 @@ export const useIsTruncated = <E extends Element>({
     return () => {
       resizeObserver.unsubscribe(element, handleResize);
     };
-  }, [disabled]);
+  }, [disabled, isResizeable]);
 
   return { isTruncated, ref };
 };

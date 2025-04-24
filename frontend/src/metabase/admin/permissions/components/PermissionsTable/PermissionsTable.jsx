@@ -102,7 +102,7 @@ export function PermissionsTable({
           {entities.map((entity) => {
             const entityName = (
               <span className={cx(CS.flex, CS.alignCenter)}>
-                <Ellipsified>{entity.name}</Ellipsified>
+                <Ellipsified resizable={false}>{entity.name}</Ellipsified>
                 {entity.hint && (
                   <Tooltip tooltip={entity.hint}>
                     <HintIcon />
