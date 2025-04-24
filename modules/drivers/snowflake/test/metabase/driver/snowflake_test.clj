@@ -488,7 +488,12 @@
              net.snowflake.client.jdbc.SnowflakeSQLException
              (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
             "can-connect? should throw for Snowflake databases that don't exist (#9511)")
-
+        (is (can-connect? (-> (:details (mt/db))
+                              (assoc :host (str (get-in (mt/db) [:details :account])
+                                                ".snowflakecomputing.com")
+                                     :use-hostname true)
+                              (dissoc :account)))
+            "can-connect? with host and no account")
         (when (and pk-key pk-user)
           (mt/with-temp-file [pk-path]
             (mt/with-temp [:model/Secret {path-secret-id :id} {:name "Private key for Snowflake"
@@ -505,6 +510,13 @@
                                                                         :value (mt/bytes->base64-data-uri (u/string-to-bytes pk-key))}]
               (testing "private key authentication via uploaded keys or local key with path stored in a secret"
                 (spit pk-path pk-key)
+                (is (can-connect? (-> (:details (mt/db))
+                                      (assoc :host (str (get-in (mt/db) [:details :account])
+                                                        ".snowflakecomputing.com")
+                                             :use-hostname true)
+                                      (dissoc :password :account)
+                                      (merge {:db pk-db :user pk-user} {:private-key-id path-secret-id})))
+                    "can-connect? with pk, host and no account")
                 (doseq [to-merge [;; uploaded string
                                   {:private-key-value pk-key
                                    :private-key-options "uploaded"}
