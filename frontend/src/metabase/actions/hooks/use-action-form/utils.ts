@@ -99,9 +99,6 @@ export const getInputType = (param: Parameter, field?: Field) => {
   ) {
     return "string";
   }
-  if (field.isCategory() && field.semantic_type !== TYPE.Name) {
-    return "string";
-  }
 
   return "string";
 };

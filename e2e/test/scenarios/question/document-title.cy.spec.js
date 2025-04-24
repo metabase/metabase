@@ -8,7 +8,7 @@ describe(
   () => {
     beforeEach(() => {
       H.restore("postgres-12");
-      cy.signInAsNormalUser();
+      cy.signInAsAdmin();
     });
 
     it("should verify document title changes while loading a slow question (metabase#40051)", () => {
@@ -27,6 +27,7 @@ describe(
         { skipWaiting: true },
       );
 
+      H.queryBuilderMain().should("contain", "Doing science...");
       cy.title().should("eq", "Doing science... · Metabase");
     });
   },

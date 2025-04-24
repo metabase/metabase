@@ -290,9 +290,13 @@
           field-metadatas (if (= fields :all)
                             join-cols
                             (for [field-ref fields
-                                  :let [join-field (lib.options/update-options field-ref dissoc :join-alias)]]
-                              (assoc (lib.equality/find-matching-column join-field join-cols)
-                                     :lib/source-uuid (lib.options/uuid join-field))))
+                                  :let [join-field (lib.options/update-options field-ref dissoc :join-alias)
+                                        match      (lib.equality/find-matching-column join-field join-cols)]
+                                  :when match]
+                              (assoc match :lib/source-uuid (lib.options/uuid join-field))))
+          ;; If there was a `:fields` clause but none of them matched the `join-cols` then pretend it was `:fields :all`
+          ;; instead. That can happen if a model gets reworked and an old join clause remembers the old fields.
+          field-metadatas (if (empty? field-metadatas) join-cols field-metadatas)
           cols  (mapv (fn [field-metadata]
                         (->> (column-from-join-fields query stage-number field-metadata join-alias)
                              (adjust-ident join)

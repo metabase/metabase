@@ -123,6 +123,10 @@ const config = {
     {
       ...baseConfig,
       displayName: "core",
+      testPathIgnorePatterns: [
+        ...(baseConfig.testPathIgnorePatterns || []),
+        "<rootDir>/enterprise/frontend/src/embedding-sdk/",
+      ],
     },
   ],
 };

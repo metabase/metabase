@@ -16,11 +16,10 @@ function bigint(x: string) {
 
 describe("pratt/compiler", () => {
   function expr(source: string) {
-    const ast = parse(lexify(source).tokens, {
-      throwOnError: true,
-    });
+    const { tokens } = lexify(source);
+    const { root } = parse(tokens);
 
-    return compile(ast.root, {
+    return compile(root, {
       expressionMode: "expression",
     });
   }

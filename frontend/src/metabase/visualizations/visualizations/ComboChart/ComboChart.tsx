@@ -18,9 +18,11 @@ import type {
 Object.assign(
   ComboChart,
   getCartesianChartDefinition({
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     uiName: t`Combo`,
     identifier: "combo",
     iconName: "lineandbar",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     noun: t`line and bar chart`,
     minSize: getMinSize("combo"),
     defaultSize: getDefaultSize("combo"),

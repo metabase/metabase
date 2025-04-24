@@ -313,3 +313,24 @@
                 (is (= second-row (ctd/rows-without-index (qp/process-query (get-mbql* :d32 "2019-11-30"))))))
               (testing "second row (DateTime64 field match)"
                 (is (= second-row (ctd/rows-without-index (qp/process-query (get-mbql* :dt64 "2019-11-30T23:00:00")))))))))))))
+
+(deftest ^:parallel variable-filter-with-question-mark-test
+  (mt/test-driver :clickhouse
+    (testing "a query with a variable filter that includes a question mark will work as expected"
+      (let [uuid (str (java.util.UUID/randomUUID))]
+        (is (= [["?"]]
+               (mt/rows (qp/process-query
+                         {:database (mt/id)
+                          :type "native"
+                          :native {:collection "products"
+                                   :template-tags
+                                   {:x {:id uuid
+                                        :default "Gizmo"
+                                        :name "x"
+                                        :display-name "X"
+                                        :type "text"}}
+                                   :query  "select '?' from test_data.products where category = {{x}} limit 1"}
+                          :parameters [{:type "category"
+                                        :value "Gizmo"
+                                        :target ["variable" ["template-tag" "x"]]
+                                        :id uuid}]}))))))))

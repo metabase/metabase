@@ -113,7 +113,7 @@ describe("TasksApp", () => {
     });
 
     expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
-      "http://localhost/api/task?limit=50&offset=0",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     await waitForLoaderToBeRemoved();
 
@@ -127,10 +127,9 @@ describe("TasksApp", () => {
     await userEvent.click(nextPage);
 
     expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
-      "http://localhost/api/task?limit=50&offset=0",
-      "http://localhost/api/task?limit=50&offset=50",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
     ]);
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     await waitForLoaderToBeRemoved();
     expect(history?.getCurrentLocation().search).toEqual("");
     act(() => {
@@ -144,8 +143,9 @@ describe("TasksApp", () => {
     await userEvent.click(previousPage);
 
     expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
-      "http://localhost/api/task?limit=50&offset=0",
-      "http://localhost/api/task?limit=50&offset=50",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
     expect(history?.getCurrentLocation().search).toEqual("?page=1");
@@ -158,11 +158,146 @@ describe("TasksApp", () => {
     expect(history?.getCurrentLocation().search).toEqual("");
   });
 
+  it("should reset pagination on task filter change", async () => {
+    const { history } = setup({
+      tasksResponse: createMockTasksResponse({
+        total: 75,
+        limit: 50,
+        offset: 0,
+      }),
+    });
+
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+    ]);
+    await waitForLoaderToBeRemoved();
+
+    const previousPage = screen.getByRole("button", { name: "Previous page" });
+    const nextPage = screen.getByRole("button", { name: "Next page" });
+    const taskPicker = screen.getByPlaceholderText("Filter by task");
+
+    await userEvent.click(nextPage);
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
+    ]);
+    act(() => {
+      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
+    });
+    expect(history?.getCurrentLocation().search).toEqual("?page=1");
+
+    await userEvent.click(taskPicker);
+    const taskPopover = screen.getByRole("listbox");
+    await userEvent.click(within(taskPopover).getByText("task-b"));
+
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
+    ]);
+    expect(previousPage).toBeDisabled();
+    expect(nextPage).toBeEnabled();
+    act(() => {
+      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
+    });
+    expect(history?.getCurrentLocation().search).toEqual("?task=task-b");
+  });
+
+  it("should reset pagination on task status filter change", async () => {
+    const { history } = setup({
+      tasksResponse: createMockTasksResponse({
+        total: 75,
+        limit: 50,
+        offset: 0,
+      }),
+    });
+
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+    ]);
+    await waitForLoaderToBeRemoved();
+
+    const previousPage = screen.getByRole("button", { name: "Previous page" });
+    const nextPage = screen.getByRole("button", { name: "Next page" });
+    const taskStatusPicker = screen.getByPlaceholderText("Filter by status");
+
+    await userEvent.click(nextPage);
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
+    ]);
+    act(() => {
+      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
+    });
+    expect(history?.getCurrentLocation().search).toEqual("?page=1");
+
+    await userEvent.click(taskStatusPicker);
+    const taskStatusPopover = screen.getByRole("listbox");
+    await userEvent.click(within(taskStatusPopover).getByText("Success"));
+
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success",
+    ]);
+    expect(previousPage).toBeDisabled();
+    expect(nextPage).toBeEnabled();
+    act(() => {
+      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
+    });
+    expect(history?.getCurrentLocation().search).toEqual("?status=success");
+  });
+
+  it("should reset pagination on sorting change", async () => {
+    const { history } = setup({
+      tasksResponse: createMockTasksResponse({
+        total: 75,
+        limit: 50,
+        offset: 0,
+      }),
+    });
+
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+    ]);
+    await waitForLoaderToBeRemoved();
+
+    const previousPage = screen.getByRole("button", { name: "Previous page" });
+    const nextPage = screen.getByRole("button", { name: "Next page" });
+    const startedAtHeader = screen.getByRole("button", {
+      name: /Started at/,
+    });
+
+    await userEvent.click(nextPage);
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
+    ]);
+    act(() => {
+      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
+    });
+    expect(history?.getCurrentLocation().search).toEqual("?page=1");
+
+    await userEvent.click(startedAtHeader);
+
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=asc",
+    ]);
+    expect(previousPage).toBeDisabled();
+    expect(nextPage).toBeEnabled();
+    act(() => {
+      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
+    });
+    expect(history?.getCurrentLocation().search).toEqual("?sort_direction=asc");
+  });
+
   it("should allow to filter tasks list", async () => {
     const { history } = setup();
 
     expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
-      "http://localhost/api/task?limit=50&offset=0",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     await waitForLoaderToBeRemoved();
 
@@ -185,10 +320,9 @@ describe("TasksApp", () => {
     await userEvent.click(within(taskPopover).getByText("task-b"));
 
     expect(taskPicker).toHaveValue("task-b");
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
-      "http://localhost/api/task?limit=50&offset=0",
-      "http://localhost/api/task?limit=50&offset=0&task=task-b",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
     ]);
     await waitForLoaderToBeRemoved();
     expect(history?.getCurrentLocation().search).toEqual("");
@@ -210,11 +344,10 @@ describe("TasksApp", () => {
     await userEvent.click(within(taskStatusPopover).getByText("Success"));
 
     expect(taskStatusPicker).toHaveValue("Success");
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
-      "http://localhost/api/task?limit=50&offset=0",
-      "http://localhost/api/task?limit=50&offset=0&task=task-b",
-      "http://localhost/api/task?limit=50&offset=0&task=task-b&status=success",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success&task=task-b",
     ]);
     await waitForLoaderToBeRemoved();
     expect(history?.getCurrentLocation().search).toEqual("?task=task-b");
@@ -225,32 +358,32 @@ describe("TasksApp", () => {
       "?status=success&task=task-b",
     );
 
-    const clearTaskButton = screen.getAllByRole("button", { hidden: true })[0];
+    const clearTaskButton = screen.getAllByLabelText("Clear")[0];
     await userEvent.click(clearTaskButton);
 
     expect(taskPicker).toHaveValue("");
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
-      "http://localhost/api/task?limit=50&offset=0",
-      "http://localhost/api/task?limit=50&offset=0&task=task-b",
-      "http://localhost/api/task?limit=50&offset=0&task=task-b&status=success",
-      "http://localhost/api/task?limit=50&offset=0&status=success",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success&task=task-b",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success",
     ]);
     await waitForLoaderToBeRemoved();
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
     expect(history?.getCurrentLocation().search).toEqual("?status=success");
+    const clearTaskStatusButton = screen.getByLabelText("Clear");
 
-    const clearTaskStatusButton = screen.getByRole("button", { hidden: true });
     await userEvent.click(clearTaskStatusButton);
 
     expect(taskStatusPicker).toHaveValue("");
     expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
-      "http://localhost/api/task?limit=50&offset=0",
-      "http://localhost/api/task?limit=50&offset=0&task=task-b",
-      "http://localhost/api/task?limit=50&offset=0&task=task-b&status=success",
-      "http://localhost/api/task?limit=50&offset=0&status=success",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success&task=task-b",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
     expect(history?.getCurrentLocation().search).toEqual("?status=success");
@@ -258,6 +391,76 @@ describe("TasksApp", () => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
     expect(history?.getCurrentLocation().search).toEqual("");
+  });
+
+  it("should allow to sort tasks list", async () => {
+    const { history } = setup();
+
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+    ]);
+    await waitForLoaderToBeRemoved();
+
+    const startedAtHeader = screen.getByRole("button", { name: /Started at/ });
+    const endedAtHeader = screen.getByRole("button", { name: /Ended at/ });
+    const durationHeader = screen.getByRole("button", { name: /Duration/ });
+
+    expect(startedAtHeader).toBeInTheDocument();
+    expect(endedAtHeader).toBeInTheDocument();
+    expect(durationHeader).toBeInTheDocument();
+    expect(
+      within(startedAtHeader).getByRole("img", { name: "chevrondown icon" }),
+    ).toBeInTheDocument();
+    expect(history?.getCurrentLocation().search).toEqual("");
+
+    await userEvent.click(startedAtHeader);
+
+    expect(
+      within(startedAtHeader).getByRole("img", { name: "chevronup icon" }),
+    ).toBeInTheDocument();
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=asc",
+    ]);
+    act(() => {
+      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
+    });
+    expect(history?.getCurrentLocation().search).toEqual("?sort_direction=asc");
+
+    await userEvent.click(endedAtHeader);
+
+    expect(
+      within(endedAtHeader).getByRole("img", { name: "chevronup icon" }),
+    ).toBeInTheDocument();
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=asc",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=ended_at&sort_direction=asc",
+    ]);
+    act(() => {
+      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
+    });
+    expect(history?.getCurrentLocation().search).toEqual(
+      "?sort_column=ended_at&sort_direction=asc",
+    );
+
+    await userEvent.click(durationHeader);
+
+    expect(
+      within(durationHeader).getByRole("img", { name: "chevronup icon" }),
+    ).toBeInTheDocument();
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=asc",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=ended_at&sort_direction=asc",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=duration&sort_direction=asc",
+    ]);
+    act(() => {
+      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
+    });
+    expect(history?.getCurrentLocation().search).toEqual(
+      "?sort_column=duration&sort_direction=asc",
+    );
   });
 
   it("accepts task query param", async () => {
@@ -269,7 +472,7 @@ describe("TasksApp", () => {
     });
 
     expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&task=task-b",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
     ]);
     await waitForLoaderToBeRemoved();
 
@@ -288,7 +491,7 @@ describe("TasksApp", () => {
     });
 
     expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&status=success",
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success",
     ]);
     await waitForLoaderToBeRemoved();
 
@@ -296,6 +499,19 @@ describe("TasksApp", () => {
 
     expect(taskStatusPicker).toBeInTheDocument();
     expect(taskStatusPicker).toHaveValue("Success");
+  });
+
+  it("accepts sorting query params", async () => {
+    setup({
+      location: createMockLocation({
+        pathname: PATHNAME,
+        search: "?sort_column=duration&sort_direction=asc",
+      }),
+    });
+
+    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+      "http://localhost/api/task?limit=50&offset=0&sort_column=duration&sort_direction=asc",
+    ]);
   });
 });
 

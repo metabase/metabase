@@ -49,28 +49,20 @@ export function expressionClauseCompletion(
 
   return {
     type,
-    label: suggestionText(clause),
+    label: clause.displayName,
     displayLabel: clause.displayName,
     icon: "function",
     matches,
   };
 }
 
-const suggestionText = (func: MBQLClauseFunctionConfig) => {
-  const { displayName, args } = func;
-  const suffix = args.length > 0 ? "(" : " ";
-  return displayName + suffix;
-};
-
 function getSnippet(helpText: HelpText) {
-  const args = helpText.args
-    ?.filter((arg) => arg.name !== "…")
-    ?.map((arg) => "${" + (arg.template ?? arg.name) + "}")
-    .join(", ");
+  const args =
+    helpText.args
+      ?.filter((arg) => arg.name !== "…")
+      ?.map((arg) => "${" + (arg.template ?? arg.name) + "}")
+      .join(", ") ?? "";
 
-  if (!args || args.length < 1) {
-    return `${helpText.structure}`;
-  }
   return `${helpText.structure}(${args})`;
 }
 

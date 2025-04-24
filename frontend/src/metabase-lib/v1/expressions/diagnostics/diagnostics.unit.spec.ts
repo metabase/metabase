@@ -35,16 +35,23 @@ describe("diagnostics", () => {
       return setup({ expression, expressionMode, metadata })?.message;
     }
 
-    it("should catch mismatched parentheses", () => {
+    it("should catch mismatched parentheses after function", () => {
       expect(err("FLOOR [Price]/2)")).toBe(
         "Expecting an opening parenthesis after function FLOOR",
+      );
+      expect(err("LOWER [Vendor]")).toBe(
+        "Expecting an opening parenthesis after function LOWER",
       );
     });
 
     it("should catch missing parentheses", () => {
-      expect(err("LOWER [Vendor]")).toBe(
-        "Expecting an opening parenthesis after function LOWER",
-      );
+      expect(err("(")).toBe("Expecting a closing parenthesis");
+      expect(err("(()")).toBe("Expecting a closing parenthesis");
+      expect(err("((()")).toBe("Expecting a closing parenthesis");
+
+      expect(err(")")).toBe("Expecting an opening parenthesis");
+      expect(err("())")).toBe("Expecting an opening parenthesis");
+      expect(err("()))")).toBe("Expecting an opening parenthesis");
     });
 
     it("should catch invalid characters", () => {
@@ -52,7 +59,7 @@ describe("diagnostics", () => {
     });
 
     it("should catch unterminated string literals", () => {
-      expect(err('[Category] = "widget')).toBe("Missing closing quotes");
+      expect(err('[Category] = "widget')).toBe("Missing closing string quote");
     });
 
     it("should catch unterminated field reference", () => {
@@ -280,6 +287,86 @@ describe("diagnostics", () => {
       expect(err(`1`)).toBeUndefined();
       expect(err(`"foo"`)).toBeUndefined();
       expect(err(`true`)).toBeUndefined();
+    });
+
+    describe("mathematical notation", () => {
+      it.each([
+        "1E",
+        "1e",
+        "1.2E",
+        "1.2e",
+        "1E+",
+        "1e+",
+        "1.2E+",
+        "1.2e+",
+        "1E-",
+        "1e-",
+        "1.2E-",
+        "1.2e-",
+        "1.2e-",
+        ".1E",
+        ".1e",
+        ".1E+",
+        ".1e+",
+        ".1E-",
+        ".1e-",
+        ".1E-",
+        "2e",
+        "3e+",
+        "4E-",
+        "4E-",
+      ])("handles missing exponents for %s", (expression) => {
+        expect(err(expression)).toBe("Missing exponent");
+      });
+    });
+
+    describe("string quotes", () => {
+      it.each([`"single`, `'double`, `"foo\\"`, `'foo\\'`])(
+        "reject missing string quotes for %s",
+        (expression) => {
+          expect(err(expression)).toBe("Missing closing string quote");
+        },
+      );
+    });
+
+    describe("field quotes", () => {
+      it.each([
+        `[foo`,
+        `[foo \\[`,
+        `[foo \\]`,
+        `[foo \\] bar`,
+        `[foo \\[ bar`,
+        `[foo \\[ bar \\]`,
+      ])("reject missing closing field quotes for %s", (expression) => {
+        expect(err(expression)).toBe("Missing a closing bracket");
+      });
+
+      it.each([`foo]`, `foo   ]`])(
+        "reject missing field quotes for %s",
+        (expression) => {
+          expect(err(expression)).toMatch(/^Missing an opening bracket for /);
+        },
+      );
+
+      it.each([`[`, `[]`])("reject missing field name for %s", (expression) => {
+        expect(err(expression)).toBe("Expected a field name");
+      });
+    });
+
+    describe("bad tokens", () => {
+      it.each([`.`, `1°`, `@`, `#`, `%`, `@`, `(])`])(
+        "should reject bad tokens like %s",
+        (expression) => {
+          expect(err(expression)).toMatch(/^Invalid character/);
+        },
+      );
+
+      it.each([`$#`, `$#@`, `$#@$`, `$#@$#`])(
+        "should reject bad tokens like %s",
+        (expression) => {
+          expect(err(expression)).toMatch(/^Invalid expression/);
+        },
+      );
     });
   });
 

@@ -12,9 +12,11 @@
    [metabase.util.json :as json])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
-   (com.sun.management ThreadMXBean)
-   (java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream)
-   (java.lang.management ManagementFactory)))
+   (java.io
+    BufferedInputStream
+    BufferedOutputStream
+    ByteArrayInputStream
+    ByteArrayOutputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -428,9 +430,6 @@
            (.. cell getCellStyle getDataFormatString))
          row)))
 
-(defn- get-allocated-bytes []
-  (.getCurrentThreadAllocatedBytes ^ThreadMXBean (ManagementFactory/getThreadMXBean)))
-
 (deftest export-format-test
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Different format strings are used for ints and numbers that round to ints (with 2 decimal places)"
@@ -753,27 +752,6 @@
                           {}
                           [[1]
                            [2]]))))))
-
-(deftest pivot-table-resource-usage-test
-  (testing "pivot table initialization should complete in reasonable time and memory"
-    ;; We test XLSX export of an empty table (0 rows) with pivoting enabled. This should test the initialization of
-    ;; pivot machinery that used to allocate and retain a lot of memory (and hence was slow on smaller heaps).
-    (let [do-export #(xlsx-export [{:display_name "A"}
-                                   {:display_name "B"}
-                                   {:display_name "C"}
-                                   {:display_name "D"}
-                                   {:display_name "pivot-grouping"}
-                                   {:display_name "E"}
-                                   {:display_name "F"}]
-                                  {}
-                                  []
-                                  :pivot-export-options {:pivot-rows [0 1], :pivot-cols [2 3], :pivot-measures [5 4]})
-          ;; Run once before measuring to warm-up and thus reduce flakiness.
-          _ (do-export)
-          start-bytes (get-allocated-bytes)]
-      (do-export)
-      ;; Should always allocate less than 100Mb.
-      (is (< (- (get-allocated-bytes) start-bytes) (* 100 1024 1024))))))
 
 (deftest number-of-characters-cell-test
   (testing "When the number of characters exceeds *number-of-characters-cell*, the excess part will be truncated."

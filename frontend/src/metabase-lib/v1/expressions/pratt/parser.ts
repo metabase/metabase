@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { CompileError } from "../errors";
+import type { Hooks } from "../types";
 
 import {
   ADD,
@@ -18,7 +19,7 @@ import { assert } from "./types";
 
 interface ParserOptions {
   maxIterations?: number;
-  throwOnError?: boolean;
+  hooks?: Hooks;
 }
 
 interface ParserResult {
@@ -26,18 +27,22 @@ interface ParserResult {
   errors: CompileError[];
 }
 
+const DEFAULT_HOOKS: Hooks = {
+  error(error) {
+    throw error;
+  },
+};
+
 export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
-  const { maxIterations = 1000000, throwOnError = false } = opts;
+  const { maxIterations = 1000000, hooks = DEFAULT_HOOKS } = opts;
   const errors: CompileError[] = [];
   let counter = 0;
   const root = createASTNode(null, null, ROOT);
 
   function error(message: string, node?: Node) {
-    const err = new CompileError(message, node);
-    if (throwOnError) {
-      throw err;
-    }
-    errors.push(err);
+    const error = new CompileError(message, node);
+    hooks?.error?.(error);
+    errors.push(error);
   }
 
   let node = root;

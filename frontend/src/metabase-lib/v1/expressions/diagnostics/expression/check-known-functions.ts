@@ -2,10 +2,9 @@ import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
-import { FIELD_MARKERS, getClauseDefinition } from "../config";
-import { DiagnosticError } from "../errors";
-import { getToken } from "../utils";
-import { visit } from "../visitor";
+import { FIELD_MARKERS, getClauseDefinition } from "../../config";
+import { visit } from "../../visitor";
+import { error } from "../utils";
 
 export function checkKnownFunctions({
   expressionParts,
@@ -24,10 +23,7 @@ export function checkKnownFunctions({
 
     const clause = getClauseDefinition(operator);
     if (!clause) {
-      throw new DiagnosticError(
-        t`Unknown function ${operator}`,
-        getToken(node),
-      );
+      error(node, t`Unknown function ${operator}`);
     }
   });
 }

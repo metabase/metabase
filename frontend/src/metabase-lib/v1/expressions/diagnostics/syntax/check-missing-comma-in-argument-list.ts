@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
-import { DiagnosticError } from "../errors";
-import type { Token } from "../pratt";
+import type { Token } from "../../pratt";
 import {
   CALL,
   FIELD,
@@ -9,12 +8,16 @@ import {
   GROUP_CLOSE,
   IDENTIFIER,
   OPERATORS,
-} from "../pratt";
+} from "../../pratt";
+import { error } from "../utils";
 
-export function checkMissingCommasInArgumentList(
-  tokens: Token[],
-  source: string,
-) {
+export function checkMissingCommasInArgumentList({
+  tokens,
+  source,
+}: {
+  tokens: Token[];
+  source: string;
+}) {
   const call = 1;
   const group = 2;
   const stack = [];
@@ -48,10 +51,7 @@ export function checkMissingCommasInArgumentList(
     if (token.type === IDENTIFIER || token.type === FIELD) {
       if (nextToken && !OPERATORS.has(nextToken.type)) {
         const text = source.slice(nextToken.start, nextToken.end);
-        throw new DiagnosticError(
-          t`Expecting operator but got ${text} instead`,
-          nextToken,
-        );
+        error(nextToken, t`Expecting operator but got ${text} instead`);
       }
     }
   }

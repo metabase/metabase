@@ -109,7 +109,7 @@ const SingleSelectListField = ({
   const onClickOption = (option: any) => {
     if (selectedValue !== option) {
       setSelectedValue(option);
-      setFilter(option);
+      setFilter(String(option));
       onChange?.([option]);
     }
   };

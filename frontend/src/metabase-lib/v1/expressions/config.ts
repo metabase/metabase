@@ -174,7 +174,7 @@ export const MBQL_CLAUSES = defineClauses({
     requiresFeature: "split-part",
   },
   "regex-match-first": {
-    displayName: `regexextract`,
+    displayName: `regexExtract`,
     type: "string",
     args: ["string", "string"],
     requiresFeature: "regex",

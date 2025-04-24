@@ -1,7 +1,7 @@
 import moment, { type Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import * as ML from "cljs/metabase.lib.js";
-import type { CardId, DatasetColumn } from "metabase-types/api";
+import type { CardId } from "metabase-types/api";
 
 import { expressionParts } from "./expression";
 import { isSegmentMetadata } from "./metadata";
@@ -305,8 +305,8 @@ type UpdateLatLonFilterBounds = {
 export function updateLatLonFilter(
   query: Query,
   stageIndex: number,
-  latitudeColumn: DatasetColumn,
-  longitudeColumn: DatasetColumn,
+  latitudeColumn: ColumnMetadata,
+  longitudeColumn: ColumnMetadata,
   cardId: CardId | undefined,
   bounds: UpdateLatLonFilterBounds,
 ): Query {
@@ -326,7 +326,7 @@ export function updateLatLonFilter(
 export function updateNumericFilter(
   query: Query,
   stageIndex: number,
-  numericColumn: DatasetColumn,
+  numericColumn: ColumnMetadata,
   cardId: CardId | undefined,
   start: number,
   end: number,
@@ -348,7 +348,7 @@ export function updateNumericFilter(
 export function updateTemporalFilter(
   query: Query,
   stageIndex: number,
-  temporalColumn: DatasetColumn,
+  temporalColumn: ColumnMetadata,
   cardId: CardId | undefined,
   start: string | Date,
   end: string | Date,

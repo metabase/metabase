@@ -209,7 +209,7 @@ describe("suggestFunctions", () => {
       });
       const results = await completer("rege|");
       expect(
-        results?.options.find((option) => option.label === "regexextract"),
+        results?.options.find((option) => option.label === "regexExtract"),
       ).toBe(undefined);
     });
 
@@ -220,10 +220,10 @@ describe("suggestFunctions", () => {
       });
       const results = await completer("rege|");
       expect(
-        results?.options.find((option) => option.label === "regexextract"),
+        results?.options.find((option) => option.label === "regexExtract"),
       ).toEqual({
-        label: "regexextract",
-        displayLabel: "regexextract",
+        label: "regexExtract",
+        displayLabel: "regexExtract",
         detail:
           "Extracts matching substrings according to a regular expression.",
         matches: [[0, 3]],

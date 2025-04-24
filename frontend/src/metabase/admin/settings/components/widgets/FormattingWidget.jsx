@@ -1,3 +1,4 @@
+/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";

@@ -15,6 +15,7 @@
    [metabase.api.embed]
    [metabase.api.field]
    [metabase.api.geojson]
+   [metabase.api.logger]
    [metabase.api.macros :as api.macros]
    [metabase.api.native-query-snippet]
    [metabase.api.open-api :as open-api]
@@ -150,6 +151,7 @@
    "/geojson"              'metabase.api.geojson
    "/google"               (+auth metabase.sso.api/google-auth-routes)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
+   "/logger"               (+auth 'metabase.api.logger)
    "/login-history"        (+auth 'metabase.login-history.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.api.native-query-snippet)

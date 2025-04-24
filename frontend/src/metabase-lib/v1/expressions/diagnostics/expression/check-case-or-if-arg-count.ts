@@ -2,9 +2,8 @@ import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
-import { DiagnosticError } from "../errors";
-import { getToken } from "../utils";
-import { visit } from "../visitor";
+import { visit } from "../../visitor";
+import { error } from "../utils";
 
 export function checkCaseOrIfArgCount({
   expressionParts,
@@ -21,10 +20,7 @@ export function checkCaseOrIfArgCount({
     }
 
     if (args.length < 2) {
-      throw new DiagnosticError(
-        t`${operator.toUpperCase()} expects 2 arguments or more`,
-        getToken(node),
-      );
+      error(node, t`${operator.toUpperCase()} expects 2 arguments or more`);
     }
   });
 }

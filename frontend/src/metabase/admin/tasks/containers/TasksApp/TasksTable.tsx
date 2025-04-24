@@ -3,21 +3,34 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { Flex } from "metabase/ui";
-import type { Database, Task } from "metabase-types/api";
+import { Box, Flex } from "metabase/ui";
+import type { Database, ListTasksSortColumn, Task } from "metabase-types/api";
+import type { SortingOptions } from "metabase-types/api/sorting";
 
 interface Props {
   databases: Database[];
   error: unknown;
   isLoading: boolean;
+  sortingOptions: SortingOptions<ListTasksSortColumn>;
   tasks: Task[];
+  onSortingOptionsChange: (
+    sortingOptions: SortingOptions<ListTasksSortColumn>,
+  ) => void;
 }
 
-export const TasksTable = ({ databases, error, isLoading, tasks }: Props) => {
+export const TasksTable = ({
+  databases,
+  error,
+  isLoading,
+  sortingOptions,
+  tasks,
+  onSortingOptionsChange,
+}: Props) => {
   // index databases by id for lookup
   const databaseByID: Record<number, Database> = _.indexBy(databases, "id");
   const showLoadingAndErrorWrapper = isLoading || error != null;
@@ -26,12 +39,25 @@ export const TasksTable = ({ databases, error, isLoading, tasks }: Props) => {
     <table className={cx(AdminS.ContentTable, CS.mt2)}>
       <thead>
         <tr>
-          <th>{t`Task`}</th>
+          {/* set width to limit CLS when changing sort direction */}
+          <Box component="th" w={300}>{t`Task`}</Box>
           <th>{t`DB Name`}</th>
           <th>{t`DB Engine`}</th>
-          <th>{t`Started at`}</th>
-          <th>{t`Ended at`}</th>
-          <th>{t`Duration (ms)`}</th>
+          <SortableColumnHeader
+            name="started_at"
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={onSortingOptionsChange}
+          >{t`Started at`}</SortableColumnHeader>
+          <SortableColumnHeader
+            name="ended_at"
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={onSortingOptionsChange}
+          >{t`Ended at`}</SortableColumnHeader>
+          <SortableColumnHeader
+            name="duration"
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={onSortingOptionsChange}
+          >{t`Duration (ms)`}</SortableColumnHeader>
           <th>{t`Status`}</th>
           <th>{t`Details`}</th>
         </tr>

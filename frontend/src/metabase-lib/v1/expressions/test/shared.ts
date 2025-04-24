@@ -1,4 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
+import { getNextId } from "__support__/utils";
 import * as Lib from "metabase-lib";
 import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
 import {
@@ -6,6 +7,7 @@ import {
   createMockCard,
   createMockSegment,
   createMockStructuredDatasetQuery,
+  createMockStructuredQuery,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -19,9 +21,6 @@ import {
   createReviewsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-
-const SEGMENT_ID = 1;
-const METRIC_ID = 2;
 
 const metadata = createMockMetadata({
   databases: [
@@ -39,26 +38,27 @@ const metadata = createMockMetadata({
         createOrdersTable({
           segments: [
             createMockSegment({
-              id: SEGMENT_ID,
+              id: getNextId(),
               name: "Expensive Things",
               table_id: ORDERS_ID,
-              definition: {
-                filter: [">", ["field", ORDERS.TOTAL, null], 30],
+              definition: createMockStructuredQuery({
                 "source-table": ORDERS_ID,
-              },
+                filter: [">", ["field", ORDERS.TOTAL, null], 30],
+              }),
             }),
           ],
           metrics: [
             createMockCard({
-              id: METRIC_ID,
-              name: "Foo",
+              id: getNextId(),
+              name: "Foo Metric",
               type: "metric",
+              table_id: ORDERS_ID,
               dataset_query: createMockStructuredDatasetQuery({
                 database: SAMPLE_DB_ID,
-                query: {
+                query: createMockStructuredQuery({
                   "source-table": ORDERS_ID,
                   aggregation: [["sum", ["field", ORDERS.TOTAL, {}]]],
-                },
+                }),
               }),
             }),
           ],
@@ -69,7 +69,16 @@ const metadata = createMockMetadata({
 });
 
 export const query = createQueryWithClauses({
-  query: createQuery({ metadata }),
+  query: createQuery({
+    metadata,
+    query: createMockStructuredDatasetQuery({
+      database: SAMPLE_DB_ID,
+      query: createMockStructuredQuery({
+        "source-table": ORDERS_ID,
+        fields: [],
+      }),
+    }),
+  }),
   expressions: [
     {
       name: "foo",
@@ -90,6 +99,11 @@ export const query = createQueryWithClauses({
       name: "name with \\ slash",
       operator: "+",
       args: [1, 2],
+    },
+    {
+      name: "stringly",
+      operator: "concat",
+      args: ["foo", "bar"],
     },
   ],
 });
@@ -140,9 +154,7 @@ function findMetric(name: string) {
       return metric;
     }
   }
-  // TODO: cannot find available metrics in tests
-  // throw new Error(`Could not find metric: ${name}`);
-  return 42;
+  throw new Error(`Could not find metric: ${name}`);
 }
 
 export const fields = {
@@ -156,6 +168,7 @@ export const expressions = {
   FOO: findField("foo"),
   NAME_WITH_BRACKETS: findField("name with [brackets]"),
   NAME_WITH_SLASH: findField("name with \\ slash"),
+  STRINGLY: findField("stringly"),
 };
 
 export const segments = {
@@ -163,7 +176,7 @@ export const segments = {
 };
 
 export const metrics = {
-  FOO: findMetric("Foo"),
+  FOO: findMetric("Foo Metric"),
 };
 
 export const sharedMetadata = metadata;

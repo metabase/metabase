@@ -239,9 +239,7 @@ describe("format", () => {
     it.each([
       { result: "[Unknown Field]", parts: fields.orders.TOTAL },
       { result: "[Unknown Segment]", parts: segments.EXPENSIVE_THINGS },
-
-      // TODO: fix metrics in tests
-      // { result: "[Unknown Metric]", parts: metrics.FOO },
+      { result: "[Unknown Metric]", parts: metrics.FOO },
     ])("should format an unknown %s as %s", async ({ result, parts }) => {
       const clause = Lib.expressionClause(parts);
 
@@ -339,7 +337,7 @@ describe("if printWidth = Infinity, it should return the same results as the sin
 
   it("should format function calls", async () => {
     await all({
-      now: op("now"),
+      "now()": op("now"),
       "trim([User → Name])": op("trim", fields.people.NAME),
       'coalesce([User → Name], ",")': op("coalesce", fields.people.NAME, ","),
       'concat("http://mysite.com/user/", [User ID], "/")': op(
@@ -555,16 +553,16 @@ describe("if printWidth = Infinity, it should return the same results as the sin
 
   it("should format aggregation functions", async () => {
     await all({
-      Count: op("count"),
+      "Count()": op("count"),
       "Sum([Total])": op("sum", fields.orders.TOTAL),
-      "1 - Count": op("-", 1, op("count")),
+      "1 - Count()": op("-", 1, op("count")),
       "Sum([Total] * 2)": op("sum", op("*", fields.orders.TOTAL, 2)),
       "1 - Sum([Total] * 2)": op(
         "-",
         1,
         op("sum", op("*", fields.orders.TOTAL, 2)),
       ),
-      "1 - Sum([Total] * 2) / Count": op(
+      "1 - Sum([Total] * 2) / Count()": op(
         "-",
         1,
         op("/", op("sum", op("*", fields.orders.TOTAL, 2)), op("count")),
@@ -599,11 +597,9 @@ describe("if printWidth = Infinity, it should return the same results as the sin
     // ],
   });
 
-  // TODO: cannot find available metrics in tests
-  // eslint-disable-next-line jest/no-disabled-tests
-  it.skip("should format metrics", async () => {
+  it("should format metrics", async () => {
     await all({
-      "[Metric]": metrics.FOO,
+      "[Foo Metric]": metrics.FOO,
     });
   });
 

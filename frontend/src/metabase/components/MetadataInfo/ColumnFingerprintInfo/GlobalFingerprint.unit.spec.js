@@ -10,7 +10,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-import CategoryFingerprint from "./CategoryFingerprint";
+import { GlobalFingerprint } from "./GlobalFingerprint";
 
 const state = createMockState({
   entities: createMockEntitiesState({
@@ -21,12 +21,12 @@ const state = createMockState({
 function setup({ field }) {
   setupFieldValuesEndpoint(PRODUCT_CATEGORY_VALUES);
 
-  renderWithProviders(<CategoryFingerprint fieldId={field.id} />, {
+  renderWithProviders(<GlobalFingerprint fieldId={field.id} />, {
     storeInitialState: state,
   });
 }
 
-describe("CategoryFingerprint", () => {
+describe("GlobalFingerprint", () => {
   const metadata = getMetadata(state);
 
   describe("when the field does not have a `has_field_values` value of 'list'", () => {

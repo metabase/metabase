@@ -2,9 +2,10 @@ import dayjs from "dayjs";
 import orderBy from "lodash.orderby";
 import _ from "underscore";
 
-import type {
-  QueryParam,
-  UrlStateConfig,
+import {
+  type QueryParam,
+  type UrlStateConfig,
+  getFirstParamValue,
 } from "metabase/common/hooks/use-url-state";
 import type { Log } from "metabase-types/api";
 
@@ -27,12 +28,12 @@ export const urlStateConfig: UrlStateConfig<UrlState> = {
 };
 
 function parseProcess(param: QueryParam): UrlState["process"] {
-  const value = Array.isArray(param) ? param[0] : param;
+  const value = getFirstParamValue(param);
   return value && value.trim().length > 0 ? value.trim() : "ALL";
 }
 
 function parseQuery(param: QueryParam): UrlState["query"] {
-  const value = Array.isArray(param) ? param[0] : param;
+  const value = getFirstParamValue(param);
   return value ?? "";
 }
 

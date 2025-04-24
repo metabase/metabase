@@ -69,7 +69,7 @@ export const useSdkDashboardParams = ({
   hiddenParameters,
   initialParameters = {},
 }: SdkDashboardDisplayProps) => {
-  const { id: dashboardId, isLoading } = useValidatedEntityId({
+  const { id: dashboardId, isLoading = false } = useValidatedEntityId({
     type: "dashboard",
     id: initialDashboardId,
   });

@@ -9,6 +9,7 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
+   [flatland.ordered.map :as ordered-map]
    [metabase.config :as config]
    [metabase.plugins.classloader :as classloader])
   (:import
@@ -164,3 +165,113 @@
           ;; this method is only present in AbstractConfiguration
           (.removeAppender config (.getName appender))
           (.updateLoggers (context)))))))
+
+(def ^:private keyword->Level
+  "Mapping from the log level keywords to the log level objects. The order is from least verbose to most verbose."
+  (ordered-map/ordered-map
+   :off   Level/OFF
+   :fatal Level/FATAL
+   :error Level/ERROR
+   :warn  Level/WARN
+   :info  Level/INFO
+   :debug Level/DEBUG
+   :trace Level/TRACE))
+
+(def levels
+  "The valid log levels, from least verbose to most verbose."
+  (keys keyword->Level))
+
+(defn- ->Level
+  "Conversion from a keyword log level to the Log4J constance mapped to that log level. Not intended for use outside of
+  the [[with-log-messages-for-level]] macro."
+  ^Level [k]
+  (or (when (instance? Level k)
+        k)
+      (get keyword->Level (keyword k))
+      (throw (ex-info "Invalid log level" {:level k}))))
+
+(defn- log-level->keyword
+  [^Level level]
+  (some (fn [[k a-level]]
+          (when (= a-level level)
+            k))
+        keyword->Level))
+
+(defn ns-log-level
+  "Get the log level currently applied to the namespace named by symbol `a-namespace`. `a-namespace` may be a symbol
+  that names an actual namespace, or a prefix such or `metabase` that applies to all 'sub' namespaces that start with
+  `metabase.` (unless a more specific logger is defined for them).
+
+    (mt/ns-log-level 'metabase.query-processor.middleware.cache) ; -> :info"
+  [a-namespace]
+  (log-level->keyword (.getLevel (effective-ns-logger a-namespace))))
+
+(defn exact-ns-logger
+  "Get the logger defined for `a-namespace` if it is an exact match; otherwise `nil` if a 'parent' logger will be used."
+  ^LoggerConfig [a-namespace]
+  (let [logger (effective-ns-logger a-namespace)]
+    (when (= (.getName logger) (logger-name a-namespace))
+      logger)))
+
+(defn ensure-unique-logger!
+  "Ensure that `a-namespace` has its own unique logger, e.g. it's not a parent logger like `metabase`. This way we can
+  set the level for this namespace without affecting others."
+  [a-namespace]
+  {:post [(exact-ns-logger a-namespace)]}
+  (when-not (exact-ns-logger a-namespace)
+    (let [parent-logger (effective-ns-logger a-namespace)
+          new-logger    (LoggerConfig/createLogger
+                         (.isAdditive parent-logger)
+                         (.getLevel parent-logger)
+                         (logger-name a-namespace)
+                         (str (.isIncludeLocation parent-logger))
+                         ^"[Lorg.apache.logging.log4j.core.config.AppenderRef;"
+                         (into-array org.apache.logging.log4j.core.config.AppenderRef (.getAppenderRefs parent-logger))
+                         ^"[Lorg.apache.logging.log4j.core.config.Property;"
+                         (into-array org.apache.logging.log4j.core.config.Property (.getPropertyList parent-logger))
+                         (configuration)
+                         (.getFilter parent-logger))]
+      ;; copy the appenders from the parent logger, e.g. the [[metabase.logger/metabase-appender]]
+      (doseq [[_name ^Appender appender] (.getAppenders parent-logger)]
+        (.addAppender new-logger appender (.getLevel new-logger) (.getFilter new-logger)))
+      (.addLogger (configuration) (logger-name a-namespace) new-logger)
+      (.updateLoggers (context))
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (println "Created a new logger for" (logger-name a-namespace)))))
+
+(defn set-ns-log-level!
+  "Set the log level for the namespace named by `a-namespace`. For REPL usage and for tests
+  use [[metabase.test.util.log/with-log-messages-for-level]] instead.
+  `a-namespace` may be a symbol that names an actual namespace, or can be a prefix such as `metabase` that applies
+  to all 'sub' namespaces that start with `metabase.` (unless a more specific logger is defined for them).
+
+    (logger/set-ns-log-level! 'metabase.query-processor.middleware.cache :debug)"
+  ([new-level]
+   (set-ns-log-level! (ns-name *ns*) new-level))
+
+  ([a-namespace new-level]
+   (ensure-unique-logger! a-namespace)
+   (let [logger    (exact-ns-logger a-namespace)
+         new-level (->Level new-level)]
+     (.setLevel logger new-level)
+     ;; it seems like changing the level doesn't update the level for the appenders
+     ;; e.g. [[metabase.logger/metabase-appender]], so if we want the new level to be reflected there the only way I can
+     ;; figure out to make it work is to remove the appender and then add it back with the updated level. See JavaDoc
+     ;; https://logging.apache.org/log4j/2.x/log4j-core/apidocs/org/apache/logging/log4j/core/config/LoggerConfig.html
+     ;; for more info. There's probably a better way to do this, but I don't know what it is. -- Cam
+     (doseq [[^String appender-name ^Appender appender] (.getAppenders logger)]
+       (.removeAppender logger appender-name)
+       (.addAppender logger appender new-level (.getFilter logger)))
+     (.updateLoggers
+      (context)))))
+
+(defn remove-ns-logger!
+  "Remove the logger for the namespace named by `a-namespace`."
+  [a-namespace]
+  (when-let [logger (exact-ns-logger a-namespace)]
+    ;; in a normal world, this should happen automatically, but it shouldn't hurt removing the appenders explicitly
+    (doseq [^String appender-name (keys (.getAppenders logger))]
+      (.removeAppender logger appender-name))
+    (.removeLogger (configuration) a-namespace)
+    (.updateLoggers
+     (context))))
