@@ -4,7 +4,7 @@ import { match } from "ts-pattern";
 import { isWithinIframe } from "metabase/lib/dom";
 
 import type {
-  IframeAuthConfig,
+  SdkIframeAuthConfig,
   SdkIframeEmbedPostMessageAction,
   SdkIframeEmbedSettings,
 } from "../types/iframe";
@@ -12,9 +12,8 @@ import type {
 type Handler = (event: MessageEvent<SdkIframeEmbedPostMessageAction>) => void;
 
 export function useSdkIframeEmbedEventBus() {
-  const [iframeAuthConfig, setAuthConfig] = useState<IframeAuthConfig | null>(
-    null,
-  );
+  const [iframeAuthConfig, setAuthConfig] =
+    useState<SdkIframeAuthConfig | null>(null);
 
   const [iframeSettings, setSettings] = useState<SdkIframeEmbedSettings | null>(
     null,
@@ -30,17 +29,15 @@ export function useSdkIframeEmbedEventBus() {
         .with({ type: "metabase.embed.authenticate" }, ({ data }) => {
           setAuthConfig(data);
         })
-        .with({ type: "metabase.embed.updateSettings" }, ({ data }) => {
+        .with({ type: "metabase.embed.setSettings" }, ({ data }) => {
           setSettings(data);
         });
     };
 
     window.addEventListener("message", messageHandler);
 
-    window.parent.postMessage(
-      { type: "metabase.embed.askToAuthenticate" },
-      "*",
-    );
+    // notify embed.js that the iframe is ready
+    window.parent.postMessage({ type: "metabase.embed.iframeReady" }, "*");
 
     return () => {
       window.removeEventListener("message", messageHandler);
