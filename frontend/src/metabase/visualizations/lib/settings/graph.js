@@ -849,7 +849,7 @@ export const GRAPH_AXIS_SETTINGS = {
     section: t`Axes`,
     group: t`Y-axis`,
     index: 7,
-    title: t`Number of intervals`,
+    title: t`Approximate number of intervals`,
     widget: "number",
     placeholder: "auto",
   },
