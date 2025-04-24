@@ -17,6 +17,7 @@ type SetupOpts = {
   stageIndex?: number;
   column?: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
+  withAddButton?: boolean;
 };
 
 function setup({
@@ -24,6 +25,7 @@ function setup({
   stageIndex = -1,
   column = findUnknownColumn(query),
   filter,
+  withAddButton = false,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -35,6 +37,7 @@ function setup({
       column={column}
       filter={filter}
       isNew={!filter}
+      withAddButton={withAddButton}
       onChange={onChange}
       onBack={onBack}
     />,

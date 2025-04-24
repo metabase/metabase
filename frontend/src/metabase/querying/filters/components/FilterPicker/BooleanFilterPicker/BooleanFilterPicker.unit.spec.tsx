@@ -17,12 +17,14 @@ type SetupOpts = {
   query?: Lib.Query;
   column?: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
+  withAddButton?: boolean;
 };
 
 function setup({
   query = createQuery(),
   column = findBooleanColumn(query),
   filter,
+  withAddButton = false,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -34,6 +36,7 @@ function setup({
       column={column}
       filter={filter}
       isNew={!filter}
+      withAddButton={withAddButton}
       onChange={onChange}
       onBack={onBack}
     />,

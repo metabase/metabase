@@ -47,13 +47,17 @@ export function BooleanFilterPicker({
     }
   };
 
-  const handleSubmit = (opts: FilterChangeOpts) => {
+  const handleFilterChange = (opts: FilterChangeOpts) => {
     onChange(getFilterClause(), opts);
   };
 
   const handleFormSubmit = (event: FormEvent) => {
     event.preventDefault();
-    handleSubmit({ run: true });
+    handleFilterChange({ source: "default" });
+  };
+
+  const handleAddButtonClick = () => {
+    handleFilterChange({ source: "add-button" });
   };
 
   return (
@@ -98,7 +102,7 @@ export function BooleanFilterPicker({
           isNew={isNew}
           isValid
           withAddButton={withAddButton}
-          onSubmit={handleSubmit}
+          onAddButtonClick={handleAddButtonClick}
         />
       </div>
     </Box>

@@ -23,9 +23,16 @@ interface SetupOpts {
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
   isNew?: boolean;
+  withAddButton?: boolean;
 }
 
-function setup({ query, column, filter, isNew = false }: SetupOpts) {
+function setup({
+  query,
+  column,
+  filter,
+  isNew = false,
+  withAddButton = false,
+}: SetupOpts) {
   const onChange = jest.fn();
   const onBack = jest.fn();
 
@@ -36,6 +43,7 @@ function setup({ query, column, filter, isNew = false }: SetupOpts) {
       column={column}
       filter={filter}
       isNew={isNew}
+      withAddButton={withAddButton}
       onChange={onChange}
       onBack={onBack}
     />,

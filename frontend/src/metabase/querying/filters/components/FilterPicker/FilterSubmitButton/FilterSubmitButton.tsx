@@ -2,36 +2,22 @@ import { t } from "ttag";
 
 import { Button, Divider, Icon, Tooltip } from "metabase/ui";
 
-import type { FilterChangeOpts } from "../types";
-
 type FilterSubmitButtonProps = {
   isNew: boolean;
   isValid: boolean;
   withAddButton: boolean;
-  onSubmit: (opts: FilterChangeOpts) => void;
+  onAddButtonClick: () => void;
 };
 
 export function FilterSubmitButton({
   isNew,
   isValid,
   withAddButton,
-  onSubmit,
+  onAddButtonClick,
 }: FilterSubmitButtonProps) {
-  const handleApplyButtonClick = () => {
-    onSubmit({ run: true });
-  };
-
-  const handleAddButtonClick = () => {
-    onSubmit({ run: false });
-  };
-
   if (!withAddButton) {
     return (
-      <Button
-        variant="filled"
-        disabled={!isValid}
-        onClick={handleApplyButtonClick}
-      >
+      <Button type="submit" variant="filled" disabled={!isValid}>
         {isNew ? t`Add filter` : t`Update filter`}
       </Button>
     );
@@ -39,20 +25,17 @@ export function FilterSubmitButton({
 
   return (
     <Button.Group>
-      <Button
-        variant="filled"
-        disabled={!isValid}
-        onClick={handleApplyButtonClick}
-      >
+      <Button type="submit" variant="filled" disabled={!isValid}>
         {t`Apply filter`}
       </Button>
       <Divider orientation="vertical" />
-      <Tooltip label={t`Add filter without running the query`}>
+      <Tooltip label={t`Add another filter`}>
         <Button
+          type="button"
           variant="filled"
           disabled={!isValid}
           leftSection={<Icon name="add" />}
-          onClick={handleAddButtonClick}
+          onClick={onAddButtonClick}
         />
       </Tooltip>
     </Button.Group>

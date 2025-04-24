@@ -62,7 +62,7 @@ export function CoordinateFilterPicker({
     setValues(getDefaultValues(newOperator, values));
   };
 
-  const handleSubmit = (opts: FilterChangeOpts) => {
+  const handleFilterChange = (opts: FilterChangeOpts) => {
     const filter = getFilterClause(operator, secondColumn, values);
     if (filter) {
       onChange(filter, opts);
@@ -71,7 +71,11 @@ export function CoordinateFilterPicker({
 
   const handleFormSubmit = (event: FormEvent) => {
     event.preventDefault();
-    handleSubmit({ run: true });
+    handleFilterChange({ source: "default" });
+  };
+
+  const handleAddButtonClick = () => {
+    handleFilterChange({ source: "add-button" });
   };
 
   return (
@@ -115,7 +119,7 @@ export function CoordinateFilterPicker({
           isNew={isNew}
           isValid={isValid}
           withAddButton={withAddButton}
-          onSubmit={handleSubmit}
+          onAddButtonClick={handleAddButtonClick}
         />
       </Box>
     </Box>

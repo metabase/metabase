@@ -6,13 +6,15 @@ export type FilterPickerWidgetProps = {
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
   isNew: boolean;
-  withAddButton?: boolean;
+  withAddButton: boolean;
   onChange: (filter: Lib.ExpressionClause, opts: FilterChangeOpts) => void;
   onBack?: () => void;
 };
 
+export type FilterChangeSource = "default" | "add-button";
+
 export type FilterChangeOpts = {
-  run: boolean;
+  source: FilterChangeSource;
 };
 
 export type ColumnListItem = {

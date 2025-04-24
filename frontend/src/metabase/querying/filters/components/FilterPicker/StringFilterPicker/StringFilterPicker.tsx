@@ -55,7 +55,7 @@ export function StringFilterPicker({
     setValues(getDefaultValues(newOperator, values));
   };
 
-  const handleSubmit = (opts: FilterChangeOpts) => {
+  const handleFilterChange = (opts: FilterChangeOpts) => {
     const filter = getFilterClause(operator, values, options);
     if (filter) {
       onChange(filter, opts);
@@ -64,7 +64,11 @@ export function StringFilterPicker({
 
   const handleFormSubmit = (event: FormEvent) => {
     event.preventDefault();
-    handleSubmit({ run: true });
+    handleFilterChange({ type: "submit" });
+  };
+
+  const handleAddButtonClick = () => {
+    handleFilterChange({ type: "add-button" });
   };
 
   return (
@@ -97,7 +101,7 @@ export function StringFilterPicker({
           isNew={isNew}
           isValid={isValid}
           withAddButton={withAddButton}
-          onSubmit={handleSubmit}
+          onAddButtonClick={handleAddButtonClick}
         >
           {type === "partial" && (
             <CaseSensitiveOption

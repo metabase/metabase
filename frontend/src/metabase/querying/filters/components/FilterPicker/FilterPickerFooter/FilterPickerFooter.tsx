@@ -4,16 +4,15 @@ import { isValidElement } from "react";
 import { Box, Flex } from "metabase/ui";
 
 import { FilterSubmitButton } from "../FilterSubmitButton";
-import type { FilterChangeOpts } from "../types";
 
 import S from "./FilterPickerFooter.module.css";
 
 interface FilterPickerFooterProps {
   isNew: boolean;
   isValid: boolean;
-  withAddButton?: boolean;
+  withAddButton: boolean;
   children?: ReactNode;
-  onSubmit: (opts: FilterChangeOpts) => void;
+  onAddButtonClick: () => void;
 }
 
 export function FilterPickerFooter({
@@ -21,7 +20,7 @@ export function FilterPickerFooter({
   isValid,
   withAddButton = false,
   children,
-  onSubmit,
+  onAddButtonClick,
 }: FilterPickerFooterProps) {
   return (
     <Flex className={S.FilterFooterRoot} p="md" justify="space-between">
@@ -30,7 +29,7 @@ export function FilterPickerFooter({
         isNew={isNew}
         isValid={isValid}
         withAddButton={withAddButton}
-        onSubmit={onSubmit}
+        onAddButtonClick={onAddButtonClick}
       />
     </Flex>
   );

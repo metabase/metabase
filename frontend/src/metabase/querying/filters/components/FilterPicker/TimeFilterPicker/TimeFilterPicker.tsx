@@ -51,7 +51,7 @@ export function TimeFilterPicker({
     setValues(getDefaultValues(newOperator, values));
   };
 
-  const handleSubmit = (opts: FilterChangeOpts) => {
+  const handleFilterChange = (opts: FilterChangeOpts) => {
     const filter = getFilterClause(operator, values);
     if (filter) {
       onChange(filter, opts);
@@ -60,7 +60,11 @@ export function TimeFilterPicker({
 
   const handleFormSubmit = (event: FormEvent) => {
     event.preventDefault();
-    handleSubmit({ run: true });
+    handleFilterChange({ source: "default" });
+  };
+
+  const handleAddButtonClick = () => {
+    handleFilterChange({ source: "add-button" });
   };
 
   return (
@@ -94,7 +98,7 @@ export function TimeFilterPicker({
           isNew={isNew}
           isValid
           withAddButton={withAddButton}
-          onSubmit={handleSubmit}
+          onAddButtonClick={handleAddButtonClick}
         />
       </Box>
     </Box>

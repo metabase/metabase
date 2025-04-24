@@ -43,7 +43,7 @@ export function DefaultFilterPicker({
     }
   };
 
-  const handleSubmit = (opts: FilterChangeOpts) => {
+  const handleFilterChange = (opts: FilterChangeOpts) => {
     const filter = getFilterClause(operator);
     if (filter) {
       onChange(filter, opts);
@@ -52,7 +52,11 @@ export function DefaultFilterPicker({
 
   const handleFormSubmit = (event: FormEvent) => {
     event.preventDefault();
-    handleSubmit({ run: true });
+    handleFilterChange({ source: "default" });
+  };
+
+  const handleAddButtonClick = () => {
+    handleFilterChange({ source: "add-button" });
   };
 
   return (
@@ -84,7 +88,7 @@ export function DefaultFilterPicker({
           isNew={isNew}
           isValid
           withAddButton={withAddButton}
-          onSubmit={handleSubmit}
+          onAddButtonClick={handleAddButtonClick}
         />
       </div>
     </Box>

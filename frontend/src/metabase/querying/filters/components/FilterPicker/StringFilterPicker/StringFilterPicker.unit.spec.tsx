@@ -28,12 +28,6 @@ import {
 
 import { StringFilterPicker } from "./StringFilterPicker";
 
-type SetupOpts = {
-  query?: Lib.Query;
-  column?: Lib.ColumnMetadata;
-  filter?: Lib.FilterClause;
-};
-
 const EXPECTED_OPERATORS = [
   "Is",
   "Is not",
@@ -45,10 +39,18 @@ const EXPECTED_OPERATORS = [
   "Not empty",
 ];
 
+type SetupOpts = {
+  query?: Lib.Query;
+  column?: Lib.ColumnMetadata;
+  filter?: Lib.FilterClause;
+  withAddButton?: boolean;
+};
+
 function setup({
   query = createQuery(),
   column = findStringColumn(query),
   filter,
+  withAddButton = false,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -62,6 +64,7 @@ function setup({
       column={column}
       filter={filter}
       isNew={!filter}
+      withAddButton={withAddButton}
       onChange={onChange}
       onBack={onBack}
     />,

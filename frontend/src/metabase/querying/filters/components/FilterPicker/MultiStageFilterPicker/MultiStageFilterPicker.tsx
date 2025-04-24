@@ -13,7 +13,7 @@ import type {
 type MultiStageFilterPickerProps = {
   query: Lib.Query;
   canAppendStage: boolean;
-  onChange: (newQuery: Lib.Query, opts: FilterChangeOpts) => void;
+  onChange: (newQuery: Lib.Query) => void;
   onClose?: () => void;
 };
 
@@ -33,13 +33,9 @@ export function MultiStageFilterPicker({
 
   const [selectedItem, setSelectedItem] = useState<ColumnListItem>();
 
-  const handleChange = (
-    filter: Lib.Filterable,
-    stageIndex: number,
-    opts: FilterChangeOpts,
-  ) => {
+  const handleChange = (filter: Lib.Filterable, stageIndex: number) => {
     const newQuery = Lib.filter(query, stageIndex, filter);
-    onChange(newQuery, opts);
+    onChange(newQuery);
   };
 
   const handleFilterChange = (
@@ -47,13 +43,16 @@ export function MultiStageFilterPicker({
     opts: FilterChangeOpts,
   ) => {
     if (selectedItem != null) {
-      handleChange(filter, selectedItem.stageIndex, opts);
+      handleChange(filter, selectedItem.stageIndex);
+      setSelectedItem(undefined);
+    }
+    if (opts.source !== "add-button") {
       onClose?.();
     }
   };
 
   const handleSegmentChange = (item: SegmentListItem) => {
-    handleChange(item.segment, item.stageIndex, { run: true });
+    handleChange(item.segment, item.stageIndex);
     onClose?.();
   };
 
