@@ -10,6 +10,8 @@ title: Driver interface changelog
 
 - Added a new abstract driver mix-in `:metabase.driver.sql.query-processor.boolean-is-comparison/boolean-is-comparison` that can be inherited by drivers that require boolean literal constants to be converted to comparison expressions in the top level of WHERE, AND, OR, NOT, and CASE clauses.
 
+- Added the multi-method `integer-dbtype` that allows the driver to control which type integers are cast to.
+
 ## Metabase 0.54.0
 
 - Added the multi-method `allowed-promotions` that allows driver control over which column type promotions are supported for uploads.
