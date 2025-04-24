@@ -152,6 +152,9 @@
 (mr/def ::time-unit
   (into [:enum {:decode/json keyword}] (keys keyword->TimeUnit)))
 
+(mr/def ::log-levels
+  [:map-of :string (into [:enum] (map name) (reverse logger/levels))])
+
 (api.macros/defendpoint :post "/adjustment"
   "Temporarily adjust the log levels."
   [_route-params
@@ -159,11 +162,20 @@
    {:keys [duration duration_unit log_levels]} :- [:map
                                                    [:duration :int]
                                                    [:duration_unit ::time-unit]
-                                                   [:log_levels [:map-of :string ::log-level]]]]
+                                                   [:log_levels [:map-of :string :any]]]]
   (api/check-superuser)
+  (when-let [error (mu/explain ::log-levels log_levels)]
+    (api/check-400 false {:specific-errors error
+                          :errors [{:log_levels
+                                    (tru (str "The format of the provided logging configuration is incorrect."
+                                              " Please follow the following JSON structure:\n{0}")
+                                         (str "{\n  \"namespace\": "
+                                              (str/join " | " (map (fn [l] (str \" (name l) \"))
+                                                                   (reverse logger/levels)))
+                                              "\n}"))}]}))
   (when-let [task @log-adjustment]
     (cancel-undo-task! task))
-  (let [plan (set-log-levels! log_levels)]
+  (let [plan (set-log-levels! (update-vals log_levels keyword))]
     (reset! log-adjustment {:plan plan, :undo-task (undo-task plan duration duration_unit)}))
   nil)
 

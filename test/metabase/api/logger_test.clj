@@ -116,3 +116,20 @@
       (finally
         (logger/remove-ns-logger! trace-ns)
         (logger/remove-ns-logger! fatal-ns)))))
+
+(deftest ^:sequential invalid-adjustment-test
+  (testing "invalid level"
+    (is (= {:specific-errors
+            {:my.namespace
+             ["should be either \"trace\", \"debug\", \"info\", \"warn\", \"error\", \"fatal\" or \"off\", received: \"ok\""],
+             :my.other.namespace
+             ["should be either \"trace\", \"debug\", \"info\", \"warn\", \"error\", \"fatal\" or \"off\", received: \"catastophic\""]},
+            :errors
+            [{:log_levels
+              "The format of the provided logging configuration is incorrect. Please follow the following JSON structure:
+{
+  \"namespace\": \"trace\" | \"debug\" | \"info\" | \"warn\" | \"error\" | \"fatal\" | \"off\"
+}"}]}
+           (mt/user-http-request :crowberto :post 400 "logger/adjustment"
+                                 {:duration 1, :duration_unit :hours, :log_levels {"my.namespace" :ok
+                                                                                   "my.other.namespace" :catastophic}})))))
