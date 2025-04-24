@@ -70,7 +70,7 @@
   (reindex!))
 
 (defmethod task/init! ::SearchIndexInit [_]
-  (cluster-lock/with-cluster-lock ::search-init-lock (init!)))
+  (future (cluster-lock/with-cluster-lock ::search-init-lock (init!))))
 
 (defmethod task/init! ::SearchIndexReindex [_]
   (let [job         (jobs/build
