@@ -2,9 +2,8 @@ import { useEffect } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useHasTokenFeature } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getIsEmailConfigured, getIsHosted } from "metabase/setup/selectors";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useDispatch } from "metabase/lib/redux";
 import { Stack } from "metabase/ui";
 
 import { SMTPConnectionCard } from "../Email/SMTPConnectionCard";
@@ -13,8 +12,8 @@ import { BccToggleWidget } from "../widgets/BccToggleWidget";
 import { EmailReplyToWidget } from "../widgets/EmailReplyToWidget";
 
 export function EmailSettingsPage() {
-  const isHosted = useSelector(getIsHosted);
-  const isEmailConfigured = useSelector(getIsEmailConfigured);
+  const isHosted = useSetting("is-hosted?");
+  const isEmailConfigured = useSetting("email-configured?");
   const hasEmailAllowListFeature = useHasTokenFeature("email_allow_list");
   const hasEmailRestrictRecipientsFeature = useHasTokenFeature(
     "email_restrict_recipients",
