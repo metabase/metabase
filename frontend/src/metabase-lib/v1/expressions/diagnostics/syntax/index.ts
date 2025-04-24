@@ -11,10 +11,10 @@ import { checkStringQuotes } from "./check-string-quotes";
 export const syntaxChecks = [
   checkOpenParenthesisAfterFunction,
   checkMatchingParentheses,
-  checkMissingCommasInArgumentList,
   checkNumberExponent,
   checkStringQuotes,
   checkFieldQuotes,
+  checkMissingCommasInArgumentList,
   checkBadTokens,
 ];
 

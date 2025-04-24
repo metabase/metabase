@@ -2,57 +2,44 @@ import { t } from "ttag";
 
 import type { Token } from "../../pratt";
 import {
-  CALL,
+  BAD_TOKEN,
+  BOOLEAN,
+  END_OF_INPUT,
   FIELD,
   GROUP,
   GROUP_CLOSE,
   IDENTIFIER,
-  OPERATORS,
+  NUMBER,
+  STRING,
 } from "../../pratt";
 import { error } from "../utils";
 
+const left = [FIELD, STRING, NUMBER, BOOLEAN, IDENTIFIER, GROUP_CLOSE];
+const right = [FIELD, STRING, NUMBER, BOOLEAN, IDENTIFIER, GROUP];
+
 export function checkMissingCommasInArgumentList({
   tokens,
-  source,
 }: {
   tokens: Token[];
-  source: string;
 }) {
-  const call = 1;
-  const group = 2;
-  const stack = [];
-
-  for (let index = 0; index < tokens.length; index++) {
+  for (let index = 1; index < tokens.length; index++) {
     const token = tokens[index];
     const prevToken = tokens[index - 1];
-    if (token?.type === GROUP) {
-      if (!prevToken) {
-        continue;
-      }
-      if (prevToken.type === CALL) {
-        stack.push(call);
-        continue;
-      } else {
-        stack.push(group);
-        continue;
-      }
-    }
-    if (token.type === GROUP_CLOSE) {
-      stack.pop();
+
+    if (!token || !prevToken) {
       continue;
     }
 
-    const isCall = stack.at(-1) === call;
-    if (!isCall) {
+    if (
+      token.type === END_OF_INPUT ||
+      token.type === BAD_TOKEN ||
+      prevToken.type === BAD_TOKEN
+    ) {
       continue;
     }
 
-    const nextToken = tokens[index + 1];
-    if (token.type === IDENTIFIER || token.type === FIELD) {
-      if (nextToken && !OPERATORS.has(nextToken.type)) {
-        const text = source.slice(nextToken.start, nextToken.end);
-        error(nextToken, t`Expecting operator but got ${text} instead`);
-      }
+    if (left.includes(prevToken.type) && right.includes(token.type)) {
+      error(token, t`Expecting operator but got ${token.text} instead`);
     }
   }
 }
