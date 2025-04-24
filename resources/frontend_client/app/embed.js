@@ -1,9 +1,12 @@
 // @ts-check
 
 (function () {
-  const error = (message) => console.error(`[mb:embed] ${message}`);
+  const error = (...messages) => console.error("[mb:embed:error]", ...messages);
+  const debug = (...messages) => console.debug("[mb:embed:debug]", ...messages);
 
   const EMBEDDING_ROUTE = "embed/v2/interactive";
+
+  /** @typedef {{embedResourceType: string, embedResourceId: string, theme: object}} EmbedSettings */
 
   class MetabaseEmbed {
     static VERSION = "0.0.1";
@@ -30,40 +33,38 @@
       /** @type {string} */
       this.apiKey = options.apiKey;
 
-      /** @type {{embedResourceType: string, embedResourceId: string, theme: object}} */
+      /** @type {EmbedSettings} */
       this.embedSettings = this._getEmbedSettings(options);
 
       this.isEmbedReady = false;
 
-      this.setup();
+      // Bind the event handler to preserve 'this' context
+      this._handleMessage = this._handleMessage.bind(this);
+
+      this._setup();
     }
 
-    /** @returns {{embedResourceType: string, embedResourceId: string, theme: object}} */
-    _getEmbedSettings(options) {
-      const settings = { theme: options.theme };
-
-      if (options.dashboardId !== undefined) {
-        return {
-          ...settings,
-          embedResourceType: "dashboard",
-          embedResourceId: options.dashboardId,
-        };
+    /**
+     * @param {EmbedSettings} settings
+     */
+    updateSettings(settings) {
+      if (!this.isEmbedReady) {
+        error("wait until the embed is ready before updating the settings");
+        return;
       }
 
-      if (options.questionId !== undefined) {
-        return {
-          ...settings,
-          embedResourceType: "question",
-          embedResourceId: options.questionId,
-        };
-      }
-
-      throw new Error(
-        "you must provide a dashboardId or questionId as an option",
-      );
+      this._sendMessage("metabase.embed.setSettings", settings);
     }
 
-    setup() {
+    destroy() {
+      if (this.iframe) {
+        window.removeEventListener("message", this._handleMessage);
+        this.iframe.remove();
+        this.isEmbedReady = false;
+      }
+    }
+
+    _setup() {
       this.iframe = document.createElement("iframe");
       this.iframe.src = `${this.url}/${EMBEDDING_ROUTE}`;
       this.iframe.style.width = "100%";
@@ -98,24 +99,29 @@
       parentContainer.appendChild(this.iframe);
     }
 
-    updateSettings(settings) {
-      if (!this.isEmbedReady) {
-        error("wait until the embed is ready before updating the settings");
-        return;
+    /** @returns {EmbedSettings} */
+    _getEmbedSettings(options) {
+      const settings = { theme: options.theme };
+
+      if (options.dashboardId !== undefined) {
+        return {
+          ...settings,
+          embedResourceType: "dashboard",
+          embedResourceId: options.dashboardId,
+        };
       }
 
-      this._sendMessage({
-        type: "metabase.embed.setSettings",
-        payload: settings,
-      });
-    }
-
-    destroy() {
-      if (this.iframe) {
-        window.removeEventListener("message", this._handleMessage);
-        this.iframe.remove();
-        this.isEmbedReady = false;
+      if (options.questionId !== undefined) {
+        return {
+          ...settings,
+          embedResourceType: "question",
+          embedResourceId: options.questionId,
+        };
       }
+
+      throw new Error(
+        "you must provide a dashboardId or questionId as an option",
+      );
     }
 
     _handleMessage(event) {
@@ -124,21 +130,24 @@
       }
 
       if (event.data.type === "metabase.embed.iframeReady") {
+        if (this.isEmbedReady) {
+          return;
+        }
+
         this.isEmbedReady = true;
         this.updateSettings(this.embedSettings);
 
         // TODO: implement SSO-based authentication once the new SSO implementation on the SDK is ready
         //       we use API keys for now
-        this._sendMessage({
-          type: "metabase.embed.authenticate",
-          payload: { apiKey: this.apiKey },
+        this._sendMessage("metabase.embed.authenticate", {
+          apiKey: this.apiKey,
         });
       }
     }
 
-    _sendMessage(message) {
+    _sendMessage(type, data) {
       if (this.iframe?.contentWindow) {
-        this.iframe.contentWindow.postMessage(message, "*");
+        this.iframe.contentWindow.postMessage({ type, data }, "*");
       }
     }
   }

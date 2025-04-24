@@ -24,7 +24,6 @@ export const SdkIframeEmbedRoute = () => {
 
     // TODO: to be implemented once the new SSO implementation on the SDK is ready
     if (iframeAuthConfig.type === "sso") {
-      console.error("SSO authentication is not supported yet");
       return;
     }
 
@@ -33,9 +32,6 @@ export const SdkIframeEmbedRoute = () => {
       apiKey: iframeAuthConfig.apiKey,
     });
   }, [iframeAuthConfig]);
-
-  const isAuthReady =
-    iframeAuthConfig?.type === "apiKey" && iframeAuthConfig.apiKey;
 
   const { theme } = iframeSettings ?? {};
 
@@ -50,12 +46,10 @@ export const SdkIframeEmbedRoute = () => {
     });
   }, [theme]);
 
-  // TODO: improve error handling
-  if (!iframeSettings) {
-    return <div>Invalid settings!</div>;
-  }
+  // TODO: add support for SSO auth once the new SSO implementation on the SDK is ready
+  const isAuthReady = !!authConfig?.apiKey;
 
-  if (!isAuthReady || !authConfig) {
+  if (!isAuthReady || !authConfig || iframeSettings === null) {
     return (
       <Center h="100%" mih="100vh">
         <Loader />
