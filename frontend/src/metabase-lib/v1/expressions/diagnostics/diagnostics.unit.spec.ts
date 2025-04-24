@@ -368,6 +368,20 @@ describe("diagnostics", () => {
         },
       );
     });
+
+    describe("double comma", () => {
+      it("should reject repeated comma's", () => {
+        expect(err(`concat("foo",, "bar")`)).toBe(
+          "Expected expression but got: ,",
+        );
+        expect(err(`concat("foo", , "bar")`)).toBe(
+          "Expected expression but got: ,",
+        );
+        expect(err(`concat("foo",,, "bar")`)).toBe(
+          "Expected expression but got: ,",
+        );
+      });
+    });
   });
 
   describe("diagnoseAndCompile", () => {
