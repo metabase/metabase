@@ -238,8 +238,8 @@ describe("scenarios > question > download", () => {
           "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
         ).as("saveFormat");
 
-        H.getDashboardCard().realHover();
-        H.getDashboardCardMenu().click();
+        H.getDashboardCard(0).realHover();
+        H.getDashboardCardMenu(0).click();
         H.popover().within(() => {
           cy.findByText("Download results").click();
         });
@@ -250,8 +250,8 @@ describe("scenarios > question > download", () => {
         cy.wait("@saveFormat");
 
         cy.reload();
-        H.getDashboardCard().realHover();
-        H.getDashboardCardMenu().click();
+        H.getDashboardCard(0).realHover();
+        H.getDashboardCardMenu(0).click();
         H.popover().within(() => {
           cy.findByText("Download results").click();
         });
@@ -266,8 +266,8 @@ describe("scenarios > question > download", () => {
         cy.wait("@saveFormat");
 
         cy.reload();
-        H.getDashboardCard().realHover();
-        H.getDashboardCardMenu().click();
+        H.getDashboardCard(0).realHover();
+        H.getDashboardCardMenu(0).click();
         H.popover().within(() => {
           cy.findByText("Download results").click();
         });
