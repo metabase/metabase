@@ -9,7 +9,6 @@
    [clojure.tools.logging]
    [clojure.tools.logging.impl]
    [metabase.config :as config]
-   [metabase.util.format :as u.format]
    [metabase.util.log.capture]
    [net.cgrand.macrovich :as macros])
   (:import
