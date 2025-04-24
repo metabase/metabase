@@ -12,7 +12,7 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding-sdk > popovers", () => {
-  it("should show legend overflow popover for charts with many series", () => {
+  it("should show legend overflow popover for charts with many series (metabase#57131)", () => {
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
     );
