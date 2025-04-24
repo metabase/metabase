@@ -14,9 +14,11 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [nano-id.core :as nano-id]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (clojure.lang ExceptionInfo)))
 
 (setting/defsetting database-enable-actions
   (i18n/deferred-tru "Whether to enable Actions for a specific Database.")
@@ -176,31 +178,15 @@
   [action-or-id]
   (check-actions-enabled-for-database! (api/check-404 (database-for-action action-or-id))))
 
-(defn- row-update-event [{:keys [before after]}]
-  (case [(some? before) (some? after)]
-    [false true]  :event/rows.created
-    [true  true]  :event/rows.updated
-    [true  false] :event/rows.deleted
-    ;; should not happen
-    [false false] ::no-op))
+(defmulti handle-effects!*
+  "Trigger bulk side effects in response to individual effects within actions, e.g. table row modified system events."
+  {:arglists '([effect-type user-id payloads]), :added "internal-tools"}
+  (fn [effect-type _user-id _payloads]
+    (keyword effect-type)))
 
-(defn- publish-effect-events! [{:keys [user-id effects]}]
-  (doseq [[event payloads] (->> effects
-                                (filter (comp #{:effect/row.modified} first))
-                                (map second)
-                                (group-by row-update-event)
-                                (remove (comp #{::no-op} key)))]
-    ;; TODO will fix requiring-resolve when we remove all this table-action specific stuff, which has NO place here
-    #_{:clj-kondo/ignore [:metabase/modules]}
-    (doseq [[table-id payloads] (group-by :table-id payloads)
-            :let [pk-fields   ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/select-table-pk-fields) table-id)
-                  row-changes (for [{:keys [before after]} payloads]
-                                {:pk     ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/get-row-pks) pk-fields after)
-                                 :before before
-                                 :after  after})]]
-      (events/publish-event! event {:actor_id    user-id
-                                    :row_changes row-changes
-                                    :args        {:table_id table-id}}))))
+(defn- handle-effects! [{:keys [user-id effects]}]
+  (doseq [[event-type payloads] (u/group-by first second effects)]
+    (handle-effects!* event-type user-id payloads)))
 
 (mu/defn perform-action-internal!
   "A more modern version of [[perform-action!]] that takes an existing context, and multiple arg-maps.
@@ -221,7 +207,7 @@
           (doseq [k [:invocation-id :invocation-scope :user-id]]
             (assert (= (k context-before) (k context-after)) (format "Output context must not change %s" k)))
           ;; We might in future want effects to propagate all the up to the root scope ¯\_(ツ)_/¯
-          (publish-effect-events! context-after)
+          (handle-effects! context-after)
           (actions.events/publish-action-success! action-kw context-after outputs)))
       ;; Err on the side of visibility. We may want to handle Errors differently when we polish Internal Tools.
       (catch Throwable e
@@ -254,35 +240,60 @@
   `action` being performed. [[action-arg-map-spec]] returns the specific spec used to validate `arg-map` for a given
   `action`."
   [action
-   arg-map
-   & {:keys [policy]
+   arg-maps
+   & {:keys [policy user-id]
       :or   {policy :model-action}}]
   (let [action-kw (keyword action)
         spec      (action-arg-map-spec action-kw)
-        arg-map   (normalize-action-arg-map action-kw arg-map)] ; is arg-map always just a regular query?
-    (when (s/invalid? (s/conform spec arg-map))
-      (throw (ex-info (format "Invalid Action arg map for %s: %s" action-kw (s/explain-str spec arg-map))
-                      (s/explain-data spec arg-map))))
-    (let [{driver :engine :as db} (api/check-404 (cached-database (:database arg-map)))]
+        arg-maps  (map (partial normalize-action-arg-map action-kw) arg-maps)
+        errors    (for [arg-map arg-maps
+                        :when (s/invalid? (s/conform spec arg-map))]
+                    {:message (format "Invalid Action arg map for %s: %s" action-kw (s/explain-str spec arg-map))
+                     :data    (s/explain-data spec arg-map)})
+        _         (when (seq errors)
+                    (throw (ex-info (str "Invalid Action arg map(s) for " action-kw)
+                                    {::schema-errors errors})))
+        dbs       (mapv (comp api/check-404 cached-database) (keep :database arg-maps))
+        _         (when (> (count dbs) 2)
+                    (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
+                                    {:status-code  400
+                                     :database-ids (map :id dbs)})))
+        db        (first dbs)
+        driver    (:engine db)]
+    ;; The action might not be database-centric (e.g., call a webhook)
+    (when db
       (case policy
         :model-action
         (check-actions-enabled-for-database! db)
         :data-editing
-        (check-data-editing-enabled-for-database! db))
-      (binding [*misc-value-cache* (atom {:databases {(:id db) db}})]
-        (when (= :model-action policy)
-          (qp.perms/check-query-action-permissions* arg-map))
-        (driver/with-driver driver
-          (let [context {:user-id api/*current-user-id*
-                         ;; Legacy drivers dispatch on this, for now.
-                         ;; TODO As far as I'm aware we only have :sql-jdbc defined actions, so can stop dispatching
-                         ;;      on this and just fail if the dynamically determined driver is incompatible.
-                         :driver  driver}
-                {:keys [outputs]} (perform-action-internal! action-kw context [arg-map])]
-            ;; TODO perhaps we can have a standard way of wrapping them for new actions
-            ;;      or define a per-action reduction (e.g. totally the number of rows updated, for bulk events)
-            (assert (= 1 (count outputs)) "The legacy action APIs do not support multiple outputs")
-            (first outputs)))))))
+        (check-data-editing-enabled-for-database! db)))
+    (binding [*misc-value-cache* (atom {:databases (zipmap (map :id dbs) dbs)})]
+      (when (= :model-action policy)
+        (doseq [arg-map arg-maps]
+          (qp.perms/check-query-action-permissions* arg-map)))
+      (let [result (let [context {:user-id (api/check-500 (or user-id api/*current-user-id*))}]
+                     (if-not driver
+                       (perform-action-internal! action-kw context arg-maps)
+                       (driver/with-driver driver
+                         (let [context (assoc context
+                                              ;; Legacy drivers dispatch on this, for now.
+                                              ;; TODO As far as I'm aware we only have :sql-jdbc defined actions, so can stop dispatching
+                                              ;;      on this and just fail if the dynamically determined driver is incompatible.
+                                              :driver driver)]
+                           (perform-action-internal! action-kw context arg-maps)))))]
+        {:effects (:effects (:context result))
+         :outputs (:outputs result)}))))
+
+(mu/defn perform-action-with-single-input-and-output
+  "This is the Old School version of [[perform-action!], before we returned effects and used bulk chaining."
+  [action arg-map & {:as opts}]
+  (try (let [{:keys [outputs]} (perform-action! action [arg-map] opts)]
+         (assert (= 1 (count outputs)) "The legacy action APIs do not support multiple outputs")
+         (first outputs))
+       (catch ExceptionInfo e
+         (if-let [{:keys [message data]} (first (::schema-errors (ex-data e)))]
+           (throw (ex-info message data))
+           (throw e)))))
 
 ;;;; Action definitions.
 

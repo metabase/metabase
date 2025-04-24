@@ -23,6 +23,7 @@
   check-data-editing-enabled-for-database!
   cached-database
   cached-database-via-table-id
+  handle-effects!*
   perform-action!
   perform-action!*]
  [metabase.actions.error

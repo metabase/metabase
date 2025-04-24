@@ -57,7 +57,7 @@
           ;; this `category_id` -- it's an FK constraint violation.
           (mt/as-admin
             (is (thrown-with-msg? Exception #"Referential integrity constraint violation:.*"
-                                  (actions/perform-action! :row/delete (mt/mbql-query categories {:filter [:= $id 58]})))))
+                                  (actions/perform-action-with-single-input-and-output :row/delete (mt/mbql-query categories {:filter [:= $id 58]})))))
           (testing "Make sure our impl was actually called."
             (is @parse-sql-error-called?)))))))
 
@@ -79,7 +79,7 @@
   Used to test error message when executing implicit action for SQL DBs."
   [& args]
   (try
-    (apply actions/perform-action! args)
+    (apply actions/perform-action-with-single-input-and-output args)
     (catch Exception e
       (ex-data e))))
 
