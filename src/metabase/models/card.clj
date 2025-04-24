@@ -859,11 +859,46 @@
   ;; never-executed cards with the results.
   (atom (cache/lirs-cache-factory {})))
 
+(def ^:private backfill-result-metadata-idents-cache-stats
+  "Each of these maps is `{card-id count}`."
+  (atom {:calls  {}
+         :misses {}}))
+
+;; FIXME: This is a debugging aid that should be removed once the performance issues are sorted out.
+;; Freestanding thread that prints a summary of this cache's stats every 2 minutes.
+#_{:clj-kondo/ignore [:unused-private-var]}
+(defonce ^:private backfill-result-metadata-idents-cache-stats-logger
+  (doto
+   (Thread.
+    #(try
+       (while (not (.isInterrupted (Thread/currentThread)))
+         (Thread/sleep (* 2 60 1000)) ; 2 minutes
+         (let [{:keys [calls misses]} @backfill-result-metadata-idents-cache-stats
+               total-calls            (reduce + 0 (vals calls))
+               total-misses           (reduce + 0 (vals misses))
+               total-hits             (- total-calls total-misses)
+               unique-hits            (- (count calls) (count misses))
+               most-missed            (->> misses
+                                           (sort-by (comp - second))
+                                           (take 10)
+                                           vec)]
+           (log/infof (str "Backfill :result_metadata cache stats: %d hits, %d misses = %.1f%% hit rate\n"
+                           "%d unique misses; most frequently missed [card-id count]: %s")
+                      total-hits total-misses (double (if (pos? total-calls)
+                                                        (* 100 (/ total-hits total-calls))
+                                                        0))
+                      unique-hits (count misses) (pr-str most-missed))))
+       (catch InterruptedException _)))
+    (.start)))
+
 (defn- backfill-result-metadata-idents
   "Cache wrapper for [[backfill-result-metadata-idents**]]; bounded caching on the card ID."
   [result-metadata card]
+  (swap! backfill-result-metadata-idents-cache-stats update-in [:calls (:id card)] (fnil inc 0))
   (cache.wrapped/lookup-or-miss backfill-result-metadata-idents-cache (:id card)
                                 (fn [_]
+                                  (swap! backfill-result-metadata-idents-cache-stats
+                                         update-in [:misses (:id card)] (fnil inc 0))
                                   (backfill-result-metadata-idents* result-metadata card))))
 
 (defmethod upgrade-card-schema-to 21
