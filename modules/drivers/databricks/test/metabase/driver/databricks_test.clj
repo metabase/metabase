@@ -3,10 +3,15 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.databricks :as databricks]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -287,13 +292,24 @@
   (mt/test-driver
     :databricks
     (let [details (get (mt/db) :details)
-          multi-pattern (str (:catalog details) "." (:schema-filters-patterns details))]
+          ;; metabase_ci_multicatalog.test_schema.test (id, name)
+          multicatalog (tx/db-test-env-var :databricks :multicatalog-catalog "metabase_ci_multicatalog")
+          multicatalog-schema (tx/db-test-env-var :databricks :multicatalog-schema "test_schema")
+          multi-pattern (format "%s.%s,%s.%s"
+                                (:catalog details)
+                                (:schema-filters-patterns details)
+                                multicatalog
+                                multicatalog-schema)]
       (mt/with-temp [:model/Database {db-id :id :as db} {:engine :databricks :details details}]
         (mt/with-db
           db
           (testing "With multi-level-schema default (off)"
             (sync/sync-database! (mt/db))
-            (is (= #{"test-data"} (t2/select-fn-set :schema :model/Table :db_id (mt/id))))
+            (is (= #{"test-data"} (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)))
+            (is (= 52 (t2/select-one-fn :count
+                                        [:model/Field :count]
+                                        :table_id [:in (t2/select-fn-set :id :model/Table :db_id (mt/id) :active true)]
+                                        :active true)))
             (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))))
         (testing "With multi-level-schema on"
           (t2/update! :model/Database db-id {:details (assoc details
@@ -302,15 +318,69 @@
           (mt/with-db
             (t2/select-one :model/Database db-id)
             (sync/sync-database! (mt/db))
-            (is (= #{(str (:catalog details) ".test-data")} (t2/select-fn-set :schema :model/Table :db_id (mt/id))))
+            (is (= #{(format "%s.%s" (:catalog details) "test-data")
+                     (format "%s.%s" multicatalog multicatalog-schema)}
+                   (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)))
+            ;; Adds four fields for metabase_ci_multicatalog.test_schema.test id,name,ci_venue_id,drivers_venue_id
+            (is (= 56 (t2/select-one-fn :count
+                                        [:model/Field :count]
+                                        :table_id [:in (t2/select-fn-set :id :model/Table :db_id (mt/id) :active true)]
+                                        :active true)))
             (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))))
         (testing "With multi-level-schema off"
           (t2/update! :model/Database db-id {:details (assoc details :multi-level-schema false)})
           (mt/with-db
             (t2/select-one :model/Database db-id)
             (sync/sync-database! (mt/db))
-            (is (= #{"test-data"} (t2/select-fn-set :schema :model/Table :db_id (mt/id))))
+            (is (= #{"test-data"} (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)))
+            (is (= 52 (t2/select-one-fn :count
+                                        [:model/Field :count]
+                                        :table_id [:in (t2/select-fn-set :id :model/Table :db_id (mt/id) :active true)]
+                                        :active true)))
             (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))))))))
+
+(deftest multi-catalog-joins
+  (mt/test-driver
+    :databricks
+    (let [details (get (mt/db) :details)
+          catalog+schema (format "%s.%s"
+                                 (:catalog details)
+                                 (:schema-filters-patterns details))
+          multi-catalog+schema (format "%s.%s"
+                                       (tx/db-test-env-var :databricks :multicatalog-catalog "metabase_ci_multicatalog")
+                                       (tx/db-test-env-var :databricks :multicatalog-schema "test_schema"))
+          ;; metabase_ci_multicatalog.test_schema.test (id, name,ci_venue_id,drivers_venue_id)
+          multi-pattern (format "%s,%s" catalog+schema multi-catalog+schema)
+          details (assoc details
+                         :multi-level-schema true
+                         :schema-filters-patterns multi-pattern)]
+      (mt/with-temp [:model/Database {db-id :id :as db} {:engine :databricks :details details}]
+        (mt/with-db db
+          (sync/sync-database! (mt/db))
+          (let [mp (lib.metadata.jvm/application-database-metadata-provider db-id)
+                [t1-id t2-id] (t2/select-fn-vec
+                               :id
+                               :model/Table
+                               :db_id db-id
+                               [:composite :schema :name]
+                               [:in [[:composite catalog+schema "venues"]
+                                     [:composite multi-catalog+schema "test"]]]
+                               {:order-by [:schema]})
+                t1-id-field (m/find-first (comp #(= % "id") :name) (lib.metadata/fields mp t1-id))
+                t2-id-field (m/find-first (comp #(= % "id") :name) (lib.metadata/fields mp t2-id))
+                fk-query (-> (lib/query mp (lib.metadata/table mp t1-id))
+                             (lib/join (lib.metadata/table mp t2-id))
+                             (lib/filter (lib/= t2-id-field 1))
+                             (lib/limit 1))
+                manual-query (-> (lib/query mp (lib.metadata/table mp t1-id))
+                                 (lib/join (lib/join-clause (lib.metadata/table mp t2-id)
+                                                            [(lib/= t1-id-field (lib/+ t2-id-field 1))]))
+                                 (lib/filter (lib/= t2-id-field 1))
+                                 (lib/limit 1))]
+            (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 1 "toucan" 1 1]]
+                   (mt/rows (qp/process-query fk-query))))
+            (is (= [[2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 1 "toucan" 1 1]]
+                   (mt/rows (qp/process-query manual-query))))))))))
 
 (deftest can-connect-test
   (mt/test-driver

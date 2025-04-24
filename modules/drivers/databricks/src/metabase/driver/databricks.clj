@@ -60,6 +60,36 @@
     (and (catalog-present? jdbc-spec (:catalog details))
          (sql-jdbc.conn/can-connect-with-spec? jdbc-spec))))
 
+(defmethod driver/adjust-schema-qualification :databricks
+  [_driver database schema]
+  (let [multi-level? (get-in database [:details :multi-level-schema])
+        catalog (get-in database [:details :catalog])
+        prefix (str catalog ".")]
+    (cond
+      (and multi-level? (not (str/includes? schema ".")))
+      (str prefix schema)
+
+      (and (not multi-level?) (str/starts-with? schema prefix))
+      (subs schema (count prefix))
+
+      :else
+      schema)))
+
+(defn- split-catalog+schema
+  [schema]
+  (str/split schema #"\."))
+
+(defmethod sql.qp/->honeysql [:databricks ::h2x/identifier]
+  [_driver [tag identifier-type components :as _identifier]]
+  (let [components (if (and (contains? #{:field :table} identifier-type)
+                            (>= (count components) 2))
+                     ;; period is an illegal character for identifiers in databricks so if it's present we can split and
+                     ;; quote safely.
+                     (let [first-split (split-catalog+schema (first components))]
+                       (into first-split (rest components)))
+                     components)]
+    (sql.qp/->honeysql :hive-like [tag identifier-type components])))
+
 (defn- get-tables-sql
   [driver {:keys [catalog multi-level-schema]}]
   (assert (string? (not-empty catalog)))
@@ -90,6 +120,16 @@
       (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
                       {}
                       e)))))
+
+(defn- schema-names-filter [schema-names multi-level-schema catalog-column schema-column]
+  (when schema-names
+    (if multi-level-schema
+      [:in [:composite catalog-column schema-column]
+       (map (comp (fn [catalog+schema]
+                    (into [:composite] catalog+schema))
+                  split-catalog+schema)
+            schema-names)]
+      [:in schema-column schema-names])))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :databricks
   [driver & {:keys [schema-names table-names] {:keys [catalog multi-level-schema]} :details}]
@@ -139,7 +179,7 @@
                        ;; is resolved by Databricks in underlying jdbc driver.
                        [:not= :c.full_data_type [:inline "timestamp_ntz"]]
                        [:not [:in :c.table_schema ["information_schema"]]]
-                       (when schema-names [:in :c.table_schema schema-names])
+                       (schema-names-filter schema-names multi-level-schema :c.table_catalog :c.table_schema)
                        (when table-names [:in :c.table_name table-names])]
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
@@ -172,8 +212,8 @@
                :where [:and
                        (when-not multi-level-schema [:= :fk_kcu.table_catalog [:inline catalog]])
                        [:not [:in :fk_kcu.table_schema ["information_schema"]]]
-                       (when table-names [:in :fk_kcu.table_name table-names])
-                       (when schema-names [:in :fk_kcu.table_schema schema-names])]
+                       (schema-names-filter schema-names multi-level-schema :fk_kcu.table_catalog :fk_kcu.table_schema)
+                       (when table-names [:in :fk_kcu.table_name table-names])]
                :order-by [:fk-table-schema :fk-table-name]}
               :dialect (sql.qp/quote-style driver)))
 
@@ -342,29 +382,3 @@
   [driver prepared-statement index object]
   (set-parameter-to-local-date-time driver prepared-statement index
                                     (t/local-date-time (t/local-date 1970 1 1) object)))
-
-(defmethod sql.qp/->honeysql [:databricks ::h2x/identifier]
-  [_driver [tag identifier-type components :as _identifier]]
-  (let [components (if (and (contains? #{:field :table} identifier-type)
-                            (>= (count components) 2))
-                     ;; period is an illegal character for identifiers in databricks so if it's present we can split and
-                     ;; quote safely.
-                     (let [first-split (str/split (first components) #"\.")]
-                       (into first-split (rest components)))
-                     components)]
-    (sql.qp/->honeysql :hive-like [tag identifier-type components])))
-
-(defmethod driver/adjust-schema-qualification :databricks
-  [_driver database schema]
-  (let [multi-level? (get-in database [:details :multi-level-schema])
-        catalog (get-in database [:details :catalog])
-        prefix (str catalog ".")]
-    (cond
-      (and multi-level? (not (str/includes? schema ".")))
-      (str prefix schema)
-
-      (and (not multi-level?) (str/starts-with? schema prefix))
-      (subs schema (count prefix))
-
-      :else
-      schema)))
