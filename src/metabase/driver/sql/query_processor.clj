@@ -597,12 +597,24 @@
                        (h2x/with-type-info value {:database-type "varchar"}))))
       (->honeysql driver value))))
 
+(defn- literal-text-value?
+  [[_ value {base-type :base_type effective-type :effective_type} :as clause]]
+  (and (mbql.u/is-clause? :value clause)
+       (string? value)
+       (isa? (or effective-type base-type)
+             :type/Text)))
+
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name {::add/keys [source-table source-alias]} :as _clause]]
   (let [expression-definition (mbql.u/expression-with-name *inner-query* expression-name)]
-    (->honeysql driver (if (= source-table ::add/source)
-                         (apply h2x/identifier :field source-query-alias source-alias)
-                         expression-definition))))
+    (->honeysql driver (cond (= source-table ::add/source)
+                             (apply h2x/identifier :field source-query-alias source-alias)
+
+                             (literal-text-value? expression-definition)
+                             [::expression-literal-text-value expression-definition]
+
+                             :else
+                             expression-definition))))
 
 (defmethod ->honeysql [:sql :now]
   [driver _clause]
@@ -1045,9 +1057,7 @@
 
 (defmethod ->honeysql [:sql :sum-where]
   [driver [_ arg pred]]
-  [:sum [:case
-         (->honeysql driver pred) (->honeysql driver arg)
-         :else                    [:inline 0.0]]])
+  (->honeysql driver [:sum [:case [[pred arg]] {:default 0.0}]]))
 
 (defmethod ->honeysql [:sql :count-where]
   [driver [_ pred]]
@@ -1060,8 +1070,7 @@
 (defmethod ->honeysql [:sql :distinct-where]
   [driver [_ arg pred]]
   [::h2x/distinct-count
-   [:case
-    (->honeysql driver pred) (->honeysql driver arg)]])
+   (->honeysql driver [:case [[pred arg]]])])
 
 (defmethod ->honeysql [:sql :trim]
   [driver [_ arg]]
@@ -1410,6 +1419,18 @@
   ;; sqlserver limits varchar to 30 in casts,
   ;; athena cannot cast uuid to bounded varchars
   (->honeysql driver [::cast expr "text"]))
+
+(defmethod ->honeysql [:sql ::expression-literal-text-value]
+  [driver [_ value]]
+  ;; When compiling with driver/*compile-with-inline-parameters* bound to false, a literal string expression will
+  ;; usually get replaced with a parameter placeholder like ?. For some databases, this causes a problem as the
+  ;; database engine cannot determine the type of the value in an expression like `SELECT ? AS "FOO"`. Drivers that
+  ;; need special handling for literal string expressions can provide an implementation for this method, e.g. to add
+  ;; an explicit CAST to the appropriate text type for the given driver. See the H2 driver for an example. We
+  ;; only need to do this for string literals, since numbers and booleans get inlined directly.
+  ;;
+  ;; Most databases don't require special handling, so just compile the unwrapped value.
+  (->honeysql driver value))
 
 (defmethod ->honeysql [:sql :starts-with]
   [driver [_ field arg options]]

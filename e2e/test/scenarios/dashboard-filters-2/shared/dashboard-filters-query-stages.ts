@@ -409,10 +409,12 @@ export function setup1stStageExplicitJoinFilter() {
 
 export function apply1stStageExplicitJoinFilter() {
   H.filterWidget().eq(0).click();
-  H.popover().within(() => {
-    cy.findByPlaceholderText("Search the list").type("abe.gorczany");
-    cy.button("Add filter").click();
-  });
+  H.popover()
+    .first()
+    .within(() => {
+      cy.findByPlaceholderText("Search the list").type("abe.gorczany");
+      cy.button("Add filter").click();
+    });
 }
 
 export function setup1stStageImplicitJoinFromSourceFilter() {
@@ -571,10 +573,12 @@ export function setup2ndStageExplicitJoinFilter() {
   H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
-  H.popover().within(() => {
-    cy.findByPlaceholderText("Search the list").type("abe.gorczany");
-    cy.button("Add filter").click();
-  });
+  H.popover()
+    .first()
+    .within(() => {
+      cy.findByPlaceholderText("Search the list").type("abe.gorczany");
+      cy.button("Add filter").click();
+    });
   cy.wait(["@dashboardData", "@dashboardData"]);
 }
 

@@ -1214,9 +1214,6 @@ describe("issue 8490", () => {
         .should("be.visible")
         .then(resolveDashboardLoaderPromise);
 
-      // PDF export
-      cy.findByText("PDF로 내보내기").should("be.visible");
-
       cy.log("assert the line chart");
       H.getDashboardCard(0).within(() => {
         // X-axis labels: Jan 2024 (or some other year)

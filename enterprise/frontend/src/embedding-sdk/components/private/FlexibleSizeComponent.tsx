@@ -7,7 +7,7 @@ export const FLEXIBLE_SIZE_DEFAULT_HEIGHT = "600px";
 export const FLEXIBLE_SIZE_DEFAULT_WIDTH = "100%";
 
 /**
- * @interface
+ * @inline
  */
 export type FlexibleSizeProps = PropsWithChildren<
   CommonStylingProps & {
