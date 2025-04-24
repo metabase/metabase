@@ -207,8 +207,8 @@
       #_:clj-kondo/ignore
       (System/exit 1))
     (catch #_:clj-kondo/ignore
-      Throwable e
-           (pprint/pprint (Throwable->map e))
-           (println (.getMessage e))
-           #_:clj-kondo/ignore
-           (System/exit 1))))
+        Throwable e
+        (pprint/pprint (Throwable->map e))
+        (println (.getMessage e))
+        #_:clj-kondo/ignore
+        (System/exit 1))))
