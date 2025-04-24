@@ -26,6 +26,7 @@ export function main() {
 }
 
 export function menu() {
+  console.log("TESTING!");
   return cy.findByRole("menu");
 }
 
