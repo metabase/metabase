@@ -295,6 +295,7 @@ export const widgetViewer: NormalUser = {
 };
 
 export const signInAs = (user: NormalUser) => {
+  cy.log("local helper update");
   cy.log(`Sign in as user via an API call: ${user.email}`);
   return cy.request("POST", "/api/session", {
     username: user.email,
