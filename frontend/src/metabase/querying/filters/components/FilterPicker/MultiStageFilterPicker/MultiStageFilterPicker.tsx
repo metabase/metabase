@@ -10,10 +10,14 @@ import type {
   SegmentListItem,
 } from "../types";
 
-type MultiStageFilterPickerProps = {
+export type QueryChangeOpts = {
+  run: boolean;
+};
+
+export type MultiStageFilterPickerProps = {
   query: Lib.Query;
   canAppendStage: boolean;
-  onChange: (newQuery: Lib.Query) => void;
+  onChange: (newQuery: Lib.Query, opts: QueryChangeOpts) => void;
   onClose?: () => void;
 };
 
@@ -33,26 +37,36 @@ export function MultiStageFilterPicker({
 
   const [selectedItem, setSelectedItem] = useState<ColumnListItem>();
 
-  const handleChange = (filter: Lib.Filterable, stageIndex: number) => {
+  const handleChange = (
+    filter: Lib.Filterable,
+    stageIndex: number,
+    opts: QueryChangeOpts,
+  ) => {
     const newQuery = Lib.filter(query, stageIndex, filter);
-    onChange(newQuery);
+    onChange(newQuery, opts);
   };
 
   const handleFilterChange = (
     filter: Lib.ExpressionClause,
     opts: FilterChangeOpts,
   ) => {
-    if (selectedItem != null) {
-      handleChange(filter, selectedItem.stageIndex);
-      setSelectedItem(undefined);
+    if (selectedItem == null) {
+      return;
     }
-    if (opts.source !== "add-button") {
+
+    handleChange(filter, selectedItem.stageIndex, {
+      run: opts.source !== "add-button",
+    });
+
+    if (opts.source === "add-button") {
+      setSelectedItem(undefined);
+    } else {
       onClose?.();
     }
   };
 
   const handleSegmentChange = (item: SegmentListItem) => {
-    handleChange(item.segment, item.stageIndex);
+    handleChange(item.segment, item.stageIndex, { run: true });
     onClose?.();
   };
 

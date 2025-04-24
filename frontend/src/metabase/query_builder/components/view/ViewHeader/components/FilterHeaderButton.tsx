@@ -7,8 +7,10 @@ import { useDispatch } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { updateQuestion } from "metabase/query_builder/actions";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
-import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
-import type { FilterChangeOpts } from "metabase/querying/filters/components/FilterPicker/types";
+import {
+  MultiStageFilterPicker,
+  type QueryChangeOpts,
+} from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
 import { Button, Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -38,7 +40,7 @@ export function FilterHeaderButton({
   const hasFilters = items.length > 0;
   const label = isExpanded ? t`Hide filters` : t`Show filters`;
 
-  const handleQueryChange = (newQuery: Lib.Query, opts: FilterChangeOpts) => {
+  const handleQueryChange = (newQuery: Lib.Query, opts: QueryChangeOpts) => {
     const newQuestion = question.setQuery(newQuery);
     dispatch(updateQuestion(newQuestion, { run: opts.run }));
   };

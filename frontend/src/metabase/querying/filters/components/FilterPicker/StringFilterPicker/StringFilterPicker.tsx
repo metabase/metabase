@@ -64,11 +64,11 @@ export function StringFilterPicker({
 
   const handleFormSubmit = (event: FormEvent) => {
     event.preventDefault();
-    handleFilterChange({ type: "submit" });
+    handleFilterChange({ source: "submit" });
   };
 
   const handleAddButtonClick = () => {
-    handleFilterChange({ type: "add-button" });
+    handleFilterChange({ source: "add-button" });
   };
 
   return (
