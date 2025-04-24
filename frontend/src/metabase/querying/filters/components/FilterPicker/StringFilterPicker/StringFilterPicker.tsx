@@ -64,7 +64,7 @@ export function StringFilterPicker({
 
   const handleFormSubmit = (event: FormEvent) => {
     event.preventDefault();
-    handleFilterChange({ source: "submit" });
+    handleFilterChange({ source: "default" });
   };
 
   const handleAddButtonClick = () => {
