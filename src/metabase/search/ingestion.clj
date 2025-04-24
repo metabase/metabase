@@ -116,28 +116,30 @@
 
 (defn update!
   "Update all active engines' existing indexes with the given documents. Passed remove-documents will be deleted from the index."
-  [documents-reducible remove-documents]
-  (when-let [engines (seq (search.engine/active-engines))]
-    (if (= 1 (count engines))
-      (u/prog1 (search.engine/update! (first engines) documents-reducible)
-        (doseq [[group ids] (u/group-by first second remove-documents)]
-          (search.engine/delete! (first engines) group ids)))
-      (u/prog1
-        ;; TODO um, multiplexing over the reducible awkwardly feels strange. We at least use a magic number for now.
-        (doseq [batch (eduction (partition-all 150) documents-reducible)
-                e engines]
-          (search.engine/update! e batch))
-        (doseq [[group ids] (u/group-by first second remove-documents)]
-          (search.engine/delete! (first engines) group ids))))))
+  [documents-reducible removed-models-reducible]
+  (doseq [e (seq (search.engine/active-engines))]
+    (u/prog1
+      (search.engine/update! e documents-reducible)
+      (doseq [batch (eduction (partition-all 1000) removed-models-reducible)]
+        (doseq [[group ids] (u/group-by first second batch)]
+          (search.engine/delete! e group ids))))))
 
-(defn- extract-model-and-id [update]
-  (let [[model value] update]
-    [model (str (cond
-                  (= := (first value))
-                  (first (filter integer? value))
+(defn- extract-model-and-id
+  ([update]
+   (when-let [[model update-def] update]
+     (extract-model-and-id model update-def)))
 
-                  (= :and (first value))
-                  (first (first (filter not-empty (map (partial filter integer?) (rest value)))))))]))
+  ([model update-def]
+   (let [operation (first update-def)
+         values (rest update-def)]
+     (case operation
+       := (let [column-def (first (filter keyword? values))
+                id (str (first (filter integer? values)))]
+            (if (= :this.id column-def)
+              [model id]
+              nil))
+
+       :and (first (keep (partial extract-model-and-id model) values))))))
 
 (defn bulk-ingest!
   "Process the given search model updates. Returns the number of search index entries that get updated as a result."
