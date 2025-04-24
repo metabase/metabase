@@ -1,3 +1,5 @@
+// @ts-check
+
 (function () {
   const error = (message) => console.error(`[mb:embed] ${message}`);
 
@@ -5,9 +7,16 @@
     static VERSION = "0.0.1";
 
     constructor(options) {
+      /** @type {string} */
       this.url = options.url;
+
+      /** @type {string | HTMLElement} */
       this.target = options.target;
+
+      /** @type {string} */
       this.iframeClassName = options.iframeClassName;
+
+      /** @type {string} */
       this.apiKey = options.apiKey;
 
       this.setup();
@@ -15,7 +24,7 @@
 
     setup() {
       this.iframe = document.createElement("iframe");
-      this.iframe.src = this.url;
+      this.iframe.src = `${this.url}`;
       this.iframe.style.width = "100%";
       this.iframe.style.height = "100%";
       this.iframe.style.border = "none";
@@ -29,7 +38,7 @@
         this.iframe.classList.add(this.iframeClassName);
       }
 
-      window.addEventListener("message", this._onMessage);
+      window.addEventListener("message", this._handleMessage);
 
       let parentContainer = null;
 
@@ -40,7 +49,7 @@
       }
 
       if (!parentContainer) {
-        error(`cannot find embed container "${this.parentSelector}"`);
+        error(`cannot find embed container "${this.target}"`);
 
         return;
       }
@@ -50,25 +59,30 @@
 
     destroy() {
       if (this.iframe) {
-        window.removeEventListener("message", this._onMessage);
+        window.removeEventListener("message", this._handleMessage);
         this.iframe.remove();
       }
     }
 
-    _onMessage = (event) => {
+    _handleMessage(event) {
       if (!event.data) {
         return;
       }
 
+      // once the iframe is ready to be authenticated, we forward the API key
       if (event.data.type === "metabase.embed.askToAuthenticate") {
-        const payload = {
+        this._sendMessage({
           type: "metabase.embed.authenticate",
           payload: { apiKey: this.apiKey },
-        };
-
-        this.iframe.contentWindow.postMessage(payload, "*");
+        });
       }
-    };
+    }
+
+    _sendMessage(message) {
+      if (this.iframe?.contentWindow) {
+        this.iframe.contentWindow.postMessage(message, "*");
+      }
+    }
   }
 
   window["metabase.embed"] = { MetabaseEmbed };
