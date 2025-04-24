@@ -11,6 +11,7 @@
    [iapetos.collector :as collector]
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
+   [iapetos.registry.collectors :as collectors]
    [jvm-alloc-rate-meter.core :as alloc-rate-meter]
    [jvm-hiccup-meter.core :as hiccup-meter]
    [metabase.analytics.settings :refer [prometheus-server-port]]
@@ -22,9 +23,12 @@
    [potemkin.types :as p.types]
    [ring.adapter.jetty :as ring-jetty])
   (:import
-   (io.prometheus.client Collector
-                         GaugeMetricFamily)
-   (io.prometheus.client.hotspot GarbageCollectorExports MemoryPoolsExports StandardExports ThreadExports)
+   (io.prometheus.client Collector GaugeMetricFamily SimpleCollector)
+   (io.prometheus.client.hotspot
+    GarbageCollectorExports
+    MemoryPoolsExports
+    StandardExports
+    ThreadExports)
    (java.util ArrayList List)
    (javax.management ObjectName)
    (org.eclipse.jetty.server Server)))
@@ -247,12 +251,9 @@
    (prometheus/counter :metabase-search/index
                        {:description "Number of entries indexed for search"
                         :labels      [:model]})
-   (prometheus/counter :metabase-database/healthy
-                       {:description "Does a given database using driver pass a health check."
-                        :labels [:driver]})
-   (prometheus/counter :metabase-database/unhealthy
-                       {:description "Does a given database using driver fail a health check."
-                        :labels [:driver]})
+   (prometheus/gauge :metabase-database/status
+                     {:description "Does a given database using driver pass a health check."
+                      :labels [:driver :healthy :reason]})
    (prometheus/counter :metabase-search/index-error
                        {:description "Number of errors encountered when indexing for search"})
    (prometheus/counter :metabase-search/index-ms
@@ -470,6 +471,13 @@
    (when-not system
      (setup!))
    (prometheus/set (:registry system) metric (qualified-vals labels) amount)))
+
+(defn clear!
+  "Call Collector.clear() on given metric."
+  [metric]
+  (when-not system
+    (setup!))
+  (.clear ^SimpleCollector (:raw (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry (:registry system)) metric nil))))
 
 (comment
   ;; want to see what's in the registry?
