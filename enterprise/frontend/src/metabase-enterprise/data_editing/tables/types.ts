@@ -29,11 +29,6 @@ export type TableDeleteRowsRequest = {
 
 export type TableDeleteRowsResponse = { success: boolean };
 
-export type UpdatedRowCellsHandlerParams = {
-  updatedData: Record<DatasetColumn["name"], RowValue>;
-  rowIndex: number;
-};
-
 export type TableUndoRedoRequest = {
   tableId: ConcreteTableId;
   /**

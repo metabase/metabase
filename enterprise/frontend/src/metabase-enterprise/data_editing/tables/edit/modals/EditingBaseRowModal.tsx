@@ -16,6 +16,7 @@ import {
   Text,
   rem,
 } from "metabase/ui";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   FieldWithMetadata,
@@ -24,7 +25,6 @@ import type {
   Table,
 } from "metabase-types/api";
 
-import type { UpdatedRowCellsHandlerParams } from "../../types";
 import { EditingBodyCellConditional } from "../inputs";
 import type { EditableTableColumnConfig } from "../use-editable-column-config";
 
@@ -35,9 +35,9 @@ interface EditingBaseRowModalProps {
   datasetColumns: DatasetColumn[];
   datasetTable?: Table;
   onClose: () => void;
-  onEdit: (data: UpdatedRowCellsHandlerParams) => void;
+  onEdit: (primaryKey: RowValue, data: Record<string, RowValue>) => void;
   onRowCreate: (data: Record<string, RowValue>) => void;
-  onRowDelete: (rowIndex: number) => void;
+  onRowDelete: (primaryKey: RowValue) => void;
   opened: boolean;
   currentRowIndex?: number;
   currentRowData?: RowValues;
@@ -56,7 +56,6 @@ export function EditingBaseRowModal({
   onRowCreate,
   onRowDelete,
   opened,
-  currentRowIndex,
   currentRowData,
   fieldMetadataMap,
   hasDeleteAction,
@@ -109,26 +108,33 @@ export function EditingBaseRowModal({
     }
   }, [opened, resetForm, revalidateForm]);
 
+  const primaryKey = useMemo(() => {
+    if (!currentRowData) {
+      return undefined;
+    }
+
+    const primaryKeyIndex = datasetColumns.findIndex(isPK);
+
+    return currentRowData[primaryKeyIndex];
+  }, [currentRowData, datasetColumns]);
+
   const handleValueEdit = useCallback(
     (key: string, value: RowValue) => {
-      if (currentRowIndex != null && isEditingMode) {
-        onEdit({
-          rowIndex: currentRowIndex,
-          updatedData: {
-            [key]: value,
-          },
+      if (primaryKey !== undefined && isEditingMode) {
+        onEdit(primaryKey, {
+          [key]: value,
         });
       }
     },
-    [isEditingMode, currentRowIndex, onEdit],
+    [isEditingMode, onEdit, primaryKey],
   );
 
   const handleDeleteConfirmation = useCallback(() => {
-    if (currentRowIndex !== undefined) {
-      onRowDelete(currentRowIndex);
+    if (primaryKey !== undefined) {
+      onRowDelete(primaryKey);
       closeDeletionModal();
     }
-  }, [currentRowIndex, closeDeletionModal, onRowDelete]);
+  }, [primaryKey, closeDeletionModal, onRowDelete]);
 
   const disabledColumnNames = useMemo(() => {
     if (!columnsConfig) {

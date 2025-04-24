@@ -11,6 +11,7 @@ import {
 import { formatValue } from "metabase/lib/formatting/value";
 import { Box, Icon } from "metabase/ui";
 import type { OrderByDirection } from "metabase-lib";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   DatasetData,
@@ -20,7 +21,6 @@ import type {
 } from "metabase-types/api";
 
 import { canEditField } from "../../helpers";
-import type { UpdatedRowCellsHandlerParams } from "../types";
 
 import S from "./EditTableData.module.css";
 import { EditingBodyCellWrapper } from "./EditingBodyCell";
@@ -30,7 +30,7 @@ import { useTableEditing } from "./use-table-editing";
 type EditTableDataGridProps = {
   data: DatasetData;
   fieldMetadataMap: Record<FieldWithMetadata["name"], FieldWithMetadata>;
-  onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
+  onRowUpdate: (primaryKey: RowValue, data: Record<string, RowValue>) => void;
   onRowExpandClick: (rowIndex: number) => void;
   columnsConfig?: EditableTableColumnConfig;
   getColumnSortDirection?: (
@@ -41,7 +41,7 @@ type EditTableDataGridProps = {
 export const EditTableDataGrid = ({
   data,
   fieldMetadataMap,
-  onCellValueUpdate,
+  onRowUpdate,
   onRowExpandClick,
   columnsConfig,
   getColumnSortDirection,
@@ -50,6 +50,15 @@ export const EditTableDataGrid = ({
 
   const { editingCellId, onCellClickToEdit, onCellEditCancel } =
     useTableEditing();
+
+  const handleCellValueUpdate = useCallback(
+    (rowIndex: number, rowData: Record<string, RowValue>) => {
+      const primaryKeyIndex = cols.findIndex(isPK);
+      const primaryKey = rows[rowIndex][primaryKeyIndex];
+      onRowUpdate(primaryKey, rowData);
+    },
+    [onRowUpdate, rows, cols],
+  );
 
   const columnOrder = useMemo(
     () =>
@@ -121,7 +130,7 @@ export const EditTableDataGrid = ({
             cellContext={cellContext}
             column={column}
             field={fieldMetadataMap?.[column.name]}
-            onCellValueUpdate={onCellValueUpdate}
+            onCellValueUpdate={handleCellValueUpdate}
             onCellEditCancel={onCellEditCancel}
           />
         ),
@@ -138,7 +147,7 @@ export const EditTableDataGrid = ({
     cols,
     getColumnSortDirection,
     fieldMetadataMap,
-    onCellValueUpdate,
+    handleCellValueUpdate,
     onCellEditCancel,
     editingCellId,
     columnsConfiguredForEditing,

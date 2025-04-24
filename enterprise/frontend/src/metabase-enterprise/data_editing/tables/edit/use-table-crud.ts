@@ -10,7 +10,6 @@ import {
   useInsertTableRowsMutation,
   useUpdateTableRowsMutation,
 } from "metabase-enterprise/api";
-import type { UpdatedRowCellsHandlerParams } from "metabase-enterprise/data_editing/tables/types";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ConcreteTableId,
@@ -77,37 +76,40 @@ export const useTableCRUD = ({
     [dispatch],
   );
 
-  const handleCellValueUpdate = useCallback(
-    async ({ updatedData, rowIndex }: UpdatedRowCellsHandlerParams) => {
-      if (!datasetData) {
+  const pkColumnName = useMemo(() => {
+    if (!datasetData) {
+      return;
+    }
+
+    const pkColumnIndex = datasetData.cols.findIndex(isPK);
+
+    return datasetData.cols[pkColumnIndex].name;
+  }, [datasetData]);
+
+  const handleRowUpdate = useCallback(
+    async (primaryKey: RowValue, data: Record<string, RowValue>) => {
+      if (!pkColumnName) {
         console.warn(
-          "Failed to update table data - no data is loaded for a table",
+          "Failed to update table data - no primary key column is loaded for a table",
         );
         return;
       }
 
-      const columns = datasetData.cols;
-      const rowData = datasetData.rows[rowIndex];
-
-      const pkColumnIndex = columns.findIndex(isPK);
-      const pkColumn = columns[pkColumnIndex];
-      const rowPkValue = rowData[pkColumnIndex];
-
-      const updatedRowWithPk = {
-        ...updatedData,
-        [pkColumn.name]: rowPkValue,
-      };
-
       const response = await updateTableRows({
         tableId: tableId,
-        rows: [updatedRowWithPk],
+        rows: [
+          {
+            ...data,
+            [pkColumnName]: primaryKey,
+          },
+        ],
       });
 
       stateUpdateStrategy.onRowsUpdated(response.data?.updated);
       displayErrorIfExists(response.error);
     },
     [
-      datasetData,
+      pkColumnName,
       updateTableRows,
       tableId,
       displayErrorIfExists,
@@ -137,25 +139,18 @@ export const useTableCRUD = ({
     ],
   );
 
-  const handleExpandedRowDelete = useCallback(
-    async (rowIndex: number) => {
-      if (!datasetData) {
+  const handleRowDelete = useCallback(
+    async (primaryKey: RowValue) => {
+      if (!pkColumnName) {
         console.warn(
-          "Failed to update table data - no data is loaded for a table",
+          "Failed to update table data - no primary key column is loaded for a table",
         );
         return;
       }
 
-      const columns = datasetData.cols;
-      const rowData = datasetData.rows[rowIndex];
-
-      const pkColumnIndex = columns.findIndex(isPK);
-      const pkColumn = columns[pkColumnIndex];
-      const rowPkValue = rowData[pkColumnIndex];
-
       closeCreateRowModal();
 
-      const rows = [{ [pkColumn.name]: rowPkValue }];
+      const rows = [{ [pkColumnName]: primaryKey }];
       const response = await deleteTableRows({
         rows,
         tableId: tableId,
@@ -168,7 +163,7 @@ export const useTableCRUD = ({
       displayErrorIfExists(response.error);
     },
     [
-      datasetData,
+      pkColumnName,
       closeCreateRowModal,
       deleteTableRows,
       tableId,
@@ -193,8 +188,8 @@ export const useTableCRUD = ({
     tableFieldMetadataMap,
 
     handleRowCreate,
-    handleCellValueUpdate,
-    handleExpandedRowDelete,
+    handleRowDelete,
+    handleRowUpdate,
     handleModalOpenAndExpandedRow,
   };
 };

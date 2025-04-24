@@ -8,8 +8,6 @@ import type {
   RowValues,
 } from "metabase-types/api";
 
-import type { UpdatedRowCellsHandlerParams } from "../types";
-
 import S from "./EditingBodyCell.module.css";
 import { EditingBodyCellConditional } from "./inputs";
 
@@ -17,7 +15,7 @@ interface EditingBodyCellWrapperProps<TRow, TValue> {
   column: DatasetColumn;
   field?: FieldWithMetadata;
   cellContext: CellContext<TRow, TValue>;
-  onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
+  onCellValueUpdate: (rowIndex: number, data: Record<string, RowValue>) => void;
   onCellEditCancel: () => void;
 }
 
@@ -41,10 +39,7 @@ export const EditingBodyCellWrapper = (
   const doCellValueUpdate = useCallback(
     (value: RowValue) => {
       if (value !== initialValue) {
-        onCellValueUpdate({
-          updatedData: { [columnName]: value },
-          rowIndex,
-        });
+        onCellValueUpdate(rowIndex, { [columnName]: value });
       }
 
       // Hide the editing cell after submitting the value
