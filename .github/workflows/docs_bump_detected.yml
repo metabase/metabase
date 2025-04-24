@@ -9,23 +9,15 @@ jobs:
   push_workflow_to_docs_metabase_github_io_job:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
       - name: Report changed docs files exist
         run: |
           echo "A change in the docs directory was detected."
 
-      - name: Prepare to trigger slurp_branches workflow in metabase/docs.metabase.github.io
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "BRANCH_NAME=${{ github.head_ref }}" >> $GITHUB_ENV
-          else
-            echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
-          fi
-
       - name: Trigger repo dispatch
         uses: actions/github-script@v7
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref  }}
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: | #js
