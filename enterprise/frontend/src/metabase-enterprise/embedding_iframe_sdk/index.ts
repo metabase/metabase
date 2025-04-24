@@ -14,7 +14,7 @@ if (hasPremiumFeature("embedding_iframe_sdk")) {
   PLUGIN_EMBEDDING_IFRAME_SDK.isInteractiveEmbeddingEnabled =
     isInteractiveEmbeddingEnabled;
 
-  PLUGIN_EMBEDDING_IFRAME_SDK.InteractiveEmbedRoute = SdkIframeEmbedRoute;
+  PLUGIN_EMBEDDING_IFRAME_SDK.SdkIframeEmbedRoute = SdkIframeEmbedRoute;
 
   // Reducers needed for embedding the SDK in an iframe
   PLUGIN_EMBEDDING_IFRAME_SDK.additionalPublicReducerPlugins = {
