@@ -9,6 +9,8 @@ jobs:
   push_workflow_to_docs_metabase_github_io_job:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Report changed docs files exist
         run: |
