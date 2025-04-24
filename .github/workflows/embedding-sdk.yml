@@ -6,7 +6,7 @@ on:
       - "master"
       - "release-**"
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -92,7 +92,7 @@ jobs:
         run: yarn run embedding-sdk:docs-snippets:type-check
 
   embedding-sdk-no-exposed-internal-types-validate:
-    needs: [ files-changed, build ]
+    needs: [files-changed, build]
     if: |
       needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
       needs.build.result == 'success'
