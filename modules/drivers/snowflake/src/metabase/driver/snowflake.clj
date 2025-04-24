@@ -458,10 +458,6 @@
   ;; BIGINT is an alias for NUMBER
   (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver arg)))
 
-(defmethod sql.qp/float-dbtype :snowflake
-  [_]
-  :float)
-
 (defmethod sql.qp/->honeysql [:snowflake :split-part]
   [driver [_ text divider position]]
   (let [position (sql.qp/->honeysql driver position)]

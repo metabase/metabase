@@ -126,10 +126,6 @@
 ;;; |                                          Misc Implementations                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod sql.qp/float-dbtype :starburst
-  [_]
-  :double)
-
 (defn- format-mod
   [_fn [x y]]
   (let [[x-sql & x-args] (sql/format-expr x {:nested true})

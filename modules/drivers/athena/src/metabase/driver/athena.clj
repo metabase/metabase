@@ -313,10 +313,6 @@
       (:hour :minute :second)
       [:date_diff (h2x/literal unit) (h2x/->timestamp x) (h2x/->timestamp y)])))
 
-(defmethod sql.qp/float-dbtype :athena
-  [_]
-  :double)
-
 ;; Support for median/percentile functions
 (defmethod sql.qp/->honeysql [:athena :median]
   [driver [_ arg]]

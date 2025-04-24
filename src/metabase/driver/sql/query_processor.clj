@@ -150,7 +150,7 @@
 
 (defmethod float-dbtype :sql
   [_driver]
-  :float)
+  :double)
 
 (defmethod ->float :sql
   [driver value]

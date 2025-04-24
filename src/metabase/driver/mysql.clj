@@ -310,10 +310,6 @@
     (-> [:str_to_date expr (h2x/literal format-str)]
         (h2x/with-database-type-info database-type))))
 
-(defmethod sql.qp/float-dbtype :mysql
-  [_]
-  :double)
-
 (defmethod sql.qp/->integer :mysql
   [_ value]
   (h2x/maybe-cast :signed value))
