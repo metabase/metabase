@@ -15,6 +15,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -1536,3 +1537,41 @@
                    (lib/aggregate (lib/count))
                    (lib/join (meta/table-metadata :products))
                    has-fields?))))))
+
+(deftest ^:parallel join-clause-with-outdated-fields-test
+  (testing "update a model to return entirely new columns, but if an old join remembers the originals"
+    (let [base       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/with-fields [(meta/field-metadata :orders :id)])
+                         (lib/join (-> (lib/join-clause (meta/table-metadata :products))
+                                       (lib/with-join-fields [(meta/field-metadata :products :id)
+                                                              (meta/field-metadata :products :title)
+                                                              (meta/field-metadata :products :category)
+                                                              (meta/field-metadata :products :vendor)]))))
+          bad-field  (fn [[_field opts id :as _field-ref]]
+                       [:field opts (* id 1000)])
+          bad-fields (fn [query indexes]
+                       (reduce (fn [query field-index]
+                                 (lib.util/update-query-stage
+                                  query 0 update-in [:joins 0 :fields field-index] bad-field))
+                               query
+                               indexes))]
+      (testing "the unknown :fields are dropped"
+        (is (=? [{:name "ID"}    ; Orders.ID
+                 {:name "TITLE"} ; And the two non-broken fields from Products.
+                 {:name "CATEGORY"}]
+                (-> base
+                    (bad-fields [0 3])
+                    lib/returned-columns))))
+      (testing "if all :fields are unknown, default to :all"
+        (is (=? [{:name "ID"}    ; Orders.ID
+                 {:name "ID"}    ; And all the fields of Products.
+                 {:name "EAN"}
+                 {:name "TITLE"}
+                 {:name "CATEGORY"}
+                 {:name "VENDOR"}
+                 {:name "PRICE"}
+                 {:name "RATING"}
+                 {:name "CREATED_AT"}]
+                (-> base
+                    (bad-fields [0 1 2 3])
+                    lib/returned-columns)))))))
