@@ -13,7 +13,7 @@ import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
 import { getMetadataRoutes } from "metabase/admin/datamodel/metadata/routes";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
-import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp";
+import { GroupDetailApp } from "metabase/admin/people/containers/GroupDetailApp";
 import { GroupsListingApp } from "metabase/admin/people/containers/GroupsListingApp";
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import { PeopleListingApp } from "metabase/admin/people/containers/PeopleListingApp";
