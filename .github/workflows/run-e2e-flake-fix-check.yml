@@ -39,9 +39,9 @@ on:
     types: [labeled]
 
 jobs:
-  # Job that runs when a PR is labeled with "flake-fix"
+  # Job that runs when a PR is labeled with "flaky-test-fix"
   check-label:
-    if: github.event_name == 'pull_request' && github.event.label.name == 'flake-fix'
+    if: github.event_name == 'pull_request' && github.event.label.name == 'flaky-test-fix'
     runs-on: ubuntu-22.04
     outputs:
       spec_path: ${{ steps.find-spec.outputs.spec_path }}
@@ -114,7 +114,7 @@ jobs:
           echo '- `grep`: ""' >> $GITHUB_STEP_SUMMARY
           echo '- `qa_db`: "none" (default)' >> $GITHUB_STEP_SUMMARY
           echo '- `enable_network_throttling`: "true" (default)' >> $GITHUB_STEP_SUMMARY
-          echo '- `Trigger`: PR labeled with "flake-fix"' >> $GITHUB_STEP_SUMMARY
+          echo '- `Trigger`: PR labeled with "flaky-test-fix"' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
           echo '**Triggering:**' >> $GITHUB_STEP_SUMMARY
           echo '- Master branch' >> $GITHUB_STEP_SUMMARY
