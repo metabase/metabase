@@ -685,7 +685,7 @@
                (cast-temporal-byte driver coercion-strategy honeysql-form)
 
                [:type/Text (:isa? :Coercion/String->Float)]
-               (coerce-float driver honeysql-form)
+               (->float driver honeysql-form)
 
                :else honeysql-form)
       (when-not (= <> honeysql-form)
@@ -1056,27 +1056,27 @@
   "Convert zeros to null to avoid dividing by zero."
   [denominator]
   (let [inline (untyped-inline-value denominator)]
-   (cond
-     (nil? denominator)
-     nil
+    (cond
+      (nil? denominator)
+      nil
 
-     (nil? inline)
-     [:nullif denominator [:inline 0.0]]
+      (nil? inline)
+      [:nullif denominator [:inline 0.0]]
 
-     (and (number? inline)
-          (zero? inline))
-     nil
+      (and (number? inline)
+           (zero? inline))
+      nil
 
-     :else ;; inline value
-     denominator)))
+      :else ;; inline value
+      denominator)))
 
 (defmethod ->honeysql [:sql :/]
   [driver [_ & mbql-exprs]]
   (let [[numerator & denominators] (for [mbql-expr mbql-exprs]
                                      (coerce-float driver (->honeysql driver mbql-expr)))]
     (into [:/ numerator]
-      (map safe-denominator)
-      denominators)))
+          (map safe-denominator)
+          denominators)))
 
 (defmethod ->honeysql [:sql :float]
   [driver [_ value]]
