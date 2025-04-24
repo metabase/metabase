@@ -88,7 +88,7 @@ export const saveChartImage = async ({
     scale: 2,
     useCORS: true,
     height: canvasHeight,
-    onclone: async (_doc: Document, node: HTMLElement) => {
+    onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.classList.add(EmbedFrameS.WithThemeBackground);
 
