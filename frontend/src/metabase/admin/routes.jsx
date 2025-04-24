@@ -17,7 +17,7 @@ import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp";
 import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp";
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp";
-import UserActivationModal from "metabase/admin/people/containers/UserActivationModal";
+import { UserActivationModal } from "metabase/admin/people/containers/UserActivationModal";
 import UserPasswordResetModal from "metabase/admin/people/containers/UserPasswordResetModal";
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
 import { PerformanceApp } from "metabase/admin/performance/components/PerformanceApp";
