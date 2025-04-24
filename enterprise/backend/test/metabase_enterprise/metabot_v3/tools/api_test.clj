@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
@@ -359,7 +360,7 @@
                       :type :model}
           collection-name (str (random-uuid))
           metabot-id (str (random-uuid))]
-      (with-redefs [metabot-v3.tools.api/metabot-config {metabot-id {:collection-name collection-name}}]
+      (with-redefs [metabot-v3.config/metabot-config {metabot-id {:collection-name collection-name}}]
         (mt/with-temp [:model/Collection {collection-id :id} {:name collection-name}
                        :model/Card {metric-id :id} (assoc metric-data :collection_id collection-id)
                        :model/Card _ignored        (assoc metric-data :collection_id collection-id :archived true)

@@ -4,6 +4,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
+   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
@@ -24,12 +25,13 @@
 (defn request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
   [{:keys [metabot_id message context history conversation_id state]
-    :or {metabot_id metabot-v3.tools.api/internal-metabot-id}}]
+    :or {metabot_id metabot-v3.config/internal-metabot-id}}]
   (let [initial-message (metabot-v3.envelope/user-message message)
         history         (conj (vec history) initial-message)
         env             (metabot-v3.tools.api/handle-envelope
                          {:context         (metabot-v3.context/create-context context)
                           :metabot-id      metabot_id
+                          :profile-id      (get-in metabot-v3.config/metabot-config [metabot_id :profile-id])
                           :conversation-id conversation_id
                           :messages        history
                           :state           state})
