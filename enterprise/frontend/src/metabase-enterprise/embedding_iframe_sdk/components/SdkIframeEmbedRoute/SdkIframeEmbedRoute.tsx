@@ -8,23 +8,14 @@ import {
   defineMetabaseAuthConfig,
   defineMetabaseTheme,
 } from "embedding-sdk";
-import type { SdkInteractiveEmbedRouteProps } from "metabase/embedding-sdk/types/iframe-interactive-embedding";
 import { Box, Center, Loader } from "metabase/ui";
-import { useSdkInteractiveEmbedAuth } from "metabase-enterprise/embedding_iframe_sdk/hooks/use-sdk-interactive-embed-auth";
 
-import {
-  type SdkInteractiveEmbedSettings,
-  useSdkInteractiveEmbedSettings,
-} from "../../hooks/use-sdk-interactive-embed-settings";
-import { SdkInteractiveEmbedProvider } from "../SdkInteractiveEmbedProvider";
+import { useSdkIframeEmbedEventBus } from "../../hooks/use-sdk-interactive-embed-event";
+import type { SdkIframeEmbedSettings } from "../../types/iframe";
+import { SdkIframeEmbedProvider } from "../SdkIframeEmbedProvider";
 
-export const SdkInteractiveEmbedRoute = ({
-  params: { settings: settingsKey },
-}: SdkInteractiveEmbedRouteProps) => {
-  const { iframeAuthConfig } = useSdkInteractiveEmbedAuth();
-
-  const settings = useSdkInteractiveEmbedSettings(settingsKey);
-  const { theme } = settings ?? {};
+export const SdkIframeEmbedRoute = () => {
+  const { iframeAuthConfig, iframeSettings } = useSdkIframeEmbedEventBus();
 
   const authConfig = useMemo(() => {
     // TODO: to be implemented once the new SSO implementation on the SDK is ready
@@ -41,6 +32,8 @@ export const SdkInteractiveEmbedRoute = ({
   const isAuthReady =
     iframeAuthConfig?.type === "apiKey" && iframeAuthConfig.apiKey;
 
+  const { theme } = iframeSettings ?? {};
+
   const derivedTheme = useMemo(() => {
     return defineMetabaseTheme({
       ...theme,
@@ -53,7 +46,7 @@ export const SdkInteractiveEmbedRoute = ({
   }, [theme]);
 
   // TODO: improve error handling
-  if (!settings) {
+  if (!iframeSettings) {
     return <div>Invalid settings!</div>;
   }
 
@@ -66,18 +59,18 @@ export const SdkInteractiveEmbedRoute = ({
   }
 
   return (
-    <SdkInteractiveEmbedProvider authConfig={authConfig} theme={derivedTheme}>
+    <SdkIframeEmbedProvider authConfig={authConfig} theme={derivedTheme}>
       <Box h="100vh" bg={theme?.colors?.background}>
-        <PublicOrEmbeddedInteractiveInner settings={settings} />
+        <SdkIframeEmbedView settings={iframeSettings} />
       </Box>
-    </SdkInteractiveEmbedProvider>
+    </SdkIframeEmbedProvider>
   );
 };
 
-export const PublicOrEmbeddedInteractiveInner = ({
+export const SdkIframeEmbedView = ({
   settings,
 }: {
-  settings: SdkInteractiveEmbedSettings;
+  settings: SdkIframeEmbedSettings;
 }) => {
   const { embedResourceType, embedResourceId } = settings;
 

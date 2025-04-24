@@ -9,9 +9,9 @@ import type { SdkStoreState } from "embedding-sdk/store/types";
 import { useStore } from "metabase/lib/redux";
 import { setIsEmbeddingSdk } from "metabase/redux/embed";
 
-import S from "./SdkInteractiveEmbedProvider.module.css";
+import S from "./SdkIframeEmbedProvider.module.css";
 
-export interface SdkInteractiveEmbedProviderProps {
+export interface SdkIframeEmbedProviderProps {
   children: ReactNode;
   authConfig: MetabaseAuthConfig;
   theme?: MetabaseTheme;
@@ -24,12 +24,12 @@ type StoreWithSdkState = Store<SdkStoreState, Action>;
  * Provider for embedding the SDK in an iframe.
  * This is built on top of the internal `MetabaseProvider` component.
  */
-export const SdkInteractiveEmbedProvider = ({
+export const SdkIframeEmbedProvider = ({
   children,
   authConfig,
   theme,
   locale,
-}: SdkInteractiveEmbedProviderProps): JSX.Element => {
+}: SdkIframeEmbedProviderProps): JSX.Element => {
   const store = useStore();
 
   // Define that we are embedding the SDK in an iframe

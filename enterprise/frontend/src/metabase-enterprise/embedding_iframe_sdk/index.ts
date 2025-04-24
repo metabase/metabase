@@ -5,7 +5,7 @@ import * as qb from "metabase/query_builder/reducers";
 import { isInteractiveEmbeddingEnabled } from "metabase-enterprise/embedding/selectors";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { SdkInteractiveEmbedRoute } from "./components/SdkInteractiveEmbedRoute";
+import { SdkIframeEmbedRoute } from "./components/SdkIframeEmbedRoute";
 
 if (hasPremiumFeature("embedding_iframe_sdk")) {
   PLUGIN_EMBEDDING_IFRAME_SDK.isEnabled = () => true;
@@ -14,7 +14,7 @@ if (hasPremiumFeature("embedding_iframe_sdk")) {
   PLUGIN_EMBEDDING_IFRAME_SDK.isInteractiveEmbeddingEnabled =
     isInteractiveEmbeddingEnabled;
 
-  PLUGIN_EMBEDDING_IFRAME_SDK.InteractiveEmbedRoute = SdkInteractiveEmbedRoute;
+  PLUGIN_EMBEDDING_IFRAME_SDK.InteractiveEmbedRoute = SdkIframeEmbedRoute;
 
   // Reducers needed for embedding the SDK in an iframe
   PLUGIN_EMBEDDING_IFRAME_SDK.additionalPublicReducerPlugins = {
