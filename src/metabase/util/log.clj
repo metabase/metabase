@@ -13,7 +13,7 @@
    [metabase.util.log.capture]
    [net.cgrand.macrovich :as macros])
   (:import
-    (org.apache.logging.log4j ThreadContext)))
+   (org.apache.logging.log4j ThreadContext)))
 
 ;;; --------------------------------------------- CLJ-side macro helpers ---------------------------------------------
 (defn- glogi-logp
