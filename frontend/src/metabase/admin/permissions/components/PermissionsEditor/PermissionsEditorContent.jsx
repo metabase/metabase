@@ -68,7 +68,7 @@ export function PermissionsEditorContent({
   return (
     <PermissionEditorContentRoot data-testid="permissions-editor">
       <PreHeaderContent />
-      <Subhead>
+      <Subhead data-testid="permissions-editor-breadcrumbs">
         {title}{" "}
         {breadcrumbs && (
           <PermissionsEditorBreadcrumbs

@@ -37,6 +37,11 @@ title: Driver interface changelog
 
 - Added a feature `:split-part` for drivers that support the `split-part` function.
 
+## Metabase 0.53.12
+
+- Add `metabase.driver/query-canceled?` for drivers to test if an exception is due to a query being canceled due to user action
+- Add `metabase.driver.sql-jdbc/impl-query-canceled?` for JDBC drivers. This is the implemenation of query-canceled for jdbc and allows testing directly against `java.sql.SQLException` throwables without worrying about the exception cause chain.
+
 ## Metabase 0.53.10
 
 - Added `metabase.driver.sql-jdbc.sync/describe-fields-pre-process-xf` for JDBC drivers. This allows manipulating the results of `metabase.driver.sql-jdbc.sync/describe-fields-sql` without reimplementing `driver/describe-fields`.
