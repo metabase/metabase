@@ -6,11 +6,13 @@
    [metabase.analytics.core :as analytics]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as ingestion]
+   [metabase.startup :as startup]
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.cluster-lock :as cluster-lock]
    [metabase.util.log :as log]
-   [metabase.util.queue :as queue])
+   [metabase.util.queue :as queue]
+   [metabase.util.quick-task :as quick-task])
   (:import
    (java.time Instant)
    (java.util Date)
@@ -69,8 +71,8 @@
   SearchIndexReindex [_ctx]
   (reindex!))
 
-(defmethod task/init! ::SearchIndexInit [_]
-  (future (cluster-lock/with-cluster-lock ::search-init-lock (init!))))
+(defmethod startup/def-setup-logic! ::SearchIndexInit [_]
+  (quick-task/submit-task! (cluster-lock/with-cluster-lock ::search-init-lock (init!))))
 
 (defmethod task/init! ::SearchIndexReindex [_]
   (let [job         (jobs/build
