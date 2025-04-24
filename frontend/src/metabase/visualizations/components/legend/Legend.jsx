@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import { useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -50,9 +49,6 @@ const Legend = ({
   isReversed,
   canRemoveSeries = alwaysTrue,
 }) => {
-  const targetRef = useRef();
-  const [isOpened, setIsOpened] = useState(null);
-
   const items = isReversed ? _.clone(originalItems).reverse() : originalItems;
 
   const overflowIndex = visibleIndex + visibleLength;
@@ -90,18 +86,10 @@ const Legend = ({
         );
       })}
       {overflowLength > 0 && (
-        <Popover
-          width="target"
-          opened={isOpened}
-          onDismiss={() => setIsOpened(false)}
-          offset={POPOVER_OFFSET}
-          placement="top-start"
-        >
+        <Popover width="target" offset={POPOVER_OFFSET} placement="top-start">
           <Popover.Target>
-            <LegendLinkContainer ref={targetRef} isVertical={isVertical}>
-              <LegendLink onMouseDown={() => setIsOpened(true)}>
-                {t`And ${overflowLength} more`}
-              </LegendLink>
+            <LegendLinkContainer isVertical={isVertical}>
+              <LegendLink>{t`And ${overflowLength} more`}</LegendLink>
             </LegendLinkContainer>
           </Popover.Target>
           <Popover.Dropdown>
