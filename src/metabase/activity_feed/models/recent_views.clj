@@ -250,6 +250,8 @@
                          :card.display
                          :card.card_schema
                          :card.result_metadata
+                         :card.dataset_query
+                         :card.entity_id
                          :card.visualization_settings
                          [:dashboard.id :dashboard_id]
                          [:dashboard.name :dashboard_name]
