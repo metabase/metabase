@@ -5,7 +5,7 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { useListApiKeysQuery } from "metabase/api";
-import AdminContentTable from "metabase/components/AdminContentTable";
+import { AdminContentTable } from "metabase/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
