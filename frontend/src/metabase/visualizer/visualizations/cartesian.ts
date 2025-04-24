@@ -329,7 +329,6 @@ function removeDimensionFromMultiSeriesChart(
       (name) => !isDate(dimensionColumnMap[name]),
     );
   } else if (isString(column)) {
-
     state.settings["graph.dimensions"] = originalDimensions.filter(
       (name) => !isString(dimensionColumnMap[name]),
     );
