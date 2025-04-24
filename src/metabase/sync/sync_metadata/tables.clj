@@ -3,7 +3,6 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
