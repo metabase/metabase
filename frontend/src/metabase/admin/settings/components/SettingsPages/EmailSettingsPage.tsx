@@ -43,26 +43,7 @@ export function EmailSettingsPage() {
         inputType="text"
       />
       <EmailReplyToWidget />
-      {/* <AdminSettingInput
-        name="email-reply-to"
-        title={t`Reply-To Address`}
-        placeholder="metabase-replies@yourcompany.com"
-        inputType="text"
-      /> */}
       <BccToggleWidget />
-      {/* <AdminSettingInput
-        name="bcc-enabled?"
-        title={t`Add Recipients as CC or BCC`}
-        description={t`Control the visibility of alerts and subscriptions recipients.`}
-        inputType="radio"
-        options={[
-          { value: "true", label: t`BCC - Hide recipients` },
-          {
-            value: "false",
-            label: t`CC - Disclose recipients`,
-          },
-        ]}
-      /> */}
       <AdminSettingInput
         hidden={!hasEmailAllowListFeature}
         name="subscription-allowed-domains"
