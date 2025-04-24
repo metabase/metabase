@@ -16,23 +16,13 @@ jobs:
         run: |
           echo "A change in the docs directory was detected."
 
-      - name: Prepare to trigger slurp_branches workflow in metabase/docs.metabase.github.io
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "BRANCH_NAME=${{ github.head_ref }}" >> $GITHUB_ENV
-          else
-            echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
-          fi
-
-      - name: branch name 2
-        run: echo "2 Branch is ${GITHUB_HEAD_REF:-${GITHUB_REF##*/
-
       - name: Trigger repo dispatch
         uses: actions/github-script@v7
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref  }}
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: | #js
-            console.log("branch name: ", process.env.BRANCH_NAME);
             github.rest.repos.createDispatchEvent({
               owner: "${{ github.repository_owner }}",
               repo: "docs.metabase.github.io",
