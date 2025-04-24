@@ -51,10 +51,35 @@ export const pathMatchers = lift({
   isColumnMetadata: Lib.isColumnMetadata,
   isMetricMetadata: Lib.isMetricMetadata,
   isSegmentMetadata: Lib.isSegmentMetadata,
+  isExpressionOperator,
+  isDimensionOperator,
+  isValueOperator,
 });
 
-export function isOperator(
-  op: Lib.ExpressionOperator,
-): op is keyof typeof EXPRESSION_OPERATORS {
-  return op in EXPRESSION_OPERATORS;
+/**
+ * Return true if the node is an Lib.ExpressionParts and the operator is
+ * one of + - / * < > >= <= = != and or not.
+ */
+export function isExpressionOperator(
+  node: Lib.ExpressionParts | Lib.ExpressionArg,
+): node is Lib.ExpressionParts {
+  return Lib.isExpressionParts(node) && node.operator in EXPRESSION_OPERATORS;
+}
+
+/**
+ * Return true if the node is an Lib.ExpressionParts and the operator is
+ * value.
+ */
+export function isValueOperator(node: Lib.ExpressionParts) {
+  return Lib.isExpressionParts(node) && node.operator === "value";
+}
+
+/**
+ * Return true if the node is an Lib.ExpressionParts and the operator is
+ * dimension (internal use only).
+ */
+export function isDimensionOperator(node: Lib.ExpressionParts) {
+  return (
+    Lib.isExpressionParts(node) && (node.operator as string) === "dimension"
+  );
 }

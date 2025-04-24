@@ -16,7 +16,12 @@ import {
 import { parsePunctuator } from "../punctuator";
 import { type StartDelimiter, formatStringLiteral } from "../string";
 
-import { pathMatchers as check, isOperator } from "./utils";
+import {
+  pathMatchers as check,
+  isDimensionOperator,
+  isExpressionOperator,
+  isValueOperator,
+} from "./utils";
 
 export type ExpressionNode = Lib.ExpressionParts | Lib.ExpressionArg | null;
 
@@ -133,16 +138,14 @@ function print(
     return formatMetric(path, options.extra);
   } else if (check.isSegmentMetadata(path)) {
     return formatSegment(path, options.extra);
+  } else if (check.isExpressionOperator(path)) {
+    return formatOperator(path, print);
+  } else if (check.isDimensionOperator(path)) {
+    return formatDimension(path);
+  } else if (check.isValueOperator(path)) {
+    return formatValueExpression(path, print);
   } else if (check.isExpressionParts(path)) {
-    if (isOperator(path.node.operator)) {
-      return formatOperator(path, print);
-    } else if (isDimensionOperator(path.node.operator)) {
-      return formatDimension(path);
-    } else if (isValueOperator(path.node.operator)) {
-      return formatValueExpression(path, print);
-    } else {
-      return formatFunctionCall(path, print);
-    }
+    return formatFunctionCall(path, print);
   }
 
   throw new Error(`Unknown MBQL clause: ${JSON.stringify(path.node)}`);
@@ -223,14 +226,9 @@ function formatSegment(
   return formatSegmentName(displayInfo.displayName);
 }
 
-// For internal use only
-function isDimensionOperator(op: string): op is "dimension" {
-  return op === "dimension";
-}
-
 function formatDimension(path: AstPath<Lib.ExpressionParts>): Doc {
   const { node } = path;
-  assert(isDimensionOperator(node.operator), "Expected dimension");
+  assert(isDimensionOperator(node), "Expected dimension");
 
   const name = node.args[0];
   assert(typeof name === "string", "Expected expression name to be a string");
@@ -291,7 +289,7 @@ function formatOperator(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {
   const { node } = path;
 
   assert(
-    isOperator(node.operator),
+    isExpressionOperator(node),
     `Expected operator but got ${node.operator}`,
   );
 
@@ -310,8 +308,8 @@ function formatOperator(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {
 
     if (
       !Lib.isExpressionParts(arg) ||
-      isValueOperator(arg.operator) ||
-      isDimensionOperator(arg.operator)
+      isValueOperator(arg) ||
+      isDimensionOperator(arg)
     ) {
       // Not a call expression so not an operator
       return ind([ln, recurse(path, print, path.node.args[index])]);
@@ -375,22 +373,18 @@ function isUnaryOperator(op: Lib.ExpressionOperator) {
   return clause && clause?.args.length === 1;
 }
 
-function isValueOperator(op: string): op is "value" {
-  return op === "value";
-}
-
 function formatValueExpression(
   path: AstPath<Lib.ExpressionParts>,
   print: Print,
 ): Doc {
   const { node } = path;
+
+  assert(isValueOperator(node), "Expected value");
+
   const {
-    operator,
     args: [value],
     options,
   } = node;
-
-  assert(isValueOperator(operator), "Expected value");
 
   const baseType = options?.["base-type"];
   if (
