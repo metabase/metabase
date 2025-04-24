@@ -1,17 +1,16 @@
 import type { Row } from "@tanstack/react-table";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
-import { executeAction } from "metabase/actions/actions";
 import { useListActionsQuery } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
 import type {
+  ActionFormInitialValues,
   DashCardVisualizationSettings,
   DatasetData,
   EditableTableRowActionId,
   RowValues,
   VisualizationSettings,
   WritebackAction,
+  WritebackActionId,
 } from "metabase-types/api";
 
 export const useTableActions = ({
@@ -23,7 +22,10 @@ export const useTableActions = ({
   visualizationSettings?: VisualizationSettings & DashCardVisualizationSettings;
   datasetData: DatasetData | null | undefined;
 }) => {
-  const dispatch = useDispatch();
+  const [activeActionState, setActiveActionState] = useState<{
+    actionId: WritebackActionId;
+    rowData: ActionFormInitialValues;
+  } | null>(null);
 
   const { data: actions } = useListActionsQuery({
     "model-id": cardId,
@@ -31,18 +33,43 @@ export const useTableActions = ({
 
   const handleRowActionRun = useCallback(
     (action: WritebackAction, row: Row<RowValues>) => {
-      const rowIndex = row.index;
-      const data = datasetData[rowIndex];
+      if (!datasetData) {
+        console.warn("Failed to trigger action, datasetData is null");
+        return;
+      }
 
-      dispatch(
-        executeAction({
-          action: checkNotNull(action),
-          parameters: {},
-        }),
+      const rowIndex = row.index;
+      const rowData = datasetData.rows[rowIndex];
+
+      const remappedInitialActionValues = action.parameters?.reduce(
+        (result, parameter) => {
+          if (parameter.slug.startsWith("row.")) {
+            const targetColumnName = parameter.slug.replace("row.", "");
+            const targetColumnIndex = datasetData?.cols.findIndex((col) => {
+              return col.name === targetColumnName;
+            });
+
+            if (targetColumnIndex > -1) {
+              result[parameter.id] = rowData[targetColumnIndex];
+            }
+          }
+
+          return result;
+        },
+        {} as ActionFormInitialValues,
       );
+
+      setActiveActionState({
+        actionId: action.id,
+        rowData: remappedInitialActionValues || {},
+      });
     },
-    [dispatch],
+    [datasetData],
   );
+
+  const handleExecuteModalClose = useCallback(() => {
+    setActiveActionState(null);
+  }, []);
 
   const { hasCreateAction, hasDeleteAction, enabledRowActions } =
     useMemo(() => {
@@ -59,7 +86,6 @@ export const useTableActions = ({
         ) || new Set<EditableTableRowActionId>();
 
       const hasCreateAction = enabledActionsSet.has("row/create");
-
       const hasDeleteAction = enabledActionsSet.has("row/delete");
 
       const enabledRowActions =
@@ -77,5 +103,7 @@ export const useTableActions = ({
     hasDeleteAction,
     enabledRowActions,
     handleRowActionRun,
+    activeActionState,
+    handleExecuteModalClose,
   };
 };

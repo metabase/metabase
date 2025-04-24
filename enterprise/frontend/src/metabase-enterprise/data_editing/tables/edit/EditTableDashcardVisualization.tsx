@@ -85,13 +85,15 @@ export const EditTableDashcardVisualization = ({
     hasDeleteAction,
     enabledRowActions,
     handleRowActionRun,
-    activeActionId,
+    activeActionState,
     handleExecuteModalClose,
   } = useTableActions({
     cardId,
     visualizationSettings,
     datasetData: data,
   });
+
+  const isActionExecuteModalOpen = !!activeActionState;
 
   const { getColumnSortDirection } = useTableSorting({
     question,
@@ -184,12 +186,9 @@ export const EditTableDashcardVisualization = ({
         onClose={handleExecuteModalClose}
       >
         <ActionExecuteModal
-          actionId={actionId}
-          initialValues={initialValues}
-          fetchInitialValues={fetchInitialValues}
-          shouldPrefetch
+          actionId={activeActionState?.actionId}
+          initialValues={activeActionState?.rowData}
           onClose={handleExecuteModalClose}
-          onSuccess={handleActionSuccess}
         />
       </Modal>
     </Stack>
