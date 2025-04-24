@@ -37,6 +37,11 @@
   [table-id]
   (format "ee/data-editing/table/%d" table-id))
 
+(defn webhook-ingest-url
+  "Returns the URL for the webhook ingest endpoint."
+  [token]
+  (format "ee/data-editing-public/webhook/%s/data" token))
+
 (defn alter-appdb-settings! [f & args]
   (let [id           (mt/id)
         settings     (t2/select-one-fn :settings :model/Database id)

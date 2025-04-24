@@ -132,6 +132,41 @@
                      (is (= 1 (count reqs)))
                      (is (=? {:body (mt/malli=? :map)} req)))}))
 
+(deftest create-row-notification-webhook-testtest
+  (test-row-notification!
+   :event/rows.created
+   (fn []
+     (let [token  (:token (mt/user-http-request :crowberto
+                                                :post "ee/data-editing/webhook"
+                                                {:table-id (mt/id :categories)}))]
+       (mt/user-http-request
+        :crowberto
+        :post
+        (data-editing.tu/webhook-ingest-url token)
+        [{:NAME "New Category"}])))
+
+   {:channel/slack (fn [[message :as msgs]]
+                     (is (= 1 (count msgs)))
+                     (is (=? {:attachments [{:blocks
+                                             [{:type "section",
+                                               :text
+                                               {:type "mrkdwn",
+                                                :text "*Crowberto Corv has created a row for CATEGORIES*\n*Created row:*\n• ID : 76\n• NAME : New Category"}}]}]
+                              :channel-id "#test-pulse"}
+                             message)))
+    :channel/email (fn [[email :as emails]]
+                     (is (= 1 (count emails)))
+                     (is (=? {:subject "Table CATEGORIES has a new row"
+                              :message [{"Crowberto Corv has created a row for CATEGORIES" true
+                                         "NAME: New Category" true}]}
+                             (mt/summarize-multipart-single-email
+                              email
+                              #"Crowberto Corv has created a row for CATEGORIES"
+                              #"NAME: New Category"))))
+    :channel/http  (fn [[req :as reqs]]
+                     (is (= 1 (count reqs)))
+                     (is (=? {:body (mt/malli=? :map)} req)))}))
+
 (deftest filter-notifications-test
   (testing "getting table notifications will return only notifications of a table and action"
     (doseq [event [:event/rows.created
