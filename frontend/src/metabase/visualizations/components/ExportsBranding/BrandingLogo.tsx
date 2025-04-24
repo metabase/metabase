@@ -1,4 +1,4 @@
-/* eslint-disable no-color-literals */
+/* eslint-disable no-color-literals -- we're serializing this component and CSS vars do not work properly in that context*/
 interface BrandingLogoProps {
   width?: number;
   height?: number;

@@ -82,6 +82,10 @@ export const saveChartImage = async ({
     ? contentHeight + FOOTER_HEIGHT
     : contentHeight;
 
+  const backgroundColor = getComputedStyle(document.documentElement)
+    .getPropertyValue("--mb-color-bg-dashboard")
+    .trim();
+
   const { default: html2canvas } = await import("html2canvas-pro");
   const canvas = await html2canvas(node, {
     scale: PNG_CANVAS_SCALE,
@@ -93,9 +97,11 @@ export const saveChartImage = async ({
 
       node.style.borderRadius = "0px";
       node.style.border = "none";
+      node.style.backgroundColor = backgroundColor;
 
       if (includeBranding) {
         const footer = createFooterElement(size);
+        footer.style.backgroundColor = backgroundColor;
         node.appendChild(footer);
       }
     },
