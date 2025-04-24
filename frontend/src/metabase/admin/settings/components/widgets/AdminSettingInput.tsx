@@ -152,7 +152,11 @@ export function BasicAdminSettingInput({
       );
     case "radio":
       return (
-        <Radio.Group id={name} value={localValue} onChange={handleChange}>
+        <Radio.Group
+          id={name}
+          value={String(localValue)}
+          onChange={(newValue) => handleChange(toBoolean(newValue))}
+        >
           <Stack gap="sm">
             {options?.map(({ label, value }) => (
               <Radio key={value} value={value} label={label} />
@@ -184,6 +188,14 @@ export function BasicAdminSettingInput({
         />
       );
   }
+}
+
+// some radio inputs actually should produce boolean values
+function toBoolean(value: string | boolean): boolean | string {
+  if (value === "true" || value === "false") {
+    return value === "true";
+  }
+  return value;
 }
 
 export const SetByEnvVar = ({ varName }: { varName: string }) => {
