@@ -10,8 +10,8 @@ import type {
   Dataset,
   DatasetColumn,
   VisualizationDisplay,
+  VisualizerVizDefinition,
 } from "metabase-types/api";
-import type { VisualizerVizDefinition } from "metabase-types/store/visualizer";
 
 import {
   copyColumn,

@@ -24,10 +24,10 @@ import {
   setDraggedItem,
 } from "metabase/visualizer/visualizer.slice";
 import type {
-  DraggedItem,
   VisualizerDataSourceId,
   VisualizerVizDefinition,
-} from "metabase-types/store/visualizer";
+} from "metabase-types/api";
+import type { DraggedItem } from "metabase-types/store/visualizer";
 
 import { DataImporter } from "../DataImporter";
 import { DragOverlay as VisualizerDragOverlay } from "../DragOverlay";

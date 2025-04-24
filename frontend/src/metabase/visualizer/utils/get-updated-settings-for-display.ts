@@ -10,8 +10,8 @@ import type {
   DatasetColumn,
   VisualizationDisplay,
   VisualizationSettings,
+  VisualizerColumnValueSource,
 } from "metabase-types/api";
-import type { VisualizerColumnValueSource } from "metabase-types/store/visualizer";
 
 import { isScalarFunnel } from "../visualizations/funnel";
 

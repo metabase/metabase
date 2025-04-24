@@ -14,8 +14,8 @@ import type {
   Table,
   UserId,
   VirtualCardDisplay,
+  VisualizerVizDefinition,
 } from "metabase-types/api";
-import type { VisualizerVizDefinition } from "metabase-types/store/visualizer";
 
 import type {
   ActionDisplayType,

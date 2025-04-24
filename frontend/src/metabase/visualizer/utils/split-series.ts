@@ -2,8 +2,11 @@ import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 import { isCartesianChart } from "metabase/visualizations";
-import type { RawSeries, VisualizationSettings } from "metabase-types/api";
-import type { VisualizerColumnValueSource } from "metabase-types/store/visualizer";
+import type {
+  RawSeries,
+  VisualizationSettings,
+  VisualizerColumnValueSource,
+} from "metabase-types/api";
 
 import { isDataSourceNameRef } from "./data-source";
 

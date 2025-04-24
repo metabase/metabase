@@ -1,11 +1,11 @@
 import _ from "underscore";
 
+import type { VisualizerVizDefinition } from "metabase-types/api";
 import {
   createMockCategoryColumn,
   createMockDataset,
   createMockNumericColumn,
 } from "metabase-types/api/mocks";
-import type { VisualizerVizDefinition } from "metabase-types/store/visualizer";
 
 import {
   createDataSource,

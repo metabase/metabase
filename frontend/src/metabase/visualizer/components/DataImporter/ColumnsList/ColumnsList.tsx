@@ -16,8 +16,7 @@ import {
   removeColumn,
   removeDataSource,
 } from "metabase/visualizer/visualizer.slice";
-import type { DatasetColumn } from "metabase-types/api";
-import type { VisualizerDataSource } from "metabase-types/store/visualizer";
+import type { DatasetColumn, VisualizerDataSource } from "metabase-types/api";
 
 import { useVisualizerUi } from "../../VisualizerUiContext";
 

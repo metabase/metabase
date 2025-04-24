@@ -1,10 +1,12 @@
 import { isNotNull } from "metabase/lib/types";
-import type { Card, DatasetColumn, RawSeries } from "metabase-types/api";
 import type {
+  Card,
+  DatasetColumn,
+  RawSeries,
   VisualizerColumnReference,
   VisualizerDataSource,
   VisualizerVizDefinition,
-} from "metabase-types/store/visualizer";
+} from "metabase-types/api";
 
 import {
   copyColumn,
