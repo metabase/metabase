@@ -5,6 +5,7 @@ import EmptyState from "metabase/components/EmptyState";
 import * as Urls from "metabase/lib/urls";
 import { Box, Flex } from "metabase/ui";
 
+import S from "./DataModel.module.css";
 import { FieldSection } from "./FieldSection";
 import { PreviewSection } from "./PreviewSection";
 import { TableSection } from "./TableSection";
@@ -35,7 +36,7 @@ export const DataModel = ({ params }: Props) => {
 
   return (
     <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`}>
-      <Box flex="0 0 400px" px="xl" py="lg">
+      <Box className={S.tableSectionContainer} flex="0 0 400px" px="xl" py="lg">
         <TableSection
           databaseId={databaseId}
           fieldId={fieldId}
