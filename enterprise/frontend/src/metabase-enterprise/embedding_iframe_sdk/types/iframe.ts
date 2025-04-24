@@ -4,19 +4,19 @@ import type {
   EmbedResourceType,
 } from "metabase/public/lib/types";
 
-export type IframeAuthConfig =
-  | { type: "apiKey"; apiKey: string }
-  | { type: "sso" }; // TODO: to be implemented once the new SSO implementation on the SDK is ready
-
 export type SdkIframeEmbedPostMessageAction =
   | {
       type: "metabase.embed.authenticate";
-      data: IframeAuthConfig;
+      data: SdkIframeAuthConfig;
     }
   | {
-      type: "metabase.embed.updateSettings";
+      type: "metabase.embed.setSettings";
       data: SdkIframeEmbedSettings;
     };
+
+export type SdkIframeAuthConfig =
+  | { type: "apiKey"; apiKey: string }
+  | { type: "sso" }; // TODO: to be implemented once the new SSO implementation on the SDK is ready
 
 export type SdkIframeEmbedSettings = {
   embedResourceType: EmbedResourceType;
