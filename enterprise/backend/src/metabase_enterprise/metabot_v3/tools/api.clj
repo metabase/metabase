@@ -231,7 +231,7 @@
    [:map
     [:field_id :string]
     [:bucket {:optional true} ::bucket]
-    [:sort_order {:optional true} [:enum {:encode/tool-api-request keyword} "asc" "desc"]]
+    [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]
     [:function [:enum {:encode/tool-api-request keyword}
                 "avg" "count" "count-distinct" "max" "min" "sum"]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
