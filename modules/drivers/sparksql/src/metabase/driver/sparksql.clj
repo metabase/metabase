@@ -253,11 +253,7 @@
 
 (defmethod sql.qp/->float :sparksql
   [_driver value]
-  (h2x/maybe-cast "DoubleType" value))
-
-(defmethod sql.qp/integer-dbtype :sparksql
-  [_]
-  "LongType")
+  (h2x/maybe-cast :double value))
 
 (defmethod sql.qp/->integer :sparksql
   [driver value]
