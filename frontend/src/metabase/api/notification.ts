@@ -93,7 +93,7 @@ export const notificationApi = Api.injectEndpoints({
         body,
       }),
     }),
-    getNotificationPayloadExample: builder.mutation<
+    getNotificationPayloadExample: builder.query<
       GetNotificationPayloadExampleResponse,
       GetNotificationPayloadExampleRequest
     >({
@@ -143,7 +143,8 @@ export const {
   useUpdateNotificationMutation,
   useUnsubscribeFromNotificationMutation,
   useSendUnsavedNotificationMutation,
-  useGetNotificationPayloadExampleMutation,
+  useGetNotificationPayloadExampleQuery,
+  useLazyGetNotificationPayloadExampleQuery,
   useGetDefaultNotificationTemplateQuery,
 } = notificationApi;
 

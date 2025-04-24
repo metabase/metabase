@@ -1,6 +1,12 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
-import { jt, t } from "ttag";
 import cx from "classnames";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useState,
+} from "react";
+import { jt, t } from "ttag";
 
 import { useListChannelsQuery, useListUserRecipientsQuery } from "metabase/api";
 import { CodeBlock } from "metabase/components/CodeBlock";
@@ -19,7 +25,7 @@ import {
   Accordion,
   Flex,
   Icon,
-  IconName,
+  type IconName,
   Popover,
   Stack,
   Text,
@@ -35,8 +41,11 @@ import type {
 } from "metabase-types/api";
 
 import S from "./NotificationChannelsPicker.module.css";
-import React from "react";
 
+export type ChannelsSupportingCustomTemplates = Extract<
+  NotificationChannelKey,
+  "email" | "slack"
+>;
 const DEFAULT_CHANNELS_CONFIG = {
   email: {
     name: t`Email`,
@@ -46,8 +55,10 @@ const DEFAULT_CHANNELS_CONFIG = {
     name: t`Slack`,
     type: "slack",
   },
-} satisfies Record<NotificationChannelType, { name: string; type: string }>;
-type SupportedChannelKey = Extract<NotificationChannelKey, "email" | "slack">;
+} satisfies Record<
+  ChannelsSupportingCustomTemplates,
+  { name: string; type: string }
+>;
 
 // Template state types
 interface TemplateState {
@@ -65,13 +76,13 @@ type TemplateAction =
     }
   | {
       type: "UPDATE_TEMPLATE";
-      channel: SupportedChannelKey;
+      channel: ChannelsSupportingCustomTemplates;
       field: "subject" | "body";
       value: string;
     }
   | {
       type: "REMOVE_TEMPLATE";
-      channel: SupportedChannelKey;
+      channel: ChannelsSupportingCustomTemplates;
     };
 
 const templateReducer = (
@@ -126,11 +137,11 @@ const templateTypeMap = {
 } satisfies Partial<
   Record<
     NotificationChannelType,
-    { name: string; type: string; stateKey: SupportedChannelKey }
+    { name: string; type: string; stateKey: ChannelsSupportingCustomTemplates }
   >
 >;
 const templateStateKeyMap: Record<
-  SupportedChannelKey,
+  ChannelsSupportingCustomTemplates,
   NotificationChannelType
 > = {
   email: "channel/email",
@@ -155,8 +166,8 @@ interface NotificationChannelsPickerProps {
   onChange: (newHandlers: NotificationHandler[]) => void;
   getInvalidRecipientText?: (domains: string) => string;
   enableTemplates?: boolean;
-  formattedJsonTemplate?: string;
-  onPreviewClick?: (channelType: SupportedChannelKey) => void;
+  templateContext?: Record<string, any>;
+  onPreviewClick?: (channelType: ChannelsSupportingCustomTemplates) => void;
   defaultTemplates?: Record<
     string,
     {
@@ -261,7 +272,7 @@ export const NotificationChannelsPicker = ({
   onChange,
   getInvalidRecipientText = defaultGetInvalidRecipientText,
   enableTemplates = false,
-  formattedJsonTemplate = "",
+  templateContext = {},
   onPreviewClick,
   defaultTemplates,
 }: NotificationChannelsPickerProps) => {
@@ -437,7 +448,7 @@ export const NotificationChannelsPicker = ({
   );
 
   const updateTemplateForChannel = (
-    channelKey: SupportedChannelKey,
+    channelKey: ChannelsSupportingCustomTemplates,
     state = templateState,
   ) => {
     if (!enableTemplates) {
@@ -507,7 +518,7 @@ export const NotificationChannelsPicker = ({
   };
 
   const handleTemplateBlur = (
-    channel: SupportedChannelKey,
+    channel: ChannelsSupportingCustomTemplates,
     field: "subject" | "body",
     value: string,
   ) => {
@@ -571,26 +582,21 @@ export const NotificationChannelsPicker = ({
   };
 
   const getTemplateValue = (
-    channel: SupportedChannelKey,
+    channel: ChannelsSupportingCustomTemplates,
     field: "subject" | "body",
   ): string => {
     return templateState.templates[channel]?.[field] || "";
   };
 
-  const parsedTemplateContext = useMemo(() => {
-    if (!formattedJsonTemplate) {
-      return undefined;
+  const formattedTemplateContext = useMemo(() => {
+    if (!templateContext) {
+      return "";
     }
-    try {
-      return JSON.parse(formattedJsonTemplate);
-    } catch (e) {
-      console.error("Failed to parse template context JSON:", e);
-      return undefined;
-    }
-  }, [formattedJsonTemplate]);
+    return JSON.stringify(templateContext, null, 2);
+  }, [templateContext]);
 
   const resetTemplateForChannel = useCallback(
-    (channelKey: SupportedChannelKey) => {
+    (channelKey: ChannelsSupportingCustomTemplates) => {
       // Update internal state
       dispatch({ type: "REMOVE_TEMPLATE", channel: channelKey });
 
@@ -651,7 +657,7 @@ export const NotificationChannelsPicker = ({
                         />
                       )}
                       <TemplateHelperTooltip
-                        formattedJson={formattedJsonTemplate}
+                        formattedJson={formattedTemplateContext}
                       />
                       {!!emailHandler.template && (
                         <AccordionButton
@@ -673,7 +679,7 @@ export const NotificationChannelsPicker = ({
                       <TemplateEditor
                         variant="textinput"
                         placeholder={t`Alert from {{payload.result.table.name}} table`}
-                        templateContext={parsedTemplateContext}
+                        templateContext={templateContext}
                         defaultValue={getTemplateValue("email", "subject")}
                         onBlur={(newValue) => {
                           handleTemplateBlur("email", "subject", newValue);
@@ -691,7 +697,7 @@ export const NotificationChannelsPicker = ({
                       <TemplateEditor
                         variant="textarea"
                         placeholder={t`Your custom email template`}
-                        templateContext={parsedTemplateContext}
+                        templateContext={templateContext}
                         minHeight="12rem"
                         defaultValue={getTemplateValue("email", "body")}
                         onBlur={(newValue) => {
@@ -753,7 +759,7 @@ export const NotificationChannelsPicker = ({
                         />
                       )}
                       <TemplateHelperTooltip
-                        formattedJson={formattedJsonTemplate}
+                        formattedJson={formattedTemplateContext}
                       />
                       {!!slackHandler.template && (
                         <AccordionButton
@@ -773,7 +779,7 @@ export const NotificationChannelsPicker = ({
                     <Text size="sm" fw={700}>{t`Content`}</Text>
                     <TemplateEditor
                       placeholder={t`Your custom Markdown template`}
-                      templateContext={parsedTemplateContext}
+                      templateContext={templateContext}
                       minHeight="12rem"
                       defaultValue={getTemplateValue("slack", "body")}
                       onBlur={(newValue) => {

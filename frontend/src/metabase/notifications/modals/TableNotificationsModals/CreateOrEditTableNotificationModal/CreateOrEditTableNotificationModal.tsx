@@ -7,7 +7,8 @@ import {
   useCreateNotificationMutation,
   useGetChannelInfoQuery,
   useGetDefaultNotificationTemplateQuery,
-  useGetNotificationPayloadExampleMutation,
+  useGetNotificationPayloadExampleQuery,
+  useLazyGetNotificationPayloadExampleQuery,
   useListChannelsQuery,
   useUpdateNotificationMutation,
 } from "metabase/api";
@@ -25,7 +26,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { ChannelSetupModal } from "metabase/notifications/modals/shared/ChannelSetupModal";
 import { AlertModalSettingsBlock } from "metabase/notifications/modals/shared/components/AlertModalSettingsBlock/AlertModalSettingsBlock";
 import { AlertTriggerIcon } from "metabase/notifications/modals/shared/components/AlertTriggerIcon";
-import type { SupportedChannelKey } from "metabase/notifications/modals/shared/components/NotificationChannels/NotificationChannelsPicker/NotificationChannelsPicker";
+import type { ChannelsSupportingCustomTemplates } from "metabase/notifications/modals/shared/components/NotificationChannels/NotificationChannelsPicker/NotificationChannelsPicker";
 import { NotificationChannelsPicker } from "metabase/notifications/modals/shared/components/NotificationChannels/NotificationChannelsPicker/NotificationChannelsPicker";
 import { getDefaultTableNotificationRequest } from "metabase/notifications/utils";
 import { addUndo } from "metabase/redux/undo";
@@ -100,7 +101,7 @@ type CreateOrEditTableNotificationModalProps = {
 interface PreviewMessagePanelProps {
   opened: boolean;
   onClose: () => void;
-  channelType?: SupportedChannelKey;
+  channelType?: ChannelsSupportingCustomTemplates;
 }
 
 const PreviewMessagePanel = ({
@@ -169,16 +170,12 @@ export const CreateOrEditTableNotificationModal = ({
   const userCanAccessSettings = useSelector(canAccessSettings);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewChannelType, setPreviewChannelType] = useState<
-    SupportedChannelKey | undefined
+    ChannelsSupportingCustomTemplates | undefined
   >();
 
   const [requestBody, setRequestBody] = useState<
     CreateTableNotificationRequest | UpdateTableNotificationRequest | null
   >(null);
-  console.log(notification, requestBody);
-
-  // State to store the template JSON for the current event_name
-  const [templateJson, setTemplateJson] = useState<string>("");
 
   // Compute channel types for template query
   const channelTypes = requestBody?.handlers
@@ -202,6 +199,21 @@ export const CreateOrEditTableNotificationModal = ({
       skip: !requestBody?.payload?.event_name || channelTypes.length === 0,
     },
   );
+  const { data: templateJson } = useGetNotificationPayloadExampleQuery(
+    requestBody?.payload_type &&
+      requestBody?.payload?.event_name &&
+      user &&
+      channelTypes.length > 0
+      ? {
+          payload_type: requestBody.payload_type,
+          payload: requestBody.payload,
+          creator_id: user.id,
+        }
+      : skipToken,
+    {
+      skip: !requestBody?.payload?.event_name || channelTypes.length === 0,
+    },
+  );
 
   const isEditMode = !!notification;
 
@@ -211,8 +223,6 @@ export const CreateOrEditTableNotificationModal = ({
 
   const [createNotification] = useCreateNotificationMutation();
   const [updateNotification] = useUpdateNotificationMutation();
-  const [getNotificationPayloadExample] =
-    useGetNotificationPayloadExampleMutation();
 
   const hasConfiguredAnyChannel = getHasConfiguredAnyChannel(channelSpec);
   const hasConfiguredEmailChannel = getHasConfiguredEmailChannel(channelSpec);
@@ -261,29 +271,6 @@ export const CreateOrEditTableNotificationModal = ({
     tableId,
     notification,
   ]);
-
-  // Get example payload when event changes
-  useEffect(() => {
-    const fetchExamplePayload = async () => {
-      if (!requestBody?.payload?.event_name || !user) {
-        return;
-      }
-
-      const result = await getNotificationPayloadExample({
-        payload_type: "notification/system-event",
-        payload: {
-          event_name: requestBody.payload.event_name,
-        },
-        creator_id: user.id,
-      });
-
-      if (result.data) {
-        setTemplateJson(formatJsonForTooltip(result.data.payload));
-      }
-    };
-
-    fetchExamplePayload();
-  }, [getNotificationPayloadExample, requestBody?.payload?.event_name, user]);
 
   const onCreateOrEditAlert = async () => {
     if (requestBody) {
@@ -351,10 +338,13 @@ export const CreateOrEditTableNotificationModal = ({
   }, [onClose]);
   useEscapeToCloseModal(handleCloseAttempt, { capture: false });
 
-  const handlePreviewClick = useCallback((channelType: SupportedChannelKey) => {
-    setPreviewChannelType(channelType);
-    setPreviewOpen(true);
-  }, []);
+  const handlePreviewClick = useCallback(
+    (channelType: ChannelsSupportingCustomTemplates) => {
+      setPreviewChannelType(channelType);
+      setPreviewOpen(true);
+    },
+    [],
+  );
 
   const handlePreviewClose = useCallback(() => {
     setPreviewOpen(false);
@@ -380,7 +370,6 @@ export const CreateOrEditTableNotificationModal = ({
     <Modal
       data-testid="table-notification-create"
       opened
-      // size={previewOpen ? "calc(180% + 2rem)" : "xl"}
       size={previewOpen ? rem(900) : rem(600)}
       onClose={handleCloseAttempt}
       padding="2.5rem"
@@ -448,9 +437,9 @@ export const CreateOrEditTableNotificationModal = ({
                   handlers: newHandlers,
                 });
               }}
-              formattedJsonTemplate={templateJson}
+              templateContext={templateJson}
               defaultTemplates={defaultTemplates}
-              // onPreviewClick={handlePreviewClick}
+              onPreviewClick={handlePreviewClick}
               getInvalidRecipientText={(domains) =>
                 t`You're only allowed to email alerts to addresses ending in ${domains}`
               }
