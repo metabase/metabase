@@ -23,6 +23,7 @@ jobs:
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: | #js
+            console.log("branch name: ", process.env.BRANCH_NAME);
             github.rest.repos.createDispatchEvent({
               owner: "${{ github.repository_owner }}",
               repo: "docs.metabase.github.io",
