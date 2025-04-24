@@ -208,11 +208,10 @@
                                                       [:template ::models.channel/ChannelTemplate]
                                                       [:payload {:optional true} :any]]]
   (api/create-check :model/Notification notification)
-  (let [sample-notification-context (or (and custom_context ;; use the custom payload if provided, but make sure it conforms our schema
-                                             (api/check-400 (mr/validate (notification/notification-payload-schema notification) custom_context)
-                                                            "Payload does not match schema")
-                                             custom_context)
-                                        (sample-payload notification))]
+  (let [sample-notification-context (if custom_context
+                                      (let [custom_context (update custom_context :payload_type keyword)]
+                                        (mu/validate-throw (notification/notification-payload-schema notification) custom_context))
+                                      (sample-payload notification))]
     {:context  sample-notification-context
      :rendered (first (channel/render-notification
                        (:channel_type template)

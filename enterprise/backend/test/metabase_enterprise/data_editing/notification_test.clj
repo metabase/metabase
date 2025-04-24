@@ -230,3 +230,43 @@
                                                           :body    "Created {{count records}} records"}}
                                  :notification {:payload_type :notification/system-event
                                                 :payload      {:event_name :event/rows.created}}}))))
+
+(deftest preview-notification-custom-payload-test
+  (testing "use the custom context if it's valid"
+    (is (=? {:context  (mt/malli=? :map)
+             :rendered {:from    "notifications@metabase.com"
+                        :bcc     ["bot@metabase.com"]
+                        :subject "Ngoc Khuat has created a row for orders"
+                        :body    [{:type "text/html; charset=utf-8" :content "Created 1 records"}]}}
+            (mt/user-http-request :crowberto :post 200 "notification/preview_template"
+                                  {:template     {:channel_type :channel/email
+                                                  :details {:type    :email/handlebars-text
+                                                            :subject "{{editor.first_name}} {{editor.last_name}} has created a row for {{table.name}}"
+                                                            :body    "Created {{count records}} records"}}
+                                   :notification   {:payload_type :notification/system-event
+                                                    :payload      {:event_name :event/rows.created}}
+                                   :custom_context {:context {}
+                                                    :creator {:common_name "Meta Bot",
+                                                              :email "bot@metabase.com",
+                                                              :first_name "Meta",
+                                                              :last_name "Bot"},
+                                                    :editor {:common_name "Ngoc Khuat",
+                                                             :email "ngoc@metabase.com",
+                                                             :first_name "Ngoc",
+                                                             :last_name "Khuat"},
+                                                    :payload_type "notification/system-event",
+                                                    :records [{:changes {:STATUS {:after "approved", :before "pending"}},
+                                                               :row {:ID 1, :STATUS "approved"}}],
+                                                    :settings {},
+                                                    :table {:id 1, :name "orders"}}}))))
+  (testing "fail if the custom context does not match the schema"
+    (is (=? {:message "Value does not match schema"
+             :data    {:error (mt/malli=? :map)}}
+            (mt/user-http-request :crowberto :post 500 "notification/preview_template"
+                                  {:template     {:channel_type :channel/email
+                                                  :details {:type    :email/handlebars-text
+                                                            :subject "{{editor.first_name}} {{editor.last_name}} has created a row for {{table.name}}"
+                                                            :body    "Created {{count records}} records"}}
+                                   :notification   {:payload_type :notification/system-event
+                                                    :payload      {:event_name :event/rows.created}}
+                                   :custom_context {::context true}})))))
