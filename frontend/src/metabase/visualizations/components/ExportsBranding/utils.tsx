@@ -67,6 +67,7 @@ export const createFooterElement = (size: FooterSize) => {
     height: ${h}px;
     width: 100%;
     padding-inline: ${p}px;
+    background-color: var(--mb-color-bg-dashboard);
     display: flex;
     align-items: center;
     justify-content: ${size === "xs" ? "center" : "flex-end"};
