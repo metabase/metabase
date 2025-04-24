@@ -151,7 +151,7 @@
                 (pulse.test-util/with-captured-channel-send-messages!
                   (pulse.send/send-pulse! pulse)))
               :channel/email vec)
-        msgs (get-in m [:channel/email 0 :message])]
+        msgs (get-in m [:channel/email 0 :body])]
     (first (keep
             (fn [{:keys [type content-type content]}]
               (when (and
@@ -1061,6 +1061,7 @@
                                                                     :field_ref          [:field (mt/id :orders :subtotal) nil]
                                                                     :effective_type     :type/Float
                                                                     :id                 (mt/id :orders :subtotal)
+                                                                    :ident              (mt/ident :orders :subtotal)
                                                                     :visibility_type    :normal
                                                                     :display_name       "Subtotal"
                                                                     :base_type          :type/Float}]}]

@@ -35,8 +35,6 @@ const DEFAULT_COLUMN_ORDER = ["id", "name", "category", "price"];
 
 type SampleDataType = (typeof sampleData)[0];
 
-type ColumnSizingState = Record<string, number>;
-
 interface TestDataGridProps {
   onHeaderCellClick?: (
     event: MouseEvent<HTMLDivElement>,
@@ -51,7 +49,7 @@ interface TestDataGridProps {
     },
   ) => void;
   onAddColumnClick?: () => void;
-  onColumnResize?: (columnSizing: ColumnSizingState) => void;
+  onColumnResize?: (columnName: string, width: number) => void;
   onColumnReorder?: (columnIds: string[]) => void;
   initialColumnSizing?: Record<string, number>;
   initialColumnOrder?: string[];

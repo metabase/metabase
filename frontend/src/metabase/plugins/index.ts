@@ -294,7 +294,9 @@ export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
 
 const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
   type: null,
-  name: t`Regular`,
+  get name() {
+    return t`Regular`;
+  },
   icon: "folder",
 };
 
@@ -651,6 +653,7 @@ export const PLUGIN_DATA_EDITING = {
     location: Location<{ filter?: string }>;
   }>,
   CARD_TABLE_COMPONENT: PluginPlaceholder as ComponentType<{
+    title: string;
     dashcardId: number;
     cardId: number;
     data: DatasetData;

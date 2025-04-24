@@ -526,3 +526,70 @@
           (create! [{:n "a"}])
           (update! [{:id 1, :n "e"}])
           (is (= ["a" "c" "d" "e"] (field-values))))))))
+
+(deftest get-row-action-test
+  (let [url #(format "ee/data-editing/row-action/%s" %)
+        action-api #(mt/user-http-request :crowberto :get 200 (format "action/%s" %))]
+    (mt/with-premium-features #{:table-data-editing}
+      (mt/test-drivers #{:h2 :postgres}
+        (testing "no dashcard"
+          (mt/with-temp [:model/Card   model  {:type     :model}
+                         :model/Action action {:type     :query
+                                               :name     "test_action"
+                                               :model_id (:id model)}]
+            (testing "not specified"
+              (is (= 400 (:status (mt/user-http-request-full-response :crowberto :get (url (:id action)))))))
+            (testing "specified but does not exist"
+              (is (= 404 (:status (mt/user-http-request-full-response :crowberto :get (url (:id action)) :dashcard-id 9999999)))))))
+        (testing "no action"
+          (mt/with-temp [:model/Dashboard     dash     {}
+                         :model/DashboardCard dashcard {:dashboard_id (:id dash)}]
+            (is (= 404 (:status (mt/user-http-request-full-response :crowberto :get (url 99999999) :dashcard-id (:id dashcard)))))
+            (testing "no dashcard still results in 400"
+              (is (= 400 (:status (mt/user-http-request-full-response :crowberto :get (url 9999999))))))))
+        (testing "everything exists, no params defined"
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-temp [:model/Table         table    {}
+                           :model/Card          model    {:type         :model
+                                                          :table_id     (:id table)}
+                           :model/Action        action   {:type         :query
+                                                          :name         "test_action"
+                                                          :model_id     (:id model)}
+                           :model/Dashboard     dash     {}
+                           :model/DashboardCard dashcard {:dashboard_id (:id dash)
+                                                          :card_id      (:id model)}]
+              (testing "no access"
+                (is (= 403 (:status (mt/user-http-request-full-response :rasta :get (url (:id action)) :dashcard-id (:id dashcard))))))
+              (testing "action access"
+                (is (= {:status 200
+                        :body (action-api (:id action))}
+                       (-> (mt/user-http-request-full-response :crowberto :get (url (:id action)) :dashcard-id (:id dashcard))
+                           (select-keys [:status
+                                         :body]))))))))
+        (testing "parameters defined"
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-temp [:model/Table         table    {}
+                           :model/Field         _a       {:table_id     (:id table)
+                                                          :name         "a"}
+                           :model/Field         _b       {:table_id     (:id table)
+                                                          :name         "b"}
+                           :model/Field         _c       {:table_id     (:id table)
+                                                          :name         "c"}
+                           :model/Card          model    {:type         :model
+                                                          :table_id     (:id table)}
+                           :model/Action        action   {:type         :query
+                                                          :name         "test_action"
+                                                          :model_id     (:id model)
+                                                          :parameters   [{:slug "a"}
+                                                                         {:slug "e"}
+                                                                         {:slug "c"}
+                                                                         {:slug "d"}]}
+                           :model/Dashboard     dash     {}
+                           :model/DashboardCard dashcard {:dashboard_id (:id dash)
+                                                          :card_id      (:id model)}]
+              (let [{:keys [status, body]} (mt/user-http-request-full-response :crowberto :get (url (:id action)) :dashcard-id (:id dashcard))]
+                (is (= 200 status))
+                (is (= ["e" "d"]
+                       (->> body
+                            :parameters
+                            (map :slug))))))))))))

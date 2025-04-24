@@ -34,8 +34,18 @@ import type {
 import S from "./NotificationChannelsPicker.module.css";
 
 const DEFAULT_CHANNELS_CONFIG = {
-  email: { name: t`Email`, type: "email" },
-  slack: { name: t`Slack`, type: "slack" },
+  email: {
+    get name() {
+      return t`Email`;
+    },
+    type: "email",
+  },
+  slack: {
+    get name() {
+      return t`Slack`;
+    },
+    type: "slack",
+  },
 };
 type SupportedChannelKey = Extract<NotificationChannelKey, "email" | "slack">;
 
@@ -131,6 +141,17 @@ interface NotificationChannelsPickerProps {
   getInvalidRecipientText?: (domains: string) => string;
   enableTemplates?: boolean;
   formattedJsonTemplate?: string;
+  defaultTemplates?: Record<
+    string,
+    {
+      channel_type: string;
+      details: {
+        type: string;
+        subject?: string;
+        body: string;
+      };
+    }
+  > | null;
 }
 
 interface TemplateHelperTooltipProps {
@@ -207,6 +228,7 @@ export const NotificationChannelsPicker = ({
   getInvalidRecipientText = defaultGetInvalidRecipientText,
   enableTemplates = false,
   formattedJsonTemplate = "",
+  defaultTemplates,
 }: NotificationChannelsPickerProps) => {
   const { data: httpChannelsConfig = [] } = useListChannelsQuery();
   const { data: users } = useListUserRecipientsQuery();
@@ -237,38 +259,55 @@ export const NotificationChannelsPicker = ({
     };
 
     notificationHandlers.forEach((handler) => {
-      if (!handler.template?.details) {
-        return;
-      }
-
-      const { channel_type, details } = handler.template;
-      const handlerChannelType = channel_type as keyof typeof templateTypeMap;
-      const stateKey = templateTypeMap[handlerChannelType]?.stateKey;
-
-      if (!stateKey) {
-        return;
-      }
-
-      // For simplicity, both channels use the same structure,
-      // but in future we'll need to introduce proper interface for each channel.
-      const hasContent = details.subject?.trim() || details.body?.trim();
-      if (hasContent) {
-        if (stateKey === "email") {
-          templates.email = {
-            subject: details.subject || "",
-            body: details.body || "",
-          };
-        } else if (stateKey === "slack") {
-          templates.slack = {
-            subject: "",
-            body: details.body || "",
-          };
+      if (handler.template?.details) {
+        const { channel_type, details } = handler.template;
+        const handlerChannelType = channel_type as keyof typeof templateTypeMap;
+        const stateKey = templateTypeMap[handlerChannelType]?.stateKey;
+        if (!stateKey) {
+          return;
+        }
+        const hasContent = details.subject?.trim() || details.body?.trim();
+        if (hasContent) {
+          if (stateKey === "email") {
+            templates.email = {
+              subject: details.subject || "",
+              body: details.body || "",
+            };
+          } else if (stateKey === "slack") {
+            templates.slack = {
+              subject: "",
+              body: details.body || "",
+            };
+          }
+        }
+      } else if (
+        handler.channel_type &&
+        defaultTemplates &&
+        defaultTemplates[handler.channel_type]
+      ) {
+        // Use default template if available and no template is set
+        const stateKey =
+          templateTypeMap[handler.channel_type as keyof typeof templateTypeMap]
+            ?.stateKey;
+        const details = defaultTemplates[handler.channel_type]?.details;
+        if (stateKey && details) {
+          if (stateKey === "email") {
+            templates.email = {
+              subject: details.subject || "",
+              body: details.body || "",
+            };
+          } else if (stateKey === "slack") {
+            templates.slack = {
+              subject: "",
+              body: details.body || "",
+            };
+          }
         }
       }
     });
 
     return { templates };
-  }, [notificationHandlers]);
+  }, [notificationHandlers, defaultTemplates]);
 
   const [templateState, dispatch] = useReducer(
     templateReducer,
@@ -277,6 +316,10 @@ export const NotificationChannelsPicker = ({
   // Re-initialize template state if handlers change externally
   useEffect(() => {
     dispatch({ type: "INITIALIZE_TEMPLATE", payload: initialTemplateState });
+    setValidationErrors({
+      email: { subject: false, body: false },
+      slack: { subject: false, body: false },
+    });
   }, [initialTemplateState]);
 
   const addChannel = useCallback(
@@ -533,10 +576,10 @@ export const NotificationChannelsPicker = ({
                 control: S.customTemplateControl,
                 label: S.customTemplateLabel,
                 icon: S.customTemplateIcon,
+                item: S.customTemplateItem,
+                chevron: S.customTemplateChevron,
               }}
-              defaultValue={
-                templateState.templates.email ? "email-template" : null
-              }
+              defaultValue={"email-template"}
             >
               <Accordion.Item value="email-template">
                 <Accordion.Control>
@@ -547,7 +590,9 @@ export const NotificationChannelsPicker = ({
                     />
                   </Flex>
                 </Accordion.Control>
-                <Accordion.Panel styles={{ content: { padding: 0 } }}>
+                <Accordion.Panel
+                  styles={{ content: { padding: 0, border: "none" } }}
+                >
                   <Stack>
                     <Stack gap="xs">
                       <Text size="sm" fw={700}>{t`Subject`}</Text>
@@ -613,10 +658,10 @@ export const NotificationChannelsPicker = ({
                 control: S.customTemplateControl,
                 label: S.customTemplateLabel,
                 icon: S.customTemplateIcon,
+                item: S.customTemplateItem,
+                chevron: S.customTemplateChevron,
               }}
-              defaultValue={
-                templateState.templates.slack ? "slack-template" : null
-              }
+              defaultValue={"slack-template"}
             >
               <Accordion.Item value="slack-template">
                 <Accordion.Control>
@@ -627,7 +672,9 @@ export const NotificationChannelsPicker = ({
                     />
                   </Flex>
                 </Accordion.Control>
-                <Accordion.Panel styles={{ content: { padding: 0 } }}>
+                <Accordion.Panel
+                  styles={{ content: { padding: 0, border: "none" } }}
+                >
                   <Stack gap="xs">
                     <Text size="sm" fw={700}>{t`Content`}</Text>
                     <TemplateEditor

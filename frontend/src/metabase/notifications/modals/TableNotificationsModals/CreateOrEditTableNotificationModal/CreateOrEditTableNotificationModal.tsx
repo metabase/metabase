@@ -1,15 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { skipToken } from "@reduxjs/toolkit/query";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { isEqual } from "underscore";
 
 import {
   useCreateNotificationMutation,
   useGetChannelInfoQuery,
+  useGetDefaultNotificationTemplateQuery,
   useGetNotificationPayloadExampleMutation,
   useListChannelsQuery,
   useUpdateNotificationMutation,
 } from "metabase/api";
+import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { AutoWidthSelect } from "metabase/components/Schedule/AutoWidthSelect";
 import CS from "metabase/css/core/index.css";
 import { alertIsValid } from "metabase/lib/notifications";
@@ -42,7 +46,6 @@ type TableNotificationTriggerOption = {
   label: string;
 };
 
-// Format JSON for tooltip display
 const formatJsonForTooltip = (json: any) => {
   return json ? JSON.stringify(json, null, 2) : "";
 };
@@ -104,6 +107,29 @@ export const CreateOrEditTableNotificationModal = ({
 
   // State to store the template JSON for the current event_name
   const [templateJson, setTemplateJson] = useState<string>("");
+
+  // Compute channel types for template query
+  const channelTypes = requestBody?.handlers
+    ? requestBody.handlers
+        .map((h) => h.channel_type)
+        .filter((v, i, arr) => !!v && arr.indexOf(v) === i)
+    : [];
+
+  // Use query hook for default templates (enabled only when event and handlers are present)
+  const { data: defaultTemplates } = useGetDefaultNotificationTemplateQuery(
+    requestBody?.payload?.event_name && channelTypes.length > 0
+      ? {
+          notification: {
+            payload_type: requestBody.payload_type,
+            payload: requestBody.payload,
+          },
+          channel_types: channelTypes,
+        }
+      : skipToken,
+    {
+      skip: !requestBody?.payload?.event_name || channelTypes.length === 0,
+    },
+  );
 
   const isEditMode = !!notification;
 
@@ -204,7 +230,7 @@ export const CreateOrEditTableNotificationModal = ({
           addUndo({
             icon: "warning",
             toastColor: "error",
-            message: t`An error occurred`,
+            message: t`Failed to save alert.`,
           }),
         );
 
@@ -232,6 +258,27 @@ export const CreateOrEditTableNotificationModal = ({
     ? hasConfiguredAnyChannel
     : hasConfiguredEmailChannel;
 
+  const hasChanges = useMemo(
+    () => !isEqual(requestBody, notification),
+    [requestBody, notification],
+  );
+
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+
+  const handleCloseAttempt = useCallback(() => {
+    if (hasChanges) {
+      setIsConfirmModalOpen(true);
+    } else {
+      onClose();
+    }
+  }, [hasChanges, onClose]);
+
+  const handleConfirmDiscard = useCallback(() => {
+    setIsConfirmModalOpen(false);
+    onClose();
+  }, [onClose]);
+  useEscapeToCloseModal(handleCloseAttempt, { capture: false });
+
   if (!isLoadingChannelInfo && channelSpec && !channelRequirementsMet) {
     return (
       <ChannelSetupModal
@@ -246,15 +293,15 @@ export const CreateOrEditTableNotificationModal = ({
   }
 
   const isValid = alertIsValid(requestBody.handlers, channelSpec);
-  const hasChanges = !isEqual(requestBody, notification);
 
   return (
     <Modal
       data-testid="table-notification-create"
       opened
       size="lg"
-      onClose={onClose}
+      onClose={handleCloseAttempt}
       padding="2.5rem"
+      closeOnEscape={false}
       title={isEditMode ? t`Edit alert` : t`New alert`}
       styles={{
         body: {
@@ -308,6 +355,7 @@ export const CreateOrEditTableNotificationModal = ({
               });
             }}
             formattedJsonTemplate={templateJson}
+            defaultTemplates={defaultTemplates}
             getInvalidRecipientText={(domains) =>
               t`You're only allowed to email alerts to addresses ending in ${domains}`
             }
@@ -315,7 +363,10 @@ export const CreateOrEditTableNotificationModal = ({
         </AlertModalSettingsBlock>
       </Stack>
       <Flex justify="flex-end" px="2.5rem" pt="lg" className={CS.borderTop}>
-        <Button onClick={onClose} className={CS.mr2}>{t`Cancel`}</Button>
+        <Button
+          onClick={handleCloseAttempt}
+          className={CS.mr2}
+        >{t`Cancel`}</Button>
         <ButtonWithStatus
           titleForState={{
             default: isEditMode && hasChanges ? t`Save changes` : t`Done`,
@@ -324,6 +375,19 @@ export const CreateOrEditTableNotificationModal = ({
           onClickOperation={onCreateOrEditAlert}
         />
       </Flex>
+      {hasChanges && (
+        <ConfirmModal
+          size="md"
+          opened={isConfirmModalOpen}
+          title={t`Discard unsaved changes?`}
+          message={t`You have unsaved changes. Are you sure you want to discard them?`}
+          onClose={() => setIsConfirmModalOpen(false)}
+          onConfirm={handleConfirmDiscard}
+          confirmButtonText={t`Discard`}
+          closeButtonText={t`Cancel`}
+          confirmButtonPrimary={false}
+        />
+      )}
     </Modal>
   );
 };

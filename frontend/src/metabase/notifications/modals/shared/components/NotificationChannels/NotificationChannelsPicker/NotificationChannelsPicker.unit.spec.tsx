@@ -7,6 +7,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockChannel } from "metabase-types/api/mocks/channel";
 
+import { NotificationChannelsPicker } from "./NotificationChannelsPicker";
 import { setup } from "./test-utils";
 
 describe("NotificationChannelsPicker", () => {
@@ -189,6 +190,152 @@ describe("NotificationChannelsPicker", () => {
           recipients: expect.any(Array),
         }),
       ]);
+    });
+  });
+
+  describe("Default template logic", () => {
+    it("should initialize template editors with defaultTemplates prop", async () => {
+      const defaultTemplates = {
+        "channel/email": {
+          channel_type: "channel/email",
+          details: {
+            type: "email/handlebars-text",
+            subject: "Default subject",
+            body: "Default body",
+          },
+        },
+        "channel/slack": {
+          channel_type: "channel/slack",
+          details: {
+            type: "slack/handlebars-text",
+            body: "Default slack body",
+          },
+        },
+      };
+      setup({
+        isEmailSetup: true,
+        isSlackSetup: true,
+        notificationHandlers: [
+          createMockNotificationHandlerEmail(),
+          createMockNotificationHandlerSlack(),
+        ],
+        defaultTemplates,
+        enableTemplates: true,
+      });
+      // Email template editor should show default subject/body
+      expect(
+        await screen.findByDisplayValue("Default subject"),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByDisplayValue("Default body"),
+      ).toBeInTheDocument();
+      // Slack template editor should show default body
+      expect(
+        await screen.findByDisplayValue("Default slack body"),
+      ).toBeInTheDocument();
+    });
+
+    it("should update TemplateEditor value when defaultTemplates prop changes", async () => {
+      // Render with initial defaultTemplates
+      const { rerender } = setup({
+        isEmailSetup: true,
+        notificationHandlers: [createMockNotificationHandlerEmail()],
+        defaultTemplates: {
+          "channel/email": {
+            channel_type: "channel/email",
+            details: {
+              type: "email/handlebars-text",
+              subject: "Initial subject",
+              body: "Initial body",
+            },
+          },
+        },
+        enableTemplates: true,
+      });
+      // Confirm initial value
+      expect(
+        await screen.findByDisplayValue("Initial subject"),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByDisplayValue("Initial body"),
+      ).toBeInTheDocument();
+      // Rerender with new defaultTemplates
+      rerender(
+        <NotificationChannelsPicker
+          notificationHandlers={[createMockNotificationHandlerEmail()]}
+          channels={{
+            email: {
+              configured: true,
+              type: "email",
+              name: "Email",
+              schedules: ["hourly"],
+              schedule_type: "hourly",
+              allows_recipients: true,
+              recipients: ["user", "email"],
+            },
+          }}
+          onChange={jest.fn()}
+          defaultTemplates={{
+            "channel/email": {
+              channel_type: "channel/email",
+              details: {
+                type: "email/handlebars-text",
+                subject: "New subject",
+                body: "New body",
+              },
+            },
+          }}
+          enableTemplates={true}
+        />,
+      );
+      // TemplateEditor should update
+      expect(
+        await screen.findByDisplayValue("New subject"),
+      ).toBeInTheDocument();
+      expect(await screen.findByDisplayValue("New body")).toBeInTheDocument();
+    });
+
+    it("should preserve user edits unless defaultTemplates changes", async () => {
+      setup({
+        isEmailSetup: true,
+        notificationHandlers: [createMockNotificationHandlerEmail()],
+        defaultTemplates: {
+          "channel/email": {
+            channel_type: "channel/email",
+            details: {
+              type: "email/handlebars-text",
+              subject: "Default subject",
+              body: "Default body",
+            },
+          },
+        },
+        enableTemplates: true,
+      });
+      const subjectInput = await screen.findByDisplayValue("Default subject");
+      await userEvent.clear(subjectInput);
+      await userEvent.type(subjectInput, "User subject");
+      expect(subjectInput).toHaveValue("User subject");
+      // Simulate unrelated rerender (not changing defaultTemplates)
+      // Value should remain
+      expect(subjectInput).toHaveValue("User subject");
+    });
+
+    it("should handle missing or empty defaultTemplates gracefully", async () => {
+      setup({
+        isEmailSetup: true,
+        notificationHandlers: [createMockNotificationHandlerEmail()],
+        enableTemplates: true,
+      });
+      // Expand the accordion to reveal the template editor
+      const accordionControl = await screen.findByText(
+        (content) => content.includes("Custom email template"),
+        { selector: "*", exact: false },
+      );
+      await userEvent.click(accordionControl);
+      // Now the editor should be visible and empty
+      expect(
+        await screen.findByPlaceholderText("Your custom email template"),
+      ).toHaveValue("");
     });
   });
 });

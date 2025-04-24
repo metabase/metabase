@@ -391,7 +391,7 @@
         ;; this test only check that channel will send, the content are tested in [[metabase.notification.payload.impl.card-test]]
         (testing "send to all handlers"
           (is (=? {:channel/email [{:message    (mt/malli=? some?)
-                                    :recipients ["crowberto@metabase.com"]}]
+                                    :bcc        ["crowberto@metabase.com"]}]
                    :channel/slack [{:attachments (mt/malli=? some?)
                                     :channel-id  "#general"}]
                    :channel/http [{:body (mt/malli=? some?)}]}
@@ -415,8 +415,8 @@
                                                                                                :breakout    [$category]})}]
     (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
       (testing "send to all handlers"
-        (is (=? {:channel/email [{:message    (mt/malli=? some?)
-                                  :recipients ["crowberto@metabase.com"]}]
+        (is (=? {:channel/email [{:message (mt/malli=? some?)
+                                  :bcc     ["crowberto@metabase.com"]}]
                  :channel/slack [{:attachments (mt/malli=? some?)
                                   :channel-id  "#general"}]
                  :channel/http  [{:body (mt/malli=? some?)}]}

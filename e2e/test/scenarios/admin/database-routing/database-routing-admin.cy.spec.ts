@@ -286,35 +286,35 @@ describe("admin > database > database routing", () => {
       cy.visit("/admin/databases/2");
 
       cy.log("should be disabled if model actions is enabled");
-      cy.findAllByTestId("database-model-features-section")
-        .findByLabelText("Model actions")
-        .should("be.checked");
+      cy.findByLabelText("Model actions").should("be.checked");
       assertDbRoutingDisabled();
-      cy.findAllByTestId("database-model-features-section")
-        .findByLabelText("Model actions")
-        .click({ force: true });
+
+      cy.findByLabelText("Model actions").parent("label").click();
+
       assertDbRoutingNotDisabled();
 
       cy.log("should be disabled if model persistence is enabled");
-      cy.findAllByTestId("database-model-features-section")
-        .findByLabelText("Model persistence")
+      cy.findByLabelText("Model persistence")
         .should("not.be.checked")
-        .click({ force: true });
+        .parent("label")
+        .click();
+
       assertDbRoutingDisabled();
       cy.findAllByTestId("database-model-features-section")
         .findByLabelText("Model persistence")
         .should("be.checked")
-        .click({ force: true });
+        .parent("label")
+        .click();
       assertDbRoutingNotDisabled();
 
       cy.log("should be disabled if uploads are enabled for the database");
       cy.visit("/admin/settings/uploads");
       cy.findByLabelText("Upload Settings Form")
-        .findByText("Select a database")
+        .findByPlaceholderText("Select a database")
         .click();
       H.popover().findByText("Writable Postgres12").click();
       cy.findByLabelText("Upload Settings Form")
-        .findByText("Select a schema")
+        .findByPlaceholderText("Select a schema")
         .click();
 
       H.popover().findByText("public").click();
@@ -364,12 +364,12 @@ describe("admin > database > database routing", () => {
       cy.log("should not allow enabling database for uploads");
       cy.visit("/admin/settings/uploads");
       cy.findByLabelText("Upload Settings Form")
-        .findByText("Select a database")
+        .findByPlaceholderText("Select a database")
         .click();
       H.popover()
         .findByText("Writable Postgres12 (DB Routing Enabled)")
-        .closest('[data-element-id="list-item"]')
-        .should("have.attr", "aria-disabled", "true");
+        .closest('[data-combobox-option="true"]')
+        .should("have.attr", "data-combobox-disabled", "true");
     });
 
     describe("feature visibility", () => {
@@ -495,9 +495,7 @@ function assertDbRoutingNotDisabled() {
       .should("not.be.disabled")
       .realHover();
   });
-  H.tooltip()
-    .findByText(/Database routing can't be enabled if/)
-    .should("not.exist");
+  H.tooltip().should("not.contain", /Database routing can't be enabled if/);
 }
 
 function assertDbRoutingDisabled() {
