@@ -369,7 +369,7 @@
 
 (defonce ^{:private true
            :doc "Do not use this queue directly, use the dispatcher instead."}
- notification-queue (delay (create-notification-queue)))
+  notification-queue (delay (create-notification-queue)))
 
 (defonce ^:private dispatcher
   (delay (create-notification-dispatcher (notification-thread-pool-size) @notification-queue)))
