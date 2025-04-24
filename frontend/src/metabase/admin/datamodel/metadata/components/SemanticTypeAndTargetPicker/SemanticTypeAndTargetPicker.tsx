@@ -18,7 +18,9 @@ const TYPE_OPTIONS = [
   ...MetabaseCore.field_semantic_types,
   {
     id: null,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`No semantic type`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     section: t`Other`,
   },
 ];

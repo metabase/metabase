@@ -641,7 +641,9 @@ export const AGGREGATION_OPERATORS = [
   {
     // DEPRECATED: "rows" is equivalent to no aggregations
     short: "rows",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Raw data`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Just a table with the rows in the answer, no additional operations.`,
     validFieldsFilters: [],
     requiresField: false,
@@ -649,8 +651,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "count",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Count of rows`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Count`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Total number of rows in the answer.`,
     validFieldsFilters: [],
     requiresField: false,
@@ -658,8 +663,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "sum",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Sum of ...`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Sum`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Sum of all the values of a column.`,
     validFieldsFilters: [summableFields],
     requiresField: true,
@@ -667,8 +675,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "avg",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Average of ...`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Average`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Average of all the values of a column`,
     validFieldsFilters: [summableFields],
     requiresField: true,
@@ -676,8 +687,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "median",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Median of ...`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Median`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Median of all the values of a column`,
     validFieldsFilters: [summableFields],
     requiresField: true,
@@ -685,8 +699,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "distinct",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Number of distinct values of ...`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Distinct values`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Number of unique values of a column among all the rows in the answer.`,
     validFieldsFilters: [allFields],
     requiresField: true,
@@ -694,8 +711,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "cum-sum",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Cumulative sum of ...`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Cumulative sum`, // NOTE: actually "Sum" as of 2019-10-01
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Additive sum of all the values of a column.\ne.x. total revenue over time.`,
     validFieldsFilters: [summableFields],
     requiresField: true,
@@ -703,8 +723,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "cum-count",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Cumulative count of rows`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Cumulative count`, // NOTE: actually "Count" as of 2019-10-01
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Additive count of the number of rows.\ne.x. total number of sales over time.`,
     validFieldsFilters: [],
     requiresField: false,
@@ -712,8 +735,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "stddev",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Standard deviation of ...`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Standard deviation`, // NOTE: actually "SD" as of 2019-10-01
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Number which expresses how much the values of a column vary among all rows in the answer.`,
     validFieldsFilters: [summableFields],
     requiresField: true,
@@ -721,8 +747,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "min",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Minimum of ...`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Min`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Minimum value of a column`,
     validFieldsFilters: [scopeFields],
     requiresField: true,
@@ -730,8 +759,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "max",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Maximum of ...`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Max`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Maximum value of a column`,
     validFieldsFilters: [scopeFields],
     requiresField: true,
