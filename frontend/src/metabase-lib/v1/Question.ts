@@ -268,16 +268,16 @@ class Question {
       previousSensibleDisplays.includes(this.display());
     const isSensible = sensibleDisplays.includes(this.display());
     const shouldUnlock = wasSensible && !isSensible;
-    const defaultDisplay = this.setDefaultDisplay().display();
+    const defaultDisplay = this.setDefaultDisplay(data).display();
 
     let question;
     if (isSensible && defaultDisplay === "table") {
       // any sensible display is better than the default table display
       question = this;
     } else if (shouldUnlock && this.displayIsLocked()) {
-      question = this.setDisplayIsLocked(false).setDefaultDisplay();
+      question = this.setDisplayIsLocked(false).setDefaultDisplay(data);
     } else {
-      question = this.setDefaultDisplay();
+      question = this.setDefaultDisplay(data);
     }
 
     return question._maybeSwitchToScalar(data);
@@ -293,13 +293,13 @@ class Question {
     return this;
   }
 
-  setDefaultDisplay(): Question {
+  setDefaultDisplay(data?: DatasetData): Question {
     if (this.displayIsLocked()) {
       return this;
     }
 
     const query = this.query();
-    const { display, settings = {} } = Lib.defaultDisplay(query);
+    const { display, settings = {} } = Lib.defaultDisplay(query, data);
 
     return this.setDisplay(display).updateSettings(settings);
   }

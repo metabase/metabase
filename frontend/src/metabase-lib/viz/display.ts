@@ -1,15 +1,21 @@
 import * as Lib from "metabase-lib";
 import type {
   CardDisplayType,
+  DatasetData,
   VisualizationSettings,
 } from "metabase-types/api";
+
+const CATEGORY_CARDINALITY_THRESHOLD = 30;
 
 type DefaultDisplay = {
   display: CardDisplayType;
   settings?: Partial<VisualizationSettings>;
 };
 
-export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
+export const defaultDisplay = (
+  query: Lib.Query,
+  data?: DatasetData,
+): DefaultDisplay => {
   const { isNative } = Lib.queryDisplayInfo(query);
 
   if (isNative) {
@@ -74,7 +80,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       return { display: "bar" };
     }
 
-    if (Lib.isBoolean(column) || Lib.isCategory(column)) {
+    if (data != null && data.rows.length <= CATEGORY_CARDINALITY_THRESHOLD) {
       return { display: "bar" };
     }
   }
@@ -118,10 +124,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       };
     }
 
-    const areBreakoutsCategories = breakoutsWithColumns.every(({ column }) => {
-      return Lib.isBoolean(column) || Lib.isCategory(column);
-    });
-    if (areBreakoutsCategories) {
+    if (data != null && data.rows.length <= CATEGORY_CARDINALITY_THRESHOLD) {
       return { display: "bar" };
     }
   }
