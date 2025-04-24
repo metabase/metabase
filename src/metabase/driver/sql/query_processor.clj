@@ -1053,33 +1053,30 @@
 ;; we don't get divide by zero errors. SQL DBs always return NULL when dividing by NULL (AFAIK)
 
 (defn- safe-denominator
-  "Make sure we're not trying to divide by zero."
+  "Convert zeros to null to avoid dividing by zero."
   [denominator]
-  (cond
-    ;; try not to generate hairy nonsense like `CASE WHERE 7.0 = 0 THEN NULL ELSE 7.0` if we're dealing with number
-    ;; literals and can determine this stuff ahead of time.
-    (and (number? denominator)
-         (zero? denominator))
-    nil
+  (let [inline (untyped-inline-value denominator)]
+   (cond
+     (nil? denominator)
+     nil
 
-    (number? denominator)
-    (inline-num denominator)
+     (nil? inline)
+     [:nullif denominator [:inline 0.0]]
 
-    (inline? denominator)
-    (recur (second denominator))
+     (and (number? inline)
+          (zero? inline))
+     nil
 
-    :else
-    [:nullif denominator [:inline 0]]))
+     :else ;; inline value
+     denominator)))
 
 (defmethod ->honeysql [:sql :/]
   [driver [_ & mbql-exprs]]
   (let [[numerator & denominators] (for [mbql-expr mbql-exprs]
-                                     (->honeysql driver (if (integer? mbql-expr)
-                                                          (double mbql-expr)
-                                                          mbql-expr)))]
-    (into [:/ (coerce-float driver numerator)]
-          (map safe-denominator)
-          denominators)))
+                                     (coerce-float driver (->honeysql driver mbql-expr)))]
+    (into [:/ numerator]
+      (map safe-denominator)
+      denominators)))
 
 (defmethod ->honeysql [:sql :float]
   [driver [_ value]]
