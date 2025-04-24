@@ -5,6 +5,7 @@
 
   class MetabaseEmbed {
     static VERSION = "0.0.1";
+    static EMBEDDING_ROUTE = "embed/v2/interactive";
 
     /**
      * @param {object} options
@@ -63,7 +64,7 @@
 
     setup() {
       this.iframe = document.createElement("iframe");
-      this.iframe.src = `${this.url}`;
+      this.iframe.src = `${this.url}/${MetabaseEmbed.EMBEDDING_ROUTE}`;
       this.iframe.style.width = "100%";
       this.iframe.style.height = "100%";
       this.iframe.style.border = "none";
