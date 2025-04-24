@@ -234,18 +234,3 @@ ROOT.checkChildConstraints = anyChildConstraint(
 for (const [key, value] of Object.entries(NODE_TYPE)) {
   value.name = key;
 }
-
-export const OPERATORS = new Set([
-  COMMA,
-  GROUP,
-  GROUP_CLOSE,
-  ADD,
-  SUB,
-  MULDIV_OP,
-  EQUALITY,
-  COMPARISON,
-  LOGICAL_AND,
-  LOGICAL_OR,
-  LOGICAL_NOT,
-  NEGATIVE,
-]);
