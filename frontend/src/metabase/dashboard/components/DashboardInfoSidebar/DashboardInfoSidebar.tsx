@@ -1,6 +1,6 @@
 import type { FocusEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
-import { useMount } from "react-use";
+import { useKey, useMount } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -54,6 +54,7 @@ export function DashboardInfoSidebar({
   onClose,
 }: DashboardInfoSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
+  useKey("]", onClose);
 
   useMount(() => {
     // this component is not rendered until it is "open"

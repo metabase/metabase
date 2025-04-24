@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useKey } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -32,6 +33,8 @@ export const PaletteShortcutsModal = ({
   onClose: ModalProps["onClose"];
   open: boolean;
 }) => {
+  useKey("?", () => onClose());
+
   return (
     <Modal
       opened={open}

@@ -55,14 +55,14 @@ export const questionShortcuts = {
       return t`Toggle viz settings`;
     },
     shortcutGroup: "question",
-    shortcut: ["z s"],
+    shortcut: ["s"],
   },
   "query-builder-toggle-viz-types": {
     get name() {
       return t`Toggle viz types`;
     },
     shortcutGroup: "question",
-    shortcut: ["z t"],
+    shortcut: ["t"],
   },
   "query-builder-send-to-trash": {
     get name() {
