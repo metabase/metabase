@@ -48,6 +48,7 @@ export const NameDescriptionInput = ({
           // prevent empty names
           if (!newValue.trim()) {
             setNameState(name);
+            return;
           }
 
           if (name !== newValue) {
