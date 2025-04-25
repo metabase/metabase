@@ -1,7 +1,7 @@
 (ns mage.be-dev
   (:require
    [bencode.core :as bencode]
-   #_:clj-kondo/ignore
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.pprint :as pp]
    [clojure.string :as str]
    [mage.color :as c]
