@@ -21,7 +21,8 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
 
       frame.within(() => {
         cy.findByText("Orders in a dashboard").should("be.visible");
-        cy.findByText("2000 rows").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+        H.assertTableRowsCount(2000);
       });
     });
   });
@@ -33,7 +34,11 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
         questionId: ORDERS_QUESTION_ID,
       });
 
-      frame.contains("Orders").should("be.visible");
+      cy.wait("@getCardQuery");
+
+      frame.within(() => {
+        cy.findByText("Orders").should("be.visible");
+      });
     });
   });
 });
