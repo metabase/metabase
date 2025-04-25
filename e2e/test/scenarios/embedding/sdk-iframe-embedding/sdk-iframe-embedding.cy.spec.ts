@@ -40,16 +40,29 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.log("Creating API key for testing");
+    // Enable all enterprise features including embedding_iframe_sdk
+    H.setTokenFeatures("all");
+
     H.createApiKey("Test SDK Embedding Key", ALL_USERS_GROUP_ID).then(
       ({ body }) => {
         cy.wrap(body.unmasked_key).as("apiKey");
+        cy.log(`created test api key "${body.unmasked_key}"`);
       },
     );
 
     cy.log("Enabling embedding globally");
     cy.request("PUT", "/api/setting/enable-embedding-static", {
       value: true,
+    });
+
+    cy.log("Enabling interactive embedding");
+    cy.request("PUT", "/api/setting/enable-embedding-interactive", {
+      value: true,
+    });
+
+    cy.log("Setting interactive embedding origins");
+    cy.request("PUT", "/api/setting/embedding-app-origins-interactive", {
+      value: "http://localhost:3000",
     });
   });
 

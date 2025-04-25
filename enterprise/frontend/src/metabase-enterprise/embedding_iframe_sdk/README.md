@@ -11,6 +11,32 @@ This enterprise plugin exposes React SDK components as a route that will be used
 - Located in `e2e/test/scenarios/embedding/sdk-iframe-embedding/`
 - Uses test helpers in "H." format
 
+### Key Testing Patterns
+
+#### Dynamic Test Pages with cy.intercept
+
+Instead of creating temporary files for iframe testing, we use `cy.intercept()` to dynamically serve test pages. This approach offers several benefits:
+
+- No file system operations needed during tests
+- Clean test environment without temporary files
+- Consistent behavior across different test environments
+- Easy to parameterize test HTML content
+
+Example:
+
+```typescript
+function loadSdkEmbedIframeTestPage(options) {
+  const testPage = getIframeTestPageHtml(options);
+
+  cy.intercept("GET", "/sdk-iframe-test-page", {
+    body: testPage,
+    headers: { "content-type": "text/html" },
+  }).as("dynamicPage");
+
+  cy.visit("/sdk-iframe-test-page");
+}
+```
+
 ### Test Cases
 
 1. **iframe Creation and Authentication**
@@ -63,6 +89,8 @@ function switchTheme() {
 - Uses actual `embed.js` script instead of mocking postMessage communication
 - Relies on test API key for authentication
 - Tests run in Cypress for end-to-end verification
+- Uses `cy.intercept` for dynamic test page creation instead of temp files
+- Mocks enterprise features using premium features endpoint for testing
 
 ### TODO - Test Cases
 
