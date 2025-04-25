@@ -15,7 +15,9 @@
    [metabase.test.data.dataset-definition-test :as dataset-definition-test]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql SQLTimeoutException)))
 
 (set! *warn-on-reflection* true)
 
@@ -275,3 +277,9 @@
                     (sql.qp/->honeysql
                      driver/*driver*
                      [:= (:field_ref col-metadata) uuid])))))))))
+
+(deftest query-canceled-test?
+  (testing "walks a chain of exceptions"
+    (let [e (Exception. (Exception. (Exception. (SQLTimeoutException.))))]
+      (testing "checks for SQLTimeoutException as the default case"
+        (is (true? (driver/query-canceled? :sql-jdbc e)))))))
