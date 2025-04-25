@@ -193,8 +193,6 @@
                             (update-keys (last args) #(str (symbol %))))
         ctx-map           (ThreadContext/getImmutableContext)
         has-with-context? (not-empty ctx-map)]
-    (prn ["has-inline-ctx?" has-inline-ctx?])
-    (prn ["ctx-map" ctx-map])
     (f e (str/join \space (map print-str msgs))
        (when (or has-inline-ctx? has-with-context?)
          (merge (into {} ctx-map) inline-ctx)))))
