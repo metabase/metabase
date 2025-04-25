@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
 import { goBack } from "react-router-redux";
@@ -12,13 +11,30 @@ import CS from "metabase/css/core/index.css";
 import Users from "metabase/entities/users";
 import { connect } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
+import type { User } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import { clearTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";
 
 import { ButtonContainer } from "./UserPasswordResetModal.styled";
 
-class UserPasswordResetModal extends Component {
+interface UserPasswordResetModalParams {
+  params: { userId: string };
+}
+
+interface UserPasswordResetModalProps extends UserPasswordResetModalParams {
+  clearTemporaryPassword: (userId: string) => void;
+  onClose: () => void;
+  user: User & {
+    resetPasswordEmail: () => Promise<void>;
+    resetPasswordManual: () => Promise<void>;
+  };
+  emailConfigured: boolean;
+  temporaryPassword: string;
+}
+
+class UserPasswordResetModalInner extends Component<UserPasswordResetModalProps> {
   state = {
     resetButtonDisabled: false,
   };
@@ -34,6 +50,7 @@ class UserPasswordResetModal extends Component {
 
   render() {
     const { user, emailConfigured, temporaryPassword } = this.props;
+
     return temporaryPassword ? (
       <ModalContent
         title={t`${user.common_name}'s password has been reset`}
@@ -76,13 +93,14 @@ class UserPasswordResetModal extends Component {
   }
 }
 
-export default _.compose(
+export const UserPasswordResetModal = _.compose(
   Users.load({
-    id: (state, props) => props.params.userId,
+    id: (_state: State, props: UserPasswordResetModalParams) =>
+      props.params.userId,
     wrapped: true,
   }),
   connect(
-    (state, props) => ({
+    (state, props: UserPasswordResetModalParams) => ({
       emailConfigured: MetabaseSettings.isEmailConfigured(),
       temporaryPassword: getUserTemporaryPassword(state, {
         userId: props.params.userId,
@@ -93,4 +111,4 @@ export default _.compose(
       clearTemporaryPassword,
     },
   ),
-)(UserPasswordResetModal);
+)(UserPasswordResetModalInner);

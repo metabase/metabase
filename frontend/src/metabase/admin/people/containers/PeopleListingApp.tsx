@@ -1,22 +1,23 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Group, Radio } from "metabase/ui";
 
-import PeopleList from "../components/PeopleList";
+import { PeopleList } from "../components/PeopleList";
 import SearchInput from "../components/SearchInput";
 import { USER_STATUS } from "../constants";
 import { usePeopleQuery } from "../hooks/use-people-query";
 
 const PAGE_SIZE = 25;
 
-function PeopleListingApp({ children, isAdmin }) {
+export function PeopleListingApp({ children }: { children: React.ReactNode }) {
+  const isAdmin = useSelector(getUserIsAdmin);
+
   const {
     query,
     status,
@@ -27,7 +28,7 @@ function PeopleListingApp({ children, isAdmin }) {
     handlePreviousPage,
   } = usePeopleQuery(PAGE_SIZE);
 
-  const handleSearchChange = (e) => {
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     updateSearchInputValue(e.target.value);
   };
 
@@ -53,7 +54,7 @@ function PeopleListingApp({ children, isAdmin }) {
   );
 
   const buttonText =
-    isAdmin && status === USER_STATUS.active ? t`Invite someone` : null;
+    isAdmin && status === USER_STATUS.active ? t`Invite someone` : "";
 
   return (
     <AdminPaneLayout
@@ -70,12 +71,3 @@ function PeopleListingApp({ children, isAdmin }) {
     </AdminPaneLayout>
   );
 }
-
-PeopleListingApp.propTypes = {
-  children: PropTypes.node,
-  isAdmin: PropTypes.bool,
-};
-
-export default connect((state) => ({
-  isAdmin: getUserIsAdmin(state),
-}))(PeopleListingApp);

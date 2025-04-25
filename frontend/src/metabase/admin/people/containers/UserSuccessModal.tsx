@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { useEffect } from "react";
 import { push } from "react-router-redux";
@@ -13,13 +12,18 @@ import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
+import type { User } from "metabase-types/api";
 
 import { clearTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";
 
 import { PasswordSuccessMessage } from "./UserSuccessModal.styled";
 
-export function UserSuccessModal({ params }) {
+interface UserSuccessModalProps {
+  params: { userId: string };
+}
+
+export function UserSuccessModal({ params }: UserSuccessModalProps) {
   const userId = parseInt(params.userId);
   const { data: user, isLoading, error } = useGetUserQuery(userId);
 
@@ -37,7 +41,9 @@ export function UserSuccessModal({ params }) {
   };
 
   useEffect(() => {
-    return () => dispatch(clearTemporaryPassword(userId));
+    return () => {
+      dispatch(clearTemporaryPassword(userId));
+    };
   }, [userId, dispatch]);
 
   if (!user || isLoading || error != null) {
@@ -62,7 +68,13 @@ export function UserSuccessModal({ params }) {
   );
 }
 
-const EmailSuccess = ({ user, isSsoEnabled }) => {
+const EmailSuccess = ({
+  user,
+  isSsoEnabled,
+}: {
+  user: User;
+  isSsoEnabled: boolean;
+}) => {
   if (isSsoEnabled) {
     return (
       <div>{jt`We’ve sent an invite to ${(
@@ -83,7 +95,13 @@ const EmailSuccess = ({ user, isSsoEnabled }) => {
   );
 };
 
-const PasswordSuccess = ({ user, temporaryPassword }) => (
+const PasswordSuccess = ({
+  user,
+  temporaryPassword,
+}: {
+  user: User;
+  temporaryPassword: string;
+}) => (
   <div>
     <PasswordSuccessMessage>
       {jt`We couldn’t send them an email invitation, so make sure to tell them to log in using ${(
