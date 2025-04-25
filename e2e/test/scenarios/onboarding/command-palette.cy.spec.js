@@ -395,6 +395,15 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     });
     cy.realPress("Escape");
     H.shortcutModal().should("not.exist");
+    H.openShortcutModal();
+    cy.realPress("?");
+    H.shortcutModal().should("not.exist");
+
+    H.appBar().findByRole("img", { name: /gear/ }).click();
+    H.popover().findByText("Keyboard Shortcuts").click();
+    H.shortcutModal().should("exist");
+    cy.realPress("Escape");
+    H.shortcutModal().should("not.exist");
 
     // Test a few global shortcuts
     cy.realPress("c").realPress("f");
@@ -506,6 +515,11 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("Escape");
     cy.realPress("e");
     cy.findByTestId("edit-bar").should("not.exist");
+
+    cy.realPress("]");
+    cy.findByRole("dialog", { name: "Info" }).should("exist");
+    cy.realPress("]");
+    cy.findByRole("dialog", { name: "Info" }).should("not.exist");
   });
 
   it("should support query builder shortcuts", () => {
@@ -529,14 +543,13 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     // Sidesheet
     cy.realPress("]");
     cy.findByRole("dialog", { name: "Info" }).should("exist");
-    // Should be able to toggle again in ], but modals disable shortcuts
-    cy.realPress("Escape");
+    cy.realPress("]");
     cy.findByRole("dialog", { name: "Info" }).should("not.exist");
 
     // Viz Settings
-    cy.realPress("z").realPress("s");
+    cy.realPress("y");
     cy.findByTestId("chartsettings-sidebar").should("exist");
-    cy.realPress("z").realPress("s");
+    cy.realPress("y");
     cy.findByTestId("chartsettings-sidebar").should("not.exist");
 
     // Viz toggle
