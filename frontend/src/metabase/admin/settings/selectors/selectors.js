@@ -1,3 +1,4 @@
+/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
@@ -25,8 +26,8 @@ import {
 } from "../components/EmbeddingSettings";
 import SettingsLicense from "../components/SettingsLicense";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
-import { SettingsUpdatesForm } from "../components/SettingsUpdatesForm/SettingsUpdatesForm";
-import { UploadSettings } from "../components/UploadSettings";
+import { UpdatesSettingsPage } from "../components/SettingsPages/UpdatesSettingsPage";
+import { UploadSettingsPage } from "../components/SettingsPages/UploadSettingsPage";
 import CustomGeoJSONWidget from "../components/widgets/CustomGeoJSONWidget";
 import FormattingWidget from "../components/widgets/FormattingWidget";
 import {
@@ -75,14 +76,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
   updates: {
     name: t`Updates`,
     order: 30,
-    component: SettingsUpdatesForm,
-    settings: [
-      {
-        key: "check-for-updates",
-        display_name: t`Check for updates`,
-        type: "boolean",
-      },
-    ],
+    component: UpdatesSettingsPage,
+    settings: [],
     adminOnly: true,
   },
   email: {
@@ -295,12 +290,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
     name: t`Uploads`,
     order: 85,
     adminOnly: false,
-    component: UploadSettings,
-    settings: [
-      {
-        key: "uploads-settings",
-      },
-    ],
+    component: UploadSettingsPage,
+    settings: [],
   },
 
   "public-sharing": {

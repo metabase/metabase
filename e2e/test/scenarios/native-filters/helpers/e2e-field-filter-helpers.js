@@ -28,15 +28,16 @@ export function addWidgetStringFilter(
   { buttonLabel = "Add filter" } = {},
 ) {
   setWidgetStringFilter(value);
-  cy.button(buttonLabel).click();
-}
-
-export function clearWidgetValue() {
-  filterWidget().icon("close").click();
+  cy.button(buttonLabel).click({ force: true });
 }
 
 export function setWidgetStringFilter(value) {
-  popover().find("input").not("[type=hidden]").first().type(`${value}{enter}`);
+  popover()
+    .first()
+    .find("input")
+    .not("[type=hidden]")
+    .first()
+    .type(`${value}{enter}`);
 }
 
 /**
@@ -49,16 +50,18 @@ export function selectFilterValueFromList(
   value,
   { addFilter = true, buttonLabel = "Add filter", search = false } = {},
 ) {
-  popover().within(() => {
-    if (search) {
-      cy.findByPlaceholderText("Search the list").type(`${value}{enter}`);
-    }
-    cy.findByText(value).click();
+  popover()
+    .first()
+    .within(() => {
+      if (search) {
+        cy.findByPlaceholderText("Search the list").type(`${value}{enter}`);
+      }
+      cy.findByText(value).click();
 
-    if (addFilter) {
-      cy.button(buttonLabel).click();
-    }
-  });
+      if (addFilter) {
+        cy.button(buttonLabel).click();
+      }
+    });
 }
 
 /**

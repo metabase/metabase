@@ -738,6 +738,9 @@
     ;; Does this driver support casting text to dates? (`date()` custom expression function)
     :expressions/date
 
+    ;; Does this driver support casting text to floats? (`float()` custom expression function)
+    :expressions/float
+
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
     ;; against except for Athena and Databricks which currently require test data to be loaded separately.
@@ -1348,3 +1351,12 @@
 (defmethod dynamic-database-types-lookup ::driver
   [_driver _database _database-types]
   nil)
+
+(defmulti query-canceled?
+  "Test if an exception is due to a query being canceled due to user action. For JDBC drivers this can
+  happen when setting `.setQueryTimeout`."
+  {:added "0.53.12" :arglists '([driver ^Throwable e])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod query-canceled? ::driver [_ _] false)

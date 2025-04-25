@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { isNotFalsy } from "metabase/lib/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Schema from "metabase-lib/v1/metadata/Schema";
@@ -47,6 +49,9 @@ export const getDatabasesEditorBreadcrumbs = (
   const databaseItem = {
     id: database.id,
     text: database.name,
+    subtext: database.hasDatabaseRoutingEnabled()
+      ? t`(Database routing enabled)`
+      : undefined,
     url: getGroupFocusPermissionsUrl(group.id, getDatabaseEntityId(database)),
   };
 
@@ -76,6 +81,9 @@ export const getGroupsDataEditorBreadcrumbs = (
 
   const databaseItem = {
     text: database.name,
+    subtext: database.hasDatabaseRoutingEnabled()
+      ? t`(Database routing enabled)`
+      : undefined,
     id: databaseId,
     url: getDatabaseFocusPermissionsUrl(getDatabaseEntityId(database)),
   };

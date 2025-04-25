@@ -18,7 +18,6 @@ import {
 } from "embedding-sdk/store";
 import { refreshTokenAsync } from "embedding-sdk/store/auth";
 import { getIsLoggedIn, getLoginStatus } from "embedding-sdk/store/selectors";
-import type { LoginStatusError } from "embedding-sdk/store/types";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import {
   createMockLoginStatusState,
@@ -28,6 +27,7 @@ import type {
   MetabaseAuthConfig,
   MetabaseAuthConfigWithProvider,
 } from "embedding-sdk/types";
+import type { LoginStatusError } from "embedding-sdk/types/user";
 import { GET } from "metabase/lib/api";
 import {
   createMockSettings,

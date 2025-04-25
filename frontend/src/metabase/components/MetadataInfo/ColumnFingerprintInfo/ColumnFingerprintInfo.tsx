@@ -1,15 +1,10 @@
 import * as Lib from "metabase-lib";
 import type Field from "metabase-lib/v1/metadata/Field";
-import {
-  isCategory,
-  isDate,
-  isID,
-  isNumber,
-} from "metabase-lib/v1/types/utils/isa";
+import { isDate, isID, isNumber } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
-import CategoryFingerprint from "./CategoryFingerprint";
 import { DateTimeFingerprint } from "./DateTimeFingerprint";
+import { GlobalFingerprint } from "./GlobalFingerprint";
 import { NumberFingerprint } from "./NumberFingerprint";
 
 type BaseProps = {
@@ -46,9 +41,9 @@ export function TableColumnFingerprintInfo({
         fingerprintTypeInfo={field.fingerprint?.type?.["type/Number"]}
       />
     );
-  } else if (isCategory(field)) {
+  } else if (typeof field.id === "number") {
     return (
-      <CategoryFingerprint
+      <GlobalFingerprint
         className={className}
         fieldId={field.id}
         showAllFieldValues={showAllFieldValues}
@@ -74,6 +69,7 @@ export function QueryColumnFingerprintInfo({
   showAllFieldValues,
 }: QueryColumnFingerprintInfoProps) {
   const { fingerprint } = Lib.displayInfo(query, stageIndex, column);
+  const fieldInfo = Lib.fieldValuesSearchInfo(query, column);
 
   if (Lib.isTemporal(column)) {
     return (
@@ -90,13 +86,11 @@ export function QueryColumnFingerprintInfo({
         fingerprintTypeInfo={fingerprint?.type?.["type/Number"]}
       />
     );
-  } else if (Lib.isBoolean(column) || Lib.isCategory(column)) {
-    const info = Lib.fieldValuesSearchInfo(query, column);
-
+  } else if (fieldInfo.fieldId != null) {
     return (
-      <CategoryFingerprint
+      <GlobalFingerprint
         className={className}
-        fieldId={info.fieldId}
+        fieldId={fieldInfo.fieldId}
         showAllFieldValues={showAllFieldValues}
       />
     );

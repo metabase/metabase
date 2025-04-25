@@ -20,7 +20,7 @@ const QuestionDisplayToggle = ({
   useRegisterShortcut(
     [
       {
-        id: "toggle-visualization",
+        id: "query-builder-toggle-visualization",
         perform: () => onToggleRawTable(!isShowingRawTable),
       },
     ],

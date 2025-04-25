@@ -75,6 +75,14 @@ async function link_issues(github) {
 
     console.log('PR Info:\n' + JSON.stringify(prInfo, null, 2) + "\n");
 
+    if (prInfo &&
+        prInfo.data &&
+        prInfo.data.labels &&
+        prInfo.data.labels.some(label => label.name === "no-auto-issue-links")) {
+      console.log('PR has "no-auto-issue-links" label, skipping...');
+      return;
+    }
+
     const prUrl = prInfo.data.html_url;
     console.log(`Processing PR: ${prUrl}`);
 
@@ -153,7 +161,9 @@ async function link_issues(github) {
       // Generate closing references
       const closingRefs = issueNumbersToAdd.map(num => `closes #${num}`).join(' ');
 
-      newBody = `<!-- Added by 'Add Issue References to PR' GitHub Action -->${closingRefs}\n` + newBody;
+      const messagePreamble = "<!-- Added by 'Add Issue References to PR' GitHub Action. To disable linking, add 'no-auto-issue-links' label to your PR. -->"
+
+      newBody = `${messagePreamble} ${closingRefs}\n` + newBody;
 
       // Update PR body with new closing references
       await github.rest.issues.update({
