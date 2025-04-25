@@ -56,8 +56,10 @@ export const field = new ExternalTokenizer((input) => {
   // We keep track of whether the token we are looking at was opened by a bracket.
   const wasOpenedByBracket = current === OPEN_BRACKET;
 
-  // The first operator we encountered after `[`
-  let firstOperator = -1;
+  // The first punctuator we encountered after the opening bracket.
+  // If we don't encounter a closing bracket before hitting a new line or EOF,
+  // this will delimit the field token.
+  let firstPunctuator = -1;
 
   for (let idx = 0; ; idx++) {
     const prev = input.next;
@@ -78,7 +80,7 @@ export const field = new ExternalTokenizer((input) => {
 
     if (current === CLOSE_BRACKET) {
       if (prev === BACKSLASH) {
-        // an escaped bracket (`\]`), do nothing
+        // an escaped bracket (ie `\]`), do nothing
         continue;
       }
 
@@ -99,17 +101,17 @@ export const field = new ExternalTokenizer((input) => {
       // find the first operator that was encountered and end the
       // token there.
 
-      if (firstOperator === -1) {
+      if (firstPunctuator === -1) {
         // No operators were encountered, so return all the text we've
         // seen as the token.
         input.acceptToken(Field);
         return;
       }
-      input.acceptToken(Field, firstOperator - idx);
+      input.acceptToken(Field, firstPunctuator - idx);
       return;
     }
 
-    if (FIELD_PUNCTUATORS.has(current) && firstOperator === -1) {
+    if (FIELD_PUNCTUATORS.has(current) && firstPunctuator === -1) {
       if (!wasOpenedByBracket) {
         // The token we are looking at was not opened by a bracket
         // and we did not encounter a closing bracket before hitting a punctuator.
@@ -117,7 +119,9 @@ export const field = new ExternalTokenizer((input) => {
         return;
       }
 
-      firstOperator = idx;
+      // We encountered a punctuator after an opening bracket store it's location and
+      // keep looking for the closing bracket.
+      firstPunctuator = idx;
     }
   }
 });
