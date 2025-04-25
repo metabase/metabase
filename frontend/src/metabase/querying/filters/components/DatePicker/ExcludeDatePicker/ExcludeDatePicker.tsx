@@ -38,7 +38,7 @@ export interface ExcludeDatePickerProps {
   availableOperators: DatePickerOperator[];
   availableUnits: DatePickerUnit[];
   renderSubmitButton: (props: DatePickerSubmitButtonProps) => ReactNode;
-  onChange: (value: ExcludeDatePickerValue) => void;
+  onSubmit: (value: ExcludeDatePickerValue) => void;
   onBack: () => void;
 }
 
@@ -47,7 +47,7 @@ export function ExcludeDatePicker({
   availableOperators,
   availableUnits,
   renderSubmitButton,
-  onChange,
+  onSubmit,
   onBack,
 }: ExcludeDatePickerProps) {
   const [unit, setUnit] = useState(value?.unit);
@@ -67,7 +67,7 @@ export function ExcludeDatePicker({
       unit={unit}
       initialValues={values}
       renderSubmitButton={renderSubmitButton}
-      onChange={onChange}
+      onSubmit={onSubmit}
       onBack={handleBack}
     />
   ) : (
@@ -75,7 +75,7 @@ export function ExcludeDatePicker({
       value={value}
       availableOperators={availableOperators}
       availableUnits={availableUnits}
-      onChange={onChange}
+      onSubmit={onSubmit}
       onSelectUnit={handleSelectUnit}
       onBack={onBack}
     />
@@ -86,7 +86,7 @@ interface ExcludeOptionPickerProps {
   value: ExcludeDatePickerValue | undefined;
   availableOperators: DatePickerOperator[];
   availableUnits: DatePickerUnit[];
-  onChange: (value: ExcludeDatePickerValue) => void;
+  onSubmit: (value: ExcludeDatePickerValue) => void;
   onSelectUnit: (unit: DatePickerExtractionUnit) => void;
   onBack: () => void;
 }
@@ -95,7 +95,7 @@ export function ExcludeOptionPicker({
   value,
   availableOperators,
   availableUnits,
-  onChange,
+  onSubmit,
   onSelectUnit,
   onBack,
 }: ExcludeOptionPickerProps) {
@@ -108,7 +108,7 @@ export function ExcludeOptionPicker({
   }, [availableOperators]);
 
   const handleChange = (operator: ExcludeDatePickerOperator) => {
-    onChange(getExcludeOperatorValue(operator));
+    onSubmit(getExcludeOperatorValue(operator));
   };
 
   return (
@@ -154,7 +154,7 @@ interface ExcludeValuePickerProps {
   unit: DatePickerExtractionUnit;
   initialValues: number[];
   renderSubmitButton: (props: DatePickerSubmitButtonProps) => ReactNode;
-  onChange: (value: ExcludeDatePickerValue) => void;
+  onSubmit: (value: ExcludeDatePickerValue) => void;
   onBack: () => void;
 }
 
@@ -162,7 +162,7 @@ function ExcludeValuePicker({
   unit,
   initialValues,
   renderSubmitButton,
-  onChange,
+  onSubmit,
   onBack,
 }: ExcludeValuePickerProps) {
   const [values, setValues] = useState(initialValues);
@@ -194,7 +194,7 @@ function ExcludeValuePicker({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (isValid) {
-      onChange(getExcludeUnitValue(unit, values));
+      onSubmit(getExcludeUnitValue(unit, values));
     }
   };
 

@@ -32,7 +32,7 @@ interface SpecificDatePickerProps {
   availableOperators: DatePickerOperator[];
   availableUnits: DatePickerUnit[];
   renderSubmitButton: (props: DatePickerSubmitButtonProps) => ReactNode;
-  onChange: (value: SpecificDatePickerValue) => void;
+  onSubmit: (value: SpecificDatePickerValue) => void;
   onBack: () => void;
 }
 
@@ -41,7 +41,7 @@ export function SpecificDatePicker({
   availableOperators,
   availableUnits,
   renderSubmitButton,
-  onChange,
+  onSubmit,
   onBack,
 }: SpecificDatePickerProps) {
   const tabs = useMemo(() => getTabs(availableOperators), [availableOperators]);
@@ -67,7 +67,7 @@ export function SpecificDatePicker({
   };
 
   const handleSubmit = () => {
-    onChange(coerceValue(value));
+    onSubmit(coerceValue(value));
   };
 
   return (

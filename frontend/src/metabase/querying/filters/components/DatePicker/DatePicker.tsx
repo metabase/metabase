@@ -27,7 +27,7 @@ type DatePickerProps = {
   availableUnits?: DatePickerUnit[];
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   renderBackButton?: () => ReactNode;
-  onChange: (value: DatePickerValue) => void;
+  onSubmit: (value: DatePickerValue) => void;
 };
 
 export function DatePicker({
@@ -37,7 +37,7 @@ export function DatePicker({
   availableUnits = DATE_PICKER_UNITS,
   renderSubmitButton = defaultRenderSubmitButton,
   renderBackButton,
-  onChange,
+  onSubmit,
 }: DatePickerProps) {
   const [type, setType] = useState(value?.type);
 
@@ -53,7 +53,7 @@ export function DatePicker({
           availableOperators={availableOperators}
           availableUnits={availableUnits}
           renderSubmitButton={renderSubmitButton}
-          onChange={onChange}
+          onSubmit={onSubmit}
           onBack={handleBack}
         />
       );
@@ -63,7 +63,7 @@ export function DatePicker({
           value={value?.type === type ? value : undefined}
           availableUnits={availableUnits}
           renderSubmitButton={renderSubmitButton}
-          onChange={onChange}
+          onSubmit={onSubmit}
           onBack={handleBack}
         />
       );
@@ -74,7 +74,7 @@ export function DatePicker({
           availableOperators={availableOperators}
           availableUnits={availableUnits}
           renderSubmitButton={renderSubmitButton}
-          onChange={onChange}
+          onSubmit={onSubmit}
           onBack={handleBack}
         />
       );
@@ -84,7 +84,7 @@ export function DatePicker({
           availableOperators={availableOperators}
           availableShortcuts={availableShortcuts}
           renderBackButton={renderBackButton}
-          onChange={onChange}
+          onSubmit={onSubmit}
           onSelectType={setType}
         />
       );
