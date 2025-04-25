@@ -184,6 +184,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
   it("should be able to add and remove filters for all query stages", () => {
     H.visitQuestionAdhoc(multiStageQuestionDetails);
+    cy.get("@dataset.all").should("have.length", 1);
 
     cy.log("add filters for all stages in the filter modal");
     cy.log("stage 0");
@@ -191,26 +192,29 @@ describe("scenarios > filters > bulk filtering", () => {
     H.popover().within(() => {
       cy.findByText("Category").click();
       cy.findByText("Gadget").click();
-      cy.button("Add filter").click();
+      cy.button("Add another filter").click();
     });
+    cy.get("@dataset.all").should("have.length", 1);
+
     cy.log("stage 1");
-    H.filter();
     H.popover().within(() => {
       cy.findByText("Summaries").click();
       cy.findByText("Category").click();
       cy.findByText("Widget").click();
-      cy.button("Add filter").click();
+      cy.button("Add another filter").click();
     });
+    cy.get("@dataset.all").should("have.length", 1);
+
     cy.log("stage 2");
-    H.filter();
     H.popover().within(() => {
       cy.findByText("Summaries (2)").click();
       cy.findByText("Category").click();
       cy.findByText("Gizmo").click();
-      cy.button("Add filter").click();
+      cy.button("Add another filter").click();
     });
+    cy.get("@dataset.all").should("have.length", 1);
+
     cy.log("stage 3");
-    H.filter();
     H.popover().within(() => {
       cy.findByText("Summaries (3)").click();
       cy.findByText("Category").click();
@@ -218,6 +222,7 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.button("Apply filter").click();
     });
     cy.wait("@dataset");
+    cy.get("@dataset.all").should("have.length", 2);
 
     cy.log("check filters from all stages to be present in the filter panel");
     H.queryBuilderFiltersPanel().within(() => {
