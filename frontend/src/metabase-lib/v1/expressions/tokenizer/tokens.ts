@@ -59,60 +59,55 @@ export const field = new ExternalTokenizer((input) => {
   let escaping = false;
 
   for (let idx = 0; ; idx++) {
-    const prev = input.next;
     const current = input.advance();
 
     if (current === BACKSLASH && !escaping) {
-      // first backslash, next character will be escaped
+      // and unescaped backslash, next character will be escaped
       escaping = true;
       continue;
     }
 
-    if (current === OPEN_BRACKET) {
-      if (escaping) {
-        // an escaped bracket (`\[`), keep looking for the closing bracket
-        escaping = false;
-        continue;
+    if (current === NEW_LINE || current === EOF) {
+      // We did not encounter a closing bracket before hitting a new line or EOF.
+      if (!wasOpenedByBracket) {
+        // The token we are looking at was not opened by a bracket.
+        // It is not a Field token.
+        return;
       }
+
+      // The token was opened by a bracket, so we find the first punctuator
+      // that might close it (since we didn't find the closing bracket).
+
+      if (firstPunctuator === -1) {
+        // No punctuators were encountered, so return all the text we've
+        // seen as the token.
+        input.acceptToken(Field);
+        return;
+      }
+
+      // Return the token up to the first punctuator.
+      input.acceptToken(Field, firstPunctuator - idx);
+      return;
+    }
+
+    if (escaping) {
+      // any character following a backlash is escaped
+      escaping = false;
+      continue;
+    }
+
+    if (current === OPEN_BRACKET) {
       // this is another opening bracket that will start a new token,
       // return the current one
-      if (prev && wasOpenedByBracket) {
+      if (wasOpenedByBracket) {
         input.acceptToken(Field);
       }
       return;
     }
 
     if (current === CLOSE_BRACKET) {
-      if (escaping) {
-        // an escaped bracket (ie `\]`), keep looking for the closing bracket
-        escaping = false;
-        continue;
-      }
-
       // we found the closing bracket, return the token
       input.acceptToken(Field, 1);
-      return;
-    }
-
-    if (current === NEW_LINE || current === EOF) {
-      if (!wasOpenedByBracket) {
-        // The token we are looking at was not opened by a bracket
-        // and we did not encounter a closing bracket before hitting a new line or EOF.
-        // It is not a Field token.
-        return;
-      }
-
-      // We did not encounter a closing bracket, so
-      // find the first operator that was encountered and end the
-      // token there.
-
-      if (firstPunctuator === -1) {
-        // No operators were encountered, so return all the text we've
-        // seen as the token.
-        input.acceptToken(Field);
-        return;
-      }
-      input.acceptToken(Field, firstPunctuator - idx);
       return;
     }
 
