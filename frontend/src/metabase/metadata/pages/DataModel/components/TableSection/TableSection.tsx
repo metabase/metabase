@@ -1,6 +1,8 @@
+import { t } from "ttag";
+
 import { useGetTableQuery, useUpdateTableMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import { Box } from "metabase/ui";
+import { Box, Switch } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
 import { NameDescriptionInput } from "../NameDescriptionInput";
@@ -27,6 +29,17 @@ export const TableSection = ({ tableId }: Props) => {
         }}
         onNameChange={(name) => {
           updateTable({ id: tableId, display_name: name });
+        }}
+      />
+
+      <Switch
+        checked={table.visibility_type === "hidden"}
+        label={t`Hide this table`}
+        onChange={(event) => {
+          updateTable({
+            id: tableId,
+            visibility_type: event.target.checked ? "hidden" : null,
+          });
         }}
       />
     </Box>
