@@ -1,6 +1,6 @@
 # Embedding iframe SDK
 
-This enterprise plugin exposes React SDK components as a route that will be used by customers as an iframe. Customers can consume it by embedding the "embed.js" script in their websites without having to use React.
+This enterprise plugin exposes React SDK components as a route that will be used by customers as an iframe. Customers can consume it by embedding the "embed.v1.js" script in their websites without having to use React.
 
 ## Testing Strategy
 
@@ -47,7 +47,7 @@ function loadSdkEmbedIframeTestPage(options) {
 Example snippet for new iframe embedding:
 
 ```html
-<script src="http://localhost:3000/app/embed.js"></script>
+<script src="http://localhost:3000/app/embed.v1.js"></script>
 
 <div id="metabase-embed-container"></div>
 

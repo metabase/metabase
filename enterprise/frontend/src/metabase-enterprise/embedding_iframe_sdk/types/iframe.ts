@@ -14,9 +14,10 @@ export type SdkIframeEmbedPostMessageAction =
       data: SdkIframeEmbedSettings;
     };
 
-export type SdkIframeAuthConfig =
+export type SdkIframeAuthConfig = { metabaseInstanceUrl: string } & (
   | { type: "apiKey"; apiKey: string }
-  | { type: "sso" }; // TODO: to be implemented once the new SSO implementation on the SDK is ready
+  | { type: "sso" } // TODO: to be implemented once the new SSO implementation on the SDK is ready
+);
 
 export type SdkIframeEmbedSettings = {
   embedResourceType: EmbedResourceType;

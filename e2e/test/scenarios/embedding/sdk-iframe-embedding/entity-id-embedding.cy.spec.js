@@ -101,7 +101,7 @@ describe("scenarios > embedding > sdk iframe embedding > entity ids", () => {
       archived: true,
     });
 
-    cy.log("Creating test page with embed.js");
+    cy.log("Creating test page");
     const testPage = createTestPage({
       resourceType: "dashboard",
       resourceId: dashboardEntityId,
@@ -127,7 +127,7 @@ describe("scenarios > embedding > sdk iframe embedding > entity ids", () => {
       enable_embedding: true,
     });
 
-    cy.log("Creating test page with embed.js");
+    cy.log("Creating test page");
     const testPage = createTestPage({
       resourceType: "dashboard",
       resourceId: dashboardEntityId,
@@ -176,7 +176,7 @@ function createTestPage({
       <title>Metabase Embed Test</title>
     </head>
     <body>
-      <script src="http://localhost:3000/app/embed.js"></script>
+      <script src="http://localhost:3000/app/embed.v1.js"></script>
 
       <div id="metabase-embed-container"></div>
 

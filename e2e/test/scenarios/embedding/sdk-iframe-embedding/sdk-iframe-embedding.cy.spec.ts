@@ -40,6 +40,8 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     H.restore();
     cy.signInAsAdmin();
 
+    H.mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
+
     // Enable all enterprise features including embedding_iframe_sdk
     H.setTokenFeatures("all");
 
@@ -80,7 +82,6 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
         theme: LIGHT_THEME,
       });
 
-      cy.log("Verifying dashboard content is visible");
       frame.contains("Orders in a dashboard").should("be.visible");
     });
   });
@@ -90,10 +91,10 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
  * Creates and loads a test fixture for SDK iframe embedding tests
  */
 function loadSdkEmbedIframeTestPage(options: SdkIframeEmbedTestPageOptions) {
-  const testPage = getIframeTestPageHtml(options);
+  const testPageSource = getIframeTestPageHtml(options);
 
   cy.intercept("GET", "/sdk-iframe-test-page", {
-    body: testPage,
+    body: testPageSource,
     headers: { "content-type": "text/html" },
   }).as("dynamicPage");
 
@@ -139,7 +140,9 @@ function getIframeTestPageHtml(options: SdkIframeEmbedTestPageOptions): string {
       <title>Metabase Embed Test</title>
     </head>
     <body>
-      <script src="http://localhost:3000/app/embed.js"></script>
+      <script src="/app/embed.v1.js"></script>
+
+      <h1>Iframe Test Page</h1>
 
       <div id="metabase-embed-container"></div>
       ${themeSwitch}
@@ -147,6 +150,11 @@ function getIframeTestPageHtml(options: SdkIframeEmbedTestPageOptions): string {
       <style>
         body {
           margin: 0;
+        }
+
+        h1 {
+          font-family: sans-serif;
+          font-weight: 300;
         }
 
         #metabase-embed-container {
@@ -159,7 +167,7 @@ function getIframeTestPageHtml(options: SdkIframeEmbedTestPageOptions): string {
 
         const embed = new MetabaseEmbed({
           target: "#metabase-embed-container",
-          url: "http://localhost:3000",
+          url: "http://localhost:4000",
           ${resourceIdProp}: ${options.resourceId},
           apiKey: "${options.apiKey}",
           theme: ${JSON.stringify(options.theme)},
