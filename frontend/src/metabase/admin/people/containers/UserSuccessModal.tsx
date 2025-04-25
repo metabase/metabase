@@ -12,12 +12,11 @@ import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
+import { Box } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
 import { clearTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";
-
-import { PasswordSuccessMessage } from "./UserSuccessModal.styled";
 
 interface UserSuccessModalProps {
   params: { userId: string };
@@ -103,11 +102,11 @@ const PasswordSuccess = ({
   temporaryPassword: string;
 }) => (
   <div>
-    <PasswordSuccessMessage>
+    <Box pb="4rem">
       {jt`We couldn’t send them an email invitation, so make sure to tell them to log in using ${(
         <strong key="email">{user.email}</strong>
       )} and this password we’ve generated for them:`}
-    </PasswordSuccessMessage>
+    </Box>
 
     <PasswordReveal password={temporaryPassword} />
     <div
