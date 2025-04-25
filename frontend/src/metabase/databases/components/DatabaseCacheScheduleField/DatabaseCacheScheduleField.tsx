@@ -55,8 +55,16 @@ const DatabaseCacheScheduleField = ({
   const handleFullSyncSelect = useCallback(() => {
     setFieldValue("is_full_sync", true);
     setFieldValue("is_on_demand", false);
-    setValue(DEFAULT_SCHEDULE);
-  }, [setFieldValue, setValue]);
+    const isChangingOption = !values.is_full_sync;
+    if (isChangingOption) {
+      // We only want to set the default schedule if user is changing a schedule option.
+      setValue(DEFAULT_SCHEDULE);
+    } else {
+      // "Regularly, on a schedule" ScheduleOption has a form inside.
+      // Interacting with form elements causes this handleFullSyncSelect handler to be called.
+      // We don't want to reset schedule state in this case.
+    }
+  }, [setFieldValue, setValue, values]);
 
   const handleOnDemandSyncSelect = useCallback(() => {
     setFieldValue("is_full_sync", false);
