@@ -61,13 +61,23 @@ export const field = new ExternalTokenizer((input) => {
   // this will delimit the field token.
   let firstPunctuator = -1;
 
+  // Characters can be escaped with a backslash
+  let escaping = false;
+
   for (let idx = 0; ; idx++) {
     const prev = input.next;
     const current = input.advance();
 
+    if (current === BACKSLASH && !escaping) {
+      // first backslash, next character will be escaped
+      escaping = true;
+      continue;
+    }
+
     if (current === OPEN_BRACKET) {
-      if (prev === BACKSLASH) {
-        // an escaped bracket (`\[`), do nothing
+      if (escaping) {
+        // an escaped bracket (`\[`), keep looking for the closing bracket
+        escaping = false;
         continue;
       }
       // this is another opening bracket that will start a new token,
@@ -79,8 +89,9 @@ export const field = new ExternalTokenizer((input) => {
     }
 
     if (current === CLOSE_BRACKET) {
-      if (prev === BACKSLASH) {
-        // an escaped bracket (ie `\]`), do nothing
+      if (escaping) {
+        // an escaped bracket (ie `\]`), keep looking for the closing bracket
+        escaping = false;
         continue;
       }
 
