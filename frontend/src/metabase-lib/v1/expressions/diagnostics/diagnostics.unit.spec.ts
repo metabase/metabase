@@ -396,6 +396,20 @@ describe("diagnostics", () => {
         },
       );
     });
+
+    describe("double commas", () => {
+      it("should reject repeated commas", () => {
+        expect(err(`concat("foo",, "bar")`)).toBe(
+          "Expected expression but got: ,",
+        );
+        expect(err(`concat("foo", , "bar")`)).toBe(
+          "Expected expression but got: ,",
+        );
+        expect(err(`concat("foo",,, "bar")`)).toBe(
+          "Expected expression but got: ,",
+        );
+      });
+    });
   });
 
   describe("diagnoseAndCompile", () => {
