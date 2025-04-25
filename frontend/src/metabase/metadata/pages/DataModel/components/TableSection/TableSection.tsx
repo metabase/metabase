@@ -2,10 +2,9 @@ import { t } from "ttag";
 
 import { useGetTableQuery, useUpdateTableMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { NameDescriptionInput } from "metabase/metadata/components";
 import { Card, Stack, Switch, Text } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
-
-import { NameDescriptionInput } from "../NameDescriptionInput";
 
 interface Props {
   tableId: TableId;
