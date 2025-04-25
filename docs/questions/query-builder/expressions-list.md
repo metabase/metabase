@@ -912,7 +912,7 @@ Syntax: `year([datetime column])`
 
 Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer, `2,021`.
 
-## Type casting functions
+## Type-casting functions
 
 - [date](#date)
 - [integer](#integer)
