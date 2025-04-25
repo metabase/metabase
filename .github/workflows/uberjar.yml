@@ -7,7 +7,6 @@ on:
   push:
     branches:
       - master
-      - metabot-v3-second-try
       - feature-visualizer
       - internal-tools
     paths-ignore:
@@ -44,17 +43,6 @@ jobs:
             const owner = '${{ github.repository_owner }}';
 
             console.log(`Branch: ${branch}`);
-
-            // TODO: remove when we're done testing metabot
-            if (branch === "metabot-v3-second-try") {
-              return {
-                editions: ["ee"],
-                ee: {
-                  repo: `${owner}/metabase-enterprise-head`,
-                  tag: "metabot"
-                },
-              }
-            }
 
             if (branch === "master") {
               return {
