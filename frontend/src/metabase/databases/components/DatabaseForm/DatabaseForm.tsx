@@ -134,7 +134,7 @@ const DatabaseFormBody = ({
   }, [engine, values, isAdvanced]);
 
   return (
-    <Form data-testid="database-form">
+    <Form data-testid="database-form" className="database-form">
       <DatabaseEngineField
         engineKey={engineKey}
         engines={engines}
@@ -182,9 +182,11 @@ const DatabaseFormFooter = ({
   // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup + admin pages only
   const { url: docsUrl } = useDocsUrl("databases/connecting");
 
+  const className = "database-form-footer";
+
   if (isAdvanced) {
     return (
-      <FormFooter data-testid="form-footer">
+      <FormFooter data-testid="form-footer" className={className}>
         <FormErrorMessage />
         <Flex justify="space-between" align="center" w="100%">
           {isNew ? (
@@ -212,7 +214,7 @@ const DatabaseFormFooter = ({
     );
   } else if (values.engine) {
     return (
-      <FormFooter>
+      <FormFooter className={className}>
         <FormErrorMessage inline />
         <Button type="button" onClick={onCancel}>{t`Skip`}</Button>
         <FormSubmitButton title={t`Connect database`} primary />
@@ -220,7 +222,7 @@ const DatabaseFormFooter = ({
     );
   } else {
     return (
-      <LinkFooter>
+      <LinkFooter className={className}>
         <LinkButton type="button" onClick={onCancel}>
           {t`I'll add my data later`}
         </LinkButton>
