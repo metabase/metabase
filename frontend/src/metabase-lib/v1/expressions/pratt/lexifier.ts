@@ -62,7 +62,7 @@ export function lexify(source: string) {
       const text = source.slice(node.from, node.to);
       return token(node, {
         type: FIELD,
-        value: unquoteString(text),
+        value: unquoteString(text, "["),
       });
     }
 
