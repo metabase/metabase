@@ -165,7 +165,19 @@ function compileIdentifier(
   assert(node.token?.text, t`Empty token text`);
 
   const name = node.token.text;
-  return compileDimension(name, node, ctx);
+  try {
+    return compileDimension(name, node, ctx);
+  } catch (err) {
+    // If the clause is defined, this is a bare identifier (without opening paren)
+    // otherwise it would be a function call (and it would not have been parsed as IDENTIFIER).
+    // Throw an error about the missing opening paren.
+    check(
+      !isDefinedClause(name),
+      t`Expecting an opening parenthesis after ${name}`,
+      node,
+    );
+    throw err;
+  }
 }
 
 function compileGroup(
