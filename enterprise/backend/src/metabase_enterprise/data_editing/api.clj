@@ -256,15 +256,43 @@
   Later when evaluated as a row action using /row-action/:action-id/execute, you will also be able to omit these parameters."
   [{:keys [action-id]}   :- [:map [:action-id   :string]]
    {:keys [dashcard-id]} :- [:map [:dashcard-id ms/PositiveInt]]]
-  (let [action             (-> (actions/select-action :id (parse-long action-id) :archived false)
-                               (t2/hydrate :creator)
-                               api/read-check)
-        card-id            (api/check-404 (t2/select-one-fn :card_id [:model/DashboardCard :card_id] dashcard-id))
-        table-id           (api/check-404 (t2/select-one-fn :table_id [:model/Card :table_id] card-id))
-        fields             (t2/select [:model/Field :name] :table_id table-id)
-        field-names        (set (map :name fields))
-        include?           #(not (contains? field-names (:slug %)))]
+  (let [action      (-> (actions/select-action :id (parse-long action-id) :archived false)
+                        (t2/hydrate :creator)
+                        api/read-check)
+        card-id     (api/check-404 (t2/select-one-fn :card_id [:model/DashboardCard :card_id] dashcard-id))
+        table-id    (api/check-404 (t2/select-one-fn :table_id [:model/Card :table_id] card-id))
+        fields      (t2/select [:model/Field :name] :table_id table-id)
+        field-names (set (map :name fields))
+        include?    #(not (contains? field-names (:slug %)))]
     (update action :parameters #(some->> % (filterv include?)))))
+
+(api.macros/defendpoint :post "/row-action/:action-id/execute"
+  "Executes an action as a row action. The allows action parameters sharing a name with column names to be derived from a specific row.
+  The caller is still able to supply parameters, which will be preferred to those derived from the row.
+  Discovers the table via the provided dashcard-id, assumes a model/editable for now."
+  [{:keys [action-id]}   :- [:map [:action-id :string]]
+   {:keys [dashcard-id]} :- [:map [:dashcard-id ms/PositiveInt]]
+   {:keys [pk params]}   :- [:map
+                             [:pk :any]
+                             [:params :any]]]
+  (let [action      (-> (actions/select-action :id (parse-long action-id) :archived false)
+                        (t2/hydrate :creator)
+                        api/read-check)
+        card-id     (api/check-404 (t2/select-one-fn :card_id [:model/DashboardCard :card_id] dashcard-id))
+        table-id    (api/check-404 (t2/select-one-fn :table_id [:model/Card :table_id] card-id))
+        fields      (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
+        field-names (set (map :name fields))
+        pk-fields   (filter #(= :type/PK (:semantic_type %)) fields)
+        [row]       (vals (data-editing/query-db-rows table-id pk-fields [pk]))
+        _           (api/check-404 row)
+        row-params  (->> (:parameters action)
+                         (keep (fn [{:keys [id slug]}]
+                                 (when (contains? field-names (or slug id))
+                                   [id (row (keyword (or slug id)))])))
+                         (into {}))
+        param-id    (u/index-by (some-fn :slug :id) :id (:parameters action))
+        provided    (update-keys params #(api/check-400 (param-id (name %)) "Unexpected parameter provided"))]
+    (actions/execute-action! action (merge row-params provided))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."
