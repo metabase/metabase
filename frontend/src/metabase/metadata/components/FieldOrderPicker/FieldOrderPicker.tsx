@@ -16,12 +16,7 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   onChange: (value: TableFieldOrder) => void;
 }
 
-export const FieldOrderPicker = ({
-  comboboxProps,
-  value,
-  onChange,
-  ...props
-}: Props) => {
+export const FieldOrderPicker = ({ value, onChange, ...props }: Props) => {
   const combobox = useCombobox();
   const data = useMemo(() => getData(), []);
   const label = data.find((option) => option.value === value)?.label;
@@ -40,7 +35,6 @@ export const FieldOrderPicker = ({
         position: "bottom-start",
         store: combobox,
         width: 300,
-        ...comboboxProps,
       }}
       data={data}
       fw="bold"

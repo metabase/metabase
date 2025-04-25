@@ -3,7 +3,7 @@ import { t } from "ttag";
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import EmptyState from "metabase/components/EmptyState";
 import * as Urls from "metabase/lib/urls";
-import { Box, Flex, Title } from "metabase/ui";
+import { Box, Flex, Stack, Title } from "metabase/ui";
 
 import S from "./DataModel.module.css";
 import { FieldSection, PreviewSection, TableSection } from "./components";
@@ -26,28 +26,25 @@ const DATA_MODEL_APP_NAV_BAR_HEIGHT = 53;
 const PREVIEW_NOT_IMPLEMENTED_YET = true;
 
 export const DataModel = ({ params }: Props) => {
-  const databaseId = Urls.extractEntityId(params.databaseId);
-  const schemaId = params.schemaId;
+  // const databaseId = Urls.extractEntityId(params.databaseId);
+  // const schemaId = params.schemaId;
   const tableId = Urls.extractEntityId(params.tableId);
   const fieldId = Urls.extractEntityId(params.fieldId);
   const isEmptyStateShown = tableId == null || fieldId == null;
 
   return (
     <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`}>
-      <Box className={S.tableSectionContainer} flex="0 0 400px" px="xl" py="lg">
-        <Title mb="md" order={2}>
-          Data model
-        </Title>
-
-        <Box bg="gray" mb="md">
-          <Box>Database: {databaseId ?? "undefined"}</Box>
-          <Box>Schema: {schemaId ?? "undefined"}</Box>
-          <Box>Table: {tableId ?? "undefined"}</Box>
-          <Box>Field: {fieldId ?? "undefined"}</Box>
-        </Box>
+      <Stack
+        className={S.tableSectionContainer}
+        flex="0 0 400px"
+        gap="md"
+        px="xl"
+        py="lg"
+      >
+        <Title order={2}>Data model</Title>
 
         {tableId && <TableSection tableId={tableId} />}
-      </Box>
+      </Stack>
 
       {isEmptyStateShown && (
         <Flex align="center" bg="accent-gray-light" flex="1" justify="center">

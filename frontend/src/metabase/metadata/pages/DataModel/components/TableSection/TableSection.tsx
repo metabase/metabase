@@ -1,14 +1,20 @@
 import { t } from "ttag";
 
-import { useGetTableQuery, useUpdateTableMutation } from "metabase/api";
+import {
+  useGetTableQueryMetadataQuery,
+  useUpdateTableFieldsOrderMutation,
+  useUpdateTableMutation,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import {
   FieldOrderPicker,
   NameDescriptionInput,
 } from "metabase/metadata/components";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Flex, Stack, Text } from "metabase/ui";
-import type { TableId, UpdateTableRequest } from "metabase-types/api";
+import type { FieldId, TableId, UpdateTableRequest } from "metabase-types/api";
 
+import { FieldOrder } from "../FieldOrder";
 import { TableVisibilityInput } from "../TableVisibilityInput";
 
 interface Props {
@@ -16,8 +22,17 @@ interface Props {
 }
 
 export const TableSection = ({ tableId }: Props) => {
-  const { data: table, error, isLoading } = useGetTableQuery({ id: tableId });
+  const {
+    data: table,
+    error,
+    isLoading,
+  } = useGetTableQueryMetadataQuery({
+    id: tableId,
+    include_sensitive_fields: true,
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  });
   const [updateTable] = useUpdateTableMutation();
+  const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
 
   const patchTable = (patch: Omit<UpdateTableRequest, "id">) => {
     updateTable({ id: tableId, ...patch });
@@ -51,19 +66,27 @@ export const TableSection = ({ tableId }: Props) => {
       />
 
       <Stack gap="sm">
-        <Flex align="flex-end" justify="space-between">
+        <Flex align="flex-end" gap="md" justify="space-between">
           <Text fw="bold" size="sm">{t`Fields`}</Text>
 
           <FieldOrderPicker
-            comboboxProps={{
-              position: "bottom-end",
-            }}
             value={table.field_order}
             onChange={(fieldOrder) => {
               patchTable({ field_order: fieldOrder });
             }}
           />
         </Flex>
+
+        <FieldOrder
+          table={table}
+          onChange={(fieldOrder) => {
+            updateTableFieldsOrder({
+              id: tableId,
+              // in this context field id will never be a string because it's a raw table field, so it's ok to cast
+              field_order: fieldOrder as FieldId[],
+            });
+          }}
+        />
       </Stack>
     </Stack>
   );
