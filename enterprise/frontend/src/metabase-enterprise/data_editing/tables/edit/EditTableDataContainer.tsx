@@ -26,6 +26,7 @@ import { getTableEditPathname } from "./url";
 import { useExpandedRowObjectIdTracking } from "./use-expanded-row-id-tracking";
 import { useStandaloneTableQuery } from "./use-standalone-table-query";
 import { useTableCRUD } from "./use-table-crud";
+import { useTableEditingModalController } from "./use-table-modal";
 import { useTableEditingStateApiUpdateStrategy } from "./use-table-state-api-update-strategy";
 import { useTableEditingUndoRedo } from "./use-table-undo-redo";
 
@@ -67,21 +68,21 @@ export const EditTableDataContainer = ({
       : undefined;
   }, [rawDatasetResult]);
 
+  const modalController = useTableEditingModalController();
   const stateUpdateStrategy =
     useTableEditingStateApiUpdateStrategy(fakeTableQuery);
 
   const {
-    isCreateRowModalOpen,
-    expandedRowIndex,
     isInserting,
-    closeCreateRowModal,
     tableFieldMetadataMap,
-
     handleRowCreate,
     handleCellValueUpdate,
     handleExpandedRowDelete,
-    handleModalOpenAndExpandedRow,
-  } = useTableCRUD({ tableId, datasetData, stateUpdateStrategy });
+  } = useTableCRUD({
+    tableId,
+    datasetData,
+    stateUpdateStrategy,
+  });
 
   const { undo, redo, isUndoLoading, isRedoLoading, currentActionLabel } =
     useTableEditingUndoRedo({
@@ -105,10 +106,8 @@ export const EditTableDataContainer = ({
 
   useExpandedRowObjectIdTracking({
     objectId: objectIdParam,
-    expandedRowIndex,
+    modalController,
     datasetData,
-    isCreateRowModalOpen,
-    handleModalOpenAndExpandedRow,
     onObjectIdChange: handleCurrentObjectIdChange,
   });
 
@@ -134,7 +133,7 @@ export const EditTableDataContainer = ({
             isLoading={isFetching}
             isUndoLoading={isUndoLoading}
             isRedoLoading={isRedoLoading}
-            onCreate={handleModalOpenAndExpandedRow}
+            onCreate={modalController.openCreateRowModal}
             onQuestionChange={handleQuestionChange}
             refetchTableDataQuery={refetch}
             onUndo={undo}
@@ -152,7 +151,7 @@ export const EditTableDataContainer = ({
                 data={datasetData}
                 fieldMetadataMap={tableFieldMetadataMap}
                 onCellValueUpdate={handleCellValueUpdate}
-                onRowExpandClick={handleModalOpenAndExpandedRow}
+                onRowExpandClick={modalController.openEditRowModal}
               />
             </Box>
             <Flex
@@ -177,16 +176,14 @@ export const EditTableDataContainer = ({
         )}
       </Stack>
       <EditingBaseRowModal
-        opened={isCreateRowModalOpen}
-        onClose={closeCreateRowModal}
+        controller={modalController}
         onEdit={handleCellValueUpdate}
         onRowCreate={handleRowCreate}
         onRowDelete={handleExpandedRowDelete}
         datasetColumns={datasetData.cols}
-        currentRowIndex={expandedRowIndex}
         currentRowData={
-          expandedRowIndex !== undefined
-            ? datasetData.rows[expandedRowIndex]
+          modalController.state.rowIndex !== undefined
+            ? datasetData.rows[modalController.state.rowIndex]
             : undefined
         }
         fieldMetadataMap={tableFieldMetadataMap}

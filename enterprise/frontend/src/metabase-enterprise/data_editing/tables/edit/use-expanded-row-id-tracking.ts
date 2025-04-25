@@ -3,21 +3,22 @@ import { useEffect, useState } from "react";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData } from "metabase-types/api";
 
+import {
+  TableEditingModalAction,
+  type TableEditingModalController,
+} from "./use-table-modal";
+
 type UseExpandedRowObjectIdTrackingProps = {
   objectId?: string;
-  expandedRowIndex: number | undefined;
   datasetData: DatasetData | null | undefined;
-  isCreateRowModalOpen: boolean;
-  handleModalOpenAndExpandedRow: (rowIndex?: number) => void;
+  modalController: TableEditingModalController;
   onObjectIdChange: (objectId?: string) => void;
 };
 
 export function useExpandedRowObjectIdTracking({
   objectId,
-  expandedRowIndex,
   datasetData,
-  isCreateRowModalOpen,
-  handleModalOpenAndExpandedRow,
+  modalController,
   onObjectIdChange,
 }: UseExpandedRowObjectIdTrackingProps) {
   const [initialObjectId, setInitialObjectId] = useState(objectId);
@@ -38,14 +39,17 @@ export function useExpandedRowObjectIdTracking({
           row[pkColumnIndex] === numericObjectId,
       );
 
-      handleModalOpenAndExpandedRow(rowIndex);
+      modalController.openEditRowModal(rowIndex);
       setInitialObjectId(undefined);
       return;
     }
 
     // Triggered when the expanded row modal is opened (do not account for create row modal)
-    if (expandedRowIndex !== undefined && isCreateRowModalOpen) {
-      const row = datasetData.rows[expandedRowIndex];
+    if (
+      modalController.state.action === TableEditingModalAction.Edit &&
+      modalController.state.rowIndex !== undefined
+    ) {
+      const row = datasetData.rows[modalController.state.rowIndex];
       const nextObjectId = row[pkColumnIndex]?.toString();
 
       if (nextObjectId !== objectId) {
@@ -55,16 +59,14 @@ export function useExpandedRowObjectIdTracking({
     }
 
     // Triggered when the create row modal is closed
-    if (!isCreateRowModalOpen && objectId !== undefined) {
+    if (modalController.state.action === null && objectId !== undefined) {
       onObjectIdChange(undefined);
     }
   }, [
     objectId,
     initialObjectId,
     datasetData,
-    expandedRowIndex,
-    isCreateRowModalOpen,
-    handleModalOpenAndExpandedRow,
+    modalController,
     onObjectIdChange,
   ]);
 }

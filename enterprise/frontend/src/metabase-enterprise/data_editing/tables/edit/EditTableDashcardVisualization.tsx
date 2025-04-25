@@ -28,6 +28,7 @@ import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-editable-column-config";
 import { useTableActions } from "./use-table-actions";
 import { useTableCRUD } from "./use-table-crud";
+import { useTableEditingModalController } from "./use-table-modal";
 import { useTableSorting } from "./use-table-sorting";
 import { useTableEditingStateDashcardUpdateStrategy } from "./use-table-state-dashcard-update-strategy";
 import { useTableEditingUndoRedo } from "./use-table-undo-redo";
@@ -53,23 +54,23 @@ export const EditTableDashcardVisualization = ({
   visualizationSettings,
   question,
 }: EditTableDashcardVisualizationProps) => {
+  const modalController = useTableEditingModalController();
   const stateUpdateStrategy = useTableEditingStateDashcardUpdateStrategy(
     dashcardId,
     cardId,
   );
 
   const {
-    isCreateRowModalOpen,
-    expandedRowIndex,
     isInserting,
-    closeCreateRowModal,
     tableFieldMetadataMap,
-
     handleRowCreate,
     handleCellValueUpdate,
     handleExpandedRowDelete,
-    handleModalOpenAndExpandedRow,
-  } = useTableCRUD({ tableId, datasetData: data, stateUpdateStrategy });
+  } = useTableCRUD({
+    tableId,
+    datasetData: data,
+    stateUpdateStrategy,
+  });
 
   const { undo, redo, isUndoLoading, isRedoLoading, currentActionLabel } =
     useTableEditingUndoRedo({
@@ -127,7 +128,7 @@ export const EditTableDashcardVisualization = ({
           {hasCreateAction && (
             <ActionIcon
               size="md"
-              onClick={() => handleModalOpenAndExpandedRow()}
+              onClick={modalController.openCreateRowModal}
               disabled={shouldDisableActions}
             >
               <Icon name="add" tooltip={t`New record`} />
@@ -144,7 +145,7 @@ export const EditTableDashcardVisualization = ({
           data={data}
           fieldMetadataMap={tableFieldMetadataMap}
           onCellValueUpdate={handleCellValueUpdate}
-          onRowExpandClick={handleModalOpenAndExpandedRow}
+          onRowExpandClick={modalController.openEditRowModal}
           columnsConfig={columnsConfig}
           getColumnSortDirection={getColumnSortDirection}
         />
@@ -162,17 +163,15 @@ export const EditTableDashcardVisualization = ({
         </Text>
       </Flex>
       <EditingBaseRowModal
-        opened={isCreateRowModalOpen}
+        controller={modalController}
         hasDeleteAction={hasDeleteAction}
-        onClose={closeCreateRowModal}
         onEdit={handleCellValueUpdate}
         onRowCreate={handleRowCreate}
         onRowDelete={handleExpandedRowDelete}
         datasetColumns={data.cols}
-        currentRowIndex={expandedRowIndex}
         currentRowData={
-          expandedRowIndex !== undefined
-            ? data.rows[expandedRowIndex]
+          modalController.state.rowIndex !== undefined
+            ? data.rows[modalController.state.rowIndex]
             : undefined
         }
         fieldMetadataMap={tableFieldMetadataMap}

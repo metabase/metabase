@@ -1,5 +1,4 @@
-import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
@@ -30,15 +29,6 @@ export const useTableCRUD = ({
   datasetData: DatasetData | null | undefined;
   stateUpdateStrategy: TableEditingStateUpdateStrategy;
 }) => {
-  const [
-    isCreateRowModalOpen,
-    { open: openCreateRowModal, close: closeCreateRowModal },
-  ] = useDisclosure(false);
-
-  const [expandedRowIndex, setExpandedRowIndex] = useState<
-    number | undefined
-  >();
-
   const dispatch = useDispatch();
 
   const [deleteTableRows] = useDeleteTableRowsMutation();
@@ -78,12 +68,15 @@ export const useTableCRUD = ({
   );
 
   const handleCellValueUpdate = useCallback(
-    async ({ updatedData, rowIndex }: UpdatedRowCellsHandlerParams) => {
+    async ({
+      updatedData,
+      rowIndex,
+    }: UpdatedRowCellsHandlerParams): Promise<boolean> => {
       if (!datasetData) {
         console.warn(
           "Failed to update table data - no data is loaded for a table",
         );
-        return;
+        return false;
       }
 
       const columns = datasetData.cols;
@@ -105,6 +98,8 @@ export const useTableCRUD = ({
 
       stateUpdateStrategy.onRowsUpdated(response.data?.updated);
       displayErrorIfExists(response.error);
+
+      return !response.error;
     },
     [
       datasetData,
@@ -116,7 +111,7 @@ export const useTableCRUD = ({
   );
 
   const handleRowCreate = useCallback(
-    async (data: Record<string, RowValue>) => {
+    async (data: Record<string, RowValue>): Promise<boolean> => {
       const response = await insertTableRows({
         tableId: tableId,
         rows: [data],
@@ -124,26 +119,21 @@ export const useTableCRUD = ({
 
       displayErrorIfExists(response.error);
       if (!response.error) {
-        closeCreateRowModal();
         stateUpdateStrategy.onRowsCreated(response.data?.["created-rows"]);
       }
+
+      return !response.error;
     },
-    [
-      insertTableRows,
-      tableId,
-      displayErrorIfExists,
-      closeCreateRowModal,
-      stateUpdateStrategy,
-    ],
+    [insertTableRows, tableId, displayErrorIfExists, stateUpdateStrategy],
   );
 
   const handleExpandedRowDelete = useCallback(
-    async (rowIndex: number) => {
+    async (rowIndex: number): Promise<boolean> => {
       if (!datasetData) {
         console.warn(
           "Failed to update table data - no data is loaded for a table",
         );
-        return;
+        return false;
       }
 
       const columns = datasetData.cols;
@@ -152,8 +142,6 @@ export const useTableCRUD = ({
       const pkColumnIndex = columns.findIndex(isPK);
       const pkColumn = columns[pkColumnIndex];
       const rowPkValue = rowData[pkColumnIndex];
-
-      closeCreateRowModal();
 
       const rows = [{ [pkColumn.name]: rowPkValue }];
       const response = await deleteTableRows({
@@ -166,10 +154,11 @@ export const useTableCRUD = ({
       }
 
       displayErrorIfExists(response.error);
+
+      return !response.error;
     },
     [
       datasetData,
-      closeCreateRowModal,
       deleteTableRows,
       tableId,
       displayErrorIfExists,
@@ -177,24 +166,12 @@ export const useTableCRUD = ({
     ],
   );
 
-  const handleModalOpenAndExpandedRow = useCallback(
-    (rowIndex?: number) => {
-      setExpandedRowIndex(rowIndex);
-      openCreateRowModal();
-    },
-    [openCreateRowModal],
-  );
-
   return {
-    isCreateRowModalOpen,
-    expandedRowIndex,
     isInserting,
-    closeCreateRowModal,
     tableFieldMetadataMap,
 
     handleRowCreate,
     handleCellValueUpdate,
     handleExpandedRowDelete,
-    handleModalOpenAndExpandedRow,
   };
 };

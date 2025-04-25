@@ -27,6 +27,8 @@ import type {
 import type { UpdatedRowCellsHandlerParams } from "../../types";
 import { EditingBodyCellConditional } from "../inputs";
 import type { EditableTableColumnConfig } from "../use-editable-column-config";
+import type { TableEditingModalController } from "../use-table-modal";
+import { TableEditingModalAction } from "../use-table-modal";
 
 import { DeleteRowConfirmationModal } from "./DeleteRowConfirmationModal";
 import S from "./EditingBaseRowModal.module.css";
@@ -34,12 +36,10 @@ import S from "./EditingBaseRowModal.module.css";
 interface EditingBaseRowModalProps {
   datasetColumns: DatasetColumn[];
   datasetTable?: Table;
-  onClose: () => void;
-  onEdit: (data: UpdatedRowCellsHandlerParams) => void;
-  onRowCreate: (data: Record<string, RowValue>) => void;
-  onRowDelete: (rowIndex: number) => void;
-  opened: boolean;
-  currentRowIndex?: number;
+  onEdit: (data: UpdatedRowCellsHandlerParams) => Promise<boolean>;
+  onRowCreate: (data: Record<string, RowValue>) => Promise<boolean>;
+  onRowDelete: (rowIndex: number) => Promise<boolean>;
+  controller: TableEditingModalController;
   currentRowData?: RowValues;
   fieldMetadataMap: Record<FieldWithMetadata["name"], FieldWithMetadata>;
   hasDeleteAction: boolean;
@@ -51,12 +51,10 @@ type EditingFormValues = Record<string, RowValue>;
 
 export function EditingBaseRowModal({
   datasetColumns,
-  onClose,
+  controller,
   onEdit,
   onRowCreate,
   onRowDelete,
-  opened,
-  currentRowIndex,
   currentRowData,
   fieldMetadataMap,
   hasDeleteAction,
@@ -87,6 +85,16 @@ export function EditingBaseRowModal({
     [fieldMetadataMap, datasetColumns],
   );
 
+  const onSubmit = useCallback(
+    async (values: EditingFormValues) => {
+      const success = await onRowCreate(values);
+      if (success) {
+        controller.closeModal();
+      }
+    },
+    [controller, onRowCreate],
+  );
+
   const {
     isValid,
     resetForm,
@@ -96,39 +104,41 @@ export function EditingBaseRowModal({
     validateForm: revalidateForm,
   } = useFormik({
     initialValues: {} as EditingFormValues,
-    onSubmit: onRowCreate,
+    onSubmit,
     validate: validateForm,
     validateOnMount: true,
   });
 
   // Clear new row data when modal is opened
   useEffect(() => {
-    if (opened) {
+    if (controller.state.action === TableEditingModalAction.Create) {
       resetForm();
       revalidateForm();
     }
-  }, [opened, resetForm, revalidateForm]);
+  }, [controller.state.action, resetForm, revalidateForm]);
 
   const handleValueEdit = useCallback(
     (key: string, value: RowValue) => {
-      if (currentRowIndex != null && isEditingMode) {
+      if (controller.state.rowIndex != null && isEditingMode) {
         onEdit({
-          rowIndex: currentRowIndex,
+          rowIndex: controller.state.rowIndex,
           updatedData: {
             [key]: value,
           },
         });
       }
     },
-    [isEditingMode, currentRowIndex, onEdit],
+    [isEditingMode, controller.state.rowIndex, onEdit],
   );
 
-  const handleDeleteConfirmation = useCallback(() => {
-    if (currentRowIndex !== undefined) {
-      onRowDelete(currentRowIndex);
+  const handleDeleteConfirmation = useCallback(async () => {
+    if (controller.state.rowIndex !== undefined) {
       closeDeletionModal();
+      controller.closeModal();
+
+      await onRowDelete(controller.state.rowIndex);
     }
-  }, [currentRowIndex, closeDeletionModal, onRowDelete]);
+  }, [closeDeletionModal, onRowDelete, controller]);
 
   // Columns might be reordered to match the order in `columnsConfig`
   const orderedDatasetColumns = useMemo(() => {
@@ -167,7 +177,10 @@ export function EditingBaseRowModal({
   }
 
   return (
-    <Modal.Root opened={opened} onClose={onClose}>
+    <Modal.Root
+      opened={controller.state.action !== null}
+      onClose={controller.closeModal}
+    >
       <Modal.Overlay />
       <Modal.Content>
         <form onSubmit={handleSubmit}>
@@ -184,7 +197,7 @@ export function EditingBaseRowModal({
                   <Icon name="trash" />
                 </ActionIcon>
               )}
-              <ActionIcon variant="subtle" onClick={onClose}>
+              <ActionIcon variant="subtle" onClick={controller.closeModal}>
                 <Icon name="close" />
               </ActionIcon>
             </Group>
@@ -226,7 +239,7 @@ export function EditingBaseRowModal({
           </Modal.Body>
           {!isEditingMode && (
             <Flex px="xl" className={S.modalFooter} gap="lg" justify="flex-end">
-              <Button variant="subtle" onClick={onClose}>
+              <Button variant="subtle" onClick={controller.closeModal}>
                 {t`Cancel`}
               </Button>
               <Button
