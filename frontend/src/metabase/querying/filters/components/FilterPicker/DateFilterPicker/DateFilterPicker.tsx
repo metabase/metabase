@@ -53,11 +53,13 @@ export function DateFilterPicker({
             onAddButtonClick={() => handleAddButtonClick(value)}
           />
         )}
-        renderBackButton={() => (
-          <PopoverBackButton p="sm" onClick={onBack}>
-            {columnInfo.longDisplayName}
-          </PopoverBackButton>
-        )}
+        renderBackButton={() =>
+          onBack ? (
+            <PopoverBackButton p="sm" onClick={onBack}>
+              {columnInfo.longDisplayName}
+            </PopoverBackButton>
+          ) : null
+        }
         onChange={handleChange}
       />
     </div>

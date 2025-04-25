@@ -109,7 +109,7 @@ export function DateIntervalPicker({
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
-        {renderSubmitButton({ value })}
+        {renderSubmitButton({ value, isDisabled: false })}
       </Group>
     </form>
   );

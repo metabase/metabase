@@ -48,6 +48,7 @@ export function SpecificDatePicker({
   const tabs = useMemo(() => getTabs(availableOperators), [availableOperators]);
   const [value, setValue] = useState(() => initialValue ?? getDefaultValue());
   const hasTimeToggle = canSetTime(value, availableUnits);
+  const coercedValue = coerceValue(value);
 
   const handleTabChange = (tabValue: string | null) => {
     const tab = tabs.find((tab) => tab.operator === tabValue);
@@ -68,7 +69,7 @@ export function SpecificDatePicker({
   };
 
   const handleSubmit = () => {
-    onChange(coerceValue(value));
+    onChange(coercedValue);
   };
 
   return (
@@ -90,7 +91,9 @@ export function SpecificDatePicker({
             <DateRangePicker
               value={{ dateRange: value.values, hasTime: value.hasTime }}
               hasTimeToggle={hasTimeToggle}
-              renderSubmitButton={() => renderSubmitButton({ value })}
+              renderSubmitButton={() =>
+                renderSubmitButton({ value: coercedValue })
+              }
               onChange={handleDateRangeChange}
               onSubmit={handleSubmit}
             />
@@ -98,7 +101,9 @@ export function SpecificDatePicker({
             <SingleDatePicker
               value={{ date: getDate(value), hasTime: value.hasTime }}
               hasTimeToggle={hasTimeToggle}
-              renderSubmitButton={() => renderSubmitButton({ value })}
+              renderSubmitButton={() =>
+                renderSubmitButton({ value: coercedValue })
+              }
               onChange={handleDateChange}
               onSubmit={handleSubmit}
             />

@@ -1,4 +1,5 @@
 import _userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { DATE_PICKER_UNITS } from "metabase/querying/filters/constants";
@@ -7,6 +8,8 @@ import type {
   RelativeDatePickerValue,
   RelativeIntervalDirection,
 } from "metabase/querying/filters/types";
+
+import type { DatePickerSubmitButtonProps } from "../../types";
 
 import { DateOffsetIntervalPicker } from "./DateOffsetIntervalPicker";
 
@@ -29,9 +32,14 @@ const userEvent = _userEvent.setup({
 interface SetupOpts {
   value: RelativeDatePickerValue;
   availableUnits?: DatePickerUnit[];
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
 }
 
-function setup({ value, availableUnits = DATE_PICKER_UNITS }: SetupOpts) {
+function setup({
+  value,
+  availableUnits = DATE_PICKER_UNITS,
+  renderSubmitButton,
+}: SetupOpts) {
   const onChange = jest.fn();
   const onSubmit = jest.fn();
 
@@ -39,6 +47,7 @@ function setup({ value, availableUnits = DATE_PICKER_UNITS }: SetupOpts) {
     <DateOffsetIntervalPicker
       value={value}
       availableUnits={availableUnits}
+      renderSubmitButton={renderSubmitButton}
       onChange={onChange}
       onSubmit={onSubmit}
     />,
@@ -319,6 +328,14 @@ describe("DateOffsetIntervalPicker", () => {
           offsetUnit: undefined,
         });
         expect(onSubmit).not.toHaveBeenCalled();
+      });
+
+      it("should pass the value to the submit button callback", async () => {
+        const renderSubmitButton = jest.fn().mockReturnValue(null);
+        setup({ value: defaultValue, renderSubmitButton });
+        expect(renderSubmitButton).toHaveBeenCalledWith({
+          value: defaultValue,
+        });
       });
     },
   );
