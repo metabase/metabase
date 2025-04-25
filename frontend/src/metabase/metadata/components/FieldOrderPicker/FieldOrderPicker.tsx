@@ -16,7 +16,12 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   onChange: (value: TableFieldOrder) => void;
 }
 
-export const FieldOrderPicker = ({ value, onChange, ...props }: Props) => {
+export const FieldOrderPicker = ({
+  comboboxProps,
+  value,
+  onChange,
+  ...props
+}: Props) => {
   const combobox = useCombobox();
   const data = useMemo(() => getData(), []);
   const label = data.find((option) => option.value === value)?.label;
@@ -35,6 +40,7 @@ export const FieldOrderPicker = ({ value, onChange, ...props }: Props) => {
         position: "bottom-start",
         store: combobox,
         width: 300,
+        ...comboboxProps,
       }}
       data={data}
       fw="bold"
@@ -42,6 +48,7 @@ export const FieldOrderPicker = ({ value, onChange, ...props }: Props) => {
         <Combobox.Target>
           <Button
             aria-label={t`Sort`}
+            h="100%"
             leftSection={<Icon name="sort_arrows" />}
             p={0}
             variant="subtle"
