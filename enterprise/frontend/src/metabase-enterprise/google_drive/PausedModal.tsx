@@ -1,18 +1,16 @@
 import { t } from "ttag";
 
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import { Box, Button, Modal, Stack, Text } from "metabase/ui";
 
 import databaseError from "./database-error.svg?component";
 
-export function PausedModal({
-  onClose,
-}: {
-  onClose: () => void;
-  reconnect: boolean;
-}) {
+function PausedModal({ onClose }: { onClose: () => void }) {
   const isAdmin = useSelector(getUserIsAdmin);
 
   return (
@@ -51,4 +49,38 @@ export function PausedModal({
       </Stack>
     </Modal>
   );
+}
+
+export const FileUploadErrorModal = ({
+  onClose,
+  fileName,
+  children,
+}: {
+  onClose: () => void;
+  fileName?: string;
+  children: string;
+}) => {
+  const uploadsSettings = useSetting("uploads-settings");
+  const { data: dbInfo } = useGetDatabaseQuery(
+    uploadsSettings?.db_id ? { id: uploadsSettings.db_id } : skipToken,
+  );
+
+  const isDwh = dbInfo?.is_attached_dwh;
+  const showPausedError = isDwh && isPausedError(children);
+
+  if (showPausedError) {
+    console.error(children);
+
+    return <PausedModal onClose={onClose} />;
+  }
+
+  return (
+    <_FileUploadErrorModal onClose={onClose} fileName={fileName}>
+      {children}
+    </_FileUploadErrorModal>
+  );
+};
+
+function isPausedError(message: string) {
+  return message.includes("Code: 497");
 }
