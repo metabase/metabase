@@ -8,6 +8,7 @@
    [metabase.channel.email :as email]
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.events.notification :as events.notification]
+   [metabase.notification.condition :as notification.condition]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
@@ -45,6 +46,12 @@
 (defmethod channel/render-notification [:channel/metabase-test :notification/system-event]
   [_channel-type notification-info _template _recipients]
   [notification-info])
+
+(defmethod notification.send/should-queue-notification? :notification/testing
+  [notification-info]
+  (if-let [condition (not-empty (:condition notification-info))]
+    (notification.condition/evaluate-expression condition notification-info)
+    true))
 
 (defmethod notification.payload/notification-payload :notification/testing
   [notification]

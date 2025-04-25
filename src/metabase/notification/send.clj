@@ -124,6 +124,13 @@
   (fn [notification-info _notification-payload]
     (:payload_type notification-info)))
 
+(defmulti should-queue-notification?
+  "Whether to queue the notification for sending."
+  {:arglists '([notification-info])}
+  :payload_type)
+
+(defmethod should-queue-notification? :default [_] true)
+
 (defmethod do-after-notification-sent :default [_notification-info _notification-payload] nil)
 
 (def ^:private payload-labels         (for [payload-type (keys (methods notification.payload/notification-payload))]
@@ -425,11 +432,13 @@
   (if-not (skip-notification-because-of-cutoff? notification)
     (log/with-context {:notification_id (:id notification)
                        :payload_type    (:payload_type notification)}
-      (let [options      (merge *default-options* options)
-            notification (with-meta notification {:notification/triggered-at-ns (u/start-timer)})]
-        (log/debugf "Will be send %s" (if (:notification/sync? options) "synchronously" "asynchronously"))
-        (if (:notification/sync? options)
-          (send-notification-sync! notification)
-          (send-notification-async! notification))))
+      (if (should-queue-notification? notification)
+        (let [options      (merge *default-options* options)
+              notification (with-meta notification {:notification/triggered-at-ns (u/start-timer)})]
+          (log/debugf "Will be send %s" (if (:notification/sync? options) "synchronously" "asynchronously"))
+          (if (:notification/sync? options)
+            (send-notification-sync! notification)
+            (send-notification-async! notification)))
+        (log/debugf "Skip queueing notification %s" (pr-str notification))))
     (log/infof "Skipping notification %s because it is older than the cutoff timestamp: %s. YOU SHOULDN'T SEE THIS ON PROD, REPORT IF YOU ARE!!!"
                (:id notification) (notification-suppression-cutoff))))
