@@ -1,7 +1,7 @@
 const EMBEDDING_SDK_DOCS_MAIN_PAGE_URL =
   "/docs/latest/embedding/sdk/introduction";
 
-/** @type {Partial<import("typedoc").TypeDocOptions>} */
+/** @type {import("typedoc").TypeDocOptions} */
 const config = {
   name: "Embedded analytics SDK API",
   tsconfig: "./tsconfig.sdk-docs.json",
@@ -9,34 +9,10 @@ const config = {
     "typedoc-plugin-mdn-links",
     "typedoc-plugin-dt-links",
     "typedoc-plugin-redirect",
-    "./typedoc-plugin-frontmatter.js",
     "./typedoc-plugin-replace-text.js",
   ],
   entryPoints: ["../resources/embedding-sdk/dist/index.d.ts"],
   router: "structure",
-  outputs: [
-    {
-      name: "html",
-      path: "../docs/embedding/sdk/api",
-      options: {
-        favicon: "./resources/frontend_client/favicon.ico",
-        customJs: "./.typedoc/page-custom-logic.js",
-        customCss: "./.typedoc/page-custom-styles.css",
-        hideGenerator: true,
-        visibilityFilters: {},
-        frontmatterGlobals: {
-          title: "Embedded analytics SDK documentation",
-          layout: "docs-api",
-        },
-        pretty: true,
-        customFooterHtml:
-          '<script type="text/javascript" src="/gdpr-cookie-notice/dist/script.js"></script>' +
-          '<script type="text/javascript" src="/js/cookie-consent.js"></script>' +
-          '<link href="/gdpr-cookie-notice/dist/style.css" rel="stylesheet" />' +
-          '<link href="/css/gdpr.css" rel="stylesheet" />',
-      },
-    },
-  ],
   defaultCategory: "other",
   kindSortOrder: [
     "Reference",
@@ -128,4 +104,4 @@ const config = {
   },
 };
 
-export default config;
+module.exports = config;

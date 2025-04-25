@@ -1323,3 +1323,30 @@ describe("issue 56771", () => {
       });
   });
 });
+
+describe("issue 57132", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    cy.intercept("POST", "/api/dataset", function (req) {
+      req.continue((res) => {
+        // remove description from the CATEGORY column
+        const index = res.body.data.cols.findIndex(
+          (col) => col.name === "CATEGORY",
+        );
+        delete res.body.data.cols[index].description;
+      });
+    });
+  });
+
+  it("should render more values when hovering colum header without description (metabase#57132)", () => {
+    H.openProductsTable();
+    H.tableInteractive().findByText("Category").realHover();
+
+    cy.log("The popover should be wide enough to show at least some values");
+    H.popover()
+      .findByText(/^Doohickey, Gadget, Gizmo/)
+      .should("be.visible");
+  });
+});

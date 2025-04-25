@@ -19,5 +19,5 @@
                                               :human_readable_field_id (:id field2)
                                               :created_at              now}]
         (is (= "0f5162d3"
-               (serdes/raw-hash [(serdes/identity-hash field1) (serdes/identity-hash field2) now])
+               (serdes/raw-hash [(serdes/identity-hash field1) (serdes/identity-hash field2) (:created_at dim)])
                (serdes/identity-hash dim)))))))
