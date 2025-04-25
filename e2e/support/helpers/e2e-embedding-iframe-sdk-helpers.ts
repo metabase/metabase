@@ -19,8 +19,11 @@ interface BaseEmbedTestPageOptions {
   theme?: MetabaseTheme;
 
   // Options for the test page
-  additionalHead?: string;
-  additionalBody?: string;
+  insertHtml?: {
+    head?: string;
+    beforeEmbed?: string;
+    afterEmbed?: string;
+  };
 }
 
 /**
@@ -66,8 +69,7 @@ export function getEntityIdFromResource(
  * Base HTML template for embedding test pages
  */
 function getSdkIframeEmbedHtml({
-  additionalHead = "",
-  additionalBody = "",
+  insertHtml,
   ...embedConfig
 }: BaseEmbedTestPageOptions) {
   return `
@@ -75,13 +77,14 @@ function getSdkIframeEmbedHtml({
     <html>
     <head>
       <title>Metabase Embed Test</title>
-      ${additionalHead}
+      ${insertHtml?.head ?? ""}
     </head>
     <body>
       <script src="${EMBED_JS_PATH}"></script>
 
+      ${insertHtml?.beforeEmbed ?? ""}
       <div id="metabase-embed-container"></div>
-      ${additionalBody}
+      ${insertHtml?.afterEmbed ?? ""}
 
       <style>
         body {

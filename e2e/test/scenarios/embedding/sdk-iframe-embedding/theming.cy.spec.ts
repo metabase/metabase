@@ -3,14 +3,14 @@ import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
 const { H } = cy;
 
-// const LIGHT_THEME = {
-//   colors: {
-//     brand: "rgb(156, 39, 176)",
-//     "text-primary": "rgb(45, 59, 69)",
-//     "text-secondary": "rgb(124, 136, 150)",
-//     "text-tertiary": "rgb(184, 187, 195)",
-//   },
-// } as const satisfies MetabaseTheme;
+const LIGHT_THEME = {
+  colors: {
+    brand: "rgb(156, 39, 176)",
+    "text-primary": "rgb(45, 59, 69)",
+    "text-secondary": "rgb(124, 136, 150)",
+    "text-tertiary": "rgb(184, 187, 195)",
+  },
+} as const satisfies MetabaseTheme;
 
 const DARK_THEME = {
   colors: {
@@ -25,26 +25,6 @@ const DARK_THEME = {
     table: { cell: { backgroundColor: "rgb(39, 39, 59)" } },
   },
 } as const satisfies MetabaseTheme;
-
-// const THEME_SWITCHER_HTML = `
-//   <div>
-//     <button onclick="setLightTheme" style="margin: 5px;">Light Theme</button>
-//     <button onclick="setDarkTheme" style="margin: 5px;">Dark Theme</button>
-//   </div>
-
-//   <script>
-//     const LIGHT_THEME = ${JSON.stringify(LIGHT_THEME)};
-//     const DARK_THEME = ${JSON.stringify(DARK_THEME)};
-
-//     function setLightTheme() {
-//       embed.updateSettings({ theme: LIGHT_THEME });
-//     }
-
-//     function setDarkTheme() {
-//       embed.updateSettings({ theme: DARK_THEME });
-//     }
-//   </script>
-// `;
 
 describe("scenarios > embedding > sdk iframe embedding > theming", () => {
   beforeEach(() => {
@@ -81,11 +61,95 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
     });
   });
 
-  // it("should handle dynamic theme updates", () => {
-  //   H.loadSdkIframeEmbedTestPage({
-  //     dashboardId: ORDERS_DASHBOARD_ID,
-  //     theme: LIGHT_THEME,
-  //     additionalBody: THEME_SWITCHER_HTML,
-  //   });
-  // });
+  it("should handle dynamic theme updates", () => {
+    const THEME_SWITCHER_HTML = `
+      <div>
+        <button onclick="setLightTheme()" style="margin: 5px;">Light</button>
+        <button onclick="setDarkTheme()" style="margin: 5px;">Dark</button>
+      </div>
+
+      <script>
+        const LIGHT_THEME = ${JSON.stringify(LIGHT_THEME)};
+        const DARK_THEME = ${JSON.stringify(DARK_THEME)};
+
+        function setLightTheme() {
+          embed.updateSettings({ theme: LIGHT_THEME });
+        }
+
+        function setDarkTheme() {
+          embed.updateSettings({ theme: DARK_THEME });
+        }
+      </script>
+    `;
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      theme: LIGHT_THEME,
+      insertHtml: { beforeEmbed: THEME_SWITCHER_HTML },
+    });
+
+    cy.wait("@getDashboard");
+
+    cy.log("1. verify colors in light theme");
+
+    frame.within(() => {
+      cy.findByText("Product ID").should(
+        "have.css",
+        "color",
+        LIGHT_THEME.colors.brand,
+      );
+
+      cy.findByText("2000 rows").should(
+        "have.css",
+        "color",
+        LIGHT_THEME.colors["text-primary"],
+      );
+    });
+
+    cy.log("2. switch to dark theme and verify colors");
+
+    cy.get("body").within(() => {
+      cy.findByText("Dark").click();
+    });
+
+    frame.within(() => {
+      cy.get(".mb-wrapper").should(
+        "have.css",
+        "background-color",
+        DARK_THEME.colors.background,
+      );
+
+      cy.findByText("Product ID").should(
+        "have.css",
+        "color",
+        DARK_THEME.colors.brand,
+      );
+
+      cy.findByText("2000 rows").should(
+        "have.css",
+        "color",
+        DARK_THEME.colors["text-primary"],
+      );
+    });
+
+    cy.log("3. switch to light theme and verify colors");
+
+    cy.get("body").within(() => {
+      cy.findByText("Light").click();
+    });
+
+    frame.within(() => {
+      cy.findByText("Product ID").should(
+        "have.css",
+        "color",
+        LIGHT_THEME.colors.brand,
+      );
+
+      cy.findByText("2000 rows").should(
+        "have.css",
+        "color",
+        LIGHT_THEME.colors["text-primary"],
+      );
+    });
+  });
 });
