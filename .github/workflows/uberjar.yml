@@ -33,8 +33,8 @@ jobs:
     name: Get container info
     outputs:
       editions: ${{ toJson((steps.info.outputs.result).editions) }}
-      ee: ${{ fromJson(steps.info.outputs.result).ee || '' }}
-      oss: ${{ fromJson(steps.info.outputs.result).oss || '' }}
+      ee: ${{ fromJson(steps.info.outputs.result).ee }}
+      oss: ${{ fromJson(steps.info.outputs.result).oss }}
     steps:
       - name: Get docker repo and tag
         id: info
@@ -81,7 +81,7 @@ jobs:
 
       - name: Print output
         run: |
-          echo "editions: ${{ steps.info.outputs.result }}"
+          echo "${{ steps.info.outputs.result }}"
 
   build:
     needs: get-container-info
