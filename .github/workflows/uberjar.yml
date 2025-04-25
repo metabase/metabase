@@ -4,13 +4,13 @@ name: Build + Docker Uberjar
 # or automatically for the listed branches
 
 on:
+  pull_request: # FIXME for testing
   push:
     branches:
       - master
       - metabot-v3-second-try
       - feature-visualizer
       - internal-tools
-      - refactor-uberjar-job # FIXME for testing
     paths-ignore:
       # config files
       - ".**"
