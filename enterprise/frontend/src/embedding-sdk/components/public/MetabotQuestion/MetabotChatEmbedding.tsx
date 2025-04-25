@@ -13,6 +13,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { MetabotIcon } from "metabase-enterprise/metabot/components/MetabotIcon";
+import { METABOT_RESULTS_MESSAGE } from "metabase-enterprise/metabot/constants";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import { resetConversationId } from "metabase-enterprise/metabot/state";
 
@@ -105,9 +106,8 @@ export const MetabotChatEmbedding = ({
   }, [dispatch]);
 
   useEffect(() => {
-    const RESULT_MESSAGE = "Here are the results";
     const normalizedMessages = metabot.userMessages.filter(
-      (message) => message !== RESULT_MESSAGE,
+      (message) => message !== METABOT_RESULTS_MESSAGE,
     );
     onMessages(normalizedMessages);
   }, [metabot.userMessages, onMessages]);
