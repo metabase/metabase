@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 
 import type {
   DatePickerOperator,
@@ -6,6 +6,8 @@ import type {
   SpecificDatePickerValue,
 } from "metabase/querying/filters/types";
 import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
+
+import type { DatePickerSubmitButtonProps } from "../types";
 
 import { DateRangePicker, type DateRangePickerValue } from "./DateRangePicker";
 import {
@@ -29,7 +31,7 @@ interface SpecificDatePickerProps {
   value?: SpecificDatePickerValue;
   availableOperators: DatePickerOperator[];
   availableUnits: DatePickerUnit[];
-  submitButtonLabel: string;
+  renderSubmitButton: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: SpecificDatePickerValue) => void;
   onBack: () => void;
 }
@@ -38,7 +40,7 @@ export function SpecificDatePicker({
   value: initialValue,
   availableOperators,
   availableUnits,
-  submitButtonLabel,
+  renderSubmitButton,
   onChange,
   onBack,
 }: SpecificDatePickerProps) {
@@ -86,16 +88,16 @@ export function SpecificDatePicker({
           {isDateRange(value.values) ? (
             <DateRangePicker
               value={{ dateRange: value.values, hasTime: value.hasTime }}
-              submitButtonLabel={submitButtonLabel}
               hasTimeToggle={hasTimeToggle}
+              renderSubmitButton={renderSubmitButton}
               onChange={handleDateRangeChange}
               onSubmit={handleSubmit}
             />
           ) : (
             <SingleDatePicker
               value={{ date: getDate(value), hasTime: value.hasTime }}
-              submitButtonLabel={submitButtonLabel}
               hasTimeToggle={hasTimeToggle}
+              renderSubmitButton={renderSubmitButton}
               onChange={handleDateChange}
               onSubmit={handleSubmit}
             />

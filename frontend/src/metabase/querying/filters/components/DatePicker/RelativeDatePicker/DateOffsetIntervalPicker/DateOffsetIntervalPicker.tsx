@@ -1,4 +1,4 @@
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { t } from "ttag";
 
 import type {
@@ -16,6 +16,7 @@ import {
   Text,
 } from "metabase/ui";
 
+import type { DatePickerSubmitButtonProps } from "../../types";
 import {
   formatDateRange,
   getInterval,
@@ -37,7 +38,7 @@ import {
 interface DateOffsetIntervalPickerProps {
   value: RelativeDatePickerValue;
   availableUnits: DatePickerUnit[];
-  submitButtonLabel: string;
+  renderSubmitButton: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onSubmit: () => void;
 }
@@ -45,7 +46,7 @@ interface DateOffsetIntervalPickerProps {
 export function DateOffsetIntervalPicker({
   value,
   availableUnits,
-  submitButtonLabel,
+  renderSubmitButton,
   onChange,
   onSubmit,
 }: DateOffsetIntervalPickerProps) {
@@ -149,9 +150,7 @@ export function DateOffsetIntervalPicker({
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
-        <Button variant="filled" type="submit">
-          {submitButtonLabel}
-        </Button>
+        {renderSubmitButton({})}
       </Group>
     </form>
   );

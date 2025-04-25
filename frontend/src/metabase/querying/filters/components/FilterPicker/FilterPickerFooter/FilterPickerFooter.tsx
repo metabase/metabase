@@ -27,7 +27,7 @@ export function FilterPickerFooter({
       {isValidElement(children) ? children : <Box />}
       <FilterSubmitButton
         isNew={isNew}
-        isValid={isValid}
+        isDisabled={!isValid}
         withAddButton={withAddButton}
         onAddButtonClick={onAddButtonClick}
       />

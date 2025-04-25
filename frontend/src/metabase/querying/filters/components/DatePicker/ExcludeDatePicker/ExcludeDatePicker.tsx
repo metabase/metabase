@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type FormEvent, type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import type {
@@ -21,6 +21,7 @@ import {
 } from "metabase/ui";
 
 import { MIN_WIDTH } from "../constants";
+import type { DatePickerSubmitButtonProps } from "../types";
 
 import type { ExcludeValueOption } from "./types";
 import {
@@ -36,7 +37,7 @@ export interface ExcludeDatePickerProps {
   value?: ExcludeDatePickerValue;
   availableOperators: DatePickerOperator[];
   availableUnits: DatePickerUnit[];
-  submitButtonLabel: string;
+  renderSubmitButton: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: ExcludeDatePickerValue) => void;
   onBack: () => void;
 }
@@ -45,7 +46,7 @@ export function ExcludeDatePicker({
   value,
   availableOperators,
   availableUnits,
-  submitButtonLabel,
+  renderSubmitButton,
   onChange,
   onBack,
 }: ExcludeDatePickerProps) {
@@ -65,7 +66,7 @@ export function ExcludeDatePicker({
     <ExcludeValuePicker
       unit={unit}
       initialValues={values}
-      submitButtonLabel={submitButtonLabel}
+      renderSubmitButton={renderSubmitButton}
       onChange={onChange}
       onBack={handleBack}
     />
@@ -152,7 +153,7 @@ export function ExcludeOptionPicker({
 interface ExcludeValuePickerProps {
   unit: DatePickerExtractionUnit;
   initialValues: number[];
-  submitButtonLabel: string;
+  renderSubmitButton: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: ExcludeDatePickerValue) => void;
   onBack: () => void;
 }
@@ -160,7 +161,7 @@ interface ExcludeValuePickerProps {
 function ExcludeValuePicker({
   unit,
   initialValues,
-  submitButtonLabel,
+  renderSubmitButton,
   onChange,
   onBack,
 }: ExcludeValuePickerProps) {
@@ -169,7 +170,7 @@ function ExcludeValuePicker({
   const groups = useMemo(() => getExcludeValueOptionGroups(unit), [unit]);
   const options = groups.flat();
   const isAll = values.length === options.length;
-  const isNone = values.length === 0;
+  const isValid = values.length > 0;
 
   const handleToggleAll = (isChecked: boolean) => {
     if (isChecked) {
@@ -190,12 +191,15 @@ function ExcludeValuePicker({
     }
   };
 
-  const handleSubmit = () => {
-    onChange(getExcludeUnitValue(unit, values));
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    if (isValid) {
+      onChange(getExcludeUnitValue(unit, values));
+    }
   };
 
   return (
-    <Box miw={MIN_WIDTH}>
+    <Box component="form" miw={MIN_WIDTH} onSubmit={handleSubmit}>
       <BackButton onClick={onBack}>{option?.label}</BackButton>
       <Divider />
       <Stack p="md">
@@ -224,9 +228,7 @@ function ExcludeValuePicker({
       </Stack>
       <Divider />
       <Group p="sm" justify="flex-end">
-        <Button variant="filled" disabled={isNone} onClick={handleSubmit}>
-          {submitButtonLabel}
-        </Button>
+        {renderSubmitButton({ isDisabled: !isValid })}
       </Group>
     </Box>
   );

@@ -1,11 +1,12 @@
 import { useMemo } from "react";
-import { t } from "ttag";
 
 import { useDateFilter } from "metabase/querying/filters/hooks/use-date-filter";
 import type { DatePickerValue } from "metabase/querying/filters/types";
+import { PopoverBackButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { DatePicker } from "../../DatePicker";
+import { FilterSubmitButton } from "../FilterSubmitButton";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function DateFilterPicker({
@@ -14,6 +15,7 @@ export function DateFilterPicker({
   column,
   filter,
   isNew,
+  withAddButton,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -33,16 +35,30 @@ export function DateFilterPicker({
     onChange(getFilterClause(value), { source: "default" });
   };
 
+  const handleAddButtonClick = () => {
+    // TODO
+  };
+
   return (
     <div data-testid="date-filter-picker">
       <DatePicker
         value={value}
         availableOperators={availableOperators}
         availableUnits={availableUnits}
-        submitButtonLabel={isNew ? t`Add filter` : t`Update filter`}
-        backButtonLabel={columnInfo.longDisplayName}
+        renderSubmitButton={({ isDisabled }) => (
+          <FilterSubmitButton
+            isNew={isNew}
+            isDisabled={isDisabled}
+            withAddButton={withAddButton}
+            onAddButtonClick={handleAddButtonClick}
+          />
+        )}
+        renderBackButton={() => (
+          <PopoverBackButton p="sm" onClick={onBack}>
+            {columnInfo.longDisplayName}
+          </PopoverBackButton>
+        )}
         onChange={handleChange}
-        onBack={onBack}
       />
     </div>
   );

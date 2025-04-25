@@ -3,21 +3,21 @@ import { t } from "ttag";
 import { Button, Divider, Icon, Tooltip } from "metabase/ui";
 
 type FilterSubmitButtonProps = {
-  isNew: boolean;
-  isValid: boolean;
-  withAddButton: boolean;
-  onAddButtonClick: () => void;
+  isNew?: boolean;
+  isDisabled?: boolean;
+  withAddButton?: boolean;
+  onAddButtonClick?: () => void;
 };
 
 export function FilterSubmitButton({
   isNew,
-  isValid,
+  isDisabled,
   withAddButton,
   onAddButtonClick,
 }: FilterSubmitButtonProps) {
   if (!withAddButton) {
     return (
-      <Button type="submit" variant="filled" disabled={!isValid}>
+      <Button type="submit" variant="filled" disabled={isDisabled}>
         {isNew ? t`Add filter` : t`Update filter`}
       </Button>
     );
@@ -25,7 +25,7 @@ export function FilterSubmitButton({
 
   return (
     <Button.Group>
-      <Button type="submit" variant="filled" disabled={!isValid}>
+      <Button type="submit" variant="filled" disabled={isDisabled}>
         {t`Apply filter`}
       </Button>
       <Divider orientation="vertical" />
@@ -33,7 +33,7 @@ export function FilterSubmitButton({
         <Button
           type="button"
           variant="filled"
-          disabled={!isValid}
+          disabled={isDisabled}
           leftSection={<Icon name="add" />}
           onClick={onAddButtonClick}
         />
