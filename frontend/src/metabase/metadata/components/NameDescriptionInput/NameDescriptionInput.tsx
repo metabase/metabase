@@ -1,5 +1,4 @@
 import { useLayoutEffect, useState } from "react";
-import { t } from "ttag";
 
 import { TextInput } from "metabase/ui";
 
@@ -7,14 +6,21 @@ import S from "./NameDescriptionInput.module.css";
 
 interface Props {
   description: string;
+  descriptionPlaceholder: string;
   name: string;
+  namePlaceholder: string;
   onDescriptionChange: (description: string) => void;
   onNameChange: (name: string) => void;
 }
 
+/**
+ * Controlled component that fires onChange events on blur
+ */
 export const NameDescriptionInput = ({
   description,
+  descriptionPlaceholder,
   name,
+  namePlaceholder,
   onDescriptionChange,
   onNameChange,
 }: Props) => {
@@ -33,7 +39,7 @@ export const NameDescriptionInput = ({
           root: S.name,
         }}
         fw="bold"
-        placeholder={t`Give this table a name`}
+        placeholder={namePlaceholder}
         size="lg"
         value={nameState}
         onBlur={(event) => {
@@ -56,7 +62,7 @@ export const NameDescriptionInput = ({
           input: S.descriptionInput,
           root: S.description,
         }}
-        placeholder={t`Give this table a description`}
+        placeholder={descriptionPlaceholder}
         value={descriptionState}
         onBlur={(event) => {
           const newValue = event.target.value;

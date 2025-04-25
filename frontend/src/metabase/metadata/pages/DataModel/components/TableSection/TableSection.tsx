@@ -22,7 +22,9 @@ export const TableSection = ({ tableId }: Props) => {
     <Stack gap="lg">
       <NameDescriptionInput
         description={table.description ?? ""}
+        descriptionPlaceholder={t`Give this table a description`}
         name={table.display_name}
+        namePlaceholder={t`Give this table a name`}
         onDescriptionChange={(description) => {
           updateTable({ id: tableId, description });
         }}
