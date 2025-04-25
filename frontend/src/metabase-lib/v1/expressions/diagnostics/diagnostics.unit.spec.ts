@@ -369,8 +369,8 @@ describe("diagnostics", () => {
       );
     });
 
-    describe("double comma", () => {
-      it("should reject repeated comma's", () => {
+    describe("double commas", () => {
+      it("should reject repeated commas", () => {
         expect(err(`concat("foo",, "bar")`)).toBe(
           "Expected expression but got: ,",
         );
