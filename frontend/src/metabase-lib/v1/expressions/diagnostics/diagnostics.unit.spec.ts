@@ -76,10 +76,38 @@ describe("diagnostics", () => {
       );
     });
 
-    it("should catch missing comma in function arguments", () => {
-      expect(err('concat([Tax] "test")')).toBe(
-        'Expecting operator but got "test" instead',
-      );
+    describe("sibling tokens validation", () => {
+      const left = ["[Total]", '"string"', "42", "(10 + 5)", "true"];
+      const right = [
+        ["[Total]", "[Total]"],
+        ['"string"', '"string"'],
+        ["42", "42"],
+        ["(10 + 5)", "("],
+        ["tax", "tax"],
+        ["ceil(10.5)", "ceil"],
+      ];
+
+      for (const leftToken of left) {
+        for (const [rightToken, errToken] of right) {
+          it(`should catch mismatched adjecent tokens in: ${leftToken} ${rightToken}`, () => {
+            expect(err(`${leftToken} ${rightToken}`)).toBe(
+              `Expecting operator but got ${errToken} instead`,
+            );
+          });
+
+          it(`should catch mismatched adjecent tokens in: concat(${leftToken} ${rightToken})`, () => {
+            expect(err(`concat(${leftToken} ${rightToken})`)).toBe(
+              `Expecting operator but got ${errToken} instead`,
+            );
+          });
+
+          it(`should catch mismatched adjecent tokens in: 2 * (${leftToken} ${rightToken})`, () => {
+            expect(err(`2 * (${leftToken} ${rightToken})`)).toBe(
+              `Expecting operator but got ${errToken} instead`,
+            );
+          });
+        }
+      }
     });
 
     it("should catch unknown functions", () => {
