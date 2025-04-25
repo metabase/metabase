@@ -13,9 +13,9 @@ export type NotificationCardSendCondition =
 
 // The SystemEvent values that can trigger notifications.
 export type NotificationTriggerEvent =
-  | "event/rows.created"
-  | "event/rows.updated"
-  | "event/rows.deleted";
+  | "event/row.created"
+  | "event/row.updated"
+  | "event/row.deleted";
 
 type NotificationPayloadType =
   | "notification/card"

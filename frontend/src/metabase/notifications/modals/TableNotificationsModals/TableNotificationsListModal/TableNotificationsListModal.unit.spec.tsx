@@ -140,7 +140,7 @@ describe("TableNotificationsListModal", () => {
     const currentUserId = 1;
     const notification = createNotificationForUser(currentUserId, 0, {
       payload: {
-        event_name: "event/rows.updated",
+        event_name: "event/row.updated",
         table_id: 1,
       },
     });
@@ -167,7 +167,7 @@ describe("TableNotificationsListModal", () => {
     const currentUserId = 1;
     const notification = createNotificationForUser(currentUserId, 0, {
       payload: {
-        event_name: "event/rows.deleted",
+        event_name: "event/row.deleted",
         table_id: 1,
       },
     });

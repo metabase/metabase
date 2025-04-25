@@ -52,11 +52,11 @@ export const formatTitle = ({ item, type }: NotificationListItem) => {
 
 function formatEventName(event_name: NotificationTriggerEvent) {
   switch (event_name) {
-    case "event/rows.created":
+    case "event/row.created":
       return t`Rows created`;
-    case "event/rows.updated":
+    case "event/row.updated":
       return t`Rows updated`;
-    case "event/rows.deleted":
+    case "event/row.deleted":
       return t`Rows deleted`;
     default:
       return event_name;

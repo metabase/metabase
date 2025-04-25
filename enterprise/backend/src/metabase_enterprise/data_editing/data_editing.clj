@@ -130,13 +130,14 @@
   (let [res (perform-bulk-action! :bulk/create user-id table-id rows)]
     {:created-rows (map :after res)}))
 
-(defn- row-update-event
-  "Given a :effect/row.modified diff, figure out what kind of mutation it was."
-  [{:keys [before after]}]
+(defn- row-update-event [{:keys [before after]}]
   (case [(some? before) (some? after)]
-    [false true]  :event/rows.created
-    [true  true]  :event/rows.updated
-    [true  false] :event/rows.deleted
+    [false true]  {:single :event/row.created
+                   :bulk   :event/rows.created}
+    [true  true]  {:single :event/row.updated
+                   :bulk   :event/rows.updated}
+    [true  false] {:single :event/row.deleted
+                   :bulk   :event/rows.deleted}
     ;; should not happen
     [false false] ::no-op))
 
@@ -154,14 +155,22 @@
                                        :when (or before after)]
                              [(diff->pk diff) [before after]])])))
     ;; table notification system events
-    (doseq [[event payloads] (->> diffs
-                                  (group-by row-update-event)
-                                  (remove (comp #{::no-op} key)))]
+    (doseq [[{single-event :single
+              bulk-event :bulk} payloads] (->> diffs
+                                               (group-by row-update-event)
+                                               (remove (comp #{::no-op} key)))]
       (doseq [[table-id payloads] (group-by :table-id payloads)
-              :let [row-changes (for [{:keys [before after] :as diff} payloads]
+              :let [db-id       (:db-id (first payloads))
+                    row-changes (for [{:keys [before after] :as diff} payloads]
                                   {:pk     (diff->pk diff)
                                    :before before
                                    :after  after})]]
-        (events/publish-event! event {:actor_id    user-id
-                                      :row_changes row-changes
-                                      :args        {:table_id table-id}})))))
+        (events/publish-event! bulk-event {:actor_id    user-id
+                                           :row_changes row-changes
+                                           :args        {:table_id table-id
+                                                         :db_id    db-id}})
+        (doseq [row-change row-changes]
+          (events/publish-event! single-event {:actor_id   user-id
+                                               :row_change row-change
+                                               :args       {:table_id table-id
+                                                            :db_id    db-id}}))))))

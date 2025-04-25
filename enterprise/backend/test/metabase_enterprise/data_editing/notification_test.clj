@@ -38,7 +38,7 @@
 
 (deftest create-row-notification-test
   (test-row-notification!
-   :event/rows.created
+   :event/row.created
    (fn []
      (mt/user-http-request
       :crowberto
@@ -70,7 +70,7 @@
 
 (deftest update-row-notification-test
   (test-row-notification!
-   :event/rows.updated
+   :event/row.updated
    (fn []
      (mt/user-http-request
       :crowberto
@@ -84,14 +84,14 @@
                                              [{:type "section",
                                                :text
                                                {:type "mrkdwn",
-                                                :text "*Crowberto Corv has updated a row from CATEGORIES*\n*Update:*\n• name : Updated Category"}}]}]
+                                                :text "*Crowberto Corv has updated a row from CATEGORIES*\n*Update:*\n• name : Updated Category\n• id : 1"}}]}]
                               :channel-id  "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
                      (is (=? {:subject "Table CATEGORIES has been updated"
-                              :message [{"Crowberto Corv has updated a row in CATEGORIES" true
-                                         "name: Updated Category"                         true}]}
+                              :body [{"Crowberto Corv has updated a row in CATEGORIES" true
+                                      "name: Updated Category"                         true}]}
                              (mt/summarize-multipart-single-email
                               email
                               #"Crowberto Corv has updated a row in CATEGORIES"
@@ -102,7 +102,7 @@
 
 (deftest delete-row-notification-test
   (test-row-notification!
-   :event/rows.deleted
+   :event/row.deleted
    (fn []
      (mt/user-http-request
       :crowberto
@@ -122,7 +122,7 @@
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
                      (is (=? {:subject "Table CATEGORIES has a row deleted"
-                              :message [{"Crowberto Corv has deleted a row from CATEGORIES" true
+                              :body    [{"Crowberto Corv has deleted a row from CATEGORIES" true
                                          "name: African" true}]}
                              (mt/summarize-multipart-single-email
                               email
@@ -134,7 +134,7 @@
 
 (deftest create-row-notification-webhook-test
   (test-row-notification!
-   :event/rows.created
+   :event/row.created
    (fn []
      (let [token  (:token (mt/user-http-request :crowberto
                                                 :post "ee/data-editing/webhook"
@@ -169,9 +169,9 @@
 
 (deftest filter-notifications-test
   (testing "getting table notifications will return only notifications of a table and action"
-    (doseq [event [:event/rows.created
-                   :event/rows.updated
-                   :event/rows.deleted]]
+    (doseq [event [:event/row.created
+                   :event/row.updated
+                   :event/row.deleted]]
       (notification.tu/with-system-event-notification!
         [_create-categories {:notification-system-event {:event_name event
                                                          :table_id   (mt/id :categories)}}]
@@ -188,33 +188,34 @@
   (is (=? {:creator  {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :editor   {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :table    {:id 1 :name "orders"}
-           :records  [{:row {:ID 1 :STATUS "approved"} :changes {:STATUS {:before "pending" :after "approved"}}}]
+           :record   {:ID 1 :STATUS "approved"}
+           :changes  {:STATUS {:before "pending" :after "approved"}}
            :settings {}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
-                                           :payload      {:event_name :event/rows.created}
+                                           :payload      {:event_name :event/row.created}
                                            :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest example-payload-row-update-test
   (is (=? {:creator  {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :editor   {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :table    {:id 1 :name "orders"}
-           :records  [{:row {:ID 1 :STATUS "approved"} :changes {:STATUS {:before "pending" :after "approved"}}}]
-           :settings {}}
+           :record   {:ID 1 :STATUS "approved"}
+           :changes  {:STATUS {:before "pending" :after "approved"}}           :settings {}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
-                                           :payload      {:event_name :event/rows.updated}
+                                           :payload      {:event_name :event/row.updated}
                                            :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest example-payload-row-delete-test
   (is (=? {:creator  {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :editor   {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :table    {:id 1 :name "orders"}
-           :records  [{:row {:ID 1 :STATUS "approved"} :changes {:STATUS {:before "pending" :after "approved"}}}]
-           :settings {}}
+           :record   {:ID 1 :STATUS "approved"}
+           :changes  {:STATUS {:before "pending" :after "approved"}}           :settings {}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
-                                           :payload      {:event_name :event/rows.deleted}
+                                           :payload      {:event_name :event/row.deleted}
                                            :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest preview-notification-test
@@ -222,14 +223,14 @@
            :rendered {:from    "notifications@metabase.com"
                       :bcc     ["bot@metabase.com"]
                       :subject "Meta Bot has created a row for orders"
-                      :body    [{:type "text/html; charset=utf-8" :content "Created 1 records"}]}}
+                      :body    [{:type "text/html; charset=utf-8" :content "New record: approved"}]}}
           (mt/user-http-request :crowberto :post 200 "notification/preview_template"
                                 {:template     {:channel_type :channel/email
                                                 :details {:type    :email/handlebars-text
                                                           :subject "{{editor.first_name}} {{editor.last_name}} has created a row for {{table.name}}"
-                                                          :body    "Created {{count records}} records"}}
+                                                          :body    "New record: {{record.STATUS}}"}}
                                  :notification {:payload_type :notification/system-event
-                                                :payload      {:event_name :event/rows.created}}}))))
+                                                :payload      {:event_name :event/row.created}}}))))
 
 (deftest preview-notification-custom-payload-test
   (testing "use the custom context if it's valid"
@@ -237,14 +238,14 @@
              :rendered {:from    "notifications@metabase.com"
                         :bcc     ["bot@metabase.com"]
                         :subject "Ngoc Khuat has created a row for orders"
-                        :body    [{:type "text/html; charset=utf-8" :content "Created 1 records"}]}}
+                        :body    [{:type "text/html; charset=utf-8" :content "New record: cancelled"}]}}
             (mt/user-http-request :crowberto :post 200 "notification/preview_template"
                                   {:template     {:channel_type :channel/email
                                                   :details {:type    :email/handlebars-text
                                                             :subject "{{editor.first_name}} {{editor.last_name}} has created a row for {{table.name}}"
-                                                            :body    "Created {{count records}} records"}}
+                                                            :body    "New record: {{record.STATUS}}"}}
                                    :notification   {:payload_type :notification/system-event
-                                                    :payload      {:event_name :event/rows.created}}
+                                                    :payload      {:event_name :event/row.created}}
                                    :custom_context {:context {}
                                                     :creator {:common_name "Meta Bot",
                                                               :email "bot@metabase.com",
@@ -255,8 +256,8 @@
                                                              :first_name "Ngoc",
                                                              :last_name "Khuat"},
                                                     :payload_type "notification/system-event",
-                                                    :records [{:changes {:STATUS {:after "approved", :before "pending"}},
-                                                               :row {:ID 1, :STATUS "approved"}}],
+                                                    :record {:ID 1, :STATUS "cancelled"}
+                                                    :changes {:STATUS {:before "pending", :after "cancelled"}}
                                                     :settings {},
                                                     :table {:id 1, :name "orders"}}}))))
   (testing "fail if the custom context does not match the schema"
@@ -268,5 +269,5 @@
                                                             :subject "{{editor.first_name}} {{editor.last_name}} has created a row for {{table.name}}"
                                                             :body    "Created {{count records}} records"}}
                                    :notification   {:payload_type :notification/system-event
-                                                    :payload      {:event_name :event/rows.created}}
+                                                    :payload      {:event_name :event/row.created}}
                                    :custom_context {::context true}})))))

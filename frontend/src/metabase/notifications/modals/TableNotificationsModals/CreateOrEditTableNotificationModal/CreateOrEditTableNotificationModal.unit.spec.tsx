@@ -180,7 +180,7 @@ describe("CreateOrEditTableNotificationModal", () => {
   it("should show notification data when in edit mode", async () => {
     // Create a custom notification with 'row updated' event
     const mockNotification = createMockTableNotification({
-      event_name: "event/rows.updated",
+      event_name: "event/row.updated",
     });
 
     setup({
@@ -226,7 +226,7 @@ describe("CreateOrEditTableNotificationModal", () => {
     const parsedBody = JSON.parse(requestBody as string);
 
     await waitFor(() => {
-      expect(parsedBody.payload.event_name).toBe("event/rows.created");
+      expect(parsedBody.payload.event_name).toBe("event/row.created");
     });
 
     // Verify it has the default table_id
@@ -272,7 +272,7 @@ describe("CreateOrEditTableNotificationModal", () => {
     const parsedBody = JSON.parse(requestBody as string);
 
     await waitFor(() => {
-      expect(parsedBody.payload.event_name).toBe("event/rows.updated");
+      expect(parsedBody.payload.event_name).toBe("event/row.updated");
     });
 
     // Additional assertions...
@@ -290,7 +290,7 @@ describe("CreateOrEditTableNotificationModal", () => {
     // Create a notification with 'row created' event
     const mockNotification = createMockTableNotification({
       id: notificationId,
-      event_name: "event/rows.created",
+      event_name: "event/row.created",
     });
 
     setup({
@@ -327,7 +327,7 @@ describe("CreateOrEditTableNotificationModal", () => {
       return parsedBody; // Return the parsed body for later assertions
     }).then((parsedBody) => {
       // Verify the event has been changed to 'row updated'
-      expect(parsedBody.payload.event_name).toBe("event/rows.updated");
+      expect(parsedBody.payload.event_name).toBe("event/row.updated");
     });
 
     expect(onNotificationUpdatedMock).toHaveBeenCalledTimes(1);
@@ -337,7 +337,7 @@ describe("CreateOrEditTableNotificationModal", () => {
 // Helper function to create a mock table notification
 function createMockTableNotification({
   id = 123,
-  event_name = "event/rows.created",
+  event_name = "event/row.created",
   table_id = 42,
   user_id = 1,
 }: {

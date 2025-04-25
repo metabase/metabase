@@ -54,21 +54,21 @@ const NOTIFICATION_TRIGGER_OPTIONS_MAP: Record<
   NotificationTriggerEvent,
   TableNotificationTriggerOption
 > = {
-  "event/rows.created": {
+  "event/row.created": {
     value: {
-      eventName: "event/rows.created",
+      eventName: "event/row.created",
     },
     label: t`When new records are created`,
   },
-  "event/rows.updated": {
+  "event/row.updated": {
     value: {
-      eventName: "event/rows.updated",
+      eventName: "event/row.updated",
     },
     label: t`When any cell changes it's value`,
   },
-  "event/rows.deleted": {
+  "event/row.deleted": {
     value: {
-      eventName: "event/rows.deleted",
+      eventName: "event/row.deleted",
     },
     label: t`When records are deleted`,
   },
@@ -149,9 +149,9 @@ export const CreateOrEditTableNotificationModal = ({
     () =>
       (
         [
-          "event/rows.created",
-          "event/rows.updated",
-          "event/rows.deleted",
+          "event/row.created",
+          "event/row.updated",
+          "event/row.deleted",
         ] as NotificationTriggerEvent[]
       ).map((event) => ({
         value: event,
@@ -164,7 +164,7 @@ export const CreateOrEditTableNotificationModal = ({
   useEffect(() => {
     if (tableId && channelSpec && user && hookChannels && !requestBody) {
       const defaultOption =
-        NOTIFICATION_TRIGGER_OPTIONS_MAP["event/rows.created"];
+        NOTIFICATION_TRIGGER_OPTIONS_MAP["event/row.created"];
       setRequestBody(
         isEditMode
           ? { ...notification }

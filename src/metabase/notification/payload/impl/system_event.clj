@@ -9,6 +9,7 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
 
 (defn- join-url
@@ -59,17 +60,16 @@
                                :name "orders"}}
             [:id :int]
             [:name :string]]]
-   [:records {:gen/return [{:row {:ID 1
-                                  :STATUS "approved"}
-                            :changes {:STATUS {:before "pending"
-                                               :after  "approved"}}}]}
-    [:sequential
-     [:map {:description "A list of records that were updated in the table."}
-      [:row {:description "The row after the changes"} :map]
-      [:changes {:description "Changed keys"}
-       [:map-of :keyword [:map
-                          [:before :any]
-                          [:after :any]]]]]]]
+   [:record {:description "The row that action was performed on"
+             :gen/return  {:ID 1
+                           :STATUS "approved"}}
+    :map]
+   [:changes {:description "The changes that were made to the row"
+              :gen/return  {:STATUS {:before "pending"
+                                     :after  "approved"}}}
+    [:map-of :keyword [:map
+                       [:before :any]
+                       [:after :any]]]]
    [:settings [:map]]])
 
 (defn- bulk-row-transformation
@@ -83,8 +83,11 @@
                       :common_name ?creator_common_name}
          :event_info {:actor       ?actor
                       :args        {:table_id ?table_id
+                                    :db_id    ?db_id
                                     :table    {:name ?table_name}}
-                      :row_changes ?row-changes}}
+                      :row_change  {:pk     ?pk
+                                    :before ?before
+                                    :after  ?after}}}
         {:payload_type :notification/system-event
          :context      {:event_name ?event_name}
          :editor       {:first_name  (:first_name ?actor)
@@ -97,21 +100,21 @@
                         :common_name ?creator_common_name}
          :table        {:id   ?table_id
                         :name ?table_name
-                        :url  (str (public-settings/site-url) "/table/" ?table_id)}
-         :records      (for [{:keys [before after]} ?row-changes
-                             :let [changes-key (keys (second (diff before after)))]]
-                         {:row     (if (= ?event_name :event/rows.deleted) before after)
-                          :changes (into {} (for [k changes-key]
-                                              [k {:before (get before k)
-                                                  :after  (get after k)}]))})
+                        :url  (urls/table-url ?db_id ?table_id)}
+         :record       (or ?after ?before) ;; for insert and update we want the after, for delete we want the before
+         :changes      (let [row-columns (into #{} (concat (keys ?before) (keys ?after)))]
+                         (into {}
+                               (for [k row-columns]
+                                 [k {:before (get ?before k)
+                                     :after  (get ?after k)}])))
          :settings     (notification.payload/default-settings)})
       (throw (ex-info "Unable to destructure notification-info, check that expected structure matches malli schema."
                       {:notification-info notification-info}))))
 
 ;; TODO better to just handle all three cases by the same event
-(doseq [event-name [:event/rows.created
-                    :event/rows.updated
-                    :event/rows.deleted]]
+(doseq [event-name [:event/row.created
+                    :event/row.updated
+                    :event/row.deleted]]
   (mu/defmethod transform-event-info event-name :- ::rows.bulk
     [notification-info]
     (bulk-row-transformation notification-info)))
@@ -122,7 +125,7 @@
     {:payload_type :notification/system-event
      :creator      (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification-info))
      :context      (notification.payload/default-settings)
-     ;; TODO, we need event_name anywhere?
+    ;; TODO, we need event_name anywhere?
      :payload      (assoc event-info :event_name (-> notification-info :payload :event_name))}))
 
 (defmethod transform-event-info :event/user-invited
