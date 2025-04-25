@@ -123,7 +123,7 @@ e2e_all:
   - "e2e/runner/**"
   - "e2e/support/**"
   - "e2e/snapshot*/**"
-  - "e2e/test/scenarios/**/!(*.cy.*)"
+  - "e2e/test/scenarios/**"
 
 snowplow:
   - ".github/workflows/snowplow.yml"
