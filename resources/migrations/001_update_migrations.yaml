@@ -11134,7 +11134,6 @@ databaseChangeLog:
             constraintName: fk_metabase_database_metabase_database_id
             onDelete: RESTRICT
 
-
   - changeSet:
       id: v55.2025-04-17T08:44:39
       author: johnswanson
@@ -11177,8 +11176,6 @@ databaseChangeLog:
                   type: ${boolean.type}
                   defaultValueBoolean: false
                   remarks: "true iff this is a Tenant Group"
-                  constraints:
-                    nullable: false
 
   - changeSet:
       id: v55.2025-04-22T05:54:51
@@ -11196,6 +11193,25 @@ databaseChangeLog:
                   constraints:
                     unique: false
                     nullable: true
+      id: v55.2025-04-25T17:12:44
+      author: bshepherdson
+      comment: Add Card.metadata_analysis_state column for the idents backfill state machine
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: report_card
+              columnName: metadata_analysis_state
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: metadata_analysis_state
+                  type: int
+                  remarks: Enum for the state of each card in the idents backfill process
+                  defaultValue: 1
+                  constraints:
+                    nullable: false
 
   - changeSet:
       id: v55.2025-05-02T08:21:44
@@ -11254,6 +11270,47 @@ databaseChangeLog:
                 'type/Number'
               )
 
+  - changeSet:
+      id: v55.2025-05-09T15:16:31
+      author: bshepherdson
+      comment: Creating index on the metadata_analysis_state
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: report_card
+                indexName: idx_report_card_metadata_analysis_state
+      changes:
+        - createIndex:
+            tableName: report_card
+            columns:
+              - column:
+                  name: metadata_analysis_state
+            indexName: idx_report_card_metadata_analysis_state
+
+  - changeSet:
+      id: v55.2025-05-09T15:17:08
+      author: bshepherdson
+      comment: Add Card.metadata_analysis_blocker column for the idents backfill state machine
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: report_card
+              columnName: metadata_analysis_blocker
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: metadata_analysis_blocker
+                  type: int
+                  remarks: FK to the card that stopped this one from being analyzed
+                  constraints:
+                    nullable: true
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metadata_analysis_blocker_ref_card_id
+                    deleteCascade: false
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

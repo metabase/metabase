@@ -91,16 +91,29 @@
   (fn [_card target-schema-version]
     target-schema-version))
 
+(def transform-metadata-analysis-state
+  "Transform the numeric enum giving the state to and from keywords."
+  (let [kw->num {:not-started 1 ; The default value!
+                 :priority    2
+                 :analyzed    3
+                 :executed    4
+                 :failed      5
+                 :blocked     6}
+        num->kw (into {} (map (fn [[k v]] [v k])) kw->num)]
+    {:in  kw->num
+     :out #(num->kw % :not-started)}))
+
 (t2/deftransforms :model/Card
-  {:dataset_query          mi/transform-metabase-query
-   :display                mi/transform-keyword
-   :embedding_params       mi/transform-json
-   :query_type             mi/transform-keyword
-   :result_metadata        mi/transform-result-metadata
-   :visualization_settings mi/transform-visualization-settings
-   :parameters             mi/transform-card-parameters-list
-   :parameter_mappings     mi/transform-parameters-list
-   :type                   mi/transform-keyword})
+  {:dataset_query           mi/transform-metabase-query
+   :display                 mi/transform-keyword
+   :embedding_params        mi/transform-json
+   :query_type              mi/transform-keyword
+   :result_metadata         mi/transform-result-metadata
+   :visualization_settings  mi/transform-visualization-settings
+   :parameters              mi/transform-card-parameters-list
+   :parameter_mappings      mi/transform-parameters-list
+   :type                    mi/transform-keyword
+   :metadata_analysis_state transform-metadata-analysis-state})
 
 (doto :model/Card
   (derive :metabase/model)
@@ -835,6 +848,20 @@
     ;; Some sort of odd query like an aggregation over cards. Just return it as-is.
     card))
 
+(defonce ^{:doc "Set of card IDs which have been read, which are in `:not-started` state.
+           These cards should be prioritized for analysis."}
+  cards-for-priority-analysis
+  (atom #{}))
+
+(defn- mark-card-used-for-priority-analysis
+  "If we selected `:metadata_analysis_state` and it's `:not-started` then add this card's ID to the set of cards
+  we want to prioritize for analysis."
+  [card]
+  (when (and (contains? card :metadata_analysis_state)
+             (= (:metadata_analysis_state card) :not-started))
+    (swap! cards-for-priority-analysis conj (:id card)))
+  card)
+
 (t2/define-after-select :model/Card
   [card]
   ;; +===============================================================================================+
@@ -849,6 +876,7 @@
       add-query-description-to-metric-card
       serdes/add-entity-id
       ensure-clause-idents
+      mark-card-used-for-priority-analysis
       ;; At this point, the card should be at schema version 20 or higher.
       upgrade-card-schema-to-latest))
 
