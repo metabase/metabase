@@ -19,12 +19,24 @@ const THEME: MetabaseTheme = {
 
 describe("scenarios > embedding > sdk iframe embedding > entity id", () => {
   beforeEach(() => {
-    H.setupEmbeddingTest(ALL_USERS_GROUP_ID);
+    H.restore();
+    cy.signInAsAdmin();
+    H.mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
+    H.setTokenFeatures("all");
+
+    H.createApiKey("Test SDK Embedding Key", ALL_USERS_GROUP_ID).then(
+      ({ body }) => {
+        cy.wrap(body.unmasked_key).as("apiKey");
+      },
+    );
+
+    cy.request("PUT", "/api/setting/enable-embedding-interactive", {
+      value: true,
+    });
   });
 
   it("should create iframe and authenticate with API key using entity ID", () => {
     cy.log("Testing dashboard embedding with entity ID");
-    H.enableResourceEmbedding("dashboard", ORDERS_DASHBOARD_ID);
 
     cy.get<string>("@apiKey").then((apiKey) => {
       H.getResourceEntityId("dashboard", ORDERS_DASHBOARD_ID).then(
@@ -47,7 +59,6 @@ describe("scenarios > embedding > sdk iframe embedding > entity id", () => {
 
   it("should embed question using entity ID", () => {
     cy.log("Testing question embedding with entity ID");
-    H.enableResourceEmbedding("question", ORDERS_QUESTION_ID);
 
     cy.get<string>("@apiKey").then((apiKey) => {
       H.getResourceEntityId("question", ORDERS_QUESTION_ID).then((entityId) => {
@@ -73,7 +84,7 @@ function getEntityIdTestPageHtml(
   const resourceIdProp =
     options.resourceType === "dashboard" ? "dashboardId" : "questionId";
 
-  return H.getBaseIframeHtml(
+  return H.getBaseSdkIframeEmbedHtml(
     options,
     {
       [resourceIdProp]: options.resourceId,
