@@ -186,6 +186,11 @@ describe("scenarios > question > download", () => {
     );
 
     cy.intercept(
+      "GET",
+      "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+    ).as("fetchFormat");
+
+    cy.intercept(
       "PUT",
       "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
     ).as("saveFormat");
@@ -198,6 +203,8 @@ describe("scenarios > question > download", () => {
     cy.wait("@saveFormat");
 
     cy.reload();
+
+    cy.wait("@fetchFormat");
     cy.findByRole("button", { name: "Download results" }).click();
     H.popover().within(() => {
       cy.get("[data-checked='true']").should("contain", ".xlsx");
@@ -210,6 +217,8 @@ describe("scenarios > question > download", () => {
     cy.wait("@saveFormat");
 
     cy.reload();
+
+    cy.wait("@fetchFormat");
     cy.findByRole("button", { name: "Download results" }).click();
     H.popover().within(() => {
       cy.get("[data-checked='true']").should("contain", ".json");
@@ -234,6 +243,11 @@ describe("scenarios > question > download", () => {
         H.visitDashboard(dashboardId);
 
         cy.intercept(
+          "GET",
+          "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+        ).as("fetchFormat");
+
+        cy.intercept(
           "PUT",
           "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
         ).as("saveFormat");
@@ -250,6 +264,8 @@ describe("scenarios > question > download", () => {
         cy.wait("@saveFormat");
 
         cy.reload();
+
+        cy.wait("@fetchFormat");
         H.getDashboardCard(0).realHover();
         H.getDashboardCardMenu(0).click();
         H.popover().within(() => {
@@ -266,6 +282,8 @@ describe("scenarios > question > download", () => {
         cy.wait("@saveFormat");
 
         cy.reload();
+
+        cy.wait("@fetchFormat");
         H.getDashboardCard(0).realHover();
         H.getDashboardCardMenu(0).click();
         H.popover().within(() => {
