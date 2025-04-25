@@ -1,8 +1,7 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { Flex, Icon, SegmentedControl } from "metabase/ui";
+import { Icon, Switch } from "metabase/ui";
 
 import QuestionDisplayToggleS from "./QuestionDisplayToggle.module.css";
 
@@ -28,49 +27,33 @@ const QuestionDisplayToggle = ({
   );
 
   return (
-    <SegmentedControl
+    <Switch
+      checked={!isShowingRawTable}
+      onChange={() => onToggleRawTable(!isShowingRawTable)}
+      size="lg"
       classNames={{
-        root: cx(QuestionDisplayToggleS.Well, className),
-        label: QuestionDisplayToggleS.label,
-        indicator: QuestionDisplayToggleS.indicator,
+        root: className,
+        track: QuestionDisplayToggleS.track,
+        thumb: QuestionDisplayToggleS.thumb,
       }}
-      value={isShowingRawTable ? "data" : "visualization"}
-      onChange={(value) => onToggleRawTable(value === "data")}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onToggleRawTable(!isShowingRawTable);
         }
       }}
-      data={[
-        {
-          value: "data",
-          label: (
-            <Flex
-              className={cx(QuestionDisplayToggleS.ToggleIcon, {
-                [QuestionDisplayToggleS.active]: isShowingRawTable,
-              })}
-              aria-label={t`Switch to data`}
-            >
-              <Icon name="table2" />
-            </Flex>
-          ),
-        },
-        {
-          value: "visualization",
-          label: (
-            <Flex
-              className={cx(QuestionDisplayToggleS.ToggleIcon, {
-                [QuestionDisplayToggleS.active]: !isShowingRawTable,
-              })}
-              aria-label={t`Switch to visualization`}
-            >
-              <Icon name="lineandbar" />
-            </Flex>
-          ),
-        },
-      ]}
-      transitionDuration={0}
+      aria-label={
+        isShowingRawTable ? t`Switch to data` : t`Switch to visualization`
+      }
+      thumbIcon={
+        isShowingRawTable ? (
+          <Icon name="table2" size={16} />
+        ) : (
+          <Icon size={16} name="lineandbar" />
+        )
+      }
+      offLabel={<Icon name="lineandbar" size={16} color="grey" />}
+      onLabel={<Icon size={16} name="table2" color="grey" />}
     />
   );
 };

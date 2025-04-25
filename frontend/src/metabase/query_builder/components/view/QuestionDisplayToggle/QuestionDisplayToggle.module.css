@@ -25,19 +25,30 @@
   }
 }
 
-.label {
-  padding: 0;
-  margin: 0;
-  height: auto;
-  border-radius: 99px;
-  border: none;
+.track {
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease;
+
+  input:checked + & {
+    background-color: var(--mb-color-bg-medium);
+    color: var(--mb-color-text-white);
+
+    & > .thumb {
+      background-color: var(--mb-color-brand);
+      color: var(--mb-color-text-white);
+      transform: translate(-28%);
+    }
+  }
 }
 
-.indicator {
+.thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 65px;
+  width: 30px;
+  height: 24px;
   background-color: var(--mb-color-brand);
-  border-radius: 99px;
-  height: calc(100% - 8px);
-  margin: 0;
-  box-shadow: none;
-  border: none;
+  color: var(--mb-color-text-white);
 }
