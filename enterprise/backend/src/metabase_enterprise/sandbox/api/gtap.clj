@@ -78,9 +78,9 @@
                                   [:card_id  {:optional true} [:maybe ms/PositiveInt]]]]
   (when card_id
     (let [db (t2/select-one :model/Database
-                            {:from [[:metabase_table :t]]
-                             :join [[:metabase_database :d] [:= :t.db_id :d.id]]
-                             :where [:= :t.id table_id]})]
+                            :id {:select [:t.db_id]
+                                 :from [[(t2/table-name :model/Table) :t]]
+                                 :where [:= :t.id table_id]})]
       (when (not (driver.u/supports? (:engine db) :saved-question-sandboxing db))
         (throw (ex-info (tru "Sandboxing with a saved question is not enabled for this database.")
                         {:status-code 400

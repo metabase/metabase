@@ -265,14 +265,11 @@
 ;;; |                                                END-TO-END TESTS                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; ->honeysql is not implemented for mongo
 (defn- e2e-test-drivers []
-  (into #{}
-        (filter #(isa? driver/hierarchy % :sql))
-        (mt/normal-drivers-with-feature :nested-queries)))
+  (mt/normal-drivers-with-feature :nested-queries))
 
 (deftest e2e-test-1
-  (mt/test-drivers (e2e-test-drivers)
+  (mt/test-drivers (disj (e2e-test-drivers) :mongo) ;; ->honeysql is not implemented for mongo
     (testing "Basic test around querying a table by a user with segmented only permissions and a GTAP question that is a native query"
       (met/with-gtaps! {:gtaps {:venues (venues-category-native-gtap-def)}, :attributes {"cat" 50}}
         (is (= [[10]]
@@ -322,7 +319,7 @@
                (run-venues-count-query)))))))
 
 (deftest e2e-test-7
-  (mt/test-drivers (e2e-test-drivers)
+  (mt/test-drivers (disj (e2e-test-drivers) :mongo) ;; ->honeysql is not implemented for mongo
     (testing "Tests that users can have a different parameter name in their query than they have in their user attributes"
       (met/with-gtaps! {:gtaps      {:venues {:query      (:query (venues-category-native-gtap-def))
                                               :remappings {:something.different ["variable" ["template-tag" "cat"]]}}}
@@ -331,7 +328,7 @@
                (run-venues-count-query)))))))
 
 (deftest e2e-test-8
-  (mt/test-drivers (e2e-test-drivers)
+  (mt/test-drivers (disj (e2e-test-drivers) :mongo) ;; ->honeysql is not implemented for mongo
     (testing "Make sure that you can still use a SQL-based GTAP without needing to have SQL read perms for the Database"
       (met/with-gtaps! {:gtaps {:venues (venue-names-native-gtap-def)}}
         (is (= [[1 "Red Medicine"] [2 "Stout Burgers & Beers"]]
