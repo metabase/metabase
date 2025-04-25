@@ -1,7 +1,7 @@
 import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
-import { Switch } from "metabase/ui";
+import { Card, Stack, Switch, Text } from "metabase/ui";
 
 interface Props {
   checked: boolean;
@@ -9,10 +9,16 @@ interface Props {
 }
 
 export const TableVisibilityInput = ({ checked, onChange }: Props) => (
-  <Switch
-    checked={checked}
-    label={t`Hide this table`}
-    size="sm"
-    onChange={onChange}
-  />
+  <Stack gap="sm">
+    <Text fw="bold" size="sm">{t`Table visibility`}</Text>
+
+    <Card bg="accent-gray-light" p="sm" radius="md" shadow="none">
+      <Switch
+        checked={checked}
+        label={t`Hide this table`}
+        size="sm"
+        onChange={onChange}
+      />
+    </Card>
+  </Stack>
 );

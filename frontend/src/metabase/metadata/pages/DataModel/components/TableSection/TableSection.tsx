@@ -6,7 +6,7 @@ import {
   FieldOrderPicker,
   NameDescriptionInput,
 } from "metabase/metadata/components";
-import { Card, Flex, Stack, Text } from "metabase/ui";
+import { Flex, Stack, Text } from "metabase/ui";
 import type { TableId, UpdateTableRequest } from "metabase-types/api";
 
 import { TableVisibilityInput } from "../TableVisibilityInput";
@@ -42,19 +42,13 @@ export const TableSection = ({ tableId }: Props) => {
         }}
       />
 
-      <Stack gap="sm">
-        <Text fw="bold" size="sm">{t`Table visibility`}</Text>
-
-        <Card bg="accent-gray-light" p="sm" radius="md" shadow="none">
-          <TableVisibilityInput
-            checked={table.visibility_type === "hidden"}
-            onChange={(event) => {
-              const visibilityType = event.target.checked ? "hidden" : null;
-              patchTable({ visibility_type: visibilityType });
-            }}
-          />
-        </Card>
-      </Stack>
+      <TableVisibilityInput
+        checked={table.visibility_type === "hidden"}
+        onChange={(event) => {
+          const visibilityType = event.target.checked ? "hidden" : null;
+          patchTable({ visibility_type: visibilityType });
+        }}
+      />
 
       <Stack gap="sm">
         <Flex align="flex-end" justify="space-between">
