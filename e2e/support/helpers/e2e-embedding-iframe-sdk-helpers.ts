@@ -108,22 +108,23 @@ function getSdkIframeEmbedHtml({
 }
 
 export function prepareSdkIframeEmbedTest() {
-  const ALL_USERS_GROUP_ID = 1;
+  // TODO: use a less privileged group that has "Our analytics" view permission
+  const ADMIN_GROUP_ID = 2;
 
   restore();
   cy.signInAsAdmin();
   mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
   setTokenFeatures("all");
 
-  createApiKey("test iframe sdk embedding", ALL_USERS_GROUP_ID).then(
-    ({ body }) => {
-      cy.wrap(body.unmasked_key).as("apiKey");
-    },
-  );
+  createApiKey("test iframe sdk embedding", ADMIN_GROUP_ID).then(({ body }) => {
+    cy.wrap(body.unmasked_key).as("apiKey");
+  });
 
   cy.request("PUT", "/api/setting/enable-embedding-interactive", {
     value: true,
   });
+
+  cy.signOut();
 
   cy.intercept("POST", "/api/card/*/query").as("getCardQuery");
   cy.intercept("POST", "/api/dashboard/**/query").as("getDashCardQuery");
