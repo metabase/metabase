@@ -19,10 +19,12 @@ const ControlOptionItem = ({
 
 const CODE_PREVIEW_CONTROL_OPTIONS = [
   {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: <ControlOptionItem label={t`Code`} iconName="embed" />,
     value: "code",
   },
   {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: <ControlOptionItem label={t`Preview`} iconName="eye_filled" />,
     value: "preview",
   },

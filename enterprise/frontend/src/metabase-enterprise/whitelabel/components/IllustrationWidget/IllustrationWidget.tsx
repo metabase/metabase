@@ -50,13 +50,19 @@ interface SelectOption {
 }
 const SELECT_OPTIONS: Record<IllustrationType, SelectOption[]> = {
   background: [
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Lighthouse`, value: "default" },
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`No illustration`, value: "none" },
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Custom`, value: "custom" },
   ],
   icon: [
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Sailboat`, value: "default" },
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`No illustration`, value: "none" },
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Custom`, value: "custom" },
   ],
 };

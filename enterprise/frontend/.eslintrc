@@ -7,19 +7,20 @@
         "paths": [
           {
             "name": "moment",
-            "message": "Moment is deprecated, please use dayjs"
+            "message": "Moment is deprecated, please use dayjs",
           },
           {
             "name": "moment-timezone",
-            "message": "Moment is deprecated, please use dayjs"
+            "message": "Moment is deprecated, please use dayjs",
           },
           {
             "name": "react-redux",
             "importNames": ["useSelector", "useDispatch", "connect"],
-            "message": "Please import from `metabase/lib/redux` instead."
+            "message": "Please import from `metabase/lib/redux` instead.",
           },
-        ]
-      }
-    ]
-  }
+        ],
+      },
+    ],
+    "ttag/no-module-declaration": 2,
+  },
 }
