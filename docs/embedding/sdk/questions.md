@@ -9,35 +9,55 @@ description: How to embed charts in your app with the Embedded analytics SDK.
 
 There are different ways you can embed questions:
 
-- [Static question](#embedding-a-static-question). Embeds a chart. Clicking on the chart doesn't do anything.
-- [Interactive question](#embedding-an-interactive-question). Clicking on the chart gives you the drill-through menu.
+- [Static question](#staticquestion). Embeds a chart. Clicking on the chart doesn't do anything.
+- [Interactive question](#interactivequestion). Clicking on the chart gives you the drill-through menu.
 - [Query builder](#embedding-the-query-builder-for-creating-new-questions). Embeds the graphical query builder without a pre-defined query.
 
-## Embedding a static question
+## Embedding a question
 
-You can embed a static question using the `StaticQuestion` component.
+You can embed a question using the one of the question components:
 
-Docs: [StaticQuestion](./api/StaticQuestion.html)
+### `StaticQuestion`
+
+A lightweight question component. Use this component when you want to display results without letting people interact with the data.
 
 ![Static question](../images/static-question.png)
 
 The component has a default height, which can be customized by using the `height` prop. To inherit the height from the parent container, you can pass `100%` to the height prop.
 
+#### API Reference
+- [Component](./api/StaticQuestion.html)
+- [Props](./api/StaticQuestionProps.html)
+
+#### Example
+
 ```typescript
 {% include_file "{{ dirname }}/snippets/questions/static-question.tsx" %}
 ```
 
-## Embedding an interactive question
+#### Props
 
-You can embed an interactive question using the `InteractiveQuestion` component.
+{% include_file "{{ dirname }}/api/snippets/StaticQuestionProps.md" snippet="properties" %}
 
-Docs: [InteractiveQuestion](./api/InteractiveQuestion.html)
+### `InteractiveQuestion`
+
+Use this component when you want to allow people to explore their data and customize question layout.
 
 ![Interactive question](../images/interactive-question.png)
+
+#### API Reference
+- [Component](./api/InteractiveQuestion.html)
+- [Props](./api/InteractiveQuestionProps.html)
+
+#### Example
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/questions/interactive-question.tsx" %}
 ```
+
+#### Props
+
+{% include_file "{{ dirname }}/api/snippets/InteractiveQuestionProps.md" snippet="properties" %}
 
 ## Pass SQL parameters to SQL questions with `initialSqlParameters`
 
@@ -65,11 +85,11 @@ To customize the layout, use namespaced components within the `InteractiveQuesti
 {% include_file "{{ dirname }}/snippets/questions/customize-interactive-question.tsx" snippet="example-customized-interactive-question" %}
 ```
 
-## Interactive question components
+### Interactive question components
 
 These components are available via the `InteractiveQuestion` namespace (e.g., `<InteractiveQuestion.Filter />`).
 
-Docs:
+#### API Reference:
 - [InteractiveQuestion.BackButton](./api/InteractiveQuestion.html#backbutton)
 - [InteractiveQuestion.Breakout](./api/InteractiveQuestion.html#breakout)
 - [InteractiveQuestion.BreakoutDropdown](./api/InteractiveQuestion.html#breakoutdropdown)
