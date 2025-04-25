@@ -3,6 +3,11 @@ import { t } from "ttag";
 import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import type { Dashboard } from "metabase-types/api";
 
+import {
+  createBrandingElement,
+  getBrandingConfig,
+  getBrandingSize,
+} from "./exports-branding-utils";
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
 
 const TARGET_ASPECT_RATIO = 21 / 17;
@@ -178,10 +183,13 @@ export const saveDashboardPdf = async (
     pdfHeader.getBoundingClientRect().height + HEADER_MARGIN_BOTTOM;
   gridNode.removeChild(pdfHeader);
 
-  const verticalOffset = headerHeight + parametersHeight;
   const contentWidth = gridNode.offsetWidth;
-  const contentHeight = gridNode.offsetHeight + verticalOffset;
   const width = contentWidth + PAGE_PADDING * 2;
+
+  const size = getBrandingSize(width);
+  const brandingHeight = getBrandingConfig(size).h;
+  const verticalOffset = headerHeight + parametersHeight + brandingHeight;
+  const contentHeight = gridNode.offsetHeight + verticalOffset;
 
   const backgroundColor = getComputedStyle(document.documentElement)
     .getPropertyValue("--mb-color-bg-dashboard")
@@ -200,6 +208,9 @@ export const saveDashboardPdf = async (
         node.insertBefore(parametersNode, node.firstChild);
       }
       node.insertBefore(pdfHeader, node.firstChild);
+
+      const branding = createBrandingElement(size);
+      node.insertBefore(branding, node.firstChild);
     },
   });
 
