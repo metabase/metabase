@@ -185,34 +185,49 @@
                            {:args {:table_id (mt/id :orders)}})))))))))
 
 (deftest example-payload-row-create-test
-  (is (=? {:creator  {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
-           :editor   {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
-           :table    {:id 1 :name "orders"}
-           :record   {:ID 1 :STATUS "approved"}
-           :changes  {:STATUS {:before "pending" :after "approved"}}
-           :settings {}}
+  (is (=? {:payload_type "notification/system-event"
+           :context {:event_name "event/row.created"}
+           :creator {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
+           :editor {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
+           :table {:id 1 :name "orders"}
+           :settings {}
+           :record {:id 1 :name "Product A" :price 29.99 :status "active"}
+           :changes {:id {:before nil :after 1}
+                     :name {:before nil :after "Product A"}
+                     :price {:before nil :after 29.99}
+                     :status {:before nil :after "active"}}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
                                            :payload      {:event_name :event/row.created}
                                            :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest example-payload-row-update-test
-  (is (=? {:creator  {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
-           :editor   {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
-           :table    {:id 1 :name "orders"}
-           :record   {:ID 1 :STATUS "approved"}
-           :changes  {:STATUS {:before "pending" :after "approved"}}           :settings {}}
+  (is (=? {:payload_type "notification/system-event"
+           :context {:event_name "event/row.updated"}
+           :creator {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
+           :editor {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
+           :table {:id 1 :name "orders"}
+           :settings {}
+           :record {:id 1 :name "Product A" :price 24.99 :status "on sale"}
+           :changes {:price {:before 29.99 :after 24.99} :status {:before "active" :after "on sale"}}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
                                            :payload      {:event_name :event/row.updated}
                                            :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest example-payload-row-delete-test
-  (is (=? {:creator  {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
-           :editor   {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
-           :table    {:id 1 :name "orders"}
-           :record   {:ID 1 :STATUS "approved"}
-           :changes  {:STATUS {:before "pending" :after "approved"}}           :settings {}}
+  (is (=? {:payload_type "notification/system-event"
+           :context {:event_name "event/row.deleted"}
+           :creator {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
+           :editor {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
+           :table {:id 1 :name "orders"}
+           :settings {}
+           :record {:id 1 :name "Product A" :price 24.99 :status "discontinued"}
+           :changes
+           {:id {:before 1 :after nil}
+            :name {:before "Product A" :after nil}
+            :price {:before 24.99 :after nil}
+            :status {:before "discontinued" :after nil}}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
                                            :payload      {:event_name :event/row.deleted}
@@ -223,12 +238,12 @@
            :rendered {:from    "notifications@metabase.com"
                       :bcc     ["bot@metabase.com"]
                       :subject "Meta Bot has created a row for orders"
-                      :body    [{:type "text/html; charset=utf-8" :content "New record: approved"}]}}
+                      :body    [{:type "text/html; charset=utf-8" :content "New record: "}]}}
           (mt/user-http-request :crowberto :post 200 "notification/preview_template"
                                 {:template     {:channel_type :channel/email
                                                 :details {:type    :email/handlebars-text
                                                           :subject "{{editor.first_name}} {{editor.last_name}} has created a row for {{table.name}}"
-                                                          :body    "New record: {{record.STATUS}}"}}
+                                                          :body    "New record: {{record.status}}"}}
                                  :notification {:payload_type :notification/system-event
                                                 :payload      {:event_name :event/row.created}}}))))
 
@@ -243,10 +258,10 @@
                                   {:template     {:channel_type :channel/email
                                                   :details {:type    :email/handlebars-text
                                                             :subject "{{editor.first_name}} {{editor.last_name}} has created a row for {{table.name}}"
-                                                            :body    "New record: {{record.STATUS}}"}}
+                                                            :body    "New record: {{record.status}}"}}
                                    :notification   {:payload_type :notification/system-event
                                                     :payload      {:event_name :event/row.created}}
-                                   :custom_context {:context {}
+                                   :custom_context {:context {:event_name :event/row.created}
                                                     :creator {:common_name "Meta Bot",
                                                               :email "bot@metabase.com",
                                                               :first_name "Meta",
@@ -256,8 +271,8 @@
                                                              :first_name "Ngoc",
                                                              :last_name "Khuat"},
                                                     :payload_type "notification/system-event",
-                                                    :record {:ID 1, :STATUS "cancelled"}
-                                                    :changes {:STATUS {:before "pending", :after "cancelled"}}
+                                                    :record {:id 1, :status "cancelled"}
+                                                    :changes {:status {:before nil :after "cancelled"}}
                                                     :settings {},
                                                     :table {:id 1, :name "orders"}}}))))
   (testing "fail if the custom context does not match the schema"
