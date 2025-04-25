@@ -2,7 +2,10 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
-import type { ExportFormat } from "metabase/common/types/export";
+import type {
+  ExportFormat,
+  TableExportFormat,
+} from "metabase/common/types/export";
 import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import {
@@ -94,7 +97,7 @@ export const QuestionDownloadWidget = ({
         last_table_download_format:
           newFormat !== "png"
             ? newFormat
-            : formatPreference.last_table_download_format,
+            : (formatPreference.last_table_download_format as TableExportFormat),
       };
       setFormatPreference(newPreference);
     }

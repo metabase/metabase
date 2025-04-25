@@ -36,8 +36,8 @@ export type QuestionDownloadPopoverProps = {
   Partial<Omit<UseDownloadDataParams, "question" | "result">>;
 
 export type FormatPreference = {
-  last_download_format: TableExportFormat;
-  last_table_download_format: ExportFormat;
+  last_download_format: ExportFormat;
+  last_table_download_format: TableExportFormat;
 };
 
 export type BaseQuestionDownloadPopoverProps = QuestionDownloadPopoverProps & {
