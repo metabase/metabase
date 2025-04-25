@@ -19,7 +19,7 @@ export const TableSection = ({ tableId }: Props) => {
   const { data: table, error, isLoading } = useGetTableQuery({ id: tableId });
   const [updateTable] = useUpdateTableMutation();
 
-  const update = (patch: Omit<UpdateTableRequest, "id">) => {
+  const patchTable = (patch: Omit<UpdateTableRequest, "id">) => {
     updateTable({ id: tableId, ...patch });
   };
 
@@ -35,10 +35,10 @@ export const TableSection = ({ tableId }: Props) => {
         name={table.display_name}
         namePlaceholder={t`Give this table a name`}
         onDescriptionChange={(description) => {
-          update({ description });
+          patchTable({ description });
         }}
         onNameChange={(name) => {
-          update({ display_name: name });
+          patchTable({ display_name: name });
         }}
       />
 
@@ -50,7 +50,7 @@ export const TableSection = ({ tableId }: Props) => {
             checked={table.visibility_type === "hidden"}
             onChange={(event) => {
               const visibilityType = event.target.checked ? "hidden" : null;
-              update({ visibility_type: visibilityType });
+              patchTable({ visibility_type: visibilityType });
             }}
           />
         </Card>
@@ -66,7 +66,7 @@ export const TableSection = ({ tableId }: Props) => {
             }}
             value={table.field_order}
             onChange={(fieldOrder) => {
-              update({ field_order: fieldOrder });
+              patchTable({ field_order: fieldOrder });
             }}
           />
         </Flex>
