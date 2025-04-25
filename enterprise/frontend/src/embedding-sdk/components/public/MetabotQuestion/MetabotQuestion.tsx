@@ -14,7 +14,7 @@ const MetabotQuestionInner = () => {
   const [redirectUrl, setRedirectUrl] = useState<string>("");
 
   return (
-    <Flex direction="column" align="center" gap="3rem">
+    <Flex direction="column" align="center" gap="md">
       <MetabotChatEmbedding onRedirectUrl={setRedirectUrl} />
       {redirectUrl && (
         <InteractiveAdHocQuestion
