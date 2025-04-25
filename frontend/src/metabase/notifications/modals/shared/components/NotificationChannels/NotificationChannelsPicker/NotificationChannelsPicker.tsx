@@ -110,12 +110,16 @@ const templateReducer = (
 
 const templateTypeMap = {
   "channel/email": {
-    name: t`Email template`,
+    get name() {
+      return t`Email template`;
+    },
     type: "email/handlebars-text",
     stateKey: "email" as const,
   },
   "channel/slack": {
-    name: t`Slack template`,
+    get name() {
+      return t`Slack template`;
+    },
     type: "slack/handlebars-text",
     stateKey: "slack" as const,
   },
