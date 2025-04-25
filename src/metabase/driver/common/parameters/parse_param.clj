@@ -10,7 +10,7 @@ expr = string|doubleString
 string = <'\\''> #'[^\\']*' <'\\''>
 doubleString = <'\"'> #'[^\"]*' <'\"'>
 function = name arglist
-name = #'[\\w_\\.]+'
+name = #'[\\w_\\.#]+'
 arglist = <'('> <whitespace> expr? <whitespace> (<','> <whitespace> expr <whitespace>)* <')'>
 whitespace = #'\\s*'
 ")
