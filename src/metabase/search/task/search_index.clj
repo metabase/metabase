@@ -37,20 +37,19 @@
   "Create a new index, if necessary"
   []
   (when (search/supports-index?)
-    (quick-task/submit-task!
-     (cluster-lock/with-cluster-lock ::search-init-lock
-       (try
-         (let [timer (u/start-timer)
-               report (search/init-index! {:force-reset? false, :re-populate? false})
-               duration (u/since-ms timer)]
-           (if (seq report)
-             (do (ingestion/report->prometheus! duration report)
-                 (log/infof "Done indexing in %.0fms %s" duration (sort-by (comp - val) report))
-                 true)
-             (log/info "Found existing search index, and using it.")))
-         (catch Exception e
-           (analytics/inc! :metabase-search/index-error)
-           (throw e)))))))
+    (cluster-lock/with-cluster-lock ::search-init-lock
+      (try
+        (let [timer (u/start-timer)
+              report (search/init-index! {:force-reset? false, :re-populate? false})
+              duration (u/since-ms timer)]
+          (if (seq report)
+            (do (ingestion/report->prometheus! duration report)
+                (log/infof "Done indexing in %.0fms %s" duration (sort-by (comp - val) report))
+                true)
+            (log/info "Found existing search index, and using it.")))
+        (catch Exception e
+          (analytics/inc! :metabase-search/index-error)
+          (throw e))))))
 
 (defn reindex!
   "Reindex the whole AppDB"
@@ -74,7 +73,7 @@
   (reindex!))
 
 (defmethod startup/def-setup-logic! ::SearchIndexInit [_]
-  (init!))
+  (quick-task/submit-task! (init!)))
 
 (defmethod task/init! ::SearchIndexReindex [_]
   (let [job         (jobs/build

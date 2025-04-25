@@ -282,7 +282,6 @@
 (defn when-index-created
   "Return creation time of the active index, or nil if there is none."
   []
-  (sync-tracking-atoms!)
   (t2/select-one-fn :created_at
                     :model/SearchIndexMetadata
                     :engine :appdb
