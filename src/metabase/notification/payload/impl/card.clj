@@ -2,6 +2,7 @@
   (:require
    [metabase.channel.render.core :as channel.render]
    [metabase.events :as events]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.notification.send :as notification.send]
@@ -64,8 +65,9 @@
       (let [^String error-text (format "Unrecognized alert with condition '%s'" send-condition)]
         (throw (IllegalArgumentException. error-text))))))
 
-(defmethod notification.send/do-after-notification-sent :notification/card
-  [{:keys [id creator_id handlers] :as notification-info} notification-payload]
+(mu/defmethod notification.send/do-after-notification-sent :notification/card
+  [{:keys [id creator_id handlers] :as notification-info} :- ::models.notification/FullyHydratedNotification
+   notification-payload]
   (when (-> notification-info :payload :send_once)
     (t2/update! :model/Notification (:id notification-info) {:active false}))
   (try

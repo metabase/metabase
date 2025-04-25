@@ -17,6 +17,7 @@
 
   known-labels
   initial-value
+  clear!
   connection-pool-info
   inc!
   set!
