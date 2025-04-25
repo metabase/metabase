@@ -76,9 +76,10 @@
 
 (defn- check-model-is-not-a-saved-question
   [model-id]
-  (when-not (= (t2/select-one-fn :type [:model/Card :type :card_schema] :id model-id) :model)
-    (throw (ex-info (tru "Actions must be made with models, not cards.")
-                    {:status-code 400}))))
+  (when model-id
+    (when-not (= (t2/select-one-fn :type [:model/Card :type :card_schema] :id model-id) :model)
+      (throw (ex-info (tru "Actions must be made with models, not cards.")
+                      {:status-code 400})))))
 
 (t2/define-before-insert :model/Action
   [{model-id :model_id, :as action}]
