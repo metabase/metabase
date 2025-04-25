@@ -136,30 +136,56 @@
   [_ value]
   (h2x/->integer value))
 
+(defmulti float-dbtype
+  "Return the name of the floating point type we convert to in this database."
+  {:added "0.55.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
 (defmulti ->float
   "Cast to float."
   {:changelog-test/ignore true :added "0.45.0" :arglists '([driver honeysql-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmethod float-dbtype :sql
+  [_driver]
+  :double)
+
 (defmethod ->float :sql
   [driver value]
-  ;; optimization: we don't need to cast a number literal that is already a `Float` or a `Double` to `FLOAT`. Other
-  ;; number literals can be converted to doubles in Clojure-land. Note that there is a little bit of a mismatch between
-  ;; FLOAT and DOUBLE here, but that's mostly because I'm not 100% sure which drivers have both types. In the future
-  ;; maybe we can fix this.
-  (cond
-    (float? value)
-    (h2x/with-database-type-info (inline-num value) "float")
+  (h2x/maybe-cast (float-dbtype driver) value))
 
-    (number? value)
-    (recur driver (double value))
+(defn- untyped-inline-value [h2x]
+  (let [unwrapped (h2x/unwrap-typed-honeysql-form h2x)]
+    (when (inline? unwrapped)
+      (second unwrapped))))
 
-    (inline? value)
-    (recur driver (second value))
+(defn coerce-float
+  "Convert honeysql numbers/strings to floats, being smart about converting inlines and constants at compile-time."
+  [driver value]
+  ;; The smarts of this function are to cast inline numbers and strings at
+  ;; query-compile time (in Clojure) instead of in SQL
+  (let [inline (untyped-inline-value value)]
+    (cond
+      (nil? value)
+      nil
 
-    :else
-    (h2x/cast :float value)))
+      (h2x/is-of-type? value (float-dbtype driver))
+      value
+
+      (not inline)
+      (->float driver value)
+
+      (number? inline)
+      (h2x/with-database-type-info (inline-num (double inline)) (float-dbtype driver))
+
+      (string? inline)
+      (h2x/with-database-type-info (inline-num (Double/parseDouble inline)) (float-dbtype driver))
+
+      :else
+      (ex-info (str "Cannot convert " (pr-str value) " to float.")
+               {:value value}))))
 
 (defmulti ^clojure.lang.MultiFn inline-value
   "Return an inline value (as a raw SQL string) for an object `x`, e.g.
@@ -1027,33 +1053,34 @@
 ;; we don't get divide by zero errors. SQL DBs always return NULL when dividing by NULL (AFAIK)
 
 (defn- safe-denominator
-  "Make sure we're not trying to divide by zero."
+  "Convert zeros to null to avoid dividing by zero."
   [denominator]
-  (cond
-    ;; try not to generate hairy nonsense like `CASE WHERE 7.0 = 0 THEN NULL ELSE 7.0` if we're dealing with number
-    ;; literals and can determine this stuff ahead of time.
-    (and (number? denominator)
-         (zero? denominator))
-    nil
+  (let [inline (untyped-inline-value denominator)]
+    (cond
+      (nil? denominator)
+      nil
 
-    (number? denominator)
-    (inline-num denominator)
+      (nil? inline)
+      [:nullif denominator [:inline 0.0]]
 
-    (inline? denominator)
-    (recur (second denominator))
+      (and (number? inline)
+           (zero? inline))
+      nil
 
-    :else
-    [:nullif denominator [:inline 0]]))
+      :else ;; inline value
+      denominator)))
 
 (defmethod ->honeysql [:sql :/]
   [driver [_ & mbql-exprs]]
   (let [[numerator & denominators] (for [mbql-expr mbql-exprs]
-                                     (->honeysql driver (if (integer? mbql-expr)
-                                                          (double mbql-expr)
-                                                          mbql-expr)))]
-    (into [:/ (->float driver numerator)]
+                                     (coerce-float driver (->honeysql driver mbql-expr)))]
+    (into [:/ numerator]
           (map safe-denominator)
           denominators)))
+
+(defmethod ->honeysql [:sql :float]
+  [driver [_ value]]
+  (coerce-float driver (->honeysql driver value)))
 
 (defmethod ->honeysql [:sql :sum-where]
   [driver [_ arg pred]]

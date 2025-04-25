@@ -58,6 +58,9 @@
                               :describe-fields                        true
                               :expression-literals                    true
                               :expressions/integer                    true
+                              :expressions/text                       true
+                              :expressions/float                      true
+                              :expressions/date                       true
                               :identifiers-with-spaces                true
                               :split-part                             true
                               :now                                    true}]
