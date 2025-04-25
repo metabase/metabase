@@ -72,22 +72,28 @@ function setup({
     { storeInitialState },
   );
 
-  function getNextFilterParts() {
+  const getNextFilterParts = () => {
     const [filter] = onChange.mock.lastCall;
     return Lib.numberFilterParts(query, 0, filter);
-  }
+  };
 
-  function getNextFilterColumnName() {
+  const getNextFilterColumnName = () => {
     const parts = getNextFilterParts();
     const column = checkNotNull(parts?.column);
     return Lib.displayInfo(query, 0, column).longDisplayName;
-  }
+  };
+
+  const getNextFilterChangeOpts = () => {
+    const [_filter, opts] = onChange.mock.lastCall;
+    return opts;
+  };
 
   return {
     query,
     column,
     getNextFilterParts,
     getNextFilterColumnName,
+    getNextFilterChangeOpts,
     onChange,
     onBack,
   };
@@ -128,7 +134,7 @@ describe("NumberFilterPicker", () => {
     describe("with one value", () => {
       it.each(NUMERIC_TEST_CASES)(
         "should add a filter with a %s value",
-        async (title, value) => {
+        async (_title, value) => {
           const { getNextFilterParts, getNextFilterColumnName } = setup();
 
           await setOperator("Greater than");
@@ -315,13 +321,28 @@ describe("NumberFilterPicker", () => {
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
     });
+
+    it.each([
+      { label: "Apply filter", source: "default" },
+      { label: "Add another filter", source: "add-button" },
+    ])(
+      'should add a filter via the "$label" button when the add button is enabled',
+      async ({ label, source }) => {
+        const { getNextFilterChangeOpts } = setup({ withAddButton: true });
+        await setOperator("Greater than");
+        const input = screen.getByPlaceholderText("Enter a number");
+        await userEvent.type(input, "15{enter}");
+        await userEvent.click(screen.getByRole("button", { name: label }));
+        expect(getNextFilterChangeOpts()).toMatchObject({ source });
+      },
+    );
   });
 
   describe("existing filter", () => {
     describe("with one value", () => {
       it.each(NUMERIC_TEST_CASES)(
         "should render a filter with a %s value",
-        (title, value) => {
+        (_title, value) => {
           setup(
             createQueryWithNumberFilter({
               operator: ">",
@@ -338,7 +359,7 @@ describe("NumberFilterPicker", () => {
 
       it.each(NUMERIC_TEST_CASES)(
         "should update a filter with a %s value",
-        async (title, value) => {
+        async (_title, value) => {
           const { getNextFilterParts, getNextFilterColumnName } = setup(
             createQueryWithNumberFilter({
               operator: ">",
