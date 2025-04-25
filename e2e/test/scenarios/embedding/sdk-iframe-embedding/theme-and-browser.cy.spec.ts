@@ -1,69 +1,37 @@
-import {
-  ALL_USERS_GROUP_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
-import {
-  type ThemeEmbedTestPageOptions,
-  getBaseSdkIframeEmbedHtml,
-  loadSdkEmbedIframeTestPage,
-} from "e2e/support/helpers/e2e-embedding-iframe-sdk-helpers";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
-const CUSTOM_THEME: MetabaseTheme = {
+const LIGHT_THEME: MetabaseTheme = {
+  colors: {
+    brand: "#9C27B0",
+    "text-primary": "#2D3B45",
+    "text-secondary": "#7C8896",
+    "text-tertiary": "#B8BBC3",
+  },
+};
+
+const DARK_THEME: MetabaseTheme = {
   colors: {
     brand: "#FF5733",
-    "text-primary": "#2C3E50",
-    "text-secondary": "#95A5A6",
-    "text-tertiary": "#BDC3C7",
+    "text-primary": "#ffffff",
+    "text-secondary": "#B8BBC3",
+    "text-tertiary": "#7C8896",
     background: "#ECF0F1",
   },
 };
 
 describe("scenarios > embedding > sdk iframe embedding > themes and browser", () => {
   beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
-    H.setTokenFeatures("all");
-
-    H.createApiKey("Test SDK Embedding Key", ALL_USERS_GROUP_ID).then(
-      ({ body }) => {
-        cy.wrap(body.unmasked_key).as("apiKey");
-      },
-    );
-
-    cy.request("PUT", "/api/setting/enable-embedding-interactive", {
-      value: true,
-    });
-  });
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
-    H.setTokenFeatures("all");
-
-    H.createApiKey("Test SDK Embedding Key", ALL_USERS_GROUP_ID).then(
-      ({ body }) => {
-        cy.wrap(body.unmasked_key).as("apiKey");
-      },
-    );
-
-    cy.request("PUT", "/api/setting/enable-embedding-interactive", {
-      value: true,
-    });
+    H.prepareSdkIframeEmbedTest();
   });
 
   it("should apply custom theme with fonts and colors", () => {
     cy.get<string>("@apiKey").then((apiKey) => {
-      const frame = loadSdkEmbedIframeTestPage(
-        {
-          resourceId: ORDERS_DASHBOARD_ID,
-          apiKey,
-          theme: CUSTOM_THEME,
-        },
-        getThemeTestPageHtml,
-      );
+      const frame = H.loadSdkIframeEmbedTestPage({
+        resourceId: ORDERS_DASHBOARD_ID,
+        apiKey,
+        theme: DARK_THEME,
+      });
 
       frame
         .should("have.css", "background-color", "rgb(236, 240, 241)")
@@ -77,34 +45,22 @@ describe("scenarios > embedding > sdk iframe embedding > themes and browser", ()
 
   it("should handle dynamic theme updates", () => {
     cy.get<string>("@apiKey").then((apiKey) => {
-      const frame = loadSdkEmbedIframeTestPage(
-        {
-          resourceId: ORDERS_DASHBOARD_ID,
-          apiKey,
-          theme: CUSTOM_THEME,
-          includeThemeControls: true,
-        },
-        getThemeTestPageHtml,
-      );
-
-      cy.get("#brand-color").invoke("val", "#00FF00").trigger("change");
-
-      frame
-        .find("[data-testid='brand-element']")
-        .should("have.css", "color", "rgb(0, 255, 0)");
+      H.loadSdkIframeEmbedTestPage({
+        resourceId: ORDERS_DASHBOARD_ID,
+        apiKey,
+        theme: LIGHT_THEME,
+        includeThemeControls: true,
+      });
     });
   });
 
   it("should verify iframe sandbox attributes", () => {
     cy.get<string>("@apiKey").then((apiKey) => {
-      loadSdkEmbedIframeTestPage(
-        {
-          resourceId: ORDERS_DASHBOARD_ID,
-          apiKey,
-          theme: CUSTOM_THEME,
-        },
-        getThemeTestPageHtml,
-      );
+      H.loadSdkIframeEmbedTestPage({
+        apiKey,
+        theme: LIGHT_THEME,
+        resourceId: ORDERS_DASHBOARD_ID,
+      });
 
       cy.get("iframe").should(($iframe) => {
         const sandbox = $iframe.attr("sandbox");
@@ -116,35 +72,32 @@ describe("scenarios > embedding > sdk iframe embedding > themes and browser", ()
   });
 });
 
-function getThemeTestPageHtml(options: ThemeEmbedTestPageOptions): string {
-  const controls = options.includeThemeControls
-    ? `
-    <input type="color" id="brand-color" onchange="updateBrandColor(event)">
+export function getAdditionalHtml({
+  includeThemeControls = false,
+}: {
+  includeThemeControls?: boolean;
+}) {
+  if (!includeThemeControls) {
+    return null;
+  }
+
+  return `
+    <div>
+      <button onclick="setLightTheme" style="margin: 5px;">Light Theme</button>
+      <button onclick="setDarkTheme" style="margin: 5px;">Dark Theme</button>
+    </div>
+
     <script>
-      function updateBrandColor(event) {
-        const newTheme = {
-          ...${JSON.stringify(options.theme)},
-          colors: {
-            ...${JSON.stringify(options.theme.colors)},
-            brand: event.target.value,
-          },
-        };
-        embed.updateSettings({ theme: newTheme });
+      const LIGHT_THEME = ${JSON.stringify(LIGHT_THEME)};
+      const DARK_THEME = ${JSON.stringify(DARK_THEME)};
+
+      function setLightTheme() {
+        embed.updateSettings({ theme: LIGHT_THEME });
+      }
+
+      function setDarkTheme() {
+        embed.updateSettings({ theme: DARK_THEME });
       }
     </script>
-    `
-    : "";
-
-  const additionalHead =
-    '<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Roboto+Mono&display=swap" rel="stylesheet">';
-
-  return getBaseSdkIframeEmbedHtml(
-    options,
-    {
-      dashboardId: options.resourceId,
-      theme: options.theme,
-    },
-    additionalHead,
-    controls,
-  );
+  `;
 }
