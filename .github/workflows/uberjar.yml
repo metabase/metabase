@@ -53,7 +53,7 @@ jobs:
                 ee: {
                   repo: `${owner}/metabase-enterprise-head`,
                   tag: "metabot"
-                };
+                },
               }
             }
 
@@ -78,6 +78,7 @@ jobs:
                 tag: branch
               },
             };
+
       - name: Print output
         run: |
           echo "editions: ${{ fromJson(steps.info.outputs.result) }}"
