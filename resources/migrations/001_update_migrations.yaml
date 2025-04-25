@@ -11558,7 +11558,6 @@ databaseChangeLog:
 #                  name: user_id
 #              - column:
 #                  name: undone
-
   - changeSet:
       id: v55.2025-04-17T08:44:39
       author: johnswanson
@@ -11586,6 +11585,16 @@ databaseChangeLog:
             sql: |
               UPDATE permissions_group SET magic_group_type='all-internal-users' WHERE name='All Users';
               UPDATE permissions_group SET magic_group_type='admin' WHERE name='Administrators';
+
+  - changeSet:
+      id: v55.2025-04-25T13:09:23
+      author: wotbrew
+      comment: Drop model_id requirement for actions
+      changes:
+        - dropNotNullConstraint:
+            tableName: action
+            columnDataType: int
+            columnName: model_id
 
   - changeSet:
       id: v55.2025-04-29T10:52:01
