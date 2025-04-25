@@ -15,17 +15,21 @@ const CLOSE_BRACKET = char("]");
 const NEW_LINE = char("\n");
 const EOF = -1;
 
-const OPERATORS = new Set([
+// The characters that will delimit a field name that
+// is not properly closed.
+//
+// For example, the underlined bit will be parsed as a field token:
+//
+//   [Field Name
+//   ------
+//
+const FIELD_PUNCTUATORS = new Set([
   OPEN_BRACKET,
   char(","),
   char(" "),
   char("("),
   char(")"),
 ]);
-
-function isOperator(char: number) {
-  return OPERATORS.has(char);
-}
 
 /**
  * Reference (or bracket idenfiers) like `[User Id]` are parsed differently
@@ -88,7 +92,7 @@ export const reference = new ExternalTokenizer((input) => {
       return;
     }
 
-    if (isOperator(current) && firstOperator === -1) {
+    if (FIELD_PUNCTUATORS.has(current) && firstOperator === -1) {
       firstOperator = idx;
     }
   }
