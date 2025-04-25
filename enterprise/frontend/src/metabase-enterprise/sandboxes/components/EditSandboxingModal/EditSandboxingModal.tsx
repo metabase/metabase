@@ -18,7 +18,7 @@ import { EntityName } from "metabase/entities/containers/EntityName";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { GTAPApi } from "metabase/services";
 import type { IconName } from "metabase/ui";
-import { Button, Icon } from "metabase/ui";
+import { Button, Center, Icon, Loader } from "metabase/ui";
 import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
@@ -125,16 +125,24 @@ const EditSandboxingModal = ({
     (!_.isEqual(originalPolicy, normalizedPolicy) ||
       normalizedPolicy.id == null);
 
-  const { data: policyCard } = useGetCardQuery(
+  const { data: policyCard, isFetching: loadingCard } = useGetCardQuery(
     policy.card_id != null ? { id: policy.card_id } : skipToken,
   );
-  const { data: policyTable } = useGetTableQuery(
+  const { data: policyTable, isFetching: loadingTabe } = useGetTableQuery(
     policy.table_id != null ? { id: policy.table_id } : skipToken,
   );
 
   const hasSavedQuestionSandboxingFeature = policyTable?.db?.features?.includes(
     "saved-question-sandboxing",
   );
+
+  if (loadingCard || loadingTabe) {
+    return (
+      <Center p="2rem">
+        <Loader data-testid="loading-indicator" />
+      </Center>
+    );
+  }
 
   return (
     <div>

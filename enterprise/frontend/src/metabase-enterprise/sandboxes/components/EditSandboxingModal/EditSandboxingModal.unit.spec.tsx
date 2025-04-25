@@ -14,6 +14,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import type {
@@ -61,7 +62,7 @@ const TEST_CARD = createMockCard({
   },
 });
 
-const setup = ({
+const setup = async ({
   shouldMockQuestions = false,
   policy = undefined,
   features = COMMON_DATABASE_FEATURES,
@@ -119,6 +120,8 @@ const setup = ({
     />,
   );
 
+  await waitForLoaderToBeRemoved();
+
   return { onSave };
 };
 
@@ -130,7 +133,7 @@ describe("EditSandboxingModal", () => {
   describe("EditSandboxingModal", () => {
     describe("creating new policy", () => {
       it("should allow creating a new policy", async () => {
-        const { onSave } = setup();
+        const { onSave } = await setup();
 
         expect(
           screen.getByText("Restrict access to this table"),
@@ -173,7 +176,7 @@ describe("EditSandboxingModal", () => {
       });
 
       it("should not allow sandboxing with a question if that feature is not enabled", async () => {
-        const { onSave } = setup({ features: [] });
+        const { onSave } = await setup({ features: [] });
 
         expect(
           screen.getByText("Restrict access to this table"),
@@ -183,13 +186,11 @@ describe("EditSandboxingModal", () => {
           screen.getByText("Filter by a column in the table"),
         ).toBeInTheDocument();
 
-        await waitFor(() => {
-          expect(
-            screen.queryByText(
-              "Use a saved question to create a custom view for this table",
-            ),
-          ).not.toBeInTheDocument();
-        });
+        expect(
+          screen.queryByText(
+            "Use a saved question to create a custom view for this table",
+          ),
+        ).not.toBeInTheDocument();
 
         expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
@@ -218,7 +219,7 @@ describe("EditSandboxingModal", () => {
       });
 
       it("should allow creating a new policy based on a card", async () => {
-        const { onSave } = setup({ shouldMockQuestions: true });
+        const { onSave } = await setup({ shouldMockQuestions: true });
 
         expect(
           screen.getByText("Restrict access to this table"),
@@ -238,7 +239,7 @@ describe("EditSandboxingModal", () => {
           await screen.findByRole("link", { name: /sandbox question/i }),
         );
 
-        await userEvent.click(screen.getByText("Save"));
+        await userEvent.click(await screen.findByText("Save"));
 
         await waitFor(() => {
           expect(screen.queryByText("Saving...")).not.toBeInTheDocument();
@@ -256,7 +257,7 @@ describe("EditSandboxingModal", () => {
 
   describe("editing policies", () => {
     it("should allow editing an existing policy", async () => {
-      const { onSave } = setup({
+      const { onSave } = await setup({
         shouldMockQuestions: true,
         policy: {
           id: 1,
@@ -288,7 +289,7 @@ describe("EditSandboxingModal", () => {
         await screen.findByRole("link", { name: /sandbox question/i }),
       );
 
-      await userEvent.click(screen.getByText("Save"));
+      await userEvent.click(await screen.findByText("Save"));
 
       await waitFor(() => {
         expect(screen.queryByText("Saving...")).not.toBeInTheDocument();
