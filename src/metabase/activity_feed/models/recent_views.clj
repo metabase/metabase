@@ -250,6 +250,8 @@
                          :card.display
                          :card.card_schema
                          :card.result_metadata
+                         :card.dataset_query
+                         :card.entity_id
                          :card.visualization_settings
                          [:dashboard.id :dashboard_id]
                          [:dashboard.name :dashboard_name]
@@ -303,6 +305,8 @@
      :description (:description card)
      :display (some-> card :display name)
      :result_metadata (:result_metadata card)
+     :dataset_query (:dataset_query card)
+     :entity_id (:entity_id card)
      :visualization_settings (:visualization_settings card)
      :model :card
      :can_write (mi/can-write? card)
