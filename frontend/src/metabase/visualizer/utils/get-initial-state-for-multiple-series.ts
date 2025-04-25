@@ -1,10 +1,12 @@
 import { isNotNull } from "metabase/lib/types";
-import type { Card, DatasetColumn, RawSeries } from "metabase-types/api";
 import type {
+  Card,
+  DatasetColumn,
+  RawSeries,
   VisualizerColumnReference,
   VisualizerDataSource,
-  VisualizerHistoryItem,
-} from "metabase-types/store/visualizer";
+  VisualizerVizDefinition,
+} from "metabase-types/api";
 
 import {
   copyColumn,
@@ -58,7 +60,7 @@ function mapColumnVizSettings(
 function processColumnsForDataSource(
   dataSource: VisualizerDataSource,
   columns: DatasetColumn[],
-  state: VisualizerHistoryItem,
+  state: VisualizerVizDefinition,
 ): ColumnInfo[] {
   const columnInfos: ColumnInfo[] = [];
 
@@ -91,7 +93,7 @@ function processColumnsForDataSource(
 export function getInitialStateForMultipleSeries(rawSeries: RawSeries) {
   const mainCard = rawSeries[0].card;
 
-  const state: VisualizerHistoryItem = {
+  const state: VisualizerVizDefinition = {
     display: mainCard.display,
     columns: [],
     columnValuesMapping: {},

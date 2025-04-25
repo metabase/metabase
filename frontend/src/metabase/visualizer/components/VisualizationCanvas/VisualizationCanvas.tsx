@@ -23,12 +23,13 @@ import {
 import type { RawSeries } from "metabase-types/api";
 
 import { TabularPreviewModal } from "../TabularPreviewModal";
+import { useVisualizerUi } from "../VisualizerUiContext";
 
 import { HorizontalWell } from "./HorizontalWell";
 import { ScatterFloatingWell } from "./ScatterFloatingWell";
 import { StartFromViz } from "./StartFromViz";
 import { VerticalWell } from "./VerticalWell";
-import Styles from "./VisualizationCanvas.module.css";
+import S from "./VisualizationCanvas.module.css";
 
 function disableAxisLabels(rawSeries: RawSeries) {
   return produce(rawSeries, (draft) => {
@@ -44,8 +45,13 @@ function disableAxisLabels(rawSeries: RawSeries) {
   });
 }
 
-export function VisualizationCanvas({ className }: { className?: string }) {
+interface VisualizationCanvasProps {
+  className?: string;
+}
+
+export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
   const [isTabularPreviewOpen, setTabularPreviewOpen] = useState(false);
+  const { isSwapAffordanceVisible } = useVisualizerUi();
 
   const display = useSelector(getVisualizationType);
   const isLoading = useSelector(getIsLoading);
@@ -78,7 +84,7 @@ export function VisualizationCanvas({ className }: { className?: string }) {
   return (
     <>
       <Box
-        className={`${Styles.Container} ${className}`}
+        className={`${S.Container} ${className}`}
         data-testid="visualization-canvas"
       >
         <Box style={{ gridArea: "left" }} data-testid="vertical-well">
@@ -114,6 +120,13 @@ export function VisualizationCanvas({ className }: { className?: string }) {
             <ScatterFloatingWell />
           </Box>
         )}
+        <Center
+          className={`${S.SwapAffordance} ${isSwapAffordanceVisible ? S.visible : ""}`}
+        >
+          <Center className={S.SwapAffordanceIcon}>
+            <Icon name="sync" />
+          </Center>
+        </Center>
       </Box>
       <TabularPreviewModal
         opened={isTabularPreviewOpen}

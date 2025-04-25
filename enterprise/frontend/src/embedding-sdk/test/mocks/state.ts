@@ -1,8 +1,8 @@
 import type {
   EmbeddingSessionTokenState,
-  LoginStatus,
   SdkState,
 } from "embedding-sdk/store/types";
+import type { LoginStatus } from "embedding-sdk/types/user";
 
 export const createMockTokenState = ({
   ...opts

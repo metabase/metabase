@@ -1,13 +1,13 @@
 import { useDraggable } from "@dnd-kit/core";
 import { t } from "ttag";
 
+import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, Icon, Loader, Text } from "metabase/ui";
 import { DRAGGABLE_ID } from "metabase/visualizer/constants";
 import {
   getDataSources,
   getDatasets,
-  getExpandedDataSources,
   getLoadingDatasets,
   getReferencedColumns,
 } from "metabase/visualizer/selectors";
@@ -16,10 +16,10 @@ import {
   addColumn,
   removeColumn,
   removeDataSource,
-  toggleDataSourceExpanded,
 } from "metabase/visualizer/visualizer.slice";
-import type { DatasetColumn } from "metabase-types/api";
-import type { VisualizerDataSource } from "metabase-types/store/visualizer";
+import type { DatasetColumn, VisualizerDataSource } from "metabase-types/api";
+
+import { useVisualizerUi } from "../../VisualizerUiContext";
 
 import S from "./ColumnsList.module.css";
 import { ColumnsListItem, type ColumnsListItemProps } from "./ColumnsListItem";
@@ -28,9 +28,10 @@ export const ColumnsList = () => {
   const dataSources = useSelector(getDataSources);
   const datasets = useSelector(getDatasets);
   const loadingDatasets = useSelector(getLoadingDatasets);
-  const expandedDataSources = useSelector(getExpandedDataSources);
   const referencedColumns = useSelector(getReferencedColumns);
   const dispatch = useDispatch();
+
+  const { expandedDataSources, toggleDataSourceExpanded } = useVisualizerUi();
 
   const handleAddColumn = (
     dataSource: VisualizerDataSource,
@@ -67,7 +68,7 @@ export const ColumnsList = () => {
                   size={12}
                   mr={6}
                   cursor="pointer"
-                  onClick={() => dispatch(toggleDataSourceExpanded(source.id))}
+                  onClick={() => toggleDataSourceExpanded(source.id)}
                 />
               ) : (
                 <Loader size={12} mr={6} />
@@ -91,6 +92,10 @@ export const ColumnsList = () => {
             {isExpanded && dataset && dataset.data.cols && (
               <Box ml={12} mt={2}>
                 {dataset.data.cols.map((column) => {
+                  if (isPivotGroupColumn(column)) {
+                    return null;
+                  }
+
                   const columnReference = referencedColumns.find((ref) =>
                     isReferenceToColumn(column, source.id, ref),
                   );

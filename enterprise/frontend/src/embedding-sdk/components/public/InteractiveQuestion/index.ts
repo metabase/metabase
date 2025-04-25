@@ -23,4 +23,5 @@ export {
   InteractiveQuestion,
   type BaseInteractiveQuestionProps,
   type InteractiveQuestionProps,
+  type DrillThroughQuestionProps,
 } from "./InteractiveQuestion";

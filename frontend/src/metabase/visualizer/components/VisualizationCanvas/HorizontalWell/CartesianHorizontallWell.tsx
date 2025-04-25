@@ -15,7 +15,7 @@ import {
 } from "metabase/visualizer/selectors";
 import { isDraggedColumnItem } from "metabase/visualizer/utils";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
-import { isCategory, isDate } from "metabase-lib/v1/types/utils/isa";
+import { isDate, isString } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";
@@ -47,7 +47,7 @@ export function CartesianHorizontalWell({ style, ...props }: FlexProps) {
 
     const dimensions: DatasetColumn[] = [];
     const timeDimensions = allDimensions.filter(isDate);
-    const categoryDimensions = allDimensions.filter(isCategory);
+    const categoryDimensions = allDimensions.filter(isString);
 
     // Show only one dimension for multiseries charts,
     // as they have to be added/removed together, not individually

@@ -64,6 +64,12 @@ export function addDataset(datasetName: string) {
   cy.wait("@cardQuery");
 }
 
+export function selectVisualization(visualization: VisualizationDisplay) {
+  cy.findByTestId("viz-picker-main").within(() => {
+    cy.icon(visualization as any).click();
+  });
+}
+
 export function switchToAddMoreData() {
   cy.button("Add more data").click();
 }

@@ -296,6 +296,7 @@ export const fetchCardDataAction = createAsyncThunk<
       cancelled = true;
     });
 
+    const metadata = getMetadata(getState());
     const queryOptions = {
       cancelled: deferred.promise,
     };
@@ -313,7 +314,11 @@ export const fetchCardDataAction = createAsyncThunk<
       );
     } else if (dashboardType === "public") {
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(PublicApi.dashboardCardQuery, card)(
+        maybeUsePivotEndpoint(
+          PublicApi.dashboardCardQuery,
+          card,
+          metadata,
+        )(
           {
             uuid: dashcard.dashboard_id,
             dashcardId: dashcard.id,
@@ -328,7 +333,11 @@ export const fetchCardDataAction = createAsyncThunk<
       );
     } else if (dashboardType === "embed") {
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(EmbedApi.dashboardCardQuery, card)(
+        maybeUsePivotEndpoint(
+          EmbedApi.dashboardCardQuery,
+          card,
+          metadata,
+        )(
           {
             token: dashcard.dashboard_id,
             dashcardId: dashcard.id,
@@ -343,10 +352,11 @@ export const fetchCardDataAction = createAsyncThunk<
       );
     } else if (dashboardType === "transient" || dashboardType === "inline") {
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(MetabaseApi.dataset, card)(
-          { ...datasetQuery, ignore_cache: ignoreCache },
-          queryOptions,
-        ),
+        maybeUsePivotEndpoint(
+          MetabaseApi.dataset,
+          card,
+          metadata,
+        )({ ...datasetQuery, ignore_cache: ignoreCache }, queryOptions),
       );
     } else {
       const dashcardBeforeEditing = getDashCardBeforeEditing(
@@ -380,9 +390,12 @@ export const fetchCardDataAction = createAsyncThunk<
             dashboard_id: dashcard.dashboard_id,
             dashboard_load_id: dashboardLoadId,
           };
-
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(endpoint, card)(requestBody, queryOptions),
+        maybeUsePivotEndpoint(
+          endpoint,
+          card,
+          metadata,
+        )(requestBody, queryOptions),
       );
     }
 

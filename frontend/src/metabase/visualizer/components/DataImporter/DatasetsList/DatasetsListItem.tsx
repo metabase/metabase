@@ -10,7 +10,9 @@ import {
   getVisualizerPrimaryColumn,
 } from "metabase/visualizer/selectors";
 import { parseDataSourceId } from "metabase/visualizer/utils";
-import type { VisualizerDataSource } from "metabase-types/store/visualizer";
+import type { VisualizerDataSource } from "metabase-types/api";
+
+import { useVisualizerUi } from "../../VisualizerUiContext";
 
 import S from "./DatasetsListItem.module.css";
 import { getIsCompatible } from "./getIsCompatible";
@@ -18,13 +20,15 @@ import { getIsCompatible } from "./getIsCompatible";
 interface DatasetsListItemProps {
   item: VisualizerDataSource;
   onSwap?: (item: VisualizerDataSource) => void;
-  onAdd?: (item: VisualizerDataSource) => void;
+  onToggle?: (item: VisualizerDataSource) => void;
   onRemove?: (item: VisualizerDataSource) => void;
   selected: boolean;
 }
 
 export const DatasetsListItem = (props: DatasetsListItemProps) => {
-  const { selected, item, onSwap, onAdd, onRemove } = props;
+  const { selected, item, onSwap, onToggle, onRemove } = props;
+
+  const { setSwapAffordanceVisible } = useVisualizerUi();
 
   const currentDisplay = useSelector(getVisualizationType);
   const primaryColumn = useSelector(getVisualizerPrimaryColumn);
@@ -66,11 +70,13 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
         onClick={() => {
           onSwap?.(item);
         }}
+        onMouseOver={() => setSwapAffordanceVisible(true)}
+        onMouseOut={() => setSwapAffordanceVisible(false)}
         leftSection={
           <Icon color="inherit" className={S.TableIcon} name="table2" mr="xs" />
         }
       >
-        <Ellipsified>{item.name}</Ellipsified>
+        <Ellipsified style={{ height: 17 }}>{item.name}</Ellipsified>
       </Button>
       {selected ? (
         <Button
@@ -93,7 +99,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
             rightSection={<Icon name="add" />}
             onClick={(e) => {
               e.stopPropagation();
-              onAdd?.(item);
+              onToggle?.(item);
             }}
           />
         )

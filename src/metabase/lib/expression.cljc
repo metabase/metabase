@@ -1,5 +1,5 @@
 (ns metabase.lib.expression
-  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace])
+  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace float])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -235,6 +235,7 @@
     ;; if there are explicit fields selected, add the expression to them
     (and (vector? (:fields stage))
          add-to-fields?)
+    ;; TODO: Construct this ref with lib/ref rather than hand-rolling it?
     (update :fields conj (lib.options/ensure-uuid [:expression {} (lib.util/expression-name expression)]))))
 
 (mu/defn expression :- ::lib.schema/query
@@ -324,6 +325,7 @@
 (lib.common/defop offset [x n])
 (lib.common/defop text [x])
 (lib.common/defop integer [x])
+(lib.common/defop float [x])
 
 (mu/defn value :- ::lib.schema.expression/expression
   "Creates a `:value` clause for the `literal`. Converts bigint literals to strings for serialization purposes."

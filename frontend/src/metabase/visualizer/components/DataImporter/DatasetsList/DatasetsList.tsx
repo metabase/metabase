@@ -11,8 +11,14 @@ import {
   addDataSource,
   removeDataSource,
 } from "metabase/visualizer/visualizer.slice";
-import type { DashboardId, SearchResult } from "metabase-types/api";
-import type { VisualizerDataSource } from "metabase-types/store/visualizer";
+import type {
+  DashboardId,
+  SearchResult,
+  VisualizerDataSource,
+  VisualizerDataSourceId,
+} from "metabase-types/api";
+
+import { useVisualizerUi } from "../../VisualizerUiContext";
 
 import { DatasetsListItem } from "./DatasetsListItem";
 
@@ -28,6 +34,7 @@ interface DatasetsListProps {
 }
 
 export function DatasetsList({ search }: DatasetsListProps) {
+  const { setDataSourceExpanded } = useVisualizerUi();
   const dashboardId = useSelector(getDashboard)?.id;
   const dispatch = useDispatch();
   const dataSources = useSelector(getDataSources);
@@ -36,38 +43,41 @@ export function DatasetsList({ search }: DatasetsListProps) {
     [dataSources],
   );
 
-  const onAdd = useCallback(
+  const handleAddDataSource = useCallback(
+    (id: VisualizerDataSourceId) => {
+      dispatch(addDataSource(id));
+      setDataSourceExpanded(id, true);
+    },
+    [dispatch, setDataSourceExpanded],
+  );
+
+  const handleRemoveDataSource = useCallback(
+    (source: VisualizerDataSource) => {
+      dispatch(removeDataSource(source));
+      setDataSourceExpanded(source.id, false);
+    },
+    [dispatch, setDataSourceExpanded],
+  );
+
+  const handleToggleDataSource = useCallback(
     (item: VisualizerDataSource) => {
       if (dataSourceIds.has(item.id)) {
-        // remove data source if it exists
-        dispatch(removeDataSource(item));
+        handleRemoveDataSource(item);
       } else {
-        // add data source
-        dispatch(addDataSource(item.id));
+        handleAddDataSource(item.id);
       }
     },
-    [dispatch, dataSourceIds],
+    [dataSourceIds, handleAddDataSource, handleRemoveDataSource],
   );
 
-  const onRemove = useCallback(
+  const handleSwapDataSources = useCallback(
     (item: VisualizerDataSource) => {
-      // remove data source
-      dispatch(removeDataSource(item));
-    },
-    [dispatch],
-  );
-
-  const onSwap = useCallback(
-    (item: VisualizerDataSource) => {
-      // remove all data sources
       dataSources.forEach((dataSource) => {
-        dispatch(removeDataSource(dataSource));
+        handleRemoveDataSource(dataSource);
       });
-
-      // add data source
-      dispatch(addDataSource(item.id));
+      handleAddDataSource(item.id);
     },
-    [dispatch, dataSources],
+    [dataSources, handleAddDataSource, handleRemoveDataSource],
   );
 
   const { data: result = { data: [] } } = useSearchQuery(
@@ -120,9 +130,9 @@ export function DatasetsList({ search }: DatasetsListProps) {
         <DatasetsListItem
           key={index}
           item={item}
-          onSwap={onSwap}
-          onAdd={onAdd}
-          onRemove={onRemove}
+          onSwap={handleSwapDataSources}
+          onToggle={handleToggleDataSource}
+          onRemove={handleRemoveDataSource}
           selected={dataSourceIds.has(item.id)}
         />
       ))}

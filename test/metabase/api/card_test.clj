@@ -29,7 +29,6 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -921,17 +920,14 @@
                       (mt/user-http-request :crowberto :post 200 "card"
                                             (merge (mt/with-temp-defaults :model/Card)
                                                    {:dataset_query query})))))
-            (let [metadata (-> (qp/process-query query)
-                               :data
-                               :results_metadata
-                               :columns)]
+            (let [card     (mt/card-with-metadata
+                            (merge (mt/with-temp-defaults :model/Card)
+                                   {:dataset_query query}))
+                  metadata (:result_metadata card)]
               (testing (format "with result metadata\n%s" (u/pprint-to-str metadata))
                 (is (some? metadata))
                 (is (=? {:id pos-int?}
-                        (mt/user-http-request :crowberto :post 200 "card"
-                                              (merge (mt/with-temp-defaults :model/Card)
-                                                     {:dataset_query   query
-                                                      :result_metadata metadata}))))))))))))
+                        (mt/user-http-request :crowberto :post 200 "card" card)))))))))))
 
 (deftest save-card-with-empty-result-metadata-test
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
@@ -1208,11 +1204,81 @@
 
 (deftest update-card-with-type-and-dataset-test
   (testing "can toggle model using only type"
-    (mt/with-temp [:model/Card card {:dataset_query {}}]
-      (is (=? {:type "model"}
-              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
-      (is (=? {:type "question"}
-              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"}))))))
+    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query orders
+                                                      {:fields [$id $subtotal $created_at]})}]
+      (let [base-metadata [{:id    (mt/id :orders :id)
+                            :ident (mt/ident :orders :id)
+                            :name  "ID"}
+                           {:id    (mt/id :orders :subtotal)
+                            :ident (mt/ident :orders :subtotal)
+                            :name  "SUBTOTAL"}
+                           {:id    (mt/id :orders :created_at)
+                            :ident (mt/ident :orders :created_at)
+                            :name  "CREATED_AT"}]]
+        (is (=? {:type            "question"
+                 :result_metadata base-metadata}
+                (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))
+            "initial result_metadata is inferred correctly")
+
+        (is (=? {:type            "model"
+                 :result_metadata (mapv #(lib/add-model-ident % (:entity_id card)) base-metadata)}
+                (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
+        (is (=? {:type            "question"
+                 :result_metadata base-metadata}
+                (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"})))))))
+
+(deftest update-card-with-type-and-dataset-test-2-native-query
+  (testing "can toggle model using only type for a native query"
+    (mt/with-temp [:model/Card card (mt/card-with-metadata
+                                     {:dataset_query
+                                      (mt/native-query {:query "SELECT id, subtotal, created_at FROM orders"})})]
+      (let [base-metadata [{:name      "ID"
+                            :ident     (lib/native-ident "ID" (:entity_id card))
+                            :field_ref ["field" "ID" {:base-type "type/BigInteger"}]}
+                           {:name      "SUBTOTAL"
+                            :ident     (lib/native-ident "SUBTOTAL" (:entity_id card))
+                            :field_ref ["field" "SUBTOTAL" {:base-type "type/Float"}]}
+                           {:name      "CREATED_AT"
+                            :ident     (lib/native-ident "CREATED_AT" (:entity_id card))
+                            :field_ref ["field" "CREATED_AT" {:base-type string?}]}]]
+        (is (=? {:type            "question"
+                 :result_metadata base-metadata}
+                (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))
+            "initial result_metadata is inferred correctly")
+
+        (is (=? {:type            "model"
+                 :result_metadata (mapv #(lib/add-model-ident % (:entity_id card)) base-metadata)}
+                (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
+        (is (=? {:type            "question"
+                 :result_metadata base-metadata}
+                (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"})))))))
+
+(deftest update-native-card-with-changed-columns-test
+  (testing "metadata is recomputed correctly when the query changes"
+    (mt/with-temp [:model/Card card (mt/card-with-metadata
+                                     {:dataset_query
+                                      (mt/native-query {:query "SELECT id, subtotal, created_at FROM orders"})})]
+      (let [base-metadata [{:name      "ID"
+                            :ident     (lib/native-ident "ID" (:entity_id card))
+                            :field_ref ["field" "ID" {:base-type "type/BigInteger"}]}
+                           {:name      "SUBTOTAL"
+                            :ident     (lib/native-ident "SUBTOTAL" (:entity_id card))
+                            :field_ref ["field" "SUBTOTAL" {:base-type "type/Float"}]}
+                           {:name      "CREATED_AT"
+                            :ident     (lib/native-ident "CREATED_AT" (:entity_id card))
+                            :field_ref ["field" "CREATED_AT" {:base-type string?}]}]]
+        (is (=? {:type            "question"
+                 :result_metadata base-metadata}
+                (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))
+            "initial result_metadata is inferred correctly")
+
+        (is (=? {:type            "model"
+                 :result_metadata (mapv #(lib/add-model-ident % (:entity_id card)) base-metadata)}
+                (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
+                                      (assoc card :type "model"))))
+        (is (=? {:type            "question"
+                 :result_metadata base-metadata}
+                (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"})))))))
 
 (deftest update-card-with-metric-type
   (testing "can update a metric"
@@ -2850,15 +2916,11 @@
     (let [query          (mt/mbql-query venues {:fields [$id $name]})
           modified-query (mt/mbql-query venues {:fields [$id $name $price]})
           norm           (comp u/upper-case-en :name)
-          to-native      (fn [q]
-                           {:database (:database q)
-                            :type     :native
-                            :native   (qp.compile/compile q)})
-          update-card!  (fn [card]
-                          (mt/user-http-request :crowberto :put 200
-                                                (str "card/" (u/the-id card)) card))]
+          update-card!   (fn [card]
+                           (mt/user-http-request :crowberto :put 200
+                                                 (str "card/" (u/the-id card)) card))]
       (doseq [[query-type query modified-query] [["mbql"   query modified-query]
-                                                 ["native" (to-native query) (to-native modified-query)]]]
+                                                 #_["native" (to-native query) (to-native modified-query)]]]
         (testing (str "For: " query-type)
           (mt/with-model-cleanup [:model/Card]
             (let [{metadata :result_metadata

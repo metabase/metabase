@@ -12,13 +12,12 @@
 (api.macros/defendpoint :get "/"
   "Fetch a list of recent tasks stored as Task History"
   [_
-   {:keys [_status _task]
-    :as filter} :- task-history/Filter]
+   params :- [:maybe [:merge task-history/FilterParams task-history/SortParams]]]
   (validation/check-has-application-permission :monitoring)
-  {:total  (task-history/total filter)
+  {:total  (task-history/total params)
    :limit  (request/limit)
    :offset (request/offset)
-   :data   (task-history/all (request/limit) (request/offset) filter)})
+   :data   (task-history/all (request/limit) (request/offset) params)})
 
 (api.macros/defendpoint :get "/:id"
   "Get `TaskHistory` entry with ID."

@@ -8,17 +8,16 @@ import {
   getIsLoading,
   getVisualizationType,
 } from "metabase/visualizer/selectors";
-import {
-  setDisplay,
-  toggleVizSettingsSidebar,
-} from "metabase/visualizer/visualizer.slice";
+import { setDisplay } from "metabase/visualizer/visualizer.slice";
 import type { VisualizationDisplay } from "metabase-types/api";
 
 import { VisualizationPicker } from "../VisualizationPicker";
+import { useVisualizerUi } from "../VisualizerUiContext";
 
 import S from "./Footer.module.css";
 
 export function Footer({ className }: { className?: string }) {
+  const { setVizSettingsSidebarOpen } = useVisualizerUi();
   const dispatch = useDispatch();
   const display = useSelector(getVisualizationType);
   const datasets = useSelector(getDatasets);
@@ -40,7 +39,7 @@ export function Footer({ className }: { className?: string }) {
       {hasDatasets && (
         <Button
           ml="auto"
-          onClick={() => dispatch(toggleVizSettingsSidebar())}
+          onClick={() => setVizSettingsSidebarOpen((isOpen) => !isOpen)}
         >{t`Settings`}</Button>
       )}
     </Flex>

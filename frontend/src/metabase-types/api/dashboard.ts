@@ -14,8 +14,8 @@ import type {
   Table,
   UserId,
   VirtualCardDisplay,
+  VisualizerVizDefinition,
 } from "metabase-types/api";
-import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import type {
   ActionDisplayType,
@@ -158,7 +158,7 @@ export type QuestionDashboardCard = BaseDashboardCard & {
 
 export type VisualizerDashboardCard = QuestionDashboardCard & {
   visualization_settings: BaseDashboardCard["visualization_settings"] & {
-    visualization: VisualizerHistoryItem;
+    visualization: VisualizerVizDefinition;
   };
 };
 

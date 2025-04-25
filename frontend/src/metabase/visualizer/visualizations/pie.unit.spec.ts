@@ -1,9 +1,9 @@
+import type { VisualizerVizDefinition } from "metabase-types/api";
 import {
   createMockCategoryColumn,
   createMockDataset,
   createMockNumericColumn,
 } from "metabase-types/api/mocks";
-import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import { createDataSource } from "../utils";
 
@@ -28,7 +28,7 @@ describe("pie", () => {
 
   describe("addColumnToPieChart", () => {
     it("should add a metric column", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizDefinition = {
         display: "pie",
         columns: [],
         settings: {},
@@ -48,7 +48,7 @@ describe("pie", () => {
     });
 
     it("should not change the metric column if it's already set", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizDefinition = {
         display: "pie",
         columns: [{ ...metricColumn, name: "COLUMN_1" }],
         settings: { "pie.metric": "COLUMN_1" },
@@ -71,7 +71,7 @@ describe("pie", () => {
     });
 
     it("should add a dimension column", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizDefinition = {
         display: "pie",
         columns: [],
         settings: {},
@@ -91,7 +91,7 @@ describe("pie", () => {
     });
 
     it("should add a second dimension column", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizDefinition = {
         display: "pie",
         columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
         settings: { "pie.dimension": ["COLUMN_1"] },
@@ -137,7 +137,7 @@ describe("pie", () => {
 
   describe("removeColumnFromPieChart", () => {
     it("should remove a metric column", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizDefinition = {
         display: "pie",
         columns: [{ ...metricColumn, name: "COLUMN_1" }],
         settings: { "pie.metric": "COLUMN_1" },
@@ -160,7 +160,7 @@ describe("pie", () => {
     });
 
     it("should remove a dimension column", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizDefinition = {
         display: "pie",
         columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
         settings: { "pie.dimension": ["COLUMN_1"] },
@@ -183,7 +183,7 @@ describe("pie", () => {
     });
 
     it("should do nothing if a column isn't used", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizDefinition = {
         display: "pie",
         columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
         settings: { "pie.dimension": ["COLUMN_1"] },
@@ -216,7 +216,7 @@ describe("pie", () => {
     });
 
     it("should set pie.metric if it's undefined and there's one metric column", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizDefinition = {
         display: "pie",
         columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
         settings: {
@@ -256,7 +256,7 @@ describe("pie", () => {
     });
 
     it("should not change pie.metric if it's already set", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizDefinition = {
         display: "pie",
         columns: [{ ...metricColumn, name: "COLUMN_1" }],
         settings: {
@@ -283,7 +283,7 @@ describe("pie", () => {
     });
 
     it("shouldn't set pie.metric if it's undefined and there are multiple metric columns", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizDefinition = {
         display: "pie",
         columns: [{ ...metricColumn, name: "COLUMN_1" }],
         settings: {
@@ -310,7 +310,7 @@ describe("pie", () => {
     });
 
     it("should set pie.dimension if it's undefined and there's one dimension column", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizDefinition = {
         display: "pie",
         columns: [{ ...metricColumn, name: "COLUMN_1" }],
         settings: { "pie.metric": "COLUMN_1" },
@@ -344,7 +344,7 @@ describe("pie", () => {
     });
 
     it("should not set pie.dimension if it's undefined and there are multiple dimension columns", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizDefinition = {
         display: "pie",
         columns: [{ ...metricColumn, name: "COLUMN_1" }],
         settings: { "pie.metric": "COLUMN_1" },
@@ -369,7 +369,7 @@ describe("pie", () => {
     });
 
     it("should not change pie.dimension if it's already set", () => {
-      const state: VisualizerHistoryItem = {
+      const state: VisualizerVizDefinition = {
         display: "pie",
         columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
         settings: { "pie.dimension": ["COLUMN_1"] },

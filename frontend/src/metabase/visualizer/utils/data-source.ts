@@ -4,7 +4,7 @@ import type {
   VisualizerDataSourceId,
   VisualizerDataSourceNameReference,
   VisualizerDataSourceType,
-} from "metabase-types/store/visualizer";
+} from "metabase-types/api";
 
 import { extractReferencedColumns } from "./column";
 
@@ -56,13 +56,18 @@ export function getDataSourceIdFromNameRef(str: string) {
   return dataSourceId;
 }
 
-export function getCardIdsFromColumnValueMappings(
+export function getDataSourceIdsFromColumnValueMappings(
   columnValuesMapping: Record<string, VisualizerColumnValueSource[]>,
 ) {
   const referencedColumns = extractReferencedColumns(columnValuesMapping);
-  const usedDataSourceIds = Array.from(
-    new Set(referencedColumns.map((ref) => ref.sourceId)),
-  );
+  return Array.from(new Set(referencedColumns.map((ref) => ref.sourceId)));
+}
+
+export function getCardIdsFromColumnValueMappings(
+  columnValuesMapping: Record<string, VisualizerColumnValueSource[]>,
+) {
+  const usedDataSourceIds =
+    getDataSourceIdsFromColumnValueMappings(columnValuesMapping);
   return usedDataSourceIds.map((id) => {
     const { sourceId } = parseDataSourceId(id);
     return sourceId;
