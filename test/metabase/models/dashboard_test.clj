@@ -322,7 +322,7 @@
       (mt/with-temp [:model/Collection c1   {:name "top level" :location "/" :created_at now}
                      :model/Dashboard  dash {:name "my dashboard" :collection_id (:id c1) :created_at now}]
         (is (= "8cbf93b7"
-               (serdes/raw-hash ["my dashboard" (serdes/identity-hash c1) now])
+               (serdes/raw-hash ["my dashboard" (serdes/identity-hash c1) (:created_at dash)])
                (serdes/identity-hash dash)))))))
 
 (deftest descendants-test
