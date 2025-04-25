@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.server.protocols :as server.protocols]
+   [metabase.server.statistics-handler :as statistics-handler]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [ring.adapter.jetty :as ring-jetty]
@@ -12,8 +13,9 @@
   (:import
    (jakarta.servlet AsyncContext)
    (jakarta.servlet.http HttpServletRequest HttpServletResponse)
-   (org.eclipse.jetty.server Request Server)
-   (org.eclipse.jetty.server.handler AbstractHandler StatisticsHandler)))
+   (org.eclipse.jetty.ee9.nested Request)
+   (org.eclipse.jetty.ee9.servlet ServletHandler ServletContextHandler)
+   (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
 
@@ -59,9 +61,9 @@
   ^Server []
   @instance*)
 
-(defn- async-proxy-handler ^AbstractHandler [handler timeout]
-  (proxy [AbstractHandler] []
-    (handle [_ ^Request base-request ^HttpServletRequest request ^HttpServletResponse response]
+(defn- async-proxy-handler ^ServletHandler [handler timeout]
+  (proxy [ServletHandler] []
+    (doHandle [_ ^Request base-request ^HttpServletRequest request ^HttpServletResponse response]
       (let [^AsyncContext context (doto (.startAsync request)
                                     (.setTimeout timeout))
             request-map           (servlet/build-request-map request)
@@ -95,12 +97,14 @@
   ;; if any API endpoint functions aren't at the very least returning a channel to fetch the results later after 10
   ;; minutes we're in serious trouble. (Almost everything 'slow' should be returning a channel before then, but
   ;; some things like CSV downloads don't currently return channels at this time)
-  (let [timeout       (config/config-int :mb-jetty-async-response-timeout)
-        handler       (async-proxy-handler handler timeout)
-        stats-handler (doto (StatisticsHandler.)
-                        (.setHandler handler))]
+  (let [timeout         (config/config-int :mb-jetty-async-response-timeout)
+        handler         (async-proxy-handler handler timeout)
+        servlet-handler (doto (ServletContextHandler.)
+                          (.setAllowNullPathInfo true)
+                          (.insertHandler (statistics-handler/new-handler))
+                          (.setServletHandler handler))]
     (doto ^Server (#'ring-jetty/create-server (assoc options :async? true))
-      (.setHandler stats-handler))))
+      (.setHandler servlet-handler))))
 
 (defn start-web-server!
   "Start the embedded Jetty web server. Returns `:started` if a new server was started; `nil` if there was already a
