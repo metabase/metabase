@@ -28,7 +28,10 @@ export const getActionsIdColumn = <TRow, TValue>({
               <Button
                 key={action.id}
                 variant="subtle"
-                onClick={() => onActionRun(action, row)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onActionRun(action, row);
+                }}
               >
                 {action.name}
               </Button>

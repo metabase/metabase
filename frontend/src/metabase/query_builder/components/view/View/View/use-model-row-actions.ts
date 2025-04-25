@@ -1,4 +1,3 @@
-import type { Row } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
 
 import { useListActionsQuery } from "metabase/api";
@@ -23,7 +22,7 @@ export const useModelRowActions = ({
     rowData: ActionFormInitialValues;
   } | null>(null);
 
-  const { data: actions } = useListActionsQuery(
+  const { data: rowActions } = useListActionsQuery(
     {
       "model-id": question?.id(),
     },
@@ -33,14 +32,11 @@ export const useModelRowActions = ({
   );
 
   const handleRowActionRun = useCallback(
-    (action: WritebackAction, row: Row<RowValues>) => {
+    (action: WritebackAction, rowData: RowValues) => {
       if (!datasetData) {
         console.warn("Failed to trigger action, datasetData is null");
         return;
       }
-
-      const rowIndex = row.index;
-      const rowData = datasetData.rows[rowIndex];
 
       const remappedInitialActionValues = action.parameters?.reduce(
         (result, parameter) => {
@@ -73,7 +69,7 @@ export const useModelRowActions = ({
   }, []);
 
   return {
-    enabledRowActions: actions,
+    rowActions,
     handleRowActionRun,
     activeActionState,
     handleExecuteModalClose,

@@ -66,7 +66,6 @@ import type {
   Series,
   TimelineEvent,
   VisualizationSettings,
-  WritebackAction,
 } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
@@ -146,7 +145,6 @@ type VisualizationOwnProps = {
   timelineEvents?: TimelineEvent[];
   uuid?: string;
   token?: string;
-  enabledRowActions?: WritebackAction[];
   onOpenChartSettings?: (data: {
     initialChartSettings: { section: string };
     showSidebarTitle?: boolean;
@@ -575,7 +573,8 @@ class Visualization extends PureComponent<
       totalNumGridCols,
       uuid,
       width: rawWidth,
-      enabledRowActions,
+      rowActions,
+      onRowActionRun,
       onDeselectTimelineEvents,
       onOpenChartSettings,
       onOpenTimelines,
@@ -809,7 +808,8 @@ class Visualization extends PureComponent<
                   width={rawWidth}
                   uuid={uuid}
                   token={token}
-                  enabledRowActions={enabledRowActions}
+                  rowActions={rowActions}
+                  onRowActionRun={onRowActionRun}
                   onActionDismissal={this.hideActions}
                   onChangeCardAndRun={
                     this.props.onChangeCardAndRun

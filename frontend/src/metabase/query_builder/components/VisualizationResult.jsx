@@ -23,7 +23,8 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "renderTableHeader",
   "mode",
   "renderEmptyMessage",
-  "enabledRowActions",
+  "rowActions",
+  "onRowActionRun",
 ];
 
 export default class VisualizationResult extends Component {

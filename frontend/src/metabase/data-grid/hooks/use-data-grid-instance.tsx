@@ -87,7 +87,8 @@ export const useDataGridInstance = <TData, TValue>({
 }: DataGridOptions<TData, TValue>): DataGridInstance<TData> => {
   const gridRef = useRef<HTMLDivElement>(null);
   const hasRowIdColumn = rowId != null;
-  const hasRowActionsColumn = rowActionsColumn != null;
+  const hasRowActionsColumn =
+    rowActionsColumn != null && rowActionsColumn.actions.length > 0;
 
   const [columnOrder, setColumnOrder] = useState<string[]>(
     getColumnOrder(

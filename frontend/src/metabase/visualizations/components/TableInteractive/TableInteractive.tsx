@@ -1,6 +1,7 @@
 import type {
   CellContext,
   ColumnSizingState,
+  Row,
   SortingState,
 } from "@tanstack/react-table";
 import cx from "classnames";
@@ -64,6 +65,7 @@ import type {
   RowValue,
   RowValues,
   VisualizationSettings,
+  WritebackAction,
 } from "metabase-types/api";
 
 import S from "./TableInteractive.module.css";
@@ -100,6 +102,8 @@ interface TableProps extends VisualizationProps {
   getColumnTitle: (columnIndex: number) => string;
   getColumnSortDirection: (columnIndex: number) => OrderByDirection | undefined;
   renderTableHeader: HeaderCellWithColumnInfoProps["renderTableHeader"];
+  rowActions?: WritebackAction[];
+  onRowActionRun?: (action: WritebackAction, rowData: RowValues) => void;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   onZoomRow?: (objectId: number | string) => void;
 }
@@ -161,7 +165,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onVisualizationClick,
     onUpdateVisualizationSettings,
     rowActions,
-    onActionRun,
+    onRowActionRun,
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -660,6 +664,15 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return undefined;
   }, [height, settings]);
 
+  const handleRowActionRun = useCallback(
+    (action: WritebackAction, row: Row<RowValues>) => {
+      const rowData = rows[row.index];
+
+      onRowActionRun?.(action, rowData);
+    },
+    [onRowActionRun, rows],
+  );
+
   const tableProps = useDataGridInstance({
     data: rows,
     rowId,
@@ -672,8 +685,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onColumnReorder: handleColumnReordering,
     pageSize,
     rowActionsColumn:
-      rowActions && onActionRun
-        ? { actions: rowActions, onActionRun }
+      rowActions && onRowActionRun
+        ? { actions: rowActions, onActionRun: handleRowActionRun }
         : undefined,
   });
   const { virtualGrid } = tableProps;
