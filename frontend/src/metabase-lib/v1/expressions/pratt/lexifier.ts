@@ -58,7 +58,7 @@ export function lexify(source: string) {
       });
     }
 
-    if (node.type.name === "Reference") {
+    if (node.type.name === "Field") {
       const text = source.slice(node.from, node.to);
       return token(node, {
         type: FIELD,
@@ -93,29 +93,12 @@ export function lexify(source: string) {
     }
 
     // Handle parse errors
-    if (node.type.name === "⚠") {
-      if (node.node.toTree().positions.length === 0 && node.to !== node.from) {
-        const text = source.slice(node.from, node.to);
-
-        if (text === "]") {
-          // This bracket is closing the previous identifier, but it
-          // does not have a matching opening bracket.
-          const prev = lexs.at(-1);
-          if (prev && prev.type === IDENTIFIER) {
-            // replace the token with the merged identifier bracked
-            lexs.pop();
-            token(node, {
-              type: FIELD,
-              value: prev.value,
-              pos: prev.from,
-              length: node.to - prev.from,
-            });
-            return false;
-          }
-        }
-
-        return token(node, { type: BAD_TOKEN });
-      }
+    if (
+      node.type.name === "⚠" &&
+      node.node.toTree().positions.length === 0 &&
+      node.to !== node.from
+    ) {
+      return token(node, { type: BAD_TOKEN });
     }
   });
 

@@ -1,6 +1,6 @@
 import { ExternalTokenizer } from "@lezer/lr";
 
-import { Reference } from "./lezer.terms";
+import { Field } from "./lezer.terms";
 
 function char(char: string): number {
   if (char.length !== 1) {
@@ -37,7 +37,7 @@ const FIELD_PUNCTUATORS = new Set([
  *
  * This is hard to express in the grammar, so we use this tokenizer to match them.
  */
-export const reference = new ExternalTokenizer((input) => {
+export const field = new ExternalTokenizer((input) => {
   const current = input.next;
 
   if (current !== OPEN_BRACKET) {
@@ -61,7 +61,7 @@ export const reference = new ExternalTokenizer((input) => {
       // this is another opening bracket that will start a new token,
       // return the current one
       if (prev) {
-        input.acceptToken(Reference);
+        input.acceptToken(Field);
       }
       return;
     }
@@ -73,7 +73,7 @@ export const reference = new ExternalTokenizer((input) => {
       }
 
       // we found the closing bracket, return the token
-      input.acceptToken(Reference, 1);
+      input.acceptToken(Field, 1);
       return;
     }
 
@@ -85,10 +85,10 @@ export const reference = new ExternalTokenizer((input) => {
       if (firstOperator === -1) {
         // No operators were encountered, so return all the text we've
         // seen as the token.
-        input.acceptToken(Reference);
+        input.acceptToken(Field);
         return;
       }
-      input.acceptToken(Reference, firstOperator - idx);
+      input.acceptToken(Field, firstOperator - idx);
       return;
     }
 
