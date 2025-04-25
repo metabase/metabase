@@ -603,8 +603,8 @@
                     (:body %)
                     (mapcat identity (:query-params %)))]
     (mt/with-premium-features #{:table-data-editing}
-      (data-editing.tu/toggle-data-editing-enabled! true)
       (mt/test-drivers #{:h2 :postgres}
+        (data-editing.tu/toggle-data-editing-enabled! true)
         (mt/with-actions-enabled
           (testing "no dashcard"
             (mt/with-temp [:model/Card   model  {:type     :model}

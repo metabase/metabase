@@ -262,7 +262,7 @@
         fields      (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
         field-names (set (map :name fields))
         pk-fields   (filter #(= :type/PK (:semantic_type %)) fields)
-        [row]       (vals (data-editing/query-db-rows table-id pk-fields [pk]))
+        [row]       (data-editing/query-db-rows table-id pk-fields [pk])
         _           (api/check-404 row)
         row-params  (->> (:parameters action)
                          (keep (fn [{:keys [id slug]}]
