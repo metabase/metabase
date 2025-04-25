@@ -28,42 +28,6 @@ export interface SdkIframeEmbedTestPageOptions
 }
 
 /**
- * Sets up common embedding test environment
- * @param groupId - Group ID to create API key for
- */
-export function setupEmbeddingTest(groupId: number) {
-  const { H } = cy;
-
-  H.restore();
-  cy.signInAsAdmin();
-
-  H.mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
-
-  // Enable all enterprise features including embedding_iframe_sdk
-  H.setTokenFeatures("all");
-
-  H.createApiKey("Test SDK Embedding Key", groupId).then(({ body }) => {
-    cy.wrap(body.unmasked_key).as("apiKey");
-    cy.log(`created test api key "${body.unmasked_key}"`);
-  });
-
-  cy.log("Enabling embedding globally");
-  cy.request("PUT", "/api/setting/enable-embedding-static", {
-    value: true,
-  });
-
-  cy.log("Enabling interactive embedding");
-  cy.request("PUT", "/api/setting/enable-embedding-interactive", {
-    value: true,
-  });
-
-  cy.log("Setting interactive embedding origins");
-  cy.request("PUT", "/api/setting/embedding-app-origins-interactive", {
-    value: "http://localhost:3000",
-  });
-}
-
-/**
  * Creates and loads a test fixture for SDK iframe embedding tests
  */
 export function loadSdkEmbedIframeTestPage<T extends BaseEmbedTestPageOptions>(
@@ -91,21 +55,6 @@ export function loadSdkEmbedIframeTestPage<T extends BaseEmbedTestPageOptions>(
 }
 
 /**
- * Enables embedding for a specific resource
- * @param resourceType - Type of resource (dashboard or question)
- * @param resourceId - ID of the resource
- */
-export function enableResourceEmbedding(
-  resourceType: "dashboard" | "question",
-  resourceId: number,
-) {
-  cy.log(`Enabling embedding for the ${resourceType}`);
-  cy.request("PUT", `/api/${resourceType}/${resourceId}`, {
-    enable_embedding: true,
-  });
-}
-
-/**
  * Gets the entity ID for a specific resource
  * @param resourceType - Type of resource (dashboard or question)
  * @param resourceId - ID of the resource
@@ -124,7 +73,7 @@ export function getResourceEntityId(
 /**
  * Base HTML template for embedding test pages
  */
-export function getBaseIframeHtml(
+export function getBaseSdkIframeEmbedHtml(
   options: BaseEmbedTestPageOptions,
   embedConfig: Record<string, unknown>,
   additionalHead = "",

@@ -4,10 +4,8 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   type ThemeEmbedTestPageOptions,
-  enableResourceEmbedding,
-  getBaseIframeHtml,
+  getBaseSdkIframeEmbedHtml,
   loadSdkEmbedIframeTestPage,
-  setupEmbeddingTest,
 } from "e2e/support/helpers/e2e-embedding-iframe-sdk-helpers";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
@@ -23,8 +21,37 @@ const CUSTOM_THEME: MetabaseTheme = {
 
 describe("scenarios > embedding > sdk iframe embedding > themes and browser", () => {
   beforeEach(() => {
-    setupEmbeddingTest(ALL_USERS_GROUP_ID);
-    enableResourceEmbedding("dashboard", ORDERS_DASHBOARD_ID);
+    H.restore();
+    cy.signInAsAdmin();
+    H.mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
+    H.setTokenFeatures("all");
+
+    H.createApiKey("Test SDK Embedding Key", ALL_USERS_GROUP_ID).then(
+      ({ body }) => {
+        cy.wrap(body.unmasked_key).as("apiKey");
+      },
+    );
+
+    cy.request("PUT", "/api/setting/enable-embedding-interactive", {
+      value: true,
+    });
+  });
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
+    H.setTokenFeatures("all");
+
+    H.createApiKey("Test SDK Embedding Key", ALL_USERS_GROUP_ID).then(
+      ({ body }) => {
+        cy.wrap(body.unmasked_key).as("apiKey");
+      },
+    );
+
+    cy.request("PUT", "/api/setting/enable-embedding-interactive", {
+      value: true,
+    });
   });
 
   it("should apply custom theme with fonts and colors", () => {
@@ -111,7 +138,7 @@ function getThemeTestPageHtml(options: ThemeEmbedTestPageOptions): string {
   const additionalHead =
     '<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Roboto+Mono&display=swap" rel="stylesheet">';
 
-  return getBaseIframeHtml(
+  return getBaseSdkIframeEmbedHtml(
     options,
     {
       dashboardId: options.resourceId,

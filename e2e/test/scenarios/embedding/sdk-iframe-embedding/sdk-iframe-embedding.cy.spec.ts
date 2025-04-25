@@ -7,10 +7,8 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   type SdkIframeEmbedTestPageOptions,
-  enableResourceEmbedding,
-  getBaseIframeHtml,
+  getBaseSdkIframeEmbedHtml,
   loadSdkEmbedIframeTestPage,
-  setupEmbeddingTest,
 } from "e2e/support/helpers/e2e-embedding-iframe-sdk-helpers";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
@@ -38,41 +36,21 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-
     H.mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
-
-    // Enable all enterprise features including embedding_iframe_sdk
     H.setTokenFeatures("all");
 
     H.createApiKey("Test SDK Embedding Key", ALL_USERS_GROUP_ID).then(
       ({ body }) => {
         cy.wrap(body.unmasked_key).as("apiKey");
-        cy.log(`created test api key "${body.unmasked_key}"`);
       },
     );
 
-    cy.log("Enabling embedding globally");
-    cy.request("PUT", "/api/setting/enable-embedding-static", {
-      value: true,
-    });
-
-    cy.log("Enabling interactive embedding");
     cy.request("PUT", "/api/setting/enable-embedding-interactive", {
       value: true,
     });
-
-    cy.log("Setting interactive embedding origins");
-    cy.request("PUT", "/api/setting/embedding-app-origins-interactive", {
-      value: "http://localhost:3000",
-    });
-
-    setupEmbeddingTest(ALL_USERS_GROUP_ID);
   });
 
   it("should create iframe and authenticate with API key for dashboard", () => {
-    cy.log("Testing dashboard embedding with API key authentication");
-    enableResourceEmbedding("dashboard", ORDERS_DASHBOARD_ID);
-
     cy.get<string>("@apiKey").then((apiKey) => {
       const frame = loadSdkEmbedIframeTestPage(
         {
@@ -89,9 +67,6 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
   });
 
   it("should create iframe and authenticate with API key for question", () => {
-    cy.log("Testing question embedding with API key authentication");
-    enableResourceEmbedding("question", ORDERS_QUESTION_ID);
-
     cy.get<string>("@apiKey").then((apiKey) => {
       const frame = loadSdkEmbedIframeTestPage(
         {
@@ -132,7 +107,7 @@ function getSdkIframeTestPageHtml(
       `
     : "";
 
-  return getBaseIframeHtml(
+  return getBaseSdkIframeEmbedHtml(
     options,
     {
       [resourceIdProp]: options.resourceId,
