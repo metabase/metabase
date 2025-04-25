@@ -1,4 +1,4 @@
-import type { VisualizerVizDefinition } from "metabase-types/store/visualizer";
+import type { VisualizerVizDefinition } from "metabase-types/api";
 
 /**
  * Ensures that the column is removed from the state if it is not used in any settings.

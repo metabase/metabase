@@ -12,7 +12,7 @@ import {
   getVisualizationTitle,
 } from "metabase/visualizer/selectors";
 import { setTitle } from "metabase/visualizer/visualizer.slice";
-import type { VisualizerVizDefinition } from "metabase-types/store/visualizer";
+import type { VisualizerVizDefinition } from "metabase-types/api";
 
 import { useVisualizerUi } from "../VisualizerUiContext";
 

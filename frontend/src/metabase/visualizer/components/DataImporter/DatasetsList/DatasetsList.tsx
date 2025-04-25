@@ -11,11 +11,12 @@ import {
   addDataSource,
   removeDataSource,
 } from "metabase/visualizer/visualizer.slice";
-import type { DashboardId, SearchResult } from "metabase-types/api";
 import type {
+  DashboardId,
+  SearchResult,
   VisualizerDataSource,
   VisualizerDataSourceId,
-} from "metabase-types/store/visualizer";
+} from "metabase-types/api";
 
 import { useVisualizerUi } from "../../VisualizerUiContext";
 

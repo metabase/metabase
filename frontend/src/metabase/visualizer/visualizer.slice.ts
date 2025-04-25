@@ -18,14 +18,14 @@ import type {
   DatasetColumn,
   VisualizationDisplay,
   VisualizationSettings,
+  VisualizerDataSource,
+  VisualizerDataSourceId,
+  VisualizerVizDefinition,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 import type {
   DraggedItem,
-  VisualizerDataSource,
-  VisualizerDataSourceId,
   VisualizerState,
-  VisualizerVizDefinition,
 } from "metabase-types/store/visualizer";
 
 import {

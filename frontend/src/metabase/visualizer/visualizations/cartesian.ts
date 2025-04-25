@@ -21,13 +21,14 @@ import {
   isMetric,
   isString,
 } from "metabase-lib/v1/types/utils/isa";
-import type { Dataset, DatasetColumn } from "metabase-types/api";
 import type {
+  Dataset,
+  DatasetColumn,
   VisualizerColumnReference,
   VisualizerDataSource,
   VisualizerDataSourceId,
   VisualizerVizDefinition,
-} from "metabase-types/store/visualizer";
+} from "metabase-types/api";
 
 import { removeColumnFromStateUnlessUsedElseWhere } from "./utils";
 
