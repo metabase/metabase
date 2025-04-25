@@ -3,7 +3,14 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { ActionIcon, Flex, Icon, Popover, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  type ActionIconProps,
+  Flex,
+  Icon,
+  Popover,
+  Tooltip,
+} from "metabase/ui";
 import type { Dataset } from "metabase-types/api";
 
 import { QuestionDownloadWidget } from "../QuestionDownloadWidget";
@@ -18,6 +25,7 @@ export type QuestionDownloadPopoverProps = {
   className?: string;
   floating?: boolean;
 } & Pick<UseDownloadDataParams, "question" | "result"> &
+  Pick<ActionIconProps, "variant"> &
   Partial<Omit<UseDownloadDataParams, "question" | "result">>;
 
 const QuestionDownloadPopover = ({
@@ -29,6 +37,7 @@ const QuestionDownloadPopover = ({
   uuid,
   token,
   visualizationSettings,
+  variant,
   floating,
 }: QuestionDownloadPopoverProps) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -52,6 +61,7 @@ const QuestionDownloadPopover = ({
               data-testid="question-results-download-button"
               onClick={() => setIsPopoverOpen(!isPopoverOpen)}
               aria-label={t`Download results`}
+              variant={variant}
             >
               <Icon name="download" />
             </ActionIcon>
