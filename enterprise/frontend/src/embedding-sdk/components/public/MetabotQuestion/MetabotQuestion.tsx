@@ -4,7 +4,8 @@ import { t } from "ttag";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { Flex, Paper, Stack, Text } from "metabase/ui";
+import { Flex, Icon, Paper, Stack, Text } from "metabase/ui";
+import { getErrorMessage } from "metabase-enterprise/metabot/constants";
 
 import { MetabotChatEmbedding } from "./MetabotChatEmbedding";
 import { QuestionDetails } from "./QuestionDetails";
@@ -22,16 +23,7 @@ const MetabotQuestionInner = () => {
       />
       {messages.length > 0 &&
         messages.map((message, index) => (
-          <Paper
-            key={index}
-            shadow="sm"
-            p="lg"
-            w="100%"
-            maw="41.5rem"
-            radius="lg"
-          >
-            <Text>{message}</Text>
-          </Paper>
+          <Message key={index} message={message} />
         ))}
       {redirectUrl && (
         <InteractiveAdHocQuestion
@@ -56,9 +48,31 @@ const MetabotQuestionInner = () => {
   );
 };
 
+interface MessageProps {
+  message: string;
+}
+function Message({ message }: MessageProps) {
+  const isErrorMessage = message === getErrorMessage();
+  if (isErrorMessage) {
+    return (
+      <Paper shadow="sm" p="lg" w="100%" maw="41.5rem" radius="lg" ta="center">
+        <Icon name="info_filled" c="var(--mb-color-text-tertiary)" size={32} />
+        <Text mt="sm">{message}</Text>
+      </Paper>
+    );
+  }
+
+  return (
+    <Paper shadow="sm" p="lg" w="100%" maw="41.5rem" radius="lg">
+      <Text>{message}</Text>
+    </Paper>
+  );
+}
+
 function Disclaimer() {
   return (
     <Text c="var(--mb-color-text-secondary)">{t`AI can make mistakes. Double-check results.`}</Text>
   );
 }
+
 export const MetabotQuestion = withPublicComponentWrapper(MetabotQuestionInner);

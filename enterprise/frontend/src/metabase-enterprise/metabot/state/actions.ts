@@ -10,6 +10,7 @@ import {
 import type { MetabotChatContext, MetabotReaction } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
+import { getErrorMessage } from "../constants";
 import { notifyUnknownReaction, reactionHandlers } from "../reactions";
 
 import { metabot } from "./reducer";
@@ -119,9 +120,7 @@ export const sendMessageRequest = createAsyncThunk(
       console.error("Metabot request returned error: ", result.error);
       dispatch(clearUserMessages());
       const message =
-        (result.error as any).status >= 500
-          ? t`I'm currently offline, try again later.`
-          : undefined;
+        (result.error as any).status >= 500 ? getErrorMessage() : undefined;
       dispatch(stopProcessingAndNotify(message));
     } else {
       const reactions = result.data?.reactions || [];
