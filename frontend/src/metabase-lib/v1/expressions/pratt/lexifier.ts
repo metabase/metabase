@@ -34,16 +34,13 @@ export function lexify(source: string) {
     token: {
       type: NodeType;
       value?: string;
-      pos?: number;
-      length?: number;
     },
   ) {
-    const { pos = node.from, length = node.to - node.from } = token;
     lexs.push(
       new Token({
-        pos,
-        length,
-        text: source.slice(pos, pos + length),
+        pos: node.from,
+        length: node.to - node.from,
+        text: source.slice(node.from, node.to),
         ...token,
       }),
     );
