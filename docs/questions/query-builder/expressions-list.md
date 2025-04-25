@@ -99,7 +99,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [weekday](#weekday)
     - [year](#year)
 
-  - [Type casting functions](#type-casting-functions)
+  - [Type-casting functions](#type-casting-functions)
 
     - [date](#date)
     - [integer](#integer)
