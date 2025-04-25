@@ -20,7 +20,9 @@
        [[goog.string :as gstring]])
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
-   [clojure.string :as str]))
+   [clojure.string :as str])
+  (:import
+   (org.apache.logging.log4j ThreadContext)))
 
 (def ^:dynamic ^{:arglists '([namespace-str level-int])} *capture-logs-fn*
   "Function with the signature that given a namespace string and log level (as an int), returns a function that should
@@ -184,11 +186,18 @@
 (defn capture-logp!
   "Impl for log message capturing for [[metabase.util.log/logp]]."
   [f & args]
-  (let [{:keys [e args]} (parse-args args)
-        has-ctx? (map? (last args))
-        msgs (if has-ctx? (butlast args) args)]
+  (let [{:keys [e args]}  (parse-args args)
+        has-inline-ctx?   (map? (last args))
+        msgs              (if has-inline-ctx? (butlast args) args)
+        inline-ctx        (when has-inline-ctx?
+                            (update-keys (last args) #(str (symbol %))))
+        ctx-map           (ThreadContext/getImmutableContext)
+        has-with-context? (not-empty ctx-map)]
+    (prn ["has-inline-ctx?" has-inline-ctx?])
+    (prn ["ctx-map" ctx-map])
     (f e (str/join \space (map print-str msgs))
-       (when has-ctx? (last args)))))
+       (when (or has-inline-ctx? has-with-context?)
+         (merge (into {} ctx-map) inline-ctx)))))
 
 (defn capture-logf!
   "Impl for log message capturing for [[metabase.util.log/logf]]."

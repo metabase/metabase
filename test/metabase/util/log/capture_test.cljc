@@ -29,21 +29,50 @@
 
 #?(:clj
    (deftest ^:parallel logp-context-test
-     (is (= [{:namespace 'metabase.util.log.capture-test, :level :warn, :e nil, :message "a message", :ctx {:a/b 1}}]
+     (is (= [{:namespace 'metabase.util.log.capture-test, :level :warn, :e nil, :message "a message one", :ctx {:a/b 1}}]
             (log.capture/with-log-messages-for-level [messages :warn]
-              (log/info "not this one")
-              (log/warn "a message" {:a/b 1})
+              (log/info "info are not captured, so don't expect to see this one.")
+              (log/warn "a message one" {:a/b 1})
               (messages))))
-     (is (= [{:namespace 'metabase.util.log.capture-test, :level :info, :e nil, :message "here's one", :ctx {:a/b 1}}
-             {:namespace 'metabase.util.log.capture-test, :level :warn, :e nil, :message "a message", :ctx {:a/b 1}}]
+     (is (= [{:namespace 'metabase.util.log.capture-test, :level :info, :e nil, :message "here's one"}
+             {:namespace 'metabase.util.log.capture-test, :level :warn, :e nil, :message "a message two", :ctx {:a/b 1}}]
             (log.capture/with-log-messages-for-level [messages :info]
               (log/info "here's one")
-              (log/warn "a message" {:a/b 1})
+              (log/warn "a message two" {:a/b 1})
               (messages))))
      (is (= [{:namespace 'metabase.util.log.capture-test, :level :info, :e nil, :message ":keyword 78", :ctx {:a/b 1}}]
             (log.capture/with-log-messages-for-level [messages :info]
               (log/info :keyword 78 {:a/b 1})
               (messages))))))
+
+#?(:clj
+   (deftest ^:parallel logp-super-context-test
+     (is (=
+          [{:message "empty context", :ctx nil}
+           {:message "a",             :ctx {"a/a" "A"}}
+           {:message "a b",           :ctx {"a/a" "A", "b/b" "B"}}
+           {:message "a b c",         :ctx {"a/a" "A", "b/b" "B", "c/c" "C"}}
+           {:message "a b c d",       :ctx {"a/a" "A", "b/b" "B", "c/c" "C", "d/d" "D"}}
+           {:message "a b c",         :ctx {"a/a" "A", "b/b" "B", "c/c" "C"}}
+           {:message "a b",           :ctx {"a/a" "A", "b/b" "B"}}
+           {:message "a",             :ctx {"a/a" "A"}}
+           {:message "empty context", :ctx nil}]
+          (log.capture/with-log-messages-for-level [messages :info]
+            (log/info "empty context")
+            (log/with-context {:a/a "A"}
+              (log/info "a")
+              (log/with-context {:b/b "B"}
+                (log/info "a b")
+                (log/with-context {:c/c "C"}
+                  (log/info "a b c")
+                  (log/info "a b c d" {:d/d "D"})
+                  (log/info "a b c"))
+                (log/info "a b"))
+              (log/info "a"))
+            (log/info "empty context")
+            (mapv
+             #(select-keys % [:message :ctx])
+             (messages)))))))
 
 (deftest ^:parallel logp-levels-test
   (let [important-message #{"fatal" "error" "warn" "info" "debug" "trace"}

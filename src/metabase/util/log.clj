@@ -67,19 +67,19 @@
                 ;; Store original values before modifying
                 original-values# (into {}
                                        (keep (fn [k#]
-                                               (when-let [v# (ThreadContext/get (name k#))]
-                                                 [(name k#) v#])))
+                                               (when-let [v# (ThreadContext/get (str (symbol k#)))]
+                                                 [(str (symbol k#)) v#])))
                                        ctx-keys#)]
             (try
               (doseq [k# ctx-keys#]
-                (ThreadContext/put (name k#) (str (get ctx-map# k#))))
+                (ThreadContext/put (str (symbol k#)) (str (get ctx-map# k#))))
               ~@body
               (finally
                 (doseq [k# ctx-keys#]
-                  (if-let [original# (find original-values# (name k#))]
-                    (ThreadContext/put (name k#) (val original#))
-                    (ThreadContext/remove (name k#)))))))
-    :cljs ~@body))
+                  (if-let [original# (find original-values# (str (symbol k#)))]
+                    (ThreadContext/put (str (symbol k#)) (val original#))
+                    (ThreadContext/remove (str (symbol k#))))))))
+    "cljs" ~@body))
 
 (defn parse-args
   "Parses args for [[trace]], [[debug]], [[info]], [[warn]], [[error]], [[fatal]]
@@ -91,10 +91,7 @@
         rest-args (if has-exception? (rest args) args)
         has-context? (map? (last rest-args))
         message-args (cond-> rest-args has-context? drop-last)]
-    (when (empty? (filter string? message-args))
-      (throw (IllegalArgumentException.
-              "Must have at least one string in arguments")))
-    {:msg (str/join \space message-args)
+    {:msg (str/join \space (or message-args []))
      :ctx (when has-context? (last rest-args))
      :e (when has-exception? first-arg)}))
 
@@ -136,7 +133,7 @@
         `(metabase.util.log.capture/capture-logp ~(str *ns*) ~level ~x ~@more))
      ~(macros/case
         :cljs (glogi-logp (str *ns*) level x more)
-        :clj  (tools-logp *ns*      level x more))))
+        :clj  (tools-logp *ns*       level x more))))
 
 (defmacro logf
   "Implementation for printf-style `logf`.
