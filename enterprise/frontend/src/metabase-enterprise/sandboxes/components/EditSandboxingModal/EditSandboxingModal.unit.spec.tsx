@@ -17,7 +17,7 @@ import {
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import type {
-  type DatabaseFeature,
+  DatabaseFeature,
   GroupTableAccessPolicy,
 } from "metabase-types/api";
 import {
