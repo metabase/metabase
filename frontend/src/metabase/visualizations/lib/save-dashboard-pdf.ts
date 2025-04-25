@@ -150,11 +150,23 @@ const HEADER_MARGIN_BOTTOM = 12;
 const PARAMETERS_MARGIN_BOTTOM = 12;
 const PAGE_PADDING = 16;
 
-export const saveDashboardPdf = async (
-  selector: string,
-  dashboardName: string,
-) => {
-  const fileName = `${dashboardName}.pdf`;
+interface SavePdfProps {
+  selector: string;
+  dashboardName: string;
+  includeBranding: boolean;
+}
+
+export const saveDashboardPdf = async ({
+  selector,
+  dashboardName,
+  includeBranding,
+}: SavePdfProps) => {
+  const originalFileName = `${dashboardName}.pdf`;
+  const fileName = includeBranding
+    ? // eslint-disable-next-line no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
+      `Metabase-${originalFileName}`
+    : originalFileName;
+
   const dashboardRoot = document.querySelector(selector);
   const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
 
@@ -188,7 +200,8 @@ export const saveDashboardPdf = async (
 
   const size = getBrandingSize(width);
   const brandingHeight = getBrandingConfig(size).h;
-  const verticalOffset = headerHeight + parametersHeight + brandingHeight;
+  const verticalOffset =
+    headerHeight + parametersHeight + (includeBranding ? brandingHeight : 0);
   const contentHeight = gridNode.offsetHeight + verticalOffset;
 
   const backgroundColor = getComputedStyle(document.documentElement)
@@ -209,8 +222,10 @@ export const saveDashboardPdf = async (
       }
       node.insertBefore(pdfHeader, node.firstChild);
 
-      const branding = createBrandingElement(size);
-      node.insertBefore(branding, node.firstChild);
+      if (includeBranding) {
+        const branding = createBrandingElement(size);
+        node.insertBefore(branding, node.firstChild);
+      }
     },
   });
 
@@ -291,7 +306,7 @@ export const saveDashboardPdf = async (
         sourceHeight,
       );
 
-      if (isFirstPage) {
+      if (isFirstPage && includeBranding) {
         const url =
           "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=pdf_export";
 
