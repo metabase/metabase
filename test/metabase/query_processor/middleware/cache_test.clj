@@ -304,29 +304,30 @@
 (deftest array-query-can-be-cached-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/arrays)
     (with-mock-cache! [save-chan]
-      (mt/with-clock #t "2025-02-06T00:00:00.000Z[UTC]"
-        (let [query           (mt/native-query {:query (tx/native-array-query driver/*driver*)})
-              query           (assoc query :cache-strategy (ttl-strategy))
-              original-result (qp/process-query query)
-              ;; clear any existing values in the `save-chan`
-              _               (while (a/poll! save-chan))
-              _               (mt/wait-for-result save-chan)
-              cached-result   (qp/process-query query)]
-          (is (=? {:cache/details {:stored true
-                                   :hash   some?}
-                   :row_count     1
-                   :status        :completed}
-                  (dissoc original-result :data)))
-          (is (=? {:cache/details {:cached     true
-                                   :updated_at #t "2025-02-06T00:00:00.000Z[UTC]"
-                                   :hash       some?}
-                   :row_count     1
-                   :status        :completed}
-                  (dissoc cached-result :data)))
-          (is (= (seq (-> original-result :cache/details :hash))
-                 (seq (-> cached-result :cache/details :hash))))
-          (is (= (dissoc original-result :cache/details)
-                 (dissoc cached-result :cache/details))))))))
+      (mt/with-temporary-setting-values [enable-query-caching true]
+        (mt/with-clock #t "2025-02-06T00:00:00.000Z[UTC]"
+          (let [query           (mt/native-query {:query (tx/native-array-query driver/*driver*)})
+                query           (assoc query :cache-strategy (ttl-strategy))
+                original-result (qp/process-query query)
+                              ;; clear any existing values in the `save-chan`
+                _               (while (a/poll! save-chan))
+                _               (mt/wait-for-result save-chan)
+                cached-result   (qp/process-query query)]
+            (is (=? {:cache/details {:stored true
+                                     :hash   some?}
+                     :row_count     1
+                     :status        :completed}
+                    (dissoc original-result :data)))
+            (is (=? {:cache/details {:cached     true
+                                     :updated_at #t "2025-02-06T00:00:00.000Z[UTC]"
+                                     :hash       some?}
+                     :row_count     1
+                     :status        :completed}
+                    (dissoc cached-result :data)))
+            (is (= (seq (-> original-result :cache/details :hash))
+                   (seq (-> cached-result :cache/details :hash))))
+            (is (= (dissoc original-result :cache/details)
+                   (dissoc cached-result :cache/details)))))))))
 
 (deftest e2e-test
   (testing "Test that the caching middleware actually working in the context of the entire QP"
