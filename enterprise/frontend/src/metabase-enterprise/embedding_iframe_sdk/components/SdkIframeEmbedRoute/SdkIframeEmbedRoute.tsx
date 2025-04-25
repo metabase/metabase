@@ -28,7 +28,7 @@ export const SdkIframeEmbedRoute = () => {
     }
 
     return defineMetabaseAuthConfig({
-      metabaseInstanceUrl: window.location.origin,
+      metabaseInstanceUrl: iframeAuthConfig.metabaseInstanceUrl,
       apiKey: iframeAuthConfig.apiKey,
     });
   }, [iframeAuthConfig]);
@@ -60,6 +60,9 @@ export const SdkIframeEmbedRoute = () => {
   return (
     <SdkIframeEmbedProvider authConfig={authConfig} theme={derivedTheme}>
       <Box h="100vh" bg={theme?.colors?.background}>
+        <div>{JSON.stringify(iframeSettings)}</div>
+        <div>ifa: {JSON.stringify(iframeAuthConfig)}</div>
+        <div>ac: {JSON.stringify(authConfig)}</div>
         <SdkIframeEmbedView settings={iframeSettings} />
       </Box>
     </SdkIframeEmbedProvider>

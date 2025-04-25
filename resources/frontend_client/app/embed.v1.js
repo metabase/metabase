@@ -141,6 +141,7 @@
         //       we use API keys for now
         this._sendMessage("metabase.embed.authenticate", {
           apiKey: this.apiKey,
+          metabaseInstanceUrl: this.url,
         });
       }
     }

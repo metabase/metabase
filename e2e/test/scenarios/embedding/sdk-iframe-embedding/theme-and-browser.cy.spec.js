@@ -175,7 +175,7 @@ function createTestPage({
       <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Roboto+Mono&display=swap" rel="stylesheet">
     </head>
     <body>
-      <script src="http://localhost:3000/app/embed.js"></script>
+      <script src="http://localhost:3000/app/embed.v1.js"></script>
 
       <div id="metabase-embed-container"></div>
       ${controls}
