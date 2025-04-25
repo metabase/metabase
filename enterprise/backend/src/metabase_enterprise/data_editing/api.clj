@@ -18,6 +18,7 @@
 
 (set! *warn-on-reflection* true)
 
+;; TODO consider moving this down into the bulk/row update actions
 (defn- invalidate-field-values! [table-id rows]
   (let [field-name-xf (comp (mapcat keys)
                             (distinct)
@@ -41,21 +42,30 @@
   (when (require-authz?)
     (api/check-superuser)))
 
+(defn- invalidate-and-present!
+  "We invalidate the field-values, in case any new category values were added.
+  The FE also expects data to be formatted according to PQ logic, e.g. considering semantic types.
+  Actions, however, return raw values, since lossy coercions would limit composition.
+  So, we apply the coercions here."
+  [table-id rows]
+  ;; We could optimize this significantly:
+  ;; 1. Skip if no category fields were changes on update.
+  ;; 2. Check whether all corresponding categorical field values are already in the database.
+  (invalidate-field-values! table-id rows)
+  ;; right now the FE works off qp outputs, which coerce output row data
+  ;; still feels messy, revisit this
+  (let [pk-fields (data-editing/select-table-pk-fields table-id)]
+    (data-editing/query-db-rows table-id pk-fields rows)))
+
 (api.macros/defendpoint :post "/table/:table-id"
   "Insert row(s) into the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (check-permissions)
-  (let [rows'      (data-editing/apply-coercions table-id rows)
-        res        (data-editing/insert! api/*current-user-id* table-id rows')
-        pk-fields  (data-editing/select-table-pk-fields table-id)
-        ;; actions code does not return coerced values
-        ;; right now the FE works off qp outputs, which coerce output row data
-        ;; still feels messy, revisit this
-        pks->db-row (data-editing/query-db-rows table-id pk-fields (map #(update-keys % keyword) (:created-rows res)))]
-    (invalidate-field-values! table-id rows')
-    {:created-rows (vals pks->db-row)}))
+  (let [rows' (data-editing/apply-coercions table-id rows)
+        res   (data-editing/insert! api/*current-user-id* table-id rows')]
+    {:created-rows (invalidate-and-present! table-id (:created-rows res))}))
 
 (api.macros/defendpoint :put "/table/:table-id"
   "Update row(s) within the given table."
@@ -65,27 +75,10 @@
   (check-permissions)
   (if (empty? rows)
     {:updated []}
-    (let [rows'        (data-editing/apply-coercions table-id rows)
-          pk-fields    (data-editing/select-table-pk-fields table-id)
-          pks->db-row  (data-editing/query-db-rows table-id pk-fields rows')
-          user-id      api/*current-user-id*]
-      ;; If this fails, we probably have another bug like the type-mismatch issue we had here:
-      ;; https://linear.app/metabase/issue/WRK-281/undo-deletes-a-record-instead-of-reverting-the-edits
-      ;; TODO this bombs in [[metabase-enterprise.data-editing.api-test/editing-allowed-test]] because we
-      ;;      haven't done the perms check yet.
-      #_(assert (every? (fn [row] (get pks->db-row (data-editing/get-row-pks pk-fields row))) rows')
-                "Able to look up the existing values of these rows, for system events")
-      (data-editing/perform-bulk-action! :bulk/update table-id rows')
-      ;; TODO this should also become a subscription to the "data written" system event
-      (let [row-pk->old-new-values (->> (for [row rows']
-                                          (let [pks (data-editing/get-row-pks pk-fields row)]
-                                            [pks [(get pks->db-row pks)
-                                                  row]]))
-                                        (into {}))]
-        (undo/track-change! user-id {table-id row-pk->old-new-values}))
-
-      (invalidate-field-values! table-id rows')
-      {:updated (vals (data-editing/query-db-rows table-id pk-fields rows'))})))
+    (let [user-id api/*current-user-id*
+          rows    (data-editing/apply-coercions table-id rows)
+          rows    (map :after (data-editing/perform-bulk-action! :bulk/update user-id table-id rows))]
+      {:updated (invalidate-and-present! table-id rows)})))
 
 ;; This is a POST instead of DELETE as not all web proxies pass on the body of DELETE requests.
 (api.macros/defendpoint :post "/table/:table-id/delete"
@@ -94,23 +87,9 @@
    {}
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (check-permissions)
-  (let [pk-fields              (data-editing/select-table-pk-fields table-id)
-        pks->db-rows           (data-editing/query-db-rows table-id pk-fields rows)
-        ;; If this fails, we probably have another bug like the type-mismatch issue we had here:
-        ;; https://linear.app/metabase/issue/WRK-281/undo-deletes-a-record-instead-of-reverting-the-edits
-        ;; TODO this bombs in [[metabase-enterprise.data-editing.api-test/editing-allowed-test]] because we
-        ;;      haven't done the perms check yet.
-        _                      nil #_(assert (every? (fn [row] (get pks->db-rows (data-editing/get-row-pks pk-fields row))) rows)
-                                             "Able to look up the existing values of these rows, for system events")
-        res                    (data-editing/perform-bulk-action! :bulk/delete table-id rows)
-        user-id                api/*current-user-id*
-        row-pk->old-new-values (->> (for [row rows]
-                                      (let [pks (data-editing/get-row-pks pk-fields row)]
-                                        [pks [(get pks->db-rows pks) nil]]))
-                                    (into {}))]
-    ;; TODO this should also become a subscription to the "data written" system event
-    (undo/track-change! user-id {table-id row-pk->old-new-values})
-    res))
+  (let [user-id api/*current-user-id*]
+    (data-editing/perform-bulk-action! :bulk/delete user-id table-id rows)
+    {:success true}))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust
 ;; model (e.g are admins trusted with writing arbitrary SQL cases anyway, will non admins ever call this?)
@@ -283,7 +262,7 @@
         fields      (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
         field-names (set (map :name fields))
         pk-fields   (filter #(= :type/PK (:semantic_type %)) fields)
-        [row]       (vals (data-editing/query-db-rows table-id pk-fields [pk]))
+        [row]       (data-editing/query-db-rows table-id pk-fields [pk])
         _           (api/check-404 row)
         row-params  (->> (:parameters action)
                          (keep (fn [{:keys [id slug]}]
