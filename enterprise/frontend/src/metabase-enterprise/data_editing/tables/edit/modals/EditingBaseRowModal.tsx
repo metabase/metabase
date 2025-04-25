@@ -130,25 +130,14 @@ export function EditingBaseRowModal({
     }
   }, [currentRowIndex, closeDeletionModal, onRowDelete]);
 
-  const disabledColumnNames = useMemo(() => {
-    if (!columnsConfig) {
-      return undefined;
-    }
-
-    return new Set(
-      columnsConfig.filter((it) => !it.editable).map(({ name }) => name),
-    );
-  }, [columnsConfig]);
-
   // Columns might be reordered to match the order in `columnsConfig`
   const orderedDatasetColumns = useMemo(() => {
     if (!columnsConfig) {
       return datasetColumns;
     }
 
-    return columnsConfig
-      .filter((it) => it.enabled)
-      .map(({ name }) => datasetColumns.find((it) => it.name === name))
+    return columnsConfig.columnOrder
+      .map((name) => datasetColumns.find((it) => it.name === name))
       .filter((it): it is DatasetColumn => it !== undefined);
   }, [columnsConfig, datasetColumns]);
 
@@ -229,7 +218,7 @@ export function EditingBaseRowModal({
                     onSubmitValue={handleValueEdit}
                     onChangeValue={setFieldValue}
                     error={!isEditingMode && !!errors[column.name]}
-                    disabled={disabledColumnNames?.has(column.name)}
+                    disabled={columnsConfig?.isColumnReadonly(column.name)}
                   />
                 </Fragment>
               );

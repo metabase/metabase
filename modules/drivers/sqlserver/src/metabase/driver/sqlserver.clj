@@ -11,6 +11,7 @@
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -18,6 +19,7 @@
    [metabase.driver.sql.parameters.substitution
     :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.boolean-is-comparison :as sql.qp.boolean-is-comparison]
    [metabase.driver.sql.util :as sql.u]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
@@ -40,12 +42,14 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :sqlserver, :parent :sql-jdbc)
+(driver/register! :sqlserver, :parent #{:sql-jdbc
+                                        ::sql.qp.boolean-is-comparison/boolean-is-comparison})
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :uuid-type                              true
                               :convert-timezone                       true
                               :datetime-diff                          true
+                              :expression-literals                    true
                               :index-info                             true
                               :now                                    true
                               :regex                                  false
@@ -856,3 +860,6 @@
 (defmethod sql.params.substitution/->replacement-snippet-info [:sqlserver UUID]
   [_driver this]
   {:replacement-snippet (format "'%s'" (str this))})
+
+(defmethod sql-jdbc/impl-query-canceled? :sqlserver [_ e]
+  (= (sql-jdbc/get-sql-state e) "HY008"))

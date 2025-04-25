@@ -119,7 +119,8 @@ export const EditingBodyCellCategorySelect = ({
   ]);
 
   const isNullable = field?.database_is_nullable;
-  const shouldDisplayClearButton = isNullable && !!value;
+  const shouldDisplayClearButton =
+    isNullable && !!value && !inputProps?.disabled;
 
   return (
     <Combobox
