@@ -19,8 +19,8 @@ import type { TableFieldOrder, TableId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { FieldOrderPicker } from "../FieldOrderPicker";
+import { SortableField } from "../SortableField";
 
-import { SortableField } from "./SortableField";
 import { getId, getItems, getItemsOrder, sortItems } from "./lib";
 
 /**
