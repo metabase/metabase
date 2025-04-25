@@ -38,6 +38,19 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
 
       frame.within(() => {
         cy.findByText("Orders").should("be.visible");
+
+        H.tableInteractive().within(() => {
+          cy.findByText("Total").should("be.visible");
+          cy.findByText("37.65").should("be.visible");
+        });
+
+        cy.findByTestId("chart-type-selector-button").click();
+
+        cy.findByRole("menu").within(() => {
+          cy.findByText("Trend").click();
+        });
+
+        cy.findByText("2000").should("be.visible");
       });
     });
   });
