@@ -1,5 +1,6 @@
 import type { Location } from "history";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import type { InjectedRouter } from "react-router";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -21,6 +22,8 @@ import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
+import { getTableEditPathname } from "./url";
+import { useExpandedRowObjectIdTracking } from "./use-expanded-row-id-tracking";
 import { useStandaloneTableQuery } from "./use-standalone-table-query";
 import { useTableCRUD } from "./use-table-crud";
 import { useTableEditingStateApiUpdateStrategy } from "./use-table-state-api-update-strategy";
@@ -30,13 +33,16 @@ type EditTableDataContainerProps = {
   params: {
     dbId: string;
     tableId: string;
+    objectId?: string;
   };
   location: Location<{ filter?: string }>;
+  router: InjectedRouter;
 };
 
 export const EditTableDataContainer = ({
-  params: { dbId: dbIdParam, tableId: tableIdParam },
+  params: { dbId: dbIdParam, tableId: tableIdParam, objectId: objectIdParam },
   location,
+  router,
 }: EditTableDataContainerProps) => {
   const databaseId = parseInt(dbIdParam, 10);
   const tableId = parseInt(tableIdParam, 10);
@@ -85,6 +91,25 @@ export const EditTableDataContainer = ({
 
   useMount(() => {
     dispatch(closeNavbar());
+  });
+
+  const handleCurrentObjectIdChange = useCallback(
+    (objectId?: string) => {
+      router.replace({
+        ...location,
+        pathname: getTableEditPathname(databaseId, tableId, objectId),
+      });
+    },
+    [databaseId, tableId, router, location],
+  );
+
+  useExpandedRowObjectIdTracking({
+    objectId: objectIdParam,
+    expandedRowIndex,
+    datasetData,
+    isCreateRowModalOpen,
+    handleModalOpenAndExpandedRow,
+    onObjectIdChange: handleCurrentObjectIdChange,
   });
 
   if (!database || isLoading || !fakeTableQuestion) {

@@ -23,6 +23,8 @@ import Question from "metabase-lib/v1/Question";
 import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
 import * as ML_Urls from "metabase-lib/v1/urls";
 
+import { getTableEditPathname } from "../edit/url";
+
 import S from "./BrowseTableData.module.css";
 import { BrowseTableDataGrid } from "./BrowseTableDataGrid";
 
@@ -50,7 +52,7 @@ export const BrowseTableData = ({
     tableId,
   });
 
-  const editUrl = `/browse/databases/${databaseId}/tables/${tableId}/edit`;
+  const editUrl = getTableEditPathname(databaseId, tableId);
 
   const exploreUrl = useMemo(() => {
     const question = Question.create({
