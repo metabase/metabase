@@ -1,4 +1,3 @@
-import classNames from "classnames";
 import { useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
@@ -7,7 +6,6 @@ import { TextInput } from "metabase/ui";
 import S from "./NameDescriptionInput.module.css";
 
 interface Props {
-  className?: string;
   description: string;
   name: string;
   onDescriptionChange: (description: string) => void;
@@ -15,7 +13,6 @@ interface Props {
 }
 
 export const NameDescriptionInput = ({
-  className,
   description,
   name,
   onDescriptionChange,
@@ -29,24 +26,43 @@ export const NameDescriptionInput = ({
   }, [name]);
 
   return (
-    <div className={classNames(S.nameDescriptionInput, className)}>
+    <div>
       <TextInput
-        placeholder={t`Table name`}
+        classNames={{
+          input: S.nameInput,
+          root: S.name,
+        }}
+        fw="bold"
+        placeholder={t`Give this table a name`}
+        size="lg"
         value={nameState}
         onBlur={(event) => {
-          if (name !== event.target.value) {
-            onNameChange(event.target.value);
+          const newValue = event.target.value;
+
+          // prevent empty names
+          if (!newValue.trim()) {
+            setNameState(name);
+          }
+
+          if (name !== newValue) {
+            onNameChange(newValue);
           }
         }}
         onChange={(event) => setNameState(event.target.value)}
       />
 
       <TextInput
-        placeholder={t`Table description`}
+        classNames={{
+          input: S.descriptionInput,
+          root: S.description,
+        }}
+        placeholder={t`Give this table a description`}
         value={descriptionState}
         onBlur={(event) => {
-          if (description !== event.target.value) {
-            onDescriptionChange(event.target.value);
+          const newValue = event.target.value;
+
+          if (description !== newValue) {
+            onDescriptionChange(newValue);
           }
         }}
         onChange={(event) => setDescriptionState(event.target.value)}
