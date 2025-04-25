@@ -9,10 +9,10 @@
     (is (= (params.parse-param/parse-param "foo_bar")
            (params/->Param "foo_bar")))))
 
-(deftest numeric-param-test
-  (testing "Should parse params with numbers in the name"
-    (is (= (params.parse-param/parse-param "5")
-           (params/->Param "5")))))
+(deftest special-param-test
+  (testing "Should parse params with special charactesr in the name"
+    (is (= (params.parse-param/parse-param "5: the-best_!#?")
+           (params/->Param "5: the-best_!#?")))))
 
 (deftest no-arg-function-test
   (testing "Should parse a no-arg function"

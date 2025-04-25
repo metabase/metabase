@@ -5,12 +5,13 @@
    [metabase.driver.common.parameters :as params]))
 
 (insta/defparser param-grammar "
-S = <whitespace> function|name <whitespace>
+S = <whitespace> function|param <whitespace>
+param = #'[^(]*'
 expr = string|doubleString
 string = <'\\''> #'[^\\']*' <'\\''>
 doubleString = <'\"'> #'[^\"]*' <'\"'>
-function = name arglist
-name = #'[\\w_\\d\\.#-]+'
+function = functionName arglist
+functionName = #'[\\w_\\d\\.]+'
 arglist = <'('> <whitespace> expr? <whitespace> (<','> <whitespace> expr <whitespace>)* <')'>
 whitespace = #'\\s*'
 ")
@@ -22,5 +23,5 @@ whitespace = #'\\s*'
 
 (defn parse-param [s]
   (match (param-grammar s)
-    [:S [:function [:name name] [:arglist & args]]] (params/->FunctionParam name (mapv parse-expr args))
-    [:S [:name name]] (params/->Param name)))
+    [:S [:function [:functionName name] [:arglist & args]]] (params/->FunctionParam name (mapv parse-expr args))
+    [:S [:param name]] (params/->Param name)))
