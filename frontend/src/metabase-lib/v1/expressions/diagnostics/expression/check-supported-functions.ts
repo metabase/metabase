@@ -3,10 +3,10 @@ import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { getClauseDefinition } from "../config";
-import { DiagnosticError } from "../errors";
-import { getDatabase, getToken } from "../utils";
-import { visit } from "../visitor";
+import { getClauseDefinition } from "../../config";
+import { getDatabase } from "../../utils";
+import { visit } from "../../visitor";
+import { error } from "../utils";
 
 export function checkSupportedFunctions({
   expressionParts,
@@ -36,10 +36,7 @@ export function checkSupportedFunctions({
       return;
     }
     if (!database?.hasFeature(clause.requiresFeature)) {
-      throw new DiagnosticError(
-        t`Unsupported function ${operator}`,
-        getToken(node),
-      );
+      error(node, t`Unsupported function ${operator}`);
     }
   });
 }

@@ -81,6 +81,26 @@
    :parameterized false
    :started_at    (t/offset-date-time)})
 
+(deftest schedule-cache-config->card-ids-test
+  (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Dashboard"}
+                 :model/Card {card-id-1 :id} {:name "Cached card 1"
+                                              :dataset_query {:database 1}}
+                 :model/Card {card-id-2 :id} {:name "Cached card 2"
+                                              :dataset_query {:database 1}}
+                 :model/DashboardCard {} {:dashboard_id dashboard-id
+                                          :card_id      card-id-1}
+                 :model/DashboardCard {} {:dashboard_id dashboard-id
+                                          :card_id      card-id-2}
+                 :model/DashboardCard {} {:dashboard_id dashboard-id
+                                          :card_id      card-id-2}
+                 :model/DashboardCard {} {:dashboard_id dashboard-id
+                                          :card_id      card-id-2}]
+    (testing "Returns the card ID directly for a question cahce config"
+      (is (= [card-id-1] (@#'task.cache/schedule-cache-config->card-ids {:model_id card-id-1 :model "question"}))))
+
+    (testing "Fetches card IDs associated with a dashboard cache config"
+      (is (= [card-id-1 card-id-2] (@#'task.cache/schedule-cache-config->card-ids {:model_id dashboard-id :model "dashboard"}))))))
+
 (deftest scheduled-queries-to-rerun-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
     (testing "Given a card, we rerun a limited number of variations of the card's query"

@@ -87,16 +87,20 @@ describe("issue 14636", () => {
   function stubPageResponses({ page, alias }) {
     const offset = page * limit;
 
-    cy.intercept("GET", `/api/task?limit=${limit}&offset=${offset}`, (req) => {
-      req.reply((res) => {
-        res.body = {
-          data: stubPageRows(page),
-          limit,
-          offset,
-          total,
-        };
-      });
-    }).as(alias);
+    cy.intercept(
+      "GET",
+      `/api/task?limit=${limit}&offset=${offset}&sort_column=started_at&sort_direction=desc`,
+      (req) => {
+        req.reply((res) => {
+          res.body = {
+            data: stubPageRows(page),
+            limit,
+            offset,
+            total,
+          };
+        });
+      },
+    ).as(alias);
   }
 
   /**
@@ -285,7 +289,7 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
     cy.signInAsAdmin();
 
     // The only reliable way of having a consistent list of tasks is mocking them
-    cy.intercept("GET", "/api/task?limit=50&offset=0", (request) => {
+    cy.intercept("GET", "/api/task?*", (request) => {
       request.reply((response) => {
         response.body.data = [task];
       });
