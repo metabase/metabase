@@ -17,10 +17,12 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
         dashboardId: ORDERS_DASHBOARD_ID,
       });
 
-      cy.wait("@getDashboard");
-      cy.findByText("Loading...").should("not.exist");
+      cy.wait("@getDashCardQuery");
 
-      frame.contains("Orders in a dashboard").should("be.visible");
+      frame.within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+        cy.findByText("2000 rows").should("be.visible");
+      });
     });
   });
 
