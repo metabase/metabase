@@ -1,5 +1,6 @@
+import { useHotkeys } from "@mantine/hooks";
 import { useMemo, useState } from "react";
-import { useKey, useMount } from "react-use";
+import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
@@ -53,7 +54,7 @@ export const QuestionInfoSidebar = ({
   const dispatch = useDispatch();
   const handleClose = () => dispatch(onCloseQuestionInfo());
 
-  useKey("]", handleClose);
+  useHotkeys([["]", handleClose]]);
 
   const [isOpen, setIsOpen] = useState(false);
 
