@@ -16,13 +16,21 @@ import * as Lib from "metabase-lib";
 import { createNativeQuestion } from "./utils";
 
 const TITLE = {
-  sql: t`SQL for this question`,
-  json: t`Native query for this question`,
+  get sql() {
+    return t`SQL for this question`;
+  },
+  get json() {
+    return t`Native query for this question`;
+  },
 };
 
 const BUTTON_TITLE = {
-  sql: t`Convert this question to SQL`,
-  json: t`Convert this question to a native query`,
+  get sql() {
+    return t`Convert this question to SQL`;
+  },
+  get json() {
+    return t`Convert this question to a native query`;
+  },
 };
 
 export const NotebookNativePreview = (): JSX.Element => {

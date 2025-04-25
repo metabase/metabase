@@ -7,14 +7,17 @@ import type { FontFileOption } from "./types";
 
 export const FONT_OPTIONS: FontFileOption[] = [
   {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Regular`,
     fontWeight: 400,
   },
   {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Bold`,
     fontWeight: 700,
   },
   {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Heavy`,
     fontWeight: 900,
   },
