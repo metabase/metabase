@@ -142,19 +142,13 @@ function getIframeTestPageHtml(options: SdkIframeEmbedTestPageOptions): string {
     <body>
       <script src="/app/embed.v1.js"></script>
 
-      <h1>Iframe Test Page</h1>
-
       <div id="metabase-embed-container"></div>
+
       ${themeSwitch}
 
       <style>
         body {
           margin: 0;
-        }
-
-        h1 {
-          font-family: sans-serif;
-          font-weight: 300;
         }
 
         #metabase-embed-container {
