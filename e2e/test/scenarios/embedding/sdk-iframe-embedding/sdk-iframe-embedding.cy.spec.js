@@ -32,24 +32,24 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    // Create API key for testing
+    cy.log("Creating API key for testing");
     H.createApiKey("Test SDK Embedding Key", "all").then(({ body }) => {
       apiKey = body.unmasked_key;
     });
 
-    // Enable embedding
+    cy.log("Enabling embedding globally");
     cy.request("PUT", "/api/setting/enable-embedding-static", {
       value: true,
     });
   });
 
   it("should create iframe and authenticate with API key for dashboard", () => {
-    // Enable embedding for the dashboard
+    cy.log("Enabling embedding for the dashboard");
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       enable_embedding: true,
     });
 
-    // Create test page with embed.js
+    cy.log("Creating test page with embed.js");
     const testPage = createTestPage({
       resourceType: "dashboard",
       resourceId: ORDERS_DASHBOARD_ID,
@@ -57,11 +57,11 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
       theme: LIGHT_THEME,
     });
 
-    // Visit the test page
+    cy.log("Loading test page");
     cy.createHtmlFile({ path: "/tmp/test.html", content: testPage });
     cy.visit("/tmp/test.html");
 
-    // Verify iframe is created and loaded
+    cy.log("Verifying iframe creation and loading");
     cy.get("iframe")
       .should("be.visible")
       .its("0.contentDocument")
@@ -71,7 +71,7 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
       .find("[data-testid='embed-frame']")
       .should("be.visible");
 
-    // Verify dashboard content is visible
+    cy.log("Verifying dashboard content is visible");
     cy.get("iframe")
       .its("0.contentDocument")
       .find("[data-testid='embed-frame']")
@@ -80,12 +80,12 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
   });
 
   it("should create iframe and authenticate with API key for question", () => {
-    // Enable embedding for the question
+    cy.log("Enabling embedding for the question");
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
       enable_embedding: true,
     });
 
-    // Create test page with embed.js
+    cy.log("Creating test page with embed.js");
     const testPage = createTestPage({
       resourceType: "question",
       resourceId: ORDERS_QUESTION_ID,
@@ -93,11 +93,11 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
       theme: LIGHT_THEME,
     });
 
-    // Visit the test page
+    cy.log("Loading test page");
     cy.createHtmlFile({ path: "/tmp/test.html", content: testPage });
     cy.visit("/tmp/test.html");
 
-    // Verify iframe is created and loaded
+    cy.log("Verifying iframe creation and loading");
     cy.get("iframe")
       .should("be.visible")
       .its("0.contentDocument")
@@ -107,7 +107,7 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
       .find("[data-testid='embed-frame']")
       .should("be.visible");
 
-    // Verify question content is visible
+    cy.log("Verifying question content is visible");
     cy.get("iframe")
       .its("0.contentDocument")
       .find("[data-testid='embed-frame']")
@@ -116,12 +116,12 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
   });
 
   it("should switch between light and dark themes", () => {
-    // Enable embedding for the dashboard
+    cy.log("Enabling embedding for the dashboard");
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       enable_embedding: true,
     });
 
-    // Create test page with embed.js and theme switching
+    cy.log("Creating test page with embed.js and theme switching");
     const testPage = createTestPage({
       resourceType: "dashboard",
       resourceId: ORDERS_DASHBOARD_ID,
@@ -130,20 +130,20 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
       includeThemeSwitch: true,
     });
 
-    // Visit the test page
+    cy.log("Loading test page");
     cy.createHtmlFile({ path: "/tmp/test.html", content: testPage });
     cy.visit("/tmp/test.html");
 
-    // Verify initial light theme
+    cy.log("Verifying initial light theme");
     cy.get("iframe")
       .its("0.contentDocument")
       .find("[data-testid='embed-frame']")
       .should("have.css", "background-color", "rgb(255, 255, 255)");
 
-    // Switch to dark theme
+    cy.log("Switching to dark theme");
     cy.get("#theme-switch").click();
 
-    // Verify dark theme
+    cy.log("Verifying dark theme application");
     cy.get("iframe")
       .its("0.contentDocument")
       .find("[data-testid='embed-frame']")
