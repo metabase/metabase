@@ -102,7 +102,7 @@ config:
     application-name: Metabase
     attachment-row-limit: null
     attachment-table-row-limit: 20
-    backfill-entity-ids-repeat-ms: 2000
+    backfill-entity-ids-repeat-ms: 3000
     bcc-enabled: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8

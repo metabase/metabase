@@ -255,10 +255,10 @@ Range: 1-100. To limit the total number of rows included in the file attachment
 ### `MB_BACKFILL_ENTITY_IDS_REPEAT_MS`
 
 - Type: integer
-- Default: `2000`
+- Default: `3000`
 - [Exported as](../installation-and-operation/serialization.md): `backfill-entity-ids-repeat-ms`.
 
-Frequency for running backfill entity ids job in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely.
+Frequency for running backfill entity ids and drain entity ids jobs in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely.
 
 ### `MB_BCC_ENABLED`
 
@@ -1426,7 +1426,7 @@ Is SCIM currently enabled?
 ### `MB_SEARCH_ENGINE`
 
 - Type: keyword
-- Default: `:appdb`
+- Default: `:in-place`
 
 Which engine to use when performing search. Supported values are :in-place and :appdb.
 
@@ -2241,3 +2241,4 @@ Type: string<br>
 Default: `null`
 
 Base-64 encoded public key for this sites SSL certificate. Specify this to enable HTTP Public Key Pinning. Using HPKP is no longer recommended. See http://mzl.la/1EnfqBf for more information.
+
