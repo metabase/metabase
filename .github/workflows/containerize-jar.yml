@@ -56,7 +56,7 @@ jobs:
           const version = "${{ inputs.tag }}".split('-')[0];
 
           if (!isValidVersionString(version)) {
-            return "linux/amd64";
+            return "linux/amd64,linux/arm64";
           }
           // versions before 53 need to be handled differently
           const buildInfo = getBuildRequirements(version);
