@@ -31,7 +31,7 @@ export function DateFilterPicker({
       filter,
     });
 
-  const handleSubmit = (value: DatePickerValue) => {
+  const handleChange = (value: DatePickerValue) => {
     onChange(getFilterClause(value), { source: "default" });
   };
 
@@ -58,7 +58,7 @@ export function DateFilterPicker({
             {columnInfo.longDisplayName}
           </PopoverBackButton>
         )}
-        onSubmit={handleSubmit}
+        onChange={handleChange}
       />
     </div>
   );

@@ -17,7 +17,6 @@ interface SetupOpts {
   value?: SpecificDatePickerValue;
   availableOperators?: DatePickerOperator[];
   availableUnits?: DatePickerUnit[];
-  submitButtonLabel?: string;
 }
 
 const userEvent = _userEvent.setup({
@@ -28,7 +27,6 @@ function setup({
   value,
   availableOperators = DATE_PICKER_OPERATORS,
   availableUnits = DATE_PICKER_UNITS,
-  submitButtonLabel = "Apply",
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -38,7 +36,7 @@ function setup({
       value={value}
       availableOperators={availableOperators}
       availableUnits={availableUnits}
-      submitButtonLabel={submitButtonLabel}
+      renderSubmitButton={() => <button>Apply</button>}
       onChange={onChange}
       onBack={onBack}
     />,

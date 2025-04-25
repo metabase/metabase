@@ -29,7 +29,7 @@ export function DateAllOptionsWidget({
 }: DateAllOptionsWidgetProps) {
   const pickerValue = useMemo(() => getPickerValue(value), [value]);
 
-  const handleSubmit = (newPickerValue: DatePickerValue) => {
+  const handleChange = (newPickerValue: DatePickerValue) => {
     onChange(serializeDateParameterValue(newPickerValue));
   };
 
@@ -42,7 +42,7 @@ export function DateAllOptionsWidget({
           {submitButtonLabel}
         </Button>
       )}
-      onSubmit={handleSubmit}
+      onChange={handleChange}
     />
   );
 }

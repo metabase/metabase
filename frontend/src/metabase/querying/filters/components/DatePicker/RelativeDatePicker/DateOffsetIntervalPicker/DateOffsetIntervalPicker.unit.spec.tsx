@@ -29,14 +29,9 @@ const userEvent = _userEvent.setup({
 interface SetupOpts {
   value: RelativeDatePickerValue;
   availableUnits?: DatePickerUnit[];
-  submitButtonLabel?: string;
 }
 
-function setup({
-  value,
-  availableUnits = DATE_PICKER_UNITS,
-  submitButtonLabel = "Apply",
-}: SetupOpts) {
+function setup({ value, availableUnits = DATE_PICKER_UNITS }: SetupOpts) {
   const onChange = jest.fn();
   const onSubmit = jest.fn();
 
@@ -44,7 +39,7 @@ function setup({
     <DateOffsetIntervalPicker
       value={value}
       availableUnits={availableUnits}
-      submitButtonLabel={submitButtonLabel}
+      renderSubmitButton={() => <button>Apply</button>}
       onChange={onChange}
       onSubmit={onSubmit}
     />,

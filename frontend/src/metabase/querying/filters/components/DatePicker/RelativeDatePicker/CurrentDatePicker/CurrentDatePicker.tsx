@@ -15,13 +15,13 @@ import { getCurrentValue, getUnitGroups } from "./utils";
 interface CurrentDatePickerProps {
   value: RelativeDatePickerValue | undefined;
   availableUnits: DatePickerUnit[];
-  onSubmit: (value: RelativeDatePickerValue) => void;
+  onChange: (value: RelativeDatePickerValue) => void;
 }
 
 export function CurrentDatePicker({
   value,
   availableUnits,
-  onSubmit,
+  onChange,
 }: CurrentDatePickerProps) {
   const unitGroups = getUnitGroups(availableUnits);
 
@@ -30,7 +30,7 @@ export function CurrentDatePicker({
   };
 
   const handleClick = (unit: DatePickerTruncationUnit) => {
-    onSubmit(getCurrentValue(unit));
+    onChange(getCurrentValue(unit));
   };
 
   return (
