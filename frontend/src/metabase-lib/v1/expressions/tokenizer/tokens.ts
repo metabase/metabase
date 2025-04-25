@@ -47,10 +47,8 @@ export const field = new ExternalTokenizer((input) => {
   // The first operator we encountered after `[`
   let firstOperator = -1;
 
-  let prev = null;
-
   for (let idx = 0; ; idx++) {
-    prev = input.next;
+    const prev = input.next;
     const current = input.advance();
 
     if (current === OPEN_BRACKET) {
