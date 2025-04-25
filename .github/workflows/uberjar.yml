@@ -41,7 +41,7 @@ jobs:
         uses: actions/script@v7
         with:
           script: | # js
-            const branch = '${{ github.ref_name }}';
+            const branch = '${{ github.head_ref || github.ref_name }}';
             const owner = '${{ github.repository_owner }}';
 
             console.log(`Branch: ${branch}`);
@@ -94,6 +94,7 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
+      SKIP_LICENSES: true # faster builds for dev
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
