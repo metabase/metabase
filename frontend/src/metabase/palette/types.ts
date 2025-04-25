@@ -42,10 +42,11 @@ export type ShortcutAction = Action & {
   shortcut: string[];
   shortcutGroup: ShortcutGroup;
   shortcutContext?: string;
+  shortcutDisplay?: string[];
   dynamic?: boolean;
 };
 
 export type ShortcutDef = Pick<
   ShortcutAction,
-  "name" | "shortcut" | "shortcutGroup" | "shortcutContext" | "dynamic"
+  "name" | "shortcut" | "shortcutGroup" | "shortcutContext" | "shortcutDisplay"
 >;

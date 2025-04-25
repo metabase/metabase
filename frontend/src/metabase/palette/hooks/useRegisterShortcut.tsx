@@ -1,4 +1,4 @@
-import { KBarContext, useRegisterActions } from "kbar";
+import { type ActionImpl, KBarContext, useRegisterActions } from "kbar";
 import { type DependencyList, useContext } from "react";
 import _ from "underscore";
 
@@ -9,7 +9,7 @@ import type { ShortcutAction } from "../types";
 
 export type RegisterShortcutProps = {
   id: KeyboardShortcutId;
-  perform: () => void;
+  perform: (action: ActionImpl, event?: KeyboardEvent) => void;
 } & Partial<ShortcutAction>;
 
 export const useRegisterShortcut = (

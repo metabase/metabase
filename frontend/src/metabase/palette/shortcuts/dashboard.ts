@@ -104,9 +104,14 @@ export const dashboardShortcuts = {
     },
   },
   "dashboard-change-tab": {
-    name: t`Change dashboard tab`,
-    shortcut: ["1", "2", "3", ELLIPSIS],
+    get name() {
+      return t`Change dashboard tab`;
+    },
+    shortcut: ["([1-9])"],
+    shortcutDisplay: ["1", "2", "3", ELLIPSIS],
     shortcutGroup: "dashboard",
-    dynamic: true,
+    get shortcutContext() {
+      return t`When viewing`;
+    },
   },
 };

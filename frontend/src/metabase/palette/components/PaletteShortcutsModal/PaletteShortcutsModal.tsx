@@ -101,12 +101,14 @@ export const PaletteShortcutsModal = ({
                     >
                       <Text>{shortcut.name}</Text>
                       <Group gap="0.25rem">
-                        {shortcut.shortcut.map((shortcutKeys) => (
-                          <Shortcut
-                            key={shortcutKeys}
-                            shortcut={shortcutKeys}
-                          />
-                        ))}
+                        {(shortcut.shortcutDisplay || shortcut.shortcut).map(
+                          (shortcutKeys) => (
+                            <Shortcut
+                              key={shortcutKeys}
+                              shortcut={shortcutKeys}
+                            />
+                          ),
+                        )}
                       </Group>
                     </Group>
                   )),
