@@ -48,14 +48,14 @@
 ;;       folder is shared with the proper service account email and sharing permissions."
 ;;
 ;; ## Polling
-;; - FE polls :get "api/ee/gsheets/folder" until `body.status` == `active`
+;; - FE polls :get "api/ee/gsheets/connection" until `body.status` == `active`
 ;; - BE forwards requests to :get "/api/v2/mb/connection/<gdrive-conn-id>", filtering for the google drive connection
 ;;   - If the connection doesn't exist: `{:error "google drive connection not found."}`
 ;;   - If the connection exists, return connection state in the response
 ;; - FE sees status == "active" or "syncing" and updates the UI accordingly, stopping polling when it sees "active"
 ;;
 ;; ## Steps to disconnect a google drive folder
-;; - FE sends request to :delete "/folder"
+;; - FE sends request to :delete "/connection"
 ;;   - MB loops over all gdrive connection ids and deletes them
 ;;
 ;; ## Why do we need to sync the attached datawarehouse before considering it ready?
@@ -206,9 +206,8 @@
   {:email (hm-service-account-email)})
 
 (defn- seconds-from-epoch-now
-  "This is used to track how long a folder has been syncing. We set gsheets.folder-upload-time to this value when we create a
-  new gdrive connection, and on every :get /folder request we check if the current time is greater than this value plus
-  [[*folder-setup-timeout-seconds*]]. If it is, that's a timeout."
+  "This is used to track how long a connection has been syncing. We set gsheets.created-at to this value when we create a
+  new gdrive connection."
   [] (.getEpochSecond (t/instant)))
 
 (defn- setting->response
@@ -219,8 +218,8 @@
    :created_by_id (:created-by-id setting)
    :db_id         (:db-id setting)})
 
-(api.macros/defendpoint :post "/folder" :- :gsheets/response
-  "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase."
+(api.macros/defendpoint :post "/connection" :- :gsheets/response
+  "Hook up a new google drive folder or sheet that will be watched and have its content ETL'd into Metabase."
   [{} {} {:keys [url]} :- [:map [:url ms/NonBlankString]]]
   (let [attached-dwh (t2/select-one-fn :id :model/Database :is_attached_dwh true)]
     (when-not (some? attached-dwh)
@@ -256,7 +255,7 @@
                   :value
                   json/decode+kw))))
 
-(defn- handle-get-folder []
+(defn- handle-get-connection []
   (let [cannot-check-message (tru "Unable to check Google Drive connection. Reconnect if the issue persists.")
         saved-setting (gsheets-safe)
         conn-id (:gdrive/conn-id saved-setting)
@@ -307,21 +306,21 @@
           (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
           (log/errorf "Error getting status of connection %s: %s %s" conn-id (:status-reason hm-body) (:error-detail hm-body)))))))
 
-(api.macros/defendpoint :get "/folder" :- :gsheets/response
-  "Check the status of a newly created gsheets folder creation. This endpoint gets polled by FE to determine when to
+(api.macros/defendpoint :get "/connection" :- :gsheets/response
+  "Check the status of a connection. This endpoint gets polled by FE to determine when to
   stop showing the setup widget.
 
   Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`."
   [] :- :gsheets/response
-  (handle-get-folder))
+  (handle-get-connection))
 
 (mu/defn- hm-sync-conn! :- :hm-client/http-reply
   "Sync a (presumably a gdrive) connection on HM."
   [conn-id]
   (hm.client/make-request :put (str "/api/v2/mb/connections/" conn-id "/sync")))
 
-(api.macros/defendpoint :post "/folder/sync"
-  "Force a sync of the folder now.
+(api.macros/defendpoint :post "/connection/sync"
+  "Force a sync of the connection now.
 
   Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`."
   []
@@ -340,7 +339,7 @@
                    :sync_started_at (seconds-from-epoch-now))
             (error-response-in-body (tru "Error requesting sync") {:hm/response (loggable-response response)})))))))
 
-(api.macros/defendpoint :delete "/folder"
+(api.macros/defendpoint :delete "/connection"
   "Disconnect the google service account. There is only one (or zero) at the time of writing."
   []
   (snowplow/track-event! :snowplow/simple_event {:event "sheets_disconnected"})

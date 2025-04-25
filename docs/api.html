@@ -6209,9 +6209,9 @@ redirect_from:
         "tags" : [ "/api/ee/database-routing" ]
       }
     },
-    "/api/ee/gsheets/folder" : {
+    "/api/ee/gsheets/connection" : {
       "post" : {
-        "summary" : "POST /api/ee/gsheets/folder",
+        "summary" : "POST /api/ee/gsheets/connection",
         "description" : "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase.",
         "parameters" : [ ],
         "requestBody" : {
@@ -6233,13 +6233,13 @@ redirect_from:
         "tags" : [ "/api/ee/gsheets" ]
       },
       "get" : {
-        "summary" : "GET /api/ee/gsheets/folder",
+        "summary" : "GET /api/ee/gsheets/connection",
         "description" : "Check the status of a newly created gsheets folder creation. This endpoint gets polled by FE to determine when to\n  stop showing the setup widget.\n\n  Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`.",
         "parameters" : [ ],
         "tags" : [ "/api/ee/gsheets" ]
       },
       "delete" : {
-        "summary" : "DELETE /api/ee/gsheets/folder",
+        "summary" : "DELETE /api/ee/gsheets/connection",
         "description" : "Disconnect the google service account. There is only one (or zero) at the time of writing.",
         "parameters" : [ ],
         "tags" : [ "/api/ee/gsheets" ]
