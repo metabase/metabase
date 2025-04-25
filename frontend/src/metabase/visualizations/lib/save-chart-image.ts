@@ -8,6 +8,12 @@ import { isEmbeddingSdk, isStorybookActive } from "metabase/env";
 import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
+import {
+  createFooterElement,
+  getFooterConfig,
+  getFooterSize,
+} from "./exports-branding-utils";
+
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";
 export const SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS =
@@ -47,7 +53,17 @@ export const saveDomImageStyles = css`
   }
 `;
 
-export const saveChartImage = async (selector: string, fileName: string) => {
+interface Opts {
+  selector: string;
+  fileName: string;
+  includeBranding: boolean;
+}
+
+export const saveChartImage = async ({
+  selector,
+  fileName,
+  includeBranding,
+}: Opts) => {
   const node = document.querySelector(selector);
 
   if (!node || !(node instanceof HTMLElement)) {
@@ -55,16 +71,34 @@ export const saveChartImage = async (selector: string, fileName: string) => {
     return;
   }
 
+  const contentHeight = node.getBoundingClientRect().height;
+  const contentWidth = node.getBoundingClientRect().width;
+
+  const size = getFooterSize(contentWidth);
+  const FOOTER_HEIGHT = getFooterConfig(size).h;
+
+  // Appending any element to the node does not automatically increase the canvas height.
+  // We have to manually calculate it or the footer will not be visible.
+  const canvasHeight = includeBranding
+    ? contentHeight + FOOTER_HEIGHT
+    : contentHeight;
+
   const { default: html2canvas } = await import("html2canvas-pro");
   const canvas = await html2canvas(node, {
     scale: 2,
     useCORS: true,
-    onclone: (doc: Document, node: HTMLElement) => {
+    height: canvasHeight,
+    onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.classList.add(EmbedFrameS.WithThemeBackground);
 
       node.style.borderRadius = "0px";
       node.style.border = "none";
+
+      if (includeBranding) {
+        const footer = createFooterElement(size);
+        node.appendChild(footer);
+      }
     },
   });
 

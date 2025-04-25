@@ -6,6 +6,7 @@ import api, { GET, POST } from "metabase/lib/api";
 import { isWithinIframe, openSaveDialog } from "metabase/lib/dom";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
+import { getTokenFeature } from "metabase/setup/selectors";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
 import { getCardKey } from "metabase/visualizations/lib/utils";
 import type Question from "metabase-lib/v1/Question";
@@ -108,7 +109,7 @@ const getDownloadedResourceType = ({
 
 export const downloadQueryResults = createAsyncThunk(
   "metabase/downloads/downloadQueryResults",
-  async (opts: DownloadQueryResultsOpts, { dispatch }) => {
+  async (opts: DownloadQueryResultsOpts, { dispatch, getState }) => {
     const { resourceType, accessedVia } = getDownloadedResourceType(opts);
     trackDownloadResults({
       resourceType,
@@ -117,7 +118,9 @@ export const downloadQueryResults = createAsyncThunk(
     });
 
     if (opts.type === Urls.exportFormatPng) {
-      downloadChart(opts);
+      const isWhitelabeled = getTokenFeature(getState() as State, "whitelabel");
+      const includeBranding = !isWhitelabeled;
+      downloadChart({ opts, includeBranding });
     } else {
       dispatch(downloadDataset({ opts, id: Date.now() }));
     }
@@ -125,15 +128,23 @@ export const downloadQueryResults = createAsyncThunk(
 );
 
 const downloadChart = async ({
-  question,
-  dashcardId,
-}: DownloadQueryResultsOpts) => {
-  const fileName = getChartFileName(question);
+  opts,
+  includeBranding,
+}: {
+  opts: DownloadQueryResultsOpts;
+  includeBranding: boolean;
+}) => {
+  const { question, dashcardId } = opts;
+  const fileName = getChartFileName(question, includeBranding);
   const chartSelector =
     dashcardId != null
       ? `[data-dashcard-key='${dashcardId}']`
       : `[data-card-key='${getCardKey(question.id())}']`;
-  await saveChartImage(chartSelector, fileName);
+  await saveChartImage({
+    selector: chartSelector,
+    fileName,
+    includeBranding,
+  });
 };
 
 export const downloadDataset = createAsyncThunk(
@@ -325,10 +336,12 @@ const getDatasetFileName = (headers: Headers, type: string) => {
   );
 };
 
-const getChartFileName = (question: Question) => {
+const getChartFileName = (question: Question, branded: boolean) => {
   const name = question.displayName() ?? t`New question`;
   const date = new Date().toLocaleString();
-  return `${name}-${date}.png`;
+  const fileName = `${name}-${date}.png`;
+  // eslint-disable-next-line no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
+  return branded ? `Metabase-${fileName}` : fileName;
 };
 
 export const getDownloads = (state: State) => state.downloads;
