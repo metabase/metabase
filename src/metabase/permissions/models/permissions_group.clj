@@ -36,32 +36,32 @@
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
-(defn- magic-group [group-name]
+(defn- magic-group [magic-group-type]
   (mdb/memoize-for-application-db
    (fn []
-     (u/prog1 (t2/select-one [:model/PermissionsGroup :id :name] :name group-name)
+     (u/prog1 (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type] :magic_group_type magic-group-type)
        ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
        ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
        ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.
        (when-not <>
-         (throw (ex-info (format "Fatal error: magic Permissions Group %s has gone missing." (pr-str group-name))
-                         {:name group-name})))))))
+         (throw (ex-info (format "Fatal error: magic Permissions Group '%s' has gone missing." magic-group-type)
+                         {:magic-group-type magic-group-type})))))))
 
-(def all-users-group-name
-  "The name of the \"All Users\" magic group."
-  "All Users")
+(def all-users-magic-group-type
+  "The magic-group type of the \"All Users\" magic group."
+  "all-internal-users")
 
 (def ^{:arglists '([])} all-users
   "Fetch the `All Users` permissions group"
-  (magic-group all-users-group-name))
+  (magic-group all-users-magic-group-type))
 
-(def admin-group-name
-  "The name of the \"Administrators\" magic group."
-  "Administrators")
+(def admin-magic-group-type
+  "The magic-group type of the \"Administrators\" magic group."
+  "admin")
 
 (def ^{:arglists '([])} admin
   "Fetch the `Administrators` permissions group"
-  (magic-group admin-group-name))
+  (magic-group admin-magic-group-type))
 
 ;;; --------------------------------------------------- Validation ---------------------------------------------------
 
@@ -155,10 +155,9 @@
 (defn non-admin-groups
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group."
   []
-  (t2/select :model/PermissionsGroup :name [:not= admin-group-name]))
+  (t2/select :model/PermissionsGroup :magic_group_type [:not= admin-magic-group-type]))
 
 (defn non-magic-groups
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group and the All Users group."
   []
-  (t2/select :model/PermissionsGroup {:where [:and [:not= :name admin-group-name]
-                                              [:not= :name all-users-group-name]]}))
+  (t2/select :model/PermissionsGroup {:where [:= :magic_group_type nil]}))
