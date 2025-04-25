@@ -251,10 +251,6 @@
   [_driver]
   :mysql)
 
-(defmethod sql.qp/->float :sparksql
-  [_driver value]
-  (h2x/maybe-cast :double value))
-
 (defmethod sql.qp/->integer :sparksql
   [driver value]
   (sql.qp/->integer-with-round driver value))
