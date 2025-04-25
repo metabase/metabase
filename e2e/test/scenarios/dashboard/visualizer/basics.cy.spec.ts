@@ -265,6 +265,28 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     });
   });
 
+  it("should start in a pristine state and update dirtyness accordingly", () => {
+    createDashboardWithVisualizerDashcards();
+    H.editDashboard();
+
+    H.showDashcardVisualizerModal(0);
+
+    // no changes, save button should be disabled
+    H.modal().within(() => {
+      cy.findByText("Save").closest("button").should("be.disabled");
+      // hit escape
+      cy.realPress("Escape");
+    });
+    H.modal().should("not.exist");
+
+    // change the visualization type, save button should be enabled
+    H.showDashcardVisualizerModal(0);
+    H.selectVisualization("bar");
+    H.modal().within(() => {
+      cy.findByText("Save").closest("button").should("not.be.disabled");
+    });
+  });
+
   it("should allow navigating through change history", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
