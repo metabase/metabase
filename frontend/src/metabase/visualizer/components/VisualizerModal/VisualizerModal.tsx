@@ -9,11 +9,11 @@ import { Modal } from "metabase/ui";
 import { getIsDirty } from "metabase/visualizer/selectors";
 import { getDataSourceIdsFromColumnValueMappings } from "metabase/visualizer/utils";
 import { initializeVisualizer } from "metabase/visualizer/visualizer.slice";
-import type { CardId } from "metabase-types/api";
 import type {
+  CardId,
   VisualizerDataSourceId,
   VisualizerVizDefinition,
-} from "metabase-types/store/visualizer";
+} from "metabase-types/api";
 
 import { Visualizer } from "../Visualizer";
 

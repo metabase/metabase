@@ -1,6 +1,7 @@
 import { useDraggable } from "@dnd-kit/core";
 import { t } from "ttag";
 
+import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, Icon, Loader, Text } from "metabase/ui";
 import { DRAGGABLE_ID } from "metabase/visualizer/constants";
@@ -16,8 +17,7 @@ import {
   removeColumn,
   removeDataSource,
 } from "metabase/visualizer/visualizer.slice";
-import type { DatasetColumn } from "metabase-types/api";
-import type { VisualizerDataSource } from "metabase-types/store/visualizer";
+import type { DatasetColumn, VisualizerDataSource } from "metabase-types/api";
 
 import { useVisualizerUi } from "../../VisualizerUiContext";
 
@@ -92,6 +92,10 @@ export const ColumnsList = () => {
             {isExpanded && dataset && dataset.data.cols && (
               <Box ml={12} mt={2}>
                 {dataset.data.cols.map((column) => {
+                  if (isPivotGroupColumn(column)) {
+                    return null;
+                  }
+
                   const columnReference = referencedColumns.find((ref) =>
                     isReferenceToColumn(column, source.id, ref),
                   );

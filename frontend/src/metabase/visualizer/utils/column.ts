@@ -1,10 +1,10 @@
-import type { DatasetColumn } from "metabase-types/api";
 import type {
+  DatasetColumn,
   VisualizerColumnReference,
   VisualizerColumnValueSource,
   VisualizerDataSource,
   VisualizerDataSourceId,
-} from "metabase-types/store/visualizer";
+} from "metabase-types/api";
 
 export function isReferenceToColumn(
   column: DatasetColumn,

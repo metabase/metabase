@@ -18,9 +18,9 @@ import type {
   DashboardId,
   DashboardTabId,
   VirtualCard,
+  VisualizerVizDefinition,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
-import type { VisualizerVizDefinition } from "metabase-types/store/visualizer";
 
 import {
   trackCardCreated,

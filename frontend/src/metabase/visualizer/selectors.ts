@@ -36,6 +36,7 @@ type State = {
 // Private selectors
 
 const getCurrentHistoryItem = (state: State) => state.visualizer.present;
+const getFirstHistoryItem = (state: State) => state.visualizer.past[0];
 
 const getVisualizationColumns = (state: State) =>
   getCurrentHistoryItem(state).columns;
@@ -251,9 +252,9 @@ export const getTabularPreviewSeries = createSelector(
 export const getCurrentVisualizerState = getCurrentHistoryItem;
 
 export const getIsDirty = createSelector(
-  [getCurrentHistoryItem, (state) => state.visualizer.initialState],
-  (state, initialState) => {
-    return !_.isEqual(state, initialState);
+  [getFirstHistoryItem, getCurrentHistoryItem],
+  (initialState, state) => {
+    return !!initialState && !_.isEqual(initialState, state);
   },
 );
 

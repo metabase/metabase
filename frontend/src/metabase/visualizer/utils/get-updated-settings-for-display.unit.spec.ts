@@ -1,10 +1,10 @@
 import registerVisualizations from "metabase/visualizations/register";
+import type { VisualizerColumnValueSource } from "metabase-types/api";
 import {
   createMockCategoryColumn,
   createMockDatetimeColumn,
   createMockNumericColumn,
 } from "metabase-types/api/mocks";
-import type { VisualizerColumnValueSource } from "metabase-types/store/visualizer";
 
 import { createDataSourceNameRef } from "./data-source";
 import { getUpdatedSettingsForDisplay } from "./get-updated-settings-for-display";
