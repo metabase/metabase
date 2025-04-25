@@ -2719,7 +2719,7 @@ redirect_from:
     "/api/card/{card-id}/query/{export-format}" : {
       "post" : {
         "summary" : "POST /api/card/{card-id}/query/{export-format}",
-        "description" : "Run the query associated with a Card, and return its results as a file in the specified format.\n\n  `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint\n  is normally used to power 'Download Results' buttons that use HTML `form` actions).",
+        "description" : "Run the query associated with a Card, and return its results as a file in the specified format.\n\n  `parameters`, `pivot-results?` and `format-rows?` should be passed as application/x-www-form-urlencoded form content\n  or json in the body. This is because this endpoint is normally used to power 'Download Results' buttons that use\n  HTML `form` actions).",
         "parameters" : [ {
           "in" : "path",
           "name" : "card-id",
@@ -10922,6 +10922,14 @@ redirect_from:
         }, {
           "in" : "query",
           "name" : "include_dashboard_questions",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_metadata",
           "required" : false,
           "schema" : {
             "type" : "boolean",
