@@ -55,16 +55,19 @@ const DatabaseCacheScheduleField = ({
   const handleFullSyncSelect = useCallback(() => {
     setFieldValue("is_full_sync", true);
     setFieldValue("is_on_demand", false);
+    setFieldValue("cache_field_values", DEFAULT_SCHEDULE);
   }, [setFieldValue]);
 
   const handleOnDemandSyncSelect = useCallback(() => {
     setFieldValue("is_full_sync", false);
     setFieldValue("is_on_demand", true);
+    setFieldValue("cache_field_values", null);
   }, [setFieldValue]);
 
   const handleNoneSyncSelect = useCallback(() => {
     setFieldValue("is_full_sync", false);
     setFieldValue("is_on_demand", false);
+    setFieldValue("cache_field_values", null);
   }, [setFieldValue]);
 
   return (
