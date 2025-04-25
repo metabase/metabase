@@ -1171,6 +1171,29 @@
                                           :lib/uuid       "8d07e5d2-4806-44c2-ba89-cdf1cfd6c3b3"}
                                          48400]]]}]}))))
 
+(deftest ^:parallel cumulative-aggregations-in-expression-test
+  (is (=? {:query {:aggregation [[:aggregation-options
+                                  [:+
+                                   [:aggregation-options [:cum-sum [:field 48400 {:base-type :type/BigInteger}]] {:name "a"}]
+                                   [:aggregation-options [:cum-count] {:name "b"}]]
+                                  {:name "xixix"}]]}}
+          (lib.convert/->legacy-MBQL
+           {:lib/type :mbql/query
+            :database 48001
+            :stages   [{:lib/type     :mbql.stage/mbql
+                        :source-table 48040
+                        :aggregation  [[:+
+                                        {:lib/uuid "4b4c18e3-5a8c-4735-9476-815eb910cb0a", :name "xixix"}
+                                        [:cum-sum
+                                         {:lib/uuid "4b4c18e3-5a8c-4735-9476-815eb910cb0a", :name "a"}
+                                         [:field
+                                          {:base-type      :type/BigInteger,
+                                           :effective-type :type/BigInteger,
+                                           :lib/uuid       "8d07e5d2-4806-44c2-ba89-cdf1cfd6c3b3"}
+                                          48400]]
+                                        [:cum-count
+                                         {:lib/uuid "4b4c18e3-5a8c-4735-9476-815eb910cb0a", :name "b"}]]]}]}))))
+
 (deftest ^:parallel blank-queries-test
   (testing "minimal legacy"
     (testing "native queries"
