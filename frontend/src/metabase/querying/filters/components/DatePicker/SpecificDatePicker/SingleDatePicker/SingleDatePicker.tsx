@@ -2,6 +2,7 @@ import type { FormEvent, ReactNode } from "react";
 
 import { Box, Divider, Group } from "metabase/ui";
 
+import { renderDefaultSubmitButton } from "../../utils";
 import { TimeToggle } from "../TimeToggle";
 import { clearTimePart } from "../utils";
 
@@ -11,7 +12,7 @@ import type { SingleDatePickerValue } from "./types";
 interface SingleDatePickerProps {
   value: SingleDatePickerValue;
   hasTimeToggle: boolean;
-  renderSubmitButton: () => ReactNode;
+  renderSubmitButton?: () => ReactNode;
   onChange: (value: SingleDatePickerValue) => void;
   onSubmit: () => void;
 }
@@ -19,7 +20,7 @@ interface SingleDatePickerProps {
 export function SingleDatePicker({
   value,
   hasTimeToggle,
-  renderSubmitButton,
+  renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onSubmit,
 }: SingleDatePickerProps) {

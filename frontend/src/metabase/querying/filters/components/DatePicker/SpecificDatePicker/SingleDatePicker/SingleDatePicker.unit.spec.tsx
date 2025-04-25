@@ -28,7 +28,6 @@ function setup({
     <SingleDatePicker
       value={value}
       hasTimeToggle={hasTimeToggle}
-      renderSubmitButton={() => <button>Apply</button>}
       onChange={onChange}
       onSubmit={onSubmit}
     />,

@@ -1,5 +1,4 @@
 import { type ReactNode, useState } from "react";
-import { t } from "ttag";
 
 import {
   DATE_PICKER_OPERATORS,
@@ -12,13 +11,13 @@ import type {
   DatePickerUnit,
   DatePickerValue,
 } from "metabase/querying/filters/types";
-import { Button } from "metabase/ui";
 
 import { DateShortcutPicker } from "./DateShortcutPicker";
 import { ExcludeDatePicker } from "./ExcludeDatePicker";
 import { RelativeDatePicker } from "./RelativeDatePicker";
 import { SpecificDatePicker } from "./SpecificDatePicker";
 import type { DatePickerSubmitButtonProps } from "./types";
+import { renderDefaultSubmitButton } from "./utils";
 
 type DatePickerProps = {
   value?: DatePickerValue;
@@ -35,7 +34,7 @@ export function DatePicker({
   availableOperators = DATE_PICKER_OPERATORS,
   availableShortcuts = DATE_PICKER_SHORTCUTS,
   availableUnits = DATE_PICKER_UNITS,
-  renderSubmitButton = defaultRenderSubmitButton,
+  renderSubmitButton = renderDefaultSubmitButton,
   renderBackButton,
   onChange,
 }: DatePickerProps) {
@@ -89,14 +88,4 @@ export function DatePicker({
         />
       );
   }
-}
-
-function defaultRenderSubmitButton({
-  isDisabled,
-}: DatePickerSubmitButtonProps) {
-  return (
-    <Button type="submit" variant="filled" disabled={isDisabled}>
-      {t`Apply`}
-    </Button>
-  );
 }

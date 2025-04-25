@@ -36,7 +36,6 @@ function setup({
       value={value}
       availableOperators={availableOperators}
       availableUnits={availableUnits}
-      renderSubmitButton={() => <button>Apply</button>}
       onChange={onChange}
       onBack={onBack}
     />,

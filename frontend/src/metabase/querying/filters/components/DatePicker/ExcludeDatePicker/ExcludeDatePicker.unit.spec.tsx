@@ -28,7 +28,6 @@ function setup({
     <ExcludeDatePicker
       availableOperators={availableOperators}
       availableUnits={availableUnits}
-      renderSubmitButton={() => <button>Apply</button>}
       onChange={onChange}
       onBack={onBack}
     />,

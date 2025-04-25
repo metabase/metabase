@@ -33,7 +33,6 @@ function setup({ value, availableUnits = DATE_PICKER_UNITS }: SetupOpts) {
     <DateIntervalPicker
       value={value}
       availableUnits={availableUnits}
-      renderSubmitButton={() => <button>Apply</button>}
       onChange={onChange}
       onSubmit={onSubmit}
     />,

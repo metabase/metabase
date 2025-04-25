@@ -18,6 +18,7 @@ import {
 } from "metabase/ui";
 
 import type { DatePickerSubmitButtonProps } from "../../types";
+import { renderDefaultSubmitButton } from "../../utils";
 import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";
 import {
   formatDateRange,
@@ -31,7 +32,7 @@ import { setDefaultOffset, setUnit } from "./utils";
 interface DateIntervalPickerProps {
   value: RelativeDatePickerValue;
   availableUnits: DatePickerUnit[];
-  renderSubmitButton: (props: DatePickerSubmitButtonProps) => ReactNode;
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onSubmit: () => void;
 }
@@ -39,7 +40,7 @@ interface DateIntervalPickerProps {
 export function DateIntervalPicker({
   value,
   availableUnits,
-  renderSubmitButton,
+  renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onSubmit,
 }: DateIntervalPickerProps) {

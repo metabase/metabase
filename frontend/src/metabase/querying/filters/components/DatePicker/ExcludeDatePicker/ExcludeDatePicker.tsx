@@ -22,6 +22,7 @@ import {
 
 import { MIN_WIDTH } from "../constants";
 import type { DatePickerSubmitButtonProps } from "../types";
+import { renderDefaultSubmitButton } from "../utils";
 
 import type { ExcludeValueOption } from "./types";
 import {
@@ -37,7 +38,7 @@ export interface ExcludeDatePickerProps {
   value?: ExcludeDatePickerValue;
   availableOperators: DatePickerOperator[];
   availableUnits: DatePickerUnit[];
-  renderSubmitButton: (props: DatePickerSubmitButtonProps) => ReactNode;
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: ExcludeDatePickerValue) => void;
   onBack: () => void;
 }
@@ -46,7 +47,7 @@ export function ExcludeDatePicker({
   value,
   availableOperators,
   availableUnits,
-  renderSubmitButton,
+  renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onBack,
 }: ExcludeDatePickerProps) {

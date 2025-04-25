@@ -31,7 +31,6 @@ function setup({
     <DateRangePicker
       value={value}
       hasTimeToggle={hasTimeToggle}
-      renderSubmitButton={() => <button>Apply</button>}
       onChange={onChange}
       onSubmit={onSubmit}
     />,

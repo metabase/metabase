@@ -7,6 +7,7 @@ import type {
 import { Box, Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
 
 import type { DatePickerSubmitButtonProps } from "../types";
+import { renderDefaultSubmitButton } from "../utils";
 
 import { CurrentDatePicker } from "./CurrentDatePicker";
 import { DateIntervalPicker } from "./DateIntervalPicker";
@@ -23,7 +24,7 @@ import {
 interface RelativeDatePickerProps {
   value: RelativeDatePickerValue | undefined;
   availableUnits: DatePickerUnit[];
-  renderSubmitButton: (props: DatePickerSubmitButtonProps) => ReactNode;
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onBack: () => void;
 }
@@ -31,7 +32,7 @@ interface RelativeDatePickerProps {
 export function RelativeDatePicker({
   value: initialValue,
   availableUnits,
-  renderSubmitButton,
+  renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onBack,
 }: RelativeDatePickerProps) {
@@ -89,7 +90,7 @@ export function RelativeDatePicker({
               <CurrentDatePicker
                 value={value}
                 availableUnits={availableUnits}
-                onSubmit={onChange}
+                onChange={onChange}
               />
             </Box>
           )}

@@ -27,7 +27,6 @@ function setup({ value, availableUnits = DATE_PICKER_UNITS }: SetupOpts = {}) {
     <RelativeDatePicker
       value={value}
       availableUnits={availableUnits}
-      renderSubmitButton={() => <button>Apply</button>}
       onChange={onChange}
       onBack={onBack}
     />,

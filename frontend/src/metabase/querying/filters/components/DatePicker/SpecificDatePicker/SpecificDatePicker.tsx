@@ -8,6 +8,7 @@ import type {
 import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
 
 import type { DatePickerSubmitButtonProps } from "../types";
+import { renderDefaultSubmitButton } from "../utils";
 
 import { DateRangePicker, type DateRangePickerValue } from "./DateRangePicker";
 import {
@@ -31,7 +32,7 @@ interface SpecificDatePickerProps {
   value?: SpecificDatePickerValue;
   availableOperators: DatePickerOperator[];
   availableUnits: DatePickerUnit[];
-  renderSubmitButton: (props: DatePickerSubmitButtonProps) => ReactNode;
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: SpecificDatePickerValue) => void;
   onBack: () => void;
 }
@@ -40,7 +41,7 @@ export function SpecificDatePicker({
   value: initialValue,
   availableOperators,
   availableUnits,
-  renderSubmitButton,
+  renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onBack,
 }: SpecificDatePickerProps) {

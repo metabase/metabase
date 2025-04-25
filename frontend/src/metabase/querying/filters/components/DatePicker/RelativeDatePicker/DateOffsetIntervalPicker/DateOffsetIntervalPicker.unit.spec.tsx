@@ -39,7 +39,6 @@ function setup({ value, availableUnits = DATE_PICKER_UNITS }: SetupOpts) {
     <DateOffsetIntervalPicker
       value={value}
       availableUnits={availableUnits}
-      renderSubmitButton={() => <button>Apply</button>}
       onChange={onChange}
       onSubmit={onSubmit}
     />,
