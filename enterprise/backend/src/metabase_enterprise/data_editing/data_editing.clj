@@ -4,11 +4,13 @@
    [metabase-enterprise.data-editing.coerce :as data-editing.coerce]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
+   [metabase.events :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
 (defn select-table-pk-fields
@@ -73,8 +75,7 @@
                qp/userland-query-with-default-constraints
                qp/process-query
                :data
-               qp-result->row-map
-               (m/index-by #(get-row-pks pk-fields %))))))))
+               qp-result->row-map))))))
 
 (defn apply-coercions
   "For fields that have a coercion_strategy, apply the coercion function (defined in data-editing.coerce) to the corresponding value in each row.
@@ -100,33 +101,69 @@
 (defn perform-bulk-action!
   "Operates on rows in the database, supply an action-kw: :bulk/create, :bulk/update, :bulk/delete.
   The input `rows` is given different semantics depending on the action type, see actions/perform-action!."
-  [action-kw table-id rows]
+  [action-kw user-id table-id rows & {:keys [existing-context]}]
   ;; TODO make this work for multi instances by using the metabase_cluster_lock table
   ;; https://github.com/metabase/metabase/pull/56173/files
   (locking #'perform-bulk-action!
-    (actions/perform-action!
-     action-kw
-     {:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
-      :table-id table-id
-      :arg      rows}
-     {:policy :data-editing})))
+    (->> (actions/perform-action!
+          action-kw
+          [{:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
+            :table-id table-id
+            :arg      rows}]
+          {:policy           :data-editing
+           :existing-context (if existing-context
+                               (assoc existing-context :user-id user-id)
+                               (let [iid (nano-id/nano-id)]
+                                 {:invocation-id    iid
+                                  :invocation-scope [[:grid/edit iid]]
+                                  :user-id          user-id}))})
+         :effects
+         (filter (comp #{:effect/row.modified} first))
+         (map second))))
 
 (defn insert!
   "Inserts rows into the table, recording their creation as an event. Returns the inserted records.
   Expects rows that are acceptable directly by [[actions/perform-action!]]. If casts or reversing coercion strategy
   are required, that work must be done before calling this function."
   [user-id table-id rows]
-  ;; TODO make sure we're always passed a user, and remove this fallback
-  ;;      hard to make a business case for anonymous lemur's inserting data
-  (let [user-id (or user-id (t2/select-one-pk :model/User :is_superuser true))
-        res (perform-bulk-action! :bulk/create table-id rows)
-        pk-cols (t2/select-fn-vec :name [:model/Field :name] :table_id table-id :semantic_type :type/PK)
-        row-pk->old-new-values (->> (for [row (:created-rows res)]
-                                      (let [pks (zipmap pk-cols (map row pk-cols))]
-                                        [pks [nil row]]))
-                                    (into {}))]
-    ;; TODO this should also become a subscription to the "data written" system event
-    ;; TODO Circular reference will be fixed when we remove the hacks from this method.
-    ;;      We'll actually delete this whole method, it'll just become an :editable/insert action invocation.
-    ((requiring-resolve 'metabase-enterprise.data-editing.undo/track-change!) user-id {table-id row-pk->old-new-values})
-    res))
+  (api/check-500 user-id)
+  (let [res (perform-bulk-action! :bulk/create user-id table-id rows)]
+    {:created-rows (map :after res)}))
+
+(defn- row-update-event
+  "Given a :effect/row.modified diff, figure out what kind of mutation it was."
+  [{:keys [before after]}]
+  (case [(some? before) (some? after)]
+    [false true]  :event/rows.created
+    [true  true]  :event/rows.updated
+    [true  false] :event/rows.deleted
+    ;; should not happen
+    [false false] ::no-op))
+
+(defmethod actions/handle-effects!* :effect/row.modified
+  [_ {:keys [user-id invocation-scope]} diffs]
+  (let [table->fields (u/group-by identity select-table-pk-fields concat (distinct (map :table-id diffs)))
+        diff->pk      (u/for-map [{:keys [table-id before after] :as diff} diffs
+                                  :when (or before after)]
+                        [diff (get-row-pks (table->fields table-id) (or after before))])]
+    ;; undo snapshots, but only if we're not executing an undo
+    ;; TODO fix tests that execute actions without a user scope
+    (when user-id
+      (when-not (some (comp #{"undo"} namespace first) invocation-scope)
+        ((requiring-resolve 'metabase-enterprise.data-editing.undo/track-change!)
+         user-id (u/for-map [[table-id diffs] (group-by :table-id diffs)]
+                   [table-id (u/for-map [{:keys [before after] :as diff} diffs
+                                         :when (or before after)]
+                               [(diff->pk diff) [before after]])]))))
+    ;; table notification system events
+    (doseq [[event payloads] (->> diffs
+                                  (group-by row-update-event)
+                                  (remove (comp #{::no-op} key)))]
+      (doseq [[table-id payloads] (group-by :table-id payloads)
+              :let [row-changes (for [{:keys [before after] :as diff} payloads]
+                                  {:pk     (diff->pk diff)
+                                   :before before
+                                   :after  after})]]
+        (events/publish-event! event {:actor_id    user-id
+                                      :row_changes row-changes
+                                      :args        {:table_id table-id}})))))

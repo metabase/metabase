@@ -277,6 +277,7 @@
   metabase.upload.types/with-parens                                                    [[:default]]
   metabase.util/auto-retry                                                             [[:block 1]]
   metabase.util/case-enum                                                              [[:block 1]]
+  metabase.util/for-map                                                                [[:block 1]]
   metabase.util/ignore-exceptions                                                      [[:block 0]]
   metabase.util/or-with                                                                [[:block 1]]
   metabase.util/profile                                                                [[:block 1]]
