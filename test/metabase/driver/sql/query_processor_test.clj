@@ -4,10 +4,13 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.sql.query-processor.deprecated]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -1146,3 +1149,17 @@
     (binding [driver/*compile-with-inline-parameters* true]
       (is (= ["SELECT * FROM \"venues\" WHERE \"venues\".\"name\" = [my-string]"]
              (sql.qp/format-honeysql ::inline-value-test honeysql))))))
+
+(deftest ^:parallel sort-by-cumulative-aggregation-test
+  (testing "Sorting by expression containing cumulative aggregation should work (#57289)"
+    (let [mp (mt/metadata-provider)
+          query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                  (lib/breakout $ (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at))
+                                    :month))
+                  (lib/aggregate $ (lib/+
+                                    (lib/cum-sum (lib.metadata/field mp (mt/id :orders :total)))
+                                    (lib/cum-sum (lib.metadata/field mp (mt/id :orders :tax)))))
+                  (lib/order-by $ (m/find-first (comp #{:source/aggregations} :lib/source) (lib/orderable-columns $)))
+                  (lib/limit $ 1))]
+      (is (= 55.98
+             (->> (qp/process-query query) (mt/formatted-rows [str 2.0]) first second))))))
