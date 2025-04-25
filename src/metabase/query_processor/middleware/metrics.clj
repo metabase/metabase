@@ -41,27 +41,34 @@
     [:metric _ (id :guard pos-int?)]
     id))
 
+(defn- find-first-metric-id
+  [x]
+  (first (find-metric-ids x)))
+
+(defn- fetch-metrics
+  [query metric-ids]
+  (->> metric-ids
+       (lib.metadata/bulk-metadata-or-throw query :metadata/card)
+       (into {}
+             (map (fn [card-metadata]
+                    (let [metric-query (->> (:dataset-query card-metadata)
+                                            (lib/query query)
+                                            ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
+                                            (lib/query query))
+                          metric-name (:name card-metadata)]
+                      (if-let [aggregation (first (lib/aggregations metric-query))]
+                        [(:id card-metadata)
+                         {:query metric-query
+                          ;; Aggregation inherits `:name` of original aggregation used in a metric query. The original
+                          ;; name is added in `preprocess` above if metric is defined using unnamed aggregation.
+                          :aggregation aggregation
+                          :name metric-name}]
+                        (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))))
+       not-empty))
+
 (defn- fetch-referenced-metrics
   [query stage]
-  (let [metric-ids (find-metric-ids stage)]
-    (->> metric-ids
-         (lib.metadata/bulk-metadata-or-throw query :metadata/card)
-         (into {}
-               (map (fn [card-metadata]
-                      (let [metric-query (->> (:dataset-query card-metadata)
-                                              (lib/query query)
-                                              ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
-                                              (lib/query query))
-                            metric-name (:name card-metadata)]
-                        (if-let [aggregation (first (lib/aggregations metric-query))]
-                          [(:id card-metadata)
-                           {:query metric-query
-                            ;; Aggregation inherits `:name` of original aggregation used in a metric query. The original
-                            ;; name is added in `preprocess` above if metric is defined using unnamed aggregation.
-                            :aggregation aggregation
-                            :name metric-name}]
-                          (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))))
-         not-empty)))
+  (fetch-metrics query (find-metric-ids stage)))
 
 (defn- expression-with-name-from-source
   [query agg-stage-index [_ {:lib/keys [expression-name]} :as expression]]
@@ -230,11 +237,6 @@
       :else
       expanded-stages)))
 
-(defn- find-first-metric
-  [query]
-  (lib.util.match/match-one query
-    [:metric _ _] &match))
-
 (defn adjust
   "Looks for `[:metric {} id]` clause references and adjusts the query accordingly.
 
@@ -250,7 +252,7 @@
    2. Metric source cards can reference themselves.
       A query built from a `:source-card` of `:type :metric` can reference itself."
   [query]
-  (if-not (find-first-metric (:stages query))
+  (if-not (find-first-metric-id (:stages query))
     query
     (do
       (analytics/inc! :metabase-query-processor/metrics-adjust)
@@ -262,8 +264,13 @@
                          (update stage-or-join :stages #(adjust-metric-stages query path %)))))]
           (u/prog1
             (update query :stages #(adjust-metric-stages query nil %))
-            (when-let [metric (find-first-metric (:stages <>))]
-              (throw (ex-info "Failed to replace metric" {:metric metric})))))
+            (when-let [metric-id (find-first-metric-id (:stages <>))]
+              (let [metric-data (-> (fetch-metrics query [metric-id])
+                                    (get metric-id)
+                                    u/ignore-exceptions)]
+                (throw (ex-info "Failed to replace metric"
+                                {:metric-id   metric-id
+                                 :metric-data metric-data}))))))
         (catch Throwable e
           (analytics/inc! :metabase-query-processor/metrics-adjust-errors)
           (throw e))))))

@@ -124,7 +124,7 @@ function getParameterFilterClause(
   if (Lib.isNumeric(column)) {
     return getNumberParameterFilterClause(type, column, value);
   }
-  if (Lib.isString(column)) {
+  if (Lib.isStringOrStringLike(column)) {
     return getStringParameterFilterClause(type, column, value);
   }
 }

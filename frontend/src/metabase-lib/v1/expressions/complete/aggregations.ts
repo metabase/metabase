@@ -1,9 +1,10 @@
 import type { CompletionContext } from "@codemirror/autocomplete";
 
+import { isNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { AGGREGATION_FUNCTIONS, MBQL_CLAUSES } from "../config";
+import { AGGREGATION_FUNCTIONS, getClauseDefinition } from "../config";
 import { GROUP } from "../pratt";
 import { getDatabase } from "../utils";
 
@@ -18,24 +19,25 @@ import {
 
 export type Options = {
   query: Lib.Query;
-  startRule: string;
+  expressionMode: Lib.ExpressionMode;
   metadata: Metadata;
   reportTimezone?: string;
 };
 
 export function suggestAggregations({
-  startRule,
+  expressionMode,
   query,
   metadata,
   reportTimezone,
 }: Options) {
-  if (startRule !== "aggregation") {
+  if (expressionMode !== "aggregation") {
     return null;
   }
 
   const database = getDatabase(query, metadata);
   const aggregations = Array.from(AGGREGATION_FUNCTIONS)
-    .map((name) => MBQL_CLAUSES[name])
+    .map(getClauseDefinition)
+    .filter(isNotNull)
     .filter((clause) => clause && database?.hasFeature(clause.requiresFeature))
     .map((agg) =>
       expressionClauseCompletion(agg, {

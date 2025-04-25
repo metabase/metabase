@@ -330,9 +330,11 @@ const RowChartVisualization = ({
   );
 };
 
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 RowChartVisualization.uiName = t`Row`;
 RowChartVisualization.identifier = "row";
 RowChartVisualization.iconName = "horizontal_bar";
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 RowChartVisualization.noun = t`row chart`;
 
 RowChartVisualization.noHeader = true;
@@ -360,11 +362,15 @@ RowChartVisualization.isLiveResizable = (series: any[]) => {
 
 RowChartVisualization.settings["graph.metrics"] = {
   ...RowChartVisualization.settings["graph.metrics"],
-  title: t`X-axis`,
+  get title() {
+    return t`X-axis`;
+  },
 };
 RowChartVisualization.settings["graph.dimensions"] = {
   ...RowChartVisualization.settings["graph.dimensions"],
-  title: t`Y-axis`,
+  get title() {
+    return t`Y-axis`;
+  },
 };
 
 /**
