@@ -15,13 +15,11 @@ import { ExcludeDatePicker } from "./ExcludeDatePicker";
 interface SetupOpts {
   availableOperators?: DatePickerOperator[];
   availableUnits?: DatePickerExtractionUnit[];
-  submitButtonLabel?: string;
 }
 
 function setup({
   availableOperators = DATE_PICKER_OPERATORS,
   availableUnits = DATE_PICKER_EXTRACTION_UNITS,
-  submitButtonLabel = "Apply",
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -30,7 +28,7 @@ function setup({
     <ExcludeDatePicker
       availableOperators={availableOperators}
       availableUnits={availableUnits}
-      submitButtonLabel={submitButtonLabel}
+      renderSubmitButton={() => <button>Apply</button>}
       onChange={onChange}
       onBack={onBack}
     />,

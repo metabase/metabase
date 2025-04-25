@@ -17,7 +17,7 @@ interface DateShortcutPickerProps {
   availableOperators: DatePickerOperator[];
   availableShortcuts: DatePickerShortcut[];
   renderBackButton?: () => ReactNode;
-  onSubmit: (value: RelativeDatePickerValue) => void;
+  onChange: (value: RelativeDatePickerValue) => void;
   onSelectType: (type: DatePickerValueType) => void;
 }
 
@@ -25,7 +25,7 @@ export function DateShortcutPicker({
   availableOperators,
   availableShortcuts,
   renderBackButton,
-  onSubmit,
+  onChange,
   onSelectType,
 }: DateShortcutPickerProps) {
   const shortcutGroups = useMemo(() => {
@@ -50,7 +50,7 @@ export function DateShortcutPicker({
               }}
               display="block"
               variant="subtle"
-              onClick={() => onSubmit(option.value)}
+              onClick={() => onChange(option.value)}
             >
               {option.label}
             </Button>

@@ -150,7 +150,7 @@ export function DateOffsetIntervalPicker({
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
-        {renderSubmitButton({})}
+        {renderSubmitButton({ value })}
       </Group>
     </form>
   );

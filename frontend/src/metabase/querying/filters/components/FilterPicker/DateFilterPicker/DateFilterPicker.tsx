@@ -35,8 +35,8 @@ export function DateFilterPicker({
     onChange(getFilterClause(value), { source: "default" });
   };
 
-  const handleAddButtonClick = () => {
-    // TODO
+  const handleAddButtonClick = (value: DatePickerValue) => {
+    onChange(getFilterClause(value), { source: "add-button" });
   };
 
   return (
@@ -45,12 +45,12 @@ export function DateFilterPicker({
         value={value}
         availableOperators={availableOperators}
         availableUnits={availableUnits}
-        renderSubmitButton={({ isDisabled }) => (
+        renderSubmitButton={({ value, isDisabled }) => (
           <FilterSubmitButton
             isNew={isNew}
             isDisabled={isDisabled}
             withAddButton={withAddButton}
-            onAddButtonClick={handleAddButtonClick}
+            onAddButtonClick={() => handleAddButtonClick(value)}
           />
         )}
         renderBackButton={() => (

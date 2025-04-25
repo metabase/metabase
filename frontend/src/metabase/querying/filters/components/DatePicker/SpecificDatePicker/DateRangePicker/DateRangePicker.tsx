@@ -2,28 +2,28 @@ import type { FormEvent, ReactNode } from "react";
 
 import { Box, Divider, Group } from "metabase/ui";
 
-import type { DatePickerSubmitButtonProps } from "../../types";
 import { TimeToggle } from "../TimeToggle";
 import { clearTimePart } from "../utils";
 
 import { DateRangePickerBody } from "./DateRangePickerBody";
 import type { DateRangePickerValue } from "./types";
 
-export interface DateRangePickerProps {
+export type DateRangePickerProps = {
   value: DateRangePickerValue;
   hasTimeToggle: boolean;
-  renderSubmitButton: (props: DatePickerSubmitButtonProps) => ReactNode;
+  renderSubmitButton: () => ReactNode;
   onChange: (value: DateRangePickerValue) => void;
   onSubmit: () => void;
-}
+};
 
 export function DateRangePicker({
-  value: { dateRange, hasTime },
+  value,
   hasTimeToggle,
   renderSubmitButton,
   onChange,
   onSubmit,
 }: DateRangePickerProps) {
+  const { dateRange, hasTime } = value;
   const [startDate, endDate] = dateRange;
 
   const handleDateRangeChange = (newDateRange: [Date, Date]) => {
@@ -56,7 +56,7 @@ export function DateRangePicker({
         {hasTimeToggle && (
           <TimeToggle hasTime={hasTime} onClick={handleTimeToggle} />
         )}
-        {renderSubmitButton({})}
+        {renderSubmitButton()}
       </Group>
     </form>
   );

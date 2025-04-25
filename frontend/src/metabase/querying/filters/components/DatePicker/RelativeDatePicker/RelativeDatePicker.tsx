@@ -24,7 +24,7 @@ interface RelativeDatePickerProps {
   value: RelativeDatePickerValue | undefined;
   availableUnits: DatePickerUnit[];
   renderSubmitButton: (props: DatePickerSubmitButtonProps) => ReactNode;
-  onSubmit: (value: RelativeDatePickerValue) => void;
+  onChange: (value: RelativeDatePickerValue) => void;
   onBack: () => void;
 }
 
@@ -32,7 +32,7 @@ export function RelativeDatePicker({
   value: initialValue,
   availableUnits,
   renderSubmitButton,
-  onSubmit,
+  onChange,
   onBack,
 }: RelativeDatePickerProps) {
   const [value, setValue] = useState<RelativeDatePickerValue | undefined>(
@@ -49,7 +49,7 @@ export function RelativeDatePicker({
 
   const handleSubmit = () => {
     if (value != null) {
-      onSubmit(value);
+      onChange(value);
     }
   };
 
@@ -89,7 +89,7 @@ export function RelativeDatePicker({
               <CurrentDatePicker
                 value={value}
                 availableUnits={availableUnits}
-                onSubmit={onSubmit}
+                onSubmit={onChange}
               />
             </Box>
           )}
