@@ -32,9 +32,9 @@ jobs:
     timeout-minutes: 5
     name: Get container info
     outputs:
-      editions: ${{ toJson((steps.info.outputs.result).editions) }}
-      ee: ${{ fromJson(steps.info.outputs.result).ee }}
-      oss: ${{ fromJson(steps.info.outputs.result).oss }}
+      editions: ${{ toJson(fromJson(steps.info.outputs.result).editions) }}
+      ee: ${{ toJson(fromJson(steps.info.outputs.result).ee) }}
+      oss: ${{ toJson(fromJson(steps.info.outputs.result).oss) }}
     steps:
       - name: Get docker repo and tag
         id: info
@@ -150,8 +150,8 @@ jobs:
     with:
       artifact-name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
       commit: ${{ github.sha }}
-      repo: ${{ needs.get-container-info.outputs[matrix.edition].repo }}
-      tag: ${{ needs.get-container-info.outputs[matrix.edition].tag }}
+      repo: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).repo }}
+      tag: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).tag }}
 
   run-trivy:
     needs: [get-container-info, containerize]
@@ -165,8 +165,10 @@ jobs:
         uses: aquasecurity/trivy-action@0.29.0
         env:
           TRIVY_OFFLINE_SCAN: true
+          repo: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).repo }}
+          tag: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).tag }}
         with:
-          image-ref: docker.io/${{ github.repository_owner }}/${{ needs.get-container-info.outputs[matrix.edition].repo }}:${{ needs.get-container-info.outputs[matrix.edition].tag }}
+          image-ref: docker.io/${{ env.repo }}:${{ env.tag }}
           format: sarif
           output: trivy-results.sarif
           version: "v0.57.1"
