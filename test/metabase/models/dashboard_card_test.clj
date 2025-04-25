@@ -320,7 +320,7 @@
                                                     :col                    3
                                                     :created_at             now}]
         (is (= "1311d6dc"
-               (serdes/raw-hash [(serdes/identity-hash card) (serdes/identity-hash dash) {} 6 3 now])
+               (serdes/raw-hash [(serdes/identity-hash card) (serdes/identity-hash dash) {} 6 3 (:created_at dashcard)])
                (serdes/identity-hash dashcard)))))))
 
 (deftest ^:parallel from-decoded-json-test

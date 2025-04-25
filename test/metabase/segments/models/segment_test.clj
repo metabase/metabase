@@ -35,7 +35,7 @@
                      :model/Table    table   {:schema "PUBLIC" :name "widget" :db_id (:id db)}
                      :model/Segment  segment {:name "big customers" :table_id (:id table) :created_at now}]
         (is (= "be199b7c"
-               (serdes/raw-hash ["big customers" (serdes/identity-hash table) now])
+               (serdes/raw-hash ["big customers" (serdes/identity-hash table) (:created_at segment)])
                (serdes/identity-hash segment)))))))
 
 (deftest definition-description-missing-definition-test
