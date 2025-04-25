@@ -5,12 +5,12 @@
    [metabase.driver.common.parameters :as params]))
 
 (insta/defparser param-grammar "
-S = function|name
+S = <whitespace> function|name <whitespace>
 expr = string|doubleString
 string = <'\\''> #'[^\\']*' <'\\''>
 doubleString = <'\"'> #'[^\"]*' <'\"'>
 function = name arglist
-name = #'[\\w_\\.#-]+'
+name = #'[\\w_\\d\\.#-]+'
 arglist = <'('> <whitespace> expr? <whitespace> (<','> <whitespace> expr <whitespace>)* <')'>
 whitespace = #'\\s*'
 ")
