@@ -203,6 +203,19 @@
     :else
     (h2x/cast :float value)))
 
+(defn ->integer-with-round
+  "Helper function for drivers that need to round before converting to integer.
+
+  Used in implementations of ->integer."
+  [driver value]
+  ;; value can be either string or float
+  ;; if it's a float, coversion to float does nothing
+  ;; if it's a string, we can't round, so we need to convert to float first
+  (->> value
+       (->float driver)
+       (vector :round)
+       (h2x/maybe-cast (integer-dbtype driver))))
+
 (defmulti ^clojure.lang.MultiFn inline-value
   "Return an inline value (as a raw SQL string) for an object `x`, e.g.
 

@@ -257,10 +257,4 @@
 
 (defmethod sql.qp/->integer :sparksql
   [driver value]
-  ;; value can be either string or float
-  ;; if it's a float, coversion to float does nothing
-  ;; if it's a string, we can't round, so we need to convert to float first
-  (->> value
-       (sql.qp/->float driver)
-       (conj [:round])
-       (h2x/maybe-cast (sql.qp/integer-dbtype driver))))
+  (sql.qp/->integer-with-round driver value))

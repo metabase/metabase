@@ -343,8 +343,4 @@
 
 (defmethod sql.qp/->integer :databricks
   [driver value]
-  ;; value can be either string or float
-  ;; if it's a float, coversion to float does nothing
-  ;; if it's a string, we can't round, so we need to convert to float first
-  (h2x/maybe-cast (sql.qp/integer-dbtype driver)
-                  [:round (sql.qp/->float driver value)]))
+  (sql.qp/->integer-with-round driver value))

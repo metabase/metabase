@@ -299,10 +299,7 @@
 
 (defmethod sql.qp/->integer :redshift
   [driver value]
-  (->> value
-       (sql.qp/->float driver)
-       (vector :round)
-       (h2x/maybe-cast "BIGINT")))
+  (sql.qp/->integer-with-round driver value))
 
 (defn- extract [unit temporal]
   [::h2x/extract (format "'%s'" (name unit)) temporal])
