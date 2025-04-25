@@ -90,8 +90,8 @@
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
                      (is (=? {:subject "Table CATEGORIES has been updated"
-                              :message [{"Crowberto Corv has updated a row in CATEGORIES" true
-                                         "name: Updated Category"                         true}]}
+                              :body [{"Crowberto Corv has updated a row in CATEGORIES" true
+                                      "name: Updated Category"                         true}]}
                              (mt/summarize-multipart-single-email
                               email
                               #"Crowberto Corv has updated a row in CATEGORIES"
@@ -122,7 +122,7 @@
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
                      (is (=? {:subject "Table CATEGORIES has a row deleted"
-                              :message [{"Crowberto Corv has deleted a row from CATEGORIES" true
+                              :body    [{"Crowberto Corv has deleted a row from CATEGORIES" true
                                          "name: African" true}]}
                              (mt/summarize-multipart-single-email
                               email
