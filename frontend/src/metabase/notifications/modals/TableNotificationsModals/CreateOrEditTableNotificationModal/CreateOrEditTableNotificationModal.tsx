@@ -43,7 +43,7 @@ type TableNotificationTriggerOption = {
   value: {
     eventName: NotificationTriggerEvent;
   };
-  label: string;
+  get label(): string;
 };
 
 const formatJsonForTooltip = (json: any) => {
@@ -58,19 +58,25 @@ const NOTIFICATION_TRIGGER_OPTIONS_MAP: Record<
     value: {
       eventName: "event/rows.created",
     },
-    label: t`When new records are created`,
+    get label() {
+      return t`When new records are created`;
+    },
   },
   "event/rows.updated": {
     value: {
       eventName: "event/rows.updated",
     },
-    label: t`When any cell changes it's value`,
+    get label() {
+      return t`When any cell changes it's value`;
+    },
   },
   "event/rows.deleted": {
     value: {
       eventName: "event/rows.deleted",
     },
-    label: t`When records are deleted`,
+    get label() {
+      return t`When records are deleted`;
+    },
   },
 };
 
