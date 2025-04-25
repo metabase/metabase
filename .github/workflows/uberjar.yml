@@ -184,6 +184,19 @@ jobs:
           no-cache: false
           push: true
 
+      - name: Retag and push images if dev branch - should be cached at this point
+        if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
+        uses: docker/build-push-action@v3
+        with:
+          context: bin/docker/.
+          platforms: linux/amd64,linux/arm64
+          network: host
+          tags: ${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }}
+          build-args: |
+            GIT_COMMIT_SHA=${{ github.sha }}
+          no-cache: false
+          push: true
+
       - name: Run Trivy vulnerability scanner if master (ee)
         if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
         uses: aquasecurity/trivy-action@0.29.0
