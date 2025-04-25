@@ -408,14 +408,15 @@
 (deftest send-once-archive-on-first-successful-send
   (notification.tu/with-card-notification
     [notification {:notification-card {:send_once true}}]
-    (testing "do not archive if the send fail for any reason"
-      (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _args] (throw (ex-info "error" {})))]
-        (u/ignore-exceptions (notification/send-notification! notification))
-        (is (true? (t2/select-one-fn :active :model/Notification (:id notification))))))
+    (let [notification (t2/select-one :model/Notification (:id notification))]
+      (testing "do not archive if the send fail for any reason"
+        (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _args] (throw (ex-info "error" {})))]
+          (u/ignore-exceptions (notification/send-notification! notification))
+          (is (true? (t2/select-one-fn :active :model/Notification (:id notification))))))
 
-    (testing "archive if the send is successful"
-      (notification/send-notification! notification)
-      (is (false? (t2/select-one-fn :active :model/Notification (:id notification)))))))
+      (testing "archive if the send is successful"
+        (notification/send-notification! notification)
+        (is (false? (t2/select-one-fn :active :model/Notification (:id notification))))))))
 
 (deftest non-user-email-test
   (notification.tu/with-card-notification
@@ -564,3 +565,19 @@
            {:channel/email
             (fn [emails]
               (is (= 11 (email->attachment-line-count (first emails)))))}))))))
+
+(deftest audit-alert-send-event-test
+  (testing "When we send an alert, we also log the event:"
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:audit-app}
+       (notification.tu/with-card-notification [notification {:handlers [{:channel_type :channel/email,
+                                                                          :recipients [{:type :notification-recipient/user
+                                                                                        :user_id (mt/user->id :rasta)}]}]}]
+         (notification/send-notification! notification :notification/sync? true)
+         (is (=? {:topic    :alert-send
+                  :user_id  (mt/user->id :crowberto)
+                  :model    "Pulse"
+                  :model_id (:id notification)
+                  :details  {:recipients [{:id (mt/user->id :rasta)}]
+                             :filters    nil}}
+                 (mt/latest-audit-log-entry :alert-send (:id notification)))))))))
