@@ -168,7 +168,6 @@ describe("resolver", () => {
         });
 
         it("should not resolve segments", () => {
-          // TODO: should we resolve segments here?
           expect(() => any("Expensive Things")).toThrow(
             "Unknown column: Expensive Things",
           );
@@ -285,7 +284,6 @@ describe("resolver", () => {
       });
 
       it("should not resolve metrics", () => {
-        // TODO: should this resolve metrics?
         expect(() => boolean("Foo Metric")).toThrow(
           "Unknown Segment or boolean column: Foo Metric",
         );
@@ -393,7 +391,8 @@ describe("resolver", () => {
       });
 
       it("should not resolve segments", () => {
-        // TODO: should we resolve segments here?
+        // We do not resolve segments here since any is only used in offset
+        // and offset only works in aggregations.
         expect(() => any("Expensive Things")).toThrow(
           "Unknown column or Metric: Expensive Things",
         );
