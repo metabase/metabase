@@ -6,8 +6,6 @@ import { useEffectOnce, useLatest } from "react-use";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { useDispatch } from "metabase/lib/redux";
 
-export type QueryParam = Query[keyof Query];
-
 type BaseState = Record<string, unknown>;
 
 export type UrlStateConfig<State extends BaseState> = {

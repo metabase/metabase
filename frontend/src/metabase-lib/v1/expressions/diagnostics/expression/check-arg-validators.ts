@@ -1,9 +1,8 @@
 import * as Lib from "metabase-lib";
 
-import { getClauseDefinition } from "../config";
-import { DiagnosticError } from "../errors";
-import { getToken } from "../utils";
-import { visit } from "../visitor";
+import { getClauseDefinition } from "../../config";
+import { visit } from "../../visitor";
+import { error } from "../utils";
 
 export function checkArgValidators({
   expressionParts,
@@ -23,7 +22,7 @@ export function checkArgValidators({
     if (clause.validator) {
       const validationError = clause.validator(...args);
       if (validationError) {
-        throw new DiagnosticError(validationError, getToken(node));
+        error(node, validationError);
       }
     }
   });
