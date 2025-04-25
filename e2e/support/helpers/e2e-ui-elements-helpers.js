@@ -445,8 +445,8 @@ export function tableHeaderClick(headerString) {
   tableHeaderColumn(headerString).click();
 }
 
-export function clickActionsPopover() {
-  return popover({ testId: "click-actions-popover" });
+export function clickActionsPopover({ skipVisibilityCheck = false } = {}) {
+  return popover({ testId: "click-actions-popover", skipVisibilityCheck });
 }
 
 export function segmentEditorPopover() {
