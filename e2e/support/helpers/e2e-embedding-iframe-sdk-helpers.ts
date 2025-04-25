@@ -1,7 +1,5 @@
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
-import { ALL_USERS_GROUP_ID } from "../cypress_sample_instance_data";
-
 import { createApiKey } from "./api";
 import {
   mockSessionPropertiesTokenFeatures,
@@ -110,6 +108,8 @@ function getSdkIframeEmbedHtml({
 }
 
 export function prepareSdkIframeEmbedTest() {
+  const ALL_USERS_GROUP_ID = 1;
+
   restore();
   cy.signInAsAdmin();
   mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
