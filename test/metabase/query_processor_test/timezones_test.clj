@@ -327,7 +327,8 @@
                             (mt/rows)
                             (map (fn [row]
                                    (zipmap cols
-                                           row))))]
+                                           row)))
+                            (map #(update % :week-of-year long)))]
               (doseq [[expected-row row] (map vector expected-rows rows)]
                 (is (= expected-row row))))))))))
 
