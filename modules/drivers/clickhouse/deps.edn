@@ -1,4 +1,4 @@
 {:paths ["src" "resources"]
  :deps
- {com.clickhouse/clickhouse-jdbc {:mvn/version "0.8.2"}
+ {com.clickhouse/clickhouse-jdbc {:mvn/version "0.8.4"}
   org.lz4/lz4-java {:mvn/version "1.8.0"}}}

@@ -370,6 +370,14 @@ redirect_from:
         "type" : "string",
         "enum" : [ "question", "metric", "model" ]
       },
+      "metabase.api.logger/log-level" : {
+        "type" : "string",
+        "enum" : [ "off", "fatal", "error", "warn", "info", "debug", "trace" ]
+      },
+      "metabase.api.logger/time-unit" : {
+        "type" : "string",
+        "enum" : [ "days", "hours", "minutes", "seconds", "milliseconds", "microseconds", "nanoseconds" ]
+      },
       "metabase.api.user/user-group-membership" : {
         "description" : "Group Membership info of a User.\n  In which :is_group_manager is only included if `advanced-permissions` is enabled.",
         "type" : "object",
@@ -8013,6 +8021,52 @@ redirect_from:
           }
         },
         "tags" : [ "/api/ldap" ]
+      }
+    },
+    "/api/logger/adjustment" : {
+      "post" : {
+        "summary" : "POST /api/logger/adjustment",
+        "description" : "Temporarily adjust the log levels.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "duration" : {
+                    "type" : "integer"
+                  },
+                  "duration_unit" : {
+                    "$ref" : "#/components/schemas/metabase.api.logger~1time-unit"
+                  },
+                  "log_levels" : {
+                    "type" : "object",
+                    "additionalProperties" : {
+                      "$ref" : "#/components/schemas/metabase.api.logger~1log-level"
+                    }
+                  }
+                },
+                "required" : [ "duration", "duration_unit", "log_levels" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/logger" ]
+      },
+      "delete" : {
+        "summary" : "DELETE /api/logger/adjustment",
+        "description" : "Undo any log level adjustments.",
+        "parameters" : [ ],
+        "tags" : [ "/api/logger" ]
+      }
+    },
+    "/api/logger/presets" : {
+      "get" : {
+        "summary" : "GET /api/logger/presets",
+        "description" : "Get all known presets.",
+        "parameters" : [ ],
+        "tags" : [ "/api/logger" ]
       }
     },
     "/api/login-history/current" : {
