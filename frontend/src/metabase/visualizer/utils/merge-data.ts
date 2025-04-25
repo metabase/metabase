@@ -5,12 +5,10 @@ import type {
   DatasetColumn,
   RowValue,
   RowValues,
-} from "metabase-types/api";
-import type {
   VisualizerColumnValueSource,
   VisualizerDataSource,
   VisualizerDataSourceId,
-} from "metabase-types/store/visualizer";
+} from "metabase-types/api";
 
 import { extractReferencedColumns } from "./column";
 import { getDataSourceIdFromNameRef, isDataSourceNameRef } from "./data-source";

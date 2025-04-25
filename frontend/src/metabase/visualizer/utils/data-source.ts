@@ -4,7 +4,7 @@ import type {
   VisualizerDataSourceId,
   VisualizerDataSourceNameReference,
   VisualizerDataSourceType,
-} from "metabase-types/store/visualizer";
+} from "metabase-types/api";
 
 import { extractReferencedColumns } from "./column";
 

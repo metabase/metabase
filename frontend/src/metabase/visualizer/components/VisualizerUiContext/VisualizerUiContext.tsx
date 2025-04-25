@@ -14,7 +14,7 @@ import _ from "underscore";
 
 import { useSelector } from "metabase/lib/redux";
 import { getDatasets } from "metabase/visualizer/selectors";
-import type { VisualizerDataSourceId } from "metabase-types/store/visualizer";
+import type { VisualizerDataSourceId } from "metabase-types/api";
 
 type VisualizerUiState = {
   isDataSidebarOpen: boolean;

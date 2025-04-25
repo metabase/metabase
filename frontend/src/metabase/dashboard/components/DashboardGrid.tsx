@@ -34,19 +34,19 @@ import { Box, Flex } from "metabase/ui";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
-import {
-  type BaseDashboardCard,
-  type Card,
-  type CardId,
-  type DashCardId,
-  type Dashboard,
-  type DashboardCard,
-  type DashboardTabId,
-  type RecentItem,
-  isRecentCollectionItem,
+import type {
+  BaseDashboardCard,
+  Card,
+  CardId,
+  DashCardId,
+  Dashboard,
+  DashboardCard,
+  DashboardTabId,
+  RecentItem,
+  VisualizerVizDefinition,
 } from "metabase-types/api";
+import { isRecentCollectionItem } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type { VisualizerVizDefinition } from "metabase-types/store/visualizer";
 
 import type { SetDashCardAttributesOpts } from "../actions";
 import {

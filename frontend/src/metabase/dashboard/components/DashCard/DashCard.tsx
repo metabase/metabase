@@ -38,9 +38,9 @@ import type {
   DashboardCard,
   VirtualCard,
   VisualizationSettings,
+  VisualizerVizDefinition,
 } from "metabase-types/api";
 import type { StoreDashcard } from "metabase-types/store";
-import type { VisualizerVizDefinition } from "metabase-types/store/visualizer";
 
 import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";

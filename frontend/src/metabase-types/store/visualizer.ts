@@ -2,25 +2,10 @@ import type {
   Card,
   Dataset,
   DatasetColumn,
-  VisualizationDisplay,
-  VisualizationSettings,
+  VisualizerDataSource,
+  VisualizerDataSourceId,
+  VisualizerVizDefinition,
 } from "metabase-types/api";
-
-export type VisualizerDataSourceType = "card";
-export type VisualizerDataSourceId = `${VisualizerDataSourceType}:${number}`;
-
-export type VisualizerDataSource = {
-  id: VisualizerDataSourceId;
-  sourceId: number;
-  type: VisualizerDataSourceType;
-  name: string;
-};
-
-export type VisualizerColumnReference = {
-  sourceId: VisualizerDataSourceId;
-  name: string; // in combined dataset
-  originalName: string; // in original dataset
-};
 
 type BaseDraggedItem<T> = {
   id: string;
@@ -42,21 +27,6 @@ export type DraggedWellItem = BaseDraggedItem<{
 }>;
 
 export type DraggedItem = DraggedColumn | DraggedWellItem;
-
-// a way to use dataset's name as a value
-export type VisualizerDataSourceNameReference =
-  `$_${VisualizerDataSourceId}_name`;
-
-export type VisualizerColumnValueSource =
-  | VisualizerColumnReference
-  | VisualizerDataSourceNameReference;
-
-export type VisualizerVizDefinition = {
-  display: VisualizationDisplay | null;
-  columns: DatasetColumn[];
-  columnValuesMapping: Record<string, VisualizerColumnValueSource[]>;
-  settings: VisualizationSettings;
-};
 
 export interface VisualizerState extends VisualizerVizDefinition {
   initialState: VisualizerVizDefinition;
