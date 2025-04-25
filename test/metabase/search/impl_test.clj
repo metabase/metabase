@@ -8,6 +8,7 @@
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.config :as config]
+   [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.search.impl :as search.impl]
@@ -279,35 +280,37 @@
           (test-search "today" new-result))))))
 
 (deftest old-values-removed-from-index
-  (let [search-term (str (random-uuid))]
-    (binding [search.ingestion/*force-sync* true]
-      (mt/with-temp
-        [:model/Card {card-id :id} {:name search-term}]
-        (mt/with-current-user (mt/user->id :crowberto)
-          (testing "Initially finds the question"
-            (is (= #{["card" card-id]}
-                   (->> (search.impl/search (search.impl/search-context
-                                             {:search-string      search-term
-                                              :search-engine      "appdb"
-                                              :archived           false
-                                              :models             search.config/all-models
-                                              :current-user-id    (mt/user->id :crowberto)
-                                              :is-superuser?      true
-                                              :current-user-perms @api/*current-user-permissions-set*}))
-                        :data
-                        (map (juxt :model :id))
-                        set))))
-          (testing "Changing to a different type removes the old value from the index"
-            (api.card/update-card! card-id {:type :model} true)
-            (is (= #{["dataset" card-id]}
-                   (->> (search.impl/search (search.impl/search-context
-                                             {:search-string      search-term
-                                              :search-engine      "appdb"
-                                              :archived           false
-                                              :models             search.config/all-models
-                                              :current-user-id    (mt/user->id :crowberto)
-                                              :is-superuser?      true
-                                              :current-user-perms @api/*current-user-permissions-set*}))
-                        :data
-                        (map (juxt :model :id))
-                        set)))))))))
+  (when (search/supports-index?)
+    (#'search.index/sync-tracking-atoms!)
+    (let [search-term (str (random-uuid))]
+      (binding [search.ingestion/*force-sync* true]
+        (mt/with-temp
+          [:model/Card {card-id :id} {:name search-term}]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (testing "Initially finds the question"
+              (is (= #{["card" card-id]}
+                     (->> (search.impl/search (search.impl/search-context
+                                               {:search-string      search-term
+                                                :search-engine      "appdb"
+                                                :archived           false
+                                                :models             search.config/all-models
+                                                :current-user-id    (mt/user->id :crowberto)
+                                                :is-superuser?      true
+                                                :current-user-perms @api/*current-user-permissions-set*}))
+                          :data
+                          (map (juxt :model :id))
+                          set))))
+            (testing "Changing to a different type removes the old value from the index"
+              (api.card/update-card! card-id {:type :model} true)
+              (is (= #{["dataset" card-id]}
+                     (->> (search.impl/search (search.impl/search-context
+                                               {:search-string      search-term
+                                                :search-engine      "appdb"
+                                                :archived           false
+                                                :models             search.config/all-models
+                                                :current-user-id    (mt/user->id :crowberto)
+                                                :is-superuser?      true
+                                                :current-user-perms @api/*current-user-permissions-set*}))
+                          :data
+                          (map (juxt :model :id))
+                          set))))))))))
