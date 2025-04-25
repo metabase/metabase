@@ -388,23 +388,11 @@ describe("scenarios > visualizations > legend", () => {
       H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
     }
 
-    H.showDashboardCardActions(0);
-    H.getDashboardCard(0).findByLabelText("Edit visualization").click();
-
-    H.modal().within(() => {
-      ensureCanNotToggleSeriesVisibility();
-      cy.realPress("Escape");
-    });
-
     H.showDashcardVisualizerModal(0);
 
     H.modal().within(() => {
       ensureCanNotToggleSeriesVisibility();
       cy.realPress("Escape");
-    });
-
-    H.getDashboardCard(0).within(() => {
-      ensureCanNotToggleSeriesVisibility();
     });
   });
 

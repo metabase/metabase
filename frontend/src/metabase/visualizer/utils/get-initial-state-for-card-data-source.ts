@@ -1,3 +1,4 @@
+import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { isNotNull } from "metabase/lib/types";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
@@ -37,6 +38,11 @@ function pickColumnsFromTableToBarChart(
 
   // using "every" to break the loop early
   originalColumns.every((column) => {
+    if (isPivotGroupColumn(column)) {
+      // skip pivot grouping column
+      return true;
+    }
+
     if (!foundMetric && isSuitableMetric(column)) {
       columns.push(column);
       foundMetric = true;
@@ -59,7 +65,7 @@ function pickColumns(
   display: VisualizationDisplay,
   originalColumns: DatasetColumn[],
 ) {
-  if (display === "table") {
+  if (display === "table" || display === "pivot") {
     // if the original card is a table, let's only use two columns
     // in the resulting bar chart
     return pickColumnsFromTableToBarChart(originalColumns);
