@@ -1,5 +1,4 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { Fragment, useEffect } from "react";
 import { usePrevious } from "react-use";
 import { msgid, ngettext, t } from "ttag";
@@ -15,6 +14,13 @@ import { connect } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
+import type {
+  GroupId,
+  Group as IGroup,
+  Member,
+  User,
+} from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import { USER_STATUS } from "../constants";
 import {
@@ -25,9 +31,9 @@ import {
 } from "../people";
 import { getMembershipsByUser } from "../selectors";
 
-import PeopleListRow from "./PeopleListRow";
+import { PeopleListRow } from "./PeopleListRow";
 
-const mapStateToProps = (state) => ({
+const mapStateToProps = (state: State) => ({
   currentUser: getUser(state),
   isAdmin: getUserIsAdmin(state),
   groups: Group.selectors.getList(state),
@@ -39,13 +45,21 @@ const mapDispatchToProps = {
   deleteMembership,
   updateMembership,
   loadMemberships,
-  confirmDeleteMembershipAction: async (membershipId, userMemberships, view) =>
+  confirmDeleteMembershipAction: async (
+    membershipId: number,
+    userMemberships: Member[],
+    view: string,
+  ) =>
     PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction(
       membershipId,
       userMemberships,
       view,
     ),
-  confirmUpdateMembershipAction: async (membership, userMemberships, view) =>
+  confirmUpdateMembershipAction: async (
+    membership: Member,
+    userMemberships: Member[],
+    view: string,
+  ) =>
     PLUGIN_GROUP_MANAGERS.confirmUpdateMembershipAction(
       membership,
       userMemberships,
@@ -53,7 +67,48 @@ const mapDispatchToProps = {
     ),
 };
 
-const PeopleList = ({
+interface PeopleListQueryProps {
+  query: {
+    searchText: string;
+    status: string;
+    page: number;
+    pageSize: number;
+  };
+}
+
+interface PeopleListProps extends PeopleListQueryProps {
+  membershipsByUser: Record<User["id"], Member[]>;
+  currentUser: User;
+  users: User[];
+  groups: IGroup[];
+  isAdmin: boolean;
+  loadMemberships: () => void;
+  createMembership: (membership: {
+    groupId: GroupId;
+    userId: User["id"];
+  }) => void | Promise<void>;
+  deleteMembership: (membershipId: number) => void | Promise<void>;
+  updateMembership: (membership: Member) => void | Promise<void>;
+  confirmDeleteMembershipAction: (
+    membershipId: number,
+    userMemberships: Member[],
+    view: string,
+  ) => Promise<void>;
+  confirmUpdateMembershipAction: (
+    membership: Member,
+    userMemberships: Member[],
+    view: string,
+  ) => Promise<void>;
+  onNextPage?: () => void;
+  onPreviousPage: () => void;
+  reloadUsers: () => void;
+  reloadGroups: () => void;
+  metadata: {
+    total: number;
+  };
+}
+
+const PeopleListInner = ({
   currentUser,
   users,
   groups,
@@ -71,7 +126,7 @@ const PeopleList = ({
   reloadGroups,
   onNextPage,
   onPreviousPage,
-}) => {
+}: PeopleListProps) => {
   const { modalContent, show } = useConfirmation();
   const prevUsers = usePrevious(users);
 
@@ -107,14 +162,23 @@ const PeopleList = ({
 
   const { page, pageSize, status } = query;
 
-  const isCurrentUser = (u) => currentUser?.id === u.id;
+  const isCurrentUser = (u: User) => currentUser?.id === u.id;
   const showDeactivated = status === USER_STATUS.deactivated;
   const hasUsers = users.length > 0;
 
-  const handleChange = async (groupId, membershipData, userId) => {
+  const handleChange = async (
+    groupId: GroupId,
+    membershipData: Partial<Member>,
+    userId: User["id"],
+  ) => {
     const membership = membershipsByUser[userId].find(
-      (membership) => membership.group_id === groupId,
+      (membership: Member) => membership.group_id === groupId,
     );
+    if (!membership) {
+      console.error("Tried to update a membership that does not exist");
+      return;
+    }
+
     const updatedMembership = {
       ...membership,
       ...membershipData,
@@ -133,6 +197,7 @@ const PeopleList = ({
 
     show({
       ...confirmation,
+      title: confirmation.title ?? "",
       onConfirm: async () => {
         await confirmUpdateMembershipAction(
           updatedMembership,
@@ -144,10 +209,15 @@ const PeopleList = ({
     });
   };
 
-  const handleRemove = async (groupId, userId) => {
+  const handleRemove = async (groupId: GroupId, userId: User["id"]) => {
     const membershipId = membershipsByUser[userId].find(
       (membership) => membership.group_id === groupId,
-    ).membership_id;
+    )?.membership_id;
+
+    if (!membershipId) {
+      console.error("Tried to remove a membership that does not exist");
+      return;
+    }
 
     const confirmation = PLUGIN_GROUP_MANAGERS.getRemoveMembershipConfirmation(
       currentUser,
@@ -163,6 +233,7 @@ const PeopleList = ({
 
     show({
       ...confirmation,
+      title: confirmation.title ?? "",
       onConfirm: async () => {
         await confirmDeleteMembershipAction(
           membershipId,
@@ -174,7 +245,7 @@ const PeopleList = ({
     });
   };
 
-  const handleAdd = (groupId, userId) => {
+  const handleAdd = (groupId: GroupId, userId: User["id"]) => {
     createMembership({ groupId, userId });
   };
 
@@ -214,9 +285,9 @@ const PeopleList = ({
                 userMemberships={membershipsByUser[user.id]}
                 isCurrentUser={isCurrentUser(user)}
                 isAdmin={isAdmin}
-                onAdd={(groupId) => handleAdd(groupId, user.id)}
-                onRemove={(groupId) => handleRemove(groupId, user.id)}
-                onChange={(groupId, membershipData) =>
+                onAdd={(groupId: GroupId) => handleAdd(groupId, user.id)}
+                onRemove={(groupId: GroupId) => handleRemove(groupId, user.id)}
+                onChange={(groupId: GroupId, membershipData: Partial<Member>) =>
                   handleChange(groupId, membershipData, user.id)
                 }
                 isConfirmModalOpen={Boolean(modalContent)}
@@ -272,40 +343,13 @@ const PeopleList = ({
   );
 };
 
-PeopleList.propTypes = {
-  query: PropTypes.shape({
-    searchText: PropTypes.string.isRequired,
-    status: PropTypes.string.isRequired,
-    page: PropTypes.number.isRequired,
-    pageSize: PropTypes.number.isRequired,
-  }),
-  membershipsByUser: PropTypes.object,
-  currentUser: PropTypes.object.isRequired,
-  users: PropTypes.array,
-  groups: PropTypes.array,
-  isAdmin: PropTypes.bool,
-  loadMemberships: PropTypes.func.isRequired,
-  createMembership: PropTypes.func.isRequired,
-  deleteMembership: PropTypes.func.isRequired,
-  updateMembership: PropTypes.func.isRequired,
-  confirmDeleteMembershipAction: PropTypes.func.isRequired,
-  confirmUpdateMembershipAction: PropTypes.func.isRequired,
-  onNextPage: PropTypes.func,
-  onPreviousPage: PropTypes.func,
-  reloadUsers: PropTypes.func.isRequired,
-  reloadGroups: PropTypes.func.isRequired,
-  metadata: PropTypes.shape({
-    total: PropTypes.number.isRequired,
-  }).isRequired,
-};
-
-export default _.compose(
+export const PeopleList = _.compose(
   Group.loadList({
     reload: true,
   }),
   Users.loadList({
     reload: true,
-    query: (_, { query }) => ({
+    query: (_state: State, { query }: PeopleListQueryProps) => ({
       query: query.searchText,
       status: query.status,
       limit: query.pageSize,
@@ -313,4 +357,4 @@ export default _.compose(
     }),
   }),
   connect(mapStateToProps, mapDispatchToProps),
-)(PeopleList);
+)(PeopleListInner);
