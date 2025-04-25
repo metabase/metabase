@@ -3,6 +3,7 @@ const { H } = cy;
 import {
   ALL_USERS_GROUP_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   type SdkIframeEmbedTestPageOptions,
@@ -84,6 +85,25 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
       );
 
       frame.contains("Orders in a dashboard").should("be.visible");
+    });
+  });
+
+  it("should create iframe and authenticate with API key for question", () => {
+    cy.log("Testing question embedding with API key authentication");
+    enableResourceEmbedding("question", ORDERS_QUESTION_ID);
+
+    cy.get<string>("@apiKey").then((apiKey) => {
+      const frame = loadSdkEmbedIframeTestPage(
+        {
+          resourceType: "question",
+          resourceId: ORDERS_QUESTION_ID,
+          apiKey,
+          theme: LIGHT_THEME,
+        },
+        getSdkIframeTestPageHtml,
+      );
+
+      frame.contains("Orders").should("be.visible");
     });
   });
 });
