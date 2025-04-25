@@ -21,7 +21,14 @@ export const useGetFontOptions = () => {
   return options;
 };
 
-export const FONT_OPTIONS: FontFileOption[] = [
+export const getFontUrls = (files: FontFile[]): Record<string, string> => {
+  return _.chain(files)
+    .indexBy((file) => file.fontWeight)
+    .mapObject((file) => file.src)
+    .value();
+};
+
+export const getFontOptions = (): FontFileOption[] => [
   {
     name: t`Regular`,
     fontWeight: 400,
@@ -36,18 +43,12 @@ export const FONT_OPTIONS: FontFileOption[] = [
   },
 ];
 
-export const getFontUrls = (files: FontFile[]): Record<string, string> => {
-  return _.chain(files)
-    .indexBy((file) => file.fontWeight)
-    .mapObject((file) => file.src)
-    .value();
-};
-
 export const getFontFiles = (urls: Record<string, string>): FontFile[] => {
-  return FONT_OPTIONS.map((option) => ({
-    src: urls[option.fontWeight],
-    option,
-  }))
+  return getFontOptions()
+    .map((option) => ({
+      src: urls[option.fontWeight],
+      option,
+    }))
     .filter(({ src }) => Boolean(src))
     .map(({ src, option }) => getFontFile(src, option));
 };

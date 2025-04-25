@@ -17,7 +17,7 @@ import {
   TableRoot,
 } from "./FontFilesWidget.styled";
 import type { FontFileOption, FontFilesSetting } from "./types";
-import { FONT_OPTIONS, getFontFiles, getFontUrls } from "./utils";
+import { getFontFiles, getFontOptions, getFontUrls } from "./utils";
 
 export interface FontFilesWidgetProps {
   setting: FontFilesSetting;
@@ -76,7 +76,7 @@ const FontFilesTable = ({
         </TableHeaderRow>
       </TableHeader>
       <TableBody>
-        {FONT_OPTIONS.map((option) => (
+        {getFontOptions().map((option) => (
           <FontFileRow
             key={option.name}
             url={urls[option.fontWeight]}
