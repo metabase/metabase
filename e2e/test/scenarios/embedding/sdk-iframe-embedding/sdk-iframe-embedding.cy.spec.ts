@@ -4,16 +4,14 @@ import {
   ALL_USERS_GROUP_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import {
+  type SdkIframeEmbedTestPageOptions,
+  enableResourceEmbedding,
+  getBaseIframeHtml,
+  loadSdkEmbedIframeTestPage,
+  setupEmbeddingTest,
+} from "e2e/support/helpers/e2e-embedding-iframe-sdk-helpers";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
-
-interface SdkIframeEmbedTestPageOptions {
-  resourceType: "dashboard" | "question";
-  resourceId: number | string;
-  apiKey: string;
-  theme: MetabaseTheme;
-  includeThemeSwitch?: boolean;
-  additionalConfig?: Record<string, unknown>;
-}
 
 const LIGHT_THEME: MetabaseTheme = {
   colors: {
@@ -66,52 +64,33 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     cy.request("PUT", "/api/setting/embedding-app-origins-interactive", {
       value: "http://localhost:3000",
     });
+
+    setupEmbeddingTest(ALL_USERS_GROUP_ID);
   });
 
   it("should create iframe and authenticate with API key for dashboard", () => {
-    cy.log("Enabling embedding for the dashboard");
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-      enable_embedding: true,
-    });
+    cy.log("Testing dashboard embedding with API key authentication");
+    enableResourceEmbedding("dashboard", ORDERS_DASHBOARD_ID);
 
     cy.get<string>("@apiKey").then((apiKey) => {
-      const frame = loadSdkEmbedIframeTestPage({
-        resourceType: "dashboard",
-        resourceId: ORDERS_DASHBOARD_ID,
-        apiKey,
-        theme: LIGHT_THEME,
-      });
+      const frame = loadSdkEmbedIframeTestPage(
+        {
+          resourceType: "dashboard",
+          resourceId: ORDERS_DASHBOARD_ID,
+          apiKey,
+          theme: LIGHT_THEME,
+        },
+        getSdkIframeTestPageHtml,
+      );
 
       frame.contains("Orders in a dashboard").should("be.visible");
     });
   });
 });
 
-/**
- * Creates and loads a test fixture for SDK iframe embedding tests
- */
-function loadSdkEmbedIframeTestPage(options: SdkIframeEmbedTestPageOptions) {
-  const testPageSource = getIframeTestPageHtml(options);
-
-  cy.intercept("GET", "/sdk-iframe-test-page", {
-    body: testPageSource,
-    headers: { "content-type": "text/html" },
-  }).as("dynamicPage");
-
-  cy.visit("/sdk-iframe-test-page");
-
-  return cy
-    .get("iframe")
-    .should("be.visible")
-    .its("0.contentDocument")
-    .should("exist")
-    .its("body")
-    .should("not.be.empty")
-    .find("[data-testid='embed-frame']")
-    .should("be.visible");
-}
-
-function getIframeTestPageHtml(options: SdkIframeEmbedTestPageOptions): string {
+function getSdkIframeTestPageHtml(
+  options: SdkIframeEmbedTestPageOptions,
+): string {
   const resourceIdProp =
     options.resourceType === "dashboard" ? "dashboardId" : "questionId";
 
@@ -133,42 +112,13 @@ function getIframeTestPageHtml(options: SdkIframeEmbedTestPageOptions): string {
       `
     : "";
 
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Metabase Embed Test</title>
-    </head>
-    <body>
-      <script src="/app/embed.v1.js"></script>
-
-      <div id="metabase-embed-container"></div>
-
-      ${themeSwitch}
-
-      <style>
-        body {
-          margin: 0;
-        }
-
-        #metabase-embed-container {
-          height: 100vh;
-        }
-      </style>
-
-      <script>
-        const { MetabaseEmbed } = window["metabase.embed"];
-
-        const embed = new MetabaseEmbed({
-          target: "#metabase-embed-container",
-          url: "http://localhost:4000",
-          ${resourceIdProp}: ${options.resourceId},
-          apiKey: "${options.apiKey}",
-          theme: ${JSON.stringify(options.theme)},
-          ${options.additionalConfig ? `...${JSON.stringify(options.additionalConfig)},` : ""}
-        });
-      </script>
-    </body>
-    </html>
-  `;
+  return getBaseIframeHtml(
+    options,
+    {
+      [resourceIdProp]: options.resourceId,
+      theme: options.theme,
+    },
+    "",
+    themeSwitch,
+  );
 }
