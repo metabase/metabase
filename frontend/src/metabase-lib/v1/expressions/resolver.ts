@@ -52,14 +52,14 @@ export function resolver(options: Options): Resolver {
     }
 
     if (type === "boolean") {
-      // Return segments and boolean fields
+      // Return segments and boolean columns
       const dimension = findByName([
         ...segments(),
         ...columns().filter(Lib.isBoolean),
       ]);
       if (!dimension) {
         throw new CompileError(
-          t`Unknown Segment or boolean Field: ${name}`,
+          t`Unknown Segment or boolean column: ${name}`,
           node,
         );
       }
@@ -73,9 +73,9 @@ export function resolver(options: Options): Resolver {
     ]);
     if (!dimension) {
       if (expressionMode === "aggregation") {
-        throw new CompileError(t`Unknown Field or Metric: ${name}`, node);
+        throw new CompileError(t`Unknown column or Metric: ${name}`, node);
       }
-      throw new CompileError(t`Unknown Field: ${name}`, node);
+      throw new CompileError(t`Unknown column: ${name}`, node);
     }
     return dimension;
   };
