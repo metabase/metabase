@@ -17,7 +17,7 @@ import { Icon, Text, Tooltip } from "metabase/ui";
 import type { ApiKey, Group, User as IUser, Member } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import AddMemberRow from "../AddMemberRow";
+import { AddMemberRow } from "../AddMemberRow";
 
 const canEditMembership = (group: Group) =>
   !isDefaultGroup(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell;
