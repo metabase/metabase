@@ -23,18 +23,20 @@ export function FilterSubmitButton({
     );
   }
 
+  const addButtonLabel = t`Add another filter`;
   return (
     <Button.Group>
       <Button type="submit" variant="filled" disabled={isDisabled}>
         {t`Apply filter`}
       </Button>
       <Divider orientation="vertical" />
-      <Tooltip label={t`Add another filter`}>
+      <Tooltip label={addButtonLabel}>
         <Button
           type="button"
           variant="filled"
           disabled={isDisabled}
           leftSection={<Icon name="add" />}
+          aria-label={addButtonLabel}
           onClick={onAddButtonClick}
         />
       </Tooltip>
