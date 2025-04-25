@@ -1,36 +1,18 @@
-import { Box, Title } from "metabase/ui";
-import type {
-  DatabaseId,
-  FieldId,
-  SchemaId,
-  TableId,
-} from "metabase-types/api";
+import { useGetTableQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { Box } from "metabase/ui";
+import type { TableId } from "metabase-types/api";
 
 interface Props {
-  databaseId?: DatabaseId;
-  fieldId?: FieldId;
-  schemaId?: SchemaId;
-  tableId?: TableId;
+  tableId: TableId;
 }
 
-export const TableSection = ({
-  databaseId,
-  fieldId,
-  schemaId,
-  tableId,
-}: Props) => {
-  return (
-    <Box>
-      <Title mb="md" order={2}>
-        Data model
-      </Title>
+export const TableSection = ({ tableId }: Props) => {
+  const { data: table, error, isLoading } = useGetTableQuery({ id: tableId });
 
-      <Box>
-        <Box>Database: {databaseId ?? "undefined"}</Box>
-        <Box>Schema: {schemaId ?? "undefined"}</Box>
-        <Box>Table: {tableId ?? "undefined"}</Box>
-        <Box>Field: {fieldId ?? "undefined"}</Box>
-      </Box>
-    </Box>
-  );
+  if (error || isLoading || !table) {
+    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  }
+
+  return <Box>{table.name}</Box>;
 };

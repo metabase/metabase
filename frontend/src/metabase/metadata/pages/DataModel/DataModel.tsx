@@ -3,7 +3,7 @@ import { t } from "ttag";
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import EmptyState from "metabase/components/EmptyState";
 import * as Urls from "metabase/lib/urls";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, Title } from "metabase/ui";
 
 import S from "./DataModel.module.css";
 import { FieldSection, PreviewSection, TableSection } from "./components";
@@ -35,12 +35,18 @@ export const DataModel = ({ params }: Props) => {
   return (
     <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`}>
       <Box className={S.tableSectionContainer} flex="0 0 400px" px="xl" py="lg">
-        <TableSection
-          databaseId={databaseId}
-          fieldId={fieldId}
-          schemaId={schemaId}
-          tableId={tableId}
-        />
+        <Title mb="md" order={2}>
+          Data model
+        </Title>
+
+        <Box bg="gray" mb="md">
+          <Box>Database: {databaseId ?? "undefined"}</Box>
+          <Box>Schema: {schemaId ?? "undefined"}</Box>
+          <Box>Table: {tableId ?? "undefined"}</Box>
+          <Box>Field: {fieldId ?? "undefined"}</Box>
+        </Box>
+
+        {tableId && <TableSection tableId={tableId} />}
       </Box>
 
       {isEmptyStateShown && (
