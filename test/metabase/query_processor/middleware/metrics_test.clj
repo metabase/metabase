@@ -978,11 +978,11 @@
                metric-card
                {:type :metric
                 :dataset_query (lib.convert/->legacy-MBQL metric-query)}]
-              (let [query @(def qq (-> base-query
-                                       aggregate))
+              (let [query (-> base-query
+                              aggregate)
                     result (qp/process-query query)
-                    metric-query @(def mq (-> base-query
-                                              (lib/aggregate (lib.metadata/metric mp (:id metric-card)))))
+                    metric-query (-> base-query
+                                     (lib/aggregate (lib.metadata/metric mp (:id metric-card))))
                     metric-result (qp/process-query metric-query)
                     breakout-val->ag-val (into {} (mt/rows metric-result))
                     results-combined (mapv (fn [[breakout-val _ag-val :as row]]
