@@ -380,7 +380,8 @@
    :replacement-snippet     content})
 
 (defmulti time-grouping->replacement-snippet-info
-  {:arglists '([driver column temporal-unit])}
+  {:arglists '([driver column temporal-unit])
+   :added "0.55.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
