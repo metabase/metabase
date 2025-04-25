@@ -1,3 +1,13 @@
+## [0.53.15](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.14...embedding-sdk-0.53.15) (2025-04-25)
+
+
+### Bug Fixes
+
+* **sdk:** clicking on "and X more" in chart legend throws error ([#57175](https://github.com/metabase/metabase/issues/57175)) ([#57252](https://github.com/metabase/metabase/issues/57252)) ([ffcad91](https://github.com/metabase/metabase/commit/ffcad911c2fe50d9d2ad12ecc953b7d2f5f53f49))
+* **sdk:** use background color in sankey chart text outline ([#57135](https://github.com/metabase/metabase/issues/57135)) ([#57169](https://github.com/metabase/metabase/issues/57169)) ([4b5c7a9](https://github.com/metabase/metabase/commit/4b5c7a9cad7fb81f035b3deefde5d595398d3137))
+
+
+
 ## [0.53.14](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.13...embedding-sdk-0.53.14) (2025-04-24)
 
 
