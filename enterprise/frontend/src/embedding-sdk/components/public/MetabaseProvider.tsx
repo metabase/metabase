@@ -12,19 +12,18 @@ import {
   setMetabaseClientUrl,
   setPlugins,
 } from "embedding-sdk/store/reducer";
-import type {
-  SdkErrorComponent,
-  SdkStoreState,
-} from "embedding-sdk/store/types";
-import type { MetabaseAuthConfig } from "embedding-sdk/types";
+import type { SdkStoreState } from "embedding-sdk/store/types";
+import type { MetabaseAuthConfig } from "embedding-sdk/types/auth-config";
 import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
+import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
+import type { SdkErrorComponent } from "embedding-sdk/types/ui";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
-import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
+import { getSetting } from "metabase/selectors/settings";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { Box } from "metabase/ui";
 
@@ -41,6 +40,7 @@ import "metabase/css/index.module.css";
 import "metabase/css/vendor.css";
 
 /**
+ * @expand
  * @category MetabaseProvider
  */
 export interface MetabaseProviderProps
@@ -72,7 +72,7 @@ export interface MetabaseProviderProps
 
   /**
    * Defines the display language. Accepts an ISO language code such as `en` or `de`.
-   * Defaults to `en`. Does not support country code suffixes (i.e. `en-US`)
+   * Defaults to the instance locale.
    **/
   locale?: string;
 
@@ -104,7 +104,7 @@ export const MetabaseProviderInternal = ({
   theme,
   store,
   className,
-  locale = "en",
+  locale,
   errorComponent,
   loaderComponent,
   allowConsoleLog,
@@ -138,6 +138,8 @@ export const MetabaseProviderInternal = ({
     store.dispatch(setMetabaseClientUrl(authConfig.metabaseInstanceUrl));
   }, [store, authConfig.metabaseInstanceUrl]);
 
+  const instanceLocale = getSetting(store.getState(), "site-locale");
+
   return (
     <SdkContextProvider>
       <EmotionCacheProvider>
@@ -145,7 +147,9 @@ export const MetabaseProviderInternal = ({
         <SdkThemeProvider theme={theme}>
           <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
           <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
-            <LocaleProvider locale={locale}>{children}</LocaleProvider>
+            <LocaleProvider locale={locale || instanceLocale}>
+              {children}
+            </LocaleProvider>
             <SdkUsageProblemDisplay
               authConfig={authConfig}
               allowConsoleLog={allowConsoleLog}
@@ -162,6 +166,7 @@ export const MetabaseProviderInternal = ({
 /**
  * A component that provides the Metabase SDK context and theme.
  *
+ * @function
  * @category MetabaseProvider
  */
 export const MetabaseProvider = memo(function MetabaseProvider(

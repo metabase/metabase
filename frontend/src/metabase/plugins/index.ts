@@ -56,6 +56,7 @@ import type {
   Dashboard,
   Database as DatabaseType,
   Dataset,
+  FieldId,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -289,7 +290,9 @@ export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
 
 const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
   type: null,
-  name: t`Regular`,
+  get name() {
+    return t`Regular`;
+  },
   icon: "folder",
 };
 
@@ -625,4 +628,12 @@ export const PLUGIN_DB_ROUTING = {
   getPrimaryDBEngineFieldState: (
     _database: Pick<Database, "router_user_attribute">,
   ): "default" | "hidden" | "disabled" => "default",
+};
+
+export const PLUGIN_API = {
+  getFieldValuesUrl: (fieldId: FieldId) => `/api/field/${fieldId}/values`,
+  getRemappedFieldValueUrl: (fieldId: FieldId, remappedFieldId: FieldId) =>
+    `/api/field/${fieldId}/remapping/${remappedFieldId}`,
+  getSearchFieldValuesUrl: (fieldId: FieldId, searchFieldId: FieldId) =>
+    `/api/field/${fieldId}/search/${searchFieldId}`,
 };

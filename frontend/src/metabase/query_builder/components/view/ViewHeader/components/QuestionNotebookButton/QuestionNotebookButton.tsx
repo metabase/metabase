@@ -24,7 +24,7 @@ export function QuestionNotebookButton({
   useRegisterShortcut(
     [
       {
-        id: "toggle-notebook-editor",
+        id: "query-builder-toggle-notebook-editor",
         perform: () =>
           setQueryBuilderMode(isShowingNotebook ? "view" : "notebook"),
       },

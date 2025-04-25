@@ -1,14 +1,16 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
+import { fieldApi } from "metabase/api";
 import Databases from "metabase/entities/databases";
 import Fields from "metabase/entities/fields";
 import Segments from "metabase/entities/segments";
 import Tables from "metabase/entities/tables";
 import { isProduction } from "metabase/env";
+import { entityCompatibleQuery } from "metabase/lib/entities";
 import { createThunkAction, fetchData } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { MetabaseApi, RevisionsApi } from "metabase/services";
+import { RevisionsApi } from "metabase/services";
 
 // NOTE: All of these actions are deprecated. Use metadata entities directly.
 
@@ -222,11 +224,15 @@ export const fetchRemapping = createThunkAction(
           JSON.stringify(value),
         ],
         getData: async () => {
-          const remapping = await MetabaseApi.field_remapping({
-            value,
-            fieldId,
-            remappedFieldId,
-          });
+          const remapping = await entityCompatibleQuery(
+            {
+              value,
+              fieldId,
+              remappedFieldId,
+            },
+            dispatch,
+            fieldApi.endpoints.getRemappedFieldValue,
+          );
           if (remapping) {
             // FIXME: should this be field.id (potentially the FK) or fieldId (always the PK)?
             dispatch(addRemappings(field.id, [remapping]));

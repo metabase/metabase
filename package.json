@@ -138,7 +138,6 @@
     "ttag": "1.7.21",
     "typescript": "^5.4.5",
     "underscore": "~1.13.3",
-    "use-debounce": "^10.0.0",
     "yup": "^0.32.11"
   },
   "devDependencies": {
@@ -268,6 +267,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-storybook": "^0.9.0",
     "eslint-plugin-testing-library": "^5.11.1",
+    "eslint-plugin-ttag": "^1.1.0",
     "fetch-mock": "^9.11.0",
     "fork-ts-checker-webpack-plugin": "^9.0.2",
     "get-nonce": "^1.0.1",
@@ -334,9 +334,11 @@
     "ts-morph": "^25.0.0",
     "tsx": "^4.19.3",
     "typedoc": "0.28.2",
+    "typedoc-plugin-dt-links": "^2.0.0",
+    "typedoc-plugin-markdown": "^4.6.2",
     "typedoc-plugin-mdn-links": "^5.0.1",
     "typedoc-plugin-merge-modules": "^7.0.0",
-    "typedoc-plugin-missing-exports": "^4.0.0",
+    "typedoc-plugin-redirect": "^1.2.0",
     "typescript-plugin-css-modules": "^5.1.0",
     "webpack": "5.94.0",
     "webpack-bundle-analyzer": "^4.10.1",
@@ -423,7 +425,7 @@
     "embedding-sdk:generate-nextjs-compat": "tsx enterprise/frontend/src/embedding-sdk/bin/generate-nextjs-compat.ts",
     "embedding-sdk:test-unit": "yarn test-unit enterprise/frontend/src/embedding-sdk/",
     "embedding-sdk:tsc": "tsc --project tsconfig.sdk.json",
-    "embedding-sdk:docs:generate:pure": "typedoc --options ./.typedoc/typedoc.config.mjs",
+    "embedding-sdk:docs:generate:pure": "typedoc --options ./.typedoc/typedoc.html.config.js && typedoc --options ./.typedoc/typedoc.markdown.config.js",
     "embedding-sdk:docs:generate": "yarn run build-embedding-sdk && yarn run embedding-sdk:docs:generate:pure",
     "embedding-sdk:cli-snippets:type-check": "./bin/embedding-sdk/type-check-embedding-sdk-cli-snippets.sh",
     "embedding-sdk:docs-snippets:type-check": "./bin/embedding-sdk/type-check-embedding-sdk-docs-snippets.sh",
@@ -490,7 +492,7 @@
       "prettier --write"
     ],
     "**/*.{clj,cljc,cljs,bb}": [
-      "./bin/cljfmt_staged.sh"
+      "./bin/mage cljfmt-files"
     ],
     "e2e/test/scenarios/*/{*.(js|ts),!(helpers|shared)/*.(js|ts)}": [
       "node e2e/validate-e2e-test-files.js"

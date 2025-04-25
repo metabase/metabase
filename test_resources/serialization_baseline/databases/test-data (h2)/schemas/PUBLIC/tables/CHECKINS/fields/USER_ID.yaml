@@ -1,6 +1,7 @@
 name: USER_ID
 display_name: User ID
 description: null
+entity_id: aPH5xec5UYszHtsFWpmel
 created_at: '2024-08-28T14:38:42.774331Z'
 active: true
 visibility_type: normal
@@ -43,4 +44,3 @@ serdes/meta:
   model: Field
 database_indexed: true
 database_partitioned: null
-entity_id: aPH5xec5UYszHtsFWpmel
