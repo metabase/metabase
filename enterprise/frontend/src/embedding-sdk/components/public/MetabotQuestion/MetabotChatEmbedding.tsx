@@ -22,12 +22,14 @@ const MIN_INPUT_HEIGHT = 42;
 
 interface MetabotChatEmbeddingProps {
   onRedirectUrl: (result: string) => void;
+  onMessages: (messages: string[]) => void;
 }
 
 const EMBEDDING_METABOT_ID = "c61bf5f5-1025-47b6-9298-bf1827105bb6";
 
 export const MetabotChatEmbedding = ({
   onRedirectUrl,
+  onMessages,
 }: MetabotChatEmbeddingProps) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -102,27 +104,16 @@ export const MetabotChatEmbedding = ({
     dispatch(resetConversationId());
   }, [dispatch]);
 
+  useEffect(() => {
+    const RESULT_MESSAGE = "Here are the results";
+    const normalizedMessages = metabot.userMessages.filter(
+      (message) => message !== RESULT_MESSAGE,
+    );
+    onMessages(normalizedMessages);
+  }, [metabot.userMessages, onMessages]);
+
   return (
     <Box className={Styles.container} data-testid="metabot-chat">
-      {metabot.userMessages.length > 0 && (
-        <Box className={Styles.responses} data-testid="metabot-chat-messages">
-          {metabot.userMessages.map((msg, index) => (
-            <Box
-              className={Styles.response}
-              key={msg}
-              data-testid="metabot-chat-message"
-            >
-              <Box>{msg}</Box>
-              <UnstyledButton
-                className={Styles.responseDismissBtn}
-                onClick={() => metabot.dismissUserMessage(index)}
-              >
-                <Icon name="close" size="1rem" />
-              </UnstyledButton>
-            </Box>
-          ))}
-        </Box>
-      )}
       <Flex
         className={cx(
           Styles.innerContainer,

@@ -213,7 +213,91 @@ export const MessageReaction = {
               },
               {
                 content:
-                  "Sorry, I didn't understand that. Could you try again, please?",
+                  "Do you want to see the products earning the most money or the ones selling most units?",
+                role: "assistant",
+              },
+            ],
+            state: {
+              queries: {},
+            },
+            conversation_id: "c7635bd0-84f3-f06d-1db8-571db7ff0cf6",
+          });
+        }),
+      ],
+    },
+  },
+};
+
+export const LongMessageReaction = {
+  render: Template,
+  parameters: {
+    msw: {
+      handlers: [
+        http.post("*/api/ee/metabot-v3/v2/agent", () => {
+          return HttpResponse.json({
+            reactions: [
+              {
+                type: "metabot.reaction/message",
+                "repl/message_color": "green",
+                "repl/message_emoji": "🤖",
+                message:
+                  "lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum",
+              },
+            ],
+            history: [
+              {
+                role: "user",
+                content: "This is what user has typed",
+              },
+              {
+                content:
+                  "lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum",
+                role: "assistant",
+              },
+            ],
+            state: {
+              queries: {},
+            },
+            conversation_id: "c7635bd0-84f3-f06d-1db8-571db7ff0cf6",
+          });
+        }),
+      ],
+    },
+  },
+};
+
+export const MultipleMessagesReaction = {
+  render: Template,
+  parameters: {
+    msw: {
+      handlers: [
+        http.post("*/api/ee/metabot-v3/v2/agent", () => {
+          return HttpResponse.json({
+            reactions: [
+              {
+                type: "metabot.reaction/message",
+                "repl/message_color": "green",
+                "repl/message_emoji": "🤖",
+                message: "This is the first message",
+              },
+              {
+                type: "metabot.reaction/message",
+                "repl/message_color": "green",
+                "repl/message_emoji": "🤖",
+                message: "This is the second message",
+              },
+            ],
+            history: [
+              {
+                role: "user",
+                content: "This is what user has typed",
+              },
+              {
+                content: "This is the first message",
+                role: "assistant",
+              },
+              {
+                content: "This is the second message",
                 role: "assistant",
               },
             ],
