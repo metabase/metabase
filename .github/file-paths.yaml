@@ -122,9 +122,7 @@ e2e_without_specs: &e2e_without_specs
   - "e2e/runner/**"
   - "e2e/support/**"
   - "e2e/snapshot*/**"
-  - "e2e/test/scenarios/**
-  - "!**/*.cy.*.js"
-  - "!**/*.cy.*.ts"
+  - "e2e/test/scenarios/**/!(*.cy.*)"
 
 e2e_all:
   - *e2e_without_specs
