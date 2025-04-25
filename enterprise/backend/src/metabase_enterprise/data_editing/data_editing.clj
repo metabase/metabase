@@ -23,7 +23,10 @@
   "Given a row, strip it down to just its primary keys."
   [pk-fields row]
   (->> (map (comp keyword :name) pk-fields)
-       (select-keys row)
+       ;; Hideous workaround for QP and direct JDBC disagreeing on case
+       (select-keys (merge (update-keys row (comp keyword u/upper-case-en name))
+                           (u/lower-case-map-keys row)
+                           row))
        ;; Hack for now, pending discussion of the ideal fix
        ;; https://linear.app/metabase/issue/WRK-281/undo-deletes-a-record-instead-of-reverting-the-edits
        ;; See https://metaboat.slack.com/archives/C0641E4PB9B/p1744978660610899
