@@ -3,7 +3,8 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import * as H from "e2e/support/helpers";
+
+const { H } = cy;
 
 describe("scenarios > embedding > sdk iframe embedding > entity id", () => {
   beforeEach(() => {

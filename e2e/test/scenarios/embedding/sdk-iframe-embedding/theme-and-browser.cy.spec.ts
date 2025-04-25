@@ -1,6 +1,8 @@
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
+const { H } = cy;
+
 const LIGHT_THEME: MetabaseTheme = {
   colors: {
     brand: "#9C27B0",
