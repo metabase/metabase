@@ -35,14 +35,26 @@ const FIELD_PUNCTUATORS = new Set([
  * Reference (or bracket idenfiers) like `[User Id]` are parsed differently
  * based on whether they are well-formed or not.
  *
+ * We allow malformed field tokens (ie. tokens without proper quoting) to be parsed as well.
+ * For example, the following will all be parsed as a field token:
+ *
+ * [Foo
+ * Foo]
+ * [Foo]
+ *
  * This is hard to express in the grammar, so we use this tokenizer to match them.
  */
 export const field = new ExternalTokenizer((input) => {
   const current = input.next;
 
-  if (current !== OPEN_BRACKET) {
+  // We allow any character to potentially start a Field token, except field-delimiting
+  // punctuators.
+  if (FIELD_PUNCTUATORS.has(current) && current !== OPEN_BRACKET) {
     return;
   }
+
+  // We keep track of whether the token we are looking at was opened by a bracket.
+  const wasOpenedByBracket = current === OPEN_BRACKET;
 
   // The first operator we encountered after `[`
   let firstOperator = -1;
@@ -58,7 +70,7 @@ export const field = new ExternalTokenizer((input) => {
       }
       // this is another opening bracket that will start a new token,
       // return the current one
-      if (prev) {
+      if (prev && wasOpenedByBracket) {
         input.acceptToken(Field);
       }
       return;
@@ -76,6 +88,13 @@ export const field = new ExternalTokenizer((input) => {
     }
 
     if (current === NEW_LINE || current === EOF) {
+      if (!wasOpenedByBracket) {
+        // The token we are looking at was not opened by a bracket
+        // and we did not encounter a closing bracket before hitting a new line or EOF.
+        // It is not a Field token.
+        return;
+      }
+
       // We did not encounter a closing bracket, so
       // find the first operator that was encountered and end the
       // token there.
@@ -91,6 +110,13 @@ export const field = new ExternalTokenizer((input) => {
     }
 
     if (FIELD_PUNCTUATORS.has(current) && firstOperator === -1) {
+      if (!wasOpenedByBracket) {
+        // The token we are looking at was not opened by a bracket
+        // and we did not encounter a closing bracket before hitting a punctuator.
+        // It is not a Field token.
+        return;
+      }
+
       firstOperator = idx;
     }
   }
