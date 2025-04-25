@@ -123,7 +123,7 @@
       (is (= 3.14 (fetch-setting :test-api-setting-double 200)))
 
       (test-api-setting-boolean! true)
-      (is (= true (fetch-setting :test-api-setting-boolean 200)))
+      (is (true? (fetch-setting :test-api-setting-boolean 200)))
 
       (test-api-setting-integer! 42)
       (is (= 42 (fetch-setting :test-api-setting-integer 200))))))

@@ -10,6 +10,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.embed.common :as api.embed.common]
    [metabase.api.macros :as api.macros]
+   [metabase.api.open-api :as open-api]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
@@ -133,3 +134,12 @@
    {:keys [entity_ids]} :- [:map
                             [:entity_ids :map]]]
   {:entity_ids (api.embed.common/model->entity-ids->ids entity_ids)})
+
+(api.macros/defendpoint :get "/openapi"
+  "Return the OpenAPI specification for the Metabase API."
+  []
+  (api/check-superuser)
+  {:status 200
+   :body (merge
+          (open-api/root-open-api-object @(requiring-resolve 'metabase.api.routes/routes))
+          {:servers [{:url "" :description "Metabase API"}]})})

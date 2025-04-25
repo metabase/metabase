@@ -201,8 +201,8 @@
     (testing (str "Check that if a Dashboard is in a Collection, someone who would not be able to see it under the old "
                   "artifact-permissions regime will be able to see it if they have permissions for that Collection")
       (binding [api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})]
-        (is (= true
-               (mi/can-read? dash)))))
+        (is (true?
+             (mi/can-read? dash)))))
 
     (testing (str "Check that if a Dashboard is in a Collection, someone who would otherwise be able to see it under "
                   "the old artifact-permissions regime will *NOT* be able to see it if they don't have permissions for "

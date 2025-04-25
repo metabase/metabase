@@ -134,8 +134,8 @@
                                                               (is (= "Bearer\nabc"
                                                                      (get headers "Authorization")))
                                                               (mock-200-response (mock-conversations-response-body request)))}
-          (is (= true
-                 (slack/valid-token? "abc"))))
+          (is (true?
+               (slack/valid-token? "abc"))))
         (testing "invalid token should return false"
           (http-fake/with-fake-routes {conversations-endpoint (constantly
                                                                (mock-200-response {:ok    false

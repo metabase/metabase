@@ -1097,8 +1097,8 @@
                                                                    {:namespace "snippets"})]
         (mt/with-temp [model object {:collection_id (u/the-id e)}]
           (archive-collection! e)
-          (is (= true
-                 (t2/select-one-fn :archived model :id (u/the-id object)))))))
+          (is (true?
+               (t2/select-one-fn :archived model :id (u/the-id object)))))))
 
     (testing (format "Test that archiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; archiving C should cause object to be archived
@@ -1106,8 +1106,8 @@
                                                                      {:namespace "snippets"})]
         (mt/with-temp [model object {:collection_id (u/the-id e)}]
           (archive-collection! c)
-          (is (= true
-                 (t2/select-one-fn :archived model :id (u/the-id object)))))))))
+          (is (true?
+               (t2/select-one-fn :archived model :id (u/the-id object)))))))))
 
 (deftest nested-collection-unarchiving-objects-test
   (doseq [model [:model/Card :model/Dashboard :model/NativeQuerySnippet :model/Pulse]]
@@ -1456,6 +1456,7 @@
              (group->perms [a b c] group))))))
 
 (deftest ^:parallel valid-location-path?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [path expected] (= expected
                           (#'collection/valid-location-path? path))
     nil       false

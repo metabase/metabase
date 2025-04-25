@@ -248,12 +248,12 @@
                  :model/Card     card-1 {:database_id (mt/id)}
                  :model/Card     card-2 {:database_id (u/the-id db)}]
     (with-cards-in-readable-collection! [card-1 card-2]
-      (is (= true
-             (card-returned? :database (mt/id) card-1)))
+      (is (true?
+           (card-returned? :database (mt/id) card-1)))
       (is (= false
              (card-returned? :database db      card-1)))
-      (is (= true
-             (card-returned? :database db      card-2))))))
+      (is (true?
+           (card-returned? :database db      card-2))))))
 
 (deftest ^:parallel authentication-test
   (is (= (get request/response-unauthentic :body) (client/client :get 401 "card")))
@@ -271,12 +271,12 @@
                    :model/Card     card-1   {:table_id (u/the-id table-1)}
                    :model/Card     card-2   {:table_id (u/the-id table-2)}]
       (with-cards-in-readable-collection! [card-1 card-2]
-        (is (= true
-               (card-returned? :table (u/the-id table-1) (u/the-id card-1))))
+        (is (true?
+             (card-returned? :table (u/the-id table-1) (u/the-id card-1))))
         (is (= false
                (card-returned? :table (u/the-id table-2) (u/the-id card-1))))
-        (is (= true
-               (card-returned? :table (u/the-id table-2) (u/the-id card-2))))))))
+        (is (true?
+             (card-returned? :table (u/the-id table-2) (u/the-id card-2))))))))
 
 ;; Make sure `model_id` is required when `f` is :table
 (deftest ^:parallel model_id-requied-when-f-is-table
@@ -1419,8 +1419,8 @@
                             (archived?))]
         (is (= false
                (archived?)))
-        (is (= true
-               (set-archived! true)))
+        (is (true?
+             (set-archived! true)))
         (is (= false
                (set-archived! false)))))))
 
@@ -2733,8 +2733,8 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Card card]
         (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (u/the-id card)))]
-          (is (= true
-                 (boolean (t2/exists? :model/Card :id (u/the-id card), :public_uuid uuid)))))))))
+          (is (true?
+               (boolean (t2/exists? :model/Card :id (u/the-id card), :public_uuid uuid)))))))))
 
 (deftest share-card-preconditions-test
   (testing "POST /api/card/:id/public_link"

@@ -13,8 +13,8 @@
   (testing "when you create a PermissionsGroupMembership for a User in the admin group, it should set their `is_superuser` flag"
     (mt/with-temp [:model/User user]
       (t2/insert! :model/PermissionsGroupMembership {:user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))})
-      (is (= true
-             (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
+      (is (true?
+           (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
 
 (deftest remove-is-superuser-test
   (testing "when you delete a PermissionsGroupMembership for a User in the admin group, it should set their `is_superuser` flag"

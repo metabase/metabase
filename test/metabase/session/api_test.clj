@@ -241,8 +241,8 @@
                    (mt/user-http-request :rasta :post 204 "session/forgot_password"
                                          {:email (:username (mt/user->credentials :rasta))}))
                 "Request should return no content")
-            (is (= true
-                   (reset-fields-set?))
+            (is (true?
+                 (reset-fields-set?))
                 "User `:reset_token` and `:reset_triggered` should be updated")
             (is (mt/received-email-subject? :rasta #"Password Reset")))))
       (testing "We use `site-url` in the email"

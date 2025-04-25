@@ -1386,11 +1386,11 @@
             ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
             ;; however if something went wrong, don't hang forever, eventually timeout and fail
             (testing "sync called?"
-              (is (= true
-                     (deref sync-called? long-timeout :sync-never-called))))
+              (is (true?
+                   (deref sync-called? long-timeout :sync-never-called))))
             (testing "analyze called?"
-              (is (= true
-                     (deref analyze-called? long-timeout :analyze-never-called))))
+              (is (true?
+                   (deref analyze-called? long-timeout :analyze-never-called))))
             (testing "audit log entry generated"
               (is (= db-id
                      (:model_id (mt/latest-audit-log-entry "database-manual-sync")))))))))))

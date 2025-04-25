@@ -564,8 +564,8 @@
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
       (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                             {:archived true})
-      (is (= true
-             (t2/select-one-fn :archived :model/Pulse :id (u/the-id pulse)))))))
+      (is (true?
+           (t2/select-one-fn :archived :model/Pulse :id (u/the-id pulse)))))))
 
 (deftest unarchive-test
   (testing "Can we unarchive a Pulse?"

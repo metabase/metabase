@@ -164,8 +164,8 @@
       (mt/with-temp [:model/Segment {:keys [id]}]
         (is (map? (mt/user-http-request :crowberto :put 200 (str "segment/" id)
                                         {:archived true, :revision_message "Archive the Segment"})))
-        (is (= true
-               (t2/select-one-fn :archived :model/Segment :id id)))))))
+        (is (true?
+             (t2/select-one-fn :archived :model/Segment :id id)))))))
 
 (deftest unarchive-test
   (testing "PUT /api/segment/:id"
