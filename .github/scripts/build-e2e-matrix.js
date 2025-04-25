@@ -1,4 +1,6 @@
-const glob = require("glob");
+// This script is used in .github/workflows/e2e-matrix-builder.yml
+// its aim is to split the e2e test matrix into multiple jobs
+// grouping some specific tests together, other tests are split into chunks
 
 const DEFAULT_SPEC_PATTERN = "./e2e/test/scenarios/**/*.cy.spec.*";
 const EMBEDDING_SDK_SPEC_PATTERN =
@@ -24,9 +26,9 @@ const specialTestConfigs = [
  * .e.g e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
  * or a pattern like DEFAULT_SPEC_PATTERN
  */
-function buildMatrix(inputSpecs, inputChunks) {
-  const java = 21;
-  const defaultRunner = "ubuntu-22.04";
+function buildMatrix(options, inputSpecs, inputChunks) {
+  const { java, defaultRunner } = options;
+
   // number of specs per chunk when running specific specs
   const SPECS_PER_CHUNK = 5;
 
@@ -42,20 +44,13 @@ function buildMatrix(inputSpecs, inputChunks) {
   console.log("Processed specs value:", inputSpecs);
   console.log("Is default pattern:", isDefaultSpecPattern);
 
-  const getMatchingSpecsCount = (pattern) => {
-    console.log("Checking specs for pattern:", pattern);
-    console.log("Matching specs:", glob.sync(pattern));
-
-    return glob.sync(pattern).length;
-  };
-
   let regularChunks;
   if (isDefaultSpecPattern) {
     regularChunks = inputChunks - specialTestConfigs.length;
   } else {
     // when pattern is not default, it means we passed some custom list of the changed specs
     // so we need to calculate how many chunks we need to run
-    const matchingSpecsCount = getMatchingSpecsCount(`{${inputSpecs}}`);
+    const matchingSpecsCount = inputSpecs.split(",").length;
     regularChunks = Math.max(
       1,
       Math.ceil(matchingSpecsCount / SPECS_PER_CHUNK),
