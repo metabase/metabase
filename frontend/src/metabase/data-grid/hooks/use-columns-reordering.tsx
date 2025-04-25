@@ -16,7 +16,7 @@ import type { Table as ReactTable } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
-import { ROW_ID_COLUMN_ID } from "../constants";
+import { ROW_ACTIONS_COLUMN_ID, ROW_ID_COLUMN_ID } from "../constants";
 
 export type ColumnsReordering = {
   sensors: SensorDescriptor<SensorOptions>[];
@@ -108,7 +108,9 @@ export const useColumnsReordering = <TData,>(
     const newColumnOrder = table.getState().columnOrder;
     if (!_.isEqual(newColumnOrder, prevOrder.current)) {
       const dataColumns = newColumnOrder.filter(
-        (columnName) => columnName !== ROW_ID_COLUMN_ID,
+        (columnName) =>
+          columnName !== ROW_ID_COLUMN_ID &&
+          columnName !== ROW_ACTIONS_COLUMN_ID,
       );
       onColumnReorder?.(dataColumns);
     }

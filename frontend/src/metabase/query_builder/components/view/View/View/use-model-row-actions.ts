@@ -1,6 +1,8 @@
 import { useCallback, useState } from "react";
 
 import { useListActionsQuery } from "metabase/api";
+import { useDispatch } from "metabase/lib/redux";
+import { runQuestionQuery } from "metabase/query_builder/actions";
 import type Question from "metabase-lib/v1/Question";
 import type {
   ActionFormInitialValues,
@@ -17,6 +19,8 @@ export const useModelRowActions = ({
   question: Question;
   datasetData: DatasetData | null | undefined;
 }) => {
+  const dispatch = useDispatch();
+
   const [activeActionState, setActiveActionState] = useState<{
     actionId: WritebackActionId;
     rowData: ActionFormInitialValues;
@@ -27,7 +31,11 @@ export const useModelRowActions = ({
       "model-id": question?.id(),
     },
     {
-      skip: !question || !question.isSaved() || question.type() !== "model",
+      skip:
+        !question ||
+        !question.isSaved() ||
+        question.type() !== "model" ||
+        question.card().display !== "table",
     },
   );
 
@@ -68,10 +76,15 @@ export const useModelRowActions = ({
     setActiveActionState(null);
   }, []);
 
+  const handleActionSuccess = useCallback(() => {
+    dispatch(runQuestionQuery());
+  }, [dispatch]);
+
   return {
     rowActions,
     handleRowActionRun,
     activeActionState,
     handleExecuteModalClose,
+    handleActionSuccess,
   };
 };
