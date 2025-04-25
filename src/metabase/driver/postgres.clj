@@ -159,7 +159,8 @@
     driver.common/cloud-ip-address-info
     {:name "schema-filters"
      :type :schema-filters
-     :display-name "Schemas"}
+     :display-name "Schemas"
+     :visible-if {"destination-database" false}}
     driver.common/default-ssl-details
     {:name         "ssl-mode"
      :display-name (trs "SSL Mode")
