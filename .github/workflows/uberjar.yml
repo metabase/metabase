@@ -32,9 +32,9 @@ jobs:
     timeout-minutes: 5
     name: Get container info
     outputs:
-      editions: ${{ fromJson(steps.info.outputs.result).editions }}
-      ee: ${{ fromJson(steps.info.outputs.result).ee }}
-      oss: ${{ fromJson(steps.info.outputs.result).oss }}
+      editions: ${{ toJson((steps.info.outputs.result).editions) }}
+      ee: ${{ fromJson(steps.info.outputs.result).ee || '' }}
+      oss: ${{ fromJson(steps.info.outputs.result).oss || '' }}
     steps:
       - name: Get docker repo and tag
         id: info
@@ -81,7 +81,7 @@ jobs:
 
       - name: Print output
         run: |
-          echo "editions: ${{ fromJson(steps.info.outputs.result) }}"
+          echo "editions: ${{ steps.info.outputs.result }}"
 
   build:
     needs: get-container-info
@@ -90,7 +90,7 @@ jobs:
     timeout-minutes: 15
     strategy:
       matrix:
-        edition: ${{ needs.get-container-info.outputs.editions }}
+        edition: ${{ fromJson(needs.get-container-info.outputs.editions) }}
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
@@ -120,7 +120,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        edition: ${{ needs.get-container-info.outputs.editions }}
+        edition: ${{ fromJson(needs.get-container-info.outputs.editions) }}
         java-version: [21]
     steps:
       - name: Prepare JRE (Java Run-time Environment)
@@ -144,7 +144,7 @@ jobs:
     needs: [check-jar-health, get-container-info]
     strategy:
       matrix:
-        edition: ${{ needs.get-container-info.outputs.editions }}
+        edition: ${{ fromJson(needs.get-container-info.outputs.editions) }}
     uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:
@@ -157,7 +157,7 @@ jobs:
     needs: [get-container-info, containerize]
     strategy:
       matrix:
-        edition: ${{ needs.get-container-info.outputs.editions }}
+        edition: ${{ fromJson(needs.get-container-info.outputs.editions) }}
     runs-on: ubuntu-22.04
     name: Run Trivy vulnerability scanner
     steps:
