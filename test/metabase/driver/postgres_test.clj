@@ -1716,7 +1716,6 @@
                           (lib/limit 1))]
             (is (->> query qp/process-query mt/rows))))))))
 
-<<<<<<< HEAD
 (deftest ^:parallel split-part-test
   (mt/test-driver :postgres
     (let [mp (mt/metadata-provider)
