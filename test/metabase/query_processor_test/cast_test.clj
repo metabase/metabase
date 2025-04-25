@@ -242,7 +242,6 @@
                       {:original (pr-str Integer/MIN_VALUE) :value Integer/MIN_VALUE :msg "Small number."}
                       {:original 123.3 :value 123 :msg "Easy case."}
                       {:original -123.4 :value -123 :msg "Easy negative case."}
-
                       {:original 123.9 :value 124 :msg "Check for correct rounding."}]]
         (doseq [{:keys [original value msg]} examples]
           (testing (str "integer cast: " msg)
