@@ -10,7 +10,6 @@
    [metabase.search.appdb.scoring :as search.scoring]
    [metabase.search.appdb.specialization.postgres :as specialization.postgres]
    [metabase.search.config :as search.config]
-   [metabase.search.engine :as engine]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
    [metabase.search.ingestion :as search.ingestion]
@@ -18,7 +17,6 @@
    [metabase.search.settings :as search.settings]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
-   [metabase.util.cluster-lock :as cluster-lock]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
