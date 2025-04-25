@@ -335,16 +335,16 @@
             ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
             rows-updated (with-auto-parse-sql-exception driver database action
                            (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))
+            _            (when-not (= rows-updated 1)
+                           (throw (ex-info (if (zero? rows-updated)
+                                             (tru "Sorry, the row you''re trying to update doesn''t exist")
+                                             (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
+                                           {:status-code 400})))
             row-after    (as-> {:select [:*] :from from :where where} %
                            (prepare-query % driver action)
                            (sql.qp/format-honeysql driver %)
                            (jdbc/query {:connection conn} % {:transaction? false})
                            (first %))]
-        (when-not (= rows-updated 1)
-          (throw (ex-info (if (zero? rows-updated)
-                            (tru "Sorry, the row you''re trying to update doesn''t exist")
-                            (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
-                          {:status-code 400})))
         {:table-id (-> query :query :source-table)
          :before row-before
          :after  row-after}))))
