@@ -242,6 +242,7 @@ export const saveDashboardPdf = async (
   let prevBreak = 0;
 
   pageEnds.forEach((pageBreak, index) => {
+    const isFirstPage = index === 0;
     const isLastPage = index === pageEnds.length - 1;
     const pageBreaksDiff = pageBreak - prevBreak;
 
@@ -289,6 +290,15 @@ export const saveDashboardPdf = async (
         contentWidth,
         sourceHeight,
       );
+
+      if (isFirstPage) {
+        const url =
+          "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=pdf_export";
+
+        pdf.link(PAGE_PADDING, PAGE_PADDING, contentWidth, brandingHeight, {
+          url,
+        });
+      }
     }
 
     prevBreak = pageBreak;
