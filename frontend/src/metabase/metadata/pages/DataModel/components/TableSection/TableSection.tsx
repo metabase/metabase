@@ -3,6 +3,8 @@ import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapp
 import { Box } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
+import { NameDescriptionInput } from "../NameDescriptionInput";
+
 interface Props {
   tableId: TableId;
 }
@@ -14,5 +16,18 @@ export const TableSection = ({ tableId }: Props) => {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
   }
 
-  return <Box>{table.name}</Box>;
+  return (
+    <Box>
+      <NameDescriptionInput
+        description={table.description ?? ""}
+        name={table.name}
+        onDescriptionChange={(description) => {
+          // throw new Error("Function not implemented.");
+        }}
+        onNameChange={(name) => {
+          // throw new Error("Function not implemented.");
+        }}
+      />
+    </Box>
+  );
 };
