@@ -6,9 +6,7 @@ import * as Urls from "metabase/lib/urls";
 import { Box, Flex } from "metabase/ui";
 
 import S from "./DataModel.module.css";
-import { FieldSection } from "./FieldSection";
-import { PreviewSection } from "./PreviewSection";
-import { TableSection } from "./TableSection";
+import { FieldSection, PreviewSection, TableSection } from "./components";
 
 interface RouteParams {
   databaseId?: string;
