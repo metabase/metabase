@@ -75,7 +75,7 @@ jobs:
               editions: ["ee"],
               ee: {
                 repo: `${owner}/metabase-dev`,
-                tag: branch
+                tag: branch.replaceAll("/", "-"), // slashes make docker sad
               },
             };
 
