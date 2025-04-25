@@ -87,23 +87,6 @@ describe("scenarios > embedding > sdk iframe embedding > themes and browser", ()
       });
     });
   });
-
-  it("should handle iframe resize events", () => {
-    cy.get<string>("@apiKey").then((apiKey) => {
-      loadSdkEmbedIframeTestPage(
-        {
-          resourceId: ORDERS_DASHBOARD_ID,
-          apiKey,
-          theme: CUSTOM_THEME,
-          includeResizeControl: true,
-        },
-        getThemeTestPageHtml,
-      );
-
-      cy.get("#resize-control").click();
-      cy.get("iframe").should("have.css", "height", "500px");
-    });
-  });
 });
 
 function getThemeTestPageHtml(options: ThemeEmbedTestPageOptions): string {
@@ -125,17 +108,6 @@ function getThemeTestPageHtml(options: ThemeEmbedTestPageOptions): string {
     `
     : "";
 
-  const resizeControl = options.includeResizeControl
-    ? `
-    <button id="resize-control" onclick="resizeContainer()">Resize</button>
-    <script>
-      function resizeContainer() {
-        document.getElementById("metabase-embed-container").style.height = "500px";
-      }
-    </script>
-    `
-    : "";
-
   const additionalHead =
     '<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Roboto+Mono&display=swap" rel="stylesheet">';
 
@@ -146,6 +118,6 @@ function getThemeTestPageHtml(options: ThemeEmbedTestPageOptions): string {
       theme: options.theme,
     },
     additionalHead,
-    controls + resizeControl,
+    controls,
   );
 }

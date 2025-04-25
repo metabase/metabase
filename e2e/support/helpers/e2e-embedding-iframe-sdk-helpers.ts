@@ -15,7 +15,6 @@ interface BaseEmbedTestPageOptions {
 export interface ThemeEmbedTestPageOptions extends BaseEmbedTestPageOptions {
   theme: MetabaseTheme;
   includeThemeControls?: boolean;
-  includeResizeControl?: boolean;
 }
 
 /**
