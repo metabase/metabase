@@ -330,11 +330,21 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       if (columnIndex === -1) {
         return;
       }
-      const clicked = getTableHeaderClickedObject(data, columnIndex, isPivoted);
-      onVisualizationClick({ ...clicked, element: event.currentTarget });
+      const newClicked = getTableHeaderClickedObject(
+        data,
+        columnIndex,
+        isPivoted,
+      );
+      if (clicked?.element === event.currentTarget) {
+        // Close the click actions popover after clicking on the column header the second time
+        onVisualizationClick(null);
+      } else {
+        onVisualizationClick({ ...newClicked, element: event.currentTarget });
+      }
     },
     [
       data,
+      clicked,
       isPivoted,
       onVisualizationClick,
       sorting,
