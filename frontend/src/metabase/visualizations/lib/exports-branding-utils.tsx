@@ -115,8 +115,6 @@ export const createFooterElement = (size: FooterSize) => {
 
   const logo = document.createElement("img");
   logo.src = logoDataUrl;
-  // eslint-disable-next-line no-literal-metabase-strings -- This is used only in non-whitelabeled instances!
-  logo.alt = t`Metabase company logo`;
   logo.width = LOGO_WIDTH;
   logo.height = LOGO_HEIGHT;
 
