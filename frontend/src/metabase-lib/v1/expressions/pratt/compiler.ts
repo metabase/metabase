@@ -11,7 +11,7 @@ import {
   isIntegerLiteral,
   isStringLiteral,
 } from "../literal";
-import type { Kind } from "../resolver";
+import type { Resolver } from "../resolver";
 import type { ExpressionType } from "../types";
 
 import {
@@ -35,12 +35,6 @@ import {
   SUB,
 } from "./syntax";
 import { type Node, type NodeType, assert, check } from "./types";
-
-type Resolver = (
-  kind: "field" | "segment" | "metric",
-  name: string,
-  node?: Node,
-) => Lib.ExpressionParts | Lib.ExpressionArg;
 
 type CompileFn = (
   node: Node,
@@ -73,7 +67,7 @@ function getTypeForExpressionMode(
   return expressionMode;
 }
 
-function fallbackResolver(_kind: Kind, name: string, _node?: Node) {
+function fallbackResolver(_type: ExpressionType, name: string, _node?: Node) {
   return {
     operator: "dimension" as Lib.ExpressionOperator,
     options: {},
@@ -128,25 +122,6 @@ function compileValue(
   };
 }
 
-function getKindForType(type: ExpressionType): Kind {
-  switch (type) {
-    case "boolean":
-      return "segment";
-    case "aggregation":
-      return "metric";
-    default:
-      return "field";
-  }
-}
-
-function compileDimension(name: string, node: Node, ctx: Context) {
-  assert(typeof name === "string", t`Invalid dimension name: ${name}`);
-
-  const kind = getKindForType(ctx.type);
-  const dimension = ctx.resolver(kind, name, node);
-  return withNode(node, dimension);
-}
-
 function compileField(
   node: Node,
   ctx: Context,
@@ -154,7 +129,8 @@ function compileField(
   assert(node.type === FIELD, t`Invalid node type`);
   assert(node.token?.value, t`Empty field value`);
 
-  return compileDimension(node.token.value, node, ctx);
+  const dimension = ctx.resolver(ctx.type, node.token.value, node);
+  return withNode(node, dimension);
 }
 
 function compileIdentifier(
@@ -164,8 +140,8 @@ function compileIdentifier(
   assert(node.type === IDENTIFIER, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
 
-  const name = node.token.text;
-  return compileDimension(name, node, ctx);
+  const dimension = ctx.resolver(ctx.type, node.token.text, node);
+  return withNode(node, dimension);
 }
 
 function compileGroup(

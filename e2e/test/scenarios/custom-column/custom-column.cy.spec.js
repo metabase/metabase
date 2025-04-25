@@ -1159,7 +1159,7 @@ describe("scenarios > question > custom column > error feedback", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/^Unknown Field: abcdef/i);
+    cy.contains(/^Unknown column: abcdef/i);
   });
 
   it("should fail on expression validation errors", () => {
