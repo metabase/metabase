@@ -41,7 +41,7 @@ const MetabotQuestionInner = () => {
 
 function Disclaimer() {
   return (
-    <Text c="var(--mb-color-text-secondary)">{t`AI can make mistakes. Double check results.`}</Text>
+    <Text c="var(--mb-color-text-secondary)">{t`AI can make mistakes. Double-check results.`}</Text>
   );
 }
 export const MetabotQuestion = withPublicComponentWrapper(MetabotQuestionInner);
