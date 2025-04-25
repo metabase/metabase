@@ -147,12 +147,14 @@
                                   :when (or before after)]
                         [diff (get-row-pks (table->fields table-id) (or after before))])]
     ;; undo snapshots, but only if we're not executing an undo
-    (when-not (some (comp #{"undo"} namespace first) invocation-scope)
-      ((requiring-resolve 'metabase-enterprise.data-editing.undo/track-change!)
-       user-id (u/for-map [[table-id diffs] (group-by :table-id diffs)]
-                 [table-id (u/for-map [{:keys [before after] :as diff} diffs
-                                       :when (or before after)]
-                             [(diff->pk diff) [before after]])])))
+    ;; TODO fix tests that execute actions without a user scope
+    (when user-id
+      (when-not (some (comp #{"undo"} namespace first) invocation-scope)
+        ((requiring-resolve 'metabase-enterprise.data-editing.undo/track-change!)
+         user-id (u/for-map [[table-id diffs] (group-by :table-id diffs)]
+                   [table-id (u/for-map [{:keys [before after] :as diff} diffs
+                                         :when (or before after)]
+                               [(diff->pk diff) [before after]])]))))
     ;; table notification system events
     (doseq [[event payloads] (->> diffs
                                   (group-by row-update-event)
