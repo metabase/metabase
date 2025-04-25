@@ -185,12 +185,7 @@
   []
   (t2/select :model/PermissionsGroup {:where [:= :magic_group_type nil]}))
 
-(def ^:private group-id->is-tenant-group?
-  (mdb/memoize-for-application-db
-   (fn [group-id]
-     (t2/select-one-fn :is_tenant_group :model/PermissionsGroup :id group-id))))
-
 (defn is-tenant-group?
-  "Returns a boolean representing whether this group is a tenant group. Memoized for speed."
-  [group-or-id]
-  (group-id->is-tenant-group? (u/the-id group-or-id)))
+  "Returns a boolean representing whether this group is a tenant group."
+  [group-id]
+  (t2/select-one-fn :is_tenant_group :model/PermissionsGroup :id group-id))
