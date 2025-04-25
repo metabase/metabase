@@ -10,23 +10,23 @@ const SPECIAL_GROUP_NAMES = new Map([
   ["Administrators", t`Administrators`],
 ]);
 
-export function isDefaultGroup(group: Group) {
+export function isDefaultGroup(group: Pick<Group, "name">) {
   return group.name === "All Users";
 }
 
-export function isAdminGroup(group: Group) {
+export function isAdminGroup(group: Pick<Group, "name">) {
   return group.name === "Administrators";
 }
 
-export function canEditPermissions(group: Group) {
+export function canEditPermissions(group: Pick<Group, "name">) {
   return !isAdminGroup(group);
 }
 
-export function canEditMembership(group: Group) {
+export function canEditMembership(group: Pick<Group, "name">) {
   return !isDefaultGroup(group);
 }
 
-export function getGroupColor(group: Group) {
+export function getGroupColor(group: Pick<Group, "name">) {
   if (isAdminGroup(group)) {
     return color("filter");
   } else if (isDefaultGroup(group)) {
@@ -36,10 +36,6 @@ export function getGroupColor(group: Group) {
   }
 }
 
-export function getGroupNameLocalized(group: Group) {
-  if (SPECIAL_GROUP_NAMES.has(group.name)) {
-    return SPECIAL_GROUP_NAMES.get(group.name);
-  } else {
-    return group.name;
-  }
+export function getGroupNameLocalized(group: Pick<Group, "name">) {
+  return SPECIAL_GROUP_NAMES.get(group.name) ?? group.name;
 }

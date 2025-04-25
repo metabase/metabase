@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
 import { jt, t } from "ttag";
@@ -478,6 +477,11 @@ export class GroupsListing extends Component<
   async onEditGroupDoneClicked() {
     const { groups } = this.props;
     const group = this.state.groupBeingEdited;
+
+    if (!group) {
+      throw new Error("There is currently no group being edited");
+    }
+
     const originalGroup = _.findWhere(groups, { id: group.id });
 
     if (!originalGroup) {

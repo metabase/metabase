@@ -22,7 +22,7 @@ import {
   GroupMappingsWidgetToggleRoot as ToggleRoot,
   GroupMappingsWidgetAndErrorRoot as WidgetAndErrorRoot,
 } from "./GroupMappingsWidget.styled";
-import MappingRow from "./MappingRow";
+import { MappingRow } from "./MappingRow";
 
 const groupIsMappable = (group) => !isDefaultGroup(group);
 
