@@ -178,6 +178,7 @@ export type YAxisModel = {
   column: DatasetColumn;
   label?: string;
   formatter: AxisFormatter;
+  splitNumber?: number;
   isNormalized?: boolean;
 };
 
