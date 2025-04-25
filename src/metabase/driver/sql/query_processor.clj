@@ -139,7 +139,7 @@
 
 (defmethod integer-dbtype :sql
   [_driver]
-  "BIGINT")
+  :BIGINT)
 
 (defmulti ->integer
   "Cast to integer"
@@ -704,10 +704,10 @@
                (->float driver honeysql-form)
 
                [:type/Text (:isa? :Coercion/String->Integer)]
-               (coerce-integer driver honeysql-form)
+               (->integer driver honeysql-form)
 
                [:type/Float (:isa? :Coercion/Float->Integer)]
-               (coerce-integer driver honeysql-form)
+               (->integer driver honeysql-form)
 
                :else honeysql-form)
       (when-not (= <> honeysql-form)
