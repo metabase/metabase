@@ -10,7 +10,6 @@ import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
 import { bigErrorHeader, bigWarningHeader } from "embedding-sdk/lib/log-utils";
 import { isSdkVersionCompatibleWithMetabaseVersion } from "embedding-sdk/lib/version-utils";
 import type { SdkStoreState } from "embedding-sdk/store/types";
-import { isEmbeddingSdk } from "metabase/env";
 import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
@@ -26,10 +25,7 @@ export const initAuth = createAsyncThunk(
     // Setup JWT or API key
     const isValidAuthProviderUri =
       authConfig.authProviderUri && authConfig.authProviderUri?.length > 0;
-
-    // TODO: add a proper check for interactive embedding mode
-    const isValidApiKeyConfig =
-      authConfig.apiKey && (isEmbeddingSdk ? getIsLocalhost() : true);
+    const isValidApiKeyConfig = authConfig.apiKey && getIsLocalhost();
 
     if (isValidAuthProviderUri) {
       // JWT setup
