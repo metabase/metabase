@@ -23,13 +23,7 @@ const EOF = -1;
 //   [Field Name
 //   ------
 //
-const FIELD_PUNCTUATORS = new Set([
-  OPEN_BRACKET,
-  char(","),
-  char(" "),
-  char("("),
-  char(")"),
-]);
+const FIELD_PUNCTUATORS = new Set([char(","), char(" "), char("("), char(")")]);
 
 /**
  * Reference (or bracket idenfiers) like `[User Id]` are parsed differently
@@ -49,7 +43,7 @@ export const field = new ExternalTokenizer((input) => {
 
   // We allow any character to potentially start a Field token, except field-delimiting
   // punctuators.
-  if (FIELD_PUNCTUATORS.has(current) && current !== OPEN_BRACKET) {
+  if (FIELD_PUNCTUATORS.has(current)) {
     return;
   }
 
