@@ -264,6 +264,7 @@
   [context diffs]
   (update context :effects (fnil into []) (map #(vector :effect/row.modified %) diffs)))
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- subsume-effects
   "Update the calling context with the effects produced by nested calls."
   [parent-context child-results]
