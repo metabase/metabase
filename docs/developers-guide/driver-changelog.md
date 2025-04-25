@@ -10,6 +10,10 @@ title: Driver interface changelog
 
 - Added a new abstract driver mix-in `:metabase.driver.sql.query-processor.boolean-is-comparison/boolean-is-comparison` that can be inherited by drivers that require boolean literal constants to be converted to comparison expressions in the top level of WHERE, AND, OR, NOT, and CASE clauses.
 
+- Added the multi-method `float-dbtype` which returns the name of the float type we coerce to for coercion strategies and the `float()` custom expression function.
+
+- Added a feature `:expressions/float` for drivers that support casting text to floats.
+
 ## Metabase 0.54.0
 
 - Added the multi-method `allowed-promotions` that allows driver control over which column type promotions are supported for uploads.

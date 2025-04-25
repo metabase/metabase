@@ -503,9 +503,9 @@
                 VENUES.LATITUDE    AS LATITUDE
                 VENUES.LONGITUDE   AS LONGITUDE
                 VENUES.PRICE       AS PRICE
-                CAST (VENUES.PRICE AS float)
+                CAST (VENUES.PRICE AS double)
                 /
-                NULLIF (CategoriesStats.AvgPrice, 0) AS RelativePrice
+                NULLIF (CAST (CategoriesStats.AvgPrice AS double), 0.0) AS RelativePrice
                 CategoriesStats.CATEGORY_ID AS CategoriesStats__CATEGORY_ID
                 CategoriesStats.MaxPrice    AS CategoriesStats__MaxPrice
                 CategoriesStats.AvgPrice    AS CategoriesStats__AvgPrice
@@ -807,9 +807,9 @@
 (deftest ^:parallel floating-point-division-test
   (testing "Make sure FLOATING POINT division is done when dividing by expressions/fields"
     (is (= '{:select   [CAST
-                        (VENUES.PRICE AS float)
+                        (VENUES.PRICE AS double)
                         /
-                        NULLIF (VENUES.PRICE + 2, 0) AS my_cool_new_field]
+                        NULLIF (CAST (VENUES.PRICE + 2 AS double), 0.0) AS my_cool_new_field]
              :from     [VENUES]
              :order-by [VENUES.ID ASC]
              :limit    [3]}

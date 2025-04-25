@@ -319,6 +319,10 @@
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
   (date-add :minute (h2x// expr 60) (h2x/literal "1970-01-01")))
 
+(defmethod sql.qp/float-dbtype :sqlserver
+  [_]
+  :float)
+
 (defn- sanitize-contents
   "Parsed xml may contain whitespace elements as `\"\n\n\t\t\"` in its contents. Leave only maps in content for
   purposes of [[zone-id->windows-zone]]."
