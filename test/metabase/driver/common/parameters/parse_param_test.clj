@@ -9,6 +9,11 @@
     (is (= (params.parse-param/parse-param "foo_bar")
            (params/->Param "foo_bar")))))
 
+(deftest special-characters-name-test
+  (testing "Should parse names with some special characters"
+    (is (= (params.parse-param/parse-param "foo-bar_bash#")
+           (params/->Param "foo-bar_bash#")))))
+
 (deftest no-arg-function-test
   (testing "Should parse a no-arg function"
     (is (= (params.parse-param/parse-param "mb.foo()")
