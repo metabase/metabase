@@ -199,7 +199,7 @@
         (testing "freshly added breakout columns"
           (is (= false (breakout-exists? before stage-number column))
               "are not present before")
-          (is (= true  (breakout-exists? after  stage-number column))
+          (is (true?  (breakout-exists? after  stage-number column))
               "are present after")
           (testing "go at the end of the list"
             (is (= (count after-breakouts)

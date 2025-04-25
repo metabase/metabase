@@ -401,6 +401,7 @@
 (deftest ^:parallel js=-metatest
   (testing "check js= works correctly (who tests the tests?)"
     (testing "should be true"
+      #_{:clj-kondo/ignore [:equals-true]}
       (are [a b] (= true (js= a b))
         7 7
         0 0

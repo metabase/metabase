@@ -11,6 +11,7 @@
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -867,3 +868,6 @@
   ;; if it's a string, we can't round, so we need to convert to float first
   (h2x/maybe-cast (sql.qp/integer-dbtype driver)
                   [:round (sql.qp/->float driver value) 0]))
+
+(defmethod sql-jdbc/impl-query-canceled? :sqlserver [_ e]
+  (= (sql-jdbc/get-sql-state e) "HY008"))
