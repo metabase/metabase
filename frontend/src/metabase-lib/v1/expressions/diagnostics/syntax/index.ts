@@ -1,6 +1,7 @@
 import type { Token } from "../../pratt";
 
 import { checkBadTokens } from "./check-bad-tokens";
+import { checkDoubleCommas } from "./check-double-commas";
 import { checkFieldQuotes } from "./check-field-quotes";
 import { checkMatchingParentheses } from "./check-matching-parenthesis";
 import { checkMismatchedSiblings } from "./check-mismatched-siblings";
@@ -16,6 +17,7 @@ export const syntaxChecks = [
   checkFieldQuotes,
   checkMismatchedSiblings,
   checkBadTokens,
+  checkDoubleCommas,
 ];
 
 export function diagnoseExpressionSyntax(options: {
