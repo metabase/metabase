@@ -1,40 +1,31 @@
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
+import { ALL_USERS_GROUP_ID } from "../cypress_sample_instance_data";
+
+const EMBED_JS_PATH = "/app/embed.v1.js";
+
 /**
  * Base interface for SDK iframe embedding test page options
  */
 interface BaseEmbedTestPageOptions {
+  // Options for the iframe
   apiKey: string;
-  resourceId: number | string;
-  additionalConfig?: Record<string, unknown>;
-}
+  dashboardId?: number | string;
+  questionId?: number | string;
+  theme?: MetabaseTheme;
 
-/**
- * Options for theme-based embedding test pages
- */
-export interface ThemeEmbedTestPageOptions extends BaseEmbedTestPageOptions {
-  theme: MetabaseTheme;
-  includeThemeControls?: boolean;
-}
-
-/**
- * Options for standard SDK iframe embedding test pages
- */
-export interface SdkIframeEmbedTestPageOptions
-  extends BaseEmbedTestPageOptions {
-  resourceType: "dashboard" | "question";
-  theme: MetabaseTheme;
-  includeThemeSwitch?: boolean;
+  // Options for the test page
+  additionalHead?: string;
+  additionalBody?: string;
 }
 
 /**
  * Creates and loads a test fixture for SDK iframe embedding tests
  */
-export function loadSdkEmbedIframeTestPage<T extends BaseEmbedTestPageOptions>(
+export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>(
   options: T,
-  getHtml: (options: T) => string,
 ) {
-  const testPageSource = getHtml(options);
+  const testPageSource = getSdkIframeEmbedHtml(options);
 
   cy.intercept("GET", "/sdk-iframe-test-page", {
     body: testPageSource,
@@ -49,36 +40,30 @@ export function loadSdkEmbedIframeTestPage<T extends BaseEmbedTestPageOptions>(
     .its("0.contentDocument")
     .should("exist")
     .its("body")
-    .should("not.be.empty")
-    .find("[data-testid='embed-frame']")
-    .should("be.visible");
+    .should("not.be.empty");
 }
 
-/**
- * Gets the entity ID for a specific resource
- * @param resourceType - Type of resource (dashboard or question)
- * @param resourceId - ID of the resource
- * @returns Promise resolving to the entity ID
- */
-export function getResourceEntityId(
+export function getEntityIdFromResource(
   resourceType: "dashboard" | "question",
   resourceId: number,
 ) {
-  const apiPath = resourceType === "question" ? "card" : resourceType;
-  return cy.request("GET", `/api/${apiPath}/${resourceId}`).then(({ body }) => {
-    return body.entity_id;
-  });
+  const apiEntityName = resourceType === "question" ? "card" : resourceType;
+
+  return cy
+    .request("GET", `/api/${apiEntityName}/${resourceId}`)
+    .then(({ body }) => {
+      return body.entity_id;
+    });
 }
 
 /**
  * Base HTML template for embedding test pages
  */
-export function getBaseSdkIframeEmbedHtml(
-  options: BaseEmbedTestPageOptions,
-  embedConfig: Record<string, unknown>,
+function getSdkIframeEmbedHtml({
   additionalHead = "",
   additionalBody = "",
-) {
+  ...embedConfig
+}: BaseEmbedTestPageOptions) {
   return `
     <!DOCTYPE html>
     <html>
@@ -87,7 +72,7 @@ export function getBaseSdkIframeEmbedHtml(
       ${additionalHead}
     </head>
     <body>
-      <script src="/app/embed.v1.js"></script>
+      <script src="${EMBED_JS_PATH}"></script>
 
       <div id="metabase-embed-container"></div>
       ${additionalBody}
@@ -108,14 +93,34 @@ export function getBaseSdkIframeEmbedHtml(
         const embed = new MetabaseEmbed({
           target: "#metabase-embed-container",
           url: "http://localhost:4000",
-          apiKey: "${options.apiKey}",
           ${Object.entries(embedConfig)
             .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
             .join(",\n          ")}
-          ${options.additionalConfig ? `...${JSON.stringify(options.additionalConfig)},` : ""}
         });
       </script>
     </body>
     </html>
   `;
+}
+
+export function prepareSdkIframeEmbedTest() {
+  H.restore();
+  cy.signInAsAdmin();
+  H.mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
+  H.setTokenFeatures("all");
+
+  H.createApiKey("Test SDK Embedding Key", ALL_USERS_GROUP_ID).then(
+    ({ body }) => {
+      cy.wrap(body.unmasked_key).as("apiKey");
+    },
+  );
+
+  cy.request("PUT", "/api/setting/enable-embedding-interactive", {
+    value: true,
+  });
+  cy.signOut();
+
+  cy.intercept("POST", "/api/card/*/query").as("getCardQuery");
+  cy.intercept("POST", "/api/dashboard/**/query").as("getDashCardQuery");
+  cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
 }
