@@ -360,7 +360,7 @@
                             (.awaitTermination ^ThreadPoolExecutor executor 30 java.util.concurrent.TimeUnit/SECONDS)
                             (catch InterruptedException _
                               (log/warn "Interrupted while waiting for notification executor to terminate"))))))
-    (log/infof "Starting notification thread pool with %d threads" pool-size)
+    (log/info "Starting notification thread pool." {:pool-size pool-size})
     (dotimes [_ pool-size]
       (start-worker!))
     (fn [notification]
