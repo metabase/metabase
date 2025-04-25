@@ -75,13 +75,11 @@ export const saveChartImage = async ({
   const contentWidth = node.getBoundingClientRect().width;
 
   const size = getBrandingSize(contentWidth);
-  const BRANDING_HEIGHT = getBrandingConfig(size).h;
+  const brandingHeight = getBrandingConfig(size).h;
+  const verticalOffset = includeBranding ? brandingHeight : 0;
 
   // Appending any element to the node does not automatically increase the canvas height.
-  // We have to manually calculate it or the branding will not be visible.
-  const canvasHeight = includeBranding
-    ? contentHeight + BRANDING_HEIGHT
-    : contentHeight;
+  const canvasHeight = contentHeight + verticalOffset;
 
   const { default: html2canvas } = await import("html2canvas-pro");
   const canvas = await html2canvas(node, {
@@ -105,7 +103,7 @@ export const saveChartImage = async ({
          */
         branding.style.position = "absolute";
         branding.style.left = "0";
-        branding.style.bottom = `-${BRANDING_HEIGHT}px`;
+        branding.style.bottom = `-${brandingHeight}px`;
         branding.style.zIndex = "1000";
 
         node.appendChild(branding);
