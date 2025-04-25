@@ -2,6 +2,12 @@ import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
 import { ALL_USERS_GROUP_ID } from "../cypress_sample_instance_data";
 
+import { createApiKey } from "./api";
+import {
+  mockSessionPropertiesTokenFeatures,
+  setTokenFeatures,
+} from "./e2e-enterprise-helpers";
+import { restore } from "./e2e-setup-helpers";
 const EMBED_JS_PATH = "/app/embed.v1.js";
 
 /**
@@ -104,12 +110,12 @@ function getSdkIframeEmbedHtml({
 }
 
 export function prepareSdkIframeEmbedTest() {
-  H.restore();
+  restore();
   cy.signInAsAdmin();
-  H.mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
-  H.setTokenFeatures("all");
+  mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
+  setTokenFeatures("all");
 
-  H.createApiKey("Test SDK Embedding Key", ALL_USERS_GROUP_ID).then(
+  createApiKey("test iframe sdk embedding", ALL_USERS_GROUP_ID).then(
     ({ body }) => {
       cy.wrap(body.unmasked_key).as("apiKey");
     },
@@ -118,7 +124,6 @@ export function prepareSdkIframeEmbedTest() {
   cy.request("PUT", "/api/setting/enable-embedding-interactive", {
     value: true,
   });
-  cy.signOut();
 
   cy.intercept("POST", "/api/card/*/query").as("getCardQuery");
   cy.intercept("POST", "/api/dashboard/**/query").as("getDashCardQuery");
