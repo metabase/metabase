@@ -331,7 +331,7 @@ describe("NumberFilterPicker", () => {
         const { getNextFilterChangeOpts } = setup({ withAddButton: true });
         await setOperator("Greater than");
         const input = screen.getByPlaceholderText("Enter a number");
-        await userEvent.type(input, "15{enter}");
+        await userEvent.type(input, "15");
         await userEvent.click(screen.getByRole("button", { name: label }));
         expect(getNextFilterChangeOpts()).toMatchObject({ source });
       },

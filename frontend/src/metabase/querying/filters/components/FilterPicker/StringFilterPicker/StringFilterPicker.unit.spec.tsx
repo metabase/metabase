@@ -71,22 +71,28 @@ function setup({
     { storeInitialState },
   );
 
-  function getNextFilterParts() {
+  const getNextFilterParts = () => {
     const [filter] = onChange.mock.lastCall;
     return Lib.stringFilterParts(query, 0, filter);
-  }
+  };
 
-  function getNextFilterColumnName() {
+  const getNextFilterColumnName = () => {
     const parts = getNextFilterParts();
     const column = checkNotNull(parts?.column);
     return Lib.displayInfo(query, 0, column).longDisplayName;
-  }
+  };
+
+  const getNextFilterChangeOpts = () => {
+    const [_filter, opts] = onChange.mock.lastCall;
+    return opts;
+  };
 
   return {
     query,
     column,
     getNextFilterParts,
     getNextFilterColumnName,
+    getNextFilterChangeOpts,
     onChange,
     onBack,
   };
@@ -345,6 +351,21 @@ describe("StringFilterPicker", () => {
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
     });
+
+    it.each([
+      { label: "Apply filter", source: "default" },
+      { label: "Add another filter", source: "add-button" },
+    ])(
+      'should add a filter via the "$label" button when the add button is enabled',
+      async ({ label, source }) => {
+        const { getNextFilterChangeOpts } = setup({ withAddButton: true });
+        await setOperator("Contains");
+        const input = screen.getByPlaceholderText("Enter some text");
+        await userEvent.type(input, "abc");
+        await userEvent.click(screen.getByRole("button", { name: label }));
+        expect(getNextFilterChangeOpts()).toMatchObject({ source });
+      },
+    );
   });
 
   describe("existing filter", () => {
