@@ -181,7 +181,7 @@ export const DATE_COLUMN_SETTINGS = {
     getDefault: ({ unit }) => {
       // Grab the first option's value. If there were no options (for
       // hour-of-day probably), use an empty format string instead.
-      const [{ value = "" } = {}] = getDateStyleOptionsForUnit(unit);
+      const [{ value } = {}] = getDateStyleOptionsForUnit(unit);
       return value;
     },
     isValid: ({ unit }, settings) => {
@@ -225,7 +225,13 @@ export const DATE_COLUMN_SETTINGS = {
     default: false,
     inline: true,
     getHidden: ({ unit }, settings) => {
-      const format = getDateFormatFromStyle(settings["date_style"], unit);
+      const dateStyle = settings["date_style"];
+
+      if (dateStyle === undefined) {
+        return true;
+      }
+
+      const format = getDateFormatFromStyle(dateStyle, unit);
       return !format.match(/MMMM|dddd/);
     },
     readDependencies: ["date_style"],
