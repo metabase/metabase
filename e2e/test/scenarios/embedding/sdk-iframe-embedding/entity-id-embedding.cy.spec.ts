@@ -1,5 +1,4 @@
 import {
-  ALL_USERS_GROUP_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -8,42 +7,44 @@ const { H } = cy;
 
 describe("scenarios > embedding > sdk iframe embedding > entity id", () => {
   beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
-    H.setTokenFeatures("all");
-
-    H.createApiKey("Test SDK Embedding Key", ALL_USERS_GROUP_ID).then(
-      ({ body }) => {
-        cy.wrap(body.unmasked_key).as("apiKey");
-      },
+    H.prepareSdkIframeEmbedTest();
+    H.getEntityIdFromResource("dashboard", ORDERS_DASHBOARD_ID).as(
+      "dashboardEntityId",
     );
+    H.getEntityIdFromResource("question", ORDERS_QUESTION_ID).as(
+      "questionEntityId",
+    );
+    cy.signOut();
+  });
 
-    cy.request("PUT", "/api/setting/enable-embedding-interactive", {
-      value: true,
+  it("loads dashboard using entity ids", () => {
+    cy.get<string>("@dashboardEntityId").then((dashboardId) => {
+      const frame = H.loadSdkIframeEmbedTestPage({ dashboardId });
+
+      cy.wait("@getDashCardQuery");
+
+      frame.within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+        H.assertTableRowsCount(2000);
+      });
     });
   });
 
-  it("should create iframe and authenticate with API key using entity ID", () => {
-    cy.get<string>("@apiKey").then((apiKey) => {
-      H.getEntityIdFromResource("dashboard", ORDERS_DASHBOARD_ID).then(
-        (dashboardId) => {
-          const frame = H.loadSdkIframeEmbedTestPage({ apiKey, dashboardId });
+  it("loads question using entity id", () => {
+    cy.get<string>("@questionEntityId").then((questionId) => {
+      const frame = H.loadSdkIframeEmbedTestPage({ questionId });
 
-          frame.contains("Orders in a dashboard").should("be.visible");
-        },
-      );
-    });
-  });
+      cy.wait("@getCardQuery");
 
-  it("should embed question using entity ID", () => {
-    cy.get<string>("@apiKey").then((apiKey) => {
-      H.getEntityIdFromResource("question", ORDERS_QUESTION_ID).then(
-        (questionId) => {
-          const frame = H.loadSdkIframeEmbedTestPage({ apiKey, questionId });
-          frame.contains("Orders").should("be.visible");
-        },
-      );
+      frame.within(() => {
+        cy.findByText("Orders").should("be.visible");
+
+        H.tableInteractive().within(() => {
+          cy.findByText("Total").should("be.visible");
+          cy.findByText("37.65").should("be.visible");
+        });
+      });
     });
   });
 });

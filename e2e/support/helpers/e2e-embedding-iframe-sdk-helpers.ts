@@ -13,7 +13,7 @@ const EMBED_JS_PATH = "/app/embed.v1.js";
  */
 interface BaseEmbedTestPageOptions {
   // Options for the iframe
-  apiKey: string;
+  apiKey?: string;
   dashboardId?: number | string;
   questionId?: number | string;
   theme?: MetabaseTheme;
@@ -29,22 +29,24 @@ interface BaseEmbedTestPageOptions {
 export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>(
   options: T,
 ) {
-  const testPageSource = getSdkIframeEmbedHtml(options);
+  return cy.get("@apiKey").then((apiKey) => {
+    const testPageSource = getSdkIframeEmbedHtml({ apiKey, ...options });
 
-  cy.intercept("GET", "/sdk-iframe-test-page", {
-    body: testPageSource,
-    headers: { "content-type": "text/html" },
-  }).as("dynamicPage");
+    cy.intercept("GET", "/sdk-iframe-test-page", {
+      body: testPageSource,
+      headers: { "content-type": "text/html" },
+    }).as("dynamicPage");
 
-  cy.visit("/sdk-iframe-test-page");
+    cy.visit("/sdk-iframe-test-page");
 
-  return cy
-    .get("iframe")
-    .should("be.visible")
-    .its("0.contentDocument")
-    .should("exist")
-    .its("body")
-    .should("not.be.empty");
+    return cy
+      .get("iframe")
+      .should("be.visible")
+      .its("0.contentDocument")
+      .should("exist")
+      .its("body")
+      .should("not.be.empty");
+  });
 }
 
 export function getEntityIdFromResource(
@@ -123,8 +125,6 @@ export function prepareSdkIframeEmbedTest() {
   cy.request("PUT", "/api/setting/enable-embedding-interactive", {
     value: true,
   });
-
-  cy.signOut();
 
   cy.intercept("POST", "/api/card/*/query").as("getCardQuery");
   cy.intercept("POST", "/api/dashboard/**/query").as("getDashCardQuery");
