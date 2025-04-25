@@ -21,7 +21,7 @@ dataset_query: {}
 result_metadata: null
 visualization_settings:
   column_settings: null
-card_schema: 21
+card_schema: 22
 serdes/meta:
 - id: OMuZ0wHe2O5Z_59-cLmn4
   label: series_question_a

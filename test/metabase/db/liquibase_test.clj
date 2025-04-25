@@ -48,10 +48,10 @@
         (testing "Make sure *every* line contains ENGINE ... CHARACTER SET ... COLLATE"
           (doseq [line  (split-migrations-sqls (liquibase/migrations-sql liquibase))
                   :when (str/starts-with? line "CREATE TABLE")]
-            (is (= true
-                   (or
-                    (str/includes? line "ENGINE InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
-                    (str/includes? line "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci")))
+            (is (true?
+                 (or
+                  (str/includes? line "ENGINE InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+                  (str/includes? line "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci")))
                 (format "%s should include ENGINE ... CHARACTER SET ... COLLATE ..." (pr-str line)))))))))
 
 (defn liquibase-file->included-ids

@@ -99,6 +99,12 @@ For an introduction to expressions, check out the [overview of custom expression
     - [weekday](#weekday)
     - [year](#year)
 
+  - [Type-casting functions](#type-casting-functions)
+
+    - [date](#date)
+    - [integer](#integer)
+    - [text](#text)
+
   - [Window functions](#window-functions)
 
     - [Offset](./expressions/offset.md)
@@ -905,6 +911,12 @@ Takes a datetime and returns the year as an integer.
 Syntax: `year([datetime column])`
 
 Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer, `2,021`.
+
+## Type-casting functions
+
+- [date](#date)
+- [integer](#integer)
+- [text](#text)
 
 ## Window functions
 
