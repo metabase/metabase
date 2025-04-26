@@ -28,6 +28,14 @@ on:
       split_index: # index of the chunk
         required: false
         type: number
+      artifact_name_ee:
+        type: string
+        description: "Name of the EE uberjar artifact"
+        required: false
+      artifact_name_oss:
+        type: string
+        description: "Name of the OSS uberjar artifact"
+        required: false
 
 jobs:
   e2e-tests:
@@ -64,6 +72,20 @@ jobs:
       webhook: true
     steps:
       - uses: actions/checkout@v4
+
+      - name: Get artifact name
+        id: get_artifact_name
+        run: |
+          if [ "${{ inputs.edition }}" == "ee" ]; then
+            echo "artifact_name=${{ inputs.artifact_name_ee || format('metabase-ee-{0}-uberjar', github.event.pull_request.head.sha || github.sha) }}" >> $GITHUB_OUTPUT
+          else
+            echo "artifact_name=${{ inputs.artifact_name_oss || format('metabase-oss-{0}-uberjar', github.event.pull_request.head.sha || github.sha) }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Retrieve uberjar artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.get_artifact_name.outputs.artifact_name }}
 
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers
