@@ -1143,7 +1143,6 @@
 
 (defmethod ->honeysql [:sql :integer]
   [driver [_ value]]
-  (prn (->honeysql driver value))
   (coerce-integer driver (->honeysql driver value)))
 
 (defmethod ->honeysql [:sql :float]
