@@ -415,19 +415,16 @@
   [col->val-source id->new-card]
   (let [update-cvm-item (fn [item]
                           (if-let [source-id (:sourceId item)]
-                            (if (and (string? source-id) (str/starts-with? source-id "card:"))
-                              (let [old-id (Long/parseLong (subs source-id 5))]
-                                (if-let [new-card (and old-id (get id->new-card old-id))]
-                                  (assoc item :sourceId (str "card:" (:id new-card)))
-                                  item))
+                            (if-let [[_ card-id] (and (string? source-id) 
+                                                      (re-find #"^card:(\d+)$" source-id))]
+                              (if-let [new-card (get id->new-card (Long/parseLong card-id))]
+                                (assoc item :sourceId (str "card:" (:id new-card)))
+                                item)
                               item)
                             item))
         update-cvm      (fn [cvm]
                           (when (map? cvm)
-                            (into {}
-                                  (map (fn [[col-key values-vec]]
-                                         [col-key (mapv update-cvm-item values-vec)])
-                                       cvm))))]
+                            (update-vals cvm #(mapv update-cvm-item %))))]
     (update-cvm col->val-source)))
 
 (defn update-cards-for-copy
