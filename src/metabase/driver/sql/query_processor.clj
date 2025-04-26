@@ -168,16 +168,13 @@
       (nil? h2x-expr)
       nil
 
-      (h2x/is-of-type? h2x-expr (integer-dbtype driver))
-      h2x-expr
-
       (not inline)
       (->integer driver h2x-expr)
 
       (float? inline)
       (h2x/with-database-type-info (inline-num (Math/round ^Double inline)) (integer-dbtype driver))
 
-      (int? inline)
+      (integer? inline)
       (h2x/with-database-type-info (inline-num inline) (integer-dbtype driver))
 
       (string? inline)
@@ -216,9 +213,6 @@
     (cond
       (nil? value)
       nil
-
-      (h2x/is-of-type? value (float-dbtype driver))
-      value
 
       (not inline)
       (->float driver value)
