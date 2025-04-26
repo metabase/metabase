@@ -11,6 +11,7 @@ import {
   OTHER_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
+  X_AXIS_RAW_VALUE_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getBreakoutDistinctValues } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
@@ -270,6 +271,19 @@ export const getKeyBasedDatasetTransform = (
         transformedRecord[key] = valueTransform(datum[key]);
       }
     }
+    return transformedRecord;
+  };
+};
+
+export const applyXAxisTransformations = (
+  xAxisTransformFn: (value: RowValue) => RowValue,
+): TransformFn => {
+  return (datum) => {
+    const transformedRecord = { ...datum };
+    transformedRecord[X_AXIS_RAW_VALUE_DATA_KEY] = datum[X_AXIS_DATA_KEY];
+    transformedRecord[X_AXIS_DATA_KEY] = xAxisTransformFn(
+      datum[X_AXIS_DATA_KEY],
+    );
     return transformedRecord;
   };
 };
@@ -756,7 +770,7 @@ export const applyVisualizationSettingsDataTransformations = (
     ),
     {
       condition: isCategoryAxis(xAxisModel),
-      fn: getKeyBasedDatasetTransform([X_AXIS_DATA_KEY], (value) => {
+      fn: applyXAxisTransformations((value) => {
         return isCategoryAxis(xAxisModel) && value == null
           ? ECHARTS_CATEGORY_AXIS_NULL_VALUE
           : value;
@@ -764,7 +778,7 @@ export const applyVisualizationSettingsDataTransformations = (
     },
     {
       condition: isNumericAxis(xAxisModel) || isTimeSeriesAxis(xAxisModel),
-      fn: getKeyBasedDatasetTransform([X_AXIS_DATA_KEY], (value) => {
+      fn: applyXAxisTransformations((value) => {
         return isNumericAxis(xAxisModel) || isTimeSeriesAxis(xAxisModel)
           ? xAxisModel.toEChartsAxisValue(value)
           : value;

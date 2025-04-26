@@ -23,6 +23,7 @@ import {
   INDEX_KEY,
   OTHER_DATA_KEY,
   X_AXIS_DATA_KEY,
+  X_AXIS_RAW_VALUE_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   isBreakoutSeries,
@@ -360,13 +361,19 @@ const getDatumByEChartsDataIndex = (
 ) => {
   const displayDatum = chartModel.transformedDataset[echartsDataIndex];
   const rawDatumIndex = displayDatum[INDEX_KEY];
+  // A datum without an original dataset index is an interpolated point
+  // that was generated during processing and doesn't exist in the raw dataset
+  const isInterpolatedDatum = typeof rawDatumIndex !== "number";
+  if (isInterpolatedDatum) {
+    const datum = { ...displayDatum };
 
-  const datum =
-    typeof rawDatumIndex === "number"
-      ? chartModel.dataset[rawDatumIndex]
-      : displayDatum;
+    // For interpolated data points, replace the processed x-axis value with its raw value
+    // This ensures tooltips display the original, meaningful value rather than the transformed for presentation by ECharts
+    datum[X_AXIS_DATA_KEY] = datum[X_AXIS_RAW_VALUE_DATA_KEY];
+    return datum;
+  }
 
-  return datum;
+  return chartModel.dataset[rawDatumIndex];
 };
 
 export const getTooltipModel = (

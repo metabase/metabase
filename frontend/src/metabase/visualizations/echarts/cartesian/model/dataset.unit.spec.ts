@@ -6,6 +6,7 @@ import {
   INDEX_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
+  X_AXIS_RAW_VALUE_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
   BreakoutChartColumns,
@@ -160,18 +161,21 @@ describe("dataset transform functions", () => {
       const result = getJoinedCardsDataset([rawSeries1], [columns1]);
       expect(result).toStrictEqual([
         {
+          [INDEX_KEY]: 0,
           [X_AXIS_DATA_KEY]: 1,
           "1:category": "category1",
           "1:month": 1,
           "1:count": 200,
         },
         {
+          [INDEX_KEY]: 1,
           [X_AXIS_DATA_KEY]: 2,
           "1:category": "category1",
           "1:month": 2,
           "1:count": 300,
         },
         {
+          [INDEX_KEY]: 2,
           [X_AXIS_DATA_KEY]: 3,
           "1:category": "category2",
           "1:month": 3,
@@ -184,18 +188,21 @@ describe("dataset transform functions", () => {
       const result = getJoinedCardsDataset([rawSeries2], [columns2]);
       expect(result).toStrictEqual([
         {
+          [INDEX_KEY]: 0,
           [X_AXIS_DATA_KEY]: 1,
           "2:also_month:type1": 1,
           "2:count:type1": 100,
           "2:type:type1": "type1",
         },
         {
+          [INDEX_KEY]: 1,
           [X_AXIS_DATA_KEY]: 2,
           "2:also_month:type1": 2,
           "2:count:type1": 200,
           "2:type:type1": "type1",
         },
         {
+          [INDEX_KEY]: 2,
           [X_AXIS_DATA_KEY]: 3,
           "2:also_month:type2": 3,
           "2:also_month:type3": 3,
@@ -214,6 +221,7 @@ describe("dataset transform functions", () => {
       );
       expect(result).toStrictEqual([
         {
+          [INDEX_KEY]: 0,
           [X_AXIS_DATA_KEY]: 1,
           "1:category": "category1",
           "1:month": 1,
@@ -223,6 +231,7 @@ describe("dataset transform functions", () => {
           "2:type:type1": "type1",
         },
         {
+          [INDEX_KEY]: 1,
           [X_AXIS_DATA_KEY]: 2,
           "1:category": "category1",
           "1:month": 2,
@@ -232,6 +241,7 @@ describe("dataset transform functions", () => {
           "2:type:type1": "type1",
         },
         {
+          [INDEX_KEY]: 2,
           [X_AXIS_DATA_KEY]: 3,
           "1:category": "category2",
           "1:month": 3,
@@ -313,6 +323,7 @@ describe("dataset transform functions", () => {
       expect(result).toEqual([
         {
           [X_AXIS_DATA_KEY]: "A",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "A",
           [POSITIVE_STACK_TOTAL_DATA_KEY]: Number.MIN_VALUE,
           dimensionKey: "A",
           series1: 100,
@@ -321,6 +332,7 @@ describe("dataset transform functions", () => {
         },
         {
           [X_AXIS_DATA_KEY]: "B",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "B",
           [POSITIVE_STACK_TOTAL_DATA_KEY]: Number.MIN_VALUE,
           dimensionKey: "B",
           series1: 300,
@@ -352,6 +364,7 @@ describe("dataset transform functions", () => {
       expect(result).toEqual([
         {
           [X_AXIS_DATA_KEY]: "A",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "A",
           dimensionKey: "A",
           series1: 1 / 3,
           series2: 2 / 3,
@@ -359,6 +372,7 @@ describe("dataset transform functions", () => {
         },
         {
           [X_AXIS_DATA_KEY]: "B",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "B",
           dimensionKey: "B",
           series1: 3 / 7,
           series2: 4 / 7,
@@ -395,6 +409,7 @@ describe("dataset transform functions", () => {
       expect(result).toEqual([
         {
           [X_AXIS_DATA_KEY]: "A",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "A",
           dimensionKey: "A",
           series1: 0,
           series2: 200,
@@ -448,15 +463,19 @@ describe("dataset transform functions", () => {
 
         expect(result).toEqual([
           {
-            [INDEX_KEY]: 0,
             [X_AXIS_DATA_KEY]: "2020-01-01T00:00:00.000Z",
+            [X_AXIS_RAW_VALUE_DATA_KEY]: "2020-01-01T00:00:00.000Z",
             dimensionKey: "A",
             series1: 10,
           },
-          { [X_AXIS_DATA_KEY]: "2020-02-01T00:00:00.000Z", series1: 0 },
           {
-            [INDEX_KEY]: 1,
+            [X_AXIS_DATA_KEY]: "2020-02-01T00:00:00.000Z",
+            [X_AXIS_RAW_VALUE_DATA_KEY]: "2020-02-01T00:00:00.000Z",
+            series1: 0,
+          },
+          {
             [X_AXIS_DATA_KEY]: "2020-03-01T00:00:00.000Z",
+            [X_AXIS_RAW_VALUE_DATA_KEY]: "2020-03-01T00:00:00.000Z",
             dimensionKey: "A",
             series1: 20,
           },
@@ -524,7 +543,7 @@ describe("dataset transform functions", () => {
         expect(result).toEqual([
           {
             ...validDatum,
-            [INDEX_KEY]: 0,
+            [X_AXIS_RAW_VALUE_DATA_KEY]: validDatum[X_AXIS_DATA_KEY],
           },
         ]);
       });
