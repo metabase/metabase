@@ -127,7 +127,9 @@
 (defn- untyped-inline-value [h2x]
   (let [unwrapped (h2x/unwrap-typed-honeysql-form h2x)]
     (cond
-      (not (vector? unwrapped))
+      (or (float?   unwrapped)
+          (string?  unwrapped)
+          (integer? unwrapped))
       unwrapped
 
       (inline? unwrapped)
