@@ -30,27 +30,19 @@ jobs:
     strategy:
       matrix:
         edition: [ee, oss]
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      INTERACTIVE: false
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.commit }}
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
+
+      - name: Build uberjar
+        uses: ./.github/actions/build-uberjar
         with:
-          m2-cache-key: uberjar
+          edition: ${{ matrix.edition }}
           java-version: 21
-      - name: Build
-        run: ./bin/build.sh
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
-        with:
-          name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
+          m2-cache-key: uberjar
+          artifact-name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
 
   check_jar_health:
     runs-on: ubuntu-22.04
