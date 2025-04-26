@@ -460,10 +460,6 @@
   [_driver _special_type expr]
   expr)
 
-(defmethod sql.qp/->honeysql [:clickhouse :integer]
-  [driver [_ value]]
-  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
-
 ;;; ------------------------------------------------------------------------------------
 ;;; JDBC-related functions
 ;;; ------------------------------------------------------------------------------------
