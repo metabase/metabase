@@ -126,8 +126,15 @@
 
 (defn- untyped-inline-value [h2x]
   (let [unwrapped (h2x/unwrap-typed-honeysql-form h2x)]
-    (when (inline? unwrapped)
-      (second unwrapped))))
+    (cond
+      (not (vector? unwrapped))
+      unwrapped
+
+      (inline? unwrapped)
+      (second unwrapped)
+
+      :else
+      nil)))
 
 ;; this is the primary way to override behavior for a specific clause or object class.
 
@@ -1136,6 +1143,7 @@
 
 (defmethod ->honeysql [:sql :integer]
   [driver [_ value]]
+  (prn (->honeysql driver value))
   (coerce-integer driver (->honeysql driver value)))
 
 (defmethod ->honeysql [:sql :float]
