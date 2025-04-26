@@ -58,45 +58,8 @@ jobs:
               node_version: requirements.node,
             };
 
-  build-uberjar:
-    needs: [files-changed, get-build-requirements]
-    if: |
-      !cancelled() &&
-      needs.files-changed.outputs.e2e_all == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 25
-    env:
-      MB_EDITION: ee
-      INTERACTIVE: false
-      # make sure that builds on release branches get licenses, because we use them for releases
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-        with:
-          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
-
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: uberjar
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
-
-      - name: Build uberjar with ./bin/build.sh
-        run: ./bin/build.sh
-
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
-        with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-
   e2e-tests:
-    needs: [get-build-requirements, build-uberjar]
-    if: |
-      !cancelled() &&
-      needs.build-uberjar.result == 'success'
+    needs: [get-build-requirements]
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     strategy:
@@ -126,10 +89,24 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Retrieve uberjar artifact for ee
-        uses: actions/download-artifact@v4
+      - name: Download Metabase EE uberjar
+        uses: ./.github/actions/e2e-download-uberjar
         with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          edition: ee # Embedding tests likely need EE
+      - name: Prepare JAR for test runner
+        run: |
+          mkdir -p target/uberjar
+          mv metabase.jar target/uberjar/metabase.jar
+          echo "Checking if version.properties exists..."
+          if jar tf target/uberjar/metabase.jar version.properties > /dev/null; then
+            echo "Extracting version.properties..."
+            jar xf target/uberjar/metabase.jar version.properties
+            mkdir -p resources # Ensure resources directory exists
+            mv version.properties resources/
+          else
+            echo "version.properties not found in JAR."
+          fi
+        shell: bash
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
