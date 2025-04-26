@@ -376,7 +376,7 @@ union all select '2020-04-01' x, 40 y`,
 
     H.cartesianChartCircleWithColor("#88BF4D").eq(1).trigger("mousemove");
     H.assertEChartsTooltip({
-      header: "January 2020",
+      header: "February 2020",
       rows: [
         {
           color: "#88BF4D",
