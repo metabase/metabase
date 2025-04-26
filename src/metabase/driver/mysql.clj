@@ -311,10 +311,6 @@
     (-> [:str_to_date expr (h2x/literal format-str)]
         (h2x/with-database-type-info database-type))))
 
-(defmethod sql.qp/->integer :mysql
-  [_ value]
-  (h2x/maybe-cast :signed value))
-
 (defmethod sql.qp/integer-dbtype :mysql
   [_]
   :signed)
