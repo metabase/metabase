@@ -210,6 +210,8 @@ describe(
           getParameterValuesForProductCategories().then((response) => {
             expect(response.body.values).to.have.length(0);
           });
+
+          cy.log("test message");
         });
       });
     });

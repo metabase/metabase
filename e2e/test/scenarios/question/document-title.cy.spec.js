@@ -19,7 +19,7 @@ describe(
           dataset_query: {
             type: "native",
             native: {
-              query: "select pg_sleep(60)",
+              query: "select pg_sleep(30)",
             },
             database: PG_DB_ID,
           },
