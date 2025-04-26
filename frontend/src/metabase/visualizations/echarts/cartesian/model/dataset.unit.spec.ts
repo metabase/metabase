@@ -3,7 +3,7 @@ import dayjs from "dayjs";
 import { createMockSeriesModel } from "__support__/echarts";
 import { checkNumber } from "metabase/lib/types";
 import {
-  ORIGINAL_INDEX_DATA_KEY,
+  INDEX_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -448,14 +448,14 @@ describe("dataset transform functions", () => {
 
         expect(result).toEqual([
           {
-            [ORIGINAL_INDEX_DATA_KEY]: 0,
+            [INDEX_KEY]: 0,
             [X_AXIS_DATA_KEY]: "2020-01-01T00:00:00.000Z",
             dimensionKey: "A",
             series1: 10,
           },
           { [X_AXIS_DATA_KEY]: "2020-02-01T00:00:00.000Z", series1: 0 },
           {
-            [ORIGINAL_INDEX_DATA_KEY]: 1,
+            [INDEX_KEY]: 1,
             [X_AXIS_DATA_KEY]: "2020-03-01T00:00:00.000Z",
             dimensionKey: "A",
             series1: 20,
@@ -524,7 +524,7 @@ describe("dataset transform functions", () => {
         expect(result).toEqual([
           {
             ...validDatum,
-            [ORIGINAL_INDEX_DATA_KEY]: 0,
+            [INDEX_KEY]: 0,
           },
         ]);
       });
