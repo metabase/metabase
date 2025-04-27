@@ -1,0 +1,17 @@
+.TranslationTable {
+  margin-block: 0;
+  background-color: rgba(255, 255, 255, 0.05);
+
+  tr:hover {
+    background-color: inherit !important;
+  }
+
+  th {
+    font-size: var(--mantine-font-size-sm);
+    padding-block: 0.35rem;
+  }
+
+  tr:last-child td {
+    border-bottom: 0;
+  }
+}

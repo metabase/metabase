@@ -3,6 +3,7 @@ import type { DictionaryArray } from "metabase-types/api";
 /** Translate a user-generated string
  *
  * Terminology: A "msgid" is a 'raw', untranslated string. A "msgstr" is a
+ *
  * translation of a msgid.
  * */
 export const translateContentString = <
