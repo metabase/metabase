@@ -14,6 +14,9 @@
 
 (def ^:private max-string-length 255)
 
+;; Maximum file size: 1.5MB
+(def ^:private max-file-size (* 1.5 1024 1024))
+
 (defn- row-has-correct-number-of-fields
   "Checks if a row has the expected format with exactly 3 columns."
   [row]
@@ -58,6 +61,16 @@
                       {:status-code http-status-unprocessable
                        :errors [(tru "Invalid CSV format: {0}" (.getMessage e))]})))))
 
+(defn- check-file-size
+  "Check if the file size is within the maximum allowed size."
+  [^File file]
+  (let [file-size (.length file)]
+    (when (> file-size max-file-size)
+      (throw (ex-info (tru "The file could not be uploaded because it is larger than {0}MB, which is the maximum." (/ max-file-size (* 1024 1024)))
+                      {:status-code http-status-content-too-large
+                       :file-size file-size
+                       :max-size max-file-size})))))
+
 (defn is-msgstr-usable
   "Check if the translation string is usable. It should not be blank or contain only commas, whitespace, or semicolons."
   [msgstr]
@@ -93,6 +106,7 @@
   "Import translations from CSV and insert or update rows in the content_translation table."
   [{:keys [file]}]
   (with-open [reader (io/reader file)]
+    (check-file-size file)
     (let [csv-data (read-csv-file reader)]
 
       ; Validate all rows before proceeding

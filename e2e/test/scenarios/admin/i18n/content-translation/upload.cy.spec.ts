@@ -10,6 +10,7 @@ import {
 } from "./constants";
 import {
   assertOnlyTheseTranslationsAreStored,
+  generateLargeCSV,
   uploadTranslationDictionary,
 } from "./helpers/e2e-content-translation-helpers";
 
@@ -161,6 +162,23 @@ describe("scenarios > admin > localization > content translation", () => {
             /Row 5.*exceeds maximum length/,
           );
         });
+      });
+
+      it("rejects a CSV upload that is too big", () => {
+        cy.visit("/admin/settings/localization");
+        cy.get("#content-translation-dictionary-upload-input").selectFile(
+          {
+            contents: Cypress.Buffer.from(
+              generateLargeCSV({ sizeInMebibytes: 2.5 }),
+            ),
+            fileName: "file.csv",
+            mimeType: "text/csv",
+          },
+          { force: true },
+        );
+        cy.findByTestId("content-localization-setting").findByText(
+          "Upload failed",
+        );
       });
     });
   });
