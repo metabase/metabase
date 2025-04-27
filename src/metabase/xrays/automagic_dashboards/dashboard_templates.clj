@@ -14,6 +14,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]
    [metabase.util.yaml :as yaml]
    [metabase.xrays.automagic-dashboards.populate :as populate])
   (:import
@@ -268,38 +269,38 @@
 
 (defn- valid-metrics-references?
   [{:keys [metrics cards]}]
-  (every? (identifiers metrics) (all-references :metrics cards)))
+  (perf/every? (identifiers metrics) (all-references :metrics cards)))
 
 (defn- valid-filters-references?
   [{:keys [filters cards]}]
-  (every? (identifiers filters) (all-references :filters cards)))
+  (perf/every? (identifiers filters) (all-references :filters cards)))
 
 (defn- valid-group-references?
   [{:keys [cards groups]}]
-  (every? groups (keep (comp :group val first) cards)))
+  (perf/every? groups (keep (comp :group val first) cards)))
 
 (defn- valid-order-by-references?
   [{:keys [dimensions metrics cards]}]
-  (every? (comp (into (identifiers dimensions)
-                      (identifiers metrics))
-                identifier)
-          (all-references :order_by cards)))
+  (perf/every? (comp (into (identifiers dimensions)
+                           (identifiers metrics))
+                     identifier)
+               (all-references :order_by cards)))
 
 (defn- valid-dimension-references?
   [{:keys [dimensions] :as dashboard-template}]
-  (every? (some-fn (identifiers dimensions) (comp table-type? ->entity))
-          (collect-dimensions dashboard-template)))
+  (perf/every? (some-fn (identifiers dimensions) (comp table-type? ->entity))
+               (collect-dimensions dashboard-template)))
 
 (defn- valid-dashboard-filters-references?
   [{:keys [dimensions dashboard_filters]}]
-  (every? (identifiers dimensions) dashboard_filters))
+  (perf/every? (identifiers dimensions) dashboard_filters))
 
 (defn- valid-breakout-dimension-references?
   [{:keys [cards dimensions]}]
   (->> cards
        (all-references :dimensions)
        (map identifier)
-       (every? (identifiers dimensions))))
+       (perf/every? (identifiers dimensions))))
 
 (def DashboardTemplate
   "Specification defining an automagic dashboard."
