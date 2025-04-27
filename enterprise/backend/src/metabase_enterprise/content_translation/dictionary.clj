@@ -7,11 +7,18 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private http-status-unprocessable 422)
+
 (defn- translation-key
   "The identity of a translation. It's locale and source string so we can identify if the same translation is present
   multiple times."
   [t]
   (select-keys t [:locale :msgid]))
+
+;; Maximum file size: 1.5MB
+;; This should equal the maxFileSizeInMiB variable in
+;; enterprise/frontend/src/metabase-enterprise/content_translation/components/ContentTranslationConfiguration.tsx
+(def ^:private max-file-size (* 1.5 1024 1024))
 
 (defn- adjust-index
   "Adjust index: increment once for the header row that was chopped off and again to go to 1-based indexing for human
@@ -79,7 +86,7 @@
   (let [{:keys [translations errors]} (process-rows rows)]
     (when (seq errors)
       (throw (ex-info (tru "The file could not be uploaded due to the following error(s):")
-                      {:status-code 422
+                      {:status-code http-status-unprocessable
                        :errors errors})))
     ;; remove bad msgstrs after error generator for line number reporting reasons
     (let [usable-rows (filter (comp is-msgstr-usable :msgstr) translations)]
