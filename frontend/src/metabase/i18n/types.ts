@@ -13,7 +13,10 @@ export type NonEmpty<ArrayType> = ArrayType extends (infer ItemType)[]
 // Translations retrieved from the BE have ids
 export type RetrievedDictionaryArrayRow = DictionaryArrayRow & { id: number };
 
-export type ContentTranslationFunction = <T>(msgid: T) => string | T;
+export type ContentTranslationFunction = {
+  <T>(msgid: T, retrieveMapping: true): Record<string, string>;
+  <T>(msgid: T, retrieveMapping?: false): T;
+};
 
 export type DictionaryResponse = {
   data: RetrievedDictionaryArrayRow[];

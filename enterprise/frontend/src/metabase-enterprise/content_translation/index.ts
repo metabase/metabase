@@ -1,7 +1,10 @@
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { ContentTranslationConfiguration } from "./components";
+import {
+  ContentTranslationConfiguration,
+  LocalizableEditableText,
+} from "./components";
 import { useTranslateContent } from "./hooks";
 
 if (hasPremiumFeature("content_translation")) {
@@ -9,5 +12,6 @@ if (hasPremiumFeature("content_translation")) {
     isEnabled: true,
     useTranslateContent,
     ContentTranslationConfiguration,
+    LocalizableEditableText,
   });
 }

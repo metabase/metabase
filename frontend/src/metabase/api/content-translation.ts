@@ -11,6 +11,8 @@ type UploadContentTranslationDictionaryRequest = {
   file: File;
 };
 
+// TODO: in content-translation/upload branch, move this to:
+// enterprise/frontend/src/metabase-enterprise/api/
 export const contentTranslationApi = Api.injectEndpoints({
   endpoints: (builder) => {
     return {

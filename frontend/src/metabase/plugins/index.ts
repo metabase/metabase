@@ -33,6 +33,7 @@ import type {
   ModelFilterControlsProps,
   ModelFilterSettings,
 } from "metabase/browse/models";
+import EditableText from "metabase/core/components/EditableText/EditableText";
 import type { LinkProps } from "metabase/core/components/Link";
 import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
@@ -628,6 +629,7 @@ export const PLUGIN_CONTENT_TRANSLATION = {
     ) => arg;
     return contentTranslationFunction;
   },
+  LocalizableEditableText: EditableText,
 };
 
 export const PLUGIN_DB_ROUTING = {
