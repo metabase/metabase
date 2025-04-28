@@ -14,7 +14,9 @@ import {
   canEditQuestion,
 } from "metabase/dashboard/components/DashCard/DashCardMenu/utils";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
+import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
 import { useStore } from "metabase/lib/redux";
+import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import {
@@ -24,6 +26,7 @@ import {
   Menu,
   type MenuItemProps,
 } from "metabase/ui";
+import { canSavePng } from "metabase/visualizations";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import type Question from "metabase-lib/v1/Question";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
@@ -78,6 +81,20 @@ export const DashCardMenu = ({
 }: DashCardMenuProps) => {
   const store = useStore();
   const { plugins } = useInteractiveDashboardContext();
+  const canDownloadPng = canSavePng(question.display());
+  const formats = canDownloadPng
+    ? [...exportFormats, exportFormatPng]
+    : exportFormats;
+
+  const { value: formatPreference, setValue: setFormatPreference } =
+    useUserKeyValue({
+      namespace: "last_download_format",
+      key: "download_format_preference",
+      defaultValue: {
+        last_download_format: formats[0],
+        last_table_download_format: exportFormats[0],
+      },
+    });
 
   const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
     question,
@@ -116,6 +133,8 @@ export const DashCardMenu = ({
         <QuestionDownloadWidget
           question={question}
           result={result}
+          formatPreference={formatPreference}
+          setFormatPreference={setFormatPreference}
           onDownload={(opts) => {
             close();
             handleDownload(opts);

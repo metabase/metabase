@@ -121,6 +121,14 @@ export type UserKeyValue =
       namespace: "user_acknowledgement";
       key: string;
       value: boolean;
+    }
+  | {
+      namespace: "last_download_format";
+      key: string;
+      value: {
+        last_download_format: "csv" | "xlsx" | "json" | "png";
+        last_table_download_format: "csv" | "xlsx" | "json";
+      };
     };
 
 export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;

@@ -62,6 +62,15 @@ describe("QueryBuilder - unsaved changes warning", () => {
       key: "turn_into_model_modal",
       value: false,
     });
+
+    setupGetUserKeyValueEndpoint({
+      namespace: "last_download_format",
+      key: "download_format_preference",
+      value: {
+        last_download_format: "csv",
+        last_table_download_format: "csv",
+      },
+    });
   });
 
   afterEach(() => {
