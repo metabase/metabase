@@ -789,9 +789,10 @@
       (mt/with-temp [:model/Card {pivot-card-id :id}
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
-                                               {:rows    ["CREATED_AT"],
-                                                :columns ["CATEGORY"],
-                                                :values  ["sum"]}}
+                                               {:rows    ["CREATED_AT"]
+                                                :columns ["CATEGORY"]
+                                                :values  ["sum"]}
+                                               :pivot.condense_duplicate_totals true}
                       :dataset_query          (mt/mbql-query products
                                                 {:aggregation [[:sum $price]
                                                                [:avg $rating]]
@@ -1181,6 +1182,7 @@
                                                {:rows    ["CATEGORY"]
                                                 :columns ["CREATED_AT"]
                                                 :values  ["sum"]}
+                                               :pivot.condense_duplicate_totals true
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                       :currency_in_header false}}}
@@ -1347,6 +1349,7 @@
                             {:rows    ["CATEGORY"]
                              :columns ["CREATED_AT"]
                              :values  ["sum"]}
+                            :pivot.condense_duplicate_totals true
                             :column_settings
                             {"[\"name\",\"sum\"]" (merge {:number_style       "currency"
                                                           :currency_in_header false}
