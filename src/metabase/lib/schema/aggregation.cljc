@@ -123,6 +123,7 @@
   [x]
   (when-let [[tag _opts & args] (and (vector? x) x)]
     (or (lib.hierarchy/isa? tag ::aggregation-clause-tag)
+        ;; Case has the following shape [:case opts [[cond expr]...] default-expr?]
         (if (= :case tag)
           (or (some aggregation-expression? (ffirst args))
               (some aggregation-expression? (fnext args)))
