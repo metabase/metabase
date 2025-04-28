@@ -39,27 +39,23 @@ export function lexify(source: string) {
   }
 
   tokenize(source).iterate(function (node) {
+    const text = source.slice(node.from, node.to);
+
     if (node.type.name === "Identifier") {
       return token(node, {
         type: IDENTIFIER,
-        value: source.slice(node.from, node.to),
+        value: text,
       });
     }
 
     if (node.type.name === "Field") {
-      const text = source.slice(node.from, node.to);
       return token(node, {
         type: FIELD,
         value: unquoteString(text, "["),
       });
     }
 
-    if (node.type.name === "Number") {
-      return token(node, { type: NUMBER });
-    }
-
     if (node.type.name === "String") {
-      const text = source.slice(node.from, node.to);
       return token(node, {
         type: STRING,
         value: unquoteString(text),
@@ -67,7 +63,15 @@ export function lexify(source: string) {
     }
 
     if (node.type.name === "Boolean") {
-      return token(node, { type: BOOLEAN });
+      return token(node, {
+        type: BOOLEAN,
+      });
+    }
+
+    if (node.type.name === "Number") {
+      return token(node, {
+        type: NUMBER,
+      });
     }
 
     if (node.type.name === "(") {
@@ -76,7 +80,9 @@ export function lexify(source: string) {
         prev.type = CALL;
         delete prev.value;
       }
-      return token(node, { type: GROUP });
+      return token(node, {
+        type: GROUP,
+      });
     }
 
     const type = parsePunctuator(node.type.name);
@@ -90,7 +96,9 @@ export function lexify(source: string) {
       node.node.toTree().positions.length === 0 &&
       node.to !== node.from
     ) {
-      return token(node, { type: BAD_TOKEN });
+      return token(node, {
+        type: BAD_TOKEN,
+      });
     }
   });
 
