@@ -1243,12 +1243,10 @@
                         :attributes {"cat" 10}}
         (is (= [[34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
                 [99 "Golden Road Brewing" 10 34.1505 -118.274 2]]
-               (mt/rows
-                (mt/run-mbql-query venues)))))
+               (mt/formatted-rows [int str int 4.0 3.0 int]
+                                  (mt/run-mbql-query venues {:order-by [[:asc $id]]})))))
       (met/with-gtaps! {:gtaps {:checkins {:remappings {:user ["variable" [:field (mt/id :checkins :user_id) nil]]}}},
                         :attributes {"user" 1}}
         (is (= [[31]]
-               (mt/rows
-                (mt/run-mbql-query checkins {:aggregation [[:count]]}))))))))
-
-
+               (mt/formatted-rows [int]
+                                  (mt/run-mbql-query checkins {:aggregation [[:count]]}))))))))
