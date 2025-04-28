@@ -1246,8 +1246,8 @@
                (mt/rows
                 (mt/run-mbql-query venues)))))
       (met/with-gtaps! {:gtaps {:checkins {:remappings {:user ["variable" [:field (mt/id :checkins :user_id) nil]]}}},
-                        :attributes {"user" (mt/user->id :rasta)}}
-        (is (= [[77]]
+                        :attributes {"user" 1}}
+        (is (= [[31]]
                (mt/rows
                 (mt/run-mbql-query checkins {:aggregation [[:count]]}))))))))
 
