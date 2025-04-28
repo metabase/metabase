@@ -54,7 +54,7 @@ function setAttributes(...syntaxRules: [Partial<NodeType>, NodeType[]][]) {
   }
 }
 
-const NODE_TYPE = {
+export const NODE_TYPE = {
   ADD,
   LOGICAL_AND,
   ARG_LIST,
