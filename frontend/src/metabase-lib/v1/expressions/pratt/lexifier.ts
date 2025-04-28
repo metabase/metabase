@@ -112,7 +112,5 @@ export function lexify(source: string) {
     }),
   );
 
-  return {
-    tokens: lexs.sort((a, b) => a.pos - b.pos),
-  };
+  return lexs.sort((a, b) => a.pos - b.pos);
 }

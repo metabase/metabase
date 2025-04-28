@@ -41,7 +41,7 @@ export function compileExpression({
   hooks?: Hooks;
 }): CompileResult {
   try {
-    const { tokens } = lexify(source);
+    const tokens = lexify(source);
 
     hooks.lexified?.({ tokens });
 

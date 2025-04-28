@@ -90,7 +90,7 @@ export function fuzzyMatcher(options: Completion[]) {
 }
 
 export function tokenAtPos(source: string, pos: number): Token | null {
-  const { tokens } = lexify(source);
+  const tokens = lexify(source);
 
   const idx = tokens.findIndex(
     (token) => token.start <= pos && token.end >= pos,
