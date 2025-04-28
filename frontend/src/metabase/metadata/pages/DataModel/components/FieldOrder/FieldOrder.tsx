@@ -16,6 +16,7 @@ interface Props {
   onChange: (fieldOrder: DragEndEvent["itemIds"]) => void;
 }
 
+// TODO: move to metadata/components and rename (SortableFieldList?)
 export const FieldOrder = ({ table, onChange }: Props) => {
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },

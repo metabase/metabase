@@ -13,11 +13,10 @@ import {
   NameDescriptionInput,
 } from "metabase/metadata/components";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Button, Flex, Stack, Text } from "metabase/ui";
+import { Button, Card, Flex, Stack, Switch, Text } from "metabase/ui";
 import type { FieldId, TableId } from "metabase-types/api";
 
 import { FieldOrder } from "../FieldOrder";
-import { TableVisibilityInput } from "../TableVisibilityInput";
 
 interface Props {
   tableId: TableId;
@@ -57,13 +56,21 @@ export const TableSection = ({ tableId }: Props) => {
         }}
       />
 
-      <TableVisibilityInput
-        checked={table.visibility_type === "hidden"}
-        onChange={(event) => {
-          const visibilityType = event.target.checked ? "hidden" : null;
-          updateTable({ id: tableId, visibility_type: visibilityType });
-        }}
-      />
+      <Stack gap="sm">
+        <Text fw="bold" size="sm">{t`Table visibility`}</Text>
+
+        <Card bg="accent-gray-light" p="sm" radius="md" shadow="none">
+          <Switch
+            checked={table.visibility_type === "hidden"}
+            label={t`Hide this table`}
+            size="sm"
+            onChange={(event) => {
+              const visibilityType = event.target.checked ? "hidden" : null;
+              updateTable({ id: tableId, visibility_type: visibilityType });
+            }}
+          />
+        </Card>
+      </Stack>
 
       <Stack gap="sm">
         <Flex align="flex-end" gap="md" justify="space-between">

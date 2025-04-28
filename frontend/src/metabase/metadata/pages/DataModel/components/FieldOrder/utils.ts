@@ -39,7 +39,6 @@ export function sortItems(items: Item[], order: Item["id"][]) {
   return items.sort((a, b) => indexMap[a.id] - indexMap[b.id]);
 }
 
-// TODO: move to metadata/utils?
 function getFieldId(field: Field): string | number {
   if (Array.isArray(field.id)) {
     return field.id[1];
