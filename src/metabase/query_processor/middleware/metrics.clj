@@ -120,7 +120,7 @@
              form)))))))
 
 (defn- metric-query-filters->aggregation
-  "Entrypoint into the marvelous world of transforming metric aggregation into one that has case wrapped column arg."
+  "Entrypoint into transformation of metric aggregation into one that has case wrapped column arg."
   [metric-query]
   (if-some [filters (not-empty (lib/filters metric-query))]
     (let [aggregation-names (select-keys (last (lib/returned-columns metric-query))
