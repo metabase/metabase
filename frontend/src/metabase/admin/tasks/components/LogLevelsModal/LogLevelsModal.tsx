@@ -37,12 +37,12 @@ export const LogLevelsModal = ({ onClose }: Props) => {
   const [reset, { error: resetError, isLoading: isLoadingReset }] =
     useResetLogLevelsMutation();
 
-  const [duration, setDuration] = useState("60");
+  const [duration, setDuration] = useState<number | "">(60);
   const [durationUnit, setDurationUnit] =
     useState<LoggerDurationUnit>("minutes");
   const [json, setJson] = useState("");
-  const durationNumber = parseInt(duration, 10);
-  const isDurationValid = Number.isFinite(durationNumber);
+  const isDurationValid =
+    typeof duration === "number" && Number.isFinite(duration) && duration >= 0;
   const isValid = isDurationValid && isJsonValid(json);
   const isLoading = isLoadingAdjust || isLoadingReset;
 
@@ -57,8 +57,12 @@ export const LogLevelsModal = ({ onClose }: Props) => {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
+    if (!isValid) {
+      return;
+    }
+
     const response = await adjust({
-      duration: durationNumber,
+      duration,
       duration_unit: durationUnit,
       log_levels: JSON.parse(json),
     });

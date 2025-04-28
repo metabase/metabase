@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import { Flex, Select, TextInput } from "metabase/ui";
+import { Flex, NumberInput, Select } from "metabase/ui";
 import type { LoggerDurationUnit } from "metabase-types/api";
 
 interface Props {
-  duration: string;
+  duration: number | "";
   durationUnit: LoggerDurationUnit;
-  onDurationChange: (duration: string) => void;
+  onDurationChange: (duration: number | "") => void;
   onDurationUnitChange: (durationUnit: LoggerDurationUnit) => void;
 }
 
@@ -18,14 +18,13 @@ export const DurationInput = ({
 }: Props) => {
   return (
     <Flex align="flex-end" gap="md">
-      <TextInput
+      <NumberInput
         label={t`Duration`}
         placeholder={t`Duration`}
         required
-        type="number"
         value={duration}
         w={80}
-        onChange={(event) => onDurationChange(event.target.value)}
+        onChange={onDurationChange}
       />
 
       <Select
