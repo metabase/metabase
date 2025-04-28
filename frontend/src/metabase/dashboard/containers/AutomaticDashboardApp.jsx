@@ -69,18 +69,20 @@ class AutomaticDashboardAppInner extends Component {
       dissoc(dashboard, "id"),
     );
     invalidateCollections();
-    addUndo(
-      <div className={cx(CS.flex, CS.alignCenter)}>
-        {t`Your dashboard was saved`}
-        <Link
-          className={cx(CS.link, CS.textBold, CS.ml1)}
-          to={Urls.dashboard(newDashboard)}
-        >
-          {t`See it`}
-        </Link>
-      </div>,
-      { icon: "dashboard" },
-    );
+    addUndo({
+      message: (
+        <div className={cx(CS.flex, CS.alignCenter)}>
+          {t`Your dashboard was saved`}
+          <Link
+            className={cx(CS.link, CS.textBold, CS.ml1)}
+            to={Urls.dashboard(newDashboard)}
+          >
+            {t`See it`}
+          </Link>
+        </div>
+      ),
+      icon: "dashboard",
+    });
 
     this.setState({ savedDashboardId: newDashboard.id });
   };
