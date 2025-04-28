@@ -1,224 +1,48 @@
-import type { Query } from "history";
-import { useEffect, useRef } from "react";
-import type { ConnectedProps } from "react-redux";
-import { usePrevious, useUnmount } from "react-use";
-import _ from "underscore";
-
 import {
-  cancelFetchDashboardCardData,
-  fetchDashboard,
-  fetchDashboardCardData,
-  initialize,
-  setParameterValue,
-  setParameterValueToDefault,
-} from "metabase/dashboard/actions";
-import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
-import {
-  getDashboardComplete,
-  getDraftParameterValues,
-  getIsNavigatingBackToDashboard,
-  getParameterValues,
-  getParameters,
-  getSelectedTabId,
-  getSlowCards,
-} from "metabase/dashboard/selectors";
-import type {
-  DashboardDisplayOptionControls,
-  EmbedDisplayParams,
-  FetchDashboardResult,
-  SuccessfulFetchDashboardResult,
-} from "metabase/dashboard/types";
-import { connect } from "metabase/lib/redux";
-import { type DispatchFn, useDispatch } from "metabase/lib/redux";
+  type DashboardContextProps,
+  DashboardContextProvider,
+  useDashboardContext,
+} from "metabase/dashboard/context";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
-import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
-import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import type { EmbeddingAdditionalHashOptions } from "metabase/public/lib/types";
-import { setErrorPage } from "metabase/redux/app";
-import type { DashboardId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
-const mapStateToProps = (state: State) => {
-  return {
-    dashboard: getDashboardComplete(state),
-    slowCards: getSlowCards(state),
-    parameters: getParameters(state),
-    parameterValues: getParameterValues(state),
-    draftParameterValues: getDraftParameterValues(state),
-    selectedTabId: getSelectedTabId(state),
-    isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
-  };
-};
-
-const mapDispatchToProps = {
-  cancelFetchDashboardCardData,
-  setParameterValueToDefault,
-  setParameterValue,
-  fetchDashboardCardData,
-};
-
-const connector = connect(mapStateToProps, mapDispatchToProps);
-
-type ReduxProps = ConnectedProps<typeof connector>;
-
-type OwnProps = {
-  dashboardId: DashboardId;
-  parameterQueryParams: Query;
-  navigateToNewCardFromDashboard:
-    | ((opts: NavigateToNewCardFromDashboardOpts) => void)
-    | null;
-} & PublicOrEmbeddedDashboardEventHandlersProps;
-
-type PublicOrEmbeddedDashboardProps = OwnProps &
-  ReduxProps &
-  Omit<DashboardDisplayOptionControls, "downloadsEnabled"> &
-  Omit<EmbedDisplayParams, "font"> &
-  Pick<EmbeddingAdditionalHashOptions, "locale">;
-
-const initializeData = async ({
-  dashboardId,
-  shouldReload,
-  parameterQueryParams,
-  dispatch,
-}: {
-  dashboardId: string;
-  shouldReload: boolean;
-  parameterQueryParams: OwnProps["parameterQueryParams"];
-  dispatch: DispatchFn;
-}) => {
-  dispatch(initialize({ clearCache: shouldReload }));
-
-  const result = await dispatch(
-    fetchDashboard({
-      dashId: String(dashboardId),
-      queryParams: parameterQueryParams,
-      options: {
-        clearCache: shouldReload,
-      },
-    }),
-  );
-
-  if (!isSuccessfulFetchDashboardResult(result)) {
-    dispatch(setErrorPage(result.payload));
-    return;
-  }
-
-  try {
-    if ((result.payload.dashboard?.tabs?.length || 0) === 0) {
-      await dispatch(
-        fetchDashboardCardData({ reload: false, clearCache: true }),
-      );
-    }
-  } catch (error) {
-    console.error(error);
-    dispatch(setErrorPage(error));
-  }
-};
+type PublicOrEmbeddedDashboardProps = Pick<
+  EmbeddingAdditionalHashOptions,
+  "locale"
+>;
 
 const PublicOrEmbeddedDashboardInner = ({
-  dashboard,
-  parameters,
-  parameterValues,
-  draftParameterValues,
-  isFullscreen,
-  isNightMode = false,
-  onFullscreenChange,
-  onNightModeChange,
-  onRefreshPeriodChange,
-  refreshPeriod,
-  setRefreshElapsedHook,
-  hasNightModeToggle,
-  background,
-  bordered,
-  titled,
-  theme,
-  getClickActionMode,
-  downloadsEnabled,
-  hideParameters,
-  withFooter,
-  navigateToNewCardFromDashboard,
-  selectedTabId,
-  slowCards,
-  dashboardId,
-  cardTitled,
-  isNavigatingBackToDashboard,
-  parameterQueryParams,
-  onLoad,
-  onLoadWithoutCards,
-  cancelFetchDashboardCardData,
-  setParameterValueToDefault,
-  setParameterValue,
-  fetchDashboardCardData,
   locale,
 }: PublicOrEmbeddedDashboardProps) => {
-  const dispatch = useDispatch();
-  const didMountRef = useRef(false);
-
-  const previousDashboardId = usePrevious(dashboardId);
-  const previousSelectedTabId = usePrevious(selectedTabId);
-  const previousParameterValues = usePrevious(parameterValues);
-  const isDashboardLoaded = dashboard != null;
-  const wasDashboardLoaded = usePrevious(isDashboardLoaded);
-  const shouldFetchCardData = dashboard?.tabs?.length === 0;
-
-  useDashboardLoadHandlers({ dashboard, onLoad, onLoadWithoutCards });
-
-  useEffect(() => {
-    if (!didMountRef.current) {
-      initializeData({
-        dashboardId: String(dashboardId),
-        shouldReload: !isNavigatingBackToDashboard,
-        parameterQueryParams,
-        dispatch,
-      });
-
-      didMountRef.current = true;
-      return;
-    }
-
-    if (dashboardId !== previousDashboardId) {
-      initializeData({
-        dashboardId: String(dashboardId),
-        shouldReload: true,
-        parameterQueryParams,
-        dispatch,
-      });
-      return;
-    }
-
-    if (selectedTabId && selectedTabId !== previousSelectedTabId) {
-      fetchDashboardCardData();
-      return;
-    }
-
-    // `initializeData` changes `parameterValues`. We should not re-run queries
-    // in this case.
-    if (
-      wasDashboardLoaded &&
-      !_.isEqual(parameterValues, previousParameterValues)
-    ) {
-      fetchDashboardCardData({ reload: false, clearCache: true });
-    }
-  }, [
-    dashboardId,
-    dispatch,
-    fetchDashboardCardData,
-    isNavigatingBackToDashboard,
-    parameterQueryParams,
-    parameterValues,
-    previousDashboardId,
-    previousParameterValues,
-    previousSelectedTabId,
-    wasDashboardLoaded,
+  const {
+    dashboard,
     selectedTabId,
-    shouldFetchCardData,
-  ]);
-
-  useUnmount(() => {
-    cancelFetchDashboardCardData();
-  });
+    parameters,
+    parameterValues,
+    draftParameterValues,
+    slowCards,
+    isFullscreen,
+    isNightMode = false,
+    onFullscreenChange,
+    onNightModeChange,
+    onRefreshPeriodChange,
+    refreshPeriod,
+    setRefreshElapsedHook,
+    hasNightModeToggle,
+    background,
+    bordered,
+    titled,
+    theme,
+    getClickActionMode,
+    downloadsEnabled,
+    hideParameters,
+    withFooter,
+    navigateToNewCardFromDashboard,
+    dashboardId,
+    cardTitled,
+  } = useDashboardContext();
 
   return (
     <LocaleProvider locale={locale} shouldWaitForLocale>
@@ -236,8 +60,6 @@ const PublicOrEmbeddedDashboardInner = ({
         parameters={parameters}
         parameterValues={parameterValues}
         draftParameterValues={draftParameterValues}
-        setParameterValue={setParameterValue}
-        setParameterValueToDefault={setParameterValueToDefault}
         dashboardId={dashboardId}
         background={background}
         bordered={bordered}
@@ -255,13 +77,78 @@ const PublicOrEmbeddedDashboardInner = ({
   );
 };
 
-function isSuccessfulFetchDashboardResult(
-  result: FetchDashboardResult,
-): result is SuccessfulFetchDashboardResult {
-  const hasError = "error" in result;
-  return !hasError;
-}
+export const PublicOrEmbeddedDashboard = ({
+  dashboardId,
+  hasNightModeToggle,
+  isFullscreen,
+  isNightMode,
+  onFullscreenChange,
+  onNightModeChange,
+  onRefreshPeriodChange,
+  refreshPeriod,
+  setRefreshElapsedHook,
+  background,
+  bordered,
+  titled,
+  theme,
+  hideParameters,
+  downloadsEnabled,
+  locale,
 
-export const PublicOrEmbeddedDashboard = connector(
-  PublicOrEmbeddedDashboardInner,
+  parameterQueryParams,
+  onLoad,
+  onLoadWithoutCards,
+  cardTitled,
+  withFooter,
+  navigateToNewCardFromDashboard,
+}: Pick<
+  DashboardContextProps,
+  | "dashboardId"
+  | "hasNightModeToggle"
+  | "isFullscreen"
+  | "isNightMode"
+  | "onFullscreenChange"
+  | "onNightModeChange"
+  | "onRefreshPeriodChange"
+  | "refreshPeriod"
+  | "setRefreshElapsedHook"
+  | "background"
+  | "bordered"
+  | "titled"
+  | "theme"
+  | "hideParameters"
+  | "downloadsEnabled"
+  | "parameterQueryParams"
+  | "onLoad"
+  | "onLoadWithoutCards"
+  | "cardTitled"
+  | "withFooter"
+  | "navigateToNewCardFromDashboard"
+> &
+  Pick<EmbeddingAdditionalHashOptions, "locale">) => (
+  <DashboardContextProvider
+    hasNightModeToggle={hasNightModeToggle}
+    isFullscreen={isFullscreen}
+    isNightMode={isNightMode}
+    onFullscreenChange={onFullscreenChange}
+    onNightModeChange={onNightModeChange}
+    onRefreshPeriodChange={onRefreshPeriodChange}
+    refreshPeriod={refreshPeriod}
+    setRefreshElapsedHook={setRefreshElapsedHook}
+    dashboardId={dashboardId}
+    parameterQueryParams={parameterQueryParams}
+    background={background}
+    bordered={bordered}
+    titled={titled}
+    theme={theme}
+    hideParameters={hideParameters}
+    downloadsEnabled={downloadsEnabled}
+    onLoad={onLoad}
+    onLoadWithoutCards={onLoadWithoutCards}
+    cardTitled={cardTitled}
+    withFooter={withFooter}
+    navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
+  >
+    <PublicOrEmbeddedDashboardInner locale={locale} />
+  </DashboardContextProvider>
 );

@@ -1,23 +1,19 @@
 import cx from "classnames";
 import { assoc } from "icepick";
 import { useCallback } from "react";
-import type { HandleThunkActionCreator } from "react-redux";
 import _ from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ColorS from "metabase/css/core/colors.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import type {
-  setParameterValue as setParameterValueDashboardAction,
-  setParameterValueToDefault as setParameterValueToDefaultDashboardAction,
-} from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { DashboardEmptyStateWithoutAddPrompt } from "metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { useDashboardContext } from "metabase/dashboard/context";
 import type {
   DashboardFooterControls,
   DashboardFullscreenControls,
@@ -54,12 +50,6 @@ interface InnerPublicOrEmbeddedDashboardViewProps {
   parameters: UiParameter[];
   parameterValues: Record<string, ParameterValueOrArray>;
   draftParameterValues: Record<string, ParameterValueOrArray | null>;
-  setParameterValue: HandleThunkActionCreator<
-    typeof setParameterValueDashboardAction
-  >;
-  setParameterValueToDefault: HandleThunkActionCreator<
-    typeof setParameterValueToDefaultDashboardAction
-  >;
   dashboardId: DashboardId;
   background: boolean;
   bordered: boolean;
@@ -96,8 +86,6 @@ export function PublicOrEmbeddedDashboardView({
   parameters,
   parameterValues,
   draftParameterValues,
-  setParameterValue,
-  setParameterValueToDefault,
   dashboardId,
   background,
   bordered,
@@ -111,6 +99,10 @@ export function PublicOrEmbeddedDashboardView({
   cardTitled,
   downloadsEnabled,
 }: PublicOrEmbeddedDashboardViewProps) {
+  // TODO: Add the rest of the available data in the context. These two are causing type errors when passing through props.
+  const { setParameterValue, setParameterValueToDefault } =
+    useDashboardContext();
+
   const buttons = !isWithinIframe() ? (
     <DashboardHeaderButtonRow
       canResetFilters={false}

@@ -197,7 +197,6 @@ export const saveDashboardPdf = async ({
 
   const contentWidth = gridNode.offsetWidth;
   const width = contentWidth + PAGE_PADDING * 2;
-
   const size = getBrandingSize(width);
   const brandingHeight = getBrandingConfig(size).h;
   const verticalOffset =

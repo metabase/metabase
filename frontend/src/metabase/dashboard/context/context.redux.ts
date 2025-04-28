@@ -114,6 +114,10 @@ const mapDispatchToProps = {
   setParameterType,
   setParameterValue,
   setParameterValueToDefault,
+<<<<<<< HEAD
+=======
+  navigateToNewCardFromDashboard,
+>>>>>>> e426556f24 (Wrap PublicOrEmbeddedDashboard with DashboardContext)
   setParameterDefaultValue,
   setParameterRequired,
   setParameterTemporalUnits,
