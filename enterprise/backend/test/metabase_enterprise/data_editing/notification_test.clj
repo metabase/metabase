@@ -185,25 +185,19 @@
                            {:args {:table_id (mt/id :orders)}})))))))))
 
 (deftest example-payload-row-create-test
-  (is (=? {:payload_type "notification/system-event"
-           :context {:event_name "event/row.created"}
+  (is (=? {:context {:event_name "event/row.created"}
            :creator {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :editor {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :table {:id 1 :name "orders"}
            :settings {}
-           :record {:id 1 :name "Product A" :price 29.99 :status "active"}
-           :changes {:id {:before nil :after 1}
-                     :name {:before nil :after "Product A"}
-                     :price {:before nil :after 29.99}
-                     :status {:before nil :after "active"}}}
+           :record {:id 1 :name "Product A" :price 29.99 :status "active"}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
                                            :payload      {:event_name :event/row.created}
                                            :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest example-payload-row-update-test
-  (is (=? {:payload_type "notification/system-event"
-           :context {:event_name "event/row.updated"}
+  (is (=? {:context {:event_name "event/row.updated"}
            :creator {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :editor {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :table {:id 1 :name "orders"}
@@ -216,18 +210,12 @@
                                            :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest example-payload-row-delete-test
-  (is (=? {:payload_type "notification/system-event"
-           :context {:event_name "event/row.deleted"}
+  (is (=? {:context {:event_name "event/row.deleted"}
            :creator {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :editor {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :table {:id 1 :name "orders"}
            :settings {}
-           :record {:id 1 :name "Product A" :price 24.99 :status "discontinued"}
-           :changes
-           {:id {:before 1 :after nil}
-            :name {:before "Product A" :after nil}
-            :price {:before 24.99 :after nil}
-            :status {:before "discontinued" :after nil}}}
+           :record {:id 1 :name "Product A" :price 24.99 :status "discontinued"}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
                                            :payload      {:event_name :event/row.deleted}
@@ -261,7 +249,8 @@
                                                             :body    "New record: {{record.status}}"}}
                                    :notification   {:payload_type :notification/system-event
                                                     :payload      {:event_name :event/row.created}}
-                                   :custom_context {:context {:event_name :event/row.created}
+                                   :custom_context {:context {:event_name :event/row.created
+                                                              :timestamp  "2023-01-01T10:00:00Z"}
                                                     :creator {:common_name "Meta Bot",
                                                               :email "bot@metabase.com",
                                                               :first_name "Meta",
@@ -270,11 +259,9 @@
                                                              :email "ngoc@metabase.com",
                                                              :first_name "Ngoc",
                                                              :last_name "Khuat"},
-                                                    :payload_type "notification/system-event",
                                                     :record {:id 1, :status "cancelled"}
-                                                    :changes {:status {:before nil :after "cancelled"}}
                                                     :settings {},
-                                                    :table {:id 1, :name "orders"}}}))))
+                                                    :table {:id 1, :name "orders" :url "http://localhost:3000/table/1"}}}))))
   (testing "fail if the custom context does not match the schema"
     (is (=? {:message "Value does not match schema"
              :data    {:error (mt/malli=? :map)}}

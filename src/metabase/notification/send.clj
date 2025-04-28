@@ -177,6 +177,7 @@
                         (let [channel-type (:channel_type handler)
                               messages     (channel/render-notification
                                             channel-type
+                                            payload_type
                                             notification-payload
                                             (:template handler)
                                             (:recipients handler))]

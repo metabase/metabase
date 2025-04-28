@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-editing.data-editing
   (:require
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.data-editing.coerce :as data-editing.coerce]
    [metabase.actions.core :as actions]
@@ -174,10 +175,12 @@
                                    :after  after})]]
         (events/publish-event! bulk-event {:actor_id    user-id
                                            :row_changes row-changes
-                                           :args        {:table_id table-id
-                                                         :db_id    db-id}})
+                                           :args        {:table_id  table-id
+                                                         :db_id     db-id
+                                                         :timestamp (t/zoned-date-time (t/zone-id "UTC"))}})
         (doseq [row-change row-changes]
           (events/publish-event! single-event {:actor_id   user-id
                                                :row_change row-change
-                                               :args       {:table_id table-id
-                                                            :db_id    db-id}}))))))
+                                               :args       {:table_id  table-id
+                                                            :db_id     db-id
+                                                            :timestamp (t/zoned-date-time (t/zone-id "UTC"))}}))))))

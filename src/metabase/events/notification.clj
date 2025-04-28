@@ -1,6 +1,7 @@
 ;; TODO: move this to metabase.notification.events
 (ns metabase.events.notification
   (:require
+   [java-time.api :as t]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.events :as events]
@@ -146,12 +147,17 @@
 
 (def ^:private single-row-schema
   [:map {:closed true}
-   [:args (into [:map [:db_id pos-int?]] table-id-hydrate-schemas)]
+   [:args (into [:map
+                 [:db_id pos-int?]
+                 [:timestamp [:fn t/zoned-date-time?]]]
+                table-id-hydrate-schemas)]
    [:row_change row-change-schema]])
 
 (def ^:private bulk-row-schema
   [:map {:closed true}
-   [:args (into [:map [:db_id pos-int?]] table-id-hydrate-schemas)]
+   [:args (into [:map
+                 [:db_id pos-int?]
+                 [:timestamp [:fn t/zoned-date-time?]]] table-id-hydrate-schemas)]
    [:row_changes [:sequential [:map
                                [:pk     :any]
                                [:before [:maybe :map]]

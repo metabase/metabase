@@ -40,11 +40,11 @@
   message)
 
 (defmethod channel/render-notification [:channel/metabase-test :notification/testing]
-  [_channel-type notification-info _template _recipients]
+  [_channel-type _payload-type notification-info _template _recipients]
   [notification-info])
 
 (defmethod channel/render-notification [:channel/metabase-test :notification/system-event]
-  [_channel-type notification-info _template _recipients]
+  [_channel-type _payload-type notification-info _template _recipients]
   [notification-info])
 
 (defmethod notification.send/should-queue-notification? :notification/testing

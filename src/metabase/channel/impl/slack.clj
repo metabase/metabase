@@ -129,7 +129,7 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/card] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload]} _template recipients]
+  [_channel-type _payload-type {:keys [payload]} _template recipients]
   (let [attachments [{:blocks [{:type "header"
                                 :text {:type "plain_text"
                                        :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)
@@ -181,7 +181,7 @@
     attachment))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload creator]} _template recipients]
+  [_channel-type _payload-type {:keys [payload creator]} _template recipients]
   (let [parameters (:parameters payload)
         dashboard  (:dashboard payload)]
     (for [channel-id (map notification-recipient->channel-id recipients)]
@@ -195,7 +195,7 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/system-event] :- [:sequential SlackMessage]
-  [channel-type {:keys [context] :as notification-payload} template recipients]
+  [channel-type _payload-type {:keys [context] :as notification-payload} template recipients]
   (let [event-name (:event_name context)
         template    (or template
                         ;; TODO: the context here does not nescessarily have the same shape as payload, needs to rethink this
