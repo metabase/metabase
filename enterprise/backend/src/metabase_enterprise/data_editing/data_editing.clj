@@ -23,7 +23,10 @@
   "Given a row, strip it down to just its primary keys."
   [pk-fields row]
   (->> (map (comp keyword :name) pk-fields)
-       (select-keys row)
+       ;; Hideous workaround for QP and direct JDBC disagreeing on case
+       (select-keys (merge (update-keys row (comp keyword u/upper-case-en name))
+                           (u/lower-case-map-keys row)
+                           row))
        ;; Hack for now, pending discussion of the ideal fix
        ;; https://linear.app/metabase/issue/WRK-281/undo-deletes-a-record-instead-of-reverting-the-edits
        ;; See https://metaboat.slack.com/archives/C0641E4PB9B/p1744978660610899
@@ -130,14 +133,13 @@
   (let [res (perform-bulk-action! :bulk/create user-id table-id rows)]
     {:created-rows (map :after res)}))
 
-(defn- row-update-event [{:keys [before after]}]
+(defn- row-update-event
+  "Given a :effect/row.modified diff, figure out what kind of mutation it was."
+  [{:keys [before after]}]
   (case [(some? before) (some? after)]
-    [false true]  {:single :event/row.created
-                   :bulk   :event/rows.created}
-    [true  true]  {:single :event/row.updated
-                   :bulk   :event/rows.updated}
-    [true  false] {:single :event/row.deleted
-                   :bulk   :event/rows.deleted}
+    [false true]  :event/rows.created
+    [true  true]  :event/rows.updated
+    [true  false] :event/rows.deleted
     ;; should not happen
     [false false] ::no-op))
 
@@ -148,17 +150,19 @@
                                   :when (or before after)]
                         [diff (get-row-pks (table->fields table-id) (or after before))])]
     ;; undo snapshots, but only if we're not executing an undo
-    (when-not (some (comp #{"undo"} namespace first) invocation-scope)
-      ((requiring-resolve 'metabase-enterprise.data-editing.undo/track-change!)
-       user-id (u/for-map [[table-id diffs] (group-by :table-id diffs)]
-                 [table-id (u/for-map [{:keys [before after] :as diff} diffs
-                                       :when (or before after)]
-                             [(diff->pk diff) [before after]])])))
+    ;; TODO fix tests that execute actions without a user scope
+    (when user-id
+      (when-not (some (comp #{"undo"} namespace first) invocation-scope)
+        ((requiring-resolve 'metabase-enterprise.data-editing.undo/track-change!)
+         user-id (u/for-map [[table-id diffs] (group-by :table-id diffs)]
+                   [table-id (u/for-map [{:keys [before after] :as diff} diffs
+                                         :when (or before after)]
+                               [(diff->pk diff) [before after]])]))))
     ;; table notification system events
     (doseq [[{single-event :single
-              bulk-event :bulk} payloads] (->> diffs
-                                               (group-by row-update-event)
-                                               (remove (comp #{::no-op} key)))]
+              bulk-event :bulk} ent payloads] (->> diffs
+                                                   (group-by row-update-event)
+                                                   (remove (comp #{::no-op} key)))]
       (doseq [[table-id payloads] (group-by :table-id payloads)
               :let [db-id       (:db-id (first payloads))
                     row-changes (for [{:keys [before after] :as diff} payloads]
