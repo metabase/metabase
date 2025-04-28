@@ -690,7 +690,7 @@ describe("scenarios > admin > databases > sample database", () => {
   it("allows to save the default schedule (metabase#57198)", () => {
     visitDatabase(SAMPLE_DB_ID);
     editDatabase();
-    H.modal().findByText("Show advanced options").click();
+    H.modal().contains("Show advanced options").click();
     cy.findByLabelText("Choose when syncs and scans happen").click();
     cy.button("Save changes").click();
     cy.wait("@databaseUpdate").then(({ request: { body }, response }) => {
