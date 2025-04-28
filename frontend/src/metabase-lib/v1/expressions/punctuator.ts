@@ -33,5 +33,5 @@ export function parsePunctuator(op: string): NodeType | null {
   if (!isPunctuator(lower)) {
     return null;
   }
-  return PUNCTUATOR_TO_TYPE[lower as keyof typeof PUNCTUATOR_TO_TYPE];
+  return PUNCTUATOR_TO_TYPE[lower];
 }
