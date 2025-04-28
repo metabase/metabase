@@ -11,7 +11,7 @@ import {
   NameDescriptionInput,
 } from "metabase/metadata/components";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Flex, Stack, Text } from "metabase/ui";
+import { Button, Flex, Stack, Text } from "metabase/ui";
 import type { FieldId, TableId, UpdateTableRequest } from "metabase-types/api";
 
 import { FieldOrder } from "../FieldOrder";
@@ -88,6 +88,19 @@ export const TableSection = ({ tableId }: Props) => {
             });
           }}
         />
+      </Stack>
+
+      <Stack gap="sm">
+        <Text c="text-secondary" mb="md" mt="lg" size="sm" ta="center">
+          {/* eslint-disable-next-line no-literal-metabase-strings -- Admin settings */}
+          {t`Metabase can scan the values in this table to enable checkbox filters in dashboards and questions.`}
+        </Text>
+
+        <Button variant="default">{t`Re-scan table`}</Button>
+
+        <Button c="error" variant="subtle">
+          {t`Discard cached field values`}
+        </Button>
       </Stack>
     </Stack>
   );
