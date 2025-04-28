@@ -152,7 +152,20 @@ export function BasicAdminSettingInput({
       );
     case "radio":
       return (
-        <Radio.Group id={name} value={localValue} onChange={handleChange}>
+        <Radio.Group
+          id={name}
+          value={String(localValue)}
+          onChange={(newValue) => {
+            if (options && hasBooleanOptions(options)) {
+              // convert the value to boolean in the special case where a radio only has values "true" and "false"
+              // this occurs when the backend value is a boolean but the UI wants to show radio inputs
+              // e.g. bcc-enabled? setting in EmailSettingsPage
+              handleChange(stringToBoolean(newValue));
+            } else {
+              handleChange(newValue);
+            }
+          }}
+        >
           <Stack gap="sm">
             {options?.map(({ label, value }) => (
               <Radio key={value} value={value} label={label} />
@@ -184,6 +197,18 @@ export function BasicAdminSettingInput({
         />
       );
   }
+}
+
+function hasBooleanOptions(options: { label: string; value: string }[]) {
+  return (
+    options.length === 2 &&
+    options.find(({ value }) => value === "true") &&
+    options.find(({ value }) => value === "false")
+  );
+}
+
+function stringToBoolean(value: string): boolean | string {
+  return value === "true";
 }
 
 export const SetByEnvVar = ({ varName }: { varName: string }) => {

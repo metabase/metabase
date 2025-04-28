@@ -8,7 +8,6 @@ import { Stack } from "metabase/ui";
 
 import { SMTPConnectionCard } from "../Email/SMTPConnectionCard";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
-import { BccToggleWidget } from "../widgets/BccToggleWidget";
 import { EmailReplyToWidget } from "../widgets/EmailReplyToWidget";
 
 export function EmailSettingsPage() {
@@ -41,7 +40,18 @@ export function EmailSettingsPage() {
         inputType="text"
       />
       <EmailReplyToWidget />
-      <BccToggleWidget />
+      <AdminSettingInput
+        name="bcc-enabled?"
+        title={t`Add Recipients as CC or BCC`}
+        inputType="radio"
+        options={[
+          { value: "true", label: t`BCC - Hide recipients` },
+          {
+            value: "false",
+            label: t`CC - Disclose recipients`,
+          },
+        ]}
+      />
       <AdminSettingInput
         hidden={!hasEmailAllowListFeature}
         name="subscription-allowed-domains"
