@@ -74,25 +74,23 @@
           (empty? condition))
     aggregation
     (let [operator (first aggregation)
-          clause-meta (meta aggregation)
           opts (lib.options/options aggregation)
           aggregating-fn (case operator
                            :count lib/sum
                            :cum-count lib/cum-sum)]
-      (-> (aggregating-fn (lib/case [[condition 1]]))
+      (-> (aggregating-fn (lib/case [[condition 1]] 0))
           ;; explicit overwrite of new options with options of original clause
           (lib.options/with-options opts)
-          (with-meta clause-meta)))))
+          (with-meta (meta aggregation))))))
 
 (defn- transform-share-aggregation
   [condition aggregation]
   (let [opts (lib.options/options aggregation)
-        predicate (nth aggregation 2)
-        aggregation-meta (meta aggregation)]
+        predicate (nth aggregation 2)]
     (-> (lib// (lib/count-where (and-join-conditions predicate condition))
                (lib/count-where condition))
         (lib.options/with-options opts)
-        (with-meta aggregation-meta))))
+        (with-meta (meta aggregation)))))
 
 (defn- case-wrap-metric-aggregation
   [aggregation condition]
