@@ -12,16 +12,12 @@ import { isEqual, isObject, noop } from "underscore";
 import type { Dashboard, DashboardId } from "metabase-types/api";
 
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
-import { SIDEBAR_NAME } from "../constants";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
 import type {
   DashboardFullscreenControls,
-  DashboardNightModeControls,
   DashboardRefreshPeriodControls,
-  EmbedBackground,
-  EmbedFont,
-  EmbedHideParameters,
-  EmbedTitle,
+  EmbedDisplayParams,
+  EmbedThemeControls,
   FailedFetchDashboardResult,
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
