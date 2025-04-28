@@ -31,7 +31,6 @@ export function EmailSettingsPage() {
       <AdminSettingInput
         name="email-from-name"
         title={t`From Name`}
-        description={t`The name used for this instance of Metabase.`}
         placeholder="Metabase"
         inputType="text"
       />
