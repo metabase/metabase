@@ -29,9 +29,15 @@ export function useSdkIframeEmbedEventBus() {
         .with({ type: "metabase.embed.authenticate" }, ({ data }) => {
           setAuthConfig(data);
         })
-        .with({ type: "metabase.embed.setSettings" }, ({ data }) => {
-          setSettings(data);
-        });
+        .with(
+          { type: "metabase.embed.updateSettings" },
+          ({ data: nextSettings }) => {
+            setSettings((previousSettings) => ({
+              ...previousSettings,
+              ...nextSettings,
+            }));
+          },
+        );
     };
 
     window.addEventListener("message", messageHandler);

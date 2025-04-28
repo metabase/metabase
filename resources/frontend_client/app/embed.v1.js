@@ -53,7 +53,7 @@
         return;
       }
 
-      this._sendMessage("metabase.embed.setSettings", settings);
+      this._sendMessage("metabase.embed.updateSettings", settings);
     }
 
     destroy() {
