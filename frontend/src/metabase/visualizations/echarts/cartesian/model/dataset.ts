@@ -186,7 +186,11 @@ export const getJoinedCardsDataset = (
     }
   });
 
-  return Array.from(groupedData.values()).map((datum, index) => ({
+  return Array.from(groupedData.values());
+};
+
+export const appendDataIndex = (dataset: ChartDataset) => {
+  return dataset.map((datum, index) => ({
     ...datum,
     [INDEX_KEY]: index,
   }));
@@ -724,6 +728,7 @@ export const applyVisualizationSettingsDataTransformations = (
   settings: ComputedVisualizationSettings,
   showWarning?: ShowWarning,
 ) => {
+  dataset = appendDataIndex(dataset);
   const barSeriesModels = seriesModels.filter((seriesModel) => {
     const seriesSettings = settings.series(
       seriesModel.legacySeriesSettingsObjectKey,

@@ -21,6 +21,7 @@ import {
 import { formatValueForTooltip } from "metabase/visualizations/components/ChartTooltip/utils";
 import {
   INDEX_KEY,
+  IS_WATERFALL_TOTAL_DATA_KEY,
   OTHER_DATA_KEY,
   X_AXIS_DATA_KEY,
   X_AXIS_RAW_VALUE_DATA_KEY,
@@ -40,7 +41,6 @@ import type {
   DimensionModel,
   SeriesModel,
   StackModel,
-  TimeSeriesXAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
@@ -204,21 +204,14 @@ const getEventColumnsData = (
   return dataPoints;
 };
 
-const getXAxisDataForComparison = (
-  datum: Datum,
-  xAxisModel: TimeSeriesXAxisModel,
-) => {
-  const xAxisValue = datum[X_AXIS_DATA_KEY];
-  const isInterpolatedDatum = datum[INDEX_KEY] == null;
+const getXAxisDataForComparison = (datum: Datum) => {
+  const rawValue = datum[X_AXIS_RAW_VALUE_DATA_KEY] ?? datum[X_AXIS_DATA_KEY];
 
-  if (xAxisValue == null) {
+  if (rawValue == null) {
     return null;
   }
 
-  const rawDate = isInterpolatedDatum
-    ? xAxisValue
-    : xAxisModel.toEChartsAxisValue(xAxisValue);
-  return rawDate != null ? parseTimestamp(rawDate) : null;
+  return parseTimestamp(rawValue);
 };
 
 const computeDiffWithPreviousPeriod = (
@@ -233,14 +226,14 @@ const computeDiffWithPreviousPeriod = (
   }
 
   const currentValue = datum[seriesModel.dataKey];
-  const currentDate = getXAxisDataForComparison(datum, xAxisModel);
+  const currentDate = getXAxisDataForComparison(datum);
   const previousValue = previousDatum?.[seriesModel.dataKey];
 
   if (previousValue == null || currentValue == null || currentDate == null) {
     return null;
   }
 
-  const previousDate = getXAxisDataForComparison(previousDatum, xAxisModel);
+  const previousDate = getXAxisDataForComparison(previousDatum);
   const unit = isQuarterInterval(xAxisModel.interval)
     ? "quarter"
     : xAxisModel.interval.unit;
@@ -598,10 +591,17 @@ const getSeriesOnlyTooltipRowColor = (
 ) => {
   const value = datum[seriesModel.dataKey];
   if (display === "waterfall" && typeof value === "number") {
-    const color =
-      value >= 0
-        ? settings["waterfall.increase_color"]
-        : settings["waterfall.decrease_color"];
+    let color;
+
+    if (datum[IS_WATERFALL_TOTAL_DATA_KEY]) {
+      color = settings["waterfall.total_color"];
+    } else {
+      color =
+        value >= 0
+          ? settings["waterfall.increase_color"]
+          : settings["waterfall.decrease_color"];
+    }
+
     return color ?? seriesModel.color;
   }
   return seriesModel.color;

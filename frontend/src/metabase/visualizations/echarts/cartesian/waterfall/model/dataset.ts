@@ -126,7 +126,6 @@ export const extendOriginalDatasetWithTotalDatum = (
     [seriesDataKey]: waterfallDatasetTotalDatum[WATERFALL_TOTAL_KEY],
     [X_AXIS_DATA_KEY]: t`Total`,
     [IS_WATERFALL_TOTAL_DATA_KEY]: true,
-    [INDEX_KEY]: dataset.length,
   };
 
   return [...dataset, totalDatum];
