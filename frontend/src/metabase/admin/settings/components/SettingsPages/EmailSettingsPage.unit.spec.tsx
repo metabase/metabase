@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 import { act } from "react-dom/test-utils";
 
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
@@ -102,19 +102,19 @@ describe("EmailSettingsPage", () => {
     await screen.findByDisplayValue("support@metatest.com");
 
     await waitFor(async () => {
-      const puts = await findPuts();
+      const puts = await findRequests("PUT");
       expect(puts).toHaveLength(2);
     });
 
-    const puts = await findPuts();
-    const [namePutUrl, namePutDetails] = puts[0];
-    const [emailPutUrl, emailPutDetails] = puts[1];
+    const puts = await findRequests("PUT");
+    const { url: namePutUrl, body: namePutBody } = puts[0];
+    const { url: emailPutUrl, body: emailPutBody } = puts[1];
 
     expect(namePutUrl).toContain("/api/setting/email-from-name");
-    expect(namePutDetails).toEqual({ value: "Meta Best" });
+    expect(namePutBody).toEqual({ value: "Meta Best" });
 
     expect(emailPutUrl).toContain("/api/setting/email-from-address");
-    expect(emailPutDetails).toEqual({ value: "support@metatest.com" });
+    expect(emailPutBody).toEqual({ value: "support@metatest.com" });
 
     await waitFor(() => {
       const toasts = screen.getAllByLabelText("check icon");
@@ -122,16 +122,3 @@ describe("EmailSettingsPage", () => {
     });
   });
 });
-
-async function findPuts() {
-  const calls = fetchMock.calls();
-  const data = calls.filter((call) => call[1]?.method === "PUT") ?? [];
-
-  const puts = data.map(async ([putUrl, putDetails]) => {
-    const body = ((await putDetails?.body) as string) ?? "{}";
-
-    return [putUrl, JSON.parse(body ?? "{}")];
-  });
-
-  return Promise.all(puts);
-}
