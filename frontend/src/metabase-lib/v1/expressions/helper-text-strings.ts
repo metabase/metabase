@@ -50,14 +50,14 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "cum-count",
     structure: "CumulativeCount",
-    category: "aggregation",
+    category: "window",
     description: () => t`The additive total of rows across a breakout.`,
     docsPage: "cumulative",
   },
   {
     name: "sum",
     structure: "Sum",
-    category: "window",
+    category: "aggregation",
     description: () => t`Adds up all the values of the column.`,
     args: [
       {
