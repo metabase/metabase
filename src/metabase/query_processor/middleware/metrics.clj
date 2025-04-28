@@ -15,10 +15,10 @@
 (defn- filters->condition
   [filters]
   (when (seq filters)
-    (let [fc (count filters)]
-      (lib.util/fresh-uuids
-       (cond (= fc 1) (first filters)
-             (> fc 1) (apply lib/and filters))))))
+    (lib.util/fresh-uuids
+     (if (next filters)
+       (apply lib/and filters)
+       (first filters)))))
 
 (def ^:private aggregations-pred-1st-arg
   #{:count-where
@@ -28,7 +28,7 @@
   #{:count
     :cum-count})
 
-(def ^:private aggregations-col-1st-arg
+(def ^:private aggregations-expr-1st-arg
   #{:avg
     :cum-sum
     :distinct
@@ -40,7 +40,7 @@
     :sum
     :var})
 
-(defn- merge-conditions
+(defn- and-join-conditions
   [c1 c2]
   (let [c2-operator (first c2)
         c2-maybe-unwrapped (cond-> c2
@@ -119,11 +119,10 @@
              form)))))))
 
 (defn- metric-query-filters->aggregation
-  "Entrypoint into the marvelous world of transforming metric aggregation into one that hase case wrapped column arg."
+  "Entrypoint into the marvelous world of transforming metric aggregation into one that has case wrapped column arg."
   [metric-query]
   (if-some [filters (not-empty (lib/filters metric-query))]
-    (let [aggregation-names (select-keys (m/find-first (comp #{:source/aggregations} :lib/source)
-                                                       (lib/returned-columns metric-query))
+    (let [aggregation-names (select-keys (last (lib/returned-columns metric-query))
                                          [:name :display-name])]
       (-> metric-query
           (lib.util/update-query-stage -1 update-in [:aggregation 0]
