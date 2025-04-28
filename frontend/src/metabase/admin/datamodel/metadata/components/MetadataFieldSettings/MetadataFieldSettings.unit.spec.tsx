@@ -253,7 +253,7 @@ describe("MetadataFieldSettings", () => {
 
       await userEvent.click(screen.getByText("Don't cast"));
       await userEvent.type(screen.getByPlaceholderText("Find..."), "Float");
-      expect(screen.getByText("Float → Intger")).toBeInTheDocument();
+      expect(screen.getByText("Float → Integer")).toBeInTheDocument();
     });
 
     it("should show an access denied error if the foreign key field has an inaccessible target", async () => {
