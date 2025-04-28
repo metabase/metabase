@@ -10,12 +10,10 @@ export interface WithToasterReturned {
     options: Partial<Omit<Undo, "message">>,
   ) => void;
 }
-function withToaster<P>(
-  ComposedComponent: ComponentType<P & WithToasterReturned>,
+function withToaster<Props>(
+  ComposedComponent: ComponentType<Props & WithToasterReturned>,
 ) {
-  type ToastedComponentProps = P;
-
-  const ToastedComponentInternal = (props: ToastedComponentProps) => {
+  const ToastedComponentInternal = (props: Props) => {
     const dispatch = useDispatch();
 
     const triggerToast = (
