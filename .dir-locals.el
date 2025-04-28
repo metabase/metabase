@@ -76,7 +76,7 @@
            (p/defrecord+              '(2 nil nil (:defn)))
            (p/deftype+                '(2 nil nil (:defn)))
            (tools.macro/macrolet      '(1 ((:defn)) :form))))
-  (cider-clojure-cli-aliases . "dev:drivers:drivers-dev:ee:ee-dev:user")
+  (cider-clojure-cli-aliases . "dev:drivers:drivers-dev:ee:ee-dev:user:load-test")
   (clojure-indent-style . always-align)
   (cljr-favor-prefix-notation . nil)
   (cljr-insert-newline-after-require . t)
@@ -88,4 +88,4 @@
 
  ("bin"
   (clojure-mode
-   (cider-clojure-cli-aliases . "dev:drivers:build:build-dev"))))
+   (cider-clojure-cli-aliases . "dev:drivers:build:build-dev:load-test"))))
