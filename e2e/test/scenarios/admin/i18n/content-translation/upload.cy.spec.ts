@@ -85,17 +85,17 @@ describe("scenarios > admin > localization > content translation", () => {
         const blankTranslation = { locale: "de", msgid: "Cat", msgstr: "" };
         const translationWithJustSpaces = {
           locale: "de",
-          msgid: "Pig",
+          msgid: "Spaces",
           msgstr: "  ",
         };
         const translationWithJustTabs = {
           locale: "de",
-          msgid: "Goat",
+          msgid: "Tabs",
           msgstr: "\t\t",
         };
         const translationWithJustSemicolons = {
           locale: "de",
-          msgid: "Goat",
+          msgid: "Semicolons",
           msgstr: ";;",
         };
         const translationsWithBlanks = [
