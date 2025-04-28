@@ -20,7 +20,7 @@
        (apply lib/and filters)
        (first filters)))))
 
-(def ^:private aggregations-pred-1st-arg
+(def ^:private aggregations-pred-arg
   #{:count-where
     :sum-where})
 
@@ -56,12 +56,16 @@
          (lib/and c1 c2-maybe-unwrapped))))))
 
 (defn- transform-aggregation-with-predicate
+  "For `aggregation` with predicate arg, merge the predicate with the `condition` from filter. Return aggregation with
+  merged condition."
   [condition aggregation]
   (assert (vector? aggregation))
-  (let [predicate-arg-index (dec (count aggregation))
-        original-predicate (aggregation predicate-arg-index)
-        adjusted-predicate (and-join-conditions original-predicate condition)]
-    (assoc aggregation predicate-arg-index adjusted-predicate)))
+  (if (empty? condition)
+    aggregation
+    (let [predicate-arg-index (dec (count aggregation))
+          original-predicate (aggregation predicate-arg-index)
+          adjusted-predicate (and-join-conditions original-predicate condition)]
+      (assoc aggregation predicate-arg-index adjusted-predicate))))
 
 (defn- transform-0-arity-aggregation
   [condition aggregation]
@@ -105,7 +109,7 @@
              (= :share operator)
              (transform-share-aggregation condition form)
 
-             (contains? aggregations-pred-1st-arg operator)
+             (contains? aggregations-pred-arg operator)
              (transform-aggregation-with-predicate condition form)
 
              (contains? nullary-aggregations operator)
