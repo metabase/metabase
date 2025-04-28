@@ -65,7 +65,6 @@ export const TableSection = ({ tableId }: Props) => {
         }}
       />
 
-      {/* TODO: move to separate component? */}
       <Stack gap="sm">
         <Flex align="flex-end" gap="md" justify="space-between">
           <Text fw="bold" size="sm">{t`Fields`}</Text>
