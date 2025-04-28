@@ -1,6 +1,6 @@
 (ns metabase.notification.payload.impl.system-event
   (:require
-   [clojure.data :refer [diff]]
+   [malli.util :as mut]
    [metabase.channel.email.messages :as messages]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.user :as user]
@@ -36,7 +36,7 @@
   {:arglists '([notification-info])}
   dispatch-on-event-info)
 
-(mr/def ::rows.bulk
+(mr/def ::row.mutate
   [:map {:closed true}
    [:payload_type [:= :notification/system-event]]
    [:context      :map]
@@ -60,19 +60,88 @@
                                :name "orders"}}
             [:id :int]
             [:name :string]]]
-   [:record {:description "The row that action was performed on"
-             :gen/return  {:ID 1
-                           :STATUS "approved"}}
-    :map]
-   [:changes {:description "The changes that were made to the row"
-              :gen/return  {:STATUS {:before "pending"
-                                     :after  "approved"}}}
-    [:map-of :keyword [:map
-                       [:before :any]
-                       [:after :any]]]]
+
    [:settings [:map]]])
 
-(defn- bulk-row-transformation
+;; TODO: all 3 schemas are actually the same, we should be able to use a multi schema for this.
+;; the reason we need to separte them out is to have description and sampling nicer.
+;; Maybe we should figure out a way to provide options for choosing the value of dispatch when sampling
+;; Looked but afaik there is no such things. (PR against malli?)
+(mr/def ::row.created
+  [:merge
+   ::row.mutate
+   [:map
+    [:context [:map [:event_name [:enum :event/row.created "event/row.created"]]]]
+    [:record {:description "The newly created row with all its field values"
+              :gen/return  {:id     1
+                            :name   "Product A"
+                            :price  29.99
+                            :status "active"}}
+     :map]
+    [:changes {:description "Field changes showing null/nil before values and new values after creation"
+               :gen/return  {:id     {:before nil
+                                      :after 1}
+                             :name   {:before nil
+                                      :after "Product A"}
+                             :price  {:before nil
+                                      :after 29.99}
+                             :status {:before nil
+                                      :after "active"}}}
+     [:map-of :keyword [:map
+                        [:before nil?]
+                        [:after :any]]]]]])
+
+(mr/def ::row.updated
+  [:merge
+   ::row.mutate
+   [:map
+    [:context [:map [:event_name [:enum :event/row.updated "event/row.updated"]]]]
+    [:record {:description "The row after updates were applied, containing all fields"
+              :gen/return  {:id     1
+                            :name   "Product A"
+                            :price  24.99
+                            :status "on sale"}}
+     :map]
+    [:changes {:description "Only the fields that were modified, showing previous and new values"
+               :gen/return  {:price  {:before 29.99
+                                      :after 24.99}
+                             :status {:before "active"
+                                      :after "on sale"}}}
+     [:map-of :keyword [:map
+                        [:before :any]
+                        [:after :any]]]]]])
+
+(mr/def ::row.deleted
+  [:merge
+   ::row.mutate
+   [:map
+    [:context [:map [:event_name [:enum :event/row.deleted "event/row.deleted"]]]]
+    [:record {:description "The row that was deleted, showing all field values before deletion"
+              :gen/return  {:id     1
+                            :name   "Product A"
+                            :price  24.99
+                            :status "discontinued"}}
+     :map]
+    [:changes {:description "All fields showing their values before deletion and nil/null after"
+               :gen/return  {:id     {:before 1
+                                      :after nil}
+                             :name   {:before "Product A"
+                                      :after nil}
+                             :price  {:before 24.99
+                                      :after nil}
+                             :status {:before "discontinued"
+                                      :after nil}}}
+     [:map-of :keyword [:map
+                        [:before :any]
+                        [:after nil?]]]]]])
+
+(mr/def ::row.mutate.all
+  [:multi {:dispatch (comp :event_name :context)}
+   [:event/row.created ::row.created]
+   [:event/row.updated ::row.updated]
+   [:event/row.deleted ::row.deleted]])
+
+(mu/defn- bulk-row-transformation :- ::row.mutate.all
   [notification-info]
   (or (lib.util.match/match-one
         notification-info
@@ -112,12 +181,17 @@
                       {:notification-info notification-info}))))
 
 ;; TODO better to just handle all three cases by the same event
-(doseq [event-name [:event/row.created
-                    :event/row.updated
-                    :event/row.deleted]]
-  (mu/defmethod transform-event-info event-name :- ::rows.bulk
-    [notification-info]
-    (bulk-row-transformation notification-info)))
+(mu/defmethod transform-event-info :event/row.created :- ::row.created
+  [notification-info]
+  (bulk-row-transformation notification-info))
+
+(mu/defmethod transform-event-info :event/row.updated :- ::row.updated
+  [notification-info]
+  (bulk-row-transformation notification-info))
+
+(mu/defmethod transform-event-info :event/row.deleted :- ::row.deleted
+  [notification-info]
+  (bulk-row-transformation notification-info))
 
 (defmethod transform-event-info :default
   [notification-info]
