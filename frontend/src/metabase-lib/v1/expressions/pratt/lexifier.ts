@@ -1,6 +1,6 @@
 import type { SyntaxNodeRef } from "@lezer/common";
 
-import { PUNCTUATOR, parsePunctuator } from "../punctuator";
+import { parsePunctuator } from "../punctuator";
 import { unquoteString } from "../string";
 import { tokenize } from "../tokenizer";
 
@@ -70,7 +70,7 @@ export function lexify(source: string) {
       return token(node, { type: BOOLEAN });
     }
 
-    if (node.type.name === PUNCTUATOR.OpenParenthesis) {
+    if (node.type.name === "(") {
       const prev = lexs.at(-1);
       if (prev?.type === IDENTIFIER) {
         prev.type = CALL;
