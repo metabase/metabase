@@ -59,7 +59,7 @@
   (assert (vector? aggregation))
   (let [predicate-arg-index (dec (count aggregation))
         original-predicate (aggregation predicate-arg-index)
-        adjusted-predicate (merge-conditions original-predicate condition)]
+        adjusted-predicate (and-join-conditions original-predicate condition)]
     (assoc aggregation predicate-arg-index (lib.util/fresh-uuids adjusted-predicate))))
 
 (defn- transform-0-arity-aggregation
@@ -84,7 +84,7 @@
   (let [opts (lib.options/options aggregation)
         predicate (nth aggregation 2)
         aggregation-meta (meta aggregation)]
-    (-> (lib// (lib/count-where (merge-conditions predicate condition))
+    (-> (lib// (lib/count-where (and-join-conditions predicate condition))
                (lib/count-where condition))
         (lib.util/fresh-uuids)
         (lib.options/with-options opts)
@@ -111,7 +111,7 @@
              (contains? nullary-aggregations operator)
              (transform-0-arity-aggregation condition form)
 
-             (or (contains? aggregations-col-1st-arg operator)
+             (or (contains? aggregations-expr-1st-arg operator)
                  (= :percentile operator))
              (assoc form 2 (lib/case [[condition (nth form 2)]]))
 
