@@ -52,7 +52,10 @@
                                                  (orig-set-progress id state n))]
       (http-fake/with-fake-routes-in-isolation (fake-upload-route-handler migration)
         (testing "works"
-          (#'cloud-migration/migrate! migration)
+          (try
+            (#'cloud-migration/migrate! migration)
+            (finally
+              (task/stop-scheduler!)))
           (is (-> @progress-calls :upload count (> 3))
               "several progress calls during upload")
           (is (->> @progress-calls :upload (every? #(and (<= 50 %) (< % 100))))
@@ -81,7 +84,10 @@
   (testing "exits early on terminal state"
     (let [migration (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))]
       (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")
-      (#'cloud-migration/migrate! migration)
+      (try
+        (#'cloud-migration/migrate! migration)
+        (finally
+          (task/stop-scheduler!)))
       (is (< (:progress (t2/select-one :model/CloudMigration :id (:id migration))) 100))
       (is (not (cloud-migration.settings/read-only-mode))))))
 
