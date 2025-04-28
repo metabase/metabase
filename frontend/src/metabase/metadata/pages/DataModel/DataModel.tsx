@@ -39,7 +39,7 @@ export const DataModel = ({ params }: Props) => {
           Data model
         </Title>
 
-        <Box className={S.tableSectionContainer} h="100%" px="xl" pb="lg">
+        <Box className={S.tableSectionContainer} h="100%" pb="lg" px="xl">
           {tableId && <TableSection tableId={tableId} />}
         </Box>
       </Stack>
