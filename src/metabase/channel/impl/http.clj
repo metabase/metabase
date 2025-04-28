@@ -86,7 +86,7 @@
      :rows (:rows data)}))
 
 (mu/defmethod channel/render-notification [:channel/http :notification/card]
-  [_channel-type {:keys [payload creator]} _template _recipients]
+  [_channel-type _payload-type {:keys [payload creator]} _template _recipients]
   (let [{:keys [card notification_card card_part]} payload
         card_part                        (channel.shared/maybe-realize-data-rows card_part)
         request-body {:type               "alert"
@@ -110,5 +110,5 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/http :notification/system-event]
-  [_channel-type notification-payload _template _recipients]
+  [_channel-type _payload-type notification-payload _template _recipients]
   [{:body notification-payload}])

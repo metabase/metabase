@@ -299,6 +299,7 @@
                             (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
                           {:status-code 400})))
         {:table-id (-> query :query :source-table)
+         :db-id    (u/the-id database)
          :before   row-before
          :after    nil}))))
 
@@ -346,8 +347,9 @@
                            (jdbc/query {:connection conn} % {:transaction? false})
                            (first %))]
         {:table-id (-> query :query :source-table)
-         :before row-before
-         :after  row-after}))))
+         :db-id    (u/the-id database)
+         :before   row-before
+         :after    row-after}))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :row/update]
   [action context inputs]
@@ -421,6 +423,7 @@
             row    (update-keys (select-created-row driver create-hsql conn result) keyword)]
         (log/tracef ":row/create returned row %s" (pr-str row))
         {:table-id (-> query :query :source-table)
+         :db-id    (u/the-id database)
          :before nil
          :after  row}))))
 

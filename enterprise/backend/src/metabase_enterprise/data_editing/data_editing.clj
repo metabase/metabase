@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-editing.data-editing
   (:require
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.data-editing.coerce :as data-editing.coerce]
    [metabase.actions.core :as actions]
@@ -137,9 +138,9 @@
   "Given a :effect/row.modified diff, figure out what kind of mutation it was."
   [{:keys [before after]}]
   (case [(some? before) (some? after)]
-    [false true]  :event/rows.created
-    [true  true]  :event/rows.updated
-    [true  false] :event/rows.deleted
+    [false true]  :event/row.created
+    [true  true]  :event/row.updated
+    [true  false] :event/row.deleted
     ;; should not happen
     [false false] ::no-op))
 
@@ -163,10 +164,15 @@
                                   (group-by row-update-event)
                                   (remove (comp #{::no-op} key)))]
       (doseq [[table-id payloads] (group-by :table-id payloads)
-              :let [row-changes (for [{:keys [before after] :as diff} payloads]
+              :let [db-id       (:db-id (first payloads))
+                    row-changes (for [{:keys [before after] :as diff} payloads]
                                   {:pk     (diff->pk diff)
                                    :before before
                                    :after  after})]]
-        (events/publish-event! event {:actor_id    user-id
-                                      :row_changes row-changes
-                                      :args        {:table_id table-id}})))))
+
+        (doseq [row-change row-changes]
+          (events/publish-event! event {:actor_id   user-id
+                                        :row_change row-change
+                                        :args       {:table_id  table-id
+                                                     :db_id     db-id
+                                                     :timestamp (t/zoned-date-time (t/zone-id "UTC"))}}))))))

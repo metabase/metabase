@@ -3,10 +3,8 @@
     <p>{{editor.first_name}} {{editor.last_name}} has created a row for {{table.name}}</p>
     <p>Created row:</p>
     <ul>
-      {{#each records}}
-        {{#each this.row}}
-          <li>{{@key}}: {{@value}}</li>
-        {{/each}}
+      {{#each record}}
+        <li>{{@key}}: {{@value}}</li>
       {{/each}}
     </ul>
   </div>
