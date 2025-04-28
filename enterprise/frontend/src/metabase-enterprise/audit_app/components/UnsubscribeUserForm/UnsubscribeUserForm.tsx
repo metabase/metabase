@@ -1,21 +1,25 @@
-import PropTypes from "prop-types";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import { FormMessage } from "metabase/forms";
+import type { User } from "metabase-types/api";
 
 import { ModalMessage } from "./UnsubscribeUserForm.styled";
 
-const propTypes = {
-  user: PropTypes.object.isRequired,
-  onUnsubscribe: PropTypes.func,
-  onClose: PropTypes.func,
-};
+interface UnsubscribeUserFormProps {
+  user: User;
+  onUnsubscribe: (user: User) => void | Promise<void>;
+  onClose: () => void;
+}
 
-const UnsubscribeUserForm = ({ user, onUnsubscribe, onClose }) => {
-  const [error, setError] = useState();
+export const UnsubscribeUserForm = ({
+  user,
+  onUnsubscribe,
+  onClose,
+}: UnsubscribeUserFormProps) => {
+  const [error, setError] = useState<any>();
 
   const handleConfirmClick = useCallback(async () => {
     try {
@@ -50,7 +54,3 @@ const UnsubscribeUserForm = ({ user, onUnsubscribe, onClose }) => {
     </ModalContent>
   );
 };
-
-UnsubscribeUserForm.propTypes = propTypes;
-
-export default UnsubscribeUserForm;

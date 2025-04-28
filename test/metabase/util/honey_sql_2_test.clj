@@ -230,6 +230,7 @@
              (h2x/with-database-type-info (h2x/with-database-type-info :field "date") nil))))))
 
 (deftest ^:parallel is-of-type?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [expr tyype expected] (= expected (h2x/is-of-type? expr tyype))
     typed-form     "text"   true
     typed-form     "TEXT"   true

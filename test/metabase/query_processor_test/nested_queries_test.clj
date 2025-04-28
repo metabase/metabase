@@ -805,8 +805,8 @@
                                                 "Card 1"     card-1
                                                 "Card 2"     card-2}]
                     (testing object-name
-                      (is (= true
-                             (mi/can-read? object)))))
+                      (is (true?
+                           (mi/can-read? object)))))
 
                   (testing "\nshould be able to run the query"
                     (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
