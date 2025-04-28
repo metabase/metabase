@@ -129,7 +129,7 @@
 (defmethod sql-jdbc.sync/current-user-table-privileges :sqlite
   [_driver conn-spec & {:as _options}]
   ;; SQLite has no per-user privileges; allow SELECT on all tables and views
-  (let [rows (jdbc/query conn-spec ["SELECT name AS table FROM sqlite_master WHERE type IN ('table','view')"])]
+  (let [rows (jdbc/query conn-spec ["SELECT name AS \"table\" FROM sqlite_master WHERE type IN ('table','view')"])]
     (map (fn [{:keys [table]}]
            {:role   nil
             :schema nil
