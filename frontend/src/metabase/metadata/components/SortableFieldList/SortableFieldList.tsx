@@ -5,9 +5,10 @@ import {
   type DragEndEvent,
   SortableList,
 } from "metabase/core/components/Sortable";
-import { SortableField } from "metabase/metadata/components";
 import { Flex } from "metabase/ui";
 import type { Table } from "metabase-types/api";
+
+import { SortableField } from "../SortableField";
 
 import { getId, getItems, getItemsOrder, sortItems } from "./utils";
 
@@ -16,8 +17,7 @@ interface Props {
   onChange: (fieldOrder: DragEndEvent["itemIds"]) => void;
 }
 
-// TODO: move to metadata/components and rename (SortableFieldList?)
-export const FieldOrder = ({ table, onChange }: Props) => {
+export const SortableFieldList = ({ table, onChange }: Props) => {
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
   });

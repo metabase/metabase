@@ -11,12 +11,11 @@ import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapp
 import {
   FieldOrderPicker,
   NameDescriptionInput,
+  SortableFieldList,
 } from "metabase/metadata/components";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Button, Card, Flex, Stack, Switch, Text } from "metabase/ui";
 import type { FieldId, TableId } from "metabase-types/api";
-
-import { FieldOrder } from "../FieldOrder";
 
 interface Props {
   tableId: TableId;
@@ -84,7 +83,7 @@ export const TableSection = ({ tableId }: Props) => {
           />
         </Flex>
 
-        <FieldOrder
+        <SortableFieldList
           table={table}
           onChange={(fieldOrder) => {
             updateTableFieldsOrder({
