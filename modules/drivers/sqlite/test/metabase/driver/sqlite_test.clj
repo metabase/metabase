@@ -25,12 +25,20 @@
 
 (deftest current-user-table-privileges-test
   (testing "SQLite table privileges normalization"
-    (let [fake-rows [{:table "t1"} {:table "v1"}]
-          expected #{{:role nil :schema nil :table "t1" :select true  :insert false :update false :delete false}
-                     {:role nil :schema nil :table "v1" :select true  :insert false :update false :delete false}}]
-      (with-redefs [jdbc/query (fn [_ _] fake-rows)]
-        (is (= expected
-               (set (sync-int/current-user-table-privileges :sqlite nil))))))))
+    (mt/test-driver :sqlite
+      (is (= {"people"     {:role nil, :schema nil, :table "people", :select true, :insert false, :update false, :delete false}
+              "reviews"    {:role nil, :schema nil, :table "reviews", :select true, :insert false, :update false, :delete false}
+              "checkins"   {:role nil, :schema nil, :table "checkins", :select true, :insert false, :update false, :delete false}
+              "users"      {:role nil, :schema nil, :table "users", :select true, :insert false, :update false, :delete false}
+              "orders"     {:role nil, :schema nil, :table "orders", :select true, :insert false, :update false, :delete false}
+              "venues"     {:role nil, :schema nil, :table "venues", :select true, :insert false, :update false, :delete false}
+              "categories" {:role nil, :schema nil, :table "categories", :select true, :insert false, :update false, :delete false}
+              "products"   {:role nil, :schema nil, :table "products", :select true, :insert false, :update false, :delete false}}
+             (into {}
+                   (map (fn [m] [(:table m) m])
+                        (sql-jdbc.sync/current-user-table-privileges
+                         :sqlite
+                         (sql-jdbc.conn/db->pooled-connection-spec (mt/db))))))))))
 
 (deftest filter-by-date-test
   (testing "Make sure filtering against a LocalDate works correctly in SQLite"
