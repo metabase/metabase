@@ -11,27 +11,27 @@ import S from "./StartFromViz.module.css";
 
 const options = _.shuffle([
   {
-    label: t`Bar`,
+    label: () => t`Bar`,
     value: "bar",
     icon: "bar",
   },
   {
-    label: t`Line`,
+    label: () => t`Line`,
     value: "line",
     icon: "line",
   },
   {
-    label: t`Scatterplot`,
+    label: () => t`Scatterplot`,
     value: "scatter",
     icon: "bubble",
   },
   {
-    label: t`Pie`,
+    label: () => t`Pie`,
     value: "pie",
     icon: "pie",
   },
   {
-    label: t`Funnel`,
+    label: () => t`Funnel`,
     value: "funnel",
     icon: "funnel",
   },
@@ -53,14 +53,14 @@ export function StartFromViz() {
       <Grid mt="lg" mb="md">
         {options.map((vizType) => {
           return (
-            <Grid.Col key={vizType.label} span={4} miw={200} mih={180}>
+            <Grid.Col key={vizType.label()} span={4} miw={200} mih={180}>
               <>
                 <Box
                   className={S.card}
                   onClick={() => handleVizTypeClick(vizType.value)}
                 >
                   <Icon name={vizType.icon as IconName} size={32} mb="md" />
-                  {vizType.label}
+                  {vizType.label()}
                 </Box>
               </>
             </Grid.Col>
