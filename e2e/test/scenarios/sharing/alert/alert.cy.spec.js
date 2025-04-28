@@ -221,7 +221,6 @@ describe("scenarios > alert", () => {
         H.openSharingMenu("Subscriptions");
 
         H.sidebar().within(() => {
-          //cy.findByText("Email it").click();
           addEmailRecipient(deniedEmail);
 
           cy.button("Send email now").should("be.disabled");
