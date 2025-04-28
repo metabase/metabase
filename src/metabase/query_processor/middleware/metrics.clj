@@ -46,13 +46,14 @@
         c2-maybe-unwrapped (cond-> c2
                              (= :and c2-operator) (subvec 2))
         c1-operator (first c1)]
-    (if (= :and c1-operator)
-      (if (= :and c2-operator)
-        (into c1 c2-maybe-unwrapped)
-        (conj c1 c2-maybe-unwrapped))
-      (if (= :and c2-operator)
-        (apply lib/and c1 c2-maybe-unwrapped)
-        (lib/and c1 c2-maybe-unwrapped)))))
+    (lib.util/fresh-uuids
+     (if (= :and c1-operator)
+       (if (= :and c2-operator)
+         (into c1 c2-maybe-unwrapped)
+         (conj c1 c2-maybe-unwrapped))
+       (if (= :and c2-operator)
+         (apply lib/and c1 c2-maybe-unwrapped)
+         (lib/and c1 c2-maybe-unwrapped))))))
 
 (defn- transform-aggregation-with-predicate
   [condition aggregation]
@@ -60,7 +61,7 @@
   (let [predicate-arg-index (dec (count aggregation))
         original-predicate (aggregation predicate-arg-index)
         adjusted-predicate (and-join-conditions original-predicate condition)]
-    (assoc aggregation predicate-arg-index (lib.util/fresh-uuids adjusted-predicate))))
+    (assoc aggregation predicate-arg-index adjusted-predicate)))
 
 (defn- transform-0-arity-aggregation
   [condition aggregation]
@@ -86,7 +87,6 @@
         aggregation-meta (meta aggregation)]
     (-> (lib// (lib/count-where (and-join-conditions predicate condition))
                (lib/count-where condition))
-        (lib.util/fresh-uuids)
         (lib.options/with-options opts)
         (with-meta aggregation-meta))))
 
