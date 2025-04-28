@@ -1,5 +1,6 @@
 (ns metabase.notification.payload.impl.system-event
   (:require
+   [java-time.api :as t]
    [malli.util :as mut]
    [metabase.channel.email.messages :as messages]
    [metabase.lib.util.match :as lib.util.match]
@@ -8,6 +9,7 @@
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.send :as notification.send]
    [metabase.public-settings :as public-settings]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -38,10 +40,12 @@
   {:arglists '([notification-info])}
   dispatch-on-event-info)
 
+(def ^:private timestamp-schema
+  [:timestamp  {:gen/fmap (fn [_x] (u.date/format (t/zoned-date-time)))} :any])
+
 (mr/def ::row.mutate
   [:map {:closed true}
-   [:payload_type [:= :notification/system-event]]
-   [:context      :map]
+   [:context :map]
    [:creator [:map {:gen/return {:first_name  "Meta"
                                  :last_name   "Bot"
                                  :common_name "Meta Bot"
@@ -58,10 +62,13 @@
              [:last_name :string]
              [:email :string]
              [:common_name :string]]]
-   [:table [:map {:gen/return {:id    1
-                               :name "orders"}}
+   [:table [:map {:closed true
+                  :gen/return {:id    1
+                               :name "orders"
+                               :url  "https://metabase.com/databases/1337/table/1"}}
             [:id :int]
-            [:name :string]]]
+            [:name :string]
+            [:url :string]]]
 
    [:settings [:map]]])
 
@@ -73,31 +80,23 @@
   [:merge
    ::row.mutate
    [:map
-    [:context [:map [:event_name [:enum :event/row.created "event/row.created"]]]]
+    [:context [:map  {:closed true}
+               [:event_name [:enum :event/row.created "event/row.created"]]
+               timestamp-schema]]
     [:record {:description "The newly created row with all its field values"
               :gen/return  {:id     1
                             :name   "Product A"
                             :price  29.99
                             :status "active"}}
-     :map]
-    [:changes {:description "Field changes showing null/nil before values and new values after creation"
-               :gen/return  {:id     {:before nil
-                                      :after 1}
-                             :name   {:before nil
-                                      :after "Product A"}
-                             :price  {:before nil
-                                      :after 29.99}
-                             :status {:before nil
-                                      :after "active"}}}
-     [:map-of :keyword [:map
-                        [:before nil?]
-                        [:after :any]]]]]])
+     :map]]])
 
 (mr/def ::row.updated
   [:merge
    ::row.mutate
    [:map
-    [:context [:map [:event_name [:enum :event/row.updated "event/row.updated"]]]]
+    [:context [:map {:closed true}
+               [:event_name [:enum :event/row.updated "event/row.updated"]]
+               timestamp-schema]]
     [:record {:description "The row after updates were applied, containing all fields"
               :gen/return  {:id     1
                             :name   "Product A"
@@ -116,26 +115,16 @@
 (mr/def ::row.deleted
   [:merge
    ::row.mutate
-   [:map
-    [:context [:map [:event_name [:enum :event/row.deleted "event/row.deleted"]]]]
+   [:map {:closed true}
+    [:context [:map {:closed true}
+               [:event_name [:enum :event/row.deleted "event/row.deleted"]]
+               timestamp-schema]]
     [:record {:description "The row that was deleted, showing all field values before deletion"
               :gen/return  {:id     1
                             :name   "Product A"
                             :price  24.99
                             :status "discontinued"}}
-     :map]
-    [:changes {:description "All fields showing their values before deletion and nil/null after"
-               :gen/return  {:id     {:before 1
-                                      :after nil}
-                             :name   {:before "Product A"
-                                      :after nil}
-                             :price  {:before 24.99
-                                      :after nil}
-                             :status {:before "discontinued"
-                                      :after nil}}}
-     [:map-of :keyword [:map
-                        [:before :any]
-                        [:after nil?]]]]]])
+     :map]]])
 
 (mr/def ::row.mutate.all
   [:multi {:dispatch (comp :event_name :context)}
@@ -153,36 +142,39 @@
                       :email       ?creator_email
                       :common_name ?creator_common_name}
          :event_info {:actor       ?actor
-                      :args        {:table_id ?table_id
-                                    :db_id    ?db_id
-                                    :table    {:name ?table_name}}
+                      :args        {:table_id  ?table_id
+                                    :db_id     ?db_id
+                                    :table     {:name ?table_name}
+                                    :timestamp ?timestamp}
                       :row_change  {:pk     ?pk
                                     :before ?before
                                     :after  ?after}}}
-        {:payload_type :notification/system-event
-         :context      {:event_name ?event_name}
-         :editor       {:first_name  (:first_name ?actor)
-                        :last_name   (:last_name ?actor)
-                        :email       (:email ?actor)
-                        :common_name (:common_name ?actor)}
-         :creator      {:first_name  ?creator_first_name
-                        :last_name   ?creator_last_name
-                        :email       ?creator_email
-                        :common_name ?creator_common_name}
-         :table        {:id   ?table_id
-                        :name ?table_name
-                        :url  (urls/table-url ?db_id ?table_id)}
-         :record       (or ?after ?before) ;; for insert and update we want the after, for delete we want the before
-         :changes      (let [row-columns (into #{} (concat (keys ?before) (keys ?after)))]
-                         (into {}
-                               (for [k row-columns]
-                                 [k {:before (get ?before k)
-                                     :after  (get ?after k)}])))
-         :settings     (notification.payload/default-settings)})
+        (merge
+         {:context      {:event_name ?event_name
+                         :timestamp  (u.date/format ?timestamp)}
+          :editor       {:first_name  (:first_name ?actor)
+                         :last_name   (:last_name ?actor)
+                         :email       (:email ?actor)
+                         :common_name (:common_name ?actor)}
+          :creator      {:first_name  ?creator_first_name
+                         :last_name   ?creator_last_name
+                         :email       ?creator_email
+                         :common_name ?creator_common_name}
+          :table        {:id   ?table_id
+                         :name ?table_name
+                         :url  (urls/table-url ?db_id ?table_id)}
+          :record       (or ?after ?before) ;; for insert and update we want the after, for delete we want the before
+
+          :settings     (notification.payload/default-settings)}
+         (when (= ?event_name :event/row.updated)
+           {:changes (let [row-columns (into #{} (concat (keys ?before) (keys ?after)))]
+                       (into {}
+                             (for [k row-columns]
+                               [k {:before (get ?before k)
+                                   :after  (get ?after k)}])))})))
       (throw (ex-info "Unable to destructure notification-info, check that expected structure matches malli schema."
                       {:notification-info notification-info}))))
 
-;; TODO better to just handle all three cases by the same event
 (mu/defmethod transform-event-info :event/row.created :- ::row.created
   [notification-info]
   (bulk-row-transformation notification-info))
@@ -198,10 +190,9 @@
 (defmethod transform-event-info :default
   [notification-info]
   (let [event-info (:event_info notification-info)]
-    {:payload_type :notification/system-event
-     :creator      (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification-info))
+    {:creator      (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification-info))
      :context      (notification.payload/default-settings)
-    ;; TODO, we need event_name anywhere?
+     ;; TODO, we need event_name anywhere?
      :payload      (assoc event-info :event_name (-> notification-info :payload :event_name))}))
 
 (defmethod transform-event-info :event/user-invited

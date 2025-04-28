@@ -49,7 +49,7 @@
                                               [:context :map]
                                               [:payload :map]])
               renders           (atom [])]
-          (mt/with-dynamic-fn-redefs [channel/render-notification (fn [channel-type notification-payload template recipients]
+          (mt/with-dynamic-fn-redefs [channel/render-notification (fn [channel-type payload-type notification-payload template recipients]
                                                                     (swap! renders conj {:channel-type channel-type
                                                                                          :notification-payload notification-payload
                                                                                          :template template

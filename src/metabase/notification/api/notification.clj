@@ -208,12 +208,12 @@
                                                       [:payload {:optional true} :any]]]
   (api/create-check :model/Notification notification)
   (let [sample-notification-context (if custom_context
-                                      (let [custom_context (update custom_context :payload_type keyword)]
-                                        (mu/validate-throw (notification/notification-payload-schema notification) custom_context))
+                                      (mu/validate-throw (notification/notification-payload-schema notification) custom_context)
                                       (sample-payload notification))]
     {:context  sample-notification-context
      :rendered (first (channel/render-notification
                        (:channel_type template)
+                       (:payload_type notification)
                        sample-notification-context
                        template
                        [(sample-recipient (:channel_type template))]))}))
