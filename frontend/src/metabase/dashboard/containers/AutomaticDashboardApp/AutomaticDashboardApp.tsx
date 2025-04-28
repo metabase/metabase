@@ -214,7 +214,7 @@ class AutomaticDashboardAppInner extends Component<AutomaticDashboardAppInnerPro
                 autoScrollToDashcardId={undefined}
                 reportAutoScrolledToDashcard={_.noop}
               />
-            )}{" "}
+            )}
           </div>
           {more && (
             <div className={cx(CS.flex, CS.justifyEnd, CS.px4, CS.pb4)}>
