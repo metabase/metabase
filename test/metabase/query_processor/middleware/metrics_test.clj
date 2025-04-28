@@ -1,12 +1,12 @@
 (ns ^:mb/driver-tests metabase.query-processor.middleware.metrics-test
   (:require
-
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
-   [metabase.driver :as driver]   [metabase.lib.convert :as lib.convert]
+   [metabase.driver :as driver]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
