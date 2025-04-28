@@ -159,7 +159,8 @@
     driver.common/cloud-ip-address-info
     {:name "schema-filters"
      :type :schema-filters
-     :display-name "Schemas"}
+     :display-name "Schemas"
+     :visible-if {"destination-database" false}}
     driver.common/default-ssl-details
     {:name         "ssl-mode"
      :display-name (trs "SSL Mode")
@@ -654,9 +655,9 @@
   [driver [_ value]]
   (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
 
-(defmethod sql.qp/->honeysql [:postgres :float]
-  [driver [_ value]]
-  (h2x/maybe-cast "DOUBLE PRECISION" (sql.qp/->honeysql driver value)))
+(defmethod sql.qp/float-dbtype :postgres
+  [_]
+  "DOUBLE PRECISION")
 
 (defn- format-regex-match-first [_fn [identifier pattern]]
   (let [[identifier-sql & identifier-args] (sql/format-expr identifier {:nested true})

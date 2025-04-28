@@ -249,7 +249,7 @@
 (defmacro ^:private is-ex-data [expected-schema actual-call]
   `(try
      ~actual-call
-     (is (= true false))
+     (is (true? false))
      (catch clojure.lang.ExceptionInfo e#
        (is (~'=?
             ~expected-schema
