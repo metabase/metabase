@@ -13,7 +13,7 @@ import {
   SUB,
 } from "./pratt/syntax";
 
-export enum PUNCTUATOR {
+enum PUNCTUATOR {
   Comma = ",",
   OpenParenthesis = "(",
   CloseParenthesis = ")",
@@ -32,7 +32,7 @@ export enum PUNCTUATOR {
   Or = "or",
 }
 
-const OPERATOR_TO_TYPE: Record<PUNCTUATOR, NodeType> = {
+const PUNCTUATOR_TO_TYPE: Record<PUNCTUATOR, NodeType> = {
   [PUNCTUATOR.Comma]: COMMA,
   [PUNCTUATOR.OpenParenthesis]: GROUP,
   [PUNCTUATOR.CloseParenthesis]: GROUP_CLOSE,
@@ -53,8 +53,8 @@ const OPERATOR_TO_TYPE: Record<PUNCTUATOR, NodeType> = {
 
 export function parsePunctuator(op: string): NodeType | null {
   const lower = op.toLowerCase();
-  if (lower in OPERATOR_TO_TYPE) {
-    return OPERATOR_TO_TYPE[lower as keyof typeof OPERATOR_TO_TYPE];
+  if (lower in PUNCTUATOR_TO_TYPE) {
+    return PUNCTUATOR_TO_TYPE[lower as keyof typeof PUNCTUATOR_TO_TYPE];
   }
   return null;
 }
