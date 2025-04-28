@@ -137,9 +137,12 @@
   "Given a :effect/row.modified diff, figure out what kind of mutation it was."
   [{:keys [before after]}]
   (case [(some? before) (some? after)]
-    [false true]  :event/rows.created
-    [true  true]  :event/rows.updated
-    [true  false] :event/rows.deleted
+    [false true]  {:single :event/row.created
+                   :bulk   :event/rows.created}
+    [true  true]  {:single :event/row.updated
+                   :bulk   :event/rows.updated}
+    [true  false] {:single :event/row.deleted
+                   :bulk   :event/rows.deleted}
     ;; should not happen
     [false false] ::no-op))
 
@@ -160,9 +163,9 @@
                                [(diff->pk diff) [before after]])]))))
     ;; table notification system events
     (doseq [[{single-event :single
-              bulk-event :bulk} ent payloads] (->> diffs
-                                                   (group-by row-update-event)
-                                                   (remove (comp #{::no-op} key)))]
+              bulk-event :bulk} payloads] (->> diffs
+                                               (group-by row-update-event)
+                                               (remove (comp #{::no-op} key)))]
       (doseq [[table-id payloads] (group-by :table-id payloads)
               :let [db-id       (:db-id (first payloads))
                     row-changes (for [{:keys [before after] :as diff} payloads]
