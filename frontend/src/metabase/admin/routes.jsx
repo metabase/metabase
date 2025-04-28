@@ -24,6 +24,7 @@ import { PerformanceApp } from "metabase/admin/performance/components/Performanc
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 import { SettingsEditor } from "metabase/admin/settings/app/components/SettingsEditor";
 import { Help } from "metabase/admin/tasks/components/Help";
+import { LogLevelsModal } from "metabase/admin/tasks/components/LogLevelsModal";
 import { Logs } from "metabase/admin/tasks/components/Logs";
 import { JobInfoApp } from "metabase/admin/tasks/containers/JobInfoApp";
 import { JobTriggersModal } from "metabase/admin/tasks/containers/JobTriggersModal";
@@ -138,7 +139,16 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
               modalProps={{ wide: true }}
             />
           </Route>
-          <Route path="logs" component={Logs} />
+          <Route path="logs" component={Logs}>
+            <ModalRoute
+              path="levels"
+              modal={LogLevelsModal}
+              modalProps={{
+                // EventSandbox interferes with mouse text selection in CodeMirror editor
+                disableEventSandbox: true,
+              }}
+            />
+          </Route>
           {PLUGIN_ADMIN_TROUBLESHOOTING.EXTRA_ROUTES}
         </Route>
       </Route>

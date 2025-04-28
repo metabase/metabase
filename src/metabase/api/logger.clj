@@ -49,7 +49,7 @@
   []
   (let [namespace-names (all-namespace-names)]
     [{:id :sync
-      :display_name (tru "Sync issue")
+      :display_name (tru "Sync issue troubleshooting")
       :loggers (->> (-> [(logger "metabase.driver")]
                         (into (loggers-under "metabase.sync" namespace-names))
                         (into (comp (map #(str "metabase.driver." %))

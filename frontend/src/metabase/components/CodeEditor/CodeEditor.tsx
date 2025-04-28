@@ -6,7 +6,7 @@ import { useMemo, useRef } from "react";
 import { isNotNull } from "metabase/lib/types";
 import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
 
-import S from "./CodeBlock.module.css";
+import S from "./CodeEditor.module.css";
 import type { CodeLanguage } from "./types";
 import {
   getLanguageExtension,
@@ -15,21 +15,25 @@ import {
   useHighlightText,
 } from "./utils";
 
-export type CodeBlockProps = {
-  code: string;
-  language: CodeLanguage;
-  lineNumbers?: boolean;
+type Props = {
   className?: string;
   highlightRanges?: { start: number; end: number }[];
+  language: CodeLanguage;
+  lineNumbers?: boolean;
+  readOnly?: boolean;
+  value: string;
+  onChange?: (value: string) => void;
 };
 
-export function CodeBlock({
-  code,
-  language,
-  lineNumbers = true,
+export function CodeEditor({
   className,
   highlightRanges,
-}: CodeBlockProps) {
+  language,
+  lineNumbers = true,
+  readOnly,
+  value,
+  onChange,
+}: Props) {
   const ref = useRef<ReactCodeMirrorRef>(null);
   const extensions = useMemo(
     () =>
@@ -46,17 +50,18 @@ export function CodeBlock({
 
   return (
     <CodeMirror
-      ref={ref}
       basicSetup={{
         lineNumbers,
         foldGutter: false,
         highlightActiveLine: false,
         highlightActiveLineGutter: false,
       }}
-      value={code}
+      className={cx(S.codeEditor, className)}
       extensions={extensions}
-      readOnly
-      className={cx(S.codeBlock, className)}
+      readOnly={readOnly}
+      ref={ref}
+      value={value}
+      onChange={onChange}
     />
   );
 }
