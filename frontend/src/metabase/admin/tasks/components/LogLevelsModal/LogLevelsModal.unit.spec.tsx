@@ -89,7 +89,8 @@ describe("LogLevelsModal", () => {
     setup();
     await waitForLoaderToBeRemoved();
 
-    const [_durationUnitPicker, codeMirror] = screen.getAllByRole("textbox");
+    const [_durationInput, _durationUnitPicker, codeMirror] =
+      screen.getAllByRole("textbox");
     expect(codeMirror).toHaveValue(dedent`{
       "metabase.driver": "debug",
       "metabase.driver.mysql": "info"
@@ -104,7 +105,8 @@ describe("LogLevelsModal", () => {
     const popover = screen.getByRole("menu");
     await userEvent.click(within(popover).getByText(PRESET_B.display_name));
 
-    const [_durationUnitPicker, codeMirror] = screen.getAllByRole("textbox");
+    const [_durationInput, _durationUnitPicker, codeMirror] =
+      screen.getAllByRole("textbox");
     expect(codeMirror).toHaveValue(dedent`{
       "metabase.driver": "error",
       "metabase.driver.h2": "info"
@@ -176,7 +178,8 @@ describe("LogLevelsModal", () => {
     await waitForLoaderToBeRemoved();
     expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
 
-    const [_durationUnitPicker, codeMirror] = screen.getAllByRole("textbox");
+    const [_durationInput, _durationUnitPicker, codeMirror] =
+      screen.getAllByRole("textbox");
     await userEvent.type(codeMirror, "gibberish");
 
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();

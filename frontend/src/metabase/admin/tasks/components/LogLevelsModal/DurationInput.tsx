@@ -1,54 +1,41 @@
 import { t } from "ttag";
 
-import { Flex, NumberInput, Select } from "metabase/ui";
-import type { LoggerDurationUnit } from "metabase-types/api";
+import { FormNumberInput, FormSelect } from "metabase/forms";
+import { Flex } from "metabase/ui";
 
-interface Props {
-  duration: number | "";
-  durationUnit: LoggerDurationUnit;
-  onDurationChange: (duration: number | "") => void;
-  onDurationUnitChange: (durationUnit: LoggerDurationUnit) => void;
-}
+import type { AllowedTimeUnit } from "./types";
 
-export const DurationInput = ({
-  duration,
-  durationUnit,
-  onDurationChange,
-  onDurationUnitChange,
-}: Props) => {
+export const DurationInput = () => {
   return (
     <Flex align="flex-end" gap="md">
-      <NumberInput
+      <FormNumberInput
+        // rendering long error message for 80px-wide input messes up the layout
+        // so this error message will be displayed under the form instead
+        error={null}
         label={t`Duration`}
+        name="duration"
         placeholder={t`Duration`}
         required
-        value={duration}
         w={80}
-        onChange={onDurationChange}
       />
 
-      <Select
+      <FormSelect
         data={getData()}
         placeholder={t`Unit`}
-        value={durationUnit}
+        name="durationUnit"
         w={140}
-        onChange={onDurationUnitChange}
       />
     </Flex>
   );
 };
-
-// Some options are not practically useful
-type AllowedTimeUnit = Exclude<
-  LoggerDurationUnit,
-  "nanoseconds" | "microseconds" | "milliseconds"
->;
 
 // It intentionally is a function and not a module-level constant, so that `t` function works correctly
 function getData() {
   /**
    * Using a Record, so that this gives compilation error when TimeUnit is extended,
    * so that whoever changes that type does not forget to update this function.
+   *
+   * If this needs updating, also update VALIDATION_SCHEMA in LogLevelsModal.
    */
   const statusNames: { [T in AllowedTimeUnit]: { label: string; value: T } } = {
     seconds: { label: t`Seconds`, value: "seconds" },

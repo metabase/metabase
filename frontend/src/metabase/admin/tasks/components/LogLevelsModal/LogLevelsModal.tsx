@@ -1,26 +1,45 @@
-import { type FormEvent, useEffect, useState } from "react";
 import { t } from "ttag";
+import * as Yup from "yup";
 
 import {
   useAdjustLogLevelsMutation,
   useListLoggerPresetsQuery,
   useResetLogLevelsMutation,
 } from "metabase/api/logger";
-import { CodeEditor } from "metabase/components/CodeEditor";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
-import { getResponseErrorMessage } from "metabase/lib/errors";
-import { Box, Button, Flex, Icon, Loader, Tooltip } from "metabase/ui";
+import { FormProvider } from "metabase/forms";
 import type { LoggerDurationUnit } from "metabase-types/api";
 
-import { DurationInput } from "./DurationInput";
-import S from "./LogLevelsModal.module.css";
-import { PresetPicker } from "./PresetPicker";
-import { getPresetJson, isJsonValid } from "./utils";
+import { LogLevelsForm } from "./LogLevelsForm";
+import type { AllowedTimeUnit } from "./types";
 
 interface Props {
   onClose: () => void;
 }
+
+type FormState = {
+  duration: number;
+  durationUnit: LoggerDurationUnit;
+  json: string;
+};
+
+const VALIDATION_SCHEMA = Yup.object({
+  duration: Yup.number().required().positive().integer(),
+  durationUnit: Yup.mixed<AllowedTimeUnit>()
+    .oneOf(["days", "hours", "minutes", "seconds"])
+    .required(),
+  json: Yup.string()
+    .required()
+    .test("is-json", "Invalid JSON", (value) => {
+      try {
+        JSON.parse(value ?? "");
+        return true;
+      } catch {
+        return false;
+      }
+    }),
+});
 
 export const LogLevelsModal = ({ onClose }: Props) => {
   const {
@@ -28,54 +47,32 @@ export const LogLevelsModal = ({ onClose }: Props) => {
     error: presetsError,
     isLoading: isLoadingPresets,
   } = useListLoggerPresetsQuery();
-  const [adjust, { error: adjustError, isLoading: isLoadingAdjust }] =
-    useAdjustLogLevelsMutation();
-  const [reset, { error: resetError, isLoading: isLoadingReset }] =
-    useResetLogLevelsMutation();
-
-  const [duration, setDuration] = useState<number | "">(60);
-  const [durationUnit, setDurationUnit] =
-    useState<LoggerDurationUnit>("minutes");
-  const [json, setJson] = useState("");
-  const isDurationValid =
-    typeof duration === "number" && Number.isFinite(duration) && duration >= 0;
-  const isValid = isDurationValid && isJsonValid(json);
-  const isLoading = isLoadingAdjust || isLoadingReset;
+  const [adjust] = useAdjustLogLevelsMutation();
+  const [reset] = useResetLogLevelsMutation();
 
   const handleReset = async () => {
     const response = await reset();
 
-    if (!response.error) {
+    if (response.error) {
+      throw response.error;
+    } else {
       onClose();
     }
   };
 
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-
-    if (!isValid) {
-      return;
-    }
-
+  const handleSubmit = async (values: FormState) => {
     const response = await adjust({
-      duration,
-      duration_unit: durationUnit,
-      log_levels: JSON.parse(json),
+      duration: values.duration,
+      duration_unit: values.durationUnit,
+      log_levels: JSON.parse(values.json),
     });
 
-    if (!response.error) {
+    if (response.error) {
+      throw response.error;
+    } else {
       onClose();
     }
   };
-
-  useEffect(
-    function autoApplyFirstPreset() {
-      if (presets.length > 0) {
-        setJson(getPresetJson(presets[0]));
-      }
-    },
-    [presets],
-  );
 
   if (presetsError || isLoadingPresets) {
     return (
@@ -90,78 +87,18 @@ export const LogLevelsModal = ({ onClose }: Props) => {
 
   return (
     <ModalContent title={t`Customize log levels`} onClose={onClose}>
-      <form onSubmit={handleSubmit}>
-        <Flex align="flex-end" gap="md" justify="space-between" mb="md">
-          <DurationInput
-            duration={duration}
-            durationUnit={durationUnit}
-            onDurationChange={setDuration}
-            onDurationUnitChange={setDurationUnit}
-          />
-
-          {presets.length > 0 && (
-            <PresetPicker
-              presets={presets}
-              onChange={(preset) => {
-                setJson(getPresetJson(preset));
-              }}
-            />
-          )}
-        </Flex>
-
-        <Box
-          className={S.codeContainer}
-          // Using h + mah + mih to make the CodeEditor fill its parent vertically
-          h="100vh"
-          mah="35vh"
-          mih={200}
-        >
-          <CodeEditor
-            className={S.code}
-            language="json"
-            value={json}
-            onChange={(value) => setJson(value)}
-          />
-        </Box>
-
-        {resetError ? (
-          <Box c="error" mt="md">
-            {getResponseErrorMessage(resetError) ?? t`Server error encountered`}
-          </Box>
-        ) : null}
-
-        {adjustError ? (
-          <Box c="error" mt="md">
-            {getResponseErrorMessage(adjustError) ??
-              t`Server error encountered`}
-          </Box>
-        ) : null}
-
-        <Flex align="center" gap="md" justify="space-between" mt="xl">
-          <Tooltip
-            label={t`Available log levels: ${["off", "fatal", "error", "warn", "info", "debug", "trace"].join(", ")}`}
-          >
-            <Icon name="info_filled" />
-          </Tooltip>
-
-          <Flex gap="md" justify="flex-end">
-            <Flex align="center">{isLoading && <Loader size="sm" />}</Flex>
-
-            <Button
-              disabled={isLoading}
-              leftSection={<Icon name="revert" />}
-              type="button"
-              onClick={handleReset}
-            >{t`Reset to defaults`}</Button>
-
-            <Button
-              disabled={isLoading || !isValid}
-              type="submit"
-              variant="filled"
-            >{t`Save`}</Button>
-          </Flex>
-        </Flex>
-      </form>
+      <FormProvider
+        initialValues={{
+          duration: 60,
+          durationUnit: "minutes",
+          json: "",
+        }}
+        validationSchema={VALIDATION_SCHEMA}
+        onReset={handleReset}
+        onSubmit={handleSubmit}
+      >
+        <LogLevelsForm presets={presets} />
+      </FormProvider>
     </ModalContent>
   );
 };
