@@ -121,7 +121,7 @@ const AGGREGATION = defineClauses(
   },
 );
 
-const CAST = defineClauses(
+const CONVERSION = defineClauses(
   { category: "conversion" },
   {
     text: {
@@ -380,7 +380,7 @@ const DATE = defineClauses(
   },
 );
 
-const NUMERIC = defineClauses(
+const MATH = defineClauses(
   { category: "math" },
   {
     abs: {
@@ -647,10 +647,10 @@ export const AGGREGATION_FUNCTIONS = {
 } as const;
 
 export const EXPRESSION_FUNCTIONS = {
-  ...CAST,
+  ...CONVERSION,
   ...STRING,
   ...DATE,
-  ...NUMERIC,
+  ...MATH,
   ...LOGICAL,
 } as const;
 
