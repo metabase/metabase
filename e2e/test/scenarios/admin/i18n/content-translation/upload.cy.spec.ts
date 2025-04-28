@@ -82,7 +82,7 @@ describe("scenarios > admin > localization > content translation", () => {
         });
       });
 
-      it("does not store rows with translations made of only whitespace and/or commas or semicolons", () => {
+      it("does not store rows with translations made of only whitespace and/or semicolons", () => {
         const blankTranslation = { locale: "de", msgid: "Cat", msgstr: "" };
         const translationWithJustSpaces = {
           locale: "de",
@@ -94,17 +94,17 @@ describe("scenarios > admin > localization > content translation", () => {
           msgid: "Goat",
           msgstr: "\t\t",
         };
-        const translationWithJustCommasAndSemicolons = {
+        const translationWithJustSemicolons = {
           locale: "de",
           msgid: "Goat",
-          msgstr: ";,",
+          msgstr: ";;",
         };
         const translationsWithBlanks = [
           ...germanFieldNames,
           blankTranslation,
           translationWithJustSpaces,
           translationWithJustTabs,
-          translationWithJustCommasAndSemicolons,
+          translationWithJustSemicolons,
         ];
         uploadTranslationDictionary(translationsWithBlanks);
         assertOnlyTheseTranslationsAreStored(germanFieldNames);
