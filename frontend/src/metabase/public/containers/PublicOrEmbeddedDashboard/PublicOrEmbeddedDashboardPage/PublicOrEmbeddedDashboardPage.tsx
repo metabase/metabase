@@ -77,7 +77,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         getClickActionMode={undefined}
         navigateToNewCardFromDashboard={null}
         onError={(error) => {
-          dispatch(setErrorPage(error));
+          dispatch(setErrorPage(error.payload));
         }}
       />
     </>
