@@ -374,6 +374,10 @@
   (h2x/+ [:raw "timestamp '1970-01-01 00:00:00 UTC'"]
          (num-to-ds-interval :second field-or-value)))
 
+(defmethod sql.qp/float-dbtype :oracle
+  [_]
+  :BINARY_DOUBLE)
+
 (defmethod sql.qp/cast-temporal-string [:oracle :Coercion/ISO8601->DateTime]
   [_driver _coercion-strategy expr]
   [:to_timestamp expr "YYYY-MM-DD HH:mi:SS"])
