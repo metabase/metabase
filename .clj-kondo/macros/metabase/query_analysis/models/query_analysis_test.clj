@@ -1,4 +1,4 @@
-(ns macros.metabase.models.query-analysis-test)
+(ns macros.metabase.query-analysis.models.query-analysis-test)
 
 (defmacro with-test-setup [& body]
   `(let [~'card-id  1

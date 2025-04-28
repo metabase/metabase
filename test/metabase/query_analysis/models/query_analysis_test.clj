@@ -1,4 +1,4 @@
-(ns metabase.models.query-analysis-test
+(ns metabase.query-analysis.models.query-analysis-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
