@@ -141,8 +141,7 @@ jobs:
       commit: ${{ github.event.inputs.commit || github.sha }}
       repo: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).repo }}
       tag: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).tag }}
-      dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
-      dockerhub-password: ${{ secrets.DOCKERHUB_TOKEN }}
+      release: "false"
 
   run-trivy:
     needs: [get-container-info, containerize]
