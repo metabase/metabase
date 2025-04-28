@@ -412,6 +412,7 @@
 
   premium-features
   {:api  #{metabase.premium-features.core
+           metabase.premium-features.init
            metabase.premium-features.token-check}
    :uses #{config db internal-stats plugins settings util}}
 
@@ -536,7 +537,8 @@
   settings
   {:api  #{metabase.settings.api
            metabase.settings.core
-           metabase.settings.deprecated-grab-bag}
+           metabase.settings.deprecated-grab-bag
+           metabase.settings.init}
    :uses #{api config db events models plugins premium-features server util enterprise/advanced-permissions}}
 
   setup

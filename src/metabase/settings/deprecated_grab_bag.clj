@@ -18,11 +18,6 @@
 
 (set! *warn-on-reflection* true)
 
-;; These modules register settings but are otherwise unused. They still must be imported.
-;;
-;; TODO -- this should be done with an `init` namespace instead.
-(comment premium-features/keep-me)
-
 (defsetting application-name
   (deferred-tru "Replace the word “Metabase” wherever it appears.")
   :encryption :no
