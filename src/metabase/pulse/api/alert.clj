@@ -2,7 +2,6 @@
   "/api/alert endpoints.
 
   Deprecated: will soon be migrated to notification APIs."
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.set :as set]
    [metabase.api.common :as api]

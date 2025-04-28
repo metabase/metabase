@@ -770,10 +770,10 @@
    metabase.lib.filter/deffilter                                                        macros.metabase.lib.filter/deffilter
    metabase.models.params.chain-filter-test/chain-filter                                macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.params.chain-filter-test/chain-filter-search                         macros.metabase.models.params.chain-filter-test/chain-filter
-   metabase.models.query-analysis-test/with-test-setup                                  macros.metabase.models.query-analysis-test/with-test-setup
    metabase.models.user-test/with-groups                                                macros.metabase.models.user-test/with-groups
    metabase.public-sharing.api-test/with-sharing-enabled-and-temp-card-referencing!     macros.metabase.public-sharing.api-test/with-sharing-enabled-and-temp-card-referencing!
    metabase.public-sharing.api-test/with-sharing-enabled-and-temp-dashcard-referencing! macros.metabase.public-sharing.api-test/with-sharing-enabled-and-temp-dashcard-referencing!
+   metabase.query-analysis.models.query-analysis-test/with-test-setup                   macros.metabase.query-analysis.models.query-analysis-test/with-test-setup
    metabase.query-analysis.task.test-setup/with-test-setup!                             macros.metabase.query-analysis.task.test-setup/with-test-setup!
    metabase.query-processor.streaming/streaming-response                                macros.metabase.query-processor.streaming/streaming-response
    metabase.server.statistics-handler-test/with-server                                  macros.metabase.server.statistics-handler-test/with-server

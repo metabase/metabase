@@ -1,4 +1,4 @@
-(ns metabase.models.query-analysis
+(ns metabase.query-analysis.models.query-analysis
   (:require
    [honey.sql.helpers :as sql.helpers]
    [metabase.util :as u]

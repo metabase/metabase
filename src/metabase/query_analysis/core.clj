@@ -15,8 +15,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
    [metabase.public-settings :as public-settings]
+   [metabase.query-analysis.models.query-analysis]
    [metabase.query-analysis.native-query-analyzer :as nqa]
    [metabase.query-analysis.native-query-analyzer.replacement :as nqa.replacement]
+   [metabase.query-analysis.settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.namespaces :as shared.ns]
@@ -26,8 +28,13 @@
 (set! *warn-on-reflection* true)
 
 (shared.ns/import-fns
+ [metabase.query-analysis.models.query-analysis
+  cards-with-reference-errors
+  reference-errors]
  [nqa
-  tables-for-native])
+  tables-for-native]
+ [metabase.query-analysis.settings
+  query-analysis-enabled])
 
 (def ^:private realtime-queue-capacity
   "The maximum number of cards which can be queued for async analysis. When exceeded, additional cards will be dropped."
@@ -83,7 +90,7 @@
 (defn enabled-type?
   "Is analysis of the given query type enabled?"
   [query-type]
-  (and (public-settings/query-analysis-enabled)
+  (and (query-analysis-enabled)
        (case query-type
          :native     (public-settings/sql-parsing-enabled)
          :query      true
