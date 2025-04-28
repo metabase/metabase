@@ -143,4 +143,37 @@ describe("unquoteString", () => {
       expect(rt(`\b\t\r\n\f\\\\`)).toEqual(`\b\t\r\n\f\\\\`);
     },
   );
+
+  it("should be possible to specify the quote being unquoted", () => {
+    expect(unquoteString(`[XYZ]`, "[")).toEqual(`XYZ`);
+    expect(unquoteString(`[XYZ`, "[")).toEqual(`XYZ`);
+    expect(unquoteString(`[XYZ"`, "[")).toEqual(`XYZ"`);
+    expect(unquoteString(`[XYZ'`, "[")).toEqual(`XYZ'`);
+    expect(unquoteString(`XYZ]`, "[")).toEqual(`XYZ`);
+    expect(unquoteString(`"XYZ]`, "[")).toEqual(`"XYZ`);
+    expect(unquoteString(`'XYZ]`, "[")).toEqual(`'XYZ`);
+    expect(unquoteString(`XYZ`, "[")).toEqual(`XYZ`);
+    expect(unquoteString(`"XYZ"`, "[")).toEqual(`"XYZ"`);
+    expect(unquoteString(`'XYZ'`, "[")).toEqual(`'XYZ'`);
+
+    expect(unquoteString(`'XYZ'`, "'")).toEqual(`XYZ`);
+    expect(unquoteString(`'XYZ`, "'")).toEqual(`XYZ`);
+    expect(unquoteString(`'XYZ]`, "'")).toEqual(`XYZ]`);
+    expect(unquoteString(`'XYZ"`, "'")).toEqual(`XYZ"`);
+    expect(unquoteString(`XYZ'`, "'")).toEqual(`XYZ`);
+    expect(unquoteString(`[XYZ'`, "'")).toEqual(`[XYZ`);
+    expect(unquoteString(`"XYZ'`, "'")).toEqual(`"XYZ`);
+    expect(unquoteString(`"XYZ"`, "'")).toEqual(`"XYZ"`);
+    expect(unquoteString(`[XYZ]`, "'")).toEqual(`[XYZ]`);
+
+    expect(unquoteString(`"XYZ"`, '"')).toEqual(`XYZ`);
+    expect(unquoteString(`"XYZ`, '"')).toEqual(`XYZ`);
+    expect(unquoteString(`"XYZ]`, '"')).toEqual(`XYZ]`);
+    expect(unquoteString(`"XYZ'`, '"')).toEqual(`XYZ'`);
+    expect(unquoteString(`XYZ"`, '"')).toEqual(`XYZ`);
+    expect(unquoteString(`[XYZ"`, '"')).toEqual(`[XYZ`);
+    expect(unquoteString(`'XYZ"`, '"')).toEqual(`'XYZ`);
+    expect(unquoteString(`'XYZ'`, '"')).toEqual(`'XYZ'`);
+    expect(unquoteString(`[XYZ]`, '"')).toEqual(`[XYZ]`);
+  });
 });
