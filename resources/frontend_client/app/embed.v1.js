@@ -13,7 +13,7 @@
 
     /**
      * @param {object} options
-     * @param {string} options.url
+     * @param {string} options.instanceUrl
      * @param {string | HTMLElement} options.target
      * @param {string} options.iframeClassName
      * @param {string} options.apiKey
@@ -22,7 +22,7 @@
      */
     constructor(options) {
       /** @type {string} */
-      this.url = options.url;
+      this.instanceUrl = options.instanceUrl;
 
       /** @type {string | HTMLElement} */
       this.target = options.target;
@@ -66,7 +66,7 @@
 
     _setup() {
       this.iframe = document.createElement("iframe");
-      this.iframe.src = `${this.url}/${EMBEDDING_ROUTE}`;
+      this.iframe.src = `${this.instanceUrl}/${EMBEDDING_ROUTE}`;
       this.iframe.style.width = "100%";
       this.iframe.style.height = "100%";
       this.iframe.style.border = "none";
@@ -141,7 +141,7 @@
         //       we use API keys for now
         this._sendMessage("metabase.embed.authenticate", {
           apiKey: this.apiKey,
-          metabaseInstanceUrl: this.url,
+          metabaseInstanceUrl: this.instanceUrl,
         });
       }
     }
