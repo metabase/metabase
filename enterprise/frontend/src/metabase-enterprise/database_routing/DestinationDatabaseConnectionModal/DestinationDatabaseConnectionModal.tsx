@@ -4,6 +4,7 @@ import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { DatabaseEditConnectionForm } from "metabase/admin/databases/components/DatabaseEditConnectionForm";
+import S from "metabase/admin/databases/containers/DatabaseConnectionModal.module.css";
 import { useGetDatabaseQuery, useUpdateDatabaseMutation } from "metabase/api";
 import { useDocsUrl } from "metabase/common/hooks";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
@@ -18,7 +19,6 @@ import type { Database, DatabaseData } from "metabase-types/api";
 
 import { paramIdToGetQuery } from "../utils";
 
-import S from "./DestinationDatabaseConnectionModal.module.css";
 import { pickPrefillFieldsFromPrimaryDb } from "./utils";
 
 export const DestinationDatabaseConnectionModalInner = ({

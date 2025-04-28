@@ -79,8 +79,8 @@
     (clear-cache!)
     (setting-test/toucan-name! "Reggae Toucan")
     (simulate-another-instance-updating-setting! :toucan-name "Bird Can")
-    (is (= true
-           (#'setting.cache/cache-out-of-date?)))))
+    (is (true?
+         (#'setting.cache/cache-out-of-date?)))))
 
 (deftest restore-cache-if-needed-test
   (testing (str "of course, `restore-cache-if-needed!` should use TTL memoization, and the cache should not get "

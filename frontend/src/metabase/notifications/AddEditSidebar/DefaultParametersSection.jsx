@@ -29,7 +29,7 @@ function DefaultParametersSection({ className, parameters }) {
           name="info"
           className={cx(CS.textMedium, CS.ml1)}
           size={12}
-          tooltip={t`You can customize filter values for each subscription with paid plans.`}
+          tooltip={t`Customize filter values for each subscription on Pro and Enterprise plans.`}
         />
       </Heading>
       <div

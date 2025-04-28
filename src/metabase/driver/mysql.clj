@@ -72,6 +72,9 @@
                               :uploads                                true
                               :identifiers-with-spaces                true
                               :expressions/integer                    true
+                              :expressions/float                      true
+                              :expressions/date                       true
+                              :expressions/text                       true
                               :split-part                             true
                               ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
@@ -307,11 +310,6 @@
                                :else                                                 "datetime")]
     (-> [:str_to_date expr (h2x/literal format-str)]
         (h2x/with-database-type-info database-type))))
-
-(defmethod sql.qp/->float :mysql
-  [_ value]
-  ;; no-op as MySQL doesn't support cast to float
-  value)
 
 (defmethod sql.qp/->integer :mysql
   [_ value]
