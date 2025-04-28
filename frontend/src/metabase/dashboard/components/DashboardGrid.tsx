@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { ComponentType, ForwardedRef } from "react";
 import { Component, forwardRef } from "react";
-import type { Responsive as ReactGridLayout } from "react-grid-layout";
 import type { ConnectedProps } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -199,7 +198,7 @@ class DashboardGridInner extends Component<
       isAnimationPaused: true,
       _lastProps: {
         dashboard: props.dashboard,
-        isEditing: Boolean(props.isEditing),
+        isEditing: props.isEditing ?? false,
         selectedTabId: props.selectedTabId,
       },
     };
@@ -241,7 +240,12 @@ class DashboardGridInner extends Component<
     nextProps: DashboardGridInnerProps,
     state: DashboardGridInnerState,
   ): Partial<DashboardGridInnerState> {
-    const { dashboard, dashcardData, isEditing, selectedTabId } = nextProps;
+    const {
+      dashboard,
+      dashcardData,
+      isEditing = false,
+      selectedTabId,
+    } = nextProps;
     const lastProps = state._lastProps;
 
     const visibleCardIds = !isEditing
@@ -255,7 +259,7 @@ class DashboardGridInner extends Component<
     const visibleCards = getVisibleCards(
       dashboard.dashcards,
       visibleCardIds,
-      Boolean(isEditing),
+      isEditing,
       selectedTabId,
     );
 
@@ -284,7 +288,7 @@ class DashboardGridInner extends Component<
       layouts: getLayouts(visibleCards, state.initialCardSizes),
       _lastProps: {
         dashboard,
-        isEditing: Boolean(isEditing),
+        isEditing,
         selectedTabId,
       },
     };
@@ -345,13 +349,13 @@ class DashboardGridInner extends Component<
   getVisibleCards = (
     cards = this.props.dashboard.dashcards,
     visibleCardIds = this.state.visibleCardIds,
-    isEditing = this.props.isEditing,
+    isEditing = this.props.isEditing ?? false,
     selectedTabId = this.props.selectedTabId,
   ) => {
     return getVisibleCards(
       cards,
       visibleCardIds,
-      Boolean(isEditing),
+      isEditing,
       selectedTabId,
     ) as DashboardCard[];
   };
@@ -591,13 +595,16 @@ class DashboardGridInner extends Component<
     gridItemWidth: number;
     totalNumGridCols: number;
   }) => {
-    const { isEditing, autoScrollToDashcardId, reportAutoScrolledToDashcard } =
-      this.props;
+    const {
+      isEditing = false,
+      autoScrollToDashcardId,
+      reportAutoScrolledToDashcard,
+    } = this.props;
     const shouldAutoScrollTo = autoScrollToDashcardId === dc.id;
 
     const shouldChangeResizeHandle = isEditingTextOrHeadingCard(
       dc.card.display,
-      Boolean(isEditing),
+      isEditing,
     );
 
     return (
