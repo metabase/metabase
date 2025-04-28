@@ -77,16 +77,23 @@ export function quoteString(string: string, delimiter: StartDelimiter) {
   return OPEN + str + CLOSE;
 }
 
-export function unquoteString(string: string) {
-  const OPEN = string.charAt(0);
-  assertStartDelimiter(OPEN);
+export function unquoteString(
+  string: string,
+  delimiter: string = string.charAt(0),
+) {
+  assertStartDelimiter(delimiter);
+  const OPEN = delimiter;
   const CLOSE = DELIMITER_PAIRS[OPEN];
 
   let str = "";
   let escaping = false;
 
-  for (let i = 1; i <= string.length - 1; i++) {
+  for (let i = 0; i <= string.length - 1; i++) {
     const ch = string[i];
+
+    if (i === 0 && ch === OPEN) {
+      continue;
+    }
 
     if (ch === BACKSLASH && !escaping) {
       escaping = true;
