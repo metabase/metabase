@@ -4,6 +4,7 @@ name: Build + Docker Uberjar
 # or automatically for the listed branches
 
 on:
+  pull_request: # FIXME for testing
   push:
     branches:
       - master
@@ -36,7 +37,7 @@ jobs:
     steps:
       - name: Get docker repo and tag
         id: info
-        uses: actions/script@v7
+        uses: actions/github-script@v7
         with:
           script: | # js
             const branch = '${{ github.head_ref || github.ref_name }}';
@@ -140,6 +141,8 @@ jobs:
       commit: ${{ github.event.inputs.commit || github.sha }}
       repo: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).repo }}
       tag: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).tag }}
+      dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+      dockerhub-password: ${{ secrets.DOCKERHUB_TOKEN }}
 
   run-trivy:
     needs: [get-container-info, containerize]

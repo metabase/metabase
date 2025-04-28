@@ -13,6 +13,10 @@ on:
         type: string
       commit:
         type: string
+      dockerhub_username:
+        type: string
+      dockerhub_password:
+        type: string
   workflow_dispatch:
     inputs:
       artifact-name:
@@ -66,8 +70,8 @@ jobs:
     - name: Login to Docker Hub
       uses: docker/login-action@v3
       with:
-        username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
+        username: ${{ inputs.dockerhub_username || secrets.DOCKERHUB_RELEASE_USERNAME }}
+        password: ${{ inputs.dockerhub_password || secrets.DOCKERHUB_RELEASE_TOKEN }}
     - name: Set up QEMU
       if: contains(steps.platforms.outputs.result, 'arm')
       uses: docker/setup-qemu-action@v3
@@ -103,8 +107,8 @@ jobs:
     - name: Login to Docker Hub
       uses: docker/login-action@v3
       with:
-        username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
+        username: ${{ inputs.dockerhub_username || secrets.DOCKERHUB_RELEASE_USERNAME }}
+        password: ${{ inputs.dockerhub_password || secrets.DOCKERHUB_RELEASE_TOKEN }}
     - name: Pull the container image
       run: docker pull ${{ inputs.repo }}:${{ inputs.tag }}
     - name: Launch container
@@ -123,8 +127,8 @@ jobs:
     - name: Login to Docker Hub
       uses: docker/login-action@v3
       with:
-        username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
+        username: ${{ inputs.dockerhub_username || secrets.DOCKERHUB_RELEASE_USERNAME }}
+        password: ${{ inputs.dockerhub_password || secrets.DOCKERHUB_RELEASE_TOKEN }}
     - name: Pull the container image
       run: docker pull ${{ inputs.repo }}:${{ inputs.tag }}
     - name: Launch container
