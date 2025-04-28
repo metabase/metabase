@@ -324,9 +324,7 @@
                                  (fn [stage]
                                    (dissoc stage :breakout :order-by :aggregation :fields :lib/stage-metadata)))
           ;; Needed for field references to resolve further in the pipeline
-          stage-query (lib/with-fields
-                        stage-query last-metric-stage-number
-                        (lib/fieldable-columns stage-query last-metric-stage-number))
+          stage-query (lib/with-fields stage-query last-metric-stage-number (lib/fieldable-columns stage-query last-metric-stage-number))
           new-metric-stage (lib.util/query-stage stage-query last-metric-stage-number)
           lookup {(:id metric-metadata)
                   {:name metric-name :aggregation metric-aggregation}}
