@@ -22,7 +22,7 @@ import {
 import { TemplateEditor } from "metabase/notifications/modals/shared/components/TemplateEditor/TemplateEditor";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
 import {
-  Accordion,
+  ActionIcon,
   Flex,
   Icon,
   type IconName,
@@ -48,11 +48,15 @@ export type ChannelsSupportingCustomTemplates = Extract<
 >;
 const DEFAULT_CHANNELS_CONFIG = {
   email: {
-    name: t`Email`,
+    get name() {
+      return t`Email`;
+    },
     type: "email",
   },
   slack: {
-    name: t`Slack`,
+    get name() {
+      return t`Slack`;
+    },
     type: "slack",
   },
 } satisfies Record<
@@ -167,7 +171,8 @@ interface NotificationChannelsPickerProps {
   getInvalidRecipientText?: (domains: string) => string;
   enableTemplates?: boolean;
   templateContext?: Record<string, any>;
-  onPreviewClick?: (channelType: ChannelsSupportingCustomTemplates) => void;
+  onPreviewClick?: (channelType: NotificationChannelType) => void;
+  isPreviewOpen?: boolean;
   defaultTemplates?: Record<
     string,
     {
@@ -188,21 +193,26 @@ interface AccordionButtonProps {
   size?: number;
 }
 
-// Define the component with proper typing for forwardRef
-const AccordionButton = React.forwardRef<HTMLDivElement, AccordionButtonProps>(
-  function AccordionButton({ icon, label, onClick, size = 16 }, ref) {
+const TemplateButton = React.forwardRef<HTMLDivElement, AccordionButtonProps>(
+  function TemplateButton({ icon, label, onClick, size = 32 }, ref) {
     return (
       <Tooltip label={label} ref={ref}>
-        <Icon
-          name={icon}
+        <ActionIcon
           size={size}
-          style={{ cursor: "pointer" }}
+          variant="viewHeader"
+          style={{
+            cursor: "pointer",
+            backgrond: "transparent",
+            border: "none",
+          }}
           onClickCapture={(e) => {
             e.preventDefault();
             e.stopPropagation();
             onClick();
           }}
-        />
+        >
+          <Icon name={icon} size={size * 0.6} />
+        </ActionIcon>
       </Tooltip>
     );
   },
@@ -227,11 +237,10 @@ const TemplateHelperTooltip = ({
       onChange={setOpen}
     >
       <Popover.Target>
-        <AccordionButton
+        <TemplateButton
           icon="info"
           label={t`Template instructions`}
           onClick={() => setOpen(!open)}
-          size={16}
         />
       </Popover.Target>
       <Popover.Dropdown p="sm" px="md" onClick={(e) => e.stopPropagation()}>
@@ -274,6 +283,7 @@ export const NotificationChannelsPicker = ({
   enableTemplates = false,
   templateContext = {},
   onPreviewClick,
+  isPreviewOpen,
   defaultTemplates,
 }: NotificationChannelsPickerProps) => {
   const { data: httpChannelsConfig = [] } = useListChannelsQuery();
@@ -630,91 +640,86 @@ export const NotificationChannelsPicker = ({
             onChange={(newConfig) => onChannelChange(emailHandler, newConfig)}
           />
           {enableTemplates && (
-            <Accordion
+            <Stack
+              mt="sm"
               className={cx({ [S.defaultTemplate]: !emailHandler.template })}
               classNames={{
                 root: S.customTemplateRoot,
-                control: S.customTemplateControl,
-                label: S.customTemplateLabel,
-                item: S.customTemplateItem,
-                chevron: S.customTemplateChevron,
               }}
-              defaultValue={"email-template"}
             >
-              <Accordion.Item value="email-template">
-                <Accordion.Control>
-                  <Flex align="center" gap="sm">
-                    <Text
-                      size="lg"
-                      style={{ marginRight: "auto" }}
-                    >{t`Custom email template`}</Text>
-                    <Flex gap="sm" align="center" mr="0.25rem">
-                      {onPreviewClick && (
-                        <AccordionButton
-                          icon="eye"
-                          label={t`Preview message`}
-                          onClick={() => onPreviewClick("email")}
-                        />
-                      )}
-                      <TemplateHelperTooltip
-                        formattedJson={formattedTemplateContext}
-                      />
-                      {!!emailHandler.template && (
-                        <AccordionButton
-                          size={14}
-                          icon="refresh"
-                          label={t`Reset to default`}
-                          onClick={() => resetTemplateForChannel("email")}
-                        />
-                      )}
-                    </Flex>
-                  </Flex>
-                </Accordion.Control>
-                <Accordion.Panel
-                  styles={{ content: { padding: 0, border: "none" } }}
-                >
-                  <Stack>
-                    <Stack gap="xs">
-                      <Text size="sm" fw={700}>{t`Subject`}</Text>
-                      <TemplateEditor
-                        variant="textinput"
-                        placeholder={t`Alert from {{payload.result.table.name}} table`}
-                        templateContext={templateContext}
-                        defaultValue={getTemplateValue("email", "subject")}
-                        onBlur={(newValue) => {
-                          handleTemplateBlur("email", "subject", newValue);
-                        }}
-                        error={
-                          validationErrors.email.subject
-                            ? t`Subject cannot be empty`
-                            : false
-                        }
-                        language="mustache"
-                      />
-                    </Stack>
-                    <Stack gap="xs">
-                      <Text size="sm" fw={700}>{t`Content`}</Text>
-                      <TemplateEditor
-                        variant="textarea"
-                        placeholder={t`Your custom email template`}
-                        templateContext={templateContext}
-                        minHeight="12rem"
-                        defaultValue={getTemplateValue("email", "body")}
-                        onBlur={(newValue) => {
-                          handleTemplateBlur("email", "body", newValue);
-                        }}
-                        error={
-                          validationErrors.email.body
-                            ? t`Content cannot be empty`
-                            : false
-                        }
-                        language="mustache"
-                      />
-                    </Stack>
-                  </Stack>
-                </Accordion.Panel>
-              </Accordion.Item>
-            </Accordion>
+              <Flex align="center" gap="sm">
+                <Text
+                  size="lg"
+                  style={{ marginRight: "auto" }}
+                >{t`Custom email template`}</Text>
+                <Flex gap="sm" align="center" mr="0.25rem">
+                  {!!emailHandler.template && (
+                    <TemplateButton
+                      icon="history"
+                      label={t`Reset to default`}
+                      onClick={() => resetTemplateForChannel("email")}
+                    />
+                  )}
+                  <TemplateHelperTooltip
+                    formattedJson={formattedTemplateContext}
+                  />
+                  {onPreviewClick && (
+                    <TemplateButton
+                      icon="eye"
+                      label={isPreviewOpen ? t`Close preview` : t`Show preview`}
+                      onClick={() =>
+                        onPreviewClick(templateStateKeyMap["email"])
+                      }
+                    />
+                  )}
+                </Flex>
+              </Flex>
+              <Stack>
+                <Stack gap="xs">
+                  <Text size="sm" fw={700}>{t`Subject`}</Text>
+                  <TemplateEditor
+                    variant="textinput"
+                    placeholder={t`Alert from {{payload.result.table.name}} table`}
+                    templateContext={templateContext}
+                    defaultValue={getTemplateValue("email", "subject")}
+                    onFocus={(initialValue) => {
+                      handleTemplateBlur("email", "subject", initialValue);
+                    }}
+                    onBlur={(newValue) => {
+                      handleTemplateBlur("email", "subject", newValue);
+                    }}
+                    error={
+                      validationErrors.email.subject
+                        ? t`Subject cannot be empty`
+                        : false
+                    }
+                    language="mustache"
+                  />
+                </Stack>
+                <Stack gap="xs">
+                  <Text size="sm" fw={700}>{t`Message`}</Text>
+                  <TemplateEditor
+                    variant="textarea"
+                    placeholder={t`Your custom email template`}
+                    templateContext={templateContext}
+                    minHeight="12rem"
+                    defaultValue={getTemplateValue("email", "body")}
+                    onFocus={(initialValue) => {
+                      handleTemplateBlur("email", "body", initialValue);
+                    }}
+                    onBlur={(newValue) => {
+                      handleTemplateBlur("email", "body", newValue);
+                    }}
+                    error={
+                      validationErrors.email.body
+                        ? t`Message cannot be empty`
+                        : false
+                    }
+                    language="mustache"
+                  />
+                </Stack>
+              </Stack>
+            </Stack>
           )}
         </ChannelSettingsBlock>
       )}
@@ -732,65 +737,45 @@ export const NotificationChannelsPicker = ({
             onChange={(newConfig) => onChannelChange(slackHandler, newConfig)}
           />
           {enableTemplates && (
-            <Accordion
+            <Stack
+              mt="sm"
               className={cx({ [S.defaultTemplate]: !slackHandler.template })}
               classNames={{
                 root: S.customTemplateRoot,
-                control: S.customTemplateControl,
-                label: S.customTemplateLabel,
-                item: S.customTemplateItem,
-                chevron: S.customTemplateChevron,
               }}
-              defaultValue={"slack-template"}
             >
-              <Accordion.Item value="slack-template">
-                <Accordion.Control>
-                  <Flex align="center" gap="sm">
-                    <Text
-                      size="lg"
-                      style={{ marginRight: "auto" }}
-                    >{t`Custom Slack message`}</Text>
-                    <Flex gap="xs" align="center">
-                      {onPreviewClick && (
-                        <AccordionButton
-                          icon="eye"
-                          label={t`Preview message`}
-                          onClick={() => onPreviewClick("slack")}
-                        />
-                      )}
-                      <TemplateHelperTooltip
-                        formattedJson={formattedTemplateContext}
-                      />
-                      {!!slackHandler.template && (
-                        <AccordionButton
-                          size={14}
-                          icon="refresh"
-                          label={t`Reset to default`}
-                          onClick={() => resetTemplateForChannel("slack")}
-                        />
-                      )}
-                    </Flex>
-                  </Flex>
-                </Accordion.Control>
-                <Accordion.Panel
-                  styles={{ content: { padding: 0, border: "none" } }}
-                >
-                  <Stack gap="xs">
-                    <Text size="sm" fw={700}>{t`Content`}</Text>
-                    <TemplateEditor
-                      placeholder={t`Your custom Markdown template`}
-                      templateContext={templateContext}
-                      minHeight="12rem"
-                      defaultValue={getTemplateValue("slack", "body")}
-                      onBlur={(newValue) => {
-                        handleTemplateBlur("slack", "body", newValue);
-                      }}
-                      language="markdown"
+              <Flex align="center" gap="sm">
+                <Text
+                  size="lg"
+                  style={{ marginRight: "auto" }}
+                >{t`Custom Slack message`}</Text>
+                <Flex gap="xs" align="center">
+                  <TemplateHelperTooltip
+                    formattedJson={formattedTemplateContext}
+                  />
+                  {!!slackHandler.template && (
+                    <TemplateButton
+                      icon="refresh"
+                      label={t`Reset to default`}
+                      onClick={() => resetTemplateForChannel("slack")}
                     />
-                  </Stack>
-                </Accordion.Panel>
-              </Accordion.Item>
-            </Accordion>
+                  )}
+                </Flex>
+              </Flex>
+              <Stack gap="xs">
+                <Text size="sm" fw={700}>{t`Message`}</Text>
+                <TemplateEditor
+                  placeholder={t`Your custom Markdown template`}
+                  templateContext={templateContext}
+                  minHeight="12rem"
+                  defaultValue={getTemplateValue("slack", "body")}
+                  onBlur={(newValue) => {
+                    handleTemplateBlur("slack", "body", newValue);
+                  }}
+                  language="markdown"
+                />
+              </Stack>
+            </Stack>
           )}
         </ChannelSettingsBlock>
       )}

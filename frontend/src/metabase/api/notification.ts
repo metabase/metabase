@@ -8,6 +8,8 @@ import type {
   ListNotificationsRequest,
   Notification,
   NotificationId,
+  PreviewNotificationTemplateRequest,
+  PreviewNotificationTemplateResponse,
   TableNotification,
   UpdateNotificationRequest,
 } from "metabase-types/api/notification";
@@ -129,6 +131,16 @@ export const notificationApi = Api.injectEndpoints({
         body,
       }),
     }),
+    previewNotificationTemplate: builder.query<
+      PreviewNotificationTemplateResponse,
+      PreviewNotificationTemplateRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/notification/preview_template",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -144,8 +156,9 @@ export const {
   useUnsubscribeFromNotificationMutation,
   useSendUnsavedNotificationMutation,
   useGetNotificationPayloadExampleQuery,
-  useLazyGetNotificationPayloadExampleQuery,
   useGetDefaultNotificationTemplateQuery,
+  usePreviewNotificationTemplateQuery,
+  useLazyPreviewNotificationTemplateQuery,
 } = notificationApi;
 
 export const useTableNotificationsQuery = (

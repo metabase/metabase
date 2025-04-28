@@ -10,7 +10,7 @@
       box-shadow 100ms ease;
     font-family: var(--mantine-font-family);
     color: var(--mb-color-text-dark);
-    font-size: var(--mantine-font-size-md);
+    font-size: var(--mantine-font-size-sm);
   }
 
   :global(.cm-editor.cm-focused) {
@@ -51,7 +51,6 @@
     :global(.cm-scroller) {
       overflow-x: hidden;
       overflow-y: hidden;
-      display: flex;
       align-items: center;
     }
 
