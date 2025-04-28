@@ -56,7 +56,7 @@ export function getVisibleCards(
   selectedTabId: DashboardTabId | null,
 ) {
   const tabCards = cards.filter(
-    card =>
+    (card) =>
       !selectedTabId ||
       card.dashboard_tab_id === selectedTabId ||
       card.dashboard_tab_id === null,
@@ -64,7 +64,7 @@ export function getVisibleCards(
 
   return isEditing
     ? tabCards
-    : tabCards.filter(card => visibleCardIds.has(card.id));
+    : tabCards.filter((card) => visibleCardIds.has(card.id));
 }
 
 export function getInitialCardSizes(
@@ -72,7 +72,7 @@ export function getInitialCardSizes(
   initialCardSizes: { [key: string]: { w: number; h: number } } | undefined,
 ) {
   return cards
-    .map(card => getLayoutForDashCard(card, initialCardSizes))
+    .map((card) => getLayoutForDashCard(card, initialCardSizes))
     .reduce((acc, dashcardLayout) => {
       const dashcardId = dashcardLayout.i;
       return {
@@ -86,7 +86,7 @@ export function getLayouts(
   cards: BaseDashboardCard[],
   initialCardSizes: { [key: string]: { w: number; h: number } } | undefined,
 ) {
-  const desktop = cards.map(card =>
+  const desktop = cards.map((card) =>
     getLayoutForDashCard(card, initialCardSizes),
   );
   const mobile = generateMobileLayout(desktop);

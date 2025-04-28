@@ -51,7 +51,7 @@ export const ColorRange = forwardRef(function ColorRange(
         props.className,
       )}
     >
-      {_.range(0, sections).map(section => (
+      {_.range(0, sections).map((section) => (
         <Box key={section} flex="1" bg={scale(section)} />
       ))}
     </Flex>

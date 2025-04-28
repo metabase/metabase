@@ -354,7 +354,7 @@ describe("scenarios > organization > timelines > question", () => {
         // should display its checkbox with a "dash" icon
         cy.findByTestId("sidebar-content")
           .findByText("Releases")
-          .closest("[aria-label=Timeline card header]")
+          .closest("[aria-label='Timeline card header']")
           .within(() => {
             cy.icon("dash").should("be.visible");
 
@@ -375,7 +375,7 @@ describe("scenarios > organization > timelines > question", () => {
 
         cy.findByTestId("sidebar-content")
           .findByText("TC1")
-          .closest("[aria-label=Timeline event card]")
+          .closest("[aria-label='Timeline event card']")
           .within(() => {
             cy.findByRole("checkbox").should("not.be.checked");
           });
@@ -384,7 +384,7 @@ describe("scenarios > organization > timelines > question", () => {
         // should make its events automatically visible
         cy.findByTestId("sidebar-content")
           .findByText("Timeline for collection")
-          .closest("[aria-label=Timeline card header]")
+          .closest("[aria-label='Timeline card header']")
           .within(() => cy.findByRole("checkbox").click());
 
         H.echartsIcon("warning").should("be.visible");
@@ -549,7 +549,7 @@ describe("scenarios > organization > timelines > question", () => {
 });
 
 function timelineEventCard(eventName) {
-  return cy.findByText(eventName).closest("[aria-label=Timeline event card]");
+  return cy.findByText(eventName).closest("[aria-label='Timeline event card']");
 }
 
 function toggleEventVisibility(eventName) {

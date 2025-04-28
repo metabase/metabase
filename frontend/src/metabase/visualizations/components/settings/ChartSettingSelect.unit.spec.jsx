@@ -12,7 +12,7 @@ const options = [
   { name: "No value", value: null },
 ];
 
-const selectOption = async optionText => {
+const selectOption = async (optionText) => {
   const select = screen.getByTestId("chart-setting-select");
   await userEvent.click(select);
   const option = screen.getByText(optionText);
@@ -20,11 +20,6 @@ const selectOption = async optionText => {
 };
 
 describe("ChartSettingSelect", () => {
-  beforeAll(() => {
-    // Mock scrollIntoView since it's not implemented in JSDOM
-    Element.prototype.scrollIntoView = jest.fn();
-  });
-
   it("should render all options", async () => {
     render(
       <ChartSettingSelect

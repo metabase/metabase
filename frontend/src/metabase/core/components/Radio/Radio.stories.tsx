@@ -8,7 +8,7 @@ export default {
   component: Radio,
 };
 
-const Template: StoryFn<RadioProps<any>> = args => {
+const Template: StoryFn<RadioProps<any>> = (args) => {
   const [{ value }, updateArgs] = useArgs();
   const handleChange = (value: unknown) => updateArgs({ value });
 

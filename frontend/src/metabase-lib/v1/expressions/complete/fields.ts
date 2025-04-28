@@ -20,7 +20,7 @@ export function suggestFields({ query, stageIndex, expressionIndex }: Options) {
     query,
     stageIndex,
     expressionIndex,
-  )?.map(column => {
+  )?.map((column) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, column);
     return {
       type: "field",

@@ -58,7 +58,7 @@ function CollectionCopyEntityModal({
         collection_id: initialCollectionId,
       }}
       title={title}
-      copy={async values => {
+      copy={async (values) => {
         return entityObject.copy(dissoc(values, "id"));
       }}
       onClose={onClose}

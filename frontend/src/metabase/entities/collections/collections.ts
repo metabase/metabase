@@ -71,7 +71,9 @@ const Collections = createEntity({
   path: "/api/collection",
   schema: CollectionSchema,
 
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameOne: t`collection`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameMany: t`collections`,
 
   rtk: {
@@ -157,7 +159,7 @@ const Collections = createEntity({
   selectors: {
     getExpandedCollectionsById: createSelector(
       [
-        state => Collections.selectors.getList(state),
+        (state) => Collections.selectors.getList(state),
         getUserPersonalCollectionId,
         (_state, props) => props?.collectionFilter,
       ],

@@ -12,7 +12,6 @@ import {
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   isBoolean,
-  isCategory,
   isCoordinate,
   isCurrency,
   isDate,
@@ -64,7 +63,7 @@ export default class Field extends Base {
   description: string | null;
   semantic_type: string | null;
   fingerprint?: FieldFingerprint;
-  base_type: string | null;
+  base_type: string;
   effective_type?: string | null;
   table?: Table;
   table_id?: Table["id"];
@@ -204,10 +203,6 @@ export default class Field extends Base {
 
   isSummable() {
     return isSummable(this);
-  }
-
-  isCategory() {
-    return isCategory(this);
   }
 
   isMetric() {

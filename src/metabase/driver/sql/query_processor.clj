@@ -136,30 +136,56 @@
   [_ value]
   (h2x/->integer value))
 
+(defmulti float-dbtype
+  "Return the name of the floating point type we convert to in this database."
+  {:added "0.55.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
 (defmulti ->float
   "Cast to float."
   {:changelog-test/ignore true :added "0.45.0" :arglists '([driver honeysql-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmethod float-dbtype :sql
+  [_driver]
+  :double)
+
 (defmethod ->float :sql
   [driver value]
-  ;; optimization: we don't need to cast a number literal that is already a `Float` or a `Double` to `FLOAT`. Other
-  ;; number literals can be converted to doubles in Clojure-land. Note that there is a little bit of a mismatch between
-  ;; FLOAT and DOUBLE here, but that's mostly because I'm not 100% sure which drivers have both types. In the future
-  ;; maybe we can fix this.
-  (cond
-    (float? value)
-    (h2x/with-database-type-info (inline-num value) "float")
+  (h2x/maybe-cast (float-dbtype driver) value))
 
-    (number? value)
-    (recur driver (double value))
+(defn- untyped-inline-value [h2x]
+  (let [unwrapped (h2x/unwrap-typed-honeysql-form h2x)]
+    (when (inline? unwrapped)
+      (second unwrapped))))
 
-    (inline? value)
-    (recur driver (second value))
+(defn coerce-float
+  "Convert honeysql numbers/strings to floats, being smart about converting inlines and constants at compile-time."
+  [driver value]
+  ;; The smarts of this function are to cast inline numbers and strings at
+  ;; query-compile time (in Clojure) instead of in SQL
+  (let [inline (untyped-inline-value value)]
+    (cond
+      (nil? value)
+      nil
 
-    :else
-    (h2x/cast :float value)))
+      (h2x/is-of-type? value (float-dbtype driver))
+      value
+
+      (not inline)
+      (->float driver value)
+
+      (number? inline)
+      (h2x/with-database-type-info (inline-num (double inline)) (float-dbtype driver))
+
+      (string? inline)
+      (h2x/with-database-type-info (inline-num (Double/parseDouble inline)) (float-dbtype driver))
+
+      :else
+      (ex-info (str "Cannot convert " (pr-str value) " to float.")
+               {:value value}))))
 
 (defmulti ^clojure.lang.MultiFn inline-value
   "Return an inline value (as a raw SQL string) for an object `x`, e.g.
@@ -597,12 +623,24 @@
                        (h2x/with-type-info value {:database-type "varchar"}))))
       (->honeysql driver value))))
 
+(defn- literal-text-value?
+  [[_ value {base-type :base_type effective-type :effective_type} :as clause]]
+  (and (mbql.u/is-clause? :value clause)
+       (string? value)
+       (isa? (or effective-type base-type)
+             :type/Text)))
+
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name {::add/keys [source-table source-alias]} :as _clause]]
   (let [expression-definition (mbql.u/expression-with-name *inner-query* expression-name)]
-    (->honeysql driver (if (= source-table ::add/source)
-                         (apply h2x/identifier :field source-query-alias source-alias)
-                         expression-definition))))
+    (->honeysql driver (cond (= source-table ::add/source)
+                             (apply h2x/identifier :field source-query-alias source-alias)
+
+                             (literal-text-value? expression-definition)
+                             [::expression-literal-text-value expression-definition]
+
+                             :else
+                             expression-definition))))
 
 (defmethod ->honeysql [:sql :now]
   [driver _clause]
@@ -645,6 +683,9 @@
 
                [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
                (cast-temporal-byte driver coercion-strategy honeysql-form)
+
+               [:type/Text (:isa? :Coercion/String->Float)]
+               (->float driver honeysql-form)
 
                :else honeysql-form)
       (when-not (= <> honeysql-form)
@@ -1012,39 +1053,38 @@
 ;; we don't get divide by zero errors. SQL DBs always return NULL when dividing by NULL (AFAIK)
 
 (defn- safe-denominator
-  "Make sure we're not trying to divide by zero."
+  "Convert zeros to null to avoid dividing by zero."
   [denominator]
-  (cond
-    ;; try not to generate hairy nonsense like `CASE WHERE 7.0 = 0 THEN NULL ELSE 7.0` if we're dealing with number
-    ;; literals and can determine this stuff ahead of time.
-    (and (number? denominator)
-         (zero? denominator))
-    nil
+  (let [inline (untyped-inline-value denominator)]
+    (cond
+      (nil? denominator)
+      nil
 
-    (number? denominator)
-    (inline-num denominator)
+      (nil? inline)
+      [:nullif denominator [:inline 0.0]]
 
-    (inline? denominator)
-    (recur (second denominator))
+      (and (number? inline)
+           (zero? inline))
+      nil
 
-    :else
-    [:nullif denominator [:inline 0]]))
+      :else ;; inline value
+      denominator)))
 
 (defmethod ->honeysql [:sql :/]
   [driver [_ & mbql-exprs]]
   (let [[numerator & denominators] (for [mbql-expr mbql-exprs]
-                                     (->honeysql driver (if (integer? mbql-expr)
-                                                          (double mbql-expr)
-                                                          mbql-expr)))]
-    (into [:/ (->float driver numerator)]
+                                     (coerce-float driver (->honeysql driver mbql-expr)))]
+    (into [:/ numerator]
           (map safe-denominator)
           denominators)))
 
+(defmethod ->honeysql [:sql :float]
+  [driver [_ value]]
+  (coerce-float driver (->honeysql driver value)))
+
 (defmethod ->honeysql [:sql :sum-where]
   [driver [_ arg pred]]
-  [:sum [:case
-         (->honeysql driver pred) (->honeysql driver arg)
-         :else                    [:inline 0.0]]])
+  (->honeysql driver [:sum [:case [[pred arg]] {:default 0.0}]]))
 
 (defmethod ->honeysql [:sql :count-where]
   [driver [_ pred]]
@@ -1057,8 +1097,7 @@
 (defmethod ->honeysql [:sql :distinct-where]
   [driver [_ arg pred]]
   [::h2x/distinct-count
-   [:case
-    (->honeysql driver pred) (->honeysql driver arg)]])
+   (->honeysql driver [:case [[pred arg]]])])
 
 (defmethod ->honeysql [:sql :trim]
   [driver [_ arg]]
@@ -1408,6 +1447,18 @@
   ;; athena cannot cast uuid to bounded varchars
   (->honeysql driver [::cast expr "text"]))
 
+(defmethod ->honeysql [:sql ::expression-literal-text-value]
+  [driver [_ value]]
+  ;; When compiling with driver/*compile-with-inline-parameters* bound to false, a literal string expression will
+  ;; usually get replaced with a parameter placeholder like ?. For some databases, this causes a problem as the
+  ;; database engine cannot determine the type of the value in an expression like `SELECT ? AS "FOO"`. Drivers that
+  ;; need special handling for literal string expressions can provide an implementation for this method, e.g. to add
+  ;; an explicit CAST to the appropriate text type for the given driver. See the H2 driver for an example. We
+  ;; only need to do this for string literals, since numbers and booleans get inlined directly.
+  ;;
+  ;; Most databases don't require special handling, so just compile the unwrapped value.
+  (->honeysql driver value))
+
 (defmethod ->honeysql [:sql :starts-with]
   [driver [_ field arg options]]
   (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare field))
@@ -1431,6 +1482,16 @@
              (map? (field 2)))
     (select-keys (field 2) [:base-type])))
 
+(defn- parent-honeysql-col-effective-type-map
+  [field]
+  (when-let [field-id (and (vector? field)
+                           (= 3 (count field))
+                           (= :field (first field))
+                           (integer? (second field))
+                           (second field))]
+    (select-keys (lib.metadata/field (qp.store/metadata-provider) field-id)
+                 [:effective-type])))
+
 (def ^:dynamic *parent-honeysql-col-type-info*
   "To be bound in `->honeysql <driver> <op>` where op is on of {:>, :>=, :<, :<=, :=, :between}`. Its value should be
   `{:base-type keyword? :database-type string?}`. The value is used in `->honeysql <driver> :relative-datetime`,
@@ -1443,6 +1504,7 @@
   (let [field-honeysql (->honeysql driver field)]
     (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                        {:database-type database-type})
+                                                     (parent-honeysql-col-effective-type-map field)
                                                      (parent-honeysql-col-base-type-map field))]
       [:between field-honeysql (->honeysql driver min-val) (->honeysql driver max-val)])))
 
@@ -1452,6 +1514,7 @@
     (let [field-honeysql (->honeysql driver field)]
       (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                          {:database-type database-type})
+                                                       (parent-honeysql-col-effective-type-map field)
                                                        (parent-honeysql-col-base-type-map field))]
         [operator field-honeysql (->honeysql driver value)]))))
 
@@ -1461,6 +1524,7 @@
   (let [field-honeysql (->honeysql driver (maybe-cast-uuid-for-equality driver field value))]
     (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                        {:database-type database-type})
+                                                     (parent-honeysql-col-effective-type-map field)
                                                      (parent-honeysql-col-base-type-map field))]
       [:= field-honeysql (->honeysql driver value)])))
 

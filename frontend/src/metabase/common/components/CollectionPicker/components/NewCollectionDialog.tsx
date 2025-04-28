@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { useCreateCollectionMutation } from "metabase/api";
+import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { FormFooter } from "metabase/core/components/FormFooter";
 import {
   Form,
@@ -42,6 +43,8 @@ export const NewCollectionDialog = ({
     onClose();
   };
 
+  useEscapeToCloseModal(onClose, { capture: true });
+
   return (
     <Modal
       title={t`Create a new collection`}
@@ -50,6 +53,7 @@ export const NewCollectionDialog = ({
       data-testid="create-collection-on-the-go"
       trapFocus={true}
       withCloseButton={false}
+      closeOnEscape={false}
     >
       <FormProvider
         initialValues={{ name: "" }}

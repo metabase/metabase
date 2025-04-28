@@ -102,6 +102,7 @@ export type CollectionItemId = number;
 
 export interface CollectionItem {
   id: CollectionItemId;
+  entity_id?: BaseEntityId;
   model: CollectionItemModel;
   name: string;
   description: string | null;
@@ -155,6 +156,12 @@ export type getCollectionRequest = {
   namespace?: "snippets";
 };
 
+export type ListCollectionItemsSortColumn =
+  | "name"
+  | "last_edited_at"
+  | "last_edited_by"
+  | "model";
+
 export type ListCollectionItemsRequest = {
   id: CollectionId;
   models?: CollectionItemModel[];
@@ -162,7 +169,7 @@ export type ListCollectionItemsRequest = {
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
   namespace?: "snippets";
 } & PaginationRequest &
-  Partial<SortingOptions>;
+  Partial<SortingOptions<ListCollectionItemsSortColumn>>;
 
 export type ListCollectionItemsResponse = {
   data: CollectionItem[];

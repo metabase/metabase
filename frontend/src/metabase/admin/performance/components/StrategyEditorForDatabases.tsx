@@ -94,7 +94,7 @@ const StrategyEditorForDatabases_Base = ({
     }
   }, [canOverrideRootStrategy, targetId]);
 
-  const targetDatabase = databases.find(db => db.id === targetId);
+  const targetDatabase = databases.find((db) => db.id === targetId);
 
   const shouldAllowInvalidation = useMemo(() => {
     if (

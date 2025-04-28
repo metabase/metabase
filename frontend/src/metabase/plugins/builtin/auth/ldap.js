@@ -10,8 +10,8 @@ import {
 } from "metabase/plugins";
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(
-  sections =>
-    updateIn(sections, ["authentication", "settings"], settings => [
+  (sections) =>
+    updateIn(sections, ["authentication", "settings"], (settings) => [
       ...settings,
       {
         key: "ldap-enabled",
@@ -21,7 +21,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
         forceRenderWidget: true,
       },
     ]),
-  sections => ({
+  (sections) => ({
     ...sections,
     "authentication/ldap": {
       component: SettingsLdapForm,
@@ -77,7 +77,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
           display_name: t`User filter`,
           type: "string",
           validations: [
-            value =>
+            (value) =>
               (value.match(/\(/g) || []).length !==
               (value.match(/\)/g) || []).length
                 ? t`Check your parentheses`
@@ -122,4 +122,4 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
   }),
 );
 
-PLUGIN_IS_PASSWORD_USER.push(user => !user.ldap_auth);
+PLUGIN_IS_PASSWORD_USER.push((user) => user.sso_source !== "ldap");

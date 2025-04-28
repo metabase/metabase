@@ -20,7 +20,7 @@ export const useResetToDefaultForm = ({
   useEffect(() => {
     // Avoid stale context in the form
     if (!isFormVisible) {
-      setVersionNumber(n => n + 1);
+      setVersionNumber((n) => n + 1);
     }
   }, [isFormVisible]);
 

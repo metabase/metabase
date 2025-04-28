@@ -9,7 +9,7 @@ export type SuggestOptions = {
   stageIndex: number;
   metadata: Metadata;
   reportTimezone?: string;
-  startRule: "expression" | "boolean" | "aggregation";
+  expressionMode: Lib.ExpressionMode;
   expressionIndex: number | undefined;
 };
 

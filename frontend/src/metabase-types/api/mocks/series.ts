@@ -16,5 +16,5 @@ export const createMockSingleSeries = (
 };
 
 export const createMockSeries = (opts: { name: string }[]): Series => {
-  return opts.map(opt => createMockSingleSeries({ name: opt.name }));
+  return opts.map((opt) => createMockSingleSeries({ name: opt.name }));
 };

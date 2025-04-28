@@ -1,4 +1,6 @@
-import type { SelectOption } from "metabase/ui";
+import { t } from "ttag";
+
+import type { ComboboxItem } from "metabase/ui";
 import type { FieldValuesSearchInfo } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { FieldValue, GetFieldValuesResponse } from "metabase-types/api";
@@ -29,44 +31,43 @@ export function canSearchFieldValues(
   );
 }
 
-export function getFieldOptions(fieldValues: FieldValue[]): SelectOption[] {
-  return fieldValues
-    .filter(([value]) => value != null)
-    .map(([value, label = value]) => ({
-      value: String(value),
-      label: String(label),
-    }));
+export function getFieldOption([value, label]: FieldValue): ComboboxItem {
+  return {
+    value: String(value),
+    label: String(label ?? value),
+  };
 }
 
-function getSelectedOptions(selectedValues: string[]) {
-  return selectedValues.map(value => ({
-    value,
-  }));
+export function getFieldOptions(fieldValues: FieldValue[]): ComboboxItem[] {
+  return fieldValues.filter(([value]) => value != null).map(getFieldOption);
 }
 
-export function getEffectiveOptions(
-  fieldValues: FieldValue[],
-  selectedValues: string[],
-  elevatedValues: string[] = [],
-): SelectOption[] {
-  const options: { label?: string; value: string }[] = [
-    ...getSelectedOptions(elevatedValues),
-    ...getFieldOptions(fieldValues),
-    ...getSelectedOptions(selectedValues),
-  ];
+export function getStaticPlaceholder(column: Lib.ColumnMetadata) {
+  const isID = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
+  const isNumeric = Lib.isNumeric(column);
 
-  const mapping = options.reduce((map: Map<string, string>, option) => {
-    if (option.label) {
-      map.set(option.value, option.label);
-    } else if (!map.has(option.value)) {
-      map.set(option.value, option.value);
-    }
-    return map;
-  }, new Map<string, string>());
-
-  return [...mapping.entries()].map(([value, label]) => ({ value, label }));
+  if (isID) {
+    return t`Enter an ID`;
+  } else if (isNumeric) {
+    return t`Enter a number`;
+  } else {
+    return t`Enter some text`;
+  }
 }
 
-export function isKeyColumn(column: Lib.ColumnMetadata) {
-  return Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
+export function getSearchPlaceholder(
+  column: Lib.ColumnMetadata,
+  searchColumName: string,
+) {
+  const isID = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
+
+  if (isID) {
+    return t`Search by ${searchColumName} or enter an ID`;
+  } else {
+    return t`Search by ${searchColumName}`;
+  }
+}
+
+export function getNothingFoundMessage(searchColumName: string) {
+  return t`No matching ${searchColumName} found.`;
 }

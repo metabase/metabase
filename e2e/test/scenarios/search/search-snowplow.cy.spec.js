@@ -24,7 +24,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       H.commandPaletteSearch("Orders", false);
 
       //Passing a function to ensure that runtime_milliseconds is populated as a number
-      H.expectGoodSnowplowEvent(data => {
+      H.expectGoodSnowplowEvent((data) => {
         if (!data) {
           return false;
         }
@@ -51,7 +51,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       H.commandPaletteSearch("Orders", false);
 
       //Passing a function to ensure that runtime_milliseconds is populated as a number
-      H.expectGoodSnowplowEvent(data => {
+      H.expectGoodSnowplowEvent((data) => {
         if (!data) {
           return false;
         }
@@ -178,7 +178,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
 
         cy.findByTestId("type-search-filter").click();
         H.popover().within(() => {
-          cy.findAllByTestId("type-filter-checkbox").each($el => {
+          cy.findAllByTestId("type-filter-checkbox").each(($el) => {
             cy.wrap($el).click();
           });
           cy.findByText("Apply").click();

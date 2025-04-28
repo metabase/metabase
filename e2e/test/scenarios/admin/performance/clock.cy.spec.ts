@@ -20,7 +20,7 @@ describe("server clock", () => {
   });
 
   it("can advance the server clock by one day", () => {
-    cy.request("GET", "/api/setting/report-timezone-long").then(response => {
+    cy.request("GET", "/api/setting/report-timezone-long").then((response) => {
       cy.wrap(response.body).as("serverTimeZone");
     });
 

@@ -14,11 +14,11 @@ type CardProps = {
 };
 
 const Card = styled.div<CardProps>`
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.dark ? color("text-dark") : color("bg-white")};
   border: 1px solid
-    ${props => (props.dark ? "transparent" : "var(--mb-color-bg-medium)")};
-  ${props => props.dark && `color: white`};
+    ${(props) => (props.dark ? "transparent" : "var(--mb-color-bg-medium)")};
+  ${(props) => props.dark && `color: white`};
   border-radius: 6px;
   box-shadow: 0 7px 20px var(--mb-color-shadow);
   line-height: 24px;
@@ -29,12 +29,12 @@ const Card = styled.div<CardProps>`
         box-shadow: 0 10px 22px ${alpha(theme.fn.themeColor("shadow"), 0.09)};
       }
     `};
-  ${props =>
+  ${(props) =>
     props.flat &&
     css`
       box-shadow: none;
     `};
-  ${props =>
+  ${(props) =>
     props.compact &&
     css`
       box-shadow: 0 1px 2px var(--mb-color-shadow);

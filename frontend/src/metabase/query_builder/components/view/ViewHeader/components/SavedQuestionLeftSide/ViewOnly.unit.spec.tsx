@@ -83,7 +83,7 @@ const ORDERS_QUERY = (function () {
   const query = createQuery({ databaseId: SAMPLE_DB_ID });
 
   const availableColumns = Lib.fieldableColumns(query, -1);
-  const columns = availableColumns.filter(column => {
+  const columns = availableColumns.filter((column) => {
     const info = Lib.displayInfo(query, -1, column);
     return info.table?.name === "ORDERS" || info.table?.name === "PRODUCTS";
   });

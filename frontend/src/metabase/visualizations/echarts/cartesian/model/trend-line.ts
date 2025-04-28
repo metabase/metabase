@@ -39,20 +39,20 @@ const getSeriesModelsWithTrends = (
   seriesModels: SeriesModel[],
 ): [SeriesModel, TrendFn][] => {
   return seriesModels
-    .map(seriesModel => {
+    .map((seriesModel) => {
       // Breakout series do not support trend lines because the data grouping happens on the client
       if ("breakoutColumn" in seriesModel) {
         return null;
       }
 
       const seriesDataset = rawSeries.find(
-        series =>
+        (series) =>
           series.card.id === seriesModel.cardId ||
           (series.card.id == null && seriesModel.cardId == null),
       )?.data;
 
       const insight = seriesDataset?.insights?.find(
-        insight => insight.col === seriesModel.column.name,
+        (insight) => insight.col === seriesModel.column.name,
       );
 
       if (!insight) {
@@ -82,8 +82,8 @@ const getLimitTrendLineTransform = (
   return (datum: Datum) => {
     const transformedDatum = { ...datum };
 
-    seriesModels.forEach(seriesModel => {
-      const axis = yAxisModels.find(yAxisModel =>
+    seriesModels.forEach((seriesModel) => {
+      const axis = yAxisModels.find((yAxisModel) =>
         yAxisModel?.seriesKeys.includes(seriesModel.sourceDataKey),
       );
 
@@ -129,7 +129,7 @@ export const getTrendLines = (
   }
 
   const visibleSeriesModels = seriesModels.filter(
-    seriesModel => seriesModel.visible,
+    (seriesModel) => seriesModel.visible,
   );
 
   const seriesModelsWithTrends = getSeriesModelsWithTrends(
@@ -141,7 +141,7 @@ export const getTrendLines = (
     return;
   }
 
-  const dataset = chartDataset.map(datum => {
+  const dataset = chartDataset.map((datum) => {
     const trendDatum: Datum = {
       [X_AXIS_DATA_KEY]: datum[X_AXIS_DATA_KEY],
     };
@@ -171,20 +171,20 @@ export const getTrendLines = (
       columnIndex: seriesModel.columnIndex,
     }),
   );
-  const dataKeys = trendSeriesModels.map(seriesModel => seriesModel.dataKey);
+  const dataKeys = trendSeriesModels.map((seriesModel) => seriesModel.dataKey);
 
   const scaledTrendDataset = scaleDataset(dataset, trendSeriesModels, settings);
   const transformedDataset = transformDataset(scaledTrendDataset, [
     {
       condition: settings["stackable.stack_type"] === "normalized",
       fn: getNormalizedDatasetTransform(
-        stackModels.map(stackModel => ({
+        stackModels.map((stackModel) => ({
           ...stackModel,
           seriesKeys: stackModel.seriesKeys.map(getTrendKeyForSeries),
         })),
       ),
     },
-    getKeyBasedDatasetTransform(dataKeys, value =>
+    getKeyBasedDatasetTransform(dataKeys, (value) =>
       yAxisScaleTransforms.toEChartsAxisValue(value),
     ),
     {

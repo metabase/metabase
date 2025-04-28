@@ -69,7 +69,7 @@ describe(
       selectDatabase(additionalPG);
 
       cy.log("Delete previously persisted database.");
-      cy.get("@postgresID").then(databaseId => {
+      cy.get("@postgresID").then((databaseId) => {
         cy.request("DELETE", `/api/database/${databaseId}`);
       });
 

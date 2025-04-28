@@ -4,6 +4,16 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.55.0
+
+- Added a feature `:expression-literals` for drivers that support expressions consisting of a single string, number, or boolean literal value.
+
+- Added a new abstract driver mix-in `:metabase.driver.sql.query-processor.boolean-is-comparison/boolean-is-comparison` that can be inherited by drivers that require boolean literal constants to be converted to comparison expressions in the top level of WHERE, AND, OR, NOT, and CASE clauses.
+
+- Added the multi-method `float-dbtype` which returns the name of the float type we coerce to for coercion strategies and the `float()` custom expression function.
+
+- Added a feature `:expressions/float` for drivers that support casting text to floats.
+
 ## Metabase 0.54.0
 
 - Added the multi-method `allowed-promotions` that allows driver control over which column type promotions are supported for uploads.
@@ -20,6 +30,25 @@ title: Driver interface changelog
 
 - Added a feature `:test/arrays` and multimethod `native-array-query` to enable the testing of array types for
   databases that support them.
+
+- Added a feature `:expressions/text` for drivers that support casting to text
+
+- Added a feature `:expressions/date` for drivers that support casting text to date
+
+- Added a feature `:expressions/integer` for drivers that support casting text to integer
+
+- Added a feature `:distinct-where` for drivers that support the `distinct-where` function.
+
+- Added a feature `:split-part` for drivers that support the `split-part` function.
+
+## Metabase 0.53.12
+
+- Add `metabase.driver/query-canceled?` for drivers to test if an exception is due to a query being canceled due to user action
+- Add `metabase.driver.sql-jdbc/impl-query-canceled?` for JDBC drivers. This is the implemenation of query-canceled for jdbc and allows testing directly against `java.sql.SQLException` throwables without worrying about the exception cause chain.
+
+## Metabase 0.53.10
+
+- Added `metabase.driver.sql-jdbc.sync/describe-fields-pre-process-xf` for JDBC drivers. This allows manipulating the results of `metabase.driver.sql-jdbc.sync/describe-fields-sql` without reimplementing `driver/describe-fields`.
 
 ## Metabase 0.53.0
 

@@ -11,7 +11,7 @@ const mapDispatchToProps = {
 /**
  * @deprecated HOCs are deprecated
  */
-const withToaster = ComposedComponent => {
+const withToaster = (ComposedComponent) => {
   class ToastedComponent extends Component {
     _triggerToast = (message, options = {}) => {
       const { addUndo } = this.props;

@@ -4,38 +4,38 @@ title: Syncing and scanning databases
 
 # Syncing and scanning databases
 
-Metabase runs different types of queries to stay up to date with your database.
+Metabase periodically runs different types of queries to stay up to date with your database's metadata. Knowing stuff about your data helps Metabase do things like display the right chart for the results automatically, and populate dropdown menus in filter widgets.
+
+There are a couple of things Metabase does:
 
 - [Syncs](#how-database-syncs-work) get updated schemas to display in the [Data Browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser).
-- [Scans](#how-database-scans-work) take samples of column values to populate filter dropdown menus and suggest helpful visualizations. Metabase does not store _complete_ tables from your database.
+- [Scans](#how-database-scans-work) take samples of column values to populate filter dropdown menus and suggest helpful visualizations. Metabase doesn't store _complete_ tables from your database.
 - [Fingerprinting](#how-database-fingerprinting-works) takes an additional sample of column values to help with smart behavior, such as auto-binning for bar charts.
 
 ## Initial sync, scan, and fingerprinting
 
-When Metabase first connects to your database, Metabase performs a [sync](#how-database-scans-work) to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../data-modeling/field-types.md). Once the sync is successful, Metabase runs [scans](#scheduling-database-scans) of each table to look for URLs, JSON, encoded strings, etc. The [fingerprinting](#how-database-fingerprinting-works) queries run once the syncs are complete.
+When Metabase first connects to your database, Metabase performs a [sync](#how-database-syncs-work) to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../data-modeling/field-types.md). 
 
 You can follow the progress of these queries from **Admin** > **Troubleshooting** > **Logs**.
 
 Once the queries are done running, you can view and edit the synced metadata from **Admin settings** > **Table Metadata**. For more info, see [editing metadata](../data-modeling/metadata-editing.md).
 
-## Choose when Metabase syncs and scans
+### Choose when syncs and scans happen
 
-If you want to change the default schedule for [sync](#how-database-scans-work) and [scan](#scheduling-database-scans) queries:
+By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, you might want to choose when syncs and scans happen:
 
-1. Go to **Admin** > **Databases** > your database.
-2. Expand **Show advanced options**.
-3. Turn ON **Choose when syncs and scans happen**.
+### Database syncing
 
-## Scheduling database syncs
-
-If you've turned on [Choose when syncs and scans happen](#choose-when-metabase-syncs-and-scans), you'll be able to set:
+If you've selected **Choose when syncs and scans happen** > **ON**, you'll be able to set:
 
 - The frequency of the [sync](#how-database-syncs-work): hourly (default) or daily.
 - The time to run the sync, in the timezone of the server where your Metabase app is running.
 
-## Scheduling database scans
+### Scanning for filter values
 
-If you've turned ON [Choose when syncs and scans happen](#choose-when-metabase-syncs-and-scans), you'll see the following [scan](#how-database-scans-work) options:
+Metabase can scan and cache the values present in a field so it can display things like checkbox filters in dashboards and questions. Metabase will only scan fields that people are actually using in your Metabase. So if people are using a filter widget on a dashboard, Metabase will scan and cache values from that field to include in dropdown menus. If people stop using the filter widget for a couple of weeks, Metabase will stop scanning and caching those values.
+
+If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Scanning for filter values**:
 
 - **Regularly, on a schedule** allows you to run [scan queries](#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
 - **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when a new filter is added to a dashboard or SQL question.
@@ -105,7 +105,7 @@ WHERE
 LIMIT 0
 ```
 
-This query runs against your database during setup, and again every hour by default. This scanning query is fast with most relational databases, but can be slower with MongoDB and some [community-built database drivers](../developers-guide/partner-and-community-drivers.md). Syncing can't be turned off completely, otherwise Metabase wouldn't work.
+This query runs against your database during setup, and again every hour by default. This scanning query is fast with most relational databases, but can be slower with MongoDB and some [community-built database drivers](../developers-guide/community-drivers.md). Syncing can't be turned off completely, otherwise Metabase wouldn't work.
 
 ## How database scans work
 
@@ -127,7 +127,7 @@ For each record, Metabase only stores the first 100 kilobytes of text, so if you
 
 Cached column values are displayed in filter dropdown menus. If people type in the filter search box for values that aren't in the first 1,000 distinct records or 100kB of text, Metabase will run a query against your database to look for those values on the fly.
 
-A scan is more intensive than a sync query, so it only runs once during setup, and again once a day by default. If you [disable scans](#scheduling-database-scans) entirely, you'll need to bring things up to date by running [manual scans](#manually-scanning-column-values).
+A scan is more intensive than a sync query, so it only runs once during setup, and again once a day by default. If you [disable scans](#scanning-for-filter-values) entirely, you'll need to bring things up to date by running [manual scans](#manually-scanning-column-values).
 
 To reduce the number of tables and fields Metabase needs to scan in order to stay current with your connected database, Metabase will only scan values for fields that someone has queried in the last fourteen days.
 
@@ -137,11 +137,12 @@ To reduce the number of tables and fields Metabase needs to scan in order to sta
 
 By default, Metabase only runs [fingerprinting](#how-database-fingerprinting-works) queries when you first connect your database.
 
-Turn this setting ON if you want Metabase to use larger samples of column values when making suggestions in the UI:
+Turn this setting on if you want Metabase to use larger samples of column values when making suggestions in the UI:
 
 1. Go to **Admin** > **Databases** > your database.
+2. Click on **Edit connection details**.
 2. Expand **Show advanced options**.
-3. Turn ON **Periodically refingerprint tables**.
+3. Turn on **Periodically refingerprint tables**.
 
 ## How database fingerprinting works
 
@@ -155,12 +156,12 @@ FROM
 LIMIT 10000
 ```
 
-The result of this query is used to provide better suggestions in the Metabase UI (such as filter dropdowns and auto-binning).
+Metabase uses the results of this query to provide better suggestions in the Metabase UI (such as filter dropdowns and auto-binning).
 To avoid putting strain on your database, Metabase only runs fingerprinting queries the [first time](#initial-sync-scan-and-fingerprinting) you set up a database connection. To change this default, you can turn ON [Periodically refingerprint tables](#periodically-refingerprint-tables).
 
 ## Further reading
 
 Metabase doesn't do any caching or rate limiting during the sync and scan process. If your data appears to be missing or out of date, check out:
 
-- [Can’t see tables](../troubleshooting-guide/cant-see-tables.md).
-- [Data in Metabase doesn’t match my database](../troubleshooting-guide/sync-fingerprint-scan.md).
+- [Can't see tables](../troubleshooting-guide/cant-see-tables.md).
+- [Data in Metabase doesn't match my database](../troubleshooting-guide/sync-fingerprint-scan.md).

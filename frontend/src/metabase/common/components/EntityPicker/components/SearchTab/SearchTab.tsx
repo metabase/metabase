@@ -58,7 +58,7 @@ export const SearchTab = <
                 },
               ]}
               value={searchScope}
-              onChange={value =>
+              onChange={(value) =>
                 onSearchScopeChange(value as EntityPickerSearchScope)
               }
             />

@@ -1,3 +1,4 @@
+import { useHotkeys } from "@mantine/hooks";
 import type { FocusEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useMount } from "react-use";
@@ -54,6 +55,7 @@ export function DashboardInfoSidebar({
   onClose,
 }: DashboardInfoSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
+  useHotkeys([["]", onClose]]);
 
   useMount(() => {
     // this component is not rendered until it is "open"
@@ -225,7 +227,7 @@ const HistoryTab = ({
       <Timeline
         events={events}
         data-testid="dashboard-history-list"
-        revert={revision => dispatch(revertToRevision(revision))}
+        revert={(revision) => dispatch(revertToRevision(revision))}
         canWrite={canWrite}
       />
     </SidesheetCard>

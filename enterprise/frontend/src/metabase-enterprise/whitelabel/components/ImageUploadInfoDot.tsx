@@ -16,11 +16,15 @@ const DESCRIPTIONS_WIDTHS: Record<IllustrationType, number> = {
 
 const DESCRIPTIONS: Record<IllustrationType, string[]> = {
   background: [
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     t`For best results, choose an image that is horizontally oriented and upload it as an SVG file. Other accepted formats are JPG and PNG.`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     t`Your file should not be larger than 2MB.`,
   ],
   icon: [
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     t`For best results, upload an SVG file. Other accepted formats are JPG and PNG.`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     t`Your file should not be larger than 2MB.`,
   ],
 };

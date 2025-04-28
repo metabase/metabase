@@ -19,7 +19,7 @@ H.describeWithSnowplow(
       const testFile = H.VALID_CSV_FILES[0];
       const EMPTY_SCHEMA_NAME = "empty_uploads";
 
-      cy.intercept("PUT", "/api/setting").as("saveSettings");
+      cy.intercept("PUT", "/api/setting/*").as("saveSettings");
       cy.intercept("GET", "/api/database").as("databaseList");
 
       H.restore("postgres-writable");
@@ -43,11 +43,11 @@ H.describeWithSnowplow(
       cy.visit("/admin/settings/uploads");
 
       cy.findByLabelText("Upload Settings Form")
-        .findByText("Select a database")
+        .findByPlaceholderText("Select a database")
         .click();
       H.popover().findByText("Writable Postgres12").click();
       cy.findByLabelText("Upload Settings Form")
-        .findByText("Select a schema")
+        .findByPlaceholderText("Select a schema")
         .click();
 
       H.popover().findByText(EMPTY_SCHEMA_NAME).click();
@@ -62,13 +62,13 @@ H.describeWithSnowplow(
 
       const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE '%${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
 
-      H.queryWritableDB(tableQuery, "postgres").then(result => {
+      H.queryWritableDB(tableQuery, "postgres").then((result) => {
         expect(result.rows.length).to.equal(1);
         const tableName = result.rows[0].table_name;
         H.queryWritableDB(
           `SELECT count(*) FROM ${EMPTY_SCHEMA_NAME}.${tableName};`,
           "postgres",
-        ).then(result => {
+        ).then((result) => {
           expect(Number(result.rows[0].count)).to.equal(testFile.rowCount);
         });
       });
@@ -94,7 +94,7 @@ H.describeWithSnowplow(
       });
     });
 
-    ["postgres", "mysql"].forEach(dialect => {
+    ["postgres", "mysql"].forEach((dialect) => {
       describe(`CSV Uploading (${dialect})`, () => {
         beforeEach(() => {
           H.restore(`${dialect}-writable`);
@@ -115,7 +115,7 @@ H.describeWithSnowplow(
           H.expectNoBadSnowplowEvents();
         });
 
-        H.VALID_CSV_FILES.forEach(testFile => {
+        H.VALID_CSV_FILES.forEach((testFile) => {
           it(`Can upload ${testFile.fileName} to a collection`, () => {
             uploadFileToCollection(testFile);
 
@@ -125,14 +125,14 @@ H.describeWithSnowplow(
 
             const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE '%${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
 
-            H.queryWritableDB(tableQuery, dialect).then(result => {
+            H.queryWritableDB(tableQuery, dialect).then((result) => {
               expect(result.rows.length).to.equal(1);
               const tableName =
                 result.rows[0].table_name ?? result.rows[0].TABLE_NAME;
               H.queryWritableDB(
                 `SELECT count(*) as count FROM ${tableName};`,
                 dialect,
-              ).then(result => {
+              ).then((result) => {
                 expect(Number(result.rows[0].count)).to.equal(
                   testFile.rowCount,
                 );
@@ -141,7 +141,7 @@ H.describeWithSnowplow(
           });
         });
 
-        H.INVALID_CSV_FILES.forEach(testFile => {
+        H.INVALID_CSV_FILES.forEach((testFile) => {
           it(`Cannot upload ${testFile.fileName} to a collection`, () => {
             uploadFileToCollection(testFile);
 
@@ -151,7 +151,7 @@ H.describeWithSnowplow(
 
             const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE '%${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
 
-            H.queryWritableDB(tableQuery, dialect).then(result => {
+            H.queryWritableDB(tableQuery, dialect).then((result) => {
               expect(result.rows.length).to.equal(0);
             });
           });
@@ -237,7 +237,7 @@ H.describeWithSnowplow(
       H.visitCollection(FIRST_COLLECTION_ID);
 
       cy.fixture(`${FIXTURE_PATH}/${H.VALID_CSV_FILES[2].fileName}`).then(
-        file => {
+        (file) => {
           cy.get("#upload-input").selectFile(
             {
               contents: Cypress.Buffer.from(file),
@@ -398,7 +398,7 @@ describe("Upload Table Cleanup/Management", { tags: "@external" }, () => {
 });
 
 function uploadFileToCollection(testFile, viewModel = true) {
-  cy.get("@collectionId").then(collectionId =>
+  cy.get("@collectionId").then((collectionId) =>
     cy.visit(`/collection/${collectionId}`),
   );
 
@@ -441,7 +441,7 @@ function uploadToExisting({
 
   H.popover().findByText(uploadOptions[uploadMode]).click();
 
-  cy.fixture(`${H.FIXTURE_PATH}/${testFile.fileName}`).then(file => {
+  cy.fixture(`${H.FIXTURE_PATH}/${testFile.fileName}`).then((file) => {
     cy.get("#upload-file-input").selectFile(
       {
         contents: Cypress.Buffer.from(file),

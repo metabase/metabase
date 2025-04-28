@@ -140,7 +140,7 @@ const DASHBOARD = createMockDashboard({
 const DASHBOARD_WITH_TABS = createMockDashboard({
   id: 1,
   parameters: [DATE_PARAMETER, NUMERIC_PARAMETER, UNUSED_PARAMETER],
-  dashcards: DASHCARDS.map(dc => ({ ...dc, dashboard_tab_id: 1 })),
+  dashcards: DASHCARDS.map((dc) => ({ ...dc, dashboard_tab_id: 1 })),
   tabs: [
     createMockDashboardTab({ id: 1, name: "Tab 1" }),
     createMockDashboardTab({ id: 2, name: "Tab 2" }),
@@ -172,7 +172,7 @@ function setup({
   const dashboardState = createMockDashboardState({
     dashboardId: dashboard.id,
     dashboards: {
-      [dashboard.id]: { ...dashboard, dashcards: dashcards.map(dc => dc.id) },
+      [dashboard.id]: { ...dashboard, dashcards: dashcards.map((dc) => dc.id) },
     },
     editingDashboard: DASHBOARD,
     dashcards: _.indexBy(dashcards, "id"),
@@ -189,7 +189,7 @@ function setup({
 
 describe("dashboard/actions/cards", () => {
   describe("addSectionToDashboard", () => {
-    layoutOptions.forEach(sectionLayout => {
+    layoutOptions.forEach((sectionLayout) => {
       describe(sectionLayout.label, () => {
         const layoutItems = sectionLayout.getLayout({ col: 0, row: 0 });
 
@@ -223,7 +223,7 @@ describe("dashboard/actions/cards", () => {
           });
 
           const tabDashcards = nextDashcards.filter(
-            dc => dc.dashboard_tab_id === tabId,
+            (dc) => dc.dashboard_tab_id === tabId,
           );
           expect(tabDashcards).toHaveLength(layoutItems.length);
         });
@@ -363,7 +363,7 @@ async function runAddCardToDashboard({
 
   const tempDashCardId =
     getDashboardById(nextState, dashId).dashcards.find(
-      dashcardId => dashcardId < 0,
+      (dashcardId) => dashcardId < 0,
     ) ?? -1;
 
   return {

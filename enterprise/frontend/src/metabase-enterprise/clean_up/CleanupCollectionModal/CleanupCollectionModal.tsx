@@ -15,7 +15,10 @@ import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collec
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import { trackStaleItemsArchived } from "../analytics";
-import type { StaleCollectionItem } from "../types";
+import type {
+  ListStaleCollectionItemsSortColumn,
+  StaleCollectionItem,
+} from "../types";
 
 import { CleanupCollectionBulkActions } from "./CleanupCollectionBulkActions";
 import CS from "./CleanupCollectionModal.module.css";
@@ -50,12 +53,16 @@ const _CleanupCollectionModal = ({
   const pagination = usePagination({ initialPage: 0, pageSize: 10 });
 
   // sorting
-  const [sortOptions, setSortOptions] = useState<SortingOptions>({
+  const [sortOptions, setSortOptions] = useState<
+    SortingOptions<ListStaleCollectionItemsSortColumn>
+  >({
     sort_column: "name",
     sort_direction: SortDirection.Asc,
   });
 
-  const handleSortingChange = (sortingOpts: SortingOptions) => {
+  const handleSortingChange = (
+    sortingOpts: SortingOptions<ListStaleCollectionItemsSortColumn>,
+  ) => {
     setSortOptions(sortingOpts);
     pagination.resetPage();
   };
@@ -99,13 +106,13 @@ const _CleanupCollectionModal = ({
   const itemsData = staleItemsData?.data;
   const total = staleItemsData?.total ?? 0;
   const items: StaleCollectionItem[] = useMemo(() => {
-    return (itemsData ?? []).map(item => Search.wrapEntity(item, dispatch));
+    return (itemsData ?? []).map((item) => Search.wrapEntity(item, dispatch));
   }, [itemsData, dispatch]);
 
   // selection cont.
   const { getIsSelected } = selection;
   const hasUnselected = useMemo(() => {
-    return items.some(item => !getIsSelected(item));
+    return items.some((item) => !getIsSelected(item));
   }, [getIsSelected, items]);
 
   // pagination cont.

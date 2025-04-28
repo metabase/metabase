@@ -30,7 +30,7 @@ const randInt = (min: number, max: number) =>
 
 const exec = promisify(execCallback);
 
-export const startLocalMetabaseContainer: CliStepMethod = async state => {
+export const startLocalMetabaseContainer: CliStepMethod = async (state) => {
   let port = DEFAULT_PORT;
 
   const container = await getLocalMetabaseContainer();

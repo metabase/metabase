@@ -13,18 +13,18 @@ export function suggestLiterals() {
     }
 
     return {
-      from: token.start,
-      to: token.end,
+      from: token.pos,
+      to: token.pos + token.length,
       options: [
         {
           label: "True",
           type: "literal",
-          icon: "boolean",
+          icon: "io",
         },
         {
           label: "False",
           type: "literal",
-          icon: "boolean",
+          icon: "io",
         },
       ],
     };

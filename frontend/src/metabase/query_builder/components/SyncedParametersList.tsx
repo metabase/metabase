@@ -81,7 +81,7 @@ function buildSearchString(object: Record<string, any>) {
     window.location.search.replace("?", ""),
   );
   const filteredSearchParams = Object.fromEntries(
-    Object.entries(currentSearchParams).filter(entry =>
+    Object.entries(currentSearchParams).filter((entry) =>
       QUERY_PARAMS_ALLOW_LIST.includes(entry[0]),
     ),
   );

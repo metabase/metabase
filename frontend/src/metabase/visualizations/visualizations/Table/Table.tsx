@@ -89,16 +89,36 @@ class Table extends Component<TableProps, TableState> {
 
   static settings = {
     ...columnSettings({ hidden: true }),
+    "table.pagination": {
+      get section() {
+        return t`Columns`;
+      },
+      get title() {
+        return t`Paginate results`;
+      },
+      inline: true,
+      widget: "toggle",
+      dashboard: true,
+      default: false,
+    },
     "table.row_index": {
-      section: t`Columns`,
-      title: t`Show row index`,
+      get section() {
+        return t`Columns`;
+      },
+      get title() {
+        return t`Show row index`;
+      },
       inline: true,
       widget: "toggle",
       default: false,
     },
     "table.pivot": {
-      section: t`Columns`,
-      title: t`Pivot table`,
+      get section() {
+        return t`Columns`;
+      },
+      get title() {
+        return t`Pivot table`;
+      },
       widget: "toggle",
       inline: true,
       getHidden: (
@@ -121,8 +141,12 @@ class Table extends Component<TableProps, TableState> {
     },
 
     "table.pivot_column": {
-      section: t`Columns`,
-      title: t`Pivot column`,
+      get section() {
+        return t`Columns`;
+      },
+      get title() {
+        return t`Pivot column`;
+      },
       widget: "field",
       getDefault: ([
         {
@@ -144,8 +168,12 @@ class Table extends Component<TableProps, TableState> {
       persistDefault: true,
     },
     "table.cell_column": {
-      section: t`Columns`,
-      title: t`Cell column`,
+      get section() {
+        return t`Columns`;
+      },
+      get title() {
+        return t`Cell column`;
+      },
       widget: "field",
       getDefault: (
         [{ data }]: Series,
@@ -153,7 +181,7 @@ class Table extends Component<TableProps, TableState> {
       ) => {
         // We try to show numeric values in pivot cells, but if none are
         // available, we fall back to the last column in the unpivoted table
-        const nonPivotCols = data.cols.filter(c => c.name !== pivotCol);
+        const nonPivotCols = data.cols.filter((c) => c.name !== pivotCol);
         const lastCol = nonPivotCols[nonPivotCols.length - 1];
         const { name } = nonPivotCols.find(isMetric) || lastCol || {};
         return name;
@@ -173,7 +201,9 @@ class Table extends Component<TableProps, TableState> {
     ...tableColumnSettings,
     "table.column_widths": {},
     [DataGrid.COLUMN_FORMATTING_SETTING]: {
-      section: t`Conditional Formatting`,
+      get section() {
+        return t`Conditional Formatting`;
+      },
       widget: ChartSettingsTableFormatting,
       default: [],
       getProps: (series: Series, settings: VisualizationSettings) => ({
@@ -216,13 +246,13 @@ class Table extends Component<TableProps, TableState> {
       column_title: {
         title: t`Column title`,
         widget: "input",
-        getDefault: column => displayNameForColumn(column),
+        getDefault: (column) => displayNameForColumn(column),
       },
       click_behavior: {},
       text_align: {
         title: t`Align`,
         widget: "select",
-        getDefault: column => {
+        getDefault: (column) => {
           const baseColumn = column?.remapped_to_column ?? column;
           return isNumber(baseColumn) || isCoordinate(baseColumn)
             ? "right"
@@ -247,18 +277,17 @@ class Table extends Component<TableProps, TableState> {
     }
 
     if (isString(column)) {
-      const canWrapText = (columnSettings: OptionsType) => {
-        return (
-          columnSettings["view_as"] === null ||
-          columnSettings["view_as"] === "auto"
-        );
-      };
+      const canWrapText = (columnSettings: OptionsType) =>
+        columnSettings["view_as"] !== "image";
 
       settings["text_wrapping"] = {
         title: t`Wrap text`,
         default: false,
         widget: "toggle",
         inline: true,
+        isValid: (_column, columnSettings) => {
+          return canWrapText(columnSettings);
+        },
         getHidden: (_column, columnSettings) => {
           return !canWrapText(columnSettings);
         },
@@ -319,7 +348,7 @@ class Table extends Component<TableProps, TableState> {
         },
       ) => {
         return {
-          options: cols.map(column => column.name),
+          options: cols.map((column) => column.name),
           placeholder: t`Link to {{bird_id}}`,
         };
       },
@@ -345,7 +374,7 @@ class Table extends Component<TableProps, TableState> {
         },
       ) => {
         return {
-          options: cols.map(column => column.name),
+          options: cols.map((column) => column.name),
           placeholder: t`http://toucan.example/{{bird_id}}`,
         };
       },
@@ -380,11 +409,11 @@ class Table extends Component<TableProps, TableState> {
     if (Table.isPivoted(series, settings)) {
       const pivotIndex = _.findIndex(
         data.cols,
-        col => col.name === settings["table.pivot_column"],
+        (col) => col.name === settings["table.pivot_column"],
       );
       const cellIndex = _.findIndex(
         data.cols,
-        col => col.name === settings["table.cell_column"],
+        (col) => col.name === settings["table.cell_column"],
       );
       const normalIndex = _.findIndex(
         data.cols,
@@ -410,8 +439,8 @@ class Table extends Component<TableProps, TableState> {
 
       this.setState({
         data: {
-          cols: columnIndexes.map(i => cols[i]),
-          rows: rows.map(row => columnIndexes.map(i => row[i])),
+          cols: columnIndexes.map((i) => cols[i]),
+          rows: rows.map((row) => columnIndexes.map((i) => row[i])),
           results_timezone,
         },
         question,

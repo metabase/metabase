@@ -1,8 +1,10 @@
 import type { AstPath } from "prettier";
 
-import * as nodeMatchers from "../matchers";
+import * as Lib from "metabase-lib";
 
-type Assertion<T> = T extends (expr: unknown) => expr is infer U ? U : never;
+import * as literal from "../literal";
+
+type Assertion<T> = T extends (expr: any) => expr is infer U ? U : never;
 type Lifted<T> = {
   [K in keyof T]: (path: AstPath<unknown>) => path is AstPath<Assertion<T[K]>>;
 };
@@ -42,4 +44,10 @@ function liftMatcher<T>(
  * @example
  *   pathMatchers.isStringLiteral(path)
  */
-export const pathMatchers = lift(nodeMatchers);
+export const pathMatchers = lift({
+  ...literal,
+  isExpressionParts: Lib.isExpressionParts,
+  isColumnMetadata: Lib.isColumnMetadata,
+  isMetricMetadata: Lib.isMetricMetadata,
+  isSegmentMetadata: Lib.isSegmentMetadata,
+});

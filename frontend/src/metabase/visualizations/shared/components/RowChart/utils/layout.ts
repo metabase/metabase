@@ -21,7 +21,7 @@ export const getMaxWidth = (
   measureTextWidth: TextWidthMeasurer,
 ): number => {
   return Math.max(
-    ...formattedYTicks.map(tick =>
+    ...formattedYTicks.map((tick) =>
       measureTextWidth(tick, {
         size: `${ticksFont.size}px`,
         family: "Lato",
@@ -45,8 +45,8 @@ export const getChartMargin = <TDatum>(
 ): Margin => {
   const yAxisOffset = hasYAxis
     ? getMaxWidth(
-        seriesData.flatMap(seriesData =>
-          seriesData.bars.map(bar => yTickFormatter(bar.yValue)),
+        seriesData.flatMap((seriesData) =>
+          seriesData.bars.map((bar) => yTickFormatter(bar.yValue)),
         ),
         ticksFont,
         measureTextWidth,

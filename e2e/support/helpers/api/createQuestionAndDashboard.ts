@@ -36,7 +36,7 @@ export const createQuestionAndDashboard = ({
                 },
               ],
             })
-            .then(response => ({
+            .then((response) => ({
               ...response,
               body: response.body.dashcards[0],
               questionId,

@@ -5,15 +5,17 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.expression :as lib.expression]
-   [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -30,12 +32,26 @@
    [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
 
+(def ^:private ExpressionArg
+  [:or
+   :string
+   :boolean
+   :keyword
+   :int
+   :float
+   ::lib.schema.metadata/column
+   ::lib.schema.metadata/segment
+   ::lib.schema.metadata/metric])
+
 (def ^:private ExpressionParts
-  [:map
-   [:lib/type [:= :mbql/expression-parts]]
-   [:operator [:or :keyword :string]]
-   [:options ::lib.schema.common/options]
-   [:args [:sequential :any]]])
+  [:schema
+   {:registry {::expression-parts
+               [:map
+                [:lib/type [:= :mbql/expression-parts]]
+                [:operator [:or :keyword :string]]
+                [:options :map]
+                [:args [:sequential [:or ExpressionArg [:ref ::expression-parts]]]]]}}
+   ::expression-parts])
 
 (def ^:private expandable-time-units #{:hour})
 
@@ -71,54 +87,166 @@
                     fmt.date/date->iso-string)]
     (into [:between options column-arg] (map formatter) interval)))
 
-(defn- maybe-expand-temporal-expression
-  [expression-clause]
-  (if (expandable-temporal-expression? expression-clause)
-    (expand-temporal-expression expression-clause)
-    expression-clause))
-
 (defn- column-metadata-from-ref
   [query stage-number a-ref]
-  (lib.filter/add-column-operators
-   (lib.field/extend-column-metadata-from-ref
-    query stage-number
-    (lib.metadata.calculation/metadata query stage-number a-ref)
-    a-ref)))
+  (-> (lib.metadata.calculation/metadata query stage-number a-ref)
+      lib.filter/add-column-operators))
 
-(mu/defn expression-parts :- ExpressionParts
-  "Return the parts of the filter clause `expression-clause` in query `query` at stage `stage-number`."
-  ([query expression-clause]
-   (expression-parts query -1 expression-clause))
+(defmulti expression-parts-method
+  "Builds the expression parts by dispatching on the type of the argument."
+  {:arglists '([query stage-number arg])}
+  (fn [_query _stage-number value]
+    (lib.dispatch/dispatch-value value))
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod expression-parts-method :default
+  [query stage-number [op options & args]]
+  {:lib/type :mbql/expression-parts
+   :operator op
+   :options  options
+   :args     (mapv (partial expression-parts-method query stage-number) args)})
+
+(doseq [dispatch-value [:if :case]]
+  (defmethod expression-parts-method dispatch-value
+    ; case and if expressions expect a vector of pairs of if-then clause as
+    ; the first argument, but ExpressionParts can only represent a flat list of clauses.
+    ; This multimethod flattens the arguments into a flat list.
+    [query stage-number [op options clause-pairs fallback]]
+    ((get-method expression-parts-method :default)
+     query stage-number (cond->
+                         (into [op options] cat clause-pairs)
+                          (some? fallback) (conj fallback)))))
+
+(doseq [dispatch-value [:dispatch-type/expression-parts
+                        :dispatch-type/string
+                        :dispatch-type/integer
+                        :dispatch-type/number
+                        :dispatch-type/boolean
+                        :dispatch-type/keyword
+                        :dispatch-type/nil
+                        :metadata/column
+                        :metadata/segment
+                        :metadata/metric]]
+  (defmethod expression-parts-method dispatch-value
+    [_query _stage-number value]
+    value))
+
+(defmethod expression-parts-method :=
+  [query stage-number clause]
+  ((get-method expression-parts-method :default)
+   query stage-number (cond-> clause
+                        (expandable-temporal-expression? clause) expand-temporal-expression)))
+
+(defmethod expression-parts-method :field
+  [query stage-number field-ref]
+  (let [stripped-ref (lib.options/update-options field-ref #(dissoc % :lib/expression-name))]
+    (column-metadata-from-ref query stage-number stripped-ref)))
+
+(defmethod expression-parts-method :segment
+  [query _stage-number segment-ref]
+  (or
+   (lib.metadata/segment query (last segment-ref))
+   {:lib/type :metadata/segment
+    :id (last segment-ref)
+    :display-name (i18n/tru "Unknown Segment")}))
+
+(defmethod expression-parts-method :metric
+  [query _stage-number metric-ref]
+  (let [metric-id (last metric-ref)]
+    (if-let [metric (lib.metadata/metric query metric-id)]
+      metric
+      {:lib/type :metadata/metric
+       :id metric-id
+       :display-name (i18n/tru "Unknown Metric")})))
+
+(defmethod expression-parts-method :expression
+  [query stage-number expression-ref]
+  ; Set the expression name as used in the ref as the expression might
+  ; have other aliases set on it which might be wrong.
+  (lib.options/with-options
+    (column-metadata-from-ref query stage-number expression-ref)
+    {:lib/expression-name (last expression-ref)}))
+
+(mu/defn expression-parts :- [:or ExpressionArg ExpressionParts]
+  "Return the parts of the filter clause `arg` in query `query` at stage `stage-number`."
+  ([query value]
+   (expression-parts query -1 value))
 
   ([query :- ::lib.schema/query
-    stage-number :- :int
-    expression-clause :- ::lib.schema.expression/expression]
-   (let [[op options & args] (maybe-expand-temporal-expression expression-clause)
-         ->maybe-col #(when (lib.util/ref-clause? %)
-                        (column-metadata-from-ref query stage-number %))]
-     {:lib/type :mbql/expression-parts
-      :operator op
-      :options  options
-      :args     (mapv (fn [arg]
-                        (if (lib.util/clause? arg)
-                          (if-let [col (->maybe-col arg)]
-                            col
-                            (expression-parts query stage-number arg))
-                          arg))
-                      args)})))
+    stage-index :- :int
+    expression-clause :- [:or ::lib.schema.expression/expression ExpressionArg ExpressionParts]]
+   (expression-parts-method query stage-index expression-clause)))
 
-(defmethod lib.common/->op-arg :mbql/expression-parts
-  [{:keys [operator options args] :or {options {}}}]
-  (lib.common/->op-arg (lib.options/ensure-uuid (into [(keyword operator) options]
-                                                      (map lib.common/->op-arg)
-                                                      args))))
+(defn- case-or-if-expression?
+  [clause]
+  (and (vector? clause)
+       (boolean (#{:case :if} (first clause)))))
+
+(defn- case-or-if-pairs
+  [args]
+  (mapv vec (partition 2 args)))
+
+(defn- group-case-or-if-args
+  "case and if expression expect the first argument to be a
+   list of pairs of if-then clauses.
+
+   Callers of expression-clause might not always be aware of what clause they are
+   passing so they can't pass the correct format for the arguments.
+
+   Additionally, expression-parts flattens the arguments into a flat list.
+
+   This helper groups the arguments into a list of pairs again."
+  [[op options & args]]
+  (if (even? (count args))
+    [op options (case-or-if-pairs args)]
+    [op options (case-or-if-pairs (butlast args)) (last args)]))
+
+(defn- fix-expression-clause
+  [clause]
+  (cond-> clause
+    (case-or-if-expression? clause) group-case-or-if-args))
+
+(defmulti expression-clause-method
+  "Builds the expression clause by dispatching on the type of the argument."
+  {:arglists '([value])}
+  lib.dispatch/dispatch-value
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod expression-clause-method :default
+  [value]
+  value)
+
+(doseq [dispatch-value [:metadata/column
+                        :metadata/segment
+                        :metadata/metric]]
+  (defmethod expression-clause-method dispatch-value
+    [metadata]
+    (lib.ref/ref metadata)))
+
+(defmethod expression-clause-method :mbql/expression-parts
+  [{:keys [operator options args]}]
+  (-> (into [(keyword operator) (or options {})] (map lib.common/->op-arg) args)
+      fix-expression-clause
+      lib.options/ensure-uuid
+      lib.normalize/normalize))
 
 (mu/defn expression-clause :- ::lib.schema.expression/expression
   "Returns a standalone clause for an `operator`, `options`, and arguments."
-  [operator :- :keyword
-   args     :- [:sequential :any]
-   options  :- [:maybe :map]]
-  (lib.options/ensure-uuid (into [operator options] (map lib.common/->op-arg) args)))
+  ;; TODO - remove lib.schema.expression/expression here as it might not be supported in all cases
+  ([parts :- [:or ExpressionParts ExpressionArg ::lib.schema.expression/expression]]
+   (expression-clause-method parts))
+
+  ([operator :- [:or :keyword :string]
+    args     :- [:sequential [:or ExpressionArg ExpressionParts ::lib.schema.expression/expression]]
+    options  :- [:maybe :map]]
+   (expression-clause-method {:lib/type :mbql/expression-parts
+                              :operator operator
+                              :options  options
+                              :args     args})))
+
+(defmethod lib.common/->op-arg :mbql/expression-parts
+  [{:keys [operator options args] :or {options {}}}]
+  (expression-clause operator args options))
 
 (defn- expression-clause-with-in
   "Like [[expression-clause]], but also auto-converts `:=` and `:!=` to `:in` and `:not-in` when there are more than 2
@@ -193,14 +321,21 @@
 (defn- number->expression-arg
   [value]
   (if (u.number/bigint? value)
-    (str value)
+    (lib.expression/value value)
     value))
 
 (defn- expression-arg->number
-  [value]
-  (cond
-    (number? value) value
-    (string? value) (u.number/parse-bigint value)))
+  [arg]
+  (lib.util.match/match-one arg
+    (value :guard number?)
+    value
+
+    [:value {:base-type :type/BigInteger} (value :guard string?)]
+    (u.number/parse-bigint value)
+
+    ;; do not match inner clauses
+    _
+    nil))
 
 (def ^:private NumberFilterParts
   [:map
@@ -463,6 +598,15 @@
    [:unit     {:optional true} [:maybe ::lib.schema.filter/exclude-date-filter-unit]]
    [:values   [:sequential number?]]])
 
+(mu/defn- make-expression-parts :- ExpressionParts
+  "Build a mbql/expression-parts map with a new uuid"
+  [operator :- :keyword
+   args :- [:sequential [:or ExpressionArg ExpressionParts]]]
+  {:lib/type :mbql/expression-parts
+   :operator operator
+   :options  {:lib/uuid (str (random-uuid))}
+   :args     args})
+
 (mu/defn exclude-date-filter-clause :- ::lib.schema.expression/expression
   "Creates an exclude date filter clause based on FE-friendly filter parts. It should be possible to destructure each
    created expression with [[exclude-date-filter-parts]]."
@@ -473,10 +617,10 @@
   (let [column (lib.temporal-bucket/with-temporal-bucket column nil)
         expr   (if (= operator :!=)
                  (case unit
-                   :hour-of-day (lib.expression/get-hour column)
-                   :day-of-week (lib.expression/get-day-of-week column :iso)
-                   :month-of-year (lib.expression/get-month column)
-                   :quarter-of-year (lib.expression/get-quarter column))
+                   :hour-of-day (make-expression-parts :get-hour [column])
+                   :day-of-week (make-expression-parts :get-day-of-week [column :iso])
+                   :month-of-year (make-expression-parts :get-month [column])
+                   :quarter-of-year (make-expression-parts :get-quarter [column]))
                  column)]
     (expression-clause-with-in operator (into [expr] values) {})))
 
@@ -642,6 +786,9 @@
 
       [:time-interval _ (x :guard temporal?) n unit]
       (lib.temporal-bucket/describe-temporal-interval n unit)
+
+      [:relative-time-interval _ (x :guard temporal?) n unit offset offset-unit]
+      (lib.temporal-bucket/describe-temporal-interval-with-offset n unit offset offset-unit)
 
       _
       (lib.metadata.calculation/display-name query stage-number filter-clause))))

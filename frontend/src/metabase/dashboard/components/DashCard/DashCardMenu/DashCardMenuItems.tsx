@@ -2,13 +2,12 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
-import type { DashboardCardCustomMenuItem } from "embedding-sdk";
-/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { editQuestion } from "metabase/dashboard/actions";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
+import type { DashboardCardCustomMenuItem } from "metabase/embedding-sdk/types/plugins";
 import { useDispatch } from "metabase/lib/redux";
 import { Icon, Menu } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -92,7 +91,7 @@ export const DashCardMenuItems = ({
 
     if (customItems) {
       items.push(
-        ...customItems.map(item => {
+        ...customItems.map((item) => {
           const customItem =
             typeof item === "function"
               ? item({ question: transformSdkQuestion(question) })
@@ -118,7 +117,7 @@ export const DashCardMenuItems = ({
     withEditLink,
   ]);
 
-  return menuItems.map(item => {
+  return menuItems.map((item) => {
     const { iconName, key, ...rest } = item;
 
     return (
@@ -127,6 +126,7 @@ export const DashCardMenuItems = ({
         {...rest}
         key={key}
         leftSection={<Icon name={iconName} aria-hidden />}
+        aria-label={item.label}
       >
         {item.label}
       </Menu.Item>

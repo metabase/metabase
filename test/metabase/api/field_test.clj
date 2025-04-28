@@ -36,14 +36,15 @@
   (testing "GET /api/field/:id"
     (is (= (-> (merge
                 (mt/object-defaults :model/Field)
-                (t2/select-one [:model/Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version
-                                :database_position :database_required :database_is_auto_increment :entity_id]
+                (t2/select-one [:model/Field :id :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version
+                                :database_position :database_required :database_is_auto_increment :entity_id
+                                :name :table_id :parent_id]
                                :id (mt/id :users :name))
                 {:table_id         (mt/id :users)
                  :table            (merge
                                     (mt/obj->json->obj (mt/object-defaults :model/Table))
-                                    (t2/select-one [:model/Table :created_at :updated_at :entity_id
-                                                    :initial_sync_status :view_count]
+                                    (t2/select-one [:model/Table :id :created_at :updated_at :entity_id
+                                                    :initial_sync_status :view_count :schema :name :db_id]
                                                    :id (mt/id :users))
                                     {:description             nil
                                      :entity_type             "entity/UserTable"
@@ -236,8 +237,8 @@
                      :model/Field {field-id :id} {:semantic_type :type/FK :fk_target_field_id fk-field-id}]
         (let [original-val (boolean (t2/select-one-fn :fk_target_field_id :model/Field, :id field-id))]
           (testing "before API call"
-            (is (= true
-                   original-val)))
+            (is (true?
+                 original-val)))
           ;; unset the :type/FK semantic-type
           (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:semantic_type :type/Name})
           (testing "after API call"

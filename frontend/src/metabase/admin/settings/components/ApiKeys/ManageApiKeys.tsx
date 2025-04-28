@@ -1,3 +1,4 @@
+/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -80,7 +81,7 @@ function ApiKeysTable({
       data-testid="api-keys-table"
       columns={columns}
       rows={flatApiKeys}
-      rowRenderer={row => (
+      rowRenderer={(row) => (
         <ApiKeyRow
           apiKey={row}
           setActiveApiKey={setActiveApiKey}

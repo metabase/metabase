@@ -98,10 +98,10 @@ export const AddEditEmailSidebar = ({
             autoFocus={false}
             recipients={channel.recipients}
             users={users}
-            onRecipientsChange={recipients =>
+            onRecipientsChange={(recipients) =>
               onChannelPropertyChange("recipients", recipients)
             }
-            invalidRecipientText={domains =>
+            invalidRecipientText={(domains) =>
               t`You're only allowed to email subscriptions to addresses ending in ${domains}`
             }
           />

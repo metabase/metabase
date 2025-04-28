@@ -52,6 +52,6 @@ export const OptionsGridItem = styled(GridItem)<OptionsGridItemProps>`
   }
 
   ${breakpointMinMedium} {
-    width: ${props => getPercentage(1 / props.itemsCount)};
+    width: ${(props) => getPercentage(1 / props.itemsCount)};
   }
 `;

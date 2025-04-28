@@ -14,7 +14,7 @@ import {
 
 registerVisualizations();
 
-const MockedVisualization = props => {
+const MockedVisualization = (props) => {
   props.onRenderError("This is an error message");
 
   return <div>Hello, I am mocked</div>;
@@ -40,7 +40,7 @@ describe("Visualization", () => {
     await delay(0);
   };
 
-  const chartPathsWithColor = color => {
+  const chartPathsWithColor = (color) => {
     const container = screen.getByTestId("chart-container");
     return container.querySelectorAll(`path[fill="${color}"]`);
   };

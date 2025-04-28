@@ -14,9 +14,9 @@ describe("scenarios > auth > signin > SSO", () => {
     });
   });
 
-  ["ldap_auth", "google_auth"].forEach(auth => {
-    it(`login history tab should be available with ${auth} enabled (metabase#15558)`, () => {
-      H.mockCurrentUserProperty(auth, true);
+  ["ldap", "google"].forEach((auth) => {
+    it(`login history tab should be available with sso_source ${auth} (metabase#15558)`, () => {
+      H.mockCurrentUserProperty("sso_source", auth);
       cy.visit("/account/profile");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Login History");

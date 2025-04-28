@@ -42,7 +42,7 @@ export const CardCount = styled.span<CardCountProps>`
   display: block;
   flex: 0 0 auto;
   color: var(--mb-color-text-dark);
-  align-self: ${props => (props.isTopAligned ? "flex-start" : "")};
+  align-self: ${(props) => (props.isTopAligned ? "flex-start" : "")};
 `;
 
 export const CardMenu = styled.span`
@@ -70,7 +70,7 @@ export const CardRoot = styled(Link)`
   align-items: center;
   border: 1px solid var(--mb-color-border);
   border-radius: 6px;
-  cursor: ${props => (props.to ? "pointer" : "default")};
+  cursor: ${(props) => (props.to ? "pointer" : "default")};
 
-  ${props => props.to && cardRootHoverStyles}
+  ${(props) => props.to && cardRootHoverStyles}
 `;

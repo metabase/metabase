@@ -14,7 +14,7 @@ export default {
   decorators: [CommonSdkStoryCorsWrapper],
 };
 
-const Template: StoryFn<typeof StaticDashboard> = args => {
+const Template: StoryFn<typeof StaticDashboard> = (args) => {
   return <StaticDashboard {...args} />;
 };
 

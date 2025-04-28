@@ -3,8 +3,13 @@
 export const POPOVER_ELEMENT =
   ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
 
-export function popover(testid) {
-  const selector = `${POPOVER_ELEMENT}${testid ? `[data-testid=${testid}]` : ""}`;
+export function popover({ testId, skipVisibilityCheck = false } = {}) {
+  const selector = `${POPOVER_ELEMENT}${testId ? `[data-testid=${testId}]` : ""}`;
+
+  if (skipVisibilityCheck) {
+    return cy.get(selector);
+  }
+
   return cy.get(selector).filter(":visible").should("be.visible");
 }
 
@@ -61,7 +66,7 @@ export function entityPickerModalTab(name) {
 
 // displays at least these tabs:
 export function shouldDisplayTabs(tabs) {
-  tabs.forEach(tab => {
+  tabs.forEach((tab) => {
     entityPickerModalTab(tab).should("exist");
   });
 }
@@ -69,7 +74,7 @@ export function shouldDisplayTabs(tabs) {
 export function tabsShouldBe(selected, tabs) {
   cy.log(tabs);
   cy.findAllByRole("tab").should("have.length", tabs.length);
-  tabs.forEach(tab => {
+  tabs.forEach((tab) => {
     if (tab === selected) {
       entityPickerModalTab(tab).and("have.attr", "aria-selected", "true");
     } else {
@@ -198,12 +203,12 @@ export function toggleFilterWidgetValues(
   filterWidget().eq(0).click();
 
   popover().within(() => {
-    values.forEach(value => cy.findByText(value).click());
+    values.forEach((value) => cy.findByText(value).click());
     cy.button(buttonLabel).click();
   });
 }
 
-export const openQuestionActions = action => {
+export const openQuestionActions = (action) => {
   cy.findByTestId("qb-header-action-panel").icon("ellipsis").click();
 
   if (action) {
@@ -360,6 +365,10 @@ export function tableInteractiveHeader() {
   return cy.findByTestId("table-header");
 }
 
+export function tableInteractiveFooter() {
+  return cy.findByTestId("table-footer");
+}
+
 export function resizeTableColumn(columnId, moveX, elementIndex = 0) {
   // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByTestId(`resize-handle-${columnId}`)
@@ -436,12 +445,12 @@ export function tableHeaderClick(headerString) {
   tableHeaderColumn(headerString).click();
 }
 
-export function clickActionsPopover() {
-  return popover("click-actions-popover");
+export function clickActionsPopover({ skipVisibilityCheck = false } = {}) {
+  return popover({ testId: "click-actions-popover", skipVisibilityCheck });
 }
 
 export function segmentEditorPopover() {
-  return popover("segment-popover");
+  return popover({ testId: "segment-popover" });
 }
 
 export function assertTableData({ columns, firstRows = [] }) {
@@ -490,9 +499,12 @@ export function multiAutocompleteInput(filter = ":eq(0)") {
   return cy.findAllByRole("combobox").filter(filter).get("input").first();
 }
 
-export function fieldValuesInput(filter = ":eq(0)") {
-  // eslint-disable-next-line no-unsafe-element-filtering
-  return cy.findAllByRole("textbox").filter(filter).get("input").last();
+export function fieldValuesCombobox() {
+  return cy.findByRole("combobox");
+}
+
+export function fieldValuesTextbox() {
+  return cy.findByRole("textbox");
 }
 
 export function fieldValuesValue(index) {
@@ -502,7 +514,11 @@ export function fieldValuesValue(index) {
 
 export function removeFieldValuesValue(index) {
   // eslint-disable-next-line no-unsafe-element-filtering
-  return cy.findAllByTestId("token-field").icon("close").eq(index).click();
+  return cy
+    .findAllByTestId("token-field")
+    .findAllByLabelText("Remove")
+    .eq(index)
+    .click();
 }
 
 export function multiAutocompleteValue(index, filter = ":eq(0)") {

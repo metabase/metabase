@@ -12,7 +12,7 @@ const isAccentColorKey = (key: string) => key.startsWith(ACCENT_KEY_PREFIX);
 const extractAccentKey = (input: string): AccentKey => {
   const withoutPrefix = input.slice(ACCENT_KEY_PREFIX.length);
   return (
-    withoutPrefix.split("-").filter(segment => !isEmpty(segment))[0] ?? null
+    withoutPrefix.split("-").filter((segment) => !isEmpty(segment))[0] ?? null
   );
 };
 

@@ -8,7 +8,7 @@ export default {
   component: SchedulePicker,
 };
 
-const Template: StoryFn<typeof SchedulePicker> = args => {
+const Template: StoryFn<typeof SchedulePicker> = (args) => {
   const [
     {
       schedule,

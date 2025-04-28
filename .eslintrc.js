@@ -6,7 +6,7 @@
 // can use this flag to enable it. This is set to true in CI
 const shouldLintCssModules =
   process.env.LINT_CSS_MODULES === "true" || process.env.CI;
-const plugins = ["react", "no-only-tests"];
+const plugins = ["react", "no-only-tests","ttag"];
 if (shouldLintCssModules) {
   plugins.push("postcss-modules");
 }
@@ -255,6 +255,13 @@ module.exports = {
       ],
       rules: {
         "jest/valid-title": ["error", { ignoreTypeOfDescribeName: true }],
+        "jest/expect-expect": [
+          "error",
+          {
+            "assertFunctionNames": ["expect*", "assert*"],
+            "additionalTestBlockFunctions": []
+          }
+        ],
       },
     },
     {
@@ -286,6 +293,18 @@ module.exports = {
               "You may not use base colors in the application, use semantic colors instead. (see colors.module.css)",
           }
         ],
+      },
+    },
+    {
+      files: ["docs/**/snippets/**/*.{ts,tsx,js,jsx}"],
+      rules: {
+        "@typescript-eslint/no-unused-vars": "off",
+        "@typescript-eslint/no-var-requires": "off",
+        "import/no-commonjs": "off",
+        "import/no-default-export": "off",
+        "import/order": "off",
+        "import/no-unresolved": "off",
+        "no-color-literals": "off",
       },
     },
   ],

@@ -8,7 +8,7 @@ export default {
   component: ColorInput,
 };
 
-const Template: StoryFn<typeof ColorInput> = args => {
+const Template: StoryFn<typeof ColorInput> = (args) => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleChange = (value?: string) => {

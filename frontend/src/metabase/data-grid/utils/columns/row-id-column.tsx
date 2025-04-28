@@ -30,7 +30,7 @@ export const getRowIdColumn = <TRow, TValue>({
       const value = shouldShowIndex
         ? table
             .getSortedRowModel()
-            ?.flatRows?.findIndex(flatRow => flatRow.id === row.id) + 1
+            ?.flatRows?.findIndex((flatRow) => flatRow.id === row.id) + 1
         : null;
       return (
         <RowIdCell

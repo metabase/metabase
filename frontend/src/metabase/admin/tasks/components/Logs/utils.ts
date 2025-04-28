@@ -2,9 +2,40 @@ import dayjs from "dayjs";
 import orderBy from "lodash.orderby";
 import _ from "underscore";
 
+import {
+  type QueryParam,
+  type UrlStateConfig,
+  getFirstParamValue,
+} from "metabase/common/hooks/use-url-state";
 import type { Log } from "metabase-types/api";
 
 const MAX_LOGS = 50000;
+
+type UrlState = {
+  process: string | "ALL";
+  query: string;
+};
+
+export const urlStateConfig: UrlStateConfig<UrlState> = {
+  parse: (query) => ({
+    process: parseProcess(query.process),
+    query: parseQuery(query.query),
+  }),
+  serialize: ({ process, query }) => ({
+    process: process === "ALL" ? undefined : process,
+    query: query.length === 0 ? undefined : query,
+  }),
+};
+
+function parseProcess(param: QueryParam): UrlState["process"] {
+  const value = getFirstParamValue(param);
+  return value && value.trim().length > 0 ? value.trim() : "ALL";
+}
+
+function parseQuery(param: QueryParam): UrlState["query"] {
+  const value = getFirstParamValue(param);
+  return value ?? "";
+}
 
 function logEventKey(ev: Log) {
   return `${ev.timestamp}, ${ev.process_uuid}, ${ev.fqns}, ${ev.msg}`;
@@ -17,7 +48,7 @@ export function mergeLogs(logArrays: Log[][]) {
     ["timestamp", "process_uuid", "msg"],
     ["asc", "asc", "asc"],
   )
-    .filter(log => {
+    .filter((log) => {
       const key = logEventKey(log);
       const keep = prevLogKey !== key;
       if (keep) {
@@ -42,16 +73,25 @@ export function hasLog(logs: Log[], targetLog: Log): boolean {
   return _.findLastIndex(logs, targetLog) > -1;
 }
 
-export function filterLogs(logs: Log[], processUUID: string) {
-  return logs.filter(
-    ev =>
-      !processUUID || processUUID === "ALL" || ev.process_uuid === processUUID,
-  );
+export function filterLogs(logs: Log[], { process, query }: UrlState) {
+  const lowerCaseQuery = query ? query.toLowerCase() : "";
+
+  return logs.filter((log) => {
+    const formattedLog = formatLog(log).join("\n");
+
+    const matchesProcessFilter =
+      !process || process === "ALL" || log.process_uuid === process;
+    const matchesQueryFilter = formattedLog
+      .toLowerCase()
+      .includes(lowerCaseQuery);
+
+    return matchesProcessFilter && matchesQueryFilter;
+  });
 }
 
 export function getAllProcessUUIDs(logs: Log[]) {
   const uuids = new Set<string>();
-  logs.forEach(log => uuids.add(log.process_uuid));
+  logs.forEach((log) => uuids.add(log.process_uuid));
   return [...uuids].filter(Boolean).sort();
 }
 

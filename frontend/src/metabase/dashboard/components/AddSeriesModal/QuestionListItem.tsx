@@ -24,7 +24,7 @@ export const QuestionListItem = memo(function QuestionListItem({
           label={card.name}
           labelEllipsis
           checked={isEnabled}
-          onChange={e => onChange(e.currentTarget.checked)}
+          onChange={(e) => onChange(e.currentTarget.checked)}
         />
       </Box>
     </Box>

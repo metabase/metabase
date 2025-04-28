@@ -17,21 +17,48 @@ import "jspdf";
 
 export * from "./hooks/public";
 export * from "./components/public";
-export * from "metabase/embedding-sdk/types/plugins";
 
-export type { MetabaseAuthConfig } from "./types";
-
-export type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
+export type {
+  ButtonProps,
+  ChartColor,
+  CustomDashboardCardMenuItem,
+  DashCardMenuItem,
+  DashboardCardCustomMenuItem,
+  DashboardCardMenuCustomElement,
+  EntityTypeFilterKeys,
+  IconName,
+  LoginStatus,
+  MetabaseAuthConfig,
+  MetabaseAuthConfigWithApiKey,
+  MetabaseAuthConfigWithProvider,
+  MetabaseClickActionPluginsConfig,
+  MetabaseColors,
+  MetabaseClickAction,
+  MetabaseComponentTheme,
+  MetabaseCollection,
+  MetabaseCollectionItem,
+  MetabaseDataPointObject,
+  MetabaseDashboard,
+  MetabaseDashboardPluginsConfig,
+  MetabaseFontFamily,
+  MetabasePluginsConfig,
+  MetabaseQuestion,
+  MetabaseTheme,
+  MetabaseUser,
+  SdkCollectionId,
+  SdkDashboardId,
+  SdkDashboardLoadEvent,
+  SdkEntityId,
+  SdkErrorComponent,
+  SdkErrorComponentProps,
+  SdkEventHandlersConfig,
+  SdkQuestionId,
+  SdkQuestionTitleProps,
+  SdkUserId,
+  SqlParameterValues,
+} from "./types";
 
 export type {
   MetabaseFetchRequestTokenFn,
   MetabaseEmbeddingSessionToken,
 } from "./types/refresh-token";
-
-export type {
-  MetabaseTheme,
-  MetabaseColors,
-  MetabaseComponentTheme,
-} from "metabase/embedding-sdk/theme";
-
-export type { Dashboard as MetabaseDashboard } from "metabase-types/api";

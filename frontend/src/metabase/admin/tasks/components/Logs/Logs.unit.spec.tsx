@@ -1,10 +1,18 @@
 import fetchMock from "fetch-mock";
+import type { Location } from "history";
+import { Route } from "react-router";
 
-import { act, render, screen, waitFor } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UtilApi } from "metabase/services";
+import {
+  createMockLocation,
+  createMockRoutingState,
+} from "metabase-types/store/mocks";
 
 import { DEFAULT_POLLING_DURATION_MS, Logs } from "./Logs";
 import { maybeMergeLogs } from "./utils";
+
+const PATHNAME = "/admin/troubleshooting/logs";
 
 const log = {
   timestamp: "2024-01-10T21:21:58.597Z",
@@ -16,6 +24,29 @@ const log = {
 };
 
 let utilSpy: any;
+
+interface SetupOpts {
+  location?: Location;
+}
+
+function setup({
+  location = createMockLocation({
+    pathname: PATHNAME,
+  }),
+}: SetupOpts = {}) {
+  return renderWithProviders(
+    <Route path={location.pathname} component={() => <Logs />} />,
+    {
+      initialRoute: `${location.pathname}${location.search}`,
+      storeInitialState: {
+        routing: createMockRoutingState({
+          locationBeforeTransitions: location,
+        }),
+      },
+      withRouter: true,
+    },
+  );
+}
 
 describe("Logs", () => {
   describe("log fetching", () => {
@@ -32,7 +63,7 @@ describe("Logs", () => {
 
     it("should call UtilApi.logs every 1 second", async () => {
       fetchMock.get("path:/api/util/logs", []);
-      render(<Logs />);
+      setup();
       await waitFor(() => [
         expect(screen.getByTestId("loading-indicator")).toBeInTheDocument(),
         expect(utilSpy).toHaveBeenCalledTimes(1),
@@ -42,8 +73,8 @@ describe("Logs", () => {
     it("should skip calls to UtilsApi.logs if last request is still in-flight", async () => {
       fetchMock.get("path:/api/util/logs", []);
       let resolve: any;
-      utilSpy.mockReturnValueOnce(new Promise(res => (resolve = res)));
-      render(<Logs />);
+      utilSpy.mockReturnValueOnce(new Promise((res) => (resolve = res)));
+      setup();
       await waitFor(() => [
         expect(screen.getByTestId("loading-indicator")).toBeInTheDocument(),
         expect(utilSpy).toHaveBeenCalledTimes(1),
@@ -68,22 +99,54 @@ describe("Logs", () => {
 
     it("should display no results if there are no logs", async () => {
       fetchMock.get("path:/api/util/logs", []);
-      render(<Logs />);
+      setup();
       await waitFor(() => {
         expect(
           screen.getByText(`There's nothing here, yet.`),
         ).toBeInTheDocument();
       });
+      expect(screen.getByRole("button", { name: /Download/ })).toBeDisabled();
+    });
+
+    it("should filter out logs not matching the query", async () => {
+      fetchMock.get("path:/api/util/logs", [log]);
+      setup({
+        location: createMockLocation({
+          pathname: PATHNAME,
+          search: "?query=something",
+        }),
+      });
+      await waitFor(() => {
+        expect(
+          screen.getByText("Nothing matches your filters."),
+        ).toBeInTheDocument();
+      });
+      expect(screen.getByRole("button", { name: /Download/ })).toBeDisabled();
+    });
+
+    it("should not filter out logs matching the query", async () => {
+      fetchMock.get("path:/api/util/logs", [log]);
+      setup({
+        location: createMockLocation({
+          pathname: PATHNAME,
+          search: `?query=${log.fqns}`,
+        }),
+      });
+      expect(
+        await screen.findByText(new RegExp(log.process_uuid)),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Download/ })).toBeEnabled();
     });
 
     it("should display results if server responds with logs", async () => {
       fetchMock.get("path:/api/util/logs", [log]);
-      render(<Logs />);
+      setup();
       await waitFor(() => {
         expect(
           screen.getByText(new RegExp(log.process_uuid)),
         ).toBeInTheDocument();
       });
+      expect(screen.getByRole("button", { name: /Download/ })).toBeEnabled();
     });
 
     it("should display server error message if an error occurs", async () => {
@@ -92,15 +155,18 @@ describe("Logs", () => {
         status: 500,
         body: { message: errMsg },
       });
-      render(<Logs />);
+      setup();
       await waitFor(() => {
         expect(screen.getByText(errMsg)).toBeInTheDocument();
       });
+      expect(
+        screen.queryByRole("button", { name: /Download/ }),
+      ).not.toBeInTheDocument();
     });
 
     it("should stop polling on unmount", async () => {
       fetchMock.get("path:/api/util/logs", [log]);
-      const { unmount } = render(<Logs />);
+      const { unmount } = setup();
       expect(
         await screen.findByText(new RegExp(log.process_uuid)),
       ).toBeInTheDocument();

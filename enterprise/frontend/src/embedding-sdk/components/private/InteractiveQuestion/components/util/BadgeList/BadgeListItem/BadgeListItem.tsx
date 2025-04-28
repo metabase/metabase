@@ -32,7 +32,7 @@ const _BadgeListItem = (
         radius="xl"
         size="sm"
         ml={0}
-        onClick={e => {
+        onClick={(e) => {
           e.stopPropagation();
           onRemoveItem?.();
         }}

@@ -11,7 +11,7 @@ export const useDatabaseCrumb = (id: DatabaseId) => {
   // We display what we already have in store to avoid showing loading state.
   // It's possible because GET /api/database is always dispatched on app launch.
   // We still re-fetch the database to get new data, just in case it changed.
-  const legacyDatabase = useSelector(state => {
+  const legacyDatabase = useSelector((state) => {
     return Databases.selectors.getObject(state, {
       entityId: id,
       requestType: "fetch",

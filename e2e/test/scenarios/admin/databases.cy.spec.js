@@ -1,5 +1,3 @@
-const { H } = cy;
-const { IS_ENTERPRISE } = Cypress.env();
 import {
   QA_MONGO_PORT,
   QA_MYSQL_PORT,
@@ -13,13 +11,15 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { visitDatabase } from "./helpers/e2e-database-helpers";
 
+const { H } = cy;
+const { IS_ENTERPRISE } = Cypress.env();
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe(
   "admin > database > external databases > enable actions",
   { tags: ["@external", "@actions"] },
   () => {
-    ["mysql", "postgres"].forEach(dialect => {
+    ["mysql", "postgres"].forEach((dialect) => {
       it(`should show ${dialect} writable_db with actions enabled`, () => {
         H.restore(`${dialect}-writable`);
         cy.signInAsAdmin();
@@ -34,11 +34,7 @@ describe(
           expect(body.settings["database-enable-actions"]).to.eq(true);
         });
 
-        cy.get("#model-actions-toggle").should(
-          "have.attr",
-          "aria-checked",
-          "true",
-        );
+        cy.findByLabelText("Model actions").should("be.checked");
       });
     });
   },
@@ -61,7 +57,7 @@ describe("admin > database > add", () => {
   function mockUploadServiceAccountJSON(fileContents) {
     // create blob to act as selected file
     cy.get("input[type=file]")
-      .then(async input => {
+      .then(async (input) => {
         const blob = await Cypress.Blob.binaryStringToBlob(fileContents);
         const file = new File([blob], "service-account.json");
         const dataTransfer = new DataTransfer();
@@ -75,7 +71,7 @@ describe("admin > database > add", () => {
   }
 
   function mockSuccessfulDatabaseSave() {
-    cy.intercept("POST", "/api/database", req => {
+    cy.intercept("POST", "/api/database", (req) => {
       req.reply({ statusCode: 200, body: { id: 42 }, delay: 100 });
     }).as("createDatabase");
 
@@ -90,7 +86,7 @@ describe("admin > database > add", () => {
     }
     cy.wait("@getDatabases").then(({ response }) => {
       if (
-        response.body.data.some(db => db.initial_sync_status !== "complete")
+        response.body.data.some((db) => db.initial_sync_status !== "complete")
       ) {
         waitForDbSync(maxRetries - 1);
       }
@@ -163,17 +159,17 @@ describe("admin > database > add", () => {
             });
 
           // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
-          H.typeAndBlurUsingLabel("Display name", "QA Postgres12");
-          H.typeAndBlurUsingLabel("Host", "localhost");
-          H.typeAndBlurUsingLabel("Port", QA_POSTGRES_PORT);
-          H.typeAndBlurUsingLabel("Database name", "sample");
-          H.typeAndBlurUsingLabel("Username", "metabase");
-          H.typeAndBlurUsingLabel("Password", "metasample123");
+          H.typeAndBlurUsingLabel(/Display name/, "QA Postgres12");
+          H.typeAndBlurUsingLabel(/Host/, "localhost");
+          H.typeAndBlurUsingLabel(/Port/, QA_POSTGRES_PORT);
+          H.typeAndBlurUsingLabel(/Database name/, "sample");
+          H.typeAndBlurUsingLabel(/Username/, "metabase");
+          H.typeAndBlurUsingLabel(/Password/, "metasample123");
         });
 
         const confirmSSLFields = (visible, hidden) => {
-          visible.forEach(field => cy.findByText(field));
-          hidden.forEach(field => cy.findByText(field).should("not.exist"));
+          visible.forEach((field) => cy.findByText(field));
+          hidden.forEach((field) => cy.findByText(field).should("not.exist"));
         };
 
         const ssl = "Use a secure connection (SSL)",
@@ -465,8 +461,8 @@ describe("scenarios > admin > databases > exceptions", () => {
   });
 
   it("should handle malformed (null) database details (metabase#25715)", () => {
-    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, req => {
-      req.reply(res => {
+    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, (req) => {
+      req.reply((res) => {
         res.body.details = null;
       });
     }).as("loadDatabase");
@@ -486,8 +482,8 @@ describe("scenarios > admin > databases > exceptions", () => {
   });
 
   it("should handle is_attached_dwh databases", () => {
-    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, req => {
-      req.reply(res => {
+    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, (req) => {
+      req.reply((res) => {
         res.body.details = null;
         res.body.is_attached_dwh = true;
       });
@@ -512,7 +508,7 @@ describe("scenarios > admin > databases > exceptions", () => {
   });
 
   it("should show error upon a bad request", () => {
-    cy.intercept("POST", "/api/database", req => {
+    cy.intercept("POST", "/api/database", (req) => {
       req.reply({
         statusCode: 400,
         body: "DATABASE CONNECTION ERROR",
@@ -558,7 +554,7 @@ describe("scenarios > admin > databases > exceptions", () => {
             }
           : null,
       },
-      req => {
+      (req) => {
         req.reply({
           statusCode: 500,
           body: { message: errorMessage },
@@ -684,6 +680,43 @@ describe("scenarios > admin > databases > sample database", () => {
       editDatabase();
       expect(body.is_full_sync).to.equal(false);
       expect(body.is_on_demand).to.equal(false);
+    });
+  });
+
+  it("allows to save the default schedule (metabase#57198)", () => {
+    visitDatabase(SAMPLE_DB_ID);
+    editDatabase();
+    H.modal().findByText("Show advanced options").click();
+    cy.findByLabelText("Choose when syncs and scans happen").click();
+    cy.button("Save changes").click();
+    cy.wait("@databaseUpdate").then(({ request: { body }, response }) => {
+      expect(body.is_full_sync).to.equal(false);
+      expect(body.is_on_demand).to.equal(false);
+      // frontend sends wrong value but backend automatically corrects it for us:
+      expect(response.body.schedules.cache_field_values).to.equal(null);
+    });
+
+    editDatabase();
+    cy.findByLabelText("Regularly, on a schedule").click();
+    cy.button("Save changes").click();
+    cy.wait("@databaseUpdate").then(({ request: { body } }) => {
+      expect(body.is_full_sync).to.equal(true);
+      expect(body.is_on_demand).to.equal(false);
+      expect(body.schedules.cache_field_values).to.deep.eq({
+        schedule_day: "mon",
+        schedule_frame: null,
+        schedule_hour: 0,
+        schedule_type: "daily",
+      });
+    });
+
+    editDatabase();
+    cy.findByLabelText("Only when adding a new filter widget").click();
+    cy.button("Save changes").click();
+    cy.wait("@databaseUpdate").then(({ request: { body } }) => {
+      expect(body.is_full_sync).to.equal(false);
+      expect(body.is_on_demand).to.equal(true);
+      expect(body.schedules.cache_field_values).to.equal(null);
     });
   });
 

@@ -27,7 +27,7 @@ export function ClausePopover({
   }, []);
 
   const handleChange = useCallback(() => {
-    setIsOpen(value => !value);
+    setIsOpen((value) => !value);
   }, []);
 
   useLayoutEffect(() => {

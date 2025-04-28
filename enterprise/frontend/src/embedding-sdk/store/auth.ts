@@ -156,27 +156,28 @@ const safeStringify = (value: unknown) => {
  * The default implementation of the function to get the refresh token.
  * Only supports sessions by default.
  */
-export const defaultGetRefreshTokenFn: MetabaseFetchRequestTokenFn =
-  async url => {
-    const response = await fetch(url, {
-      method: "GET",
-      credentials: "include",
-    });
+export const defaultGetRefreshTokenFn: MetabaseFetchRequestTokenFn = async (
+  url,
+) => {
+  const response = await fetch(url, {
+    method: "GET",
+    credentials: "include",
+  });
 
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch the session, HTTP status: ${response.status}`,
-      );
-    }
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch the session, HTTP status: ${response.status}`,
+    );
+  }
 
-    const asText = await response.text();
+  const asText = await response.text();
 
-    try {
-      return JSON.parse(asText);
-    } catch (ex) {
-      return asText;
-    }
-  };
+  try {
+    return JSON.parse(asText);
+  } catch (ex) {
+    return asText;
+  }
+};
 
 const sessionSchema = Yup.object({
   id: Yup.string().required(),

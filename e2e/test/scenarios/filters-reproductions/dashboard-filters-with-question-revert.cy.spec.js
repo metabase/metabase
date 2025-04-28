@@ -86,7 +86,7 @@ describe("issue 35954", () => {
 
           cy.log("Drill down to the question from the dashboard");
           cy.findByTestId("legend-caption-title").click();
-          cy.get("@questionId").then(id => {
+          cy.get("@questionId").then((id) => {
             cy.location("pathname").should(
               "eq",
               `/question/${id}-${questionDetails.name}`,
@@ -119,7 +119,7 @@ describe("issue 35954", () => {
 
           cy.findByLabelText(`Back to ${dashboardDetails.name}`).click();
 
-          cy.get("@dashboardId").then(id => {
+          cy.get("@dashboardId").then((id) => {
             cy.location("pathname").should(
               "eq",
               `/dashboard/${id}-${dashboardDetails.name.toLowerCase()}`,

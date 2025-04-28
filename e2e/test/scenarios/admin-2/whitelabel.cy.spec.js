@@ -8,7 +8,7 @@ function checkFavicon(url) {
 }
 
 function checkLogo() {
-  cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(logo_data => {
+  cy.readFile("e2e/support/assets/logo.jpeg", "base64").then((logo_data) => {
     cy.get(`img[src="data:image/jpeg;base64,${logo_data}"]`).should("exist");
   });
 }
@@ -22,7 +22,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
     H.setTokenFeatures("all");
   });
 
-  it("smoke UI test", { tags: "@smoke" }, () => {
+  it("smoke UI test", () => {
     cy.log("Should show all whitelabel options with the feature enabled");
     cy.visit("/admin/settings/whitelabel");
 
@@ -106,7 +106,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       beforeEach(() => {
         cy.log("Add a logo");
         cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
-          logo_data => {
+          (logo_data) => {
             H.updateSetting(
               "application-logo-url",
               `data:image/jpeg;base64,${logo_data}`,
@@ -159,7 +159,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         );
         H.undoToast().findByText("Changes saved").should("be.visible");
         cy.readFile("e2e/support/assets/favicon.ico", "base64").then(
-          base64Url => {
+          (base64Url) => {
             const faviconUrl = `data:image/jpeg;base64,${base64Url}`;
             cy.wrap(faviconUrl).as("faviconUrl");
             checkFavicon(faviconUrl);
@@ -167,7 +167,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         );
         cy.signInAsNormalUser();
         cy.visit("/");
-        cy.get("@faviconUrl").then(faviconUrl => {
+        cy.get("@faviconUrl").then((faviconUrl) => {
           cy.get('head link[rel="icon"]')
             .get(`[href="${faviconUrl}"]`)
             .should("have.length", 1);
@@ -280,7 +280,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
             H.undoToast().findByText("Changes saved").should("be.visible");
 
             cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
-              logo_data => {
+              (logo_data) => {
                 const backgroundImage = `url("data:image/jpeg;base64,${logo_data}")`;
                 cy.signOut();
                 cy.visit("/");
@@ -347,7 +347,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
           H.undoToast().findByText("Changes saved").should("be.visible");
 
           cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
-            logo_data => {
+            (logo_data) => {
               const backgroundImage = `url("data:image/jpeg;base64,${logo_data}")`;
               cy.visit("/");
               cy.findByTestId("landing-page-illustration").should(
@@ -413,7 +413,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
           H.visitDashboard("@dashboardId");
           cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
-            logo_data => {
+            (logo_data) => {
               const imageDataUrl = `data:image/jpeg;base64,${logo_data}`;
               cy.wrap(imageDataUrl).as("imageDataUrl");
               cy.findByAltText("No results").should(
@@ -425,7 +425,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
           );
 
           H.visitQuestion("@questionId");
-          cy.get("@imageDataUrl").then(imageDataUrl => {
+          cy.get("@imageDataUrl").then((imageDataUrl) => {
             cy.findByAltText("No results").should(
               "have.attr",
               "src",
@@ -484,7 +484,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
           H.modal().findByTestId("collection-picker-button").click();
           H.entityPickerModal().within(() => {
             cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
-              logo_data => {
+              (logo_data) => {
                 const imageDataUrl = `data:image/jpeg;base64,${logo_data}`;
                 cy.wrap(imageDataUrl).as("imageDataUrl");
               },
@@ -494,7 +494,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
             cy.findByPlaceholderText("Search…").type(
               "This aren't the objects you're looking for",
             );
-            cy.get("@imageDataUrl").then(imageDataUrl => {
+            cy.get("@imageDataUrl").then((imageDataUrl) => {
               cy.findByAltText("No results").should(
                 "have.attr",
                 "src",
@@ -731,7 +731,6 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .blur();
       H.undoToast().findByText("Changes saved").should("be.visible");
 
-      cy.findByTestId("landing-page-error").should("not.exist");
       cy.findByRole("navigation").findByText("Exit admin").click();
       cy.url().should("include", "/test-1");
     });
@@ -750,9 +749,9 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .clear()
         .type("https://google.com")
         .blur();
-      cy.findByTestId("landing-page-error")
+      cy.findByTestId("admin-layout-content")
         .findByText("This field must be a relative URL.")
-        .should("exist");
+        .should("be.visible");
 
       cy.findByRole("navigation").findByText("Exit admin").click();
       cy.url().should("include", "/test-2");

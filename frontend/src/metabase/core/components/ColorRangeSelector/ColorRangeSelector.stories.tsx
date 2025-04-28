@@ -13,7 +13,7 @@ export default {
   component: ColorRangeSelector,
 };
 
-const Template: StoryFn<ColorRangeSelectorProps> = args => {
+const Template: StoryFn<ColorRangeSelectorProps> = (args) => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleChange = (value: string[]) => {

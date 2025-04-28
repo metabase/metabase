@@ -7,6 +7,7 @@ import CS from "metabase/css/core/index.css";
 import { QuestionSharingMenu } from "metabase/embedding/components/SharingMenu";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
@@ -140,6 +141,19 @@ export function ViewTitleHeaderRightSide({
     ? getDisabledSaveTooltip(isEditable)
     : undefined;
 
+  useRegisterShortcut(
+    hasRunButton && !isShowingNotebook
+      ? [
+          {
+            id: "query-builder-data-refresh",
+            perform: () =>
+              isRunning ? cancelQuery : runQuestionQuery({ ignoreCache: true }),
+          },
+        ]
+      : [],
+    [isRunning, isShowingNotebook, hasRunButton],
+  );
+
   return (
     <Flex
       className={ViewTitleHeaderS.ViewHeaderActionPanel}
@@ -153,8 +167,7 @@ export function ViewTitleHeaderRightSide({
       }) && (
         <FilterHeaderButton
           className={cx(CS.hide, CS.smShow)}
-          onOpenModal={onOpenModal}
-          query={question.query()}
+          question={question}
           isExpanded={areFiltersExpanded}
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
@@ -201,8 +214,6 @@ export function ViewTitleHeaderRightSide({
             iconSize={16}
             onlyIcon
             medium
-            compact
-            result={result}
             isRunning={isRunning}
             isDirty={isResultDirty}
             onRun={() => runQuestionQuery({ ignoreCache: true })}
@@ -237,7 +248,7 @@ export function ViewTitleHeaderRightSide({
             variant="subtle"
             aria-disabled={isSaveDisabled || undefined}
             data-disabled={isSaveDisabled || undefined}
-            onClick={event => {
+            onClick={(event) => {
               event.preventDefault();
               if (!isSaveDisabled) {
                 onOpenModal(MODAL_TYPES.SAVE);

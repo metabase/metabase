@@ -11,7 +11,7 @@ const TEST_TABLE = "scoreboard_actions";
 const TEST_COLUMNS_TABLE = "many_data_types";
 const MODEL_NAME = "Test Action Model";
 
-["mysql", "postgres"].forEach(dialect => {
+["mysql", "postgres"].forEach((dialect) => {
   describe(
     `Write Actions on Dashboards (${dialect})`,
     { tags: ["@external", "@actions"] },
@@ -51,7 +51,7 @@ const MODEL_NAME = "Test Action Model";
         });
 
         it("action creation modal can be closed on click outside (WRK-67)", () => {
-          cy.get("@modelId").then(id => {
+          cy.get("@modelId").then((id) => {
             cy.visit(`/model/${id}/detail`);
             cy.wait(["@getModel", "@getModelActions"]);
           });
@@ -79,12 +79,12 @@ const MODEL_NAME = "Test Action Model";
           H.queryWritableDB(
             `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
             dialect,
-          ).then(result => {
+          ).then((result) => {
             expect(result.rows.length).to.equal(1);
             expect(result.rows[0].score).to.equal(0);
           });
 
-          cy.get("@modelId").then(id => {
+          cy.get("@modelId").then((id) => {
             cy.visit(`/model/${id}/detail`);
             cy.wait(["@getModel", "@getModelActions"]);
           });
@@ -103,7 +103,7 @@ const MODEL_NAME = "Test Action Model";
           reorderFields();
 
           cy.findByRole("dialog").within(() => {
-            cy.findAllByText("Number").each(el => {
+            cy.findAllByText("Number").each((el) => {
               cy.wrap(el).click();
             });
             cy.findByText("Save").click();
@@ -136,14 +136,14 @@ const MODEL_NAME = "Test Action Model";
           H.queryWritableDB(
             `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
             dialect,
-          ).then(result => {
+          ).then((result) => {
             expect(result.rows.length).to.equal(1);
             expect(result.rows[0].score).to.equal(55);
           });
         });
 
         it("adds an implicit create action to a dashboard and runs it", () => {
-          cy.get("@modelId").then(id => {
+          cy.get("@modelId").then((id) => {
             H.createImplicitAction({
               kind: "create",
               model_id: id,
@@ -172,7 +172,7 @@ const MODEL_NAME = "Test Action Model";
           H.queryWritableDB(
             `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
             dialect,
-          ).then(result => {
+          ).then((result) => {
             expect(result.rows.length).to.equal(1);
 
             expect(result.rows[0].score).to.equal(44);
@@ -182,7 +182,7 @@ const MODEL_NAME = "Test Action Model";
         it("adds an implicit update action to a dashboard and runs it", () => {
           const actionName = "Update";
 
-          cy.get("@modelId").then(id => {
+          cy.get("@modelId").then((id) => {
             H.createImplicitAction({
               kind: "update",
               model_id: id,
@@ -224,7 +224,7 @@ const MODEL_NAME = "Test Action Model";
           H.queryWritableDB(
             `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Emotional Elephants'`,
             dialect,
-          ).then(result => {
+          ).then((result) => {
             expect(result.rows.length).to.equal(1);
 
             expect(result.rows[0].score).to.equal(88);
@@ -235,12 +235,12 @@ const MODEL_NAME = "Test Action Model";
           H.queryWritableDB(
             `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Cuddly Cats'`,
             dialect,
-          ).then(result => {
+          ).then((result) => {
             expect(result.rows.length).to.equal(1);
             expect(result.rows[0].id).to.equal(3);
           });
 
-          cy.get("@modelId").then(id => {
+          cy.get("@modelId").then((id) => {
             H.createImplicitAction({
               kind: "delete",
               model_id: id,
@@ -267,7 +267,7 @@ const MODEL_NAME = "Test Action Model";
           H.queryWritableDB(
             `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Cuddly Cats'`,
             dialect,
-          ).then(result => {
+          ).then((result) => {
             expect(result.rows.length).to.equal(0);
           });
         });
@@ -277,7 +277,7 @@ const MODEL_NAME = "Test Action Model";
             name: "Public Dashboard",
           };
           cy.get("@modelId")
-            .then(id => {
+            .then((id) => {
               H.createImplicitAction({
                 kind: "create",
                 model_id: id,
@@ -306,7 +306,7 @@ const MODEL_NAME = "Test Action Model";
 
           cy.log("Visit public dashboard");
           cy.get("@dashboardId")
-            .then(dashboardId => {
+            .then((dashboardId) => {
               H.createPublicDashboardLink(dashboardId);
             })
             .then(({ body: { uuid } }) => {
@@ -333,7 +333,7 @@ const MODEL_NAME = "Test Action Model";
             enable_embedding: true,
           };
           cy.get("@modelId")
-            .then(id => {
+            .then((id) => {
               H.createImplicitAction({
                 kind: "create",
                 model_id: id,
@@ -381,7 +381,7 @@ const MODEL_NAME = "Test Action Model";
 
         describe("hidden fields", () => {
           it("adds an implicit action and runs it", () => {
-            cy.get("@modelId").then(id => {
+            cy.get("@modelId").then((id) => {
               H.createImplicitAction({
                 kind: "create",
                 model_id: id,
@@ -408,7 +408,7 @@ const MODEL_NAME = "Test Action Model";
             H.queryWritableDB(
               `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
               dialect,
-            ).then(result => {
+            ).then((result) => {
               expect(result.rows.length).to.equal(1);
 
               expect(result.rows[0].score).to.equal(44);
@@ -421,12 +421,12 @@ const MODEL_NAME = "Test Action Model";
             H.queryWritableDB(
               `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
               dialect,
-            ).then(result => {
+            ).then((result) => {
               expect(result.rows.length).to.equal(1);
               expect(result.rows[0].score).to.equal(0);
             });
 
-            cy.get("@modelId").then(id => {
+            cy.get("@modelId").then((id) => {
               cy.visit(`/model/${id}/detail`);
               cy.wait(["@getModel", "@getModelActions"]);
             });
@@ -444,7 +444,7 @@ const MODEL_NAME = "Test Action Model";
             reorderFields();
 
             cy.findByRole("dialog").within(() => {
-              cy.findAllByText("Number").each(el => {
+              cy.findAllByText("Number").each((el) => {
                 cy.wrap(el).click();
               });
 
@@ -490,12 +490,12 @@ const MODEL_NAME = "Test Action Model";
             H.queryWritableDB(
               `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
               dialect,
-            ).then(result => {
+            ).then((result) => {
               expect(result.rows.length).to.equal(1);
               expect(result.rows[0].score).to.equal(55);
             });
 
-            cy.get("@modelId").then(id => {
+            cy.get("@modelId").then((id) => {
               cy.visit(`/model/${id}/detail`);
               cy.wait(["@getModel", "@getModelActions"]);
             });
@@ -541,7 +541,7 @@ const MODEL_NAME = "Test Action Model";
             H.queryWritableDB(
               `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
               dialect,
-            ).then(result => {
+            ).then((result) => {
               expect(result.rows.length).to.equal(1);
               expect(result.rows[0].score).to.equal(56);
             });
@@ -565,7 +565,7 @@ const MODEL_NAME = "Test Action Model";
         });
 
         it("can update various data types via implicit actions", () => {
-          cy.get("@modelId").then(id => {
+          cy.get("@modelId").then((id) => {
             H.createImplicitAction({
               kind: "update",
               model_id: id,
@@ -644,7 +644,7 @@ const MODEL_NAME = "Test Action Model";
           H.queryWritableDB(
             `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
             dialect,
-          ).then(result => {
+          ).then((result) => {
             expect(result.rows.length).to.equal(1);
 
             const row = result.rows[0];
@@ -666,7 +666,7 @@ const MODEL_NAME = "Test Action Model";
         });
 
         it("can insert various data types via implicit actions", () => {
-          cy.get("@modelId").then(id => {
+          cy.get("@modelId").then((id) => {
             H.createImplicitAction({
               kind: "create",
               model_id: id,
@@ -715,7 +715,7 @@ const MODEL_NAME = "Test Action Model";
           H.queryWritableDB(
             `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE string = 'Zany Zebras'`,
             dialect,
-          ).then(result => {
+          ).then((result) => {
             expect(result.rows.length).to.equal(1);
             const row = result.rows[0];
 
@@ -751,7 +751,7 @@ const MODEL_NAME = "Test Action Model";
         });
 
         it("does not show json, enum, or binary columns for implicit actions", () => {
-          cy.get("@modelId").then(id => {
+          cy.get("@modelId").then((id) => {
             H.createImplicitAction({
               kind: "create",
               model_id: id,
@@ -775,7 +775,7 @@ const MODEL_NAME = "Test Action Model";
         });
 
         it("properly loads and updates date and time fields for implicit update actions", () => {
-          cy.get("@modelId").then(id => {
+          cy.get("@modelId").then((id) => {
             H.createImplicitAction({
               kind: "update",
               model_id: id,
@@ -853,7 +853,7 @@ const MODEL_NAME = "Test Action Model";
           H.queryWritableDB(
             `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
             dialect,
-          ).then(result => {
+          ).then((result) => {
             const row = result.rows[0];
 
             // the driver adds a time to this date so we have to use .include
@@ -937,7 +937,7 @@ const MODEL_NAME = "Test Action Model";
             modelName: MODEL_NAME,
           });
 
-          cy.get("@modelId").then(modelId => {
+          cy.get("@modelId").then((modelId) => {
             H.createAction({
               ...SAMPLE_WRITABLE_QUERY_ACTION,
               model_id: modelId,
@@ -1026,7 +1026,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button(SAMPLE_QUERY_ACTION.name).click();
           });
 
-          cy.wait("@executeAction").then(interception => {
+          cy.wait("@executeAction").then((interception) => {
             expect(
               Object.values(interception.request.body.parameters)
                 .sort()
@@ -1069,7 +1069,7 @@ describe("action error handling", { tags: ["@external", "@actions"] }, () => {
   it("should show detailed form errors for constraint violations when executing model actions", () => {
     const actionName = "Update";
 
-    cy.get("@modelId").then(modelId => {
+    cy.get("@modelId").then((modelId) => {
       H.createImplicitAction({ kind: "update", model_id: modelId });
     });
 
@@ -1132,7 +1132,7 @@ describe(
       it("refetches form values when id changes (metabase#33084)", () => {
         const actionName = "Update";
 
-        cy.get("@modelId").then(id => {
+        cy.get("@modelId").then((id) => {
           H.createImplicitAction({
             kind: "update",
             model_id: id,
@@ -1163,7 +1163,7 @@ describe(
 
         H.filterWidget().click();
         H.dashboardParametersPopover().within(() => {
-          H.fieldValuesInput().type("{backspace}10");
+          H.fieldValuesCombobox().type("{backspace}10");
         });
         cy.button("Update filter").click();
 
@@ -1183,7 +1183,7 @@ describe(
       it("should reflect to updated action on mapping form", () => {
         const ACTION_NAME = "Update Score";
 
-        cy.get("@modelId").then(id => {
+        cy.get("@modelId").then((id) => {
           cy.visit(`/model/${id}/detail`);
           cy.wait(["@getModel", "@getModelActions"]);
         });
@@ -1359,7 +1359,7 @@ function reorderFields() {
   H.dragField(1, 0);
 }
 
-const clickHelper = buttonName => {
+const clickHelper = (buttonName) => {
   // this is dirty, but it seems to be the only reliable solution to detached elements before cypress v12
   // https://github.com/cypress-io/cypress/issues/7306
   cy.wait(100);
@@ -1378,7 +1378,7 @@ function waitForValidActions() {
   cy.wait("@getActions").then(({ response }) => {
     const { body: actions } = response;
 
-    actions.forEach(action => {
+    actions.forEach((action) => {
       expect(action.parameters).to.have.length.gt(0);
     });
   });

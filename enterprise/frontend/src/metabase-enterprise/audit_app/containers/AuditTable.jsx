@@ -18,7 +18,7 @@ import { AuditMode } from "../lib/mode";
 import { PaginationControlsContainer } from "./AuditTable.styled";
 import QuestionLoadAndDisplay from "./QuestionLoadAndDisplay";
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   metadata: getMetadata(state),
 });
 
@@ -51,7 +51,7 @@ function AuditTable({
   const [loadedCount, setLoadedCount] = useState(0);
   const { handleNextPage, handlePreviousPage, page } = usePagination();
 
-  const handleOnLoad = results => {
+  const handleOnLoad = (results) => {
     setLoadedCount(results[0].row_count);
     onLoad?.(results);
   };
@@ -64,7 +64,7 @@ function AuditTable({
 
   const question = new Question(card, metadata);
   const shouldShowPagination = page > 0 || loadedCount === pageSize;
-  const handleChangeLocation = url => dispatch(push(url));
+  const handleChangeLocation = (url) => dispatch(push(url));
 
   return (
     <div>

@@ -7,8 +7,6 @@ import {
 } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { Database, InitialSyncStatus } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
@@ -17,8 +15,16 @@ import { DatabaseDangerZoneSection } from "./DatabaseDangerZoneSection";
 
 const NOT_SYNCED_DB_STATUSES: InitialSyncStatus[] = ["aborted", "incomplete"];
 
-function getModal() {
-  return document.querySelector("[data-testid=modal]") as HTMLElement;
+function getDiscardFieldValuesConfirmModal() {
+  return document.querySelector(
+    "[data-testid=discard-field-values-confirm-modal]",
+  ) as HTMLElement;
+}
+
+function getRemoveDatabaseConfirmModal() {
+  return document.querySelector(
+    "[data-testid=remove-database-confirm-modal]",
+  ) as HTMLElement;
 }
 
 interface SetupOpts {
@@ -35,7 +41,6 @@ function setup({
       databases: [database],
     }),
   });
-  const metadata = getMetadata(state);
   setupDatabaseEndpoints(database);
   setupDatabaseUsageInfoEndpoint(database, {
     question: 0,
@@ -49,7 +54,7 @@ function setup({
   const utils = renderWithProviders(
     <DatabaseDangerZoneSection
       isAdmin={isAdmin}
-      database={checkNotNull(metadata.database(database.id))}
+      database={database}
       deleteDatabase={deleteDatabase}
     />,
     { storeInitialState: state },
@@ -69,7 +74,9 @@ describe("DatabaseDangerZoneSection", () => {
 
       await userEvent.click(screen.getByText(/Discard saved field values/i));
       await userEvent.click(
-        within(getModal()).getByRole("button", { name: "Yes" }),
+        within(getDiscardFieldValuesConfirmModal()).getByRole("button", {
+          name: "Yes",
+        }),
       );
 
       await waitFor(() => {
@@ -84,16 +91,18 @@ describe("DatabaseDangerZoneSection", () => {
 
       await userEvent.click(screen.getByText(/Discard saved field values/i));
       await userEvent.click(
-        within(getModal()).getByRole("button", { name: "Cancel" }),
+        within(getDiscardFieldValuesConfirmModal()).getByRole("button", {
+          name: "Cancel",
+        }),
       );
 
-      expect(getModal()).not.toBeInTheDocument();
+      expect(getDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();
       expect(
         fetchMock.called(`path:/api/database/${database.id}/discard_values`),
       ).toBe(false);
     });
 
-    NOT_SYNCED_DB_STATUSES.forEach(initial_sync_status => {
+    NOT_SYNCED_DB_STATUSES.forEach((initial_sync_status) => {
       it(`is hidden for databases with "${initial_sync_status}" sync status`, () => {
         setup({
           database: createMockDatabase({ initial_sync_status }),
@@ -119,7 +128,7 @@ describe("DatabaseDangerZoneSection", () => {
       await userEvent.click(
         await screen.findByRole("button", { name: /Remove this database/i }),
       );
-      const modal = getModal();
+      const modal = getRemoveDatabaseConfirmModal();
 
       // Fill in database name to confirm deletion
       await userEvent.type(
@@ -130,10 +139,10 @@ describe("DatabaseDangerZoneSection", () => {
         within(modal).getByRole("button", { name: "Delete" }),
       );
       await waitFor(() => {
-        expect(getModal()).not.toBeInTheDocument();
+        expect(getDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();
       });
 
-      expect(getModal()).not.toBeInTheDocument();
+      expect(getDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();
       expect(deleteDatabase).toHaveBeenCalled();
     });
 
@@ -142,14 +151,17 @@ describe("DatabaseDangerZoneSection", () => {
       await userEvent.click(
         await screen.findByRole("button", { name: /Remove this database/i }),
       );
-      const modal = getModal();
 
-      within(modal).getByText(`Delete the ${database.name} database?`);
+      within(getRemoveDatabaseConfirmModal()).getByText(
+        `Delete the ${database.name} database?`,
+      );
       await userEvent.click(
-        await within(modal).findByRole("button", { name: "Cancel" }),
+        await within(getRemoveDatabaseConfirmModal()).findByRole("button", {
+          name: "Cancel",
+        }),
       );
 
-      expect(getModal()).not.toBeInTheDocument();
+      expect(getDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();
       expect(deleteDatabase).not.toHaveBeenCalled();
     });
   });

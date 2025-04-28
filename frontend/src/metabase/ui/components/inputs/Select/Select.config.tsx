@@ -1,4 +1,5 @@
 import { Select } from "@mantine/core";
+import { t } from "ttag";
 
 import S from "./Select.module.css";
 import { DefaultSelectItem } from "./SelectItem";
@@ -11,11 +12,14 @@ export const selectOverrides = {
       withScrollArea: false,
       allowDeselect: false,
       inputWrapperOrder: ["label", "description", "input", "error"],
-      renderOption: item => (
+      renderOption: (item) => (
         <DefaultSelectItem {...item.option} selected={item.checked} />
       ),
       clearButtonProps: {
+        // eslint-disable-next-line ttag/no-module-declaration
+        "aria-label": t`Clear`,
         color: "text-dark",
+        className: S.SelectClearButton,
       },
       comboboxProps: {
         withinPortal: true,

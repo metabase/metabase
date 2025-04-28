@@ -1,6 +1,6 @@
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 
-import { useToggle } from "metabase/hooks/use-toggle";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import * as Lib from "metabase-lib";
@@ -41,15 +41,15 @@ export function FilterPicker({
   withCustomExpression,
 }: FilterPickerProps) {
   const [filter, setFilter] = useState(initialFilter);
-
   const [column, setColumn] = useState(
     getInitialColumn(query, stageIndex, filter),
   );
+  const stageIndexes = useMemo(() => [stageIndex], [stageIndex]);
 
   const [
     isEditingExpression,
-    { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
-  ] = useToggle(isExpressionEditorInitiallyOpen(query, stageIndex, filter));
+    { open: openExpressionEditor, close: closeExpressionEditor },
+  ] = useDisclosure(isExpressionEditorInitiallyOpen(query, stageIndex, filter));
 
   const isNewFilter = !initialFilter;
 
@@ -67,9 +67,13 @@ export function FilterPicker({
     onBack?.();
   };
 
-  const handleColumnSelect = (column: Lib.ColumnMetadata) => {
-    setColumn(column);
+  const handleColumnSelect = (item: ColumnListItem) => {
+    setColumn(item.column);
     setFilter(undefined);
+  };
+
+  const handleSegmentSelect = (item: SegmentListItem) => {
+    handleChange(item.segment);
   };
 
   const checkItemIsSelected = useCallback(
@@ -89,20 +93,18 @@ export function FilterPicker({
     [onSelect, onClose],
   );
 
-  const renderExpressionEditor = () => (
-    <ExpressionWidget
-      query={query}
-      stageIndex={stageIndex}
-      clause={filter}
-      startRule="boolean"
-      header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
-      onChangeClause={handleClauseChange}
-      onClose={closeExpressionEditor}
-    />
-  );
-
   if (isEditingExpression) {
-    return renderExpressionEditor();
+    return (
+      <ExpressionWidget
+        query={query}
+        stageIndex={stageIndex}
+        clause={filter}
+        expressionMode="filter"
+        header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
+        onChangeClause={handleClauseChange}
+        onClose={closeExpressionEditor}
+      />
+    );
   }
 
   if (!column) {
@@ -110,10 +112,10 @@ export function FilterPicker({
       <FilterColumnPicker
         className={className}
         query={query}
-        stageIndex={stageIndex}
+        stageIndexes={stageIndexes}
         checkItemIsSelected={checkItemIsSelected}
         onColumnSelect={handleColumnSelect}
-        onSegmentSelect={handleChange}
+        onSegmentSelect={handleSegmentSelect}
         onExpressionSelect={openExpressionEditor}
         withColumnGroupIcon={withColumnGroupIcon}
         withColumnItemIcon={withColumnItemIcon}

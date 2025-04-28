@@ -1,3 +1,4 @@
+/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import cx from "classnames";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
@@ -143,7 +144,7 @@ export const SMTPConnectionForm = ({
   }, [dispatch, isHosted]);
 
   const allSetByEnvVars = useMemo(() => {
-    return elements.every(element => element.is_env_setting);
+    return elements.every((element) => element.is_env_setting);
   }, [elements]);
 
   return (

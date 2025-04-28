@@ -27,6 +27,7 @@
    "pt-BR"
    "ru"
    "sk"
+   "sl"
    "sq"
    "sr"
    "sv"

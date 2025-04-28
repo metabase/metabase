@@ -9,12 +9,7 @@ import {
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import {
-  mockScrollIntoView,
-  renderWithProviders,
-  screen,
-  waitFor,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
 import type { UserWithApplicationPermissions } from "metabase/plugins";
 import type {
@@ -37,10 +32,6 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 
 describe("CreateOrEditQuestionAlertModal", () => {
-  beforeAll(() => {
-    mockScrollIntoView();
-  });
-
   beforeEach(() => {
     fetchMock.reset();
   });
@@ -63,7 +54,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
   it.each([{ isAdmin: true }, { isAdmin: false, userCanAccessSettings: true }])(
     "should display first available channel by default - Slack %p",
-    async setupConfig => {
+    async (setupConfig) => {
       setup({
         isEmailSetup: false,
         isSlackSetup: true,
@@ -81,7 +72,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
   it.each([{ isAdmin: true }, { isAdmin: false, userCanAccessSettings: true }])(
     "should display first available channel by default - Webhook %p",
-    async setupConfig => {
+    async (setupConfig) => {
       const mockWebhook = createMockChannel();
       setup({
         isEmailSetup: false,
@@ -137,7 +128,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
     ).toBeInTheDocument();
   });
 
-  it("should show daily and 9am as default schedule settings", async () => {
+  it("should show daily and 8am as default schedule settings", async () => {
     setup({
       isAdmin: true,
       isEmailSetup: true,
@@ -151,9 +142,9 @@ describe("CreateOrEditQuestionAlertModal", () => {
     const scheduleTypeSelect = screen.getByTestId("select-frequency");
     expect(scheduleTypeSelect).toHaveValue("daily");
 
-    // Find the time selector (showing "9:00")
+    // Find the time selector (showing "8:00")
     const timeSelector = screen.getByTestId("select-time");
-    expect(timeSelector).toHaveValue("9:00");
+    expect(timeSelector).toHaveValue("8:00");
   });
 
   it("should show the editing alert data when in edit mode", async () => {
@@ -161,7 +152,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
     const mockNotification = createMockNotification({
       subscriptions: [
         createMockNotificationCronSubscription({
-          cron_schedule: "0 0 14 ? * 2",
+          cron_schedule: "0 0 14 ? * 2 *",
         }),
       ],
       payload: {
@@ -210,7 +201,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
       subscriptions: [
         createMockNotificationCronSubscription({
           // Hourly at 5 minutes past the hour
-          cron_schedule: "0 5 * * * ?",
+          cron_schedule: "0 5 * * * ? *",
         }),
       ],
       payload: {
@@ -280,7 +271,52 @@ describe("CreateOrEditQuestionAlertModal", () => {
       const subscription = JSON.parse(requestBody as string).subscriptions[0];
 
       // Verify the cron schedule is for 8am daily
-      expect(subscription.cron_schedule).toBe("0 0 8 * * ?");
+      expect(subscription.cron_schedule).toBe("0 0 8 * * ? *");
+    });
+
+    expect(onAlertCreatedMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("should create a new notification with custom schedule", async () => {
+    // Setup fetchMock for API call - note we use '*' matcher to capture any request to this endpoint
+    fetchMock.postOnce("path:/api/notification", { body: { id: 123 } });
+    const onAlertCreatedMock = jest.fn();
+
+    setup({
+      isAdmin: true,
+      isEmailSetup: true,
+      onAlertCreatedMock,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("New alert")).toBeInTheDocument();
+    });
+
+    // Verify default daily schedule is selected initially
+    const scheduleTypeSelect = screen.getByTestId("select-frequency");
+
+    await userEvent.click(scheduleTypeSelect);
+    const optionCustom = screen.getByRole("option", { name: /custom/i });
+    await userEvent.click(optionCustom);
+
+    const cronInput = screen.getByDisplayValue("0 8 * * ?");
+
+    await userEvent.clear(cronInput);
+    await userEvent.type(cronInput, "0/10 8 * * ?");
+
+    const saveButton = screen.getByRole("button", { name: /done/i });
+    await userEvent.click(saveButton);
+
+    // Verify the API was called with the correct cron schedule for 8am
+    const calls = fetchMock.calls("path:/api/notification");
+    expect(calls.length).toBe(1);
+
+    await waitFor(async () => {
+      const requestBody = await calls[0][1]?.body;
+      const subscription = JSON.parse(requestBody as string).subscriptions[0];
+
+      // Verify the cron schedule is for 8am daily
+      expect(subscription.cron_schedule).toBe("0 0/10 8 * * ? *");
     });
 
     expect(onAlertCreatedMock).toHaveBeenCalledTimes(1);
@@ -300,7 +336,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
       id: notificationId,
       subscriptions: [
         createMockNotificationCronSubscription({
-          cron_schedule: "0 0 14 ? * 2", // Monday at 2pm
+          cron_schedule: "0 0 14 ? * 2 *", // Monday at 2pm
         }),
       ],
       payload: {
@@ -340,7 +376,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
       const subscription = JSON.parse(requestBody as string).subscriptions[0];
 
       // Verify the cron schedule is for Tuesday at 2pm (day 3)
-      expect(subscription.cron_schedule).toBe("0 0 14 ? * 3");
+      expect(subscription.cron_schedule).toBe("0 0 14 ? * 3 *");
     });
 
     expect(onAlertUpdatedMock).toHaveBeenCalledTimes(1);

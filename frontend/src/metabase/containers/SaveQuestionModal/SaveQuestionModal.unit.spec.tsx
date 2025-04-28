@@ -13,7 +13,6 @@ import {
 import { mockSettings } from "__support__/settings";
 import {
   mockGetBoundingClientRect,
-  mockScrollBy,
   renderWithProviders,
   screen,
   waitFor,
@@ -25,7 +24,11 @@ import * as qbSelectors from "metabase/query_builder/selectors";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { CollectionId, DashboardId } from "metabase-types/api";
+import type {
+  BaseEntityId,
+  CollectionId,
+  DashboardId,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -885,7 +888,6 @@ describe("SaveQuestionModal", () => {
 
     beforeEach(async () => {
       mockGetBoundingClientRect();
-      mockScrollBy();
 
       setupCollectionItemsEndpoint({
         collection: COLLECTION.ROOT,
@@ -893,6 +895,7 @@ describe("SaveQuestionModal", () => {
           createMockCollectionItem({
             ...COLLECTION.PARENT,
             id: COLLECTION.PARENT.id as number,
+            entity_id: COLLECTION.PARENT.entity_id as BaseEntityId,
             location: COLLECTION.PARENT.location || "/",
             type: undefined,
             model: "collection",
@@ -905,6 +908,7 @@ describe("SaveQuestionModal", () => {
           createMockCollectionItem({
             ...COLLECTION.CHILD,
             id: COLLECTION.CHILD.id as number,
+            entity_id: COLLECTION.CHILD.entity_id as BaseEntityId,
             location: COLLECTION.CHILD.location || "/",
             type: undefined,
             model: "collection",

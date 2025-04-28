@@ -42,7 +42,7 @@
 (defn reset-last-update-check!
   "Reset the value of `last-update-check` so the next cache access will check for updates."
   []
-  (reset! (var-get #'setting.cache/last-update-check) 0))
+  (.set ^java.util.concurrent.atomic.AtomicLong (var-get #'setting.cache/last-update-check) 0))
 
 (deftest update-settings-last-updated-test
   (testing "When I update a Setting, does it set/update `settings-last-updated`?"
@@ -79,8 +79,8 @@
     (clear-cache!)
     (setting-test/toucan-name! "Reggae Toucan")
     (simulate-another-instance-updating-setting! :toucan-name "Bird Can")
-    (is (= true
-           (#'setting.cache/cache-out-of-date?)))))
+    (is (true?
+         (#'setting.cache/cache-out-of-date?)))))
 
 (deftest restore-cache-if-needed-test
   (testing (str "of course, `restore-cache-if-needed!` should use TTL memoization, and the cache should not get "

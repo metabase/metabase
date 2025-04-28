@@ -28,7 +28,9 @@ export const getLatestEligibleReleaseNotes = ({
     .concat(versionInfo?.older)
     .filter(isNotFalsy);
 
-  const versionInVersionInfo = versions.find(v => v.version === currentVersion);
+  const versionInVersionInfo = versions.find(
+    (v) => v.version === currentVersion,
+  );
   if (!versionInVersionInfo) {
     return undefined;
   }

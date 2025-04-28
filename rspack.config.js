@@ -23,6 +23,7 @@ const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const E2E_PATH = __dirname + "/e2e";
 
+const PORT = process.env.PORT || 8080;
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const devMode = WEBPACK_BUNDLE !== "production";
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
@@ -304,9 +305,10 @@ if (shouldEnableHotRefresh) {
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
   config.output.publicPath =
-    "http://localhost:8080/" + config.output.publicPath;
+    `http://localhost:${PORT}/` + config.output.publicPath;
 
   config.devServer = {
+    port: PORT, // make the port explicit so it errors if it's already in use
     hot: true,
     client: {
       progress: false,

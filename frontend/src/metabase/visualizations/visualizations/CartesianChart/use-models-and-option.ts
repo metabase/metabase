@@ -23,8 +23,6 @@ import type { CardDisplayType } from "metabase-types/api";
 export function useModelsAndOption(
   {
     rawSeries,
-    series: transformedSeries,
-    isPlaceholder,
     settings,
     card,
     fontFamily,
@@ -40,14 +38,9 @@ export function useModelsAndOption(
 ) {
   const renderingContext = useBrowserRenderingContext({ fontFamily });
 
-  const rawSeriesWithRemappings = useMemo(
+  const seriesToRender = useMemo(
     () => extractRemappings(rawSeries),
     [rawSeries],
-  );
-
-  const seriesToRender = useMemo(
-    () => (isPlaceholder ? transformedSeries : rawSeriesWithRemappings),
-    [isPlaceholder, transformedSeries, rawSeriesWithRemappings],
   );
 
   const showWarning = useCallback(
@@ -116,7 +109,7 @@ export function useModelsAndOption(
       ids.push(...selectedTimelineEventIds);
     }
     if (hovered?.timelineEvents != null) {
-      ids.push(...hovered.timelineEvents.map(e => e.id));
+      ids.push(...hovered.timelineEvents.map((e) => e.id));
     }
 
     return ids;
@@ -136,7 +129,7 @@ export function useModelsAndOption(
       return {};
     }
 
-    const shouldAnimate = !isPlaceholder && !isReducedMotionPreferred();
+    const shouldAnimate = !isReducedMotionPreferred();
 
     let baseOption;
     switch (card.display) {
@@ -184,7 +177,6 @@ export function useModelsAndOption(
   }, [
     width,
     height,
-    isPlaceholder,
     card.display,
     tooltipOption,
     chartModel,

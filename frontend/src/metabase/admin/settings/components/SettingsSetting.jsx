@@ -36,7 +36,7 @@ const SETTING_WIDGET_MAP = {
   hidden: () => null,
 };
 
-export const SettingsSetting = props => {
+export const SettingsSetting = (props) => {
   const [fancyStyle, setFancyStyle] = useState({});
   const thisRef = useRef();
 

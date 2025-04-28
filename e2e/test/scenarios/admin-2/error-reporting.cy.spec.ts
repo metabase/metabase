@@ -26,7 +26,7 @@ describe("error reporting modal", () => {
       cy.button(/Download/i).click();
     });
 
-    getDiagnosticInfoFile().then(fileContent => {
+    getDiagnosticInfoFile().then((fileContent) => {
       expect(fileContent.entityName).to.equal(undefined);
       expect(fileContent).to.have.property("frontendErrors");
       expect(fileContent).to.have.property("backendErrors");
@@ -93,7 +93,7 @@ describe("error reporting modal", () => {
       cy.button(/Download/i).click();
     });
 
-    getDiagnosticInfoFile().then(fileContent => {
+    getDiagnosticInfoFile().then((fileContent) => {
       expect(fileContent.entityName).to.equal("question");
       expect(fileContent).to.have.property("frontendErrors");
       expect(fileContent).to.have.property("backendErrors");
@@ -116,7 +116,7 @@ describe("error reporting modal", () => {
       cy.button(/Download/i).click();
     });
 
-    getDiagnosticInfoFile().then(fileContent => {
+    getDiagnosticInfoFile().then((fileContent) => {
       expect(fileContent.entityName).to.equal("question");
       expect(fileContent).to.have.property("frontendErrors");
       expect(fileContent).to.have.property("backendErrors");
@@ -149,7 +149,7 @@ describe("error reporting modal", () => {
       cy.button(/Download/i).click();
     });
 
-    getDiagnosticInfoFile().then(fileContent => {
+    getDiagnosticInfoFile().then((fileContent) => {
       expect(fileContent.entityName).to.equal("question");
       expect(fileContent).to.have.property("frontendErrors");
       expect(fileContent).to.have.property("backendErrors");
@@ -177,7 +177,7 @@ describe("error reporting modal", () => {
       cy.button(/Download/i).click();
     });
 
-    getDiagnosticInfoFile().then(fileContent => {
+    getDiagnosticInfoFile().then((fileContent) => {
       expect(fileContent.entityName).to.equal("dashboard");
       expect(fileContent.url).to.include("/dashboard/");
 

@@ -43,9 +43,9 @@ const dataWithGroupsLarge = [
 
 const dataWithGroups = dataWithGroupsLarge;
 
-const dataWithIcons = dataWithGroupsLarge.flatMap(group => group.items);
+const dataWithIcons = dataWithGroupsLarge.flatMap((group) => group.items);
 
-const dataWithLabels = dataWithIcons.map(item => ({
+const dataWithLabels = dataWithIcons.map((item) => ({
   ...item,
   icon: undefined,
 }));

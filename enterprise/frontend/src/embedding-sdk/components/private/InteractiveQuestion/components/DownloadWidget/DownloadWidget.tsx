@@ -1,20 +1,24 @@
-import { QueryDownloadPopover } from "metabase/query_builder/components/QueryDownloadPopover";
+import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
 import {
   type UseDownloadDataParams,
   useDownloadData,
-} from "metabase/query_builder/components/QueryDownloadPopover/use-download-data";
+} from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import type { StackProps } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../../context";
 
 // TODO: Add props for formatting, file type, etc
-export interface DownloadWidgetProps extends StackProps {}
+/**
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionDownloadWidgetProps = StackProps;
 
 const DownloadWidgetInner = ({
   question,
   result,
   ...rest
-}: DownloadWidgetProps &
+}: InteractiveQuestionDownloadWidgetProps &
   Pick<UseDownloadDataParams, "question" | "result">) => {
   const { withDownloads } = useInteractiveQuestionContext();
   const [, handleDownload] = useDownloadData({
@@ -23,7 +27,7 @@ const DownloadWidgetInner = ({
   });
 
   return (
-    <QueryDownloadPopover
+    <QuestionDownloadWidget
       question={question}
       result={result}
       onDownload={handleDownload}
@@ -34,7 +38,16 @@ const DownloadWidgetInner = ({
   );
 };
 
-export const DownloadWidget = (props: DownloadWidgetProps) => {
+/**
+ * Provides a UI widget for downloading data in different formats (`CSV`, `XLSX`, `JSON`, and `PNG` depending on the visualization).
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
+export const DownloadWidget = (
+  props: InteractiveQuestionDownloadWidgetProps,
+) => {
   const { question, queryResults } = useInteractiveQuestionContext();
   const [result] = queryResults ?? [];
 

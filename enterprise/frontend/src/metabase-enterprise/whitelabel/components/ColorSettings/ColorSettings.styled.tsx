@@ -13,7 +13,7 @@ interface SettingTitleProps {
 export const SettingTitle = styled.div<SettingTitleProps>`
   color: var(--mb-color-text-medium);
   font-weight: bold;
-  margin-bottom: ${props => (props.hasDescription ? "0.5rem" : "1rem")};
+  margin-bottom: ${(props) => (props.hasDescription ? "0.5rem" : "1rem")};
 `;
 
 export const SettingDescription = styled.div`

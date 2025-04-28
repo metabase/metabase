@@ -578,6 +578,9 @@
     ;; \"avg(x + y)\"
     :expression-aggregations
 
+    ;; Does the driver support expressions consisting of a single literal value like `1`, `\"hello\"`, and `false`.
+    :expression-literals
+
     ;; Does the driver support using a query as the `:source-query` of another MBQL query? Examples are CTEs or
     ;; subselects in SQL queries.
     :nested-queries
@@ -705,6 +708,9 @@
     ;; Does this driver support UUID type
     :uuid-type
 
+    ;; Does this driver support splitting strings and extracting a part?
+    :split-part
+
     ;; True if this driver requires `:temporal-unit :default` on all temporal field refs, even if no temporal
     ;; bucketing was specified in the query.
     ;; Generally false, but a few time-series based analytics databases (eg. Druid) require it.
@@ -723,8 +729,17 @@
     ;; Does this driver support the :distinct-where function?
     :distinct-where
 
-    ;; Does this driver support casting?
-    :cast
+    ;; Does this driver support casting text to integers? (`integer()` custom expression function)
+    :expressions/integer
+
+    ;; Does this driver support casting values to text? (`text()` custom expression function)
+    :expressions/text
+
+    ;; Does this driver support casting text to dates? (`date()` custom expression function)
+    :expressions/date
+
+    ;; Does this driver support casting text to floats? (`float()` custom expression function)
+    :expressions/float
 
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
@@ -1336,3 +1351,12 @@
 (defmethod dynamic-database-types-lookup ::driver
   [_driver _database _database-types]
   nil)
+
+(defmulti query-canceled?
+  "Test if an exception is due to a query being canceled due to user action. For JDBC drivers this can
+  happen when setting `.setQueryTimeout`."
+  {:added "0.53.12" :arglists '([driver ^Throwable e])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod query-canceled? ::driver [_ _] false)

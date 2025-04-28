@@ -12,7 +12,7 @@ import { getUserMenuRotes } from "./routes";
 import { isAuditDb } from "./utils";
 
 if (hasPremiumFeature("audit_app")) {
-  PLUGIN_ADMIN_USER_MENU_ITEMS.push(user => [
+  PLUGIN_ADMIN_USER_MENU_ITEMS.push((user) => [
     {
       title: t`Unsubscribe from all subscriptions / alerts`,
       link: `/admin/people/${user.id}/unsubscribe`,

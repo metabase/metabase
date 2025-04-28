@@ -710,7 +710,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         setParametersAndAssertResults("@publicDashcardQuery");
 
         cy.log("set parameters in an embedded dashboard");
-        cy.get<number>("@dashboardId").then(dashboardId =>
+        cy.get<number>("@dashboardId").then((dashboardId) =>
           H.visitEmbeddedPage({
             resource: { dashboard: dashboardId },
             params: {},
@@ -835,7 +835,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         }) {
           H.popover().within(() => {
             cy.findByText(columnName).click();
-            cy.findByText("Specific dates…").click();
+            cy.findByText("Fixed date range…").click();
             cy.findByText("Between").click();
             cy.findByLabelText("Start date").clear().type(columnMinValue);
             cy.findByLabelText("End date").clear().type(columnMaxValue);
@@ -1145,8 +1145,8 @@ describe("scenarios > question > multiple column breakouts", () => {
       });
     });
 
-    describe("filter modal", () => {
-      it("should be able to add post-aggregation filters for each breakout in the filter modal", () => {
+    describe("filter picker", () => {
+      it("should be able to add post-aggregation filters for each breakout in the filter picker", () => {
         function addDateBetweenFilter({
           columnName,
           columnMinValue,
@@ -1156,14 +1156,11 @@ describe("scenarios > question > multiple column breakouts", () => {
           columnMinValue: string;
           columnMaxValue: string;
         }) {
-          H.modal().within(() => {
-            cy.findByText("Summaries").click();
-            cy.findByTestId(`filter-column-${columnName}`)
-              .findByLabelText("More options")
-              .click();
-          });
+          H.filter();
           H.popover().within(() => {
-            cy.findByText("Specific dates…").click();
+            cy.findByText("Summaries").click();
+            cy.findByText(columnName).click();
+            cy.findByText("Fixed date range…").click();
             cy.findByText("Between").click();
             cy.findByLabelText("Start date").clear().type(columnMinValue);
             cy.findByLabelText("End date").clear().type(columnMaxValue);
@@ -1189,7 +1186,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MaxValue: string;
         }) {
           H.createQuestion(questionDetails, { visitQuestion: true });
-          H.filter();
 
           cy.log("add a filter for the first column");
           addDateBetweenFilter({
@@ -1206,7 +1202,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           });
 
           cy.log("assert query results");
-          H.modal().button("Apply filters").click();
+          H.runButtonOverlay().click();
           cy.wait("@dataset");
         }
 
@@ -1219,16 +1215,17 @@ describe("scenarios > question > multiple column breakouts", () => {
           columnMinValue: number;
           columnMaxValue: number;
         }) {
-          H.modal().within(() => {
+          H.filter();
+          H.popover().within(() => {
             cy.findByText("Summaries").click();
-            cy.findByTestId(`filter-column-${columnName}`)
-              .findByPlaceholderText("Min")
+            cy.findByText(columnName).click();
+            cy.findByPlaceholderText("Min")
               .clear()
               .type(String(columnMinValue));
-            cy.findByTestId(`filter-column-${columnName}`)
-              .findByPlaceholderText("Max")
+            cy.findByPlaceholderText("Max")
               .clear()
               .type(String(columnMaxValue));
+            cy.button("Add filter").click();
           });
         }
 
@@ -1250,7 +1247,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MaxValue: number;
         }) {
           H.createQuestion(questionDetails, { visitQuestion: true });
-          H.filter();
 
           cy.log("add a filter for the first column");
           addNumericBetweenFilter({
@@ -1267,7 +1263,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           });
 
           cy.log("assert query results");
-          H.modal().button("Apply filters").click();
+          H.runButtonOverlay().click();
           cy.wait("@dataset");
         }
 
@@ -1420,7 +1416,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         }) {
           H.popover().within(() => {
             cy.findAllByText(columnName).click();
-            cy.findByText("Specific dates…").click();
+            cy.findByText("Fixed date range…").click();
             cy.findByText("Between").click();
             cy.findByLabelText("Start date").clear().type(columnMinValue);
             cy.findByLabelText("End date").clear().type(columnMaxValue);

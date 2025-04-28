@@ -22,6 +22,7 @@
               "!metabase/lib/colors",
               "!metabase/lib/encoding",
               "!metabase/lib/formatting",
+              "!metabase/lib/number",
               "!metabase/lib/time",
               "!metabase/lib/types",
               "!metabase/lib/urls",
@@ -40,6 +41,7 @@
           }
         ]
       }
-    ]
+    ],
+    "ttag/no-module-declaration": 2,
   }
 }

@@ -580,7 +580,7 @@ describe("Actions > ActionForm", () => {
   // this may not be the final desired behavior, but it's what we have for now
   describe("Null Handling", () => {
     const inputTypes = ["string", "number", "text", "date", "datetime", "time"];
-    inputTypes.forEach(inputType => {
+    inputTypes.forEach((inputType) => {
       it(`casts empty optional ${inputType} field to null`, async () => {
         const { action, onSubmit } = setup({
           initialValues: { "abc-123": 1 },

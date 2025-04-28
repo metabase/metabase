@@ -1,19 +1,20 @@
 import { Global } from "@emotion/react";
 import type { Reducer, Store } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
-import type { ByRoleMatcher } from "@testing-library/react";
+import type { ByRoleMatcher, RenderHookOptions } from "@testing-library/react";
 import {
   screen,
   render as testingLibraryRender,
   waitFor,
 } from "@testing-library/react";
+import { renderHook } from "@testing-library/react-hooks/dom";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
 import { KBarProvider } from "kbar";
 import type * as React from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
-import { Router, useRouterHistory } from "react-router";
+import { Route, Router, useRouterHistory } from "react-router";
 import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
@@ -71,6 +72,90 @@ export function renderWithProviders(
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
+  const { wrapper, store, history } = getTestStoreAndWrapper({
+    mode,
+    initialRoute,
+    storeInitialState,
+    withRouter,
+    withKBar,
+    withDND,
+    withUndos,
+    customReducers,
+    theme,
+  });
+
+  const utils = testingLibraryRender(ui, {
+    wrapper,
+    ...options,
+  });
+
+  return {
+    ...utils,
+    store,
+    history,
+  };
+}
+
+export function renderHookWithProviders<TProps, TResult>(
+  hook: (props: TProps) => TResult,
+  {
+    mode = "default",
+    initialRoute = "/",
+    storeInitialState = {},
+    withRouter = false,
+    withKBar = false,
+    withDND = false,
+    withUndos = false,
+    customReducers,
+    theme,
+    ...renderHookOptions
+  }: Omit<RenderHookOptions<TProps>, "wrapper"> & RenderWithProvidersOptions,
+) {
+  const {
+    wrapper: Wrapper,
+    store,
+    history,
+  } = getTestStoreAndWrapper({
+    mode,
+    initialRoute,
+    storeInitialState,
+    withRouter,
+    withKBar,
+    withDND,
+    withUndos,
+    customReducers,
+    theme,
+  });
+
+  const WrapperWithRoute = ({ children, ...props }: any) => {
+    return (
+      <Wrapper {...props}>
+        <Route path="/" component={() => <>{children}</>} />
+      </Wrapper>
+    );
+  };
+
+  const wrapper = withRouter ? WrapperWithRoute : Wrapper;
+
+  const renderHookReturn = renderHook(hook, { wrapper, ...renderHookOptions });
+
+  return { ...renderHookReturn, store, history };
+}
+
+type GetTestStoreAndWrapperOptions = RenderWithProvidersOptions &
+  Pick<Required<RenderWithProvidersOptions>, "initialRoute">;
+
+export function getTestStoreAndWrapper({
+  mode,
+  initialRoute,
+  storeInitialState,
+  withRouter,
+  withKBar,
+  withDND,
+  withUndos,
+  customReducers,
+  theme,
+}: GetTestStoreAndWrapperOptions) {
   let { routing, ...initialState }: Partial<State> =
     createMockState(storeInitialState);
 
@@ -129,16 +214,7 @@ export function renderWithProviders(
     );
   };
 
-  const utils = testingLibraryRender(ui, {
-    wrapper,
-    ...options,
-  });
-
-  return {
-    ...utils,
-    store,
-    history,
-  };
+  return { wrapper, store, history };
 }
 
 /**
@@ -199,6 +275,7 @@ function MaybeRouter({
   if (!hasRouter) {
     return children;
   }
+
   return <Router history={history}>{children}</Router>;
 }
 
@@ -253,7 +330,7 @@ export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
     const hasText = (node: Element | null | undefined) =>
       node?.textContent === textToFind;
     const childrenDoNotHaveText = element
-      ? Array.from(element.children).every(child => !hasText(child))
+      ? Array.from(element.children).every((child) => !hasText(child))
       : true;
 
     return hasText(element) && childrenDoNotHaveText;
@@ -318,24 +395,10 @@ export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
 };
 
 /**
- * jsdom doesn't have scrollBy, so we need to mock it
+ * Mocked globally in frontend/test/__support__/mocks.js
  */
-export const mockScrollBy = () => {
-  window.Element.prototype.scrollBy = jest.fn();
-};
-
-/**
- * jsdom doesn't have scrollBy, so we need to mock it
- */
-export const mockScrollTo = () => {
-  window.Element.prototype.scrollTo = jest.fn();
-};
-
-/**
- * jsdom doesn't have scrollBy, so we need to mock it
- */
-export const mockScrollIntoView = () => {
-  window.Element.prototype.scrollIntoView = jest.fn();
+export const getScrollIntoViewMock = () => {
+  return window.HTMLElement.prototype.scrollIntoView;
 };
 
 /**

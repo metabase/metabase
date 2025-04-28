@@ -55,11 +55,14 @@
   (mbql-clause/define-tuple-mbql-clause op :- :type/Integer
     [:schema [:ref ::expression/temporal]]))
 
+(mbql-clause/define-tuple-mbql-clause :date :- :type/Date
+  [:schema [:ref ::expression/string]])
+
 ;; doesn't contain `:millisecond`
 (mr/def ::datetime-diff-unit
   [:enum
    {:error/message    "Valid datetime-diff unit"
-    :decode/normalize common/normalize-keyword}
+    :decode/normalize common/normalize-keyword-lower}
    :day
    :week
    :month
@@ -80,7 +83,7 @@
     #_:datetime [:schema [:ref ::expression/temporal]]))
 
 (mr/def ::week-mode
-  [:enum {:decode/normalize common/normalize-keyword} :iso :us :instance])
+  [:enum {:decode/normalize common/normalize-keyword-lower} :iso :us :instance])
 
 (mbql-clause/define-catn-mbql-clause :get-week :- :type/Integer
   [:datetime [:schema [:ref ::expression/temporal]]]
@@ -140,7 +143,7 @@
 (mbql-clause/define-mbql-clause :absolute-datetime
   [:cat
    {:error/message "valid :absolute-datetime clause"}
-   [:= {:decode/normalize common/normalize-keyword} :absolute-datetime]
+   [:= {:decode/normalize common/normalize-keyword-lower} :absolute-datetime]
    [:schema [:ref ::absolute-datetime.options]]
    [:alt
     [:cat
@@ -151,15 +154,15 @@
                [:ref ::literal/string.year-month]
                [:ref ::literal/string.year]]]
      [:schema [:or
-               [:= {:decode/normalize common/normalize-keyword} :default]
+               [:= {:decode/normalize common/normalize-keyword-lower} :default]
                [:ref ::temporal-bucketing/unit.date]]]]
     [:cat
      {:error/message ":absolute-datetime literal and unit for :type/DateTime"}
      [:schema [:or
-               [:= {:decode/normalize common/normalize-keyword} :current]
+               [:= {:decode/normalize common/normalize-keyword-lower} :current]
                [:ref ::literal/datetime]]]
      [:schema [:or
-               [:= {:decode/normalize common/normalize-keyword} :default]
+               [:= {:decode/normalize common/normalize-keyword-lower} :default]
                [:ref ::temporal-bucketing/unit.date-time]]]]]])
 
 (defmethod expression/type-of-method :absolute-datetime
@@ -191,7 +194,7 @@
 
 (mr/def ::relative-datetime.amount
   [:multi {:dispatch (some-fn keyword? string?)}
-   [true  [:= {:decode/normalize common/normalize-keyword} :current]]
+   [true  [:= {:decode/normalize common/normalize-keyword-lower} :current]]
    [false :int]])
 
 (mbql-clause/define-catn-mbql-clause :relative-datetime :- :type/DateTime
@@ -205,7 +208,7 @@
 ;;; this has some stuff that's missing from [[::temporal-bucketing/unit.date-time.extract]], like `:week-of-year-iso`
 (mr/def ::temporal-extract.unit
   [:enum
-   {:decode/normalize common/normalize-keyword}
+   {:decode/normalize common/normalize-keyword-lower}
    :year-of-era
    :quarter-of-year
    :month-of-year

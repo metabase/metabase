@@ -33,7 +33,7 @@ describe("dashboard card fetching", () => {
   it("should pass same dashboard_load_id to every query to enable metadata cache sharing", () => {
     createDashboardWithCards({ cards }).then(H.visitDashboard);
 
-    cy.wait(["@dashcardQuery", "@dashcardQuery"]).then(interceptions => {
+    cy.wait(["@dashcardQuery", "@dashcardQuery"]).then((interceptions) => {
       const query1 = interceptions[0].request.body;
       const query2 = interceptions[1].request.body;
 

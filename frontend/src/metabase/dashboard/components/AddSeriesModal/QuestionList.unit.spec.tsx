@@ -11,11 +11,11 @@ import {
 
 import { QuestionList } from "./QuestionList";
 
-const compatibleCardsFirstPage = _.range(50).map(index =>
+const compatibleCardsFirstPage = _.range(50).map((index) =>
   createMockCard({ id: index, name: `compatible card ${index} page 1` }),
 );
 
-const compatibleCardsSecondPage = _.range(10).map(index => {
+const compatibleCardsSecondPage = _.range(10).map((index) => {
   const id = index + 50;
   return createMockCard({
     id,

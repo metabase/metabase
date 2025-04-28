@@ -67,7 +67,7 @@ function createDashboardState(
     dashboards: {
       [dashboard.id]: {
         ...dashboard,
-        dashcards: dashcards.map(d => d.id),
+        dashcards: dashcards.map((d) => d.id),
       },
     },
   });

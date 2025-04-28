@@ -26,11 +26,11 @@ export const SelectListItem = styled(BaseSelectList.Item)<{
   font-weight: 400;
 
   &[aria-selected="true"] {
-    background-color: ${props => color(props.activeColor)};
+    background-color: ${(props) => color(props.activeColor)};
   }
 
   &:hover {
-    background-color: ${props => color(props.activeColor)};
+    background-color: ${(props) => color(props.activeColor)};
   }
 `;
 

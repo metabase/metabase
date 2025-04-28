@@ -15,7 +15,7 @@ import { NumberFilterInput } from "../../NumberFilterInput";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { WIDTH } from "../constants";
+import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function NumberFilterPicker({
@@ -125,6 +125,7 @@ function NumberValueInput({
           column={column}
           values={values.filter(isNotNull)}
           autoFocus
+          comboboxProps={COMBOBOX_PROPS}
           onChange={onChange}
         />
       </Box>
@@ -140,7 +141,7 @@ function NumberValueInput({
           autoFocus
           w="100%"
           aria-label={t`Filter value`}
-          onChange={newValue => onChange([newValue])}
+          onChange={(newValue) => onChange([newValue])}
         />
       </Flex>
     );
@@ -153,13 +154,13 @@ function NumberValueInput({
           value={values[0]}
           placeholder={t`Min`}
           autoFocus
-          onChange={newValue => onChange([newValue, values[1]])}
+          onChange={(newValue) => onChange([newValue, values[1]])}
         />
         <Text mx="sm">{t`and`}</Text>
         <NumberFilterInput
           value={values[1]}
           placeholder={t`Max`}
-          onChange={newValue => onChange([values[0], newValue])}
+          onChange={(newValue) => onChange([values[0], newValue])}
         />
       </Flex>
     );

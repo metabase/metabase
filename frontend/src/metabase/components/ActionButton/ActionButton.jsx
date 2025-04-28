@@ -31,10 +31,18 @@ export default class ActionButton extends Component {
     className: ButtonsS.Button,
     successClassName: ButtonsS.ButtonSuccess,
     failedClassName: ButtonsS.ButtonDanger,
-    normalText: t`Save`,
-    activeText: t`Saving...`,
-    failedText: t`Save failed`,
-    successText: t`Saved`,
+    get normalText() {
+      return t`Save`;
+    },
+    get activeText() {
+      return t`Saving...`;
+    },
+    get failedText() {
+      return t`Save failed`;
+    },
+    get successText() {
+      return t`Saved`;
+    },
     forceActiveStyle: false,
   };
 
@@ -66,7 +74,7 @@ export default class ActionButton extends Component {
     );
   };
 
-  onClick = event => {
+  onClick = (event) => {
     event.preventDefault();
 
     // set state to active
@@ -78,7 +86,7 @@ export default class ActionButton extends Component {
     // run the function we want bound to this button
     this.actionPromise = cancelable(this.props.actionFn());
     this.actionPromise.then(
-      success => {
+      (success) => {
         this.setState(
           {
             active: false,
@@ -87,7 +95,7 @@ export default class ActionButton extends Component {
           this.resetStateOnTimeout,
         );
       },
-      error => {
+      (error) => {
         if (!error.isCanceled) {
           console.error(error);
           this.setState(

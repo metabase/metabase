@@ -24,7 +24,7 @@ jobs:
         with:
           m2-cache-key: 'kondo'
       - name: Run clj-kondo
-        run: ./bin/kondo.sh
+        run: ./bin/mage kondo
 
   be-linter-eastwood:
     if: ${{ !inputs.skip }}
@@ -39,27 +39,6 @@ jobs:
           m2-cache-key: "eastwood"
       - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
         name: Run Eastwood linter
-
-  mage-tests:
-    if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
-    name: Mage
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: 'kondo'
-      - name: Setup Babashka
-        uses: turtlequeue/setup-babashka@v1.7.0
-        with:
-          babashka-version: 1.12.196
-      - name: Check bb runs
-        run: bb --version
-      - name: bb task list
-        run: bb tasks
-      - name: Run mage tests
-        run: bb ./test/mage/core_test.clj
 
   be-tests:
     if: ${{ !inputs.skip }}
@@ -135,6 +114,8 @@ jobs:
       - name: Build static-viz frontend
         if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
         run: yarn build-static-viz
+        env:
+          MB_EDITION: ${{ matrix.job.edition }}
       - name: Download Static Viz Bundle Artifact
         if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
         uses: actions/download-artifact@v4
@@ -204,7 +185,7 @@ jobs:
         with:
           m2-cache-key: 'cljfmt'
       - name: Run cljfmt
-        run: clojure -T:cljfmt check
+        run: ./bin/mage cljfmt-all --force-check
 
   be-tests-result:
     needs:

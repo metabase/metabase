@@ -7,8 +7,6 @@ import {
 } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { Database } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
@@ -32,7 +30,6 @@ function setup({
       databases: [database],
     }),
   });
-  const metadata = getMetadata(state);
   setupDatabaseEndpoints(database);
   setupDatabaseUsageInfoEndpoint(database, {
     question: 0,
@@ -49,7 +46,7 @@ function setup({
 
   const utils = renderWithProviders(
     <DatabaseModelFeaturesSection
-      database={checkNotNull(metadata.database(database.id))}
+      database={database}
       isModelPersistenceEnabled={isModelPersistenceEnabled}
       updateDatabase={updateDatabase}
     />,

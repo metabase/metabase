@@ -1,6 +1,6 @@
 (ns metabase.legacy-mbql.schema
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
-  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs])
+  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs float])
   (:require
    [clojure.core :as core]
    [clojure.set :as set]
@@ -391,7 +391,7 @@
 (def string-functions
   "Functions that return string values. Should match [[StringExpression]]."
   #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case :if
-    :host :domain :subdomain :month-name :quarter-name :day-name :text})
+    :host :domain :subdomain :path :month-name :quarter-name :day-name :text :split-part})
 
 (def ^:private StringExpression
   "Schema for the definition of an string expression."
@@ -415,7 +415,7 @@
 
 (def numeric-functions
   "Functions that return numeric values. Should match [[NumericExpression]]."
-  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :if :datetime-diff :integer
+  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :if :datetime-diff :integer :float
     ;; extraction functions (get some component of a given temporal value/column)
     :temporal-extract
     ;; SUGAR drivers do not need to implement
@@ -432,7 +432,7 @@
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
-  #{:+ :datetime-add :datetime-subtract :convert-timezone :now})
+  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date})
 
 (def ^:private NumericExpression
   "Schema for the definition of a numeric expression. All numeric expressions evaluate to numeric values."
@@ -544,6 +544,9 @@
 (defclause ^{:requires-features #{:expressions}} substring
   s StringExpressionArg, start IntGreaterThanZeroOrNumericExpression, length (optional NumericExpressionArg))
 
+(defclause ^{:requires-features #{:expressions :split-part}} split-part
+  text StringExpressionArg, delimiter [:string {:min 1}], position IntGreaterThanZeroOrNumericExpression)
+
 (defclause ^{:requires-features #{:expressions}} length
   s StringExpressionArg)
 
@@ -565,7 +568,7 @@
 (defclause ^{:requires-features #{:expressions}} replace
   s StringExpressionArg, match :string, replacement :string)
 
-(defclause ^{:requires-features #{:expressions :cast}} text
+(defclause ^{:requires-features #{:expressions :expressions/text}} text
   x :any)
 
 ;; Relax the arg types to ExpressionArg for concat since many DBs allow to concatenate non-string types. This also
@@ -583,6 +586,9 @@
   s StringExpressionArg)
 
 (defclause ^{:requires-features #{:expressions :regex}} subdomain
+  s StringExpressionArg)
+
+(defclause ^{:requires-features #{:expressions :regex}} path
   s StringExpressionArg)
 
 (defclause ^{:requires-features #{:expressions}} month-name
@@ -628,9 +634,12 @@
 (defclause ^{:requires-features #{:advanced-math-expressions}} log
   x NumericExpressionArg)
 
-(defclause ^{:requires-features #{:expressions :cast}} integer
+(defclause ^{:requires-features #{:expressions :expressions/integer}} integer
   x [:or NumericExpressionArg
      StringExpressionArg])
+
+(defclause ^{:requires-features #{:expressions :expressions/float}} float
+  x StringExpressionArg)
 
 ;; The result is positive if x <= y, and negative otherwise.
 ;;
@@ -702,8 +711,11 @@
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
+(defclause ^{:requires-features #{:expressions :expressions/date}} date
+  string StringExpressionArg)
+
 (mr/def ::DatetimeExpression
-  (one-of + datetime-add datetime-subtract convert-timezone now))
+  (one-of + datetime-add datetime-subtract convert-timezone now date))
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 
@@ -810,10 +822,13 @@
 (defclause ^:sugar is-null,  field Field)
 (defclause ^:sugar not-null, field Field)
 
+(def ^:private Emptyable
+  [:or StringExpressionArg Field])
+
 ;; These are rewritten as `[:or [:= <field> nil] [:= <field> ""]]` and
 ;; `[:and [:not= <field> nil] [:not= <field> ""]]`
-(defclause ^:sugar is-empty,  field Field)
-(defclause ^:sugar not-empty, field Field)
+(defclause ^:sugar is-empty  field Emptyable)
+(defclause ^:sugar not-empty field Emptyable)
 
 (def ^:private StringFilterOptions
   [:map
@@ -948,13 +963,13 @@
   clauses CaseClauses, options (optional CaseOptions))
 
 (mr/def ::NumericExpression
-  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff integer
+  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff integer float
           temporal-extract get-year get-quarter get-month get-week get-day get-day-of-week
           get-hour get-minute get-second))
 
 (mr/def ::StringExpression
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case case:if host domain
-          subdomain month-name quarter-name day-name text))
+          subdomain path month-name quarter-name day-name text split-part))
 
 (mr/def ::FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a

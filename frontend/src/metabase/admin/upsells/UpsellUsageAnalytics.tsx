@@ -17,7 +17,7 @@ export const UpsellUsageAnalytics = (
       "children" | "title" | "buttonText" | "buttonLink" | "campaign"
     >,
 ) => {
-  const usageAnalyticsUrl = useSelector(state =>
+  const usageAnalyticsUrl = useSelector((state) =>
     getDocsUrl(state, {
       page: "usage-and-performance-tools/usage-analytics",
     }),

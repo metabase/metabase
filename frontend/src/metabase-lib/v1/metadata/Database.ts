@@ -41,7 +41,7 @@ class Database {
 
   schemaNames() {
     return this.getSchemas()
-      .map(s => s.name)
+      .map((s) => s.name)
       .sort((a, b) => a.localeCompare(b));
   }
 
@@ -58,7 +58,9 @@ class Database {
   }
 
   tablesLookup() {
-    return Object.fromEntries(this.getTables().map(table => [table.id, table]));
+    return Object.fromEntries(
+      this.getTables().map((table) => [table.id, table]),
+    );
   }
 
   // @deprecated: use tablesLookup
@@ -117,6 +119,10 @@ class Database {
     return Boolean(this.settings?.["database-enable-actions"]);
   }
 
+  hasDatabaseRoutingEnabled() {
+    return !!this.router_user_attribute;
+  }
+
   nativeQuestion(native: Partial<NativeQuery> = {}) {
     return Question.create({
       metadata: this.metadata,
@@ -137,7 +143,7 @@ class Database {
   }
 
   savedQuestionsDatabase() {
-    return this.metadata?.databasesList().find(db => db.is_saved_questions);
+    return this.metadata?.databasesList().find((db) => db.is_saved_questions);
   }
 }
 

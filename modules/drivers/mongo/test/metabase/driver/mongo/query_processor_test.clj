@@ -8,7 +8,6 @@
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.alternative-date-test :as qp.alternative-date-test]
    [metabase.query-processor-test.date-time-zone-functions-test :as qp.datetime-test]
@@ -631,25 +630,62 @@
            (qp/process-query
             (mt/mbql-query times {:fields [$t]})))))))
 
-(deftest ^:parallel filter-uuids-with-string-patterns-test
-  (mt/test-driver :mongo
-    (mt/dataset uuid-dogs
-      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-            dogs (lib.metadata/table mp (mt/id :dogs))
-            person-id (lib.metadata/field mp (mt/id :dogs :person_id))]
-        (is (= [[1 #uuid "27e164bc-54f8-47a0-a85a-9f0e90dd7667" "Ivan" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
-                [2 #uuid "3a0c0508-6b00-40ff-97f6-549666b2d16b" "Zach" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]]
-               (-> (lib/query mp dogs)
-                   (lib/filter (lib/starts-with person-id "d6"))
-                   qp/process-query
-                   mt/rows)))
-        (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
-               (-> (lib/query mp dogs)
-                   (lib/filter (lib/ends-with person-id "9b"))
-                   qp/process-query
-                   mt/rows)))
-        (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
-               (-> (lib/query mp dogs)
-                   (lib/filter (lib/contains person-id "e"))
-                   qp/process-query
-                   mt/rows)))))))
+(deftest ^:parallel mongo-multiple-joins-test
+  (testing "should be able to join multiple mongo collections"
+    (mt/test-driver :mongo
+      (mt/dataset (mt/dataset-definition "multi-join-db"
+                                         ["table_a"
+                                          [{:field-name "a_id" :base-type :type/Text}
+                                           {:field-name "b_id" :base-type :type/Text}]
+                                          [["a_id" "b_id"]]]
+                                         ["table_b"
+                                          [{:field-name "b_id" :base-type :type/Text}
+                                           {:field-name "c_id" :base-type :type/Text}]
+                                          [["b_id" "c_id"]]]
+                                         ["table_c"
+                                          [{:field-name "c_id" :base-type :type/Text}]
+                                          [["c_id"]]])
+        (let [mp (mt/metadata-provider)
+              table-a (lib.metadata/table mp (mt/id :table_a))
+              table-b (lib.metadata/table mp (mt/id :table_b))
+              table-c (lib.metadata/table mp (mt/id :table_c))
+              table-a-b-id (lib.metadata/field mp (mt/id :table_a :b_id))
+              table-b-b-id (lib.metadata/field mp (mt/id :table_b :b_id))
+              table-b-c-id (lib.metadata/field mp (mt/id :table_b :c_id))
+              table-c-c-id (lib.metadata/field mp (mt/id :table_c :c_id))
+              query (-> (lib/query mp table-a)
+                        (lib/join (lib/join-clause table-b [(lib/= table-a-b-id  table-b-b-id)]))
+                        (lib/join (lib/join-clause table-c [(lib/= table-b-c-id table-c-c-id)])))]
+          (is (= [[1 "a_id" "b_id" 1 "b_id" "c_id" 1 "c_id"]]
+                 (mt/rows (qp/process-query query)))))))))
+
+;; TODO: Re-enable this test if it becomes possible to determine type/UUID without using JavaScript
+#_(deftest ^:parallel filter-uuids-with-string-patterns-test
+    (mt/test-driver :mongo
+      (mt/dataset uuid-dogs
+        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+              dogs (lib.metadata/table mp (mt/id :dogs))
+              person-id (lib.metadata/field mp (mt/id :dogs :person_id))]
+          (if (-> (driver/dbms-version :mongo (mt/db)) :semantic-version (driver.u/semantic-version-gte [8]))
+            (do
+              (is (= [[1 #uuid "27e164bc-54f8-47a0-a85a-9f0e90dd7667" "Ivan" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
+                      [2 #uuid "3a0c0508-6b00-40ff-97f6-549666b2d16b" "Zach" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]]
+                     (-> (lib/query mp dogs)
+                         (lib/filter (lib/starts-with person-id "d6"))
+                         qp/process-query
+                         mt/rows)))
+              (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
+                     (-> (lib/query mp dogs)
+                         (lib/filter (lib/ends-with person-id "9b"))
+                         qp/process-query
+                         mt/rows)))
+              (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
+                     (-> (lib/query mp dogs)
+                         (lib/filter (lib/contains person-id "e"))
+                         qp/process-query
+                         mt/rows))))
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"String searching on UUIDs is only supported in Mongo v8.0+"
+                                  (-> (lib/query mp dogs)
+                                      (lib/filter (lib/contains person-id "e"))
+                                      qp/process-query))))))))

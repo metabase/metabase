@@ -51,7 +51,7 @@ function getCurrency(currency, currencyStyle) {
 }
 
 const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
-  [].concat(...series.map(s => (s.data && s.data.cols) || []));
+  [].concat(...series.map((s) => (s.data && s.data.cols) || []));
 
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
@@ -115,7 +115,7 @@ function getDateStyleOptionsForUnit(unit, abbreviate = false, separator) {
     dateStyleOption("YYYY/M/D", unit, abbreviate, separator),
   ];
   const seen = new Set();
-  return options.filter(option => {
+  return options.filter((option) => {
     const format = getDateFormatFromStyle(option.value, unit);
     if (seen.has(format)) {
       return false;
@@ -174,7 +174,9 @@ function getTimeEnabledOptionsForUnit(unit) {
 
 export const DATE_COLUMN_SETTINGS = {
   date_style: {
-    title: t`Date style`,
+    get title() {
+      return t`Date style`;
+    },
     widget: "select",
     getDefault: ({ unit }) => {
       // Grab the first option's value. If there were no options (for
@@ -196,7 +198,9 @@ export const DATE_COLUMN_SETTINGS = {
     getHidden: ({ unit }) => getDateStyleOptionsForUnit(unit).length < 2,
   },
   date_separator: {
-    title: t`Date separators`,
+    get title() {
+      return t`Date separators`;
+    },
     widget: "radio",
     default: "/",
     getProps: (column, settings) => {
@@ -214,7 +218,9 @@ export const DATE_COLUMN_SETTINGS = {
     getHidden: ({ unit }, settings) => !/\//.test(settings["date_style"] || ""),
   },
   date_abbreviate: {
-    title: t`Abbreviate days and months`,
+    get title() {
+      return t`Abbreviate days and months`;
+    },
     widget: "toggle",
     default: false,
     inline: true,
@@ -225,7 +231,9 @@ export const DATE_COLUMN_SETTINGS = {
     readDependencies: ["date_style"],
   },
   time_enabled: {
-    title: t`Show the time`,
+    get title() {
+      return t`Show the time`;
+    },
     widget: "radio",
     isValid: ({ unit }, settings) => {
       const options = getTimeEnabledOptionsForUnit(unit);
@@ -240,7 +248,9 @@ export const DATE_COLUMN_SETTINGS = {
     getDefault: ({ unit }) => (hasHour(unit) ? "minutes" : null),
   },
   time_style: {
-    title: t`Time style`,
+    get title() {
+      return t`Time style`;
+    },
     widget: "radio",
     default: "h:mm A",
     getProps: (column, settings) => ({
@@ -260,15 +270,36 @@ export const DATE_COLUMN_SETTINGS = {
 
 export const NUMBER_COLUMN_SETTINGS = {
   number_style: {
-    title: t`Style`,
+    get title() {
+      return t`Style`;
+    },
     widget: "select",
     props: {
       options: [
-        { name: t`Normal`, value: "decimal" },
-        { name: t`Percent`, value: "percent" },
-        { name: t`Scientific`, value: "scientific" },
-        { name: t`Currency`, value: "currency" },
-        { name: t`Duration`, value: "duration" },
+        {
+          get name() {
+            return t`Normal`;
+          },
+          value: "decimal",
+        },
+        {
+          get name() {
+            return t`Percent`;
+          },
+          value: "percent",
+        },
+        {
+          get name() {
+            return t`Scientific`;
+          },
+          value: "scientific",
+        },
+        {
+          get name() {
+            return t`Currency`;
+          },
+          value: "currency",
+        },
       ],
     },
     getDefault: getDefaultNumberStyle,
@@ -278,7 +309,9 @@ export const NUMBER_COLUMN_SETTINGS = {
     readDependencies: ["currency"],
   },
   currency: {
-    title: t`Unit of currency`,
+    get title() {
+      return t`Unit of currency`;
+    },
     widget: "select",
     props: {
       // FIXME: rest of these options
@@ -293,7 +326,9 @@ export const NUMBER_COLUMN_SETTINGS = {
     getHidden: (column, settings) => settings["number_style"] !== "currency",
   },
   currency_style: {
-    title: t`Currency label style`,
+    get title() {
+      return t`Currency label style`;
+    },
     widget: "radio",
     getProps: (column, settings) => {
       const c = settings["currency"] || "USD";
@@ -326,11 +361,13 @@ export const NUMBER_COLUMN_SETTINGS = {
     readDependencies: ["number_style"],
   },
   currency_in_header: {
-    title: t`Where to display the unit of currency`,
+    get title() {
+      return t`Where to display the unit of currency`;
+    },
     widget: "radio",
     getProps: (_series, _vizSettings, onChange) => {
       return {
-        onChange: value => onChange(value === "true"),
+        onChange: (value) => onChange(value === true),
         options: [
           { name: t`In the column heading`, value: true },
           { name: t`In every table cell`, value: false },
@@ -352,7 +389,9 @@ export const NUMBER_COLUMN_SETTINGS = {
   },
   number_separators: {
     // uses 1-2 character string to represent decimal and thousands separators
-    title: t`Separator style`,
+    get title() {
+      return t`Separator style`;
+    },
     widget: "select",
     props: {
       options: [
@@ -364,35 +403,47 @@ export const NUMBER_COLUMN_SETTINGS = {
       ],
     },
     getDefault: getDefaultNumberSeparators,
-    getHidden: (column, settings) => settings["number_style"] === "duration",
   },
   decimals: {
-    title: t`Number of decimal places`,
+    get title() {
+      return t`Number of decimal places`;
+    },
     widget: "number",
     props: {
       placeholder: "1",
+      options: {
+        isNonNegative: true,
+        isInteger: true,
+      },
     },
-    getHidden: (column, settings) => settings["number_style"] === "duration",
   },
   scale: {
-    title: t`Multiply by a number`,
+    get title() {
+      return t`Multiply by a number`;
+    },
     widget: "number",
     props: {
       placeholder: "1",
     },
   },
   prefix: {
-    title: t`Add a prefix`,
+    get title() {
+      return t`Add a prefix`;
+    },
     widget: "input",
     props: {
       placeholder: "$",
     },
   },
   suffix: {
-    title: t`Add a suffix`,
+    get title() {
+      return t`Add a suffix`;
+    },
     widget: "input",
     props: {
-      placeholder: t`dollars`,
+      get placeholder() {
+        return t`dollars`;
+      },
     },
   },
   // Optimization: build a single NumberFormat object that is used by formatting.js
@@ -437,7 +488,7 @@ const COMMON_COLUMN_SETTINGS = {
   //   },
   // },
   column: {
-    getValue: column => column,
+    getValue: (column) => column,
   },
   _column_title_full: {
     getValue: (column, settings) => {
@@ -489,11 +540,11 @@ export function isPivoted(series, settings) {
 
   const pivotIndex = _.findIndex(
     data.cols,
-    col => col.name === settings["table.pivot_column"],
+    (col) => col.name === settings["table.pivot_column"],
   );
   const cellIndex = _.findIndex(
     data.cols,
-    col => col.name === settings["table.cell_column"],
+    (col) => col.name === settings["table.cell_column"],
   );
   const normalIndex = _.findIndex(
     data.cols,
@@ -520,7 +571,9 @@ export const tableColumnSettings = {
   //   { name: "COLUMN_NAME", enabled: true }
   //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
   "table.columns": {
-    section: t`Columns`,
+    get section() {
+      return t`Columns`;
+    },
     // title: t`Columns`,
     widget: ChartSettingTableColumns,
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
@@ -538,7 +591,7 @@ export const tableColumnSettings = {
         // add columns that do not have matching settings to the end
         ...cols
           .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
-          .map(column => ({
+          .map((column) => ({
             name: column.name,
             enabled: true,
           })),
@@ -553,7 +606,7 @@ export const tableColumnSettings = {
 
       return {
         columns: cols,
-        getColumnName: column => getTitleForColumn(column, series, settings),
+        getColumnName: (column) => getTitleForColumn(column, series, settings),
       };
     },
   },

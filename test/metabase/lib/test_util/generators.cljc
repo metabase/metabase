@@ -60,6 +60,12 @@
 ;; - The context contains a stack of previous queries, so we can (with some probability) pop back up that stack to
 ;;   abandon a branch we've been exploring and try something else.
 
+(def sane-iterations-limit
+  "There are circumstances where only a single random query is needed. The [[random-queries-from]] is used to
+  generate sequence of queries of growing complexity. This constant is used to clamp number of operations in caller's
+  code. It's made up; subject to change with further development."
+  40)
+
 (defn- step-key [[op]]
   op)
 
@@ -193,7 +199,7 @@
         (testing "freshly added breakout columns"
           (is (= false (breakout-exists? before stage-number column))
               "are not present before")
-          (is (= true  (breakout-exists? after  stage-number column))
+          (is (true?  (breakout-exists? after  stage-number column))
               "are present after")
           (testing "go at the end of the list"
             (is (= (count after-breakouts)
@@ -332,19 +338,33 @@
 (add-step {:kind   :join
            :weight 30})
 
+(def ^:dynamic *available-cards*
+  "To be bound to cards available for use by generator in joins.
+
+  Cards should have a format of `:lib/type :metadata/card`, as returned eg. from [[metabase.lib.metadata/card]].
+
+  Currently modified only in [[metabase.test.util.generators.jvm/with-random-cards]], hence available only in jvm tests
+  at the moment."
+  [])
+
 (defmethod next-steps* :join [query _join]
   (let [stage-number        (choose-stage query)
         strategy            (gen.u/weighted-choice {:left-join  80
                                                     :inner-join 10
                                                     :right-join 10
                                                     ;; TODO: Make the following driver dependent? Temporarily suppressed
-                                                    ;;       as I test against h2
+                                                    ;;       to enable testing with h2.
                                                     #_#_:full-join  5})
-        ;; TODO: Explicit joins against cards are possible, but we don't have cards yet.
-        condition-space     (for [table (lib.metadata/tables query)
-                                  :let [conditions (lib/suggested-join-conditions query stage-number table)]
-                                  :when (seq conditions)]
-                              [table conditions])]
+        ;; TODO: Cards: Does it make sense to generate reasonable conditions for cards? (same type columns?)
+        condition-space     (concat (for [table (lib.metadata/tables query)
+                                          :let [conditions (lib/suggested-join-conditions query stage-number table)]
+                                          :when (seq conditions)]
+                                      [table conditions])
+                                    (for [card *available-cards*
+                                          ;; Using always false join condition for card joins as the results are not
+                                          ;; relevant at the time of writing.
+                                          :let [conditions [(lib/= (lib/+ 1 1) 999)]]]
+                                      [card conditions]))]
     (when-let [[target conditions] (and (seq condition-space)
                                         (tu.rng/rand-nth condition-space))]
       [:join stage-number target (tu.rng/rand-nth conditions) strategy])))
@@ -368,7 +388,9 @@
                      :fields     (if summaries?
                                    (symbol "nil #_\"key is not present.\"")
                                    :all)
-                     :stages     [{:source-table (:id target)}]
+                     :stages     [(fn [x] (and (map? x)
+                                               (= ((some-fn :source-table :source-card) x)
+                                                  (:id target))))]
                      :conditions [condition]}
                     (last after-joins)))))))))
 
@@ -611,3 +633,14 @@
       (println)
       (println)))
   (print-stats stats))
+
+;; misc ========================================================================
+
+(defn random-query
+  "Genereate single random query, card or table based."
+  [mp]
+  (let [tables (lib.metadata/tables mp)
+        cards *available-cards*]
+    (-> (random-queries-from (lib/query mp (tu.rng/rand-nth (concat tables cards)))
+                             (inc (tu.rng/rand-int sane-iterations-limit)))
+        last)))

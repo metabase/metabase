@@ -156,3 +156,20 @@
                   {:aggregation [[:count]]
                    :breakout    [$tips.source.mayor]
                    :order-by    [[:asc [:aggregation 0]]]}))))))))
+
+(deftest ^:parallel nested-query-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
+    (testing "Nested Field in a nested query"
+      (mt/dataset geographical-tips
+        (is (= [["facebook"   107 108]
+                ["flare"      105 106]
+                ["foursquare" 100 101]
+                ["twitter"     98 99]
+                ["yelp"        90 91]]
+               (mt/formatted-rows
+                [str int int]
+                (mt/run-mbql-query tips
+                  {:expressions {:incremented_count ["+" [:field "count" {:base-type "type/Integer"}] 1]}
+                   :source-query {:aggregation [[:count]]
+                                  :breakout    [$tips.source.service]
+                                  :source-table $$tips}}))))))))

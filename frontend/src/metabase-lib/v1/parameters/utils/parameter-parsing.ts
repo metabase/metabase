@@ -44,7 +44,7 @@ export function parseParameterValue(value: any, parameter: Parameter) {
   const type = getParameterType(parameter);
   if (type === "temporal-unit") {
     const availableUnits = Lib.availableTemporalUnits();
-    return availableUnits.some(unit => unit === value) ? value : null;
+    return availableUnits.some((unit) => unit === value) ? value : null;
   }
 
   const coercedValue =
@@ -68,14 +68,14 @@ function parseParameterValueForNumber(value: ParameterValueOrArray) {
   // https://github.com/metabase/metabase/issues/25374#issuecomment-1272520560
   if (typeof value === "string") {
     // something like "1,2,3",  "1, 2,  3", ",,,1,2, 3"
-    const splitValues = value.split(",").filter(item => item.trim() !== "");
+    const splitValues = value.split(",").filter((item) => item.trim() !== "");
     if (splitValues.length === 0) {
       return null;
     }
 
     if (splitValues.length > 1) {
-      const numbers = splitValues.map(number => parseFloat(number));
-      if (numbers.every(number => !isNaN(number))) {
+      const numbers = splitValues.map((number) => parseFloat(number));
+      if (numbers.every((number) => !isNaN(number))) {
         return numbers.join(",");
       }
 
@@ -91,15 +91,15 @@ function parseParameterValueForFields(
   fields: Field[],
 ): ParameterValueOrArray {
   // unix dates fields are numeric but query params shouldn't be parsed as numbers
-  if (fields.every(f => f.isNumeric() && !f.isDate())) {
+  if (fields.every((f) => f.isNumeric() && !f.isDate())) {
     return normalizeNumberParameterValue(value);
   }
 
-  if (fields.every(f => f.isBoolean())) {
+  if (fields.every((f) => f.isBoolean())) {
     return deserializeBooleanParameterValue(value);
   }
 
-  if (fields.every(f => f.isString() || f.isStringLike())) {
+  if (fields.every((f) => f.isString() || f.isStringLike())) {
     return deserializeStringParameterValue(value);
   }
 
@@ -129,7 +129,7 @@ export function getParameterValuesByIdFromQueryParams(
   lastUsedParametersValues?: Record<ParameterId, unknown>,
 ) {
   return Object.fromEntries(
-    parameters.map(parameter => [
+    parameters.map((parameter) => [
       parameter.id,
       getParameterValueFromQueryParams(
         parameter,

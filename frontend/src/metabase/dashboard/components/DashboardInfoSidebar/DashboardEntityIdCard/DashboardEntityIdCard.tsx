@@ -6,11 +6,15 @@ import {
   SidesheetCardTitle,
 } from "metabase/common/components/Sidesheet";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { CopyButton } from "metabase/components/CopyButton";
-import { EntityIdDisplay } from "metabase/components/EntityIdCard";
-import S from "metabase/components/EntityIdCard/EntityIdCard.module.css";
-import { Divider, Flex, Select, Stack } from "metabase/ui";
+import {
+  EntityCopyButton,
+  EntityInfoIcon,
+} from "metabase/components/EntityIdCard";
+import { isWithinIframe } from "metabase/lib/dom";
+import { Collapse, Divider, Group, Icon, Stack, Text } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
+
+import Styles from "./DashboardEntityIdCard.module.css";
 
 export const DashboardEntityIdCard = ({
   dashboard,
@@ -19,42 +23,58 @@ export const DashboardEntityIdCard = ({
 }) => {
   const { tabs } = dashboard;
   // The id of the tab currently selected in the dropdown
-  const [tabId, setTabId] = useState<string | null>(
-    tabs?.length ? tabs[0].id.toString() : null,
-  );
+  const [opened, setOpened] = useState<boolean>(false);
 
-  if (!useHasTokenFeature("serialization")) {
+  if (!useHasTokenFeature("serialization") || isWithinIframe()) {
     return null;
   }
 
-  const tabEntityId = tabs?.find(tab => tab.id.toString() === tabId)?.entity_id;
-
   return (
     <SidesheetCard>
-      <EntityIdDisplay entityId={dashboard.entity_id} />
-      {tabEntityId && (
-        <>
-          <Divider w="100%" />
-          <Stack gap="xs">
-            <SidesheetCardTitle>{t`Specific tab IDs`}</SidesheetCardTitle>
-            <Flex gap="md" align="center">
-              <Select
-                value={tabId}
-                onChange={value => setTabId(value)}
-                data={tabs?.map(tab => ({
-                  value: tab.id.toString(),
-                  label: tab.name,
-                }))}
-                w="15rem"
-              />
-              <Flex gap="sm" wrap="nowrap">
-                {tabEntityId}
-                <CopyButton className={S.CopyButton} value={tabEntityId} />
-              </Flex>
-            </Flex>
-          </Stack>
-        </>
-      )}
+      <Group
+        justify="space-between"
+        onClick={() => setOpened((x) => !x)}
+        className={Styles.CollapseButton}
+      >
+        <Stack gap="0.25rem">
+          <SidesheetCardTitle
+            mb={0}
+            c="inherit"
+          >{t`Entity ID`}</SidesheetCardTitle>
+          <Group>
+            <Text c="inherit">{t`Useful when using serialization or embedding`}</Text>
+            <EntityInfoIcon />
+          </Group>
+        </Stack>
+        <Icon name={opened ? "chevronup" : "chevrondown"} />
+      </Group>
+
+      <Collapse in={opened} role="list">
+        <Divider mb="0.75rem" />
+        <Stack gap="0.5rem">
+          <Group
+            justify="space-between"
+            role="listitem"
+            aria-label={t`This dashboard`}
+          >
+            <Text>{t`This dashboard`}</Text>
+            <EntityCopyButton entityId={dashboard.entity_id} />
+          </Group>
+          {tabs?.map((tab) =>
+            tab.entity_id ? (
+              <Group
+                justify="space-between"
+                key={tab.id}
+                role="listitem"
+                aria-label={tab.name}
+              >
+                <Text>{tab.name}</Text>
+                <EntityCopyButton entityId={tab.entity_id} />
+              </Group>
+            ) : null,
+          )}
+        </Stack>
+      </Collapse>
     </SidesheetCard>
   );
 };

@@ -20,7 +20,7 @@ describe("issue 6010", () => {
     });
   };
 
-  const createQuestion = metric_id => {
+  const createQuestion = (metric_id) => {
     return H.createQuestion({
       name: "Question",
       display: "line",
@@ -556,7 +556,7 @@ describe("issue 30039", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from ORDERS LIMIT 2");
     H.runNativeQuery();
-    cy.findAllByTestId("detail-shortcut").first().click();
+    cy.findAllByTestId("detail-shortcut").first().click({ force: true });
     cy.findByTestId("object-detail").should("be.visible");
 
     cy.realPress("{esc}");
@@ -643,8 +643,8 @@ describe.skip("issue 42049", () => {
   });
 
   it("should not mess up columns order (metabase#42049)", () => {
-    cy.intercept("POST", "/api/card/*/query", req => {
-      req.on("response", res => {
+    cy.intercept("POST", "/api/card/*/query", (req) => {
+      req.on("response", (res) => {
         const createdAt = res.body.data.cols[1];
 
         createdAt.field_ref[1] = "created_at"; // simulate named field ref
@@ -808,7 +808,7 @@ describe("issue 14148", { tags: "@external" }, () => {
           },
         },
         {
-          callback: xhr =>
+          callback: (xhr) =>
             expect(xhr.response.body.cause || "").not.to.contain("ERROR"),
         },
       ),
@@ -886,7 +886,7 @@ describe("issue 7884", () => {
     },
   };
 
-  const getNestedQuestionDetails = sourceQuestionId => ({
+  const getNestedQuestionDetails = (sourceQuestionId) => ({
     query: {
       "source-table": `card__${sourceQuestionId}`,
     },
@@ -1291,5 +1291,62 @@ describe("issue 52339", () => {
       cy.findByText("User → Source");
       cy.findByText("Distinct values of ID");
     });
+  });
+});
+
+describe("issue 56771", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should apply correct column widths after changing query (metabase#56771)", () => {
+    H.openOrdersTable();
+    cy.log(
+      "Resize a column first to make width stored in the visualization settings",
+    );
+    H.resizeTableColumn("ID", 100);
+
+    H.openNotebook();
+    H.join();
+    H.joinTable("Products");
+    H.visualize();
+
+    cy.wait(100); // wait for the column to be resized
+
+    cy.findAllByTestId("header-cell")
+      .filter(":contains(Products → Category)")
+      .as("headerCell")
+      .then(($cell) => {
+        const width = $cell[0].getBoundingClientRect().width;
+        expect(width).to.be.greaterThan(174);
+      });
+  });
+});
+
+describe("issue 57132", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    cy.intercept("POST", "/api/dataset", function (req) {
+      req.continue((res) => {
+        // remove description from the CATEGORY column
+        const index = res.body.data.cols.findIndex(
+          (col) => col.name === "CATEGORY",
+        );
+        delete res.body.data.cols[index].description;
+      });
+    });
+  });
+
+  it("should render more values when hovering colum header without description (metabase#57132)", () => {
+    H.openProductsTable();
+    H.tableInteractive().findByText("Category").realHover();
+
+    cy.log("The popover should be wide enough to show at least some values");
+    H.popover()
+      .findByText(/^Doohickey, Gadget, Gizmo/)
+      .should("be.visible");
   });
 });

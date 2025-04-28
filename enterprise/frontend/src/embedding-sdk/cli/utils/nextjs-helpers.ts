@@ -116,7 +116,7 @@ async function generateNextJsCustomAppOrRootLayoutFile(componentPath: string) {
 
   const snippet = getNextJsPagesWrapperOrAppWrapperSnippet({
     router,
-    resolveImport: pathName =>
+    resolveImport: (pathName) =>
       getImportPathForRootLayout(componentPath, pathName),
   });
 

@@ -1,23 +1,23 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { checkNotNull } from "metabase/lib/types";
+import type { CollectionItem, Dashboard } from "metabase-types/api";
 
 import {
-  adhocQuestionData,
+  assertAllResultsAndValuesAreSandboxed,
+  assertNoResultsOrValuesAreSandboxed,
+  assertResponseFailsClosed,
   assignAttributeToUser,
   configureSandboxPolicy,
   createSandboxingDashboardAndQuestions,
-  getCardResponses,
-  getDashcardResponses,
   getFieldValuesForProductCategories,
   getParameterValuesForProductCategories,
-  rowsShouldContainGizmosAndWidgets,
-  rowsShouldContainOnlyGizmos,
-  signInAsNormalUser,
-  sandboxingUser as user,
-  valuesShouldContainGizmosAndWidgets,
-  valuesShouldContainOnlyGizmos,
+  gizmoViewer,
+  modelCustomView,
+  questionCustomView,
+  signInAs,
+  widgetViewer,
 } from "./helpers/e2e-sandboxing-helpers";
-import type { DatasetResponse, SandboxableItems } from "./helpers/types";
 
 const { H } = cy;
 
@@ -31,57 +31,61 @@ describe(
   "admin > permissions > sandboxing (tested via the admin UI)",
   { tags: "@external" },
   () => {
-    let items = {} as SandboxableItems;
+    /** Saved questions and models we'll try to filter with sandboxing policies */
+    const sandboxableQuestions: CollectionItem[] = [];
+
+    /** A dashboard where we'll put all the saved questions and models we want to test */
+    let dashboard: Dashboard | null = null;
+
+    /** Saved questions and models used as custom views */
+    const customViews: CollectionItem[] = [];
 
     before(() => {
+      cy.intercept("/api/card/*/query").as("cardQuery");
+
       H.restore("postgres-12");
+
       cy.signInAsAdmin();
       H.setTokenFeatures("all");
       preparePermissions();
-      createSandboxingDashboardAndQuestions().then(result => {
+      createSandboxingDashboardAndQuestions().then((result) => {
         const { data } = result.body;
-        items = {
-          dashboard: data.find(
-            (item: { model: string }) => item.model === "dashboard",
-          ),
-          questions: data.filter(
-            (item: { model: string }) => item.model !== "dashboard",
-          ),
-        };
+        for (const item of data) {
+          if (/Dashboard/i.test(item.name)) {
+            dashboard = item as unknown as Dashboard;
+          } else if (/Question|Model/i.test(item.name)) {
+            sandboxableQuestions.push(item);
+          } else if (/Custom view/i.test(item.name)) {
+            customViews.push(item);
+          } else {
+            throw new TypeError();
+          }
+        }
       });
       // @ts-expect-error - this isn't typed yet
-      cy.createUserFromRawData(user);
+      cy.createUserFromRawData(gizmoViewer);
+      // @ts-expect-error - this isn't typed yet
+      cy.createUserFromRawData(widgetViewer);
 
       // this setup is a bit heavy, so let's just do it once
-      H.snapshot("sandboxing-on-postgres-12");
+      H.snapshot("sandboxing-snapshot");
     });
 
     beforeEach(() => {
       cy.intercept("/api/card/*/query").as("cardQuery");
+
       cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
         "dashcardQuery",
       );
       cy.intercept("POST", "/api/dataset").as("datasetQuery");
-      H.restore("sandboxing-on-postgres-12" as any);
+      H.restore("sandboxing-snapshot" as any);
     });
 
     it("shows all data before sandboxing policy is applied", () => {
-      signInAsNormalUser();
-
-      getDashcardResponses(items).then(rowsShouldContainGizmosAndWidgets);
-      getCardResponses(items).then(rowsShouldContainGizmosAndWidgets);
-
-      H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-        rowsShouldContainGizmosAndWidgets([response]),
-      );
-
-      getFieldValuesForProductCategories().then(response =>
-        valuesShouldContainGizmosAndWidgets(response.body.values),
-      );
-
-      getParameterValuesForProductCategories().then(response =>
-        valuesShouldContainGizmosAndWidgets(response.body.values),
-      );
+      signInAs(gizmoViewer);
+      assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
+      signInAs(widgetViewer);
+      assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
     });
 
     describe("we can apply a sandbox policy", () => {
@@ -93,18 +97,22 @@ describe(
         configureSandboxPolicy({
           filterTableBy: "custom_view",
           customViewType: "Question" as const,
-          customViewName: "sandbox - Question with only gizmos",
+          customViewName: questionCustomView.name,
         });
-        getDashcardResponses(items).then(rowsShouldContainOnlyGizmos);
-        getCardResponses(items).then(rowsShouldContainOnlyGizmos);
-        H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-          rowsShouldContainOnlyGizmos([response as DatasetResponse]),
+        cy.log(
+          "This sandboxing policy doesn't use user attributes. It makes all users see only the Gizmos.",
         );
-        getFieldValuesForProductCategories().then(response =>
-          valuesShouldContainOnlyGizmos(response.body.values),
+        signInAs(gizmoViewer);
+        assertAllResultsAndValuesAreSandboxed(
+          dashboard,
+          sandboxableQuestions,
+          "Gizmo",
         );
-        getParameterValuesForProductCategories().then(response =>
-          valuesShouldContainOnlyGizmos(response.body.values),
+        signInAs(widgetViewer);
+        assertAllResultsAndValuesAreSandboxed(
+          dashboard,
+          sandboxableQuestions,
+          "Gizmo",
         );
       });
 
@@ -112,37 +120,43 @@ describe(
         configureSandboxPolicy({
           filterTableBy: "custom_view",
           customViewType: "Model" as const,
-          customViewName: "sandbox - Model with only gizmos",
+          customViewName: modelCustomView.name,
         });
-        getDashcardResponses(items).then(rowsShouldContainOnlyGizmos);
-        getCardResponses(items).then(rowsShouldContainOnlyGizmos);
-        H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-          rowsShouldContainOnlyGizmos([response as DatasetResponse]),
+        cy.log(
+          "This sandboxing policy doesn't use user attributes. It makes all users see only the Gizmos.",
         );
-        getFieldValuesForProductCategories().then(response =>
-          valuesShouldContainOnlyGizmos(response.body.values),
+        signInAs(gizmoViewer);
+        assertAllResultsAndValuesAreSandboxed(
+          dashboard,
+          sandboxableQuestions,
+          "Gizmo",
         );
-        getParameterValuesForProductCategories().then(response =>
-          valuesShouldContainOnlyGizmos(response.body.values),
+        signInAs(widgetViewer);
+        assertAllResultsAndValuesAreSandboxed(
+          dashboard,
+          sandboxableQuestions,
+          "Gizmo",
         );
       });
 
       it("to a table filtered by a regular column", () => {
-        assignAttributeToUser({ attributeValue: "Gizmo" });
+        assignAttributeToUser({ user: gizmoViewer, attributeValue: "Gizmo" });
+        assignAttributeToUser({ user: widgetViewer, attributeValue: "Widget" });
         configureSandboxPolicy({
           filterTableBy: "column",
           filterColumn: "Category",
         });
-        getDashcardResponses(items).then(rowsShouldContainOnlyGizmos);
-        getCardResponses(items).then(rowsShouldContainOnlyGizmos);
-        H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-          rowsShouldContainOnlyGizmos([response as DatasetResponse]),
+        signInAs(gizmoViewer);
+        assertAllResultsAndValuesAreSandboxed(
+          dashboard,
+          sandboxableQuestions,
+          "Gizmo",
         );
-        getFieldValuesForProductCategories().then(response =>
-          valuesShouldContainOnlyGizmos(response.body.values),
-        );
-        getParameterValuesForProductCategories().then(response =>
-          valuesShouldContainOnlyGizmos(response.body.values),
+        signInAs(widgetViewer);
+        assertAllResultsAndValuesAreSandboxed(
+          dashboard,
+          sandboxableQuestions,
+          "Widget",
         );
       });
     });
@@ -151,41 +165,49 @@ describe(
     describe("we expect an error - and no data to be shown - when applying a sandbox policy...", () => {
       (
         [
-          ["Question", "boolean", "true"],
-          ["Question", "string", "Category is Gizmo"],
-          ["Question", "number", "11"],
-          ["Model", "boolean", "true"],
-          ["Model", "string", "Category is Gizmo"],
-          ["Model", "number", "11"],
+          ["Question", "booleanExpr", "true"],
+          ["Question", "booleanLiteral", "true"],
+          ["Question", "stringExpr", "Category is Gizmo"],
+          ["Question", "stringLiteral", "fixed literal string"],
+          ["Question", "numberExpr", "1"],
+          ["Question", "numberLiteral", "1"],
+          ["Model", "booleanExpr", "true"],
+          ["Model", "booleanLiteral", "true"],
+          ["Model", "stringExpr", "Category is Gizmo"],
+          ["Model", "stringLiteral", "fixed literal string"],
+          ["Model", "numberExpr", "1"],
+          ["Model", "numberLiteral", "1"],
         ] as const
       ).forEach(([customViewType, customColumnType, customColumnValue]) => {
         it(`...to a table filtered by a custom ${customColumnType} column in a ${customViewType}`, () => {
           cy.signInAsAdmin();
-          assignAttributeToUser({ attributeValue: customColumnValue });
+          assignAttributeToUser({
+            user: gizmoViewer,
+            attributeValue: customColumnValue,
+          });
           configureSandboxPolicy({
             filterTableBy: "custom_view",
             customViewType: customViewType,
-            customViewName: `sandbox - ${customViewType} with custom columns`,
+            customViewName: `${customViewType} with custom columns`,
             filterColumn: `my_${customColumnType}`,
           });
-          signInAsNormalUser();
-          H.visitDashboard(items.dashboard.id);
+          signInAs(gizmoViewer);
+          H.visitDashboard(checkNotNull(dashboard).id);
 
           cy.log("Should not return any data, and return an error");
           cy.wait(
-            new Array(items.questions.length).fill("@dashcardQuery"),
-          ).then(apiResponses => {
-            apiResponses.forEach(({ response }) => {
-              expect(response?.body.data.rows).to.have.length(0);
-              expect(response?.body.error_type).to.contain("invalid-query");
+            new Array(sandboxableQuestions.length).fill("@dashcardQuery"),
+          ).then((interceptions) => {
+            interceptions.forEach(({ response }) => {
+              assertResponseFailsClosed(response);
             });
           });
 
-          getFieldValuesForProductCategories().then(response => {
+          getFieldValuesForProductCategories().then((response) => {
             expect(response.body.values).to.have.length(0);
           });
 
-          getParameterValuesForProductCategories().then(response => {
+          getParameterValuesForProductCategories().then((response) => {
             expect(response.body.values).to.have.length(0);
           });
         });
@@ -261,7 +283,10 @@ describe(
           },
         };
 
-        Object.values(users).forEach(user => cy.createUserFromRawData(user));
+        Object.values(users).forEach((user) =>
+          // @ts-expect-error - this isn't typed yet
+          cy.createUserFromRawData(user),
+        );
 
         cy.log("Show the permissions configuration for the Sample Database");
         cy.visit("/admin/permissions/data/database/1");
@@ -294,16 +319,6 @@ describe(
 
         H.saveChangesToPermissions();
 
-        const signIn = (state: string) => {
-          const user = users[state];
-
-          cy.log(`Sign in as user via an API call: ${user.email}`);
-          cy.request("POST", "/api/session", {
-            username: user.email,
-            password: user.password,
-          });
-        };
-
         cy.log(
           "Create two sandboxed users with different attributes (state=CA, state=WA)",
         );
@@ -311,7 +326,7 @@ describe(
           "Our goal is to ensure that the second user can't see the filter value selected by the first user",
         );
 
-        signIn("California");
+        signInAs(users["California"]);
         H.visitDashboard(dashboard_id);
 
         cy.findByLabelText("Location").click();
@@ -321,7 +336,7 @@ describe(
           cy.findByLabelText("Add filter").click();
         });
 
-        signIn("Washington");
+        signInAs(users["Washington"]);
         H.visitDashboard(dashboard_id);
         cy.findByLabelText("Location").click();
         H.popover().within(() => {

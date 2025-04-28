@@ -73,7 +73,7 @@ export function getEmbeddingColorPalette(
         const themeColorNames =
           SDK_TO_MAIN_APP_COLORS_MAPPING[key as MappableSdkColor];
         if (themeColorNames) {
-          return themeColorNames.map(mappedColor => [mappedColor, value]);
+          return themeColorNames.map((mappedColor) => [mappedColor, value]);
         } else {
           return [];
         }

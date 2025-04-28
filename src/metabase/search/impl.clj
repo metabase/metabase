@@ -264,7 +264,8 @@
    [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
-   [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]])
+   [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
+   [:include-metadata?                   {:optional true} [:maybe boolean?]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -280,6 +281,7 @@
            is-impersonated-user?
            is-sandboxed-user?
            include-dashboard-questions?
+           include-metadata?
            is-superuser?
            last-edited-at
            last-edited-by
@@ -326,6 +328,7 @@
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
+                 (some? include-metadata?)                   (assoc :include-metadata? include-metadata?)
                  (seq ids)                                   (assoc :ids ids))]
     (when (and (seq ids)
                (not= (count models) 1))
@@ -399,6 +402,21 @@
        (map #(u/update-some % :dashboard select-keys [:id :name :moderation_status]))
        (map #(dissoc % :dashboard_id))))
 
+(defn- add-metadata [search-results]
+  (let [card-ids (into #{}
+                       (comp
+                        (filter #(= (:model %) "card"))
+                        (map :id))
+                       search-results)
+        card-metadata (if (empty? card-ids)
+                        {}
+                        (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in card-ids]))]
+    (map (fn [{:keys [model id] :as item}]
+           (if (= model "card")
+             (assoc item :result_metadata (card-metadata id))
+             item))
+         search-results)))
+
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
   [search-ctx :- search.config/SearchContext]
@@ -413,6 +431,7 @@
         total-results     (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                             true hydrate-dashboards
                             true hydrate-user-metadata
+                            (:include-metadata? search-ctx) (add-metadata)
                             (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
                             true (add-collection-effective-location)
                             true (map serialize))]

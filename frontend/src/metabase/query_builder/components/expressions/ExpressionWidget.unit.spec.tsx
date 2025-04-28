@@ -7,7 +7,6 @@ import { createQuery } from "metabase-lib/test-helpers";
 import type { ExpressionWidgetProps } from "./ExpressionWidget";
 import { ExpressionWidget } from "./ExpressionWidget";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
-import type { StartRule } from "./types";
 
 describe("ExpressionWidget", () => {
   it("should render proper controls", () => {
@@ -119,9 +118,9 @@ describe("ExpressionWidget", () => {
     });
   });
 
-  describe("startRule = 'aggregation'", () => {
+  describe("expressionMode = 'aggregation'", () => {
     it("should show 'unknown metric' error if the identifier is not recognized as a dimension (metabase#50753)", async () => {
-      await setup({ startRule: "aggregation" });
+      await setup({ expressionMode: "aggregation" });
 
       await userEvent.paste("[Imaginary]");
       await userEvent.tab();
@@ -133,7 +132,7 @@ describe("ExpressionWidget", () => {
     });
 
     it("should show 'no aggregation found' error if the identifier is recognized as a dimension (metabase#50753)", async () => {
-      await setup({ startRule: "aggregation" });
+      await setup({ expressionMode: "aggregation" });
 
       await userEvent.paste("[Total] / [Subtotal]");
       await userEvent.tab();
@@ -147,9 +146,9 @@ describe("ExpressionWidget", () => {
     });
   });
 
-  describe("startRule = 'expression'", () => {
+  describe("expressionMode = 'expression'", () => {
     it("should show a detailed error when comma is missing (metabase#15892)", async () => {
-      await setup({ startRule: "expression" });
+      await setup({ expressionMode: "expression" });
 
       await userEvent.paste('concat([Tax] "test")');
       await userEvent.tab();
@@ -157,14 +156,12 @@ describe("ExpressionWidget", () => {
       const doneButton = screen.getByRole("button", { name: "Done" });
       expect(doneButton).toBeDisabled();
 
-      await screen.findByText('Expecting comma but got "test" instead');
+      await screen.findByText('Expecting operator but got "test" instead');
     });
   });
 });
 
-async function setup<S extends StartRule = "expression">(
-  additionalProps?: Partial<ExpressionWidgetProps<S>>,
-) {
+async function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
   const query = createQuery();
   const stageIndex = 0;
   const onChangeClause = jest.fn();

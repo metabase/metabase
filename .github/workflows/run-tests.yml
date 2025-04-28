@@ -15,6 +15,9 @@ jobs:
     timeout-minutes: 5
     outputs:
       e2e_all: ${{ steps.changes.outputs.e2e_all }}
+      e2e_all_files: ${{ steps.changes.outputs.e2e_all_files }}
+      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
+      e2e_specs_files: ${{ steps.changes.outputs.e2e_specs_files }}
       backend_all: ${{ steps.changes.outputs.backend_all }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
@@ -25,6 +28,8 @@ jobs:
         id: changes
         with:
           token: ${{ github.token }}
+          # comma separated list of files
+          list-files: csv
           filters: .github/file-paths.yaml
 
   static-viz-files-changed:
@@ -43,6 +48,8 @@ jobs:
           m2-cache-key: "files-changed"
       - name: Build static-viz frontend
         run: yarn build-static-viz
+        env:
+          MB_EDITION: ee
       - name: Upload Static Viz Bundle Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -77,6 +84,7 @@ jobs:
     secrets: inherit
     with:
       skip: ${{ needs.files-changed.outputs.frontend_all != 'true' }}
+      skip-lint: ${{ needs.files-changed.outputs.frontend_all != 'true' && needs.files-changed.outputs.e2e_specs != 'true' }}
 
   e2e-tests:
     needs: files-changed
@@ -84,3 +92,8 @@ jobs:
     secrets: inherit
     with:
       skip: ${{ needs.files-changed.outputs.e2e_all != 'true' }}
+      # here we pass result from files-changed, which is a list of files, comma separated
+      # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
+      # e2e_all_files includes all changes which trigger all e2e tests, if the list of changes files is included in the
+      # list of changed specs files, then only specs are changed and we can run only those specs
+      specs: ${{ needs.files-changed.outputs.e2e_all_files == needs.files-changed.outputs.e2e_specs_files && needs.files-changed.outputs.e2e_specs_files || '' }}

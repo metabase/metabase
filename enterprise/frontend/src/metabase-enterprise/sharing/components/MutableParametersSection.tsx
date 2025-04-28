@@ -9,6 +9,7 @@ import { getPulseParameters } from "metabase/lib/pulse";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import {
   PULSE_PARAM_USE_DEFAULT,
   getDefaultValuePopulatedParameters,
@@ -44,9 +45,10 @@ export const MutableParametersSection = ({
   );
 
   const setParameterValue = (id: ParameterId, value: any) => {
-    const parameter = parameters.find(parameter => parameter.id === id);
+    const parameter = parameters.find((parameter) => parameter.id === id);
+    const operator = parameter && deriveFieldOperatorFromParameter(parameter);
     const filteredParameters = pulseParameters.filter(
-      parameter => parameter.id !== id,
+      (parameter) => parameter.id !== id,
     );
     const newParameters =
       value === PULSE_PARAM_USE_DEFAULT
@@ -54,6 +56,7 @@ export const MutableParametersSection = ({
         : filteredParameters.concat({
             ...parameter,
             value,
+            options: operator?.optionsDefaults,
           });
 
     setPulseParameters(newParameters);

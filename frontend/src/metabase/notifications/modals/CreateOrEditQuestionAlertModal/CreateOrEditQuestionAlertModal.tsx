@@ -63,15 +63,21 @@ const ALERT_TRIGGER_OPTIONS_MAP: Record<
 > = {
   has_result: {
     value: "has_result" as const,
-    label: t`When this question has results`,
+    get label() {
+      return t`When this question has results`;
+    },
   },
   goal_above: {
     value: "goal_above" as const,
-    label: t`When results go above the goal line`,
+    get label() {
+      return t`When results go above the goal line`;
+    },
   },
   goal_below: {
     value: "goal_below" as const,
-    label: t`When results go below the goal line`,
+    get label() {
+      return t`When results go below the goal line`;
+    },
   },
 };
 
@@ -81,6 +87,7 @@ const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
   "daily",
   "weekly",
   "monthly",
+  "cron",
 ];
 
 type CreateOrEditQuestionAlertModalProps = {
@@ -135,7 +142,7 @@ export const CreateOrEditQuestionAlertModal = ({
       getAlertTriggerOptions({
         question,
         visualizationSettings,
-      }).map(trigger => ALERT_TRIGGER_OPTIONS_MAP[trigger]),
+      }).map((trigger) => ALERT_TRIGGER_OPTIONS_MAP[trigger]),
     [question, visualizationSettings],
   );
 
@@ -299,7 +306,7 @@ export const CreateOrEditQuestionAlertModal = ({
                 data={triggerOptions}
                 value={notification.payload.send_condition}
                 w={276}
-                onChange={value =>
+                onChange={(value) =>
                   setNotification({
                     ...notification,
                     payload: {
@@ -337,7 +344,7 @@ export const CreateOrEditQuestionAlertModal = ({
               });
             }}
             emailRecipientText={t`Email alerts to:`}
-            getInvalidRecipientText={domains =>
+            getInvalidRecipientText={(domains) =>
               t`You're only allowed to email alerts to addresses ending in ${domains}`
             }
           />
@@ -345,10 +352,15 @@ export const CreateOrEditQuestionAlertModal = ({
         <AlertModalSettingsBlock title={t`More options`}>
           <Switch
             label={t`Only send this alert once`}
+            styles={{
+              label: {
+                lineHeight: "1.5rem",
+              },
+            }}
             labelPosition="right"
             size="sm"
             checked={notification.payload.send_once}
-            onChange={e =>
+            onChange={(e) =>
               setNotification({
                 ...notification,
                 payload: {

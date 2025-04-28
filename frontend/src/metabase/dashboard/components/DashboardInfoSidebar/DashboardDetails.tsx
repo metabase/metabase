@@ -102,7 +102,7 @@ function SharingDisplay({ dashboard }: { dashboard: Dashboard }) {
             target={
               <FixedSizeIcon
                 name="link"
-                onClick={() => setIsPopoverOpen(prev => !prev)}
+                onClick={() => setIsPopoverOpen((prev) => !prev)}
                 className={cx(
                   Styles.cursorPointer,
                   Styles.textBrandHover,

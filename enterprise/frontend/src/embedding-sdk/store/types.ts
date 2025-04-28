@@ -3,16 +3,18 @@ import type {
   SerializedError,
   ThunkDispatch,
 } from "@reduxjs/toolkit";
-import type { JSX, ReactNode } from "react";
+import type { JSX } from "react";
 
+import type { MetabaseAuthConfig } from "embedding-sdk/types/auth-config";
+import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
+import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type {
-  MetabaseAuthConfig,
   MetabaseEmbeddingSessionToken,
   MetabaseFetchRequestTokenFn,
-} from "embedding-sdk";
-import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
+} from "embedding-sdk/types/refresh-token";
+import type { SdkErrorComponent } from "embedding-sdk/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
-import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
+import type { LoginStatus } from "embedding-sdk/types/user";
 import type { State } from "metabase-types/store";
 
 export type EmbeddingSessionTokenState = {
@@ -21,32 +23,7 @@ export type EmbeddingSessionTokenState = {
   error: SerializedError | null;
 };
 
-type LoginStatusUninitialized = {
-  status: "uninitialized";
-};
-type LoginStatusSuccess = {
-  status: "success";
-};
-type LoginStatusLoading = {
-  status: "loading";
-};
-export type LoginStatusError = {
-  status: "error";
-  error: Error;
-};
-
-export type LoginStatus =
-  | LoginStatusUninitialized
-  | LoginStatusSuccess
-  | LoginStatusLoading
-  | LoginStatusError;
-
 export type SdkDispatch = ThunkDispatch<SdkStoreState, void, AnyAction>;
-
-export type SdkErrorComponentProps = { message: ReactNode };
-export type SdkErrorComponent = ({
-  message,
-}: SdkErrorComponentProps) => JSX.Element;
 
 export type SdkState = {
   metabaseInstanceUrl: MetabaseAuthConfig["metabaseInstanceUrl"];

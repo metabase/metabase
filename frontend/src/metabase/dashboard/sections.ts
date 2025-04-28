@@ -76,7 +76,7 @@ function createScalarDashCardPlaceholder(
   });
 }
 
-const getKpiGridLayout: LayoutFn = position => {
+const getKpiGridLayout: LayoutFn = (position) => {
   const heading = createHeadingDashCard({
     ...position,
     size_x: GRID_WIDTH,
@@ -120,7 +120,7 @@ const getKpiGridLayout: LayoutFn = position => {
   return [heading, ...row1, ...row2];
 };
 
-const getLargeChartKpiColLayout: LayoutFn = position => {
+const getLargeChartKpiColLayout: LayoutFn = (position) => {
   const heading = createHeadingDashCard({
     ...position,
     size_x: GRID_WIDTH,
@@ -155,7 +155,7 @@ const getLargeChartKpiColLayout: LayoutFn = position => {
   return [heading, largeCard, ...scalarCardsColumn];
 };
 
-const getKpiLargeChartBelowLayout: LayoutFn = position => {
+const getKpiLargeChartBelowLayout: LayoutFn = (position) => {
   const heading = createHeadingDashCard({
     ...position,
     size_x: GRID_WIDTH,
@@ -199,17 +199,23 @@ const getKpiLargeChartBelowLayout: LayoutFn = position => {
 export const layoutOptions: SectionLayout[] = [
   {
     id: "kpi_grid",
-    label: t`KPI grid`,
+    get label() {
+      return t`KPI grid`;
+    },
     getLayout: getKpiGridLayout,
   },
   {
     id: "large_chart_kpi_right",
-    label: t`Large chart w/ KPIs to the right`,
+    get label() {
+      return t`Large chart w/ KPIs to the right`;
+    },
     getLayout: getLargeChartKpiColLayout,
   },
   {
     id: "kpi_chart_below",
-    label: t`KPIs w/ large chart below`,
+    get label() {
+      return t`KPIs w/ large chart below`;
+    },
     getLayout: getKpiLargeChartBelowLayout,
   },
 ];

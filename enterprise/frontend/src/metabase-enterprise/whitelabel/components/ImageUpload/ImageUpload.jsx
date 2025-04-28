@@ -32,10 +32,10 @@ export const ImageUpload = ({ id, setting, onChange, ...props }) => {
       {window.File && window.FileReader ? (
         <FileInput
           id={id}
-          onChange={e => {
+          onChange={(e) => {
             if (e.target.files.length > 0) {
               const reader = new FileReader();
-              reader.onload = e => onChange(e.target.result);
+              reader.onload = (e) => onChange(e.target.result);
               reader.readAsDataURL(e.target.files[0]);
             }
           }}

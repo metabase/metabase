@@ -22,8 +22,8 @@ export const showTimelinesForCollection =
   (dispatch: Dispatch, getState: GetState) => {
     const fetchedTimelines: Timeline[] = getFetchedTimelines(getState());
     const collectionTimelines = collectionId
-      ? fetchedTimelines.filter(t => t.collection_id === collectionId)
-      : fetchedTimelines.filter(t => t.collection_id == null);
+      ? fetchedTimelines.filter((t) => t.collection_id === collectionId)
+      : fetchedTimelines.filter((t) => t.collection_id == null);
 
-    dispatch(showTimelineEvents(collectionTimelines.flatMap(t => t.events)));
+    dispatch(showTimelineEvents(collectionTimelines.flatMap((t) => t.events)));
   };

@@ -1,4 +1,8 @@
 // Storybook helpers
+// @ts-expect-error There is no type definition
+import createAsyncCallback from "@loki/create-async-callback";
+import type { StoryFn } from "@storybook/react";
+import { useEffect, useMemo } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
@@ -93,3 +97,38 @@ export const IsomorphicVisualizationStory = ({
     </Box>
   );
 };
+
+/**
+ * Shows how a visualization is rendered in the SDK,
+ * using the SDK's theme provider.
+ */
+export const SdkVisualizationStory = ({
+  rawSeries,
+  theme,
+}: IsomorphicVisualizationStoryProps & { theme?: MetabaseTheme }) => {
+  return (
+    <Box w={1000} h={600} bg={theme?.colors?.background}>
+      <VisualizationWrapper>
+        <SdkThemeProvider theme={theme}>
+          <Visualization rawSeries={rawSeries} width={500} />
+        </SdkThemeProvider>
+      </VisualizationWrapper>
+    </Box>
+  );
+};
+
+export function createWaitForResizeToStopDecorator(timeoutMs: number = 1000) {
+  return function WaitForResizeToStopDecorator(Story: StoryFn) {
+    const asyncCallback = useMemo(() => createAsyncCallback(), []);
+
+    useEffect(() => {
+      const timeoutId = setTimeout(asyncCallback, timeoutMs);
+
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    }, [asyncCallback]);
+
+    return <Story />;
+  };
+}

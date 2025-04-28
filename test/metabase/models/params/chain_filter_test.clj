@@ -495,7 +495,7 @@
             (is (= {:values          [["Japanese"] ["Steakhouse"]]
                     :has_more_values false}
                    (chain-filter categories.name {venues.price 4})))
-            (is (= 1 (t2/count :model/FieldValues :field_id field-id :type :linked-filter)))))
+            (is (= 1 (t2/count :model/FieldValues :field_id field-id :type :advanced)))))
 
         (testing "should search with the cached FieldValues when search without constraints"
           (mt/with-temp
@@ -515,11 +515,11 @@
           (testing "should create a linked-filter FieldValues"
             ;; warm up the cache
             (chain-filter categories.name {venues.price 4})
-            (is (= 1 (t2/count :model/FieldValues :field_id field-id :type "linked-filter"))))
+            (is (= 1 (t2/count :model/FieldValues :field_id field-id :type :advanced))))
 
           (testing "should search for the values of linked-filter FieldValues"
             (t2/update! :model/FieldValues {:field_id field-id
-                                            :type     "linked-filter"}
+                                            :type     :advanced}
                         {:values (json/encode ["Good" "Bad"])
                          ;; HACK: currently this is hardcoded to true for linked-filter
                          ;; in [[params.field-values/fetch-advanced-field-values]]
@@ -530,7 +530,7 @@
                    (chain-filter-search categories.name {venues.price 4} "o")))
             (testing "Shouldn't use cached FieldValues if has_more_values=true"
               (t2/update! :model/FieldValues {:field_id field-id
-                                              :type     "linked-filter"}
+                                              :type     :advanced}
                           {:has_more_values true})
               (is (= {:values          [["Steakhouse"]]
                       :has_more_values false}
@@ -626,8 +626,8 @@
                    (:has_more_values (chain-filter categories.name {})))))
 
           (testing "`true` if the limit option is less than the count of values of fieldvalues"
-            (is (= true
-                   (:has_more_values (chain-filter categories.name {} :limit 1)))))
+            (is (true?
+                 (:has_more_values (chain-filter categories.name {} :limit 1)))))
           (testing "`false` if the limit option is greater the count of values of fieldvalues"
             (is (= false
                    (:has_more_values (chain-filter categories.name {} :limit Integer/MAX_VALUE))))))
@@ -635,8 +635,8 @@
         (testing "`true` if the values of a field exceeds our [[field-values/*total-max-length*]] limit"
           (with-clean-field-values-for-field! (mt/id :categories :name)
             (binding [field-values/*total-max-length* 10]
-              (is (= true
-                     (:has_more_values (chain-filter categories.name {}))))))))
+              (is (true?
+                   (:has_more_values (chain-filter categories.name {}))))))))
 
       (testing "with contraints"
         (with-clean-field-values-for-field! (mt/id :categories :name)
@@ -645,8 +645,8 @@
                    (:has_more_values (chain-filter categories.name {venues.price 4})))))
 
           (testing "`true` if the limit option is less than the count of values of fieldvalues"
-            (is (= true
-                   (:has_more_values (chain-filter categories.name {venues.price 4} :limit 1)))))
+            (is (true?
+                 (:has_more_values (chain-filter categories.name {venues.price 4} :limit 1)))))
           (testing "`false` if the limit option is greater the count of values of fieldvalues"
             (is (= false
                    (:has_more_values (chain-filter categories.name {venues.price 4} :limit Integer/MAX_VALUE))))))
@@ -654,8 +654,8 @@
         (with-clean-field-values-for-field! (mt/id :categories :name)
           (testing "`true` if the values of a field exceeds our [[field-values/*total-max-length*]] limit"
             (binding [field-values/*total-max-length* 10]
-              (is (= true
-                     (:has_more_values (chain-filter categories.name {venues.price 4})))))))))
+              (is (true?
+                   (:has_more_values (chain-filter categories.name {venues.price 4})))))))))
 
     (testing "for non-cached fields"
       (testing "with contraints"
@@ -665,8 +665,8 @@
                    (:has_more_values (chain-filter venues.latitude {venues.price 4})))))
 
           (testing "`true` if the limit is less than the number of values the field has"
-            (is (= true
-                   (:has_more_values (chain-filter venues.latitude {venues.price 4} :limit 1))))))))))
+            (is (true?
+                 (:has_more_values (chain-filter venues.latitude {venues.price 4} :limit 1))))))))))
 
 ;; TODO: make this test parallel, but clj-kondo complains about t2/update! being destructive and no amount of
 ;; :clj-kondo/ignore convinces it.

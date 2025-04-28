@@ -365,7 +365,7 @@ class Question {
     const table = this.metadata().table(sourceTableId);
 
     const hasSinglePk =
-      table?.fields?.filter(field => field.isPK())?.length === 1;
+      table?.fields?.filter((field) => field.isPK())?.length === 1;
     const { isNative } = Lib.queryDisplayInfo(this.query());
 
     return !isNative && !Lib.hasClauses(query, -1) && hasSinglePk;
@@ -593,7 +593,7 @@ class Question {
 
   setResultMetadataDiff(metadataDiff: Record<string, Partial<Field>>) {
     const metadata = this.getResultMetadata();
-    const newMetadata = metadata.map(column => {
+    const newMetadata = metadata.map((column) => {
       const columnDiff = metadataDiff[column.name];
       return columnDiff ? { ...column, ...columnDiff } : column;
     });
@@ -632,7 +632,7 @@ class Question {
   }
 
   setParameter(id: ParameterId, parameter: ParameterObject) {
-    const newParameters = this.parameters().map(oldParameter =>
+    const newParameters = this.parameters().map((oldParameter) =>
       oldParameter.id === id ? parameter : oldParameter,
     );
 
@@ -695,7 +695,7 @@ class Question {
   }
 
   isDirtyComparedToWithoutParameters(originalQuestion: Question) {
-    const [a, b] = [this, originalQuestion].map(q => {
+    const [a, b] = [this, originalQuestion].map((q) => {
       return (
         q &&
         new Question(q.card(), this.metadata())
@@ -923,18 +923,6 @@ class Question {
     if (databaseId != null) {
       card = assocIn(card, ["dataset_query", "database"], databaseId);
     }
-
-    // If the card has a top-level entity_id, use that. Otherwise, use the one on the query info.
-    // If neither of those exists, synthesize a random one.
-    const innerEntityIdPath = ["dataset_query", "info", "card-entity-id"];
-    const entity_id =
-      card.entity_id || getIn(card, innerEntityIdPath) || Lib.randomIdent();
-
-    // Then set both locations.
-    card = chain(card)
-      .assoc("entity_id", entity_id)
-      .assocIn(innerEntityIdPath, entity_id)
-      .value();
 
     return new Question(card, metadata, parameterValues);
   }

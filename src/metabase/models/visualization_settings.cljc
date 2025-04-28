@@ -399,6 +399,8 @@
    :link_text                     ::link-text
    :link_url                      ::link-url
    :show_mini_bar                 ::show-mini-bar
+   :text_wrapping                 ::text-wrapping
+   :text_align                    ::text-align
    ;; TODO: keeping these the same for FE/BE consistency
    :pivot_table.column_sort_order  :pivot_table.column_sort_order
    :pivot_table.column_show_totals :pivot_table.column_show_totals})
