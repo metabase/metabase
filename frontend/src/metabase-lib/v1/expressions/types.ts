@@ -58,6 +58,7 @@ export type MBQLClauseFunctionConfig = {
   hasOptions?: boolean;
   multiple?: boolean;
   name: DefinedClauseName;
+  category?: MBQLClauseCategory;
 
   validator?: (...args: any) => string | undefined;
 };

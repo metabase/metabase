@@ -37,7 +37,7 @@ function defineClauses<const T extends Record<string, ConfigInput>>(
 }
 
 const WINDOW = defineClauses(
-  {},
+  { category: "window" },
   {
     "cum-count": {
       displayName: "CumulativeCount",
@@ -65,7 +65,7 @@ const WINDOW = defineClauses(
 );
 
 const AGGREGATION = defineClauses(
-  {},
+  { category: "aggregation" },
   {
     count: { displayName: "Count", type: "aggregation", args: [] },
     sum: { displayName: "Sum", type: "aggregation", args: ["number"] },
@@ -122,7 +122,7 @@ const AGGREGATION = defineClauses(
 );
 
 const CAST = defineClauses(
-  {},
+  { category: "conversion" },
   {
     text: {
       displayName: "text",
@@ -152,7 +152,7 @@ const CAST = defineClauses(
 );
 
 const STRING = defineClauses(
-  {},
+  { category: "string" },
   {
     lower: { displayName: "lower", type: "string", args: ["string"] },
     upper: { displayName: "upper", type: "string", args: ["string"] },
@@ -264,7 +264,7 @@ const STRING = defineClauses(
 );
 
 const DATE = defineClauses(
-  {},
+  { category: "date" },
   {
     "month-name": {
       displayName: "monthName",
@@ -381,7 +381,7 @@ const DATE = defineClauses(
 );
 
 const NUMERIC = defineClauses(
-  {},
+  { category: "math" },
   {
     abs: {
       displayName: "abs",
@@ -435,7 +435,7 @@ const NUMERIC = defineClauses(
 );
 
 const LOGICAL = defineClauses(
-  {},
+  { category: "logical" },
   {
     between: {
       displayName: "between",
