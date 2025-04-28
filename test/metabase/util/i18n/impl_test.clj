@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.models.setting :as setting]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.core :as setting]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
    [metabase.util.i18n.impl :as i18n.impl]

@@ -3,7 +3,7 @@
   `:add-default-userland-constraints?` `:middleware` option."
   (:require
    [metabase.lib.core :as lib]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 ;; The following "defaults" are not applied to the settings themselves - why not? Because the existing behavior is

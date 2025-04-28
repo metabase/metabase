@@ -3,7 +3,7 @@
    [environ.core :as env]
    [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [toucan2.core :as t2]))
 

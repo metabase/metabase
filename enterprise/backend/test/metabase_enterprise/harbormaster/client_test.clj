@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.harbormaster.client :as hm.client]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [metabase.test.util :as mt]))
 
 (deftest ->config-good-test
