@@ -1350,3 +1350,117 @@ describe("issue 57132", () => {
       .should("be.visible");
   });
 });
+
+describe("issue 52333", () => {
+  const baseQuery = `
+SELECT *
+FROM (
+  SELECT
+    category,
+    source,
+    state,
+    SUM(orders.discount) AS discount,
+    SUM(orders.total) AS total,
+    SUM(orders.quantity) AS quantity
+  FROM
+    orders
+    LEFT JOIN products ON orders.product_id = products.id
+    LEFT JOIN people ON orders.user_id = people.id
+  GROUP BY category, source, state
+) AS filtered_orders
+WHERE NOT (
+  category = 'Gizmo'
+  AND (
+    source IN ('Facebook', 'Google', 'Organic', 'Twitter')
+    OR state NOT IN ('AK')
+  )
+);`;
+
+  const baseQuestionDetails = {
+    name: "52333",
+    display: "table",
+    native: {
+      query: baseQuery,
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("pivot table should show subtotals for a group of a single value (metabase#52333)", () => {
+    H.createNativeQuestion(baseQuestionDetails, {
+      visitQuestion: true,
+      wrapId: true,
+    });
+
+    cy.get("@questionId").then((id) => {
+      const questionDetails = {
+        query: {
+          "source-table": `card__${id}`,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              "CATEGORY",
+              {
+                "base-type": "type/Text",
+              },
+            ],
+            [
+              "field",
+              "SOURCE",
+              {
+                "base-type": "type/Text",
+              },
+            ],
+            [
+              "field",
+              "STATE",
+              {
+                "base-type": "type/Text",
+              },
+            ],
+          ],
+        },
+        display: "pivot",
+        visualization_settings: {
+          "pivot_table.column_split": {
+            rows: ["CATEGORY", "SOURCE", "STATE"],
+            columns: [],
+            values: ["count", "avg"],
+          },
+          "pivot_table.column_widths": {
+            leftHeaderWidths: [104, 92, 80],
+            totalLeftHeaderWidths: 276,
+            valueHeaderWidths: {},
+          },
+          "pivot_table.collapsed_rows": {
+            value: ['["Doohickey"]', '["Gadget"]', '["Widget"]'],
+            rows: ["CATEGORY", "SOURCE", "STATE"],
+          },
+        },
+      };
+
+      H.createQuestion(questionDetails, { visitQuestion: true });
+    });
+
+    H.queryBuilderMain().within(() => {
+      cy.findByText("Affiliate");
+      cy.findByText("AK");
+
+      // Ensure it does not show subtotals for the single value by default
+      cy.findByText("Totals for Affiliate").should("not.exist");
+
+      H.openVizSettingsSidebar();
+    });
+
+    H.sidebar().findByText("Condense duplicate totals").click();
+
+    // Ensure it shows subtotals for the single value
+    H.queryBuilderMain()
+      .findByText("Totals for Affiliate")
+      .should("be.visible");
+  });
+});
