@@ -29,7 +29,8 @@
 
 (shared.ns/import-fns
  [metabase.query-analysis.models.query-analysis
-  cards-with-reference-errors]
+  cards-with-reference-errors
+  reference-errors]
  [nqa
   tables-for-native]
  [metabase.query-analysis.settings
