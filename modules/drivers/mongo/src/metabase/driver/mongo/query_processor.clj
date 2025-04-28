@@ -247,6 +247,12 @@
       (isa? coercion :Coercion/String->Float)
       {"$toDouble" field-name}
 
+      (isa? coercion :Coercion/String->Integer)
+      {"$toLong" field-name}
+
+      (isa? coercion :Coercion/Float->Integer)
+      {"$toLong" {"$round" {"$toDouble" field-name}}}
+
       :else field-name)))
 
 ;; Don't think this needs to implement `->lvalue` because you can't assign something to an aggregation e.g.

@@ -729,7 +729,7 @@
     ;; Does this driver support the :distinct-where function?
     :distinct-where
 
-    ;; Does this driver support casting text to integers? (`integer()` custom expression function)
+    ;; Does this driver support casting text and floats to integers? (`integer()` custom expression function)
     :expressions/integer
 
     ;; Does this driver support casting values to text? (`text()` custom expression function)

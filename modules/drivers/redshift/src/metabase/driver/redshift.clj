@@ -297,6 +297,10 @@
   [driver [_ field]]
   [:avg [:cast (sql.qp/->honeysql driver field) :float]])
 
+(defmethod sql.qp/->integer :redshift
+  [driver value]
+  (sql.qp/->integer-with-round driver value))
+
 (defn- extract [unit temporal]
   [::h2x/extract (format "'%s'" (name unit)) temporal])
 

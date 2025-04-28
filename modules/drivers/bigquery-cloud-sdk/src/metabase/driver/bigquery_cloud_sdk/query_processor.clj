@@ -198,10 +198,6 @@
 ;;; |                                               SQL Driver Methods                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :integer]
-  [driver [_ value]]
-  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
-
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :split-part]
   [driver [_ text divider position]]
   [:coalesce
