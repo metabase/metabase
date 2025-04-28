@@ -238,7 +238,7 @@
            :rendered {:from    "notifications@metabase.com"
                       :bcc     ["bot@metabase.com"]
                       :subject "Meta Bot has created a row for orders"
-                      :body    [{:type "text/html; charset=utf-8" :content "New record: "}]}}
+                      :body    [{:type "text/html; charset=utf-8" :content "New record: active"}]}}
           (mt/user-http-request :crowberto :post 200 "notification/preview_template"
                                 {:template     {:channel_type :channel/email
                                                 :details {:type    :email/handlebars-text
