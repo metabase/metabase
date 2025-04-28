@@ -11,15 +11,15 @@
    [metabase.db :as mdb]
    [metabase.models.interface :as mi]
    [metabase.models.setting.cache :as setting.cache]
+   [metabase.task :as task]
+   [metabase.task.bootstrap :as task.bootstrap]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.pipeline :as t2.pipeline]
-   [metabase.task :as task]
-   [metabase.task.bootstrap :as task.bootstrap])
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.io File InputStream)
    (org.apache.commons.io.input BoundedInputStream)))
