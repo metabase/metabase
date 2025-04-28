@@ -55,7 +55,7 @@ describe("diagnostics", () => {
     });
 
     it("should catch invalid characters", () => {
-      expect(err("[Price] / #")).toBe("Invalid character: #");
+      expect(err("[Price] / #")).toBe("Unexpected character: #");
     });
 
     it("should catch unterminated string literals", () => {
@@ -382,7 +382,7 @@ describe("diagnostics", () => {
       it.each([`.`, `1°`, `@`, `#`, `%`, `@`, `(])`])(
         "should reject bad tokens like %s",
         (expression) => {
-          expect(err(expression)).toMatch(/^Invalid character/);
+          expect(err(expression)).toMatch(/^Unexpected character/);
         },
       );
 
