@@ -4,9 +4,8 @@ import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { CacheConfigApi } from "metabase/services";
 import type { CacheableModel } from "metabase-types/api";
-import { isErrorWithMessageResponse } from "metabase-types/guards";
 
-import { resolveSmoothly } from "../utils";
+import { isErrorWithMessage, resolveSmoothly } from "../utils";
 
 export const useInvalidateTarget = (
   targetId: number | null,
@@ -29,7 +28,7 @@ export const useInvalidateTarget = (
         await invalidate;
       }
     } catch (e) {
-      if (isErrorWithMessageResponse(e)) {
+      if (isErrorWithMessage(e)) {
         dispatch(
           addUndo({
             icon: "warning",
