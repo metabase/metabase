@@ -86,7 +86,7 @@ export type TemplateDetails = {
 };
 
 export type ChannelTemplate = {
-  name: string;
+  name?: string;
   channel_type: string;
   details: TemplateDetails;
 };
@@ -226,6 +226,27 @@ export type TableNotification = BaseNotification &
   };
 
 export type Notification = AlertNotification | TableNotification;
+
+export type PreviewNotificationTemplateRequest = {
+  notification:
+    | Notification
+    | CreateNotificationRequest
+    | UpdateNotificationRequest;
+  template: ChannelTemplate;
+};
+type RenderedEmailPayload = {
+  bcc: string[];
+  from: string;
+  subject: string;
+  body: Array<{
+    type: "text/html; charset=utf-8";
+    content: string;
+  }>;
+};
+export type PreviewNotificationTemplateResponse = {
+  context: unknown;
+  rendered: RenderedEmailPayload;
+};
 
 // Initial schema for conditional expression.
 // Will be updated later.
