@@ -190,6 +190,30 @@
                                :updated-at                  "2025-03-25T14:54:26.824Z"},
        :trace-redirects       []}]
 
+ {:method :get, :url "/api/v2/mb/connections/e5b50d83-c1d6-4382-8351-ff95a23af60e", :body nil},
+ [:error {:cached                nil,
+          :request-time          23,
+          :repeatable?           false,
+          :protocol-version      {:name "HTTP", :major 1, :minor 1},
+          :streaming?            true,
+          ;; :http-client #object[org.apache.http.impl.client.InternalHttpClient 0x8f60f32 "org.apache.http.impl.client.InternalHttpClient@8f60f32"],
+          :chunked?              false,
+          :reason-phrase         "OK",
+          :headers
+          {"Date"                      "Mon, 27 Jan 2025 18:43:42 GMT",
+           "Connection"                "close",
+           "Content-Type"              "application/json;charset=utf-8",
+           "X-Frame-Options"           "SAMEORIGIN",
+           "X-Content-Type-Options"    "nosniff",
+           "Strict-Transport-Security" "max-age=31536000; includeSubDomains",
+           "Content-Length"            "386",
+           "Server"                    "Jetty(11.0.24)"},
+          :orig-content-encoding nil,
+          :status                403,
+          :length                53,
+          :body                  {:error "User not authorized to act over resource."},
+          :trace-redirects       []}]
+
  {:method :get, :url "/api/v2/mb/connections/e8653c8d-4d86-4ebc-92a3-0468252b9d07", :body nil},
  [:ok {:cached                nil,
        :request-time          23,
