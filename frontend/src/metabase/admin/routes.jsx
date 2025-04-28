@@ -1,12 +1,12 @@
 import { Fragment } from "react";
-import { IndexRedirect, IndexRoute } from "react-router";
+import { IndexRedirect, IndexRoute, Redirect } from "react-router";
 import { t } from "ttag";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
 import { DatabaseConnectionModal } from "metabase/admin/databases/containers/DatabaseConnectionModal";
 import { DatabaseEditApp } from "metabase/admin/databases/containers/DatabaseEditApp";
 import { DatabaseListApp } from "metabase/admin/databases/containers/DatabaseListApp";
-import DataModelApp from "metabase/admin/datamodel/containers/DataModelApp";
+import { DataModelApp } from "metabase/admin/datamodel/containers/DataModelApp";
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
@@ -40,6 +40,7 @@ import CS from "metabase/css/core/index.css";
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
+import { DataModel } from "metabase/metadata/pages/DataModel";
 import {
   PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_TOOLS,
@@ -79,6 +80,42 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
         <Route title={t`Table Metadata`} component={DataModelApp}>
           {getMetadataRoutes()}
+          <Route path="segments" component={SegmentListApp} />
+          <Route path="segment/create" component={SegmentApp} />
+          <Route path="segment/:id" component={SegmentApp} />
+          <Route path="segment/:id/revisions" component={RevisionHistoryApp} />
+        </Route>
+      </Route>
+      {/* TODO: replace this at the end of Milestone 1 */}
+      {/* https://linear.app/metabase/project/up-level-admin-metadata-editing-0399213bee40 */}
+      <Route
+        path="datamodel-v2"
+        component={createAdminRouteGuard("data-model")}
+      >
+        <Route title={t`Table Metadata`} component={DataModelApp}>
+          <IndexRedirect to="database" />
+          <Route path="database" component={DataModel} />
+          <Route path="database/:databaseId" component={DataModel} />
+          <Route
+            path="database/:databaseId/schema/:schemaId"
+            component={DataModel}
+          />
+          <Route
+            path="database/:databaseId/schema/:schemaId/table/:tableId"
+            component={DataModel}
+          />
+          <Route
+            path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+            component={DataModel}
+          />
+          <Redirect
+            from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
+            to="database/:databaseId/schema/:schemaId/table/:tableId"
+          />
+          <Redirect
+            from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
+            to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+          />
           <Route path="segments" component={SegmentListApp} />
           <Route path="segment/create" component={SegmentApp} />
           <Route path="segment/:id" component={SegmentApp} />

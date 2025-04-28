@@ -1,5 +1,5 @@
-import PropTypes from "prop-types";
-import { Fragment, useMemo } from "react";
+import type { Location } from "history";
+import { Fragment, type ReactNode, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -7,25 +7,17 @@ import Radio from "metabase/core/components/Radio";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { connect } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import type { State } from "metabase-types/store";
 
 import { ModelEducationButton, NavBar } from "./DataModelApp.styled";
 import { ModelEducationalModal } from "./ModelEducationalModal";
 
-const propTypes = {
-  onChangeTab: PropTypes.func.isRequired,
-  location: PropTypes.shape({
-    pathname: PropTypes.string.isRequired,
-  }).isRequired,
-  children: PropTypes.node.isRequired,
-  isAdmin: PropTypes.bool,
-};
-
-const mapStateToProps = (state) => ({
+const mapStateToProps = (state: State) => ({
   isAdmin: getUserIsAdmin(state),
 });
 
 const mapDispatchToProps = {
-  onChangeTab: (tab) => push(`/admin/datamodel/${tab}`),
+  onChangeTab: (tab: string) => push(`/admin/datamodel/${tab}`),
 };
 
 const TAB = {
@@ -33,12 +25,19 @@ const TAB = {
   DATABASE: "database",
 };
 
-function DataModelApp({
+interface Props {
+  children: ReactNode;
+  isAdmin?: boolean;
+  location: Location;
+  onChangeTab: (tab: string) => void;
+}
+
+function DataModelAppBase({
   children,
-  onChangeTab,
-  location: { pathname },
   isAdmin,
-}) {
+  location: { pathname },
+  onChangeTab,
+}: Props) {
   const [
     isModelEducationalModalShown,
     { turnOn: showModelEducationalModal, turnOff: hideModelEducationalModal },
@@ -78,6 +77,7 @@ function DataModelApp({
   );
 }
 
-DataModelApp.propTypes = propTypes;
-
-export default connect(mapStateToProps, mapDispatchToProps)(DataModelApp);
+export const DataModelApp = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(DataModelAppBase);
