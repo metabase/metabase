@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useMount, usePrevious, useUnmount } from "react-use";
+import { useMount, usePrevious } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -23,7 +23,6 @@ import ValueComponent from "metabase/components/Value";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { parseNumber } from "metabase/lib/number";
-import { defer } from "metabase/lib/promise";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import {
@@ -55,10 +54,8 @@ import {
   canUseCardEndpoints,
   canUseDashboardEndpoints,
   canUseParameterEndpoints,
-  dedupeValues,
   getFieldsRemappingInfo,
   getLabel,
-  getNonVirtualFields,
   getOption,
   getTokenFieldPlaceholder,
   getValue,
@@ -67,7 +64,6 @@ import {
   isExtensionOfPreviousSearch,
   isNumeric,
   isSearchable,
-  searchFieldValues,
   shouldList,
   showRemapping,
 } from "./utils";
@@ -190,94 +186,33 @@ export const FieldValuesWidgetInner = forwardRef<
     }
   }, [width, previousWidth]);
 
-  const _cancel = useRef<null | (() => void)>(null);
-
-  useUnmount(() => {
-    _cancel?.current?.();
-  });
-
   const fetchValues = async (query?: string) => {
     setLoadingState("LOADING");
     setOptions([]);
 
     let newOptions: FieldValue[] = [];
-    let newValuesMode = valuesMode;
+    let hasMoreOptions = false;
     try {
       if (canUseDashboardEndpoints(dashboard)) {
-        const { values, has_more_values } =
-          await dispatchFetchDashboardParameterValues(query);
-        newOptions = values;
-        newValuesMode = has_more_values ? "search" : newValuesMode;
+        const result = await dispatchFetchDashboardParameterValues(query);
+        newOptions = result.values;
+        hasMoreOptions = result.has_more_values;
       } else if (canUseCardEndpoints(question)) {
-        const { values, has_more_values } =
-          await dispatchFetchCardParameterValues(query);
-        newOptions = values;
-        newValuesMode = has_more_values ? "search" : newValuesMode;
+        const result = await dispatchFetchCardParameterValues(query);
+        newOptions = result.values;
+        hasMoreOptions = result.has_more_values;
       } else if (canUseParameterEndpoints(parameter)) {
-        const { values, has_more_values } =
-          await dispatchFetchParameterValues(query);
-        newOptions = values;
-        newValuesMode = has_more_values ? "search" : newValuesMode;
-      } else {
-        newOptions = await fetchFieldValues(query);
-
-        newValuesMode = getValuesMode({
-          parameter,
-          fields,
-          disableSearch,
-          disablePKRemappingForSearch,
-        });
+        const result = await dispatchFetchParameterValues(query);
+        newOptions = result.values;
+        hasMoreOptions = result.has_more_values;
       }
     } finally {
       updateRemappings(newOptions);
-
       setOptions(newOptions);
+      setValuesMode(
+        hasMoreOptions && !isNumericParameter ? "search" : valuesMode,
+      );
       setLoadingState("LOADED");
-      setValuesMode(newValuesMode);
-    }
-  };
-
-  const fetchFieldValues = async (query?: string): Promise<FieldValue[]> => {
-    if (query == null) {
-      const nonVirtualFields = getNonVirtualFields(fields);
-
-      const results = await Promise.all(
-        nonVirtualFields.map((field) =>
-          dispatch(Fields.objectActions.fetchFieldValues(field)),
-        ),
-      );
-
-      // extract the field values from the API response(s)
-      // the entity loader has inconsistent return structure, so we have to handle both
-      const fieldValues: FieldValue[][] = nonVirtualFields.map(
-        (field, index) =>
-          results[index]?.payload?.values ??
-          Fields.selectors.getFieldValues(results[index]?.payload, {
-            entityId: field.getUniqueId(),
-          }),
-      );
-
-      return dedupeValues(fieldValues);
-    } else {
-      const cancelDeferred = defer();
-      const cancelled: Promise<unknown> = cancelDeferred.promise;
-      _cancel.current = () => {
-        _cancel.current = null;
-        cancelDeferred.resolve();
-      };
-
-      const options = await searchFieldValues(
-        {
-          value: query,
-          fields,
-          disablePKRemappingForSearch,
-          maxResults,
-        },
-        cancelled,
-      );
-
-      _cancel.current = null;
-      return options;
     }
   };
 
@@ -374,10 +309,6 @@ export const FieldValuesWidgetInner = forwardRef<
   );
 
   const _search = (value: string) => {
-    if (_cancel.current) {
-      _cancel.current();
-    }
-
     search.current(value);
   };
 

@@ -94,6 +94,23 @@ const DATE_TEST_CASES: CastTestCase[] = [
   },
 ];
 
+const FLOAT_TEST_CASES: CastTestCase[] = [
+  {
+    name: "Float",
+    expression: 'float("12.5")',
+    filterOperator: "Equal to",
+    filterValue: "12.5",
+    expectedRowCount: 200,
+  },
+  {
+    name: "FloatExpression",
+    expression: 'float(concat([ID], ".3333"))',
+    filterOperator: "Less than",
+    filterValue: "2",
+    expectedRowCount: 1,
+  },
+];
+
 describe(
   "scenarios > custom column > cast functions",
   { tags: "@external" },
@@ -109,6 +126,10 @@ describe(
 
     it("should support integer function", () => {
       testFilterWithExpressions(INTEGER_TEST_CASES, addOperatorFilter);
+    });
+
+    it("should support float function", () => {
+      testFilterWithExpressions(FLOAT_TEST_CASES, addOperatorFilter);
     });
 
     it("should support date function", () => {

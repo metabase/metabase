@@ -17,6 +17,10 @@ export function enclosingFunction(doc: string, pos: number) {
       const argsIndex = value.indexOf("(") ?? value.length;
       const structure = value.slice(0, argsIndex).trim();
 
+      if (!value.includes("(")) {
+        break;
+      }
+
       const args =
         cursor.node.getChildren("ArgList")?.[0]?.getChildren("Arg") ?? [];
       const argIndex = args.findIndex(

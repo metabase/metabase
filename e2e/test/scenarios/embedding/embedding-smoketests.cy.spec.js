@@ -168,7 +168,9 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
               ? "Results (csv, xlsx, json, png)"
               : "Download (csv, xlsx, json, png)",
           ).should("not.exist");
-          cy.findByText("Export as PDF").should("not.exist");
+          cy.findByRole("button", { name: "Export as PDF" }).should(
+            "not.exist",
+          );
 
           cy.findByRole("tab", { name: "Parameters" }).click();
 
