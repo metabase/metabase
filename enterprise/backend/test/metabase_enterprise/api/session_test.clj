@@ -13,6 +13,7 @@
                               :cache-granular-controls
                               :cache-preemptive
                               :config-text-file
+                              :content-translation
                               :content-verification
                               :dashboard-subscription-filters
                               :disable-password-login
