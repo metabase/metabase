@@ -759,8 +759,7 @@
   nil)
 
 (defmethod ->honeysql [:sql :field]
-  [driver [_ id-or-name {:keys [database-type] :as options}
-           :as field-clause]]
+  [driver [_ id-or-name options :as field-clause]]
   (try
     (let [source-table-aliases (field-source-table-aliases field-clause)
           source-nfc-path      (field-nfc-path field-clause)
@@ -773,20 +772,20 @@
                                  (lib.metadata/field (qp.store/metadata-provider) id-or-name))
           allow-casting?       (and field-metadata
                                     (not (:qp/ignore-coercion options)))
-          database-type        (or database-type
-                                   (:database-type field-metadata))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
                                           (concat source-table-aliases (->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
                                    (with-meta (meta field-clause)))
           identifier           (->honeysql driver identifier)
+          casted-field         (cast-field-if-needed driver field-metadata identifier)
+          database-type        (or (h2x/database-type casted-field)
+                                   (:database-type field-metadata))
           maybe-add-db-type    (fn [expr]
                                  (if (h2x/type-info->db-type (h2x/type-info expr))
                                    expr
                                    (h2x/with-database-type-info expr database-type)))]
       (u/prog1
-        (cond->> identifier
-          allow-casting?           (cast-field-if-needed driver field-metadata)
+        (cond->> (if allow-casting? casted-field identifier)
           ;; only add type info if it wasn't added by [[cast-field-if-needed]]
           database-type            maybe-add-db-type
           (:temporal-unit options) (apply-temporal-bucketing driver options)
