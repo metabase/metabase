@@ -188,4 +188,4 @@
 (defn is-tenant-group?
   "Returns a boolean representing whether this group is a tenant group."
   [group-id]
-  (t2/select-one-fn :is_tenant_group :model/PermissionsGroup :id group-id))
+  (t2/select-one-fn :is_tenant_group :model/PermissionsGroup :id (u/the-id group-id)))

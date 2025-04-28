@@ -22,6 +22,7 @@
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.test-util :as premium-features.test-util]
@@ -1381,8 +1382,9 @@
   ([f user [group-or-id & more]]
    (if group-or-id
      #_{:clj-kondo/ignore [:discouraged-var]}
-     (t2.with-temp/with-temp [:model/PermissionsGroupMembership _ {:group_id (u/the-id group-or-id), :user_id (u/the-id user)}]
-       (do-with-user-in-groups f user more))
+     (binding [perms-group-membership/*tests-only-allow-direct-insertion-of-permissions-group-memberships* true]
+       (t2.with-temp/with-temp [:model/PermissionsGroupMembership _ {:group_id (u/the-id group-or-id), :user_id (u/the-id user)}]
+         (do-with-user-in-groups f user more)))
      (f user))))
 
 (defmacro with-user-in-groups

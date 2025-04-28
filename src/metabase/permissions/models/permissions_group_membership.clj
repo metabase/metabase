@@ -23,6 +23,11 @@
   but enable it when adding or deleting users."
   false)
 
+(def ^:dynamic *tests-only-allow-direct-insertion-of-permissions-group-memberships*
+  "Normally we only allow using `add-user-to-group!` or similar to create a new permissions group membership. This
+  allows bypassing this check for tests."
+  false)
+
 (defmacro allow-changing-all-users-group-members
   "Allow people to be added to or removed from the All Users permissions group? By default, this is disallowed."
   {:style/indent 0}
@@ -79,9 +84,11 @@
      (do ~@body)))
 
 (t2/define-before-insert :model/PermissionsGroupMembership
-  [{:keys [group_id user_id], :as membership}]
-  (throw (ex-info "Do not use `t2/insert!` with PermissionsGroupMembership directly. Use `add-users-to-groups` or related instead"
-                  {})))
+  [membership]
+  (if-not *tests-only-allow-direct-insertion-of-permissions-group-memberships*
+    (throw (ex-info "Do not use `t2/insert!` with PermissionsGroupMembership directly. Use `add-users-to-groups` or related instead"
+                    {}))
+    membership))
 
 (mu/defn add-users-to-groups-sql
   "Generates SQL for adding users to groups"

@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.http-client :as client]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.test.initialize :as initialize]
@@ -233,11 +234,12 @@
     (u/the-id test-user-name-or-user-id)))
 
 (defn do-with-group-for-user [group test-user-name-or-user-id f]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (t2.with-temp/with-temp [:model/PermissionsGroup           group group
-                           :model/PermissionsGroupMembership _     {:group_id (u/the-id group)
-                                                                    :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]
-    (f group)))
+  (binding [perms-group-membership/*tests-only-allow-direct-insertion-of-permissions-group-memberships* true]
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (t2.with-temp/with-temp [:model/PermissionsGroup           group group
+                             :model/PermissionsGroupMembership _     {:group_id (u/the-id group)
+                                                                      :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]
+      (f group))))
 
 (defmacro with-group
   "Create a new PermissionsGroup, bound to `group-binding`; add test user Rasta Toucan [RIP] to the

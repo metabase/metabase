@@ -10,6 +10,7 @@
    [metabase.models.user :as user]
    [metabase.models.user-test :as user-test]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.permissions.util :as perms-util]
    [metabase.request.core :as request]
    [metabase.test :as mt]
@@ -37,7 +38,8 @@
        :sso_source       nil
        :login_attributes nil
        :updated_at       true
-       :locale           nil})
+       :locale           nil
+       :tenant_id        false})
      :type)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -86,73 +88,74 @@
                (mt/user-http-request :lucky :get 403 "user" :query "rasta")))))))
 
 (deftest user-list-for-group-managers-test
-  (testing "Group Managers"
-    (mt/with-premium-features #{:advanced-permissions}
-      (mt/with-temp
-        [:model/PermissionsGroup           {group-id1 :id} {:name "Cool Friends"}
-         :model/PermissionsGroup           {group-id2 :id} {:name "Rad Pals"}
-         :model/PermissionsGroup           {group-id3 :id} {:name "Good Folks"}
-         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1 :is_group_manager true}
-         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id1 :is_group_manager false}
-         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2 :is_group_manager true}
-         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id2 :is_group_manager true}
-         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id3 :is_group_manager false}
-         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id3 :is_group_manager true}]
-        (testing "admin can get users from any group, even when they are also marked as a group manager"
-          (is (= #{"lucky@metabase.com"
-                   "rasta@metabase.com"}
-                 (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id group-id1) :data)
-                      (filter mt/test-user?)
-                      (map :email)
-                      set)))
-          (is (= #{"lucky@metabase.com"
-                   "crowberto@metabase.com"}
-                 (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id group-id2) :data)
-                      (filter mt/test-user?)
-                      (map :email)
-                      set)))
-          (is (= #{"crowberto@metabase.com"
-                   "rasta@metabase.com"
-                   "lucky@metabase.com"}
-                 (->> ((mt/user-http-request :crowberto :get 200 "user") :data)
-                      (filter mt/test-user?)
-                      (map :email)
-                      set))))
-        (testing "member but non-manager cannot get users"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :lucky :get 403 "user" :group_id group-id1))))
-        (testing "manager of a different group cannot get users from groups they're not a member of"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 "user" :group_id group-id2))))
-        (if config/ee-available?
-          ;; Group management is an EE feature
-          (do
-            (testing "manager can get all users in their group"
-              (is (= #{"lucky@metabase.com"
-                       "rasta@metabase.com"}
-                     (->> ((mt/user-http-request :rasta :get 200 "user" :group_id group-id1) :data)
-                          (filter mt/test-user?)
-                          (map :email)
-                          set))))
-            (testing "manager can't get all users in another group"
+  (binding [perms-group-membership/*tests-only-allow-direct-insertion-of-permissions-group-memberships* true]
+    (testing "Group Managers"
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp
+          [:model/PermissionsGroup           {group-id1 :id} {:name "Cool Friends"}
+           :model/PermissionsGroup           {group-id2 :id} {:name "Rad Pals"}
+           :model/PermissionsGroup           {group-id3 :id} {:name "Good Folks"}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1 :is_group_manager true}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id1 :is_group_manager false}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2 :is_group_manager true}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id2 :is_group_manager true}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id3 :is_group_manager false}
+           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id3 :is_group_manager true}]
+          (testing "admin can get users from any group, even when they are also marked as a group manager"
+            (is (= #{"lucky@metabase.com"
+                     "rasta@metabase.com"}
+                   (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id group-id1) :data)
+                        (filter mt/test-user?)
+                        (map :email)
+                        set)))
+            (is (= #{"lucky@metabase.com"
+                     "crowberto@metabase.com"}
+                   (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id group-id2) :data)
+                        (filter mt/test-user?)
+                        (map :email)
+                        set)))
+            (is (= #{"crowberto@metabase.com"
+                     "rasta@metabase.com"
+                     "lucky@metabase.com"}
+                   (->> ((mt/user-http-request :crowberto :get 200 "user") :data)
+                        (filter mt/test-user?)
+                        (map :email)
+                        set))))
+          (testing "member but non-manager cannot get users"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :lucky :get 403 "user" :group_id group-id1))))
+          (testing "manager of a different group cannot get users from groups they're not a member of"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "user" :group_id group-id2))))
+          (if config/ee-available?
+            ;; Group management is an EE feature
+            (do
+              (testing "manager can get all users in their group"
+                (is (= #{"lucky@metabase.com"
+                         "rasta@metabase.com"}
+                       (->> ((mt/user-http-request :rasta :get 200 "user" :group_id group-id1) :data)
+                            (filter mt/test-user?)
+                            (map :email)
+                            set))))
+              (testing "manager can't get all users in another group"
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :get 403 "user" :group_id group-id2))))
+              (testing "manager can get all users"
+                (is (= #{"lucky@metabase.com"
+                         "rasta@metabase.com"
+                         "crowberto@metabase.com"}
+                       (->> ((mt/user-http-request :rasta :get 200 "user") :data)
+                            (filter mt/test-user?)
+                            (map :email)
+                            set)))))
+            ;; In OSS, non-admins have no way to see users, because group management is an EE feature
+            (testing "in OSS, non-admins have no way to get users"
               (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :get 403 "user" :group_id group-id2))))
-            (testing "manager can get all users"
-              (is (= #{"lucky@metabase.com"
-                       "rasta@metabase.com"
-                       "crowberto@metabase.com"}
-                     (->> ((mt/user-http-request :rasta :get 200 "user") :data)
-                          (filter mt/test-user?)
-                          (map :email)
-                          set)))))
-          ;; In OSS, non-admins have no way to see users, because group management is an EE feature
-          (testing "in OSS, non-admins have no way to get users"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 "user" :group_id group-id1)))
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 "user")))
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :lucky :get 403 "user")))))))))
+                     (mt/user-http-request :rasta :get 403 "user" :group_id group-id1)))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403 "user")))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :lucky :get 403 "user"))))))))))
 
 (defn- group-ids->sets [users]
   (for [user users]
@@ -191,51 +194,52 @@
                               (map :email)))))))))))))
 
 (deftest user-recipients-list-ee-test
-  (mt/with-premium-features #{:email-restrict-recipients}
-    (testing "GET /api/user/recipients"
-      (mt/with-non-admin-groups-no-root-collection-perms
-        (let [crowberto "crowberto@metabase.com"
-              lucky     "lucky@metabase.com"
-              rasta     "rasta@metabase.com"]
-          (testing "Returns all users when user-visibility is all users"
-            (mt/with-temporary-setting-values [user-visibility :all]
-              (is (= [crowberto lucky rasta]
-                     (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
-                          (filter mt/test-user?)
-                          (map :email))))))
+  (binding [perms-group-membership/*tests-only-allow-direct-insertion-of-permissions-group-memberships* true]
+    (mt/with-premium-features #{:email-restrict-recipients}
+      (testing "GET /api/user/recipients"
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (let [crowberto "crowberto@metabase.com"
+                lucky     "lucky@metabase.com"
+                rasta     "rasta@metabase.com"]
+            (testing "Returns all users when user-visibility is all users"
+              (mt/with-temporary-setting-values [user-visibility :all]
+                (is (= [crowberto lucky rasta]
+                       (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
+                            (filter mt/test-user?)
+                            (map :email))))))
 
-          (testing "Returns all users when admin"
-            (mt/with-temporary-setting-values [user-visibility "none"]
-              (is (= [crowberto lucky rasta]
-                     (->> ((mt/user-http-request :crowberto :get 200 "user/recipients") :data)
-                          (filter mt/test-user?)
-                          (map :email))))))
+            (testing "Returns all users when admin"
+              (mt/with-temporary-setting-values [user-visibility "none"]
+                (is (= [crowberto lucky rasta]
+                       (->> ((mt/user-http-request :crowberto :get 200 "user/recipients") :data)
+                            (filter mt/test-user?)
+                            (map :email))))))
 
-          (testing "Returns users in the group when user-visibility is same group"
-            (mt/with-temporary-setting-values [user-visibility :group]
-              (mt/with-temp
-                [:model/PermissionsGroup           {group-id1 :id} {:name "Test recipient group1"}
-                 :model/PermissionsGroup           {group-id2 :id} {:name "Test recipient group2"}
-                 :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1}
-                 :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id1}
-                 :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id2}
-                 :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2}]
-                (is (= [crowberto rasta]
-                       (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
-                            (map :email))))
+            (testing "Returns users in the group when user-visibility is same group"
+              (mt/with-temporary-setting-values [user-visibility :group]
+                (mt/with-temp
+                  [:model/PermissionsGroup           {group-id1 :id} {:name "Test recipient group1"}
+                   :model/PermissionsGroup           {group-id2 :id} {:name "Test recipient group2"}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id1}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id2}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2}]
+                  (is (= [crowberto rasta]
+                         (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
+                              (map :email))))
 
-                (testing "But returns self if the user is sandboxed"
-                  (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
-                    (is (= [rasta]
-                           (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
-                                (map :email)))))))))
+                  (testing "But returns self if the user is sandboxed"
+                    (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
+                      (is (= [rasta]
+                             (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
+                                  (map :email)))))))))
 
-          (testing "Returns only self when user-visibility is none"
-            (mt/with-temporary-setting-values [user-visibility :none]
-              (is (= [rasta]
-                     (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
-                          (filter mt/test-user?)
-                          (map :email)))))))))))
+            (testing "Returns only self when user-visibility is none"
+              (mt/with-temporary-setting-values [user-visibility :none]
+                (is (= [rasta]
+                       (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
+                            (filter mt/test-user?)
+                            (map :email))))))))))))
 
 (deftest ^:parallel admin-user-list-test
   (testing "GET /api/user"

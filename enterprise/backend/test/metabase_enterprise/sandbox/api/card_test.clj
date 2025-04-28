@@ -5,6 +5,7 @@
    [metabase.api.card-test :as api.card-test]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -18,10 +19,9 @@
                        :model/Table                      table {:db_id (u/the-id db)}
                        :model/Field                      _field {:table_id (u/the-id table) :name "field"}
                        :model/PermissionsGroup           group {}
-                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
-                                                            :group_id (u/the-id group)}
                        :model/GroupTableAccessPolicy     _ {:group_id (u/the-id group)
                                                             :table_id (u/the-id table)}]
+          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group)
           (mt/with-db db
             (mt/with-no-data-perms-for-all-users!
               (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
@@ -38,12 +38,11 @@
                        :model/Table                      table {:db_id (u/the-id db)}
                        :model/Field                      _field {:table_id (u/the-id table) :name "field"}
                        :model/PermissionsGroup           group {}
-                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
-                                                            :group_id (u/the-id group)}
                        :model/Card                       card {:name "Some Name"
                                                                :collection_id (u/the-id collection)}
                        :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
                                                                :table_id (u/the-id table)}]
+          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group)
           (mt/with-db db
             (mt/with-no-data-perms-for-all-users!
               (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
@@ -62,12 +61,11 @@
                        :model/Table                      other-table {:db_id (u/the-id db)}
                        :model/Field                      _field {:table_id (u/the-id table) :name "field"}
                        :model/PermissionsGroup           group {}
-                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
-                                                            :group_id (u/the-id group)}
                        :model/Card                       card {:name "Some Name"
                                                                :collection_id (u/the-id collection)}
                        :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
                                                                :table_id (u/the-id table)}]
+          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group)
           (mt/with-db db
             (mt/with-no-data-perms-for-all-users!
               (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
@@ -86,10 +84,9 @@
                          :model/Table                      other-table {:db_id (u/the-id db)}
                          :model/Field                      _field {:table_id (u/the-id table) :name "field"}
                          :model/PermissionsGroup           group {}
-                         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
-                                                              :group_id (u/the-id group)}
                          :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
                                                                  :table_id (u/the-id table)}]
+            (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group)
             (mt/with-db db
               (mt/with-no-data-perms-for-all-users!
                 (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
@@ -105,12 +102,12 @@
   (mt/with-premium-features #{:advanced-permissions}
     (mt/with-temp [:model/User                       {user-id :id} {}
                    :model/PermissionsGroup           group         {}
-                   :model/PermissionsGroupMembership _             {:user_id  user-id
-                                                                    :group_id (u/the-id group)}
                    :model/Card                       card          {:name "Some Name" :dataset_query {:database (mt/id),
                                                                                                       :type :query,
                                                                                                       :query {:source-table (mt/id :venues)
                                                                                                               :limit 1}}}]
+
+      (perms-group-membership/add-user-to-group! user-id group)
       (let [cases [[:unrestricted           :query-builder-and-native true]
                    [:unrestricted           :query-builder            true]
                    [:unrestricted           :no                       true]

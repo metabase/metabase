@@ -16,6 +16,7 @@
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -2003,19 +2004,20 @@
     (testing "we don't let you see stuff you wouldn't otherwise be allowed to see"
       (testing "...but if they have read perms for the Root Collection they should get to see them"
         (with-some-children-of-collection! nil
-          (mt/with-temp [:model/PermissionsGroup           group {}
-                         :model/PermissionsGroupMembership _     {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
-            (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
-            (is (partial= [(-> {:name               "Birthday Card", :description nil, :model "card",
-                                :collection_preview false,           :display     "table"}
-                               default-item
-                               (assoc :fully_parameterized true))
-                           (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
-                           (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
-                          (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
-                              (remove-non-test-items &ids)
-                              remove-non-personal-collections
-                              mt/boolean-ids-and-timestamps)))))))))
+          (binding [perms-group-membership/*tests-only-allow-direct-insertion-of-permissions-group-memberships* true]
+            (mt/with-temp [:model/PermissionsGroup           group {}
+                           :model/PermissionsGroupMembership _     {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
+              (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
+              (is (partial= [(-> {:name               "Birthday Card", :description nil, :model "card",
+                                  :collection_preview false,           :display     "table"}
+                                 default-item
+                                 (assoc :fully_parameterized true))
+                             (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
+                             (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
+                            (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
+                                (remove-non-test-items &ids)
+                                remove-non-personal-collections
+                                mt/boolean-ids-and-timestamps))))))))))
 
 (deftest fetch-root-items-do-not-include-personal-collections-test
   (testing "GET /api/collection/root/items"
@@ -2300,17 +2302,18 @@
     (testing "\nCan a non-admin user with Root Collection perms add a new collection to the Root Collection? (#8949)"
       (mt/with-model-cleanup [:model/Collection]
         (mt/with-non-admin-groups-no-root-collection-perms
-          (mt/with-temp [:model/PermissionsGroup           group {}
-                         :model/PermissionsGroupMembership _     {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
-            (perms/grant-collection-readwrite-permissions! group collection/root-collection)
-            (is (partial= (merge
-                           (mt/object-defaults :model/Collection)
-                           {:name     "Stamp Collection"
-                            :location "/"
-                            :slug     "stamp_collection"})
-                          (dissoc (mt/user-http-request :rasta :post 200 "collection"
-                                                        {:name "Stamp Collection"})
-                                  :id :entity_id)))))))))
+          (binding [perms-group-membership/*tests-only-allow-direct-insertion-of-permissions-group-memberships* true]
+            (mt/with-temp [:model/PermissionsGroup           group {}
+                           :model/PermissionsGroupMembership _     {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
+              (perms/grant-collection-readwrite-permissions! group collection/root-collection)
+              (is (partial= (merge
+                             (mt/object-defaults :model/Collection)
+                             {:name     "Stamp Collection"
+                              :location "/"
+                              :slug     "stamp_collection"})
+                            (dissoc (mt/user-http-request :rasta :post 200 "collection"
+                                                          {:name "Stamp Collection"})
+                                    :id :entity_id))))))))))
 
 (deftest create-child-collection-test
   (testing "POST /api/collection"
