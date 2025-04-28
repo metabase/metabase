@@ -1540,8 +1540,8 @@
               get-privileges (fn []
                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                 [spec [:postgres (assoc (:details (mt/db)) :user "privilege_rows_test_example_role")]]
-                                (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                  (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
+                                 (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
+                                   (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
           (try
             (jdbc/execute! conn-spec (str
                                       "DROP SCHEMA IF EXISTS \"dotted.schema\" CASCADE;"
