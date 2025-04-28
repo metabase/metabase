@@ -29,7 +29,7 @@ export const useRegisterShortcut = (
         const shortcutDef = shortcuts[id];
 
         if (shortcutDef === undefined && !rest.shortcut) {
-          throw Error(`Unrecgonized shortcut id ${id}`);
+          throw Error(`Unrecognized shortcut id ${id}`);
         }
 
         return {

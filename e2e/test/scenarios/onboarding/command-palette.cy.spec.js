@@ -5,9 +5,31 @@ import {
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createMockDashboardCard } from "metabase-types/api/mocks";
 
 const { admin } = USERS;
+
+const TAB_1 = {
+  id: 1,
+  name: "Tab 1",
+};
+
+const TAB_2 = {
+  id: 2,
+  name: "Tab 2",
+};
+
+const TAB_3 = {
+  id: 3,
+  name: "Tab 3",
+};
+
+const TAB_4 = {
+  id: 4,
+  name: "Tab 4",
+};
 
 describe("command palette", () => {
   beforeEach(() => {
@@ -488,18 +510,55 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("Escape");
     cy.realPress("[");
     H.navigationSidebar().should("not.visible");
+
+    cy.findByLabelText("Settings menu").click();
+    H.popover().findByText("Admin settings").click();
+
+    cy.findByTestId("site-name-setting").should("exist");
+    cy.location("pathname").should("contain", "/admin/settings");
+    cy.realPress("3");
+    cy.location("pathname").should("contain", "/admin/datamodel");
+    cy.realPress("7");
+    cy.location("pathname").should("contain", "/admin/tools");
   });
 
   it("should support dashboard shortcuts", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.createDashboardWithTabs({
+      tabs: [TAB_1, TAB_2, TAB_3, TAB_4],
+      dashcards: [
+        createMockDashboardCard({
+          id: -1,
+          card_id: ORDERS_QUESTION_ID,
+          dashboard_tab_id: TAB_1.id,
+        }),
+        createMockDashboardCard({
+          id: -2,
+          card_id: ORDERS_QUESTION_ID,
+          dashboard_tab_id: TAB_2.id,
+        }),
+        createMockDashboardCard({
+          id: -3,
+          card_id: ORDERS_QUESTION_ID,
+          dashboard_tab_id: TAB_3.id,
+        }),
+        createMockDashboardCard({
+          id: -4,
+          card_id: ORDERS_QUESTION_ID,
+          dashboard_tab_id: TAB_4.id,
+        }),
+      ],
+    }).then((dashboard) => H.visitDashboard(dashboard.id));
+
     H.openShortcutModal();
+    H.shortcutModal().should("exist");
     cy.realPress("Escape");
+    cy.wait(200);
 
     cy.realPress("o");
     H.openNavigationSidebar();
     H.navigationSidebar()
       .findByRole("tab", { name: /bookmarks/i })
-      .should("contain.text", "Orders in a dashboard");
+      .should("contain.text", "Test Dashboard");
     cy.realPress("o");
     H.navigationSidebar()
       .findByRole("tab", { name: /bookmarks/i })
@@ -520,6 +579,31 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     cy.findByRole("dialog", { name: "Info" }).should("exist");
     cy.realPress("]");
     cy.findByRole("dialog", { name: "Info" }).should("not.exist");
+
+    cy.findByRole("tab", { name: "Tab 1" }).should(
+      "have.attr",
+      "aria-selected",
+      "true",
+    );
+    cy.realPress("3");
+    cy.findByRole("tab", { name: "Tab 3" }).should(
+      "have.attr",
+      "aria-selected",
+      "true",
+    );
+    cy.realPress("1");
+    cy.findByRole("tab", { name: "Tab 1" }).should(
+      "have.attr",
+      "aria-selected",
+      "true",
+    );
+    // Doesn't error on pressing numbers out of bounds
+    cy.realPress("7");
+    cy.findByRole("tab", { name: "Tab 1" }).should(
+      "have.attr",
+      "aria-selected",
+      "true",
+    );
   });
 
   it("should support query builder shortcuts", () => {
