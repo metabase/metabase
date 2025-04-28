@@ -76,7 +76,7 @@
 (defn- prune-from-batch! [batch-num & [where]]
   (t2/delete! :model/Undo
               :batch_num [:<= batch-num]
-              {:where (or where 1)}))
+              {:where (or where true)}))
 
 (defn- prune-batches! [batches-to-keep & [where]]
   (prune-from-batch! (batch-to-prune-from batches-to-keep where) where))
