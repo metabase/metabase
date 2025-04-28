@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
@@ -18,7 +18,7 @@ import { Box, Flex } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "../../constants";
+import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
 import { DashboardGridConnected } from "../DashboardGrid";
 import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
@@ -43,7 +43,6 @@ function Dashboard() {
     setSharing,
     parameterQueryParams = {},
     downloadsEnabled,
-    handleAddQuestion,
     shouldRenderAsNightMode,
     setArchivedDashboard,
     moveDashboardToCollection,
@@ -79,6 +78,8 @@ function Dashboard() {
     setParameterTemporalUnits,
     sidebar,
     closeSidebar,
+    toggleSidebar,
+    setEditingDashboard,
   } = useDashboardContext();
 
   const canWrite = Boolean(dashboard?.can_write);
@@ -115,6 +116,20 @@ function Dashboard() {
     [databases],
   );
   const canCreateQuestions = hasDataAccess || hasNativeWrite;
+
+  const handleAddQuestion = useCallback(() => {
+    if (!isEditing) {
+      onRefreshPeriodChange?.(null);
+      setEditingDashboard(dashboard);
+    }
+    toggleSidebar(SIDEBAR_NAME.addQuestion);
+  }, [
+    dashboard,
+    isEditing,
+    onRefreshPeriodChange,
+    setEditingDashboard,
+    toggleSidebar,
+  ]);
 
   const renderEmptyStates = () => {
     if (!dashboardHasCards) {

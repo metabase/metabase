@@ -10,24 +10,16 @@ import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
 import { useDispatch } from "metabase/lib/redux";
-import type {
-  DisplayTheme,
-  EmbedResourceDownloadOptions,
-} from "metabase/public/lib/types";
 import type { DashboardId } from "metabase-types/api";
 
 import { navigateToNewCardFromDashboard } from "../actions";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
-import { SIDEBAR_NAME } from "../constants";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
 import type {
   DashboardFullscreenControls,
-  DashboardNightModeControls,
   DashboardRefreshPeriodControls,
-  EmbedBackground,
-  EmbedFont,
-  EmbedHideParameters,
-  EmbedTitle,
+  EmbedDisplayParams,
+  EmbedThemeControls,
   FailedFetchDashboardResult,
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
@@ -51,25 +43,13 @@ type OwnProps = {
 
 type OwnResult = {
   shouldRenderAsNightMode: boolean;
-  handleAddQuestion: () => void;
-};
-
-type DashboardOptions = {
-  background: EmbedBackground;
-  bordered: boolean;
-  titled: EmbedTitle;
-  hideParameters: EmbedHideParameters;
-  font: EmbedFont;
-  theme: DisplayTheme;
-  setTheme: (theme: DisplayTheme) => void;
-  downloadsEnabled: EmbedResourceDownloadOptions;
 };
 
 type DashboardControls = DashboardFullscreenControls &
-  DashboardNightModeControls &
   DashboardRefreshPeriodControls &
   UseAutoScrollToDashcardResult &
-  DashboardOptions;
+  EmbedDisplayParams &
+  EmbedThemeControls;
 
 type ContextProps = OwnProps & ReduxProps & Partial<DashboardControls>;
 
@@ -139,20 +119,6 @@ const DashboardContextProviderInner = ({
   const previousParameterValues = usePrevious(parameterValues);
 
   const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
-
-  const handleAddQuestion = useCallback(() => {
-    if (!isEditing) {
-      onRefreshPeriodChange?.(null);
-      setEditingDashboard(dashboard);
-    }
-    toggleSidebar(SIDEBAR_NAME.addQuestion);
-  }, [
-    dashboard,
-    isEditing,
-    onRefreshPeriodChange,
-    setEditingDashboard,
-    toggleSidebar,
-  ]);
 
   const handleLoadDashboard = useCallback(
     async (dashboardId: DashboardId) => {
@@ -240,8 +206,6 @@ const DashboardContextProviderInner = ({
         onError,
 
         isLoading: !dashboard,
-
-        handleAddQuestion,
 
         isFullscreen,
         onFullscreenChange,
