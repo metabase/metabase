@@ -602,7 +602,7 @@
             (is (nil? (#'search.index/when-index-created))))
 
           (testing "Returns age of active table"
-            (let [update-time (t/minus (t/offset-date-time) (t/days 2))]
+            (let [update-time (t/truncate-to (t/minus (t/offset-date-time) (t/days 2)) :millis)]
               (search.index/create-table! table-name)
               (search-index-metadata/create-pending! :appdb version table-name)
               (search-index-metadata/active-pending! :appdb version)
@@ -610,7 +610,7 @@
                           :index_name  (name table-name)
                           {:created_at  update-time})
 
-              (is (= update-time (#'search.index/when-index-created))))))
+              (is (= update-time (t/truncate-to (#'search.index/when-index-created) :millis))))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "index-age-test")
           (#'search.index/delete-obsolete-tables!))))))
