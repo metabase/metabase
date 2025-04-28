@@ -48,5 +48,10 @@ export type ShortcutAction = Action & {
 
 export type ShortcutDef = Pick<
   ShortcutAction,
-  "name" | "shortcut" | "shortcutGroup" | "shortcutContext" | "shortcutDisplay"
+  | "id"
+  | "name"
+  | "shortcut"
+  | "shortcutGroup"
+  | "shortcutContext"
+  | "shortcutDisplay"
 >;

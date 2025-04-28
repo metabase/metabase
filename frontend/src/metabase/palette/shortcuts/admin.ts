@@ -9,6 +9,6 @@ export const adminShortcuts = {
     },
     shortcut: ["([1-9])"],
     shortcutDisplay: ["1", "2", "3", ELLIPSIS],
-    shortcutGroup: "admin",
+    shortcutGroup: "admin" as const,
   },
 };

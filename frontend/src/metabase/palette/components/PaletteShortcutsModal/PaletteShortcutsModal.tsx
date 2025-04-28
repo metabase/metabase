@@ -6,7 +6,7 @@ import _ from "underscore";
 import Styles from "metabase/css/core/index.css";
 import { METAKEY } from "metabase/lib/browser";
 import { shortcuts as ALL_SHORTCUTS } from "metabase/palette/shortcuts";
-import type { ShortcutGroup } from "metabase/palette/types";
+import type { ShortcutDef, ShortcutGroup } from "metabase/palette/types";
 import {
   Group,
   Kbd,
@@ -93,7 +93,7 @@ export const PaletteShortcutsModal = ({
                       {context}
                     </Text>
                   ) : null,
-                  ...shortcutContexts[context].map((shortcut) => (
+                  ...shortcutContexts[context].map((shortcut: ShortcutDef) => (
                     <Group
                       key={shortcut.id}
                       justify="space-between"
