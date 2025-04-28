@@ -928,6 +928,7 @@
                                                                           (lib/filterable-columns query))
                                                             30))))}
    {:operator :distinct-where
+    :feature  :distinct-where
     :aggregate (fn [query]
                  (lib/aggregate query (lib/distinct-where (m/find-first (comp #{"Total"} :display-name)
                                                                         (lib/visible-columns query))
