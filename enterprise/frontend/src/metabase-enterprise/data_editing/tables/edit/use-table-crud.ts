@@ -98,13 +98,19 @@ export const useTableCRUD = ({
         [pkColumn.name]: rowPkValue,
       };
 
-      const response = await updateTableRows({
-        tableId: tableId,
-        rows: [updatedRowWithPk],
-      });
+      const patchResult = stateUpdateStrategy.onRowsUpdated([updatedRowWithPk]);
 
-      stateUpdateStrategy.onRowsUpdated(response.data?.updated);
-      displayErrorIfExists(response.error);
+      try {
+        const response = await updateTableRows({
+          tableId: tableId,
+          rows: [updatedRowWithPk],
+        });
+
+        displayErrorIfExists(response.error);
+      } catch (e) {
+        patchResult?.undo();
+        displayErrorIfExists(e);
+      }
     },
     [
       datasetData,

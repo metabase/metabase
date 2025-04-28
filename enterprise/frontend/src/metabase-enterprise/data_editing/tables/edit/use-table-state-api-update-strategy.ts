@@ -45,7 +45,7 @@ export function useTableEditingStateApiUpdateStrategy(
         return;
       }
 
-      dispatch(
+      return dispatch(
         datasetApi.util.updateQueryData(
           "getAdhocQuery",
           adhocQuery,
