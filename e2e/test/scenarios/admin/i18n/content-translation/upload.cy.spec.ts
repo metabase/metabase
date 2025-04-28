@@ -2,7 +2,6 @@ import {
   germanFieldNames,
   invalidLocaleAndInvalidRow,
   invalidLocaleXX,
-  invalidLocaleZH,
   longCSVCell,
   multipleInvalidLocales,
   nonAsciiFieldNames,
@@ -128,20 +127,6 @@ describe("scenarios > admin > localization > content translation", () => {
           cy.findByText(/We couldn't upload the file/);
           cy.log("The error is in row 2 (the first row is the header)");
           cy.findByText(/Row 2: Invalid locale: xx/);
-        });
-      });
-
-      it("rejects a CSV upload with a locale that is not supported though it is listed as available by java.lang.Object.LocaleUtils", () => {
-        // Certain locales like 'zh' are not supported by Metabase though they are
-        // listed as available by java.lang.Object.LocaleUtils and so certain BE
-        // functions might report that they are supported. Let's ensure that
-        // these can't be used in the translation dictionary, since the user
-        // cannot choose them as a locale
-        uploadTranslationDictionary(invalidLocaleZH);
-        cy.findByTestId("content-localization-setting").within(() => {
-          cy.findByText(/We couldn't upload the file/);
-          cy.log("The error is in row 2 (the first row is the header)");
-          cy.findByText(/Row 2: Invalid locale: zh/);
         });
       });
 

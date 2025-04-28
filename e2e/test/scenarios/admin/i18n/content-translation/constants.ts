@@ -34,9 +34,6 @@ export const nonAsciiFieldNames: DictionaryArray = [
 export const invalidLocaleXX = structuredClone(germanFieldNames);
 invalidLocaleXX[0].locale = "xx";
 
-export const invalidLocaleZH = structuredClone(germanFieldNames);
-invalidLocaleZH[0].locale = "zh";
-
 export const multipleInvalidLocales = structuredClone(germanFieldNames);
 multipleInvalidLocales[0].locale = "ze";
 multipleInvalidLocales[3].locale = "qe";

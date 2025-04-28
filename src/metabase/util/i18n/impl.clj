@@ -55,12 +55,6 @@
               (str namespce \_ (name this))
               (name this)))))
 
-;; FIXME: Despite what its name strongly suggests, this
-;; function doesn't really ensure that the given locale code is
-;; one that we support. The list of supported locales is
-;; retrieved in available-locale-names. The name is misleading
-;; and the function should probably be renamed. I think it is
-;; being used perhaps a bit mistakenly in the codebase
 (defn available-locale?
   "True if `locale` (a string, keyword, or `Locale`) is a valid locale available on this system. Normalizes args
   automatically."
@@ -74,12 +68,6 @@
   []
   (log/info "Reading available locales from locales.clj...")
   (some-> (io/resource "locales.clj") slurp edn/read-string :locales (->> (apply sorted-set))))
-
-(defn supported-locale?
-  "True if `locale` is listed in available-locale-names."
-  [locale]
-  (let [supported-locales (available-locale-names*)]
-    (boolean (contains? supported-locales locale))))
 
 (let [locales (delay (available-locale-names*))]
   (defn available-locale-names
