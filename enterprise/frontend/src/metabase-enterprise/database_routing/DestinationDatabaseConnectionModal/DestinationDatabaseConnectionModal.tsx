@@ -19,6 +19,7 @@ import type { Database, DatabaseData } from "metabase-types/api";
 import { paramIdToGetQuery } from "../utils";
 
 import S from "./DestinationDatabaseConnectionModal.module.css";
+import { pickPrefillFieldsFromPrimaryDb } from "./utils";
 
 export const DestinationDatabaseConnectionModalInner = ({
   params: { databaseId, destinationDatabaseId },
@@ -29,9 +30,8 @@ export const DestinationDatabaseConnectionModalInner = ({
 }) => {
   const dispatch = useDispatch();
 
-  // TODO: get the final docs url from the writing team
   // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
-  const { url: docsUrl } = useDocsUrl("databases/db-routing");
+  const { url: docsUrl } = useDocsUrl("permissions/database-routing");
 
   const primaryDbReq = useGetDatabaseQuery(paramIdToGetQuery(databaseId));
   const destinationDbReq = useGetDatabaseQuery(
@@ -45,12 +45,13 @@ export const DestinationDatabaseConnectionModalInner = ({
   const isNewDatabase = destinationDatabaseId === undefined;
 
   const destinationDatabase = useMemo<Partial<Database> | undefined>(() => {
-    return isNewDatabase
-      ? {
-          engine: primaryDbReq.currentData?.engine,
-          details: { "destination-database": true },
-        }
-      : destinationDbReq.currentData;
+    const primaryDb = primaryDbReq.currentData;
+
+    if (isNewDatabase) {
+      return primaryDb ? pickPrefillFieldsFromPrimaryDb(primaryDb) : undefined;
+    }
+
+    return destinationDbReq.currentData;
   }, [isNewDatabase, primaryDbReq.currentData, destinationDbReq.currentData]);
 
   const addingNewDatabase = destinationDatabaseId === undefined;

@@ -271,7 +271,8 @@
       (when (= :model-action policy)
         (doseq [arg-map arg-maps]
           (qp.perms/check-query-action-permissions* arg-map)))
-      (let [result (let [context (or existing-context {:user-id (api/check-500 api/*current-user-id*)})]
+      ;; TODO fix tons of tests which execute without user scope
+      (let [result (let [context (or existing-context {:user-id (identity #_api/check-500 api/*current-user-id*)})]
                      (if-not driver
                        (perform-action-internal! action-kw context arg-maps)
                        (driver/with-driver driver

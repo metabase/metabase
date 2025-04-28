@@ -31,3 +31,9 @@
   [field]
   (when-let [mirror-db-id (some->> field u/the-id field/field-id->database-id (router-db-or-id->mirror-db-id @api/*current-user*))]
     {:mirror-db-id mirror-db-id}))
+
+(defenterprise delete-associated-database-router!
+  "Deletes the Database Router associated with this router database."
+  :feature :database-routing
+  [db-id]
+  (t2/delete! :model/DatabaseRouter :database_id db-id))
