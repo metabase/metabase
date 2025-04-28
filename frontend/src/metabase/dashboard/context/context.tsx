@@ -133,13 +133,11 @@ const DashboardContextProviderInner = ({
         },
       });
 
-      if (!isSuccessfulFetchDashboardResult(result)) {
-        if (isFailedFetchDashboardResult(result)) {
-          onError?.(result);
-        }
-        return;
+      if (isSuccessfulFetchDashboardResult(result)) {
+        onLoad?.(result);
+      } else if (isFailedFetchDashboardResult(result)) {
+        onError?.(result);
       }
-      onLoad?.(result);
     },
     [
       fetchDashboard,

@@ -5,9 +5,9 @@ import type {
 } from "metabase/public/lib/types";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
-export type EmbedBackground = boolean;
+type EmbedBackground = boolean;
 
-export type EmbedTitle = boolean;
+type EmbedTitle = boolean;
 
 export type EmbedHideParameters = string | null;
 export type EmbedHideParametersControls = {
