@@ -1,7 +1,4 @@
-/* eslint-disable react/prop-types */
-
 import cx from "classnames";
-import type { CSSProperties } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
@@ -14,18 +11,13 @@ import type { Dashboard as IDashboard } from "metabase-types/api";
 
 export function Dashboard({
   dashboard,
-  className,
-  style,
   ...props
 }: {
   dashboard: IDashboard;
-  className?: string;
-  style?: CSSProperties;
 } & DashboardGridProps) {
   return (
     <LoadingAndErrorWrapper
-      className={cx(DashboardS.Dashboard, CS.p1, CS.flexFull, className)}
-      style={style}
+      className={cx(DashboardS.Dashboard, CS.p1, CS.flexFull)}
       loading={!dashboard}
       noBackground
     >
