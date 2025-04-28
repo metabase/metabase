@@ -1,6 +1,9 @@
 import { t } from "ttag";
 
-import type { MBQLClauseFunctionConfig } from "./types";
+import {
+  MBQLClauseCategory as CATEGORY,
+  type MBQLClauseFunctionConfig,
+} from "./types";
 
 type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
 type Forbidden<T, K extends keyof T> = Omit<T, K> & { [P in K]?: never };
@@ -37,7 +40,7 @@ function defineClauses<const T extends Record<string, ConfigInput>>(
 }
 
 const WINDOW = defineClauses(
-  { category: "window" },
+  { category: CATEGORY.Window },
   {
     "cum-count": {
       displayName: "CumulativeCount",
@@ -65,7 +68,7 @@ const WINDOW = defineClauses(
 );
 
 const AGGREGATION = defineClauses(
-  { category: "aggregation" },
+  { category: CATEGORY.Aggregation },
   {
     count: { displayName: "Count", type: "aggregation", args: [] },
     sum: { displayName: "Sum", type: "aggregation", args: ["number"] },
@@ -122,7 +125,7 @@ const AGGREGATION = defineClauses(
 );
 
 const CONVERSION = defineClauses(
-  { category: "conversion" },
+  { category: CATEGORY.Conversion },
   {
     text: {
       displayName: "text",
@@ -152,7 +155,7 @@ const CONVERSION = defineClauses(
 );
 
 const STRING = defineClauses(
-  { category: "string" },
+  { category: CATEGORY.String },
   {
     lower: { displayName: "lower", type: "string", args: ["string"] },
     upper: { displayName: "upper", type: "string", args: ["string"] },
@@ -264,7 +267,7 @@ const STRING = defineClauses(
 );
 
 const DATE = defineClauses(
-  { category: "date" },
+  { category: CATEGORY.Date },
   {
     "month-name": {
       displayName: "monthName",
@@ -381,7 +384,7 @@ const DATE = defineClauses(
 );
 
 const MATH = defineClauses(
-  { category: "math" },
+  { category: CATEGORY.Math },
   {
     abs: {
       displayName: "abs",
@@ -435,7 +438,7 @@ const MATH = defineClauses(
 );
 
 const LOGICAL = defineClauses(
-  { category: "logical" },
+  { category: CATEGORY.Logical },
   {
     between: {
       displayName: "between",

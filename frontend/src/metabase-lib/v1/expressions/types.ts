@@ -5,14 +5,15 @@ import type { DatabaseFeature, Expression } from "metabase-types/api";
 import type { DefinedClauseName } from "./clause";
 import type { Token } from "./pratt";
 
-export type MBQLClauseCategory =
-  | "logical"
-  | "math"
-  | "string"
-  | "date"
-  | "conversion"
-  | "window"
-  | "aggregation";
+export enum MBQLClauseCategory {
+  Logical = "logical",
+  Math = "math",
+  String = "string",
+  Date = "date",
+  Conversion = "conversion",
+  Window = "window",
+  Aggregation = "aggregation",
+}
 
 export interface HelpText {
   name: string;
