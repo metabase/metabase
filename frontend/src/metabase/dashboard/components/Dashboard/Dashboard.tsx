@@ -13,7 +13,7 @@ import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthC
 import { Box, Flex } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
 
-import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "../../constants";
+import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
 import { DashboardGridConnected } from "../DashboardGrid";
 import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
