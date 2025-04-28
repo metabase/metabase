@@ -11190,7 +11190,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v55.2025-04-17T16:00:00
+      id: v55.2025-04-28T16:00:00
       author: rafpaf
       comment: Make the 'msgstr' column in the content_translation table non-nullable
       changes:
