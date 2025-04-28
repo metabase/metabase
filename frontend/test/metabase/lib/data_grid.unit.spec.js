@@ -645,7 +645,7 @@ describe("data_grid", () => {
           ]);
         });
 
-        it("not condense duplcate totals", () => {
+        it("does not condense duplicate totals", () => {
           const data = makePivotData([
             ["a", "x", 1],
             ["a", "y", 2],
