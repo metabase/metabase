@@ -10,7 +10,6 @@ import {
   CALL,
   END_OF_INPUT,
   FIELD,
-  GROUP,
   IDENTIFIER,
   NUMBER,
   STRING,
@@ -80,9 +79,6 @@ export function lexify(source: string) {
         prev.type = CALL;
         delete prev.value;
       }
-      return token(node, {
-        type: GROUP,
-      });
     }
 
     const type = parsePunctuator(node.type.name);
