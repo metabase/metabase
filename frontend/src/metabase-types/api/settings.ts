@@ -266,6 +266,12 @@ export interface SettingDefinition<Key extends SettingKey = SettingKey> {
   type?: InputSettingType;
 }
 
+export type SettingDefinitionMap<
+  T extends EnterpriseSettingKey = EnterpriseSettingKey,
+> = {
+  [K in T]: SettingDefinition<K>;
+};
+
 export type UpdateChannel = "latest" | "beta" | "nightly";
 
 export interface OpenAiModel {
