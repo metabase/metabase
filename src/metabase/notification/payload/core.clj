@@ -147,7 +147,5 @@
   :payload_type)
 
 (defmethod skip-reason :default
-  [notification-payload]
-  (when-let [condition (not-empty (:condition notification-payload))]
-    (when-not (notification.condition/evaluate-expression condition notification-payload)
-      :condition-not-met)))
+  [_notification-payload]
+  nil)

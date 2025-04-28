@@ -4,7 +4,9 @@
    [metabase.channel.email.messages :as messages]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.user :as user]
+   [metabase.notification.condition :as notification.condition]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.notification.send :as notification.send]
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]
@@ -223,3 +225,9 @@
                                                      :schema)]
     (assert (= op :=>))
     (mr/resolve-schema return-schema)))
+
+(defmethod notification.send/should-queue-notification? :notification/system-event
+  [notification-info]
+  (if-let [condition (not-empty (:condition notification-info))]
+    (notification.condition/evaluate-expression condition (:event_info notification-info))
+    true))
