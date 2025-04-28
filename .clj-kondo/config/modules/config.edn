@@ -124,7 +124,7 @@
   {:api  #{metabase.cloud-migration.api
            metabase.cloud-migration.core
            metabase.cloud-migration.init}
-   :uses #{api cmd config db models premium-features util}}
+   :uses #{api cmd config db models premium-features task util}}
 
   cmd
   {:api  #{metabase.cmd

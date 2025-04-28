@@ -17,7 +17,9 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.pipeline :as t2.pipeline])
+   [toucan2.pipeline :as t2.pipeline]
+   [metabase.task :as task]
+   [metabase.task.bootstrap :as task.bootstrap])
   (:import
    (java.io File InputStream)
    (org.apache.commons.io.input BoundedInputStream)))
@@ -210,6 +212,8 @@
       (when (cluster?)
         (log/info "Cluster detected, waiting for read-only mode to propagate")
         (Thread/sleep (int (* 1.5 setting.cache/cache-update-check-interval-ms))))
+      (log/info "Stopping scheduler")
+      (task/stop-scheduler!)
 
       (log/info "Dumping h2 backup to" (.getAbsolutePath dump-file))
       (set-progress id :dump 20)
@@ -226,6 +230,12 @@
       (log/info "Notifying store that upload is done")
       (http/put (migration-url external_id "/uploaded"))
 
+      ;; Need to restore the previous scheduler configuration because the database quartz is pointing at has changed
+      ;; after finishing the dump to h2 migration
+      (task.bootstrap/set-jdbc-backend-properties! (mdb/db-type))
+      (log/info "Restarting scheduler")
+      (task/start-scheduler!)
+
       (log/info "Migration finished")
       (set-progress id :done 100)
       (catch Exception e
@@ -235,7 +245,7 @@
           (do
             (t2/update! :model/CloudMigration id {:state :error})
             (log/info "Migration failed")
-            (throw (ex-info "Error performing migration" {:error e})))))
+            (throw (ex-info "Error performing migration" {} e)))))
       (finally
         (cloud-migration.settings/read-only-mode! false)
         (io/delete-file dump-file :silently)))))
