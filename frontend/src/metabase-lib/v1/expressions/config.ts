@@ -27,20 +27,34 @@ function defineClauses<const T extends Record<string, ConfigInput>>(
   return result;
 }
 
-export const AGGREGATION_FUNCTIONS = defineClauses({
-  // aggregation functions
-  count: { displayName: "Count", type: "aggregation", args: [] },
+const WINDOW = defineClauses({
   "cum-count": {
     displayName: "CumulativeCount",
     type: "aggregation",
     args: [],
   },
-  sum: { displayName: "Sum", type: "aggregation", args: ["number"] },
   "cum-sum": {
     displayName: "CumulativeSum",
     type: "aggregation",
     args: ["number"],
   },
+  offset: {
+    displayName: "Offset",
+    type: "any", // ideally we'd dynamically infer it from the first argument
+    args: ["any", "number"],
+    requiresFeature: "window-functions/offset",
+    validator(_expr: any, offset: number) {
+      if (offset === 0) {
+        return t`Row offset cannot be zero`;
+      }
+    },
+    hasOptions: true,
+  },
+});
+
+const AGGREGATION = defineClauses({
+  count: { displayName: "Count", type: "aggregation", args: [] },
+  sum: { displayName: "Sum", type: "aggregation", args: ["number"] },
   distinct: {
     displayName: "Distinct",
     type: "aggregation",
@@ -89,18 +103,6 @@ export const AGGREGATION_FUNCTIONS = defineClauses({
     type: "aggregation",
     args: ["number", "number"],
     requiresFeature: "percentile-aggregations",
-  },
-  offset: {
-    displayName: "Offset",
-    type: "any", // ideally we'd dynamically infer it from the first argument
-    args: ["any", "number"],
-    requiresFeature: "window-functions/offset",
-    validator(_expr: any, offset: number) {
-      if (offset === 0) {
-        return t`Row offset cannot be zero`;
-      }
-    },
-    hasOptions: true,
   },
 });
 
@@ -577,6 +579,11 @@ export const EXPRESSION_OPERATORS = defineClauses({
     args: ["expression", "expression"],
   },
 });
+
+export const AGGREGATION_FUNCTIONS = {
+  ...AGGREGATION,
+  ...WINDOW,
+} as const;
 
 export const MBQL_CLAUSES = {
   ...AGGREGATION_FUNCTIONS,
