@@ -16,18 +16,24 @@ import { isNotNull } from "metabase/lib/types";
 export type SdkDashboardDisplayProps = {
   /**
    * The ID of the dashboard.
+   *  <br/>
    * This is either:
+   *  <br/>
    *  - the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
+   *  <br/>
    *  - the string ID found in the `entity_id` key of the dashboard object when using the API directly or using the SDK Collection Browser to return data
    */
   dashboardId: SdkDashboardId;
 
   /**
-   * Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.\
-   *
+   * Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
+   * <br/>
+   * <br/>
    * @remarks
-   * * Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](../../authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
-   * * Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
+   * <br/>
+   * - Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
+   * <br/>
+   * - Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
    */
   initialParameters?: Query;
 
@@ -52,11 +58,14 @@ export type SdkDashboardDisplayProps = {
   withFooter?: boolean;
 
   /**
-   * A list of [parameters to hide](../../../public-links.html#appearance-parameters).
-   *
+   * A list of [parameters to hide](https://www.metabase.com/docs/latest/embedding/public-links.html#appearance-parameters).
+   * <br/>
+   * <br/>
    * @remarks
-   * * Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](../../authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
-   * * Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
+   * <br/>
+   * - Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
+   * <br/>
+   * - Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
    **/
   hiddenParameters?: string[];
 } & CommonStylingProps;

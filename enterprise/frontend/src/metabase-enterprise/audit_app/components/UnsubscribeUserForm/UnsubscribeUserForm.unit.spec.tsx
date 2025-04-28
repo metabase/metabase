@@ -1,16 +1,18 @@
 import { render, screen, waitFor } from "__support__/ui";
+import { createMockUser } from "metabase-types/api/mocks";
 
-import UnsubscribeUserForm from "./UnsubscribeUserForm";
+import { UnsubscribeUserForm } from "./UnsubscribeUserForm";
 
-const getUser = () => ({
-  id: 1,
-  common_name: "John Doe",
-});
+const getUser = () =>
+  createMockUser({
+    id: 1,
+    common_name: "John Doe",
+  });
 
 describe("UnsubscribeUserForm", () => {
   it("should close on successful submit", async () => {
     const user = getUser();
-    const onUnsubscribe = jest.fn().mockResolvedValue();
+    const onUnsubscribe = jest.fn();
     const onClose = jest.fn();
 
     render(

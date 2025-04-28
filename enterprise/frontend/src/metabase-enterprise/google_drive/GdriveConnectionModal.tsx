@@ -30,7 +30,7 @@ import {
 import Styles from "./Gdrive.module.css";
 import { getStrings } from "./GdriveConnectionModal.strings";
 import { trackSheetImportClick } from "./analytics";
-import { getErrorMessage, getStatus } from "./utils";
+import { getErrorMessage, getStatus, useShowGdrive } from "./utils";
 
 export function GdriveConnectionModal({
   isModalOpen,
@@ -41,10 +41,17 @@ export function GdriveConnectionModal({
   onClose: () => void;
   reconnect: boolean;
 }) {
+  const shouldShow = useShowGdrive();
   const { data: { email: serviceAccountEmail } = {} } =
-    useGetServiceAccountQuery();
+    useGetServiceAccountQuery(shouldShow ? undefined : skipToken);
 
-  const { data: gSheetData, error } = useGetGsheetsFolderQuery();
+  const { data: gSheetData, error } = useGetGsheetsFolderQuery(
+    shouldShow ? undefined : skipToken,
+  );
+
+  if (!shouldShow) {
+    return null;
+  }
 
   const status = getStatus({ status: gSheetData?.status, error });
 

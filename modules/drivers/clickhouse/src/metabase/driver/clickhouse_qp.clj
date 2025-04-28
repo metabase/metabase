@@ -290,6 +290,28 @@
   [driver [_ arg pattern]]
   [:'extract (sql.qp/->honeysql driver arg) pattern])
 
+(defmethod sql.qp/->honeysql [:clickhouse :split-part]
+  [driver [_ text divider position]]
+  (let [position (sql.qp/->honeysql driver position)]
+    [:case
+     [:< position 1]
+     ""
+
+     :else
+     [:'arrayElement
+      [:'splitByString (sql.qp/->honeysql driver divider) [:'assumeNotNull (sql.qp/->honeysql driver text)]]
+      [:'toInt64 position]]]))
+
+(defmethod sql.qp/->honeysql [:clickhouse :text]
+  [driver [_ value]]
+  (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
+
+(defmethod sql.qp/->honeysql [:clickhouse :date]
+  [driver [_ value]]
+  (h2x/maybe-cast "Date32"
+                  [:'parseDateTime64 (sql.qp/->honeysql driver value)
+                   [:inline "%Y-%m-%d"]]))
+
 (defmethod sql.qp/->honeysql [:clickhouse :stddev]
   [driver [_ field]]
   [:'stddevPop (sql.qp/->honeysql driver field)])
@@ -313,9 +335,14 @@
   [driver [_ field]]
   [:'varPop (sql.qp/->honeysql driver field)])
 
+(defmethod sql.qp/float-dbtype :clickhouse
+  [_]
+  :Float64)
+
 (defmethod sql.qp/->float :clickhouse
   [_ value]
-  [:'toFloat64 value])
+  ;; casting in clickhouse does not properly handle NULL; this function does
+  (h2x/with-database-type-info [:'toFloat64 value] :Float64))
 
 (defmethod sql.qp/->honeysql [:clickhouse :value]
   [driver value]
@@ -428,6 +455,10 @@
 (defmethod sql.qp/cast-temporal-byte [:clickhouse :Coercion/ISO8601->Time]
   [_driver _special_type expr]
   expr)
+
+(defmethod sql.qp/->honeysql [:clickhouse :integer]
+  [driver [_ value]]
+  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
 
 ;;; ------------------------------------------------------------------------------------
 ;;; JDBC-related functions
