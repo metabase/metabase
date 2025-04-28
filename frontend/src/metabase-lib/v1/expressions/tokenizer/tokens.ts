@@ -119,7 +119,7 @@ export const field = new ExternalTokenizer((input) => {
         return;
       }
 
-      // We encountered a punctuator after an opening bracket. Store it's location and
+      // We encountered a punctuator after an opening bracket. Store its location and
       // keep looking for the closing bracket.
       firstPunctuator = idx;
     }
