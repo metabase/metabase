@@ -7,7 +7,7 @@ export type LogLevel =
   | "debug"
   | "trace";
 
-export type TimeUnit =
+export type LoggerDurationUnit =
   | "days"
   | "hours"
   | "minutes"
@@ -31,6 +31,6 @@ export interface LoggerPreset {
 
 export interface AdjustLogLevelsRequest {
   duration: number;
-  duration_unit: TimeUnit;
+  duration_unit: LoggerDurationUnit;
   log_levels: Record<LoggerName, LogLevel>;
 }

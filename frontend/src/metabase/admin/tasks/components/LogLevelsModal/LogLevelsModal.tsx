@@ -10,7 +10,7 @@ import { CodeEditor } from "metabase/components/CodeEditor";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import { Box, Button, Flex, Icon, Loader, Tooltip } from "metabase/ui";
-import type { TimeUnit } from "metabase-types/api";
+import type { LoggerDurationUnit } from "metabase-types/api";
 
 import { DurationInput } from "./DurationInput";
 import S from "./LogLevelsModal.module.css";
@@ -38,7 +38,8 @@ export const LogLevelsModal = ({ onClose }: Props) => {
     useResetLogLevelsMutation();
 
   const [duration, setDuration] = useState("60");
-  const [durationUnit, setDurationUnit] = useState<TimeUnit>("minutes");
+  const [durationUnit, setDurationUnit] =
+    useState<LoggerDurationUnit>("minutes");
   const [json, setJson] = useState("");
   const durationNumber = parseInt(duration, 10);
   const isDurationValid = Number.isFinite(durationNumber);

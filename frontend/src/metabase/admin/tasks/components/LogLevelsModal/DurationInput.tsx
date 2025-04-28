@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
 import { Flex, Select, TextInput } from "metabase/ui";
-import type { TimeUnit } from "metabase-types/api";
+import type { LoggerDurationUnit } from "metabase-types/api";
 
 interface Props {
   duration: string;
-  durationUnit: TimeUnit;
+  durationUnit: LoggerDurationUnit;
   onDurationChange: (duration: string) => void;
-  onDurationUnitChange: (durationUnit: TimeUnit) => void;
+  onDurationUnitChange: (durationUnit: LoggerDurationUnit) => void;
 }
 
 export const DurationInput = ({
@@ -41,7 +41,7 @@ export const DurationInput = ({
 
 // Some options are not practically useful
 type AllowedTimeUnit = Exclude<
-  TimeUnit,
+  LoggerDurationUnit,
   "nanoseconds" | "microseconds" | "milliseconds"
 >;
 
