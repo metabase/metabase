@@ -18,11 +18,11 @@ import { getIsHeaderVisible, getTabs } from "metabase/dashboard/selectors";
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import title from "metabase/hoc/Title";
-import withToast from "metabase/hoc/Toast";
 import { color } from "metabase/lib/colors";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
+import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Title, Tooltip } from "metabase/ui";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -46,6 +46,7 @@ const mapStateToProps = (state, props) => ({
 const mapDispatchToProps = {
   saveDashboard: Dashboards.actions.save,
   invalidateCollections: Collections.actions.invalidateLists,
+  addUndo,
 };
 
 class AutomaticDashboardAppInner extends Component {
@@ -61,14 +62,14 @@ class AutomaticDashboardAppInner extends Component {
   }
 
   save = async () => {
-    const { dashboard, triggerToast, saveDashboard, invalidateCollections } =
+    const { dashboard, addUndo, saveDashboard, invalidateCollections } =
       this.props;
     // remove the transient id before trying to save
     const { payload: newDashboard } = await saveDashboard(
       dissoc(dashboard, "id"),
     );
     invalidateCollections();
-    triggerToast(
+    addUndo(
       <div className={cx(CS.flex, CS.alignCenter)}>
         {t`Your dashboard was saved`}
         <Link
@@ -207,7 +208,6 @@ class AutomaticDashboardAppInner extends Component {
 export const AutomaticDashboardAppConnected = _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   DashboardData,
-  withToast,
   title(({ dashboard }) => dashboard && dashboard.name),
 )(AutomaticDashboardAppInner);
 
