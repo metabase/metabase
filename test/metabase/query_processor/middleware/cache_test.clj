@@ -301,7 +301,8 @@
                   result)))))))
 
 (deftest array-query-can-be-cached-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :test/arrays)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :test/arrays)
+                         :sqlite) ;; Disabling until issue #57301 is resolved
     (with-mock-cache! [save-chan]
       (mt/with-clock #t "2025-02-06T00:00:00.000Z[UTC]"
         (let [query           (mt/native-query {:query (tx/native-array-query driver/*driver*)})
