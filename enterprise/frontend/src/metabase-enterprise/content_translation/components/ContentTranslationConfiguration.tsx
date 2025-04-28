@@ -151,7 +151,7 @@ export const ContentTranslationConfiguration = () => {
                     "This string describes how many translations there are of a given string for a particular locale. {0} is the name of a locale. {1} is an integer",
                   ).ngettext(
                     msgid`${localeName}: ${count} translation`,
-                    msgid`${localeName}: ${count} translations`,
+                    `${localeName}: ${count} translations`,
                     count,
                   )}
                 </List.Item>
