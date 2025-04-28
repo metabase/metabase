@@ -1,5 +1,6 @@
-/* eslint-disable react/prop-types */
-import { Component } from "react";
+import { Component, type ComponentType } from "react";
+import type { ConnectedProps } from "react-redux";
+import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
@@ -15,15 +16,22 @@ import {
 } from "metabase/dashboard/selectors";
 import { connect } from "metabase/lib/redux";
 import { setErrorPage } from "metabase/redux/app";
+import type { DashboardId } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
-const mapStateToProps = (state, props) => {
+import type {
+  FailedFetchDashboardResult,
+  FetchDashboardResult,
+} from "../types";
+
+const mapStateToProps = (state: State) => {
   return {
-    dashboard: getDashboardComplete(state, props),
-    dashcardData: getDashcardDataMap(state, props),
+    dashboard: getDashboardComplete(state),
+    dashcardData: getDashcardDataMap(state),
     selectedTabId: getSelectedTabId(state),
-    slowCards: getSlowCards(state, props),
-    parameters: getParameters(state, props),
-    parameterValues: getParameterValues(state, props),
+    slowCards: getSlowCards(state),
+    parameters: getParameters(state),
+    parameterValues: getParameterValues(state),
     isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
   };
 };
@@ -34,16 +42,31 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
+const connector = connect(mapStateToProps, mapDispatchToProps);
+
+type ReduxProps = ConnectedProps<typeof connector>;
+
+export type DashboardDataProps = {
+  dashboardId: DashboardId;
+  noLink: boolean;
+} & WithRouterProps;
+
+export type DashboardDataReturnedProps = DashboardDataProps &
+  Omit<ReduxProps, "navigateToNewCardFromDashboard"> & {
+    navigateToNewCardFromDashboard:
+      | ReduxProps["navigateToNewCardFromDashboard"]
+      | null;
+  };
+
 /**
  * @deprecated HOCs are deprecated
  */
-export const DashboardData = (ComposedComponent) =>
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  )(
-    class DashboardDataInner extends Component {
-      async load(props) {
+export const DashboardData = (
+  ComposedComponent: ComponentType<DashboardDataReturnedProps>,
+) =>
+  connector(
+    class DashboardDataInner extends Component<DashboardDataReturnedProps> {
+      async load(props: DashboardDataReturnedProps) {
         const {
           initialize,
           fetchDashboard,
@@ -64,7 +87,7 @@ export const DashboardData = (ComposedComponent) =>
           },
         });
 
-        if (result.error) {
+        if (isFailedFetchDashboardResult(result)) {
           setErrorPage(result.payload);
           return;
         }
@@ -88,7 +111,7 @@ export const DashboardData = (ComposedComponent) =>
         this.props.cancelFetchDashboardCardData();
       }
 
-      UNSAFE_componentWillReceiveProps(nextProps) {
+      UNSAFE_componentWillReceiveProps(nextProps: DashboardDataReturnedProps) {
         if (nextProps.dashboardId !== this.props.dashboardId) {
           this.load(nextProps);
           return;
@@ -128,3 +151,10 @@ export const DashboardData = (ComposedComponent) =>
       }
     },
   );
+
+function isFailedFetchDashboardResult(
+  result: FetchDashboardResult,
+): result is FailedFetchDashboardResult {
+  const hasError = "error" in result;
+  return hasError;
+}
