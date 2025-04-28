@@ -88,6 +88,9 @@ const DashboardContextProviderInner = ({
   downloadsEnabled = { pdf: true, results: true },
   autoScrollToDashcardId = undefined,
   reportAutoScrolledToDashcard = noop,
+  cardTitled = true,
+  getClickActionMode = undefined,
+  withFooter = true,
 
   // redux selectors
   dashboard,
@@ -203,6 +206,11 @@ const DashboardContextProviderInner = ({
         onLoad,
         onError,
 
+        navigateToNewCardFromDashboard:
+          _navigateToNewCardFromDashboard ??
+          ((opts: NavigateToNewCardFromDashboardOpts) =>
+            dispatch(navigateToNewCardFromDashboard(opts))),
+
         isLoading: !dashboard,
 
         isFullscreen,
@@ -224,6 +232,9 @@ const DashboardContextProviderInner = ({
         downloadsEnabled,
         autoScrollToDashcardId,
         reportAutoScrolledToDashcard,
+        cardTitled,
+        getClickActionMode,
+        withFooter,
 
         // redux selectors
         dashboard,
@@ -242,9 +253,6 @@ const DashboardContextProviderInner = ({
         toggleSidebar,
         reset,
         closeDashboard,
-        navigateToNewCardFromDashboard:
-          _navigateToNewCardFromDashboard ??
-          (() => dispatch(navigateToNewCardFromDashboard())),
         ...reduxProps,
       }}
     >
