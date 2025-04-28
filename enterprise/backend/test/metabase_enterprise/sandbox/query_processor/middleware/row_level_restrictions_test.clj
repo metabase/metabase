@@ -265,11 +265,14 @@
 ;;; |                                                END-TO-END TESTS                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; ->honeysql is not implemented for mongo
 (defn- e2e-test-drivers []
-  (mt/normal-drivers-with-feature :nested-queries))
+  (into #{}
+        (filter #(isa? driver/hierarchy % :sql))
+        (mt/normal-drivers-with-feature :nested-queries)))
 
 (deftest e2e-test-1
-  (mt/test-drivers (disj (e2e-test-drivers) :mongo) ;; ->honeysql is not implemented for mongo
+  (mt/test-drivers (e2e-test-drivers)
     (testing "Basic test around querying a table by a user with segmented only permissions and a GTAP question that is a native query"
       (met/with-gtaps! {:gtaps {:venues (venues-category-native-gtap-def)}, :attributes {"cat" 50}}
         (is (= [[10]]
@@ -319,7 +322,7 @@
                (run-venues-count-query)))))))
 
 (deftest e2e-test-7
-  (mt/test-drivers (disj (e2e-test-drivers) :mongo) ;; ->honeysql is not implemented for mongo
+  (mt/test-drivers (e2e-test-drivers)
     (testing "Tests that users can have a different parameter name in their query than they have in their user attributes"
       (met/with-gtaps! {:gtaps      {:venues {:query      (:query (venues-category-native-gtap-def))
                                               :remappings {:something.different ["variable" ["template-tag" "cat"]]}}}
@@ -328,7 +331,7 @@
                (run-venues-count-query)))))))
 
 (deftest e2e-test-8
-  (mt/test-drivers (disj (e2e-test-drivers) :mongo) ;; ->honeysql is not implemented for mongo
+  (mt/test-drivers (e2e-test-drivers)
     (testing "Make sure that you can still use a SQL-based GTAP without needing to have SQL read perms for the Database"
       (met/with-gtaps! {:gtaps {:venues (venue-names-native-gtap-def)}}
         (is (= [[1 "Red Medicine"] [2 "Stout Burgers & Beers"]]
@@ -1232,3 +1235,20 @@
         (is (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id)))
         (is (= 10 (count (mt/rows (streaming.test-util/process-query-basic-streaming :api (mt/mbql-query venues))))))
         (is (not (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id))))))))
+
+(deftest filter-by-column-sandboxing-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "Simple sandboxing with filtering by a column works for all supported drivers"
+      (met/with-gtaps! {:gtaps {:venues {:remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}},
+                        :attributes {"cat" 10}}
+        (is (= [[34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
+                [99 "Golden Road Brewing" 10 34.1505 -118.274 2]]
+               (mt/rows
+                (mt/run-mbql-query venues)))))
+      (met/with-gtaps! {:gtaps {:checkins {:remappings {:user ["variable" [:field (mt/id :checkins :user_id) nil]]}}},
+                        :attributes {"user" (mt/user->id :rasta)}}
+        (is (= [[77]]
+               (mt/rows
+                (mt/run-mbql-query checkins {:aggregation [[:count]]}))))))))
+
+
