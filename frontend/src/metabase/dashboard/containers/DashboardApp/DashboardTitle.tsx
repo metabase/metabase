@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDocumentTitle } from "metabase/dashboard/selectors";
 import title from "metabase/hoc/Title";
