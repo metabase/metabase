@@ -47,7 +47,9 @@ describe("issue 6010", () => {
       .then(({ body: { id } }) => createQuestion(id))
       .then(({ body: { id } }) => H.visitQuestion(id));
 
-    H.cartesianChartCircle().eq(0).click();
+    // Metric filters are transformed into aggregation case expression condition. The 21st point is first non filtered
+    // point.
+    H.cartesianChartCircle().eq(21).click();
 
     H.popover().findByText("See these Orders").click();
     cy.wait("@dataset");
