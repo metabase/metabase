@@ -445,7 +445,7 @@ describe("scenarios > dashboard > download pdf", () => {
 
     H.openSharingMenu("Export as PDF");
     cy.log("We're adding a 'Metabase-' prefix for non-whitelabelled instances");
-    cy.verifyDownload(`Metabase-saving pdf dashboard - ${date}.pdf`);
+    cy.verifyDownload(`Metabase - saving pdf dashboard - ${date}.pdf`);
   });
 });
 

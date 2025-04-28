@@ -164,7 +164,7 @@ export const saveDashboardPdf = async ({
   const originalFileName = `${dashboardName}.pdf`;
   const fileName = includeBranding
     ? // eslint-disable-next-line no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
-      `Metabase-${originalFileName}`
+      `Metabase - ${originalFileName}`
     : originalFileName;
 
   const dashboardRoot = document.querySelector(selector);
