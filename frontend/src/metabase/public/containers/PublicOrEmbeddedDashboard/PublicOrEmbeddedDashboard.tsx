@@ -101,6 +101,8 @@ export const PublicOrEmbeddedDashboard = ({
   cardTitled,
   withFooter,
   navigateToNewCardFromDashboard,
+  onError,
+  getClickActionMode,
 }: Pick<
   DashboardContextProps,
   | "dashboardId"
@@ -124,6 +126,8 @@ export const PublicOrEmbeddedDashboard = ({
   | "cardTitled"
   | "withFooter"
   | "navigateToNewCardFromDashboard"
+  | "onError"
+  | "getClickActionMode"
 > &
   Pick<EmbeddingAdditionalHashOptions, "locale">) => (
   <DashboardContextProvider
@@ -148,6 +152,8 @@ export const PublicOrEmbeddedDashboard = ({
     cardTitled={cardTitled}
     withFooter={withFooter}
     navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
+    onError={onError}
+    getClickActionMode={getClickActionMode}
   >
     <PublicOrEmbeddedDashboardInner locale={locale} />
   </DashboardContextProvider>

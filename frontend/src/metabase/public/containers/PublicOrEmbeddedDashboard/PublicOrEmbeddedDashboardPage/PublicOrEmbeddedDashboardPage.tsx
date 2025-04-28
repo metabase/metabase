@@ -7,13 +7,16 @@ import {
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { getDashboardComplete } from "metabase/dashboard/selectors";
 import { SetTitle } from "metabase/hoc/Title";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { setErrorPage } from "metabase/redux/app";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 
 import { PublicOrEmbeddedDashboard } from "../PublicOrEmbeddedDashboard";
 import { usePublicDashboardEndpoints } from "../WithPublicDashboardEndpoints";
 
 export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
+  const dispatch = useDispatch();
+
   const { location, router } = props;
   const parameterQueryParams = props.location.query;
 
@@ -73,6 +76,9 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         withFooter={true}
         getClickActionMode={undefined}
         navigateToNewCardFromDashboard={null}
+        onError={(error) => {
+          dispatch(setErrorPage(error));
+        }}
       />
     </>
   );
