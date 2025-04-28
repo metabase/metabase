@@ -166,9 +166,15 @@ export const settings = {
     inline: true,
   },
   "pivot.condense_duplicate_totals": {
-    section: t`Columns`,
-    title: t`Condense duplicate totals`,
-    hint: t`Hide additional total elements if the totals are the same`,
+    get section() {
+      return t`Columns`;
+    },
+    get title() {
+      return t`Condense duplicate totals`;
+    },
+    get hint() {
+      return t`Hide additional total elements if the totals are the same`;
+    },
     widget: "toggle",
     default: true,
     inline: true,
