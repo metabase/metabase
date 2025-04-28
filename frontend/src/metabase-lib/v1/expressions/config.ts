@@ -106,7 +106,7 @@ const AGGREGATION = defineClauses({
   },
 });
 
-export const EXPRESSION_FUNCTIONS = defineClauses({
+const CAST = defineClauses({
   // cast functions
   text: {
     displayName: "text",
@@ -132,7 +132,9 @@ export const EXPRESSION_FUNCTIONS = defineClauses({
     args: ["expression"],
     requiresFeature: "expressions/float",
   },
-  // string functions
+});
+
+const STRING = defineClauses({
   lower: { displayName: "lower", type: "string", args: ["string"] },
   upper: { displayName: "upper", type: "string", args: ["string"] },
   substring: {
@@ -201,71 +203,6 @@ export const EXPRESSION_FUNCTIONS = defineClauses({
     args: ["string"],
     requiresFeature: "regex",
   },
-  "month-name": {
-    displayName: "monthName",
-    type: "string",
-    args: ["number"],
-  },
-  "quarter-name": {
-    displayName: "quarterName",
-    type: "string",
-    args: ["number"],
-  },
-  "day-name": {
-    displayName: "dayName",
-    type: "string",
-    args: ["number"],
-  },
-  // numeric functions
-  abs: {
-    displayName: "abs",
-    type: "number",
-    args: ["number"],
-    requiresFeature: "expressions",
-  },
-  floor: {
-    displayName: "floor",
-    type: "number",
-    args: ["number"],
-    requiresFeature: "expressions",
-  },
-  ceil: {
-    displayName: "ceil",
-    type: "number",
-    args: ["number"],
-    requiresFeature: "expressions",
-  },
-  round: {
-    displayName: "round",
-    type: "number",
-    args: ["number"],
-    requiresFeature: "expressions",
-  },
-  sqrt: {
-    displayName: "sqrt",
-    type: "number",
-    args: ["number"],
-    requiresFeature: "advanced-math-expressions",
-  },
-  power: {
-    displayName: "power",
-    type: "number",
-    args: ["number", "number"],
-    requiresFeature: "advanced-math-expressions",
-  },
-  log: {
-    displayName: "log",
-    type: "number",
-    args: ["number"],
-    requiresFeature: "advanced-math-expressions",
-  },
-  exp: {
-    displayName: "exp",
-    type: "number",
-    args: ["number"],
-    requiresFeature: "advanced-math-expressions",
-  },
-  // boolean functions
   contains: {
     displayName: "contains",
     type: "boolean",
@@ -294,10 +231,33 @@ export const EXPRESSION_FUNCTIONS = defineClauses({
     multiple: true,
     hasOptions: true,
   },
-  between: {
-    displayName: "between",
+  "is-empty": {
+    displayName: "isEmpty",
     type: "boolean",
-    args: ["expression", "expression", "expression"],
+    args: ["expression"],
+  },
+  "not-empty": {
+    displayName: "notEmpty",
+    type: "boolean",
+    args: ["expression"],
+  },
+});
+
+const DATE = defineClauses({
+  "month-name": {
+    displayName: "monthName",
+    type: "string",
+    args: ["number"],
+  },
+  "quarter-name": {
+    displayName: "quarterName",
+    type: "string",
+    args: ["number"],
+  },
+  "day-name": {
+    displayName: "dayName",
+    type: "string",
+    args: ["number"],
   },
   interval: {
     displayName: "timeSpan",
@@ -319,81 +279,6 @@ export const EXPRESSION_FUNCTIONS = defineClauses({
     displayName: "relativeDateTime",
     type: "expression",
     args: ["number", "string"],
-  },
-  "is-null": {
-    displayName: "isNull",
-    type: "boolean",
-    args: ["expression"],
-  },
-  "not-null": {
-    displayName: "notNull",
-    type: "boolean",
-    args: ["expression"],
-  },
-  "is-empty": {
-    displayName: "isEmpty",
-    type: "boolean",
-    args: ["expression"],
-  },
-  "not-empty": {
-    displayName: "notEmpty",
-    type: "boolean",
-    args: ["expression"],
-  },
-  // other expression functions
-  coalesce: {
-    displayName: "coalesce",
-    type: "expression",
-    args: ["expression", "expression"],
-    argType(_index, _args, type) {
-      return type;
-    },
-    multiple: true,
-  },
-  case: {
-    displayName: "case",
-    type: "expression",
-    multiple: true,
-    args: ["expression", "expression"], // ideally we'd alternate boolean/expression
-    argType(index, args, type) {
-      const len = args.length;
-      if (len % 2 === 1 && index === len - 1) {
-        return type;
-      }
-      if (index % 2 === 1) {
-        return type;
-      }
-      return "boolean";
-    },
-  },
-  if: {
-    displayName: "if",
-    type: "expression",
-    multiple: true,
-    args: ["expression", "expression"],
-    argType(index, args, type) {
-      const len = args.length;
-      if (len % 2 === 1 && index === len - 1) {
-        return type;
-      }
-      if (index % 2 === 1) {
-        return type;
-      }
-      return "boolean";
-    },
-  },
-  //"in` and `not-in` are aliases for `=` and `!="
-  in: {
-    displayName: "in",
-    type: "boolean",
-    args: ["expression", "expression"],
-    multiple: true,
-  },
-  "not-in": {
-    displayName: "notIn",
-    type: "boolean",
-    args: ["expression", "expression"],
-    multiple: true,
   },
   "get-year": {
     displayName: "year",
@@ -472,8 +357,130 @@ export const EXPRESSION_FUNCTIONS = defineClauses({
   },
 });
 
-export const EXPRESSION_OPERATORS = defineClauses({
-  // boolean operators
+const NUMERIC = defineClauses({
+  abs: {
+    displayName: "abs",
+    type: "number",
+    args: ["number"],
+    requiresFeature: "expressions",
+  },
+  floor: {
+    displayName: "floor",
+    type: "number",
+    args: ["number"],
+    requiresFeature: "expressions",
+  },
+  ceil: {
+    displayName: "ceil",
+    type: "number",
+    args: ["number"],
+    requiresFeature: "expressions",
+  },
+  round: {
+    displayName: "round",
+    type: "number",
+    args: ["number"],
+    requiresFeature: "expressions",
+  },
+  sqrt: {
+    displayName: "sqrt",
+    type: "number",
+    args: ["number"],
+    requiresFeature: "advanced-math-expressions",
+  },
+  power: {
+    displayName: "power",
+    type: "number",
+    args: ["number", "number"],
+    requiresFeature: "advanced-math-expressions",
+  },
+  log: {
+    displayName: "log",
+    type: "number",
+    args: ["number"],
+    requiresFeature: "advanced-math-expressions",
+  },
+  exp: {
+    displayName: "exp",
+    type: "number",
+    args: ["number"],
+    requiresFeature: "advanced-math-expressions",
+  },
+});
+
+const LOGICAL = defineClauses({
+  between: {
+    displayName: "between",
+    type: "boolean",
+    args: ["expression", "expression", "expression"],
+  },
+  "is-null": {
+    displayName: "isNull",
+    type: "boolean",
+    args: ["expression"],
+  },
+  "not-null": {
+    displayName: "notNull",
+    type: "boolean",
+    args: ["expression"],
+  },
+  coalesce: {
+    displayName: "coalesce",
+    type: "expression",
+    args: ["expression", "expression"],
+    argType(_index, _args, type) {
+      return type;
+    },
+    multiple: true,
+  },
+  case: {
+    displayName: "case",
+    type: "expression",
+    multiple: true,
+    args: ["expression", "expression"], // ideally we'd alternate boolean/expression
+    argType(index, args, type) {
+      const len = args.length;
+      if (len % 2 === 1 && index === len - 1) {
+        return type;
+      }
+      if (index % 2 === 1) {
+        return type;
+      }
+      return "boolean";
+    },
+  },
+  if: {
+    displayName: "if",
+    type: "expression",
+    multiple: true,
+    args: ["expression", "expression"],
+    argType(index, args, type) {
+      const len = args.length;
+      if (len % 2 === 1 && index === len - 1) {
+        return type;
+      }
+      if (index % 2 === 1) {
+        return type;
+      }
+      return "boolean";
+    },
+  },
+  //"in` and `not-in` are aliases for `=` and `!="
+  in: {
+    displayName: "in",
+    type: "boolean",
+    args: ["expression", "expression"],
+    multiple: true,
+  },
+  "not-in": {
+    displayName: "notIn",
+    type: "boolean",
+    args: ["expression", "expression"],
+    multiple: true,
+  },
+});
+
+const LOGICAL_OPERATORS = defineClauses({
   and: {
     displayName: "AND",
     type: "boolean",
@@ -497,7 +504,9 @@ export const EXPRESSION_OPERATORS = defineClauses({
     type: "boolean",
     args: ["boolean"],
   },
-  // numeric operators
+});
+
+const NUMERIC_OPERATORS = defineClauses({
   "*": {
     displayName: "*",
     type: "number",
@@ -546,7 +555,9 @@ export const EXPRESSION_OPERATORS = defineClauses({
       return "number";
     },
   },
-  // equality operators
+});
+
+const EQUALITY_OPERATORS = defineClauses({
   "=": {
     displayName: "=",
     type: "boolean",
@@ -557,7 +568,9 @@ export const EXPRESSION_OPERATORS = defineClauses({
     type: "boolean",
     args: ["expression", "expression"],
   },
-  // comparison operators
+});
+
+export const COMPARISON_OPERATORS = defineClauses({
   "<=": {
     displayName: "<=",
     type: "boolean",
@@ -580,13 +593,28 @@ export const EXPRESSION_OPERATORS = defineClauses({
   },
 });
 
+const EXPRESSION_OPERATORS = {
+  ...LOGICAL_OPERATORS,
+  ...NUMERIC_OPERATORS,
+  ...EQUALITY_OPERATORS,
+  ...COMPARISON_OPERATORS,
+} as const;
+
 export const AGGREGATION_FUNCTIONS = {
   ...AGGREGATION,
   ...WINDOW,
+} as const;
+
+export const EXPRESSION_FUNCTIONS = {
+  ...CAST,
+  ...STRING,
+  ...DATE,
+  ...NUMERIC,
+  ...LOGICAL,
 } as const;
 
 export const MBQL_CLAUSES = {
   ...AGGREGATION_FUNCTIONS,
   ...EXPRESSION_FUNCTIONS,
   ...EXPRESSION_OPERATORS,
-};
+} as const;
