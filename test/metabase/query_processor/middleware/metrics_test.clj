@@ -653,7 +653,7 @@
           after {:source-table (meta/id :venues)
                  :aggregation  [[:aggregation-options
                                  [:sum [:case [[[:= [:field (meta/id :venues :name) {}] [:value "abc" {}]]
-                                                #_some? [:field (meta/id :venues :price) {}]]]]]
+                                                [:field (meta/id :venues :price) {}]]]]]
                                  {:display-name "My Cool Aggregation"}]]}
           expand-macros (fn [mbql-query]
                           (lib.convert/->legacy-MBQL (adjust (lib/query mp (lib.convert/->pMBQL mbql-query)))))]
