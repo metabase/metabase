@@ -7,14 +7,12 @@ import type { FontFile, FontFormat } from "metabase-types/api";
 
 import type { FontFileOption } from "./types";
 
-const CUSTOM = "custom";
-
 export const useGetFontOptions = () => {
   const { value: availableFonts } = useAdminSetting("available-fonts");
   const options = useMemo(
     () => [
       ...(availableFonts ?? []).map((font) => ({ label: font, value: font })),
-      { label: t`Custom…`, value: CUSTOM },
+      { label: t`Custom…`, value: "custom" },
     ],
     [availableFonts],
   );

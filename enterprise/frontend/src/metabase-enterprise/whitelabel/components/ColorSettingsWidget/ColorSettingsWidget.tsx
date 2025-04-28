@@ -1,5 +1,6 @@
 import { useDebouncedCallback } from "@mantine/hooks";
 
+import { SetByEnvVar } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useAdminSetting } from "metabase/api/utils";
 import { originalColors } from "metabase/lib/colors/palette";
 import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
@@ -7,8 +8,11 @@ import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
 import { ColorSettings } from "../ColorSettings";
 
 export const ColorSettingsWidget = () => {
-  const { value: colorSettings, updateSetting } =
-    useAdminSetting("application-colors");
+  const {
+    value: colorSettings,
+    updateSetting,
+    settingDetails,
+  } = useAdminSetting("application-colors");
 
   const handleChange = (newValue: ColorSettingsType) => {
     updateSetting({
@@ -21,6 +25,10 @@ export const ColorSettingsWidget = () => {
 
   if (!colorSettings) {
     return null;
+  }
+
+  if (settingDetails?.is_env_setting && settingDetails?.env_name) {
+    return <SetByEnvVar varName={settingDetails.env_name} />;
   }
 
   return (

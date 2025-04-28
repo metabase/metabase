@@ -15,6 +15,7 @@ import { FontWidget } from "./FontWidget";
 const setup = async (
   initialFont = "Lato",
   overrides?: Partial<EnterpriseSettings>,
+  setByEnvVar = false,
 ) => {
   const settings = createMockSettings({
     "available-fonts": ["Lato", "Lora", "Comic Sans"],
@@ -23,7 +24,19 @@ const setup = async (
     ...overrides,
   });
   setupPropertiesEndpoints(settings);
-  setupSettingsEndpoints([]);
+  setupSettingsEndpoints([
+    {
+      key: "application-font",
+      value: initialFont,
+      is_env_setting: setByEnvVar,
+      description: "Pick a font dude",
+      env_name: "METABASE_APPLICATION_FONT",
+    },
+    {
+      key: "application-font-files",
+      value: initialFont === "Custom…" ? [] : null,
+    },
+  ]);
   setupUpdateSettingEndpoint();
 
   renderWithProviders(<FontWidget />);
@@ -31,6 +44,16 @@ const setup = async (
 };
 
 describe("FontWidget", () => {
+  it("should display a message if it is set by an env var", async () => {
+    await setup("Lato", {}, true);
+    expect(
+      await screen.findByText(/This has been set by the/),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("METABASE_APPLICATION_FONT"),
+    ).toBeInTheDocument();
+  });
+
   it("should set a built-in font from a built-in font", async () => {
     await setup("Lato");
     await clickSelect("Lato", "Lora");

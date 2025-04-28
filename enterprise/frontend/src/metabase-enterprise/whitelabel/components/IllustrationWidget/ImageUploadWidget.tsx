@@ -29,6 +29,7 @@ export function ImageUploadWidget({
   const {
     value: imageSource,
     updateSetting,
+    settingDetails,
     description,
   } = useAdminSetting(name);
 
@@ -63,6 +64,8 @@ export function ImageUploadWidget({
     }
   }
 
+  const isDefaultImage = imageSource === settingDetails?.default;
+
   async function handleRemove() {
     setErrorMessage("");
     if (fileInputRef.current?.value) {
@@ -95,8 +98,8 @@ export function ImageUploadWidget({
             w="7.5rem"
             style={{ borderRight: "1px solid var(--mb-color-border)" }}
           >
-            {imageSource && typeof imageSource === "string" && (
-              <PreviewImage src={imageSource} />
+            {!isDefaultImage && typeof imageSource === "string" && (
+              <PreviewImage src={imageSource} aria-label={t`Image preview`} />
             )}
           </Flex>
           <Flex p="lg" gap="md" direction="column" justify="center" w="100%">
@@ -116,13 +119,13 @@ export function ImageUploadWidget({
                 multiple={false}
               />
               <Text ml="lg" truncate="end">
-                {!imageSource
+                {isDefaultImage
                   ? t`No file chosen`
                   : fileName
                     ? fileName
                     : t`Remove uploaded image`}
               </Text>
-              {imageSource && (
+              {!isDefaultImage && (
                 <Button
                   leftSection={<Icon name="close" />}
                   variant="subtle"

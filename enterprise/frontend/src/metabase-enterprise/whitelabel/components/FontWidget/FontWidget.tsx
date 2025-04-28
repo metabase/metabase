@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import {
+  BasicAdminSettingInput,
+  SetByEnvVar,
+} from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useAdminSetting } from "metabase/api/utils";
 import { Box } from "metabase/ui";
 
@@ -15,6 +18,7 @@ export const FontWidget = () => {
   const {
     value: font,
     updateSetting,
+    settingDetails,
     description,
   } = useAdminSetting("application-font");
   const { value: fontFiles } = useAdminSetting("application-font-files");
@@ -45,14 +49,20 @@ export const FontWidget = () => {
         title={t`Font`}
         description={description}
       />
-      <BasicAdminSettingInput
-        value={fontValue}
-        name="application-font"
-        inputType="select"
-        onChange={(newValue) => handleChange(newValue as string)}
-        options={fontOptions}
-      />
-      {fontValue === "custom" && <FontFilesWidget />}
+      {settingDetails?.is_env_setting ? (
+        <SetByEnvVar varName={settingDetails?.env_name ?? ""} />
+      ) : (
+        <>
+          <BasicAdminSettingInput
+            value={fontValue}
+            name="application-font"
+            inputType="select"
+            onChange={(newValue) => handleChange(newValue as string)}
+            options={fontOptions}
+          />
+          {fontValue === "custom" && <FontFilesWidget />}
+        </>
+      )}
     </Box>
   );
 };
