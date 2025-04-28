@@ -62,8 +62,9 @@
               (is (string? split-string))
               (is (= (-> main-string
                          (str/split (re-pattern delimiter))
-                         (get (dec index) ""))
-                     split-string)))))))))
+                         (get (dec (long index)) ""))
+                     split-string)
+                  (str "String: " (pr-str main-string) " Delimiter: " (pr-str delimiter) " Index: " index)))))))))
 
 (deftest ^:parallel split-part-test-examples
   (mt/test-drivers (mt/normal-drivers-with-feature :split-part)

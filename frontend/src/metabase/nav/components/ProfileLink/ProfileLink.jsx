@@ -21,9 +21,10 @@ import {
 } from "metabase/home/selectors";
 import { color } from "metabase/lib/colors";
 import { capitalize } from "metabase/lib/formatting";
-import { connect, useSelector } from "metabase/lib/redux";
+import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { openDiagnostics } from "metabase/redux/app";
+import { setOpenModal } from "metabase/redux/ui";
 import {
   getApplicationName,
   getIsWhiteLabeling,
@@ -59,6 +60,7 @@ function ProfileLink({
   const applicationName = useSelector(getApplicationName);
   const { tag, date, ...versionExtra } = version;
   const helpLink = useHelpLink();
+  const dispatch = useDispatch();
 
   const openModal = (modalName) => {
     setModalOpen(modalName);
@@ -100,6 +102,11 @@ function ProfileLink({
           link: "/getting-started",
           event: `Navbar;Profile Dropdown;Getting Started`,
         },
+      {
+        title: t`Keyboard Shortcuts`,
+        icon: null,
+        action: () => dispatch(setOpenModal("help")),
+      },
       {
         title: t`Report an issue`,
         icon: null,

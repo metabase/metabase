@@ -126,10 +126,6 @@
 ;;; |                                          Misc Implementations                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod sql.qp/->float :starburst
-  [_ value]
-  (h2x/cast :double value))
-
 (defn- format-mod
   [_fn [x y]]
   (let [[x-sql & x-args] (sql/format-expr x {:nested true})

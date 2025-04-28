@@ -34,27 +34,6 @@ export class CompileError extends ExpressionError {
   }
 }
 
-export class ResolverError extends ExpressionError {
-  constructor(
-    message: string,
-    private node?: Node,
-  ) {
-    super(message);
-  }
-
-  get friendly(): boolean {
-    return true;
-  }
-
-  get pos(): number | null {
-    return this.node?.token?.pos ?? null;
-  }
-
-  get len(): number | null {
-    return this.node?.token?.length ?? null;
-  }
-}
-
 export class DiagnosticError extends ExpressionError {
   pos: number | null;
   len: number | null;
