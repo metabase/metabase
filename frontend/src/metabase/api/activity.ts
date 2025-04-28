@@ -24,9 +24,14 @@ export const activityApi = Api.injectEndpoints({
         const contextParams = [];
 
         if (context) {
-          context.sort().forEach((ctx) => {
-            contextParams.push(`context=${ctx}`);
-          });
+          // concat() because sorting mutates the array
+          // and we don't want to mutate the original context array
+          context
+            .concat()
+            .sort()
+            .forEach((ctx) => {
+              contextParams.push(`context=${ctx}`);
+            });
         }
 
         if (include_metadata != null) {
