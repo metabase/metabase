@@ -167,8 +167,7 @@
   (check "bin/build/test/i18n/create_artifacts/backend_test.clj" 29)
   ;; => {:readable true, :starting-at "\n(deftest ^:parallel backend-message?"}
 
-
-  ;; this should be a test:
+;; this should be a test:
   (require '[babashka.fs :as fs])
   (defn read-all-files []
     (set
