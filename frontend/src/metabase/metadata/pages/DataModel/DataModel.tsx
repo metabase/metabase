@@ -34,16 +34,14 @@ export const DataModel = ({ params }: Props) => {
 
   return (
     <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`}>
-      <Stack
-        className={S.tableSectionContainer}
-        flex="0 0 400px"
-        gap="md"
-        px="xl"
-        py="lg"
-      >
-        <Title order={2}>Data model</Title>
+      <Stack className={S.sidebar} flex="0 0 400px" gap={0} h="100%">
+        <Title order={2} px="xl" py="lg" pb="md">
+          Data model
+        </Title>
 
-        {tableId && <TableSection tableId={tableId} />}
+        <Box className={S.tableSectionContainer} h="100%" px="xl" pb="lg">
+          {tableId && <TableSection tableId={tableId} />}
+        </Box>
       </Stack>
 
       {isEmptyStateShown && (
