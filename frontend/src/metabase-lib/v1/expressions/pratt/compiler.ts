@@ -4,6 +4,7 @@ import { type NumberValue, parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
 
 import { getClauseDefinition, getMBQLName, isDefinedClause } from "../config";
+import { CompileError, isExpressionError } from "../errors";
 import {
   isBigIntLiteral,
   isBooleanLiteral,
@@ -129,8 +130,8 @@ function compileField(
   assert(node.type === FIELD, t`Invalid node type`);
   assert(node.token?.value, t`Empty field value`);
 
-  const dimension = ctx.resolver(ctx.type, node.token.value, node);
-  return withNode(node, dimension);
+  const name = node.token.value;
+  return compileDimension(node, name, ctx);
 }
 
 function compileIdentifier(
@@ -138,10 +139,34 @@ function compileIdentifier(
   ctx: Context,
 ): Lib.ExpressionParts | Lib.ExpressionArg {
   assert(node.type === IDENTIFIER, t`Invalid node type`);
-  assert(node.token?.text, t`Empty token text`);
+  assert(node.token?.value, t`Empty token text`);
 
-  const dimension = ctx.resolver(ctx.type, node.token.text, node);
-  return withNode(node, dimension);
+  const name = node.token.value;
+  return compileDimension(node, name, ctx);
+}
+
+function compileDimension(
+  node: Node,
+  name: string,
+  ctx: Context,
+): Lib.ExpressionParts | Lib.ExpressionArg {
+  assert(name, t`Empty dimension name`);
+  try {
+    const dimension = ctx.resolver(ctx.type, name, node);
+    return withNode(node, dimension);
+  } catch (err) {
+    if (!isExpressionError(err) || !err.friendly) {
+      throw err;
+    }
+    const operator = getMBQLName(name);
+    const clause = operator && getClauseDefinition(operator);
+    if (clause && clause.args.length === 0) {
+      // Add custom error message for zero-arg functions to help users
+      // that might be used to the no-parenthesis syntax which is no longer valid.
+      throw new CompileError(t`${err.message}. Use ${name}() instead.`, node);
+    }
+    throw err;
+  }
 }
 
 function compileGroup(
