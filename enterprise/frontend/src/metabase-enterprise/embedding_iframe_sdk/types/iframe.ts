@@ -10,7 +10,7 @@ export type SdkIframeEmbedPostMessageAction =
       data: SdkIframeAuthConfig;
     }
   | {
-      type: "metabase.embed.setSettings";
+      type: "metabase.embed.updateSettings";
       data: SdkIframeEmbedSettings;
     };
 
