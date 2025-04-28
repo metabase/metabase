@@ -113,8 +113,7 @@
              (contains? nullary-aggregations operator)
              (transform-0-arity-aggregation condition form)
 
-             (or (contains? aggregations-expr-1st-arg operator)
-                 (= :percentile operator))
+             (contains? aggregations-expr-1st-arg operator)
              (assoc form 2 (lib/case [[condition (nth form 2)]]))
 
              :else
