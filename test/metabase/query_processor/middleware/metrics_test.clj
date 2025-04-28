@@ -1060,7 +1060,6 @@
                 plain-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                                 breakout
                                 aggregate)
-                 ;; this should be computed separately for redshift!!!
                 metric-rows  (mt/formatted-rows [str 3.0 3.0] (qp/process-query metric-query))
                 plain-rows (mt/formatted-rows [str 3.0] (qp/process-query plain-query))]
             (is (every? (fn [[[_ metric-col-1 metric-col-2] [_ plain-ag-col]]]
