@@ -1,7 +1,9 @@
 import { t } from "ttag";
 
 import {
+  useDiscardTableFieldValuesMutation,
   useGetTableQueryMetadataQuery,
+  useRescanTableFieldValuesMutation,
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
 } from "metabase/api";
@@ -12,7 +14,7 @@ import {
 } from "metabase/metadata/components";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Button, Flex, Stack, Text } from "metabase/ui";
-import type { FieldId, TableId, UpdateTableRequest } from "metabase-types/api";
+import type { FieldId, TableId } from "metabase-types/api";
 
 import { FieldOrder } from "../FieldOrder";
 import { TableVisibilityInput } from "../TableVisibilityInput";
@@ -33,10 +35,8 @@ export const TableSection = ({ tableId }: Props) => {
   });
   const [updateTable] = useUpdateTableMutation();
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
-
-  const patchTable = (patch: Omit<UpdateTableRequest, "id">) => {
-    updateTable({ id: tableId, ...patch });
-  };
+  const [discardTableFieldValues] = useDiscardTableFieldValuesMutation();
+  const [rescanTableFieldValues] = useRescanTableFieldValuesMutation();
 
   if (error || isLoading || !table) {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
@@ -50,10 +50,10 @@ export const TableSection = ({ tableId }: Props) => {
         name={table.display_name}
         namePlaceholder={t`Give this table a name`}
         onDescriptionChange={(description) => {
-          patchTable({ description });
+          updateTable({ id: tableId, description });
         }}
         onNameChange={(name) => {
-          patchTable({ display_name: name });
+          updateTable({ id: tableId, display_name: name });
         }}
       />
 
@@ -61,7 +61,7 @@ export const TableSection = ({ tableId }: Props) => {
         checked={table.visibility_type === "hidden"}
         onChange={(event) => {
           const visibilityType = event.target.checked ? "hidden" : null;
-          patchTable({ visibility_type: visibilityType });
+          updateTable({ id: tableId, visibility_type: visibilityType });
         }}
       />
 
@@ -73,7 +73,7 @@ export const TableSection = ({ tableId }: Props) => {
           <FieldOrderPicker
             value={table.field_order}
             onChange={(fieldOrder) => {
-              patchTable({ field_order: fieldOrder });
+              updateTable({ id: tableId, field_order: fieldOrder });
             }}
           />
         </Flex>
@@ -96,9 +96,18 @@ export const TableSection = ({ tableId }: Props) => {
           {t`Metabase can scan the values in this table to enable checkbox filters in dashboards and questions.`}
         </Text>
 
-        <Button variant="default">{t`Re-scan table`}</Button>
+        <Button
+          variant="default"
+          onClick={() => rescanTableFieldValues(tableId)}
+        >
+          {t`Re-scan table`}
+        </Button>
 
-        <Button c="error" variant="subtle">
+        <Button
+          c="error"
+          variant="subtle"
+          onClick={() => discardTableFieldValues(tableId)}
+        >
           {t`Discard cached field values`}
         </Button>
       </Stack>
