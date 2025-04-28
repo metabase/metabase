@@ -120,16 +120,27 @@
 (deftest ^:sequential invalid-adjustment-test
   (testing "invalid level"
     (is (= {:specific-errors
-            {:my.namespace
-             ["should be either \"trace\", \"debug\", \"info\", \"warn\", \"error\", \"fatal\" or \"off\", received: \"ok\""],
-             :my.other.namespace
-             ["should be either \"trace\", \"debug\", \"info\", \"warn\", \"error\", \"fatal\" or \"off\", received: \"catastophic\""]},
+            {:log_levels
+             {:my.namespace
+              ["should be either \"trace\", \"debug\", \"info\", \"warn\", \"error\", \"fatal\" or \"off\", received: \"ok\""],
+              :my.other.namespace
+              ["should be either \"trace\", \"debug\", \"info\", \"warn\", \"error\", \"fatal\" or \"off\", received: \"catastophic\""]}}
             :errors
-            [{:log_levels
-              "The format of the provided logging configuration is incorrect. Please follow the following JSON structure:
+            {:_error
+             "The format of the provided logging configuration is incorrect. Please follow the following JSON structure:
 {
   \"namespace\": \"trace\" | \"debug\" | \"info\" | \"warn\" | \"error\" | \"fatal\" | \"off\"
-}"}]}
+}"}}
            (mt/user-http-request :crowberto :post 400 "logger/adjustment"
                                  {:duration 1, :duration_unit :hours, :log_levels {"my.namespace" :ok
-                                                                                   "my.other.namespace" :catastophic}})))))
+                                                                                   "my.other.namespace" :catastophic}}))))
+  (testing "invalid log_levels type"
+    (are [value json-type] (= {:specific-errors {:log_levels [(str "invalid type, received: " json-type)]}
+                               :errors {:_error (format "Log levels should be an object, %s received" json-type)}}
+                              (mt/user-http-request :crowberto :post 400 "logger/adjustment"
+                                                    {:duration 1, :duration_unit :hours, :log_levels value}))
+      []    "array"
+      4.2   "number"
+      false "boolean"
+      "ll"  "string"
+      nil   "null")))
