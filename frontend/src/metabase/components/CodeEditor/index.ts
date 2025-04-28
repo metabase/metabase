@@ -1,2 +1,2 @@
-export * from "./CodeBlock";
+export * from "./CodeEditor";
 export type { CodeLanguage } from "./types";
