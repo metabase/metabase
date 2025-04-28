@@ -19,13 +19,13 @@ export function getId(item: Item): Item["id"] {
   return item.id;
 }
 
-export function getItems(metadata: Metadata, table: Table): Item[] {
+export function getItems(table: Table): Item[] {
   if (!table.fields) {
     return [];
   }
 
   return table.fields.map((field) => {
-    const icon = getFieldIcon(metadata, table, field);
+    const icon = getFieldIcon(table, field);
 
     return {
       id: getFieldId(field),
@@ -58,11 +58,8 @@ function getFieldDisplayName(field: Field): string {
   return field.dimensions?.[0]?.name || field.display_name || field.name;
 }
 
-function getFieldIcon(
-  metadata: Metadata,
-  table: Table,
-  field: Field,
-): IconName {
+function getFieldIcon(table: Table, field: Field): IconName {
+  const metadata = createMinimumMetadata(table, field);
   const databaseId = table.db_id;
   const metadataProvider = Lib.metadataProvider(databaseId, metadata);
   const query = Lib.fromLegacyQuery(databaseId, metadataProvider, {
@@ -87,4 +84,27 @@ function getFieldIcon(
   const column = columns[index];
 
   return getColumnIcon(column);
+}
+
+/**
+ * getColumnIcon requires us to use MLv2, which requires us to construct a query,
+ * which requires us to use the Metadata object.
+ *
+ * We don't want to use useSelector(getMetadata) since that would make this module
+ * depend on entity framework. We'd also have to use Tables.actions.fetchMetadataDeprecated
+ * to populate the redux store with field data.
+ *
+ * Luckily we don't need the entire metadata object here - just the Table and the Field.
+ * metabase-lib/v1/Metadata is typed to use wrapper classes (metabase-lib/v1/*) but
+ * raw API-returned objects work just fine - hence @ts-expect-error.
+ */
+function createMinimumMetadata(table: Table, field: Field): Metadata {
+  const metadata: Metadata = {
+    // @ts-expect-error now we know
+    tables: { [table.id]: table },
+    // @ts-expect-error we know now
+    fields: { [field.id]: field },
+  };
+
+  return metadata;
 }
