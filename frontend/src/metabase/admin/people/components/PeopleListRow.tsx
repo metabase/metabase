@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { Fragment, useMemo } from "react";
@@ -15,13 +14,27 @@ import { getFullName } from "metabase/lib/user";
 import { PLUGIN_ADMIN_USER_MENU_ITEMS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon, Tooltip } from "metabase/ui";
+import type { Group, GroupId, Member, User } from "metabase-types/api";
 
 import MembershipSelect from "./MembershipSelect";
 import { RefreshLink } from "./PeopleListRow.styled";
 
 const enablePasswordLoginKey = "enable-password-login";
 
-const PeopleListRow = ({
+interface PeopleListRowProps {
+  user: User;
+  showDeactivated: boolean;
+  groups: Group[];
+  userMemberships: Member[];
+  isCurrentUser: boolean;
+  isAdmin: boolean;
+  onAdd: (groupId: GroupId) => void;
+  onChange: (groupId: GroupId, membershipData: Partial<Member>) => void;
+  onRemove: (groupId: GroupId) => void;
+  isConfirmModalOpen: boolean;
+}
+
+export const PeopleListRow = ({
   user,
   showDeactivated,
   groups,
@@ -32,7 +45,7 @@ const PeopleListRow = ({
   onRemove,
   onChange,
   isConfirmModalOpen,
-}) => {
+}: PeopleListRowProps) => {
   const membershipsByGroupId = useMemo(
     () =>
       userMemberships?.reduce((acc, membership) => {
@@ -60,12 +73,12 @@ const PeopleListRow = ({
         <span className={cx(CS.ml2, CS.textBold)}>{getName(user)}</span>
       </td>
       <td>
-        {user.google_auth ? (
+        {user.sso_source === "google" ? (
           <Tooltip label={t`Signed up via Google`}>
             <Icon name="google" />
           </Tooltip>
         ) : null}
-        {user.ldap_auth ? (
+        {user.sso_source === "ldap" ? (
           <Tooltip label={t`Signed up via LDAP`}>
             <Icon name="ldap" />
           </Tooltip>
@@ -136,12 +149,7 @@ const PeopleListRow = ({
   );
 };
 
-/**
- *
- * @param {import("metabase-types/api").User} user
- * @returns {string}
- */
-function getName(user) {
+function getName(user: User): string {
   const name = getFullName(user);
 
   if (!name) {
@@ -150,5 +158,3 @@ function getName(user) {
 
   return name;
 }
-
-export default PeopleListRow;

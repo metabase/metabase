@@ -104,7 +104,7 @@ describe("Google Drive > Connect / Disconnect modal", () => {
     expect(await screen.findByText("Import file")).toBeInTheDocument();
   });
 
-  it("should POST folder data to /api/ee/gsheets/folder", async () => {
+  it("should POST folder data to /api/ee/gsheets/connection", async () => {
     setup({
       status: "not-connected",
     });
@@ -133,7 +133,7 @@ describe("Google Drive > Connect / Disconnect modal", () => {
     });
   });
 
-  it("should POST file data to /api/ee/gsheets/folder", async () => {
+  it("should POST file data to /api/ee/gsheets/connection", async () => {
     setup({
       status: "not-connected",
     });
