@@ -184,10 +184,12 @@
       (is (=?
            {:stages [{:source-table (meta/id :orders)
                       :joins [{:stages [{:source-table (meta/id :products)}]}]
-                      :aggregation [[:sum {} [:case {} [[[:= {}
-                                                          [:field {} (meta/id :products :category)]
-                                                          [:value {} "Gadget"]]
-                                                         1]]]]]}]}
+                      :aggregation [[:sum {} [:case {}
+                                              [[[:= {}
+                                                 [:field {} (meta/id :products :category)]
+                                                 [:value {} "Gadget"]]
+                                                1]]
+                                              0]]]}]}
            (adjust query)))
       (testing "With an explicit product join in consumer query"
         (is (=?
@@ -195,10 +197,12 @@
                         :joins [{:stages [{:source-table (meta/id :products)}]}
                                 {:stages [{:source-table (meta/id :products)}]}]
                         :filters [[:= {} [:field {} (meta/id :products :title)] "foobar"]]
-                        :aggregation [[:sum {} [:case {} [[[:= {}
-                                                            [:field {} (meta/id :products :category)]
-                                                            [:value {} "Gadget"]]
-                                                           1]]]]]}]}
+                        :aggregation [[:sum {} [:case {}
+                                                [[[:= {}
+                                                   [:field {} (meta/id :products :category)]
+                                                   [:value {} "Gadget"]]
+                                                  1]]
+                                                0]]]}]}
              (adjust (as-> (lib/query mp (meta/table-metadata :orders)) $q
                        (lib/join $q (meta/table-metadata :products))
                        (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :title)} :id) (lib/filterable-columns $q))
@@ -209,10 +213,12 @@
              {:stages [{:source-table (meta/id :orders)
                         :joins [{:stages [{:source-table (meta/id :products)}]}]
                         :filters [[:= {} [:field {} (meta/id :products :title)] "foobar"]]
-                        :aggregation [[:sum {} [:case {} [[[:= {}
-                                                            [:field {} (meta/id :products :category)]
-                                                            [:value {} "Gadget"]]
-                                                           1]]]]]}]}
+                        :aggregation [[:sum {} [:case {}
+                                                [[[:= {}
+                                                   [:field {} (meta/id :products :category)]
+                                                   [:value {} "Gadget"]]
+                                                  1]]
+                                                0]]]}]}
              (adjust (as-> (lib/query mp (meta/table-metadata :orders)) $q
                        (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :title)} :id) (lib/filterable-columns $q))
                                              "foobar"))
@@ -236,10 +242,12 @@
                        :joins [{:stages [{:source-table (meta/id :products)}]}]
                        :aggregation [[:sum {} [:case {}
                                                [[[:= {} [:field {} (meta/id :products :category)] [:value {} "Gadget"]]
-                                                 1]]]]
+                                                 1]]
+                                               0]]
                                      [:sum {} [:case {}
                                                [[[:= {} [:field {} (meta/id :products :title)] [:value {} "Title"]]
-                                                 1]]]]]}]}
+                                                 1]]
+                                               0]]]}]}
             (adjust query)))))
 
 (deftest ^:parallel adjust-aggregation-metric-ordering-test
@@ -745,7 +753,8 @@
                                        [:sum {:name "count"}
                                         [:case {}
                                          [[[:> {} [:field {} "RATING"] [:value {} 3]]
-                                           1]]]]]}]}
+                                           1]]
+                                         0]]]}]}
               (adjust query))))))
 
 (deftest ^:parallel model-based-metric-with-implicit-join-test
@@ -889,70 +898,78 @@
                                           (lib/visible-columns query))))))
 
 (def tested-aggregations
+  "Sequence of maps containing :mbql-fn keyword :feature-flag (optional) and :aggregate for testing."
   [;; NO FEATURE FLAG
    ;; nullary
-   [nil :count (fn [query] (lib/aggregate query (lib/count)))]
+   {:operator :count
+    :aggregate (fn [query] (lib/aggregate query (lib/count)))}
    ;; standard 1st arg col
-   [nil :avg (aggregate-col-1st-arg-fn lib/avg)]
-   [nil :distinct (aggregate-col-1st-arg-fn lib/distinct)]
-   [nil :max (aggregate-col-1st-arg-fn lib/max)]
-   [nil :min (aggregate-col-1st-arg-fn lib/min)]
-   [nil :sum (aggregate-col-1st-arg-fn lib/sum)]
+   {:operator :avg
+    :aggregate (aggregate-col-1st-arg-fn lib/avg)}
+   {:operator :distinct
+    :aggregate (aggregate-col-1st-arg-fn lib/distinct)}
+   {:operator :max
+    :aggregate (aggregate-col-1st-arg-fn lib/max)}
+   {:operator :min
+    :aggregate (aggregate-col-1st-arg-fn lib/min)}
+   {:operator :sum
+    :aggregate (aggregate-col-1st-arg-fn lib/sum)}
    ;; special
-   [nil
-    :count-where
-    (fn [query]
-      (lib/aggregate query (lib/count-where (lib/< (lib/ref (m/find-first (comp #{"Product ID"} :display-name)
-                                                                          (lib/filterable-columns query)))
-                                                   30))))]
-   [nil
-    :sum-where
-    (fn [query]
-      (lib/aggregate query (lib/sum-where (m/find-first (comp #{"Total"} :display-name)
-                                                        (lib/visible-columns query))
-                                          (lib/< (m/find-first (comp #{"Product ID"} :display-name)
-                                                               (lib/filterable-columns query))
-                                                 30))))]
-   [nil
-    :share
-    (fn [query]
-      (lib/aggregate query (lib/share (lib/< (m/find-first (comp #{"Product ID"} :display-name)
-                                                           (lib/filterable-columns query))
-                                             30))))]
-
+   {:operator :count-where
+    :aggregate (fn [query]
+                 (lib/aggregate query (lib/count-where (lib/< (lib/ref (m/find-first (comp #{"Product ID"} :display-name)
+                                                                                     (lib/filterable-columns query)))
+                                                              30))))}
+   {:operator :sum-where
+    :aggregate (fn [query]
+                 (lib/aggregate query (lib/sum-where (m/find-first (comp #{"Total"} :display-name)
+                                                                   (lib/visible-columns query))
+                                                     (lib/< (m/find-first (comp #{"Product ID"} :display-name)
+                                                                          (lib/filterable-columns query))
+                                                            30))))}
+   {:operator :distinct-where
+    :aggregate (fn [query]
+                 (lib/aggregate query (lib/distinct-where (m/find-first (comp #{"Total"} :display-name)
+                                                                        (lib/visible-columns query))
+                                                          (lib/< (m/find-first (comp #{"Product ID"} :display-name)
+                                                                               (lib/filterable-columns query))
+                                                                 30))))}
+   {:operator :share
+    :aggregate (fn [query]
+                 (lib/aggregate query (lib/share (lib/< (m/find-first (comp #{"Product ID"} :display-name)
+                                                                      (lib/filterable-columns query))
+                                                        30))))}
    ;; WITH FEATURE FLAG
    ;; Computing cumulative aggregations with use of post processing middlewareware is not compatible with metrics.
    ;; For details see the https://github.com/metabase/metabase/issues/56390
-   [:window-functions/cumulative
-    :cum-count
-    (fn [query] (lib/aggregate query (lib/cum-count)))]
-   [:window-functions/cumulative
-    :cum-sum
-    (aggregate-col-1st-arg-fn lib/cum-sum)]
-
-   [:percentile-aggregations
-    :percentile
-    (fn [query]
-      (lib/aggregate query (lib/percentile (m/find-first (comp #{"Total"} :display-name)
-                                                         (lib/visible-columns query))
-                                           0.7)))]
-   [:percentile-aggregations
-    :median
-    (fn [query]
-      (lib/aggregate query (lib/median (m/find-first (comp #{"Total"} :display-name)
-                                                     (lib/visible-columns query)))))]
-   [:standard-deviation-aggregations
-    :stddev
-    (aggregate-col-1st-arg-fn lib/stddev)]
-
-   [:standard-deviation-aggregations
-    :var
-    (aggregate-col-1st-arg-fn lib/var)]])
+   {:operator :cum-count
+    :feature :window-functions/cumulative
+    :aggregate (fn [query] (lib/aggregate query (lib/cum-count)))}
+   {:operator :cum-sum
+    :feature :window-functions/cumulative
+    :aggregate (aggregate-col-1st-arg-fn lib/cum-sum)}
+   {:operator :percentile
+    :feature :percentile-aggregations
+    :aggregate (fn [query]
+                 (lib/aggregate query (lib/percentile (m/find-first (comp #{"Total"} :display-name)
+                                                                    (lib/visible-columns query))
+                                                      0.7)))}
+   {:operator :median
+    :feature :percentile-aggregations
+    :aggregate (fn [query]
+                 (lib/aggregate query (lib/median (m/find-first (comp #{"Total"} :display-name)
+                                                                (lib/visible-columns query)))))}
+   {:operator :stddev
+    :feature :standard-deviation-aggregations
+    :aggregate (aggregate-col-1st-arg-fn lib/stddev)}
+   {:operator :var
+    :feature :standard-deviation-aggregations
+    :aggregate (aggregate-col-1st-arg-fn lib/var)}])
 
 (defmethod driver/database-supports? [:starburst :test/inaccurate-approx-percentile] [_ _ _] true)
 
 (deftest metric-comparison-test
-  (doseq [[feature operator aggregate] tested-aggregations]
+  (doseq [{:keys [feature operator aggregate]} tested-aggregations]
     (mt/test-drivers
       (if (some? feature)
         (mt/normal-drivers-with-feature feature)
@@ -997,7 +1014,7 @@
                             results-combined))))))))))
 
 (deftest next-stage-reference-test
-  (doseq [[feature operator aggregate] tested-aggregations]
+  (doseq [{:keys [feature operator aggregate]} tested-aggregations]
     (mt/test-drivers
       (if (some? feature)
         (mt/normal-drivers-with-feature feature)
@@ -1030,7 +1047,7 @@
                       (qp/process-query query))))))))))
 
 (deftest metrics-with-conflicting-filters-produce-meaningful-result-test
-  (doseq [[_ operator aggregate] tested-aggregations]
+  (doseq [{:keys [_ operator aggregate]} tested-aggregations]
     (testing operator
       (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             filter #(lib/filter %1 (%2 (m/find-first (comp #{"Created At"} :display-name)
@@ -1067,12 +1084,9 @@
                             (< d 0.01)))
                         (map vector metric-rows plain-rows)))))))))
 
-(deftest ^:parallel all-available-aggregations-covered
+(deftest ^:parallel all-available-aggregations-covered-test
   (testing "All available aggregations are tested for filter expansion in metric"
     (is (empty? (set/difference
                  (disj (descendants @lib.hierarchy/hierarchy :metabase.lib.schema.aggregation/aggregation-clause-tag)
-                       :metric :offset
-                       ;; TBD
-                       :distinct-where)
-                 (set (map first tested-aggregations))
-                 (set (map second tested-aggregations)))))))
+                       :metric :offset)
+                 (set (map :operator tested-aggregations)))))))

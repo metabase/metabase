@@ -22,7 +22,8 @@
 
 (def ^:private aggregations-pred-arg
   #{:count-where
-    :sum-where})
+    :sum-where
+    :distinct-where})
 
 (def ^:private nullary-aggregations
   #{:count
