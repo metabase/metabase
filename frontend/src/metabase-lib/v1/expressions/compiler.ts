@@ -45,7 +45,7 @@ export function compileExpression({
 
     hooks.lexified?.({ tokens });
 
-    const { root } = parse(tokens, { hooks });
+    const root = parse(tokens, { hooks });
     const expressionParts = compile(root, {
       expressionMode,
       resolver,
