@@ -121,7 +121,7 @@
   [handler]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
-     (if (public-settings/query-analysis-enabled)
+     (if (query-analysis/query-analysis-enabled)
        (handler request respond raise)
        (respond {:status 429 :body "Query Analysis must be enabled to use the Query Reference Validator"})))
    (fn [prefix]
