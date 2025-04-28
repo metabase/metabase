@@ -228,3 +228,50 @@
 
             (is (undo/next-batch-num true user-1 table-id))
             (is (not (undo/next-batch-num false user-1 table-id)))))))))
+
+(deftest undo-orphan-integration-test
+  (mt/with-empty-h2-app-db
+    (mt/with-premium-features #{:table-data-editing}
+      (testing "Reverted changes have their snapshots deleted when there are further changes"
+        (with-open [table-ref (data-editing.tu/open-test-table! {:id    [:int]
+                                                                 :name  [:text]
+                                                                 :status [:text]}
+                                                                {:primary-key [:id]})]
+          (let [table-id @table-ref
+                user-1   (mt/user->id :crowberto)
+                user-2   (mt/user->id :rasta)]
+            (data-editing.tu/toggle-data-editing-enabled! true)
+
+            ;; NOTE: this test relies on the "conflicts even when different columns changed" semantics
+            ;; If we improve the semantics, we'll need to improve this test!
+
+            (write-sequence! table-id {:id 1} [[user-1 {:name "Too-ticky" :status "sitting"}]
+                                               [user-1 {:name "Too-tickley" :status "squirming"}]
+                                               [user-1 nil]])
+
+            (write-sequence! table-id {:id 2} [[user-1 {:name "Toffle" :status "uncomfortable"}]
+                                               [user-1 {:name "Toffle" :status "comforted"}]
+                                               [user-1 nil]])
+
+;; Sad trick - use undo to initialize the underlying table state (since we only created the undo history)
+            (undo/undo! user-1 table-id)
+            (undo/undo! user-1 table-id)
+            (undo/undo! user-1 table-id)
+            (undo/undo! user-1 table-id)
+
+            (is (= [[1 "Too-tickley" "squirming"]] (table-rows table-id)))
+
+            (undo/track-change! user-1 {table-id {{:id 2} [nil {:name "Toggle" :status "restored"}]}})
+            ;; We need to delete it, so we can "undo" that to create it in the first place...
+            ;; TLDR `write-sequence` should be updated to update the table itself, then these tests can be simpler.
+            (undo/track-change! user-1 {table-id {{:id 2} [{:name "Toggle" :status "restored"} nil]}})
+
+            (is (nil? (undo/next-batch-num false user-1 table-id)))
+            (is (undo/next-batch-num true user-1 table-id))
+
+            (undo/undo! user-1 table-id)
+            (is (= [[1 "Too-tickley" "squirming"]
+                    [2 "Toggle" "restored"]] (table-rows table-id)))
+
+            (undo/redo! user-1 table-id)
+            (is (= [[1 "Too-tickley" "squirming"]] (table-rows table-id)))))))))
