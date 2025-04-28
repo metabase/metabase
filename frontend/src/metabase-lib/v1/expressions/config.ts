@@ -10,11 +10,18 @@ type ConfigInput = Forbidden<
   "name"
 >;
 
+const names = new Set();
+
 function defineClauses<const T extends Record<string, ConfigInput>>(
   clauses: T,
 ): Record<keyof T, MBQLClauseFunctionConfig> {
   const result = {} as Record<keyof T, MBQLClauseFunctionConfig>;
   for (const name in clauses) {
+    if (names.has(name)) {
+      throw new Error(`Duplicate clause name: ${name}`);
+    }
+    names.add(name);
+
     const defn = clauses[name];
     result[name] = {
       name,
