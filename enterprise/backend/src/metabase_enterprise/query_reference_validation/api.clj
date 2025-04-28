@@ -6,7 +6,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.collection :as collection]
-   [metabase.models.query-analysis :as query-analysis]
+   [metabase.query-analysis.models.query-analysis :as query-analysis]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]

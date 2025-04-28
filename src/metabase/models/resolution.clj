@@ -66,7 +66,7 @@
     :model/PulseChannelRecipient             metabase.pulse.models.pulse-channel-recipient
     :model/Query                             metabase.models.query
     :model/QueryAction                       metabase.actions.models
-    :model/QueryAnalysis                     metabase.models.query-analysis
+    :model/QueryAnalysis                     metabase.query-analysis.models.query-analysis
     :model/QueryCache                        metabase.models.query-cache
     :model/QueryExecution                    metabase.models.query-execution
     :model/QueryField                        metabase.models.query-field

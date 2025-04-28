@@ -329,7 +329,6 @@
           metabase.models.params.field-values
           metabase.models.params.shared
           metabase.models.query
-          metabase.models.query-analysis
           metabase.models.query.permissions
           metabase.models.resolution
           metabase.models.secret
