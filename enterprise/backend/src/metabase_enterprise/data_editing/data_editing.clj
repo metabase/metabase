@@ -169,7 +169,6 @@
                                   {:pk     (diff->pk diff)
                                    :before before
                                    :after  after})]]
-
         (doseq [row-change row-changes]
           (events/publish-event! event {:actor_id   user-id
                                         :row_change row-change

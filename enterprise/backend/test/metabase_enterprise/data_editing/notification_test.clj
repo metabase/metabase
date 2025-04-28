@@ -2,9 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-editing.test-util :as data-editing.tu]
+   [metabase.actions.test-util :as actions.tu]
    [metabase.events.notification :as events.notification]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [thunk]
                       (mt/with-premium-features #{:table-data-editing}
@@ -22,24 +24,24 @@
     :channel_id   http-channel-id}])
 
 (defn test-row-notification!
-  [event request-fn channel-type->assert-fns]
+  [prop request-fn channel-type->assert-fns]
   (data-editing.tu/with-temp-test-db!
     (mt/with-temp [:model/Channel chn {:type :channel/http}]
       (notification.tu/with-system-event-notification!
-        [_notification {:notification-system-event {:event_name event
-                                                    :table_id   (mt/id :categories)}
-                        :handlers                  (all-handlers (:id chn))}]
+        [notification {:notification-system-event {:event_name (:event_name prop)
+                                                   :table_id   (mt/id (or (:table prop) :categories))}
+                       :handlers                  (all-handlers (:id chn))}]
         (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
           (let [channel-type->captured-message (notification.tu/with-captured-channel-send!
-                                                 (request-fn))]
+                                                 (request-fn notification))]
             (doseq [[channel-type assert-fn] channel-type->assert-fns]
               (testing (format "channel-type = %s" channel-type)
                 (assert-fn (get channel-type->captured-message channel-type))))))))))
 
 (deftest create-row-notification-test
   (test-row-notification!
-   :event/row.created
-   (fn []
+   {:event_name :event/row.created}
+   (fn [_notification]
      (mt/user-http-request
       :crowberto
       :post
@@ -70,8 +72,8 @@
 
 (deftest update-row-notification-test
   (test-row-notification!
-   :event/row.updated
-   (fn []
+   {:event_name :event/row.updated}
+   (fn [_notification]
      (mt/user-http-request
       :crowberto
       :put
@@ -102,8 +104,8 @@
 
 (deftest delete-row-notification-test
   (test-row-notification!
-   :event/row.deleted
-   (fn []
+   {:event_name :event/row.deleted}
+   (fn [_notification]
      (mt/user-http-request
       :crowberto
       :post
@@ -132,10 +134,58 @@
                      (is (= 1 (count reqs)))
                      (is (=? {:body (mt/malli=? :map)} req)))}))
 
+(deftest record-and-changes-in-template-context-are-ordered
+  (actions.tu/with-actions-test-data-tables #{"people"}
+    (test-row-notification!
+     {:event_name :event/row.updated
+      :table      :people}
+     (fn [notification]
+       (mt/with-temp [:model/ChannelTemplate {tmpl-id :id} {:name "My Custom template"
+                                                            :channel_type :channel/email
+                                                            :details {:type :email/handlebars-text
+                                                                      :subject "Hello"
+                                                                      :body (str "Row: {{#each record}}{{@key}},{{/each}}\n"
+                                                                                 "Changes: {{#each changes}}{{@key}},{{/each}}")}}]
+         (t2/update! :model/NotificationHandler (->> notification :handlers first :id) {:template_id tmpl-id})
+         (mt/user-http-request
+          :crowberto
+          :put
+          (data-editing.tu/table-url (mt/id :people))
+          {:rows [{:ID 1 :NAME "Ngoc Khuat" :CITY "Ha Noi" :EMAIL "ngoc@metabase.com"}]})))
+     {:channel/email (fn [[email :as _emails]]
+                       (is (=? {:body    [{:content (str "Row: ID,ADDRESS,EMAIL,PASSWORD,NAME,CITY,LONGITUDE,STATE,SOURCE,BIRTH_DATE,ZIP,LATITUDE,CREATED_AT,\n"
+                                                         "Changes: ID,ADDRESS,EMAIL,PASSWORD,NAME,CITY,LONGITUDE,STATE,SOURCE,BIRTH_DATE,ZIP,LATITUDE,CREATED_AT,")
+                                           :type "text/html; charset=utf-8"}]}
+                               email)))})
+
+    (testing "respect field-order"
+      (test-row-notification!
+       {:event_name :event/row.updated
+        :table      :people}
+       (fn [notification]
+         (t2/update! :model/Table (mt/id :people) {:field_order :alphabetical})
+         (mt/with-temp [:model/ChannelTemplate {tmpl-id :id} {:name "My Custom template"
+                                                              :channel_type :channel/email
+                                                              :details {:type :email/handlebars-text
+                                                                        :subject "Hello"
+                                                                        :body (str "Row: {{#each record}}{{@key}},{{/each}}\n"
+                                                                                   "Changes: {{#each changes}}{{@key}},{{/each}}")}}]
+           (t2/update! :model/NotificationHandler (->> notification :handlers first :id) {:template_id tmpl-id})
+           (mt/user-http-request
+            :crowberto
+            :put
+            (data-editing.tu/table-url (mt/id :people))
+            {:rows [{:ID 1 :NAME "Ngoc Khuat" :CITY "Ha Noi" :EMAIL "ngoc@metabase.com"}]})))
+       {:channel/email (fn [[email :as _emails]]
+                         (is (=? {:body    [{:content (str "Row: ADDRESS,BIRTH_DATE,CITY,CREATED_AT,EMAIL,ID,LATITUDE,LONGITUDE,NAME,PASSWORD,SOURCE,STATE,ZIP,\n"
+                                                           "Changes: ADDRESS,BIRTH_DATE,CITY,CREATED_AT,EMAIL,ID,LATITUDE,LONGITUDE,NAME,PASSWORD,SOURCE,STATE,ZIP,")
+                                             :type "text/html; charset=utf-8"}]}
+                                 email)))}))))
+
 (deftest create-row-notification-webhook-test
   (test-row-notification!
-   :event/row.created
-   (fn []
+   {:event_name :event/row.updated}
+   (fn [_notification]
      (let [token  (:token (mt/user-http-request :crowberto
                                                 :post "ee/data-editing/webhook"
                                                 {:table-id (mt/id :categories)}))]
