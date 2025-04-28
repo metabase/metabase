@@ -1,4 +1,4 @@
-import { useWindowEvent } from "@mantine/hooks";
+import { useHotkeys } from "@mantine/hooks";
 import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
@@ -33,8 +33,10 @@ export const PaletteShortcutsModal = ({
   onClose: ModalProps["onClose"];
   open: boolean;
 }) => {
-  // I don't know why this needs to be a window event. useHotKeys doesn't work with this modal.
-  useWindowEvent("keydown", (event) => event.key === "?" && onClose());
+  useHotkeys([
+    ["Shift+?", onClose],
+    ["?", onClose],
+  ]);
 
   return (
     <Modal

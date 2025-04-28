@@ -76,7 +76,8 @@ export const globalShortcuts = {
     get name() {
       return t`Toggle Shortcuts Modal`;
     },
-    shortcut: ["?"],
+    shortcut: ["Shift+?"],
+    shortcutDisplay: ["?"],
     shortcutGroup: "global",
   },
 
