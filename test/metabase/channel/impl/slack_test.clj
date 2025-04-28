@@ -138,7 +138,7 @@
                               :details {:value "#foo"}}
                 processed    (with-redefs [channel.slack/header-text-limit char-limit
                                            slack/upload-file!              (constantly {:url "a.com", :id "id"})]
-                               (channel/render-notification :channel/slack notification nil [recipient]))]
+                               (channel/render-notification :channel/slack :notification/dashboard notification nil [recipient]))]
             (-> processed first :attachments first :blocks first :text :text)))]
     (are [dashboard-name rendered-text]
          (= rendered-text (render-dashboard-header dashboard-name 5))
@@ -156,7 +156,7 @@
                               :details {:value "#foo"}}
                 processed    (with-redefs [channel.slack/header-text-limit char-limit
                                            slack/upload-file!              (constantly {:url "a.com", :id "id"})]
-                               (channel/render-notification :channel/slack notification nil [recipient]))]
+                               (channel/render-notification :channel/slack :notification/card notification nil [recipient]))]
             (-> processed first :attachments first :blocks first :text :text)))]
     (are [card-name rendered-text]
          (= rendered-text (render-card-header card-name 8))

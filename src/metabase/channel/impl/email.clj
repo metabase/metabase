@@ -155,7 +155,7 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/email :notification/card] :- [:sequential EmailMessage]
-  [_channel-type {:keys [payload payload_type] :as notification-payload} template recipients]
+  [_channel-type _payload-type {:keys [payload payload_type] :as notification-payload} template recipients]
   (let [{:keys [card_part
                 notification_card
                 subscriptions
@@ -239,7 +239,7 @@
         [:tr {} row])])))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
-  [_channel-type {:keys [payload payload_type] :as notification-payload} template recipients]
+  [_channel-type _payload-type {:keys [payload payload_type] :as notification-payload} template recipients]
   (let [{:keys [dashboard_parts
                 dashboard_subscription
                 parameters
@@ -307,6 +307,7 @@
 (mu/defmethod channel/render-notification
   [:channel/email :notification/system-event]
   [_channel-type
+   _payload-type
    notification-payload #_:- #_notification/NotificationPayload
    template             :- [:maybe ::models.channel/ChannelTemplate]
    recipients           :- [:sequential ::models.notification/NotificationRecipient]]

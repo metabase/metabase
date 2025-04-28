@@ -1086,5 +1086,5 @@
            :channel/slack (mt/malli=? :map)}
           (mt/user-http-request :crowberto :post 200 "notification/default_template"
                                 {:notification {:payload_type :notification/system-event
-                                                :payload      {:event_name :event/rows.created}}
+                                                :payload      {:event_name :event/row.created}}
                                  :channel_types ["channel/email" "channel/slack"]}))))

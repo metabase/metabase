@@ -30,9 +30,9 @@
   The message format is channel-specific, one requirement is that it should be the same format that
   the [[send!]] multimethod expects."
   {:added    "0.51.0"
-   :arglists '([channel-type notification-payload template recipients])}
-  (fn [channel-type notification-payload _template _recipients]
-    [channel-type (:payload_type notification-payload)]))
+   :arglists '([channel-type payload-type notification-payload template recipients])}
+  (fn [channel-type payload-type _notification-payload _template _recipients]
+    [channel-type payload-type]))
 
 (defmulti send!
   "Send a message to a channel."

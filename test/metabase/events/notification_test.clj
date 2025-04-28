@@ -113,7 +113,8 @@
       (notification.tu/with-temporary-event-topics! #{:event/testing}
         (doseq [_ (range 2)]
           (models.notification/create-notification! {:payload_type :notification/system-event
-                                                     :payload      {:event_name :event/testing}}
+                                                     :payload      {:event_name :event/testing}
+                                                     :condition    [:= 1 1]}
                                                     []
                                                     [{:channel_type notification.tu/test-channel-type
                                                       :channel_id   (:id chn-1)
