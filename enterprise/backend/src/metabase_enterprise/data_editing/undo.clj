@@ -45,7 +45,9 @@
    :model/Undo
    (for [[table-id table-updates] table-id->row-pk->old-new-values
          [row-pk [old new]] table-updates]
-     {:batch_num  [:+ [:inline 1] [:coalesce {:from [:data_edit_undo_chain] :select [[[:max :batch_num]]]} 0]]
+     {:batch_num  (inc (or (t2/select-one-fn :max_batch_num [:model/Undo [[:max :batch_num] :max_batch_num]]) 0))
+      ;; Need to find an atomic solution that MySQL flavored databases support.
+      #_[:+ [:inline 1] [:coalesce {:from [(t2/table-name :model/Undo)] :select [[[:max :batch_num]]]} 0]]
       :table_id   table-id
       :user_id    user-id
       :row_pk     row-pk
