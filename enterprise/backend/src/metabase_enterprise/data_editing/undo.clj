@@ -53,21 +53,21 @@
       :row_pk     row-pk
       :raw_before old
       :raw_after  new}))
-  ;; TODO delete any orphaned or conflicting "undone" changes (keep in sync with conflict? if we fix false positives)
   ;; We do this in multiple statements because:
   ;; - it's much simpler
   ;; - typically there is only one table, and this is more efficient in that case
   (doseq [[table-id table-updates] table-id->row-pk->old-new-values
-          :let [row-pks (keys table-updates)]]
+          :let [_row-pks (keys table-updates)]]
     ;; TODO This is the wrong batch number
     ;; - we need to scope ourselves just to these row-pks
     ;; - we want to look across all users
     ;; - we can't rely on `undone` being monotonic if we're searching across multiple row-pks
-    (when-let [{:keys [batch_num]} (first (next-batch true user-id table-id))]
+    (when-let [{:keys [batch_num]} (first (next-batch false user-id table-id))]
       (t2/delete! :model/Undo
                   :table_id table-id
-                  :row_pk [:in row-pks]
-                  :batch_num [:> batch_num]
+                  ;; Note: we intentionally also orphan changes to other rows.
+                  ;:row_pk [:in row-pks]
+                  :batch_num [:>= batch_num]
                   :undone true))))
 
 (defn next-batch-num
