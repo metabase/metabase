@@ -662,11 +662,17 @@ describe("scenarios > admin > databases > sample database", () => {
   });
 
   it("allows to save the default schedule (metabase#57198)", () => {
+    const ACTION_BUTTON_DELAY = 5000;
+    const SAFETY_MARGIN = 2000;
+
     visitDatabase(SAMPLE_DB_ID);
-    editDatabase();
-    H.modal().findByText("Show advanced options").click();
+    cy.get("main").findByText("Show advanced options").click();
     cy.findByLabelText("Choose when syncs and scans happen").click();
     cy.button("Save changes").click();
+    cy.button("Success").should("be.visible");
+    cy.button("Success", {
+      timeout: ACTION_BUTTON_DELAY + SAFETY_MARGIN,
+    }).should("not.exist");
     cy.wait("@databaseUpdate").then(({ request: { body }, response }) => {
       expect(body.is_full_sync).to.equal(false);
       expect(body.is_on_demand).to.equal(false);
@@ -674,9 +680,12 @@ describe("scenarios > admin > databases > sample database", () => {
       expect(response.body.schedules.cache_field_values).to.equal(null);
     });
 
-    editDatabase();
     cy.findByLabelText("Regularly, on a schedule").click();
     cy.button("Save changes").click();
+    cy.button("Success").should("be.visible");
+    cy.button("Success", {
+      timeout: ACTION_BUTTON_DELAY + SAFETY_MARGIN,
+    }).should("not.exist");
     cy.wait("@databaseUpdate").then(({ request: { body } }) => {
       expect(body.is_full_sync).to.equal(true);
       expect(body.is_on_demand).to.equal(false);
@@ -688,9 +697,12 @@ describe("scenarios > admin > databases > sample database", () => {
       });
     });
 
-    editDatabase();
     cy.findByLabelText("Only when adding a new filter widget").click();
     cy.button("Save changes").click();
+    cy.button("Success").should("be.visible");
+    cy.button("Success", {
+      timeout: ACTION_BUTTON_DELAY + SAFETY_MARGIN,
+    }).should("not.exist");
     cy.wait("@databaseUpdate").then(({ request: { body } }) => {
       expect(body.is_full_sync).to.equal(false);
       expect(body.is_on_demand).to.equal(true);
@@ -917,9 +929,3 @@ H.describeWithSnowplow("add database card", () => {
     });
   });
 });
-
-function editDatabase() {
-  cy.findByTestId("database-connection-info-section")
-    .findByRole("button", { name: "Edit connection details" })
-    .click();
-}
