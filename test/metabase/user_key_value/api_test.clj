@@ -63,7 +63,7 @@
   (mt/with-model-cleanup [:model/UserKeyValue]
     (testing "Deletion works"
       (mt/user-http-request :rasta :put 200 "/user-key-value/namespace/other/key/other" {:value "true"})
-      (is (= true (mt/user-http-request :rasta :get 200 "/user-key-value/namespace/other/key/other")))
+      (is (true? (mt/user-http-request :rasta :get 200 "/user-key-value/namespace/other/key/other")))
       (mt/user-http-request :rasta :delete 200 "/user-key-value/namespace/other/key/other")
       (is (= nil (mt/user-http-request :rasta :get 204 "/user-key-value/namespace/other/key/other"))))))
 

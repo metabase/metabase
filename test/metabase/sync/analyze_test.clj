@@ -237,8 +237,8 @@
                      :model/Field field (fake-field table)]
         (set-table-visibility-type-via-api! table "hidden")
         (set-table-visibility-type-via-api! table nil)
-        (is (= true
-               (fake-field-was-analyzed? field)))))))
+        (is (true?
+             (fake-field-was-analyzed? field)))))))
 
 (deftest dont-analyze-rehidden-table-test
   (testing "re-hiding a table should not cause it to be analyzed"

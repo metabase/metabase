@@ -218,7 +218,7 @@
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :date]
   [driver [_ value]]
-  [:parse_date (sql.qp/->honeysql driver value) "%Y-%m-%d"])
+  [:parse_date "%Y-%m-%d" (sql.qp/->honeysql driver value)])
 
 ;; TODO -- all this [[temporal-type]] stuff below can be replaced with the more generalized
 ;; [[h2x/with-database-type-info]] stuff we've added. [[h2x/with-database-type-info]] was inspired by this BigQuery code
@@ -573,9 +573,9 @@
         (datetime target-timezone)
         (with-temporal-type :datetime))))
 
-(defmethod sql.qp/->float :bigquery-cloud-sdk
-  [_ value]
-  (h2x/cast :float64 value))
+(defmethod sql.qp/float-dbtype :bigquery-cloud-sdk
+  [_]
+  :float64)
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :regex-match-first]
   [driver [_ arg pattern]]

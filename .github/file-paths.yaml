@@ -120,9 +120,7 @@ e2e_all:
   - *e2e_ci
   - *sources
   - *e2e_specs
-  - "e2e/runner/**"
-  - "e2e/support/**"
-  - "e2e/snapshot*/**"
+  - "e2e/**"
 
 snowplow:
   - ".github/workflows/snowplow.yml"

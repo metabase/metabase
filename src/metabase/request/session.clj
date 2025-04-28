@@ -59,7 +59,7 @@
   [& body]
   `(do-with-current-user
     (merge
-     (with-current-user-fetch-user-for-id (or ~`api/*current-user-id* (t2/select-one-fn :id [:model/User :id])))
+     (with-current-user-fetch-user-for-id ~`api/*current-user-id*)
      {:is-superuser? true
       :permissions-set #{"/"}
       :user-locale i18n/*user-locale*})
