@@ -283,7 +283,8 @@
                                                 :values  ["sum"]}
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
-                                                                      :currency_in_header false}}}
+                                                                      :currency_in_header false}}
+                                               :pivot.condense_duplicate_totals true}
                       :dataset_query          (mt/mbql-query products
                                                 {:aggregation [[:sum $price]]
                                                  :breakout    [$category
@@ -359,7 +360,8 @@
                                                 :values  ["sum" "avg"]}
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
-                                                                      :currency_in_header false}}}
+                                                                      :currency_in_header false}}
+                                               :pivot.condense_duplicate_totals true}
                       :dataset_query          (mt/mbql-query products
                                                 {:aggregation [[:sum $price]
                                                                [:avg $price]]
@@ -505,7 +507,8 @@
                                                     :values  ["sum"]}
                                                    :column_settings
                                                    {"[\"name\",\"sum\"]" {:number_style       "currency"
-                                                                          :currency_in_header false}}}
+                                                                          :currency_in_header false}}
+                                                   :pivot.condense_duplicate_totals true}
                           :dataset_query          (mt/mbql-query products
                                                     {:aggregation [[:sum $price]]
                                                      :breakout    [$category
@@ -538,7 +541,8 @@
                     :visualization_settings {:pivot_table.column_split
                                              {:rows    ["C" "D"]
                                               :columns ["A" "B"]
-                                              :values  ["sum"]}}
+                                              :values  ["sum"]}
+                                             :pivot.condense_duplicate_totals true}
                     :dataset_query          (mt/mbql-query nil
                                               {:aggregation  [[:sum [:field "MEASURE" {:base-type :type/Integer}]]]
                                                :breakout
@@ -785,9 +789,10 @@
       (mt/with-temp [:model/Card {pivot-card-id :id}
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
-                                               {:rows    ["CREATED_AT"],
-                                                :columns ["CATEGORY"],
-                                                :values  ["sum"]}}
+                                               {:rows    ["CREATED_AT"]
+                                                :columns ["CATEGORY"]
+                                                :values  ["sum"]}
+                                               :pivot.condense_duplicate_totals true}
                       :dataset_query          (mt/mbql-query products
                                                 {:aggregation [[:sum $price]
                                                                [:avg $rating]]
@@ -1177,6 +1182,7 @@
                                                {:rows    ["CATEGORY"]
                                                 :columns ["CREATED_AT"]
                                                 :values  ["sum"]}
+                                               :pivot.condense_duplicate_totals true
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                       :currency_in_header false}}}
@@ -1343,6 +1349,7 @@
                             {:rows    ["CATEGORY"]
                              :columns ["CREATED_AT"]
                              :values  ["sum"]}
+                            :pivot.condense_duplicate_totals true
                             :column_settings
                             {"[\"name\",\"sum\"]" (merge {:number_style       "currency"
                                                           :currency_in_header false}
@@ -1404,7 +1411,8 @@
                         :visualization_settings {:pivot_table.column_split
                                                  {:rows    ["MEASURE"]
                                                   :columns []
-                                                  :values  ["count" "sum"]}}
+                                                  :values  ["count" "sum"]}
+                                                 :pivot.condense_duplicate_totals true}
                         :dataset_query          (mt/mbql-query nil
                                                   {:breakout     [[:field "MEASURE" {:base-type :type/Integer}]],
                                                    :aggregation
@@ -1447,7 +1455,8 @@
                         :visualization_settings {:pivot_table.column_split
                                                  {:rows    ["MEASURE"]
                                                   :columns []
-                                                  :values  ["count" "sum" "sum_2"]}}
+                                                  :values  ["count" "sum" "sum_2"]}
+                                                 :pivot.condense_duplicate_totals true}
                         :dataset_query          (mt/mbql-query nil
                                                   {:breakout [[:field "MEASURE" {:base-type :type/Integer}]],
                                                    :aggregation
@@ -1460,7 +1469,8 @@
                         :visualization_settings {:pivot_table.column_split
                                                  {:rows    ["MEASURE"]
                                                   :columns []
-                                                  :values  ["sum_2" "count" "sum"]}}
+                                                  :values  ["sum_2" "count" "sum"]}
+                                                 :pivot.condense_duplicate_totals true}
                         :dataset_query          (mt/mbql-query nil
                                                   {:breakout     [[:field "MEASURE" {:base-type :type/Integer}]],
                                                    :aggregation
@@ -1537,7 +1547,8 @@
                         :visualization_settings {:pivot_table.column_split
                                                  {:rows    ["A"]
                                                   :columns []
-                                                  :values  ["count" "sum" "avg" "min" "max"]}}
+                                                  :values  ["count" "sum" "avg" "min" "max"]}
+                                                 :pivot.condense_duplicate_totals true}
                         :dataset_query          (mt/mbql-query nil
                                                   {:breakout     [[:field "A" {:base-type :type/Integer}]],
                                                    :aggregation
