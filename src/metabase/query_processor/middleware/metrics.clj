@@ -26,8 +26,8 @@
     :distinct-where})
 
 (def ^:private nullary-aggregations
-  #{:count
-    :cum-count})
+  {:count lib/sum
+   :cum-count lib/cum-sum})
 
 (def ^:private aggregations-expr-1st-arg
   #{:avg
@@ -76,9 +76,7 @@
     aggregation
     (let [operator (first aggregation)
           opts (lib.options/options aggregation)
-          aggregating-fn (case operator
-                           :count lib/sum
-                           :cum-count lib/cum-sum)]
+          aggregating-fn (nullary-aggregations operator)]
       (-> (aggregating-fn (lib/case [[condition 1]] 0))
           ;; explicit overwrite of new options with options of original clause
           (lib.options/with-options opts)
