@@ -355,7 +355,7 @@ describe("scenarios > models", () => {
 
         cy.findByText("Everywhere").click();
         getResults().should("have.length", 5);
-        cy.findByText("6 results").should("be.visible");
+        cy.findByText("5 results").should("be.visible");
         getResults()
           .eq(0)
           .should("have.attr", "data-model-type", "dataset")
