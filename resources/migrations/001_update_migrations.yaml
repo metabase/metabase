@@ -11640,6 +11640,11 @@ databaseChangeLog:
       id: v55.2025-04-29T12:01:00
       author: crisptrutski
       comment: Add scope column, to restrict undo / redo actions to a given scope of interaction.
+      preConditions:
+        - not:
+            - columnExists:
+                tableName: data_edit_undo_chain
+                columnName: scope
       changes:
         - addColumn:
             tableName: data_edit_undo_chain
