@@ -36,7 +36,7 @@ export const DataModel = ({ params }: Props) => {
     <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`}>
       <Stack className={S.sidebar} flex="0 0 400px" gap={0} h="100%">
         <Title order={2} px="xl" py="lg" pb="md">
-          Data model
+          {t`Data model`}
         </Title>
 
         <Box className={S.tableSectionContainer} h="100%" pb="lg" px="xl">
