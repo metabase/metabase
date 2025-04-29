@@ -3,6 +3,8 @@
 
 const path = require("path");
 
+const SCRIPT_TAG_PATH = path.resolve(__dirname, "embed.v1.ts");
+
 const BUILD_PATH = path.resolve(
   __dirname,
   "../../../../../resources/frontend_client",
@@ -10,20 +12,18 @@ const BUILD_PATH = path.resolve(
 
 module.exports = {
   name: "iframe_sdk_embed_v1",
-  entry: __dirname + "/embed.v1.ts",
+  entry: SCRIPT_TAG_PATH,
   output: {
     path: BUILD_PATH + "/app",
     filename: "embed.v1.js",
     library: "metabase.embed",
     libraryTarget: "umd",
     globalObject: "this",
-
-    // disabling HMR with devServer.hot still results in hot update files,
-    // so we must disable them explicitly
-    hotUpdateChunkFilename: "",
-    hotUpdateMainFilename: "",
   },
   devServer: { hot: false },
+  watchOptions: {
+    ignored: ["**/node_modules", SCRIPT_TAG_PATH],
+  },
   module: {
     rules: [
       {
