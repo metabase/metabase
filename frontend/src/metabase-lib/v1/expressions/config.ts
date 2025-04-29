@@ -26,14 +26,20 @@ function defineClauses<const T extends Record<string, MBQLClauseDefinition>>(
       ...options,
       ...defn,
       name,
-      description: helpText?.description,
-      docsPage: helpText?.docsPage,
+      description: defn.description ?? helpText?.description,
+      docsPage: defn.docsPage ?? helpText?.docsPage,
       hasOptions: Boolean(defn.hasOptions),
       multiple: Boolean(defn.multiple),
       argType(index) {
+        if (typeof defn.args === "function") {
+          return defn.args()[index];
+        }
         return defn.args[index];
       },
       args() {
+        if (typeof defn.args === "function") {
+          return defn.args();
+        }
         const args = helpText?.args() ?? [];
         return defn.args.map((type, index) => ({
           type,

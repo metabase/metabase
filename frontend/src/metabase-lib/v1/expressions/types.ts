@@ -55,7 +55,7 @@ export type ExpressionType =
 
 type ClauseArgDefinition = {
   name: string;
-  type: ExpressionType;
+  type?: ExpressionType;
   description: string;
   example:
     | Lib.ExpressionParts
@@ -68,7 +68,7 @@ export type MBQLClauseDefinition = {
   name?: never;
   displayName: string;
   type: ExpressionType;
-  args: ExpressionType[];
+  args: ExpressionType[] | (() => ClauseArgDefinition[]);
   argType?(
     index: number,
     args: unknown[],
@@ -79,6 +79,8 @@ export type MBQLClauseDefinition = {
   multiple?: boolean;
   category?: MBQLClauseCategory;
   validator?: (...args: any) => string | undefined;
+  description?(database: Database, reportTimezone?: string): string;
+  docsPage?: string;
 };
 
 export type MBQLClauseFunctionConfig = {
