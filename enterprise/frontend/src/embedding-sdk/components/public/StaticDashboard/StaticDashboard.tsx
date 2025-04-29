@@ -90,6 +90,7 @@ export const StaticDashboardInner = ({
         onNightModeChange={_.noop}
         hasNightModeToggle={false}
         withFooter={displayOptions.withFooter}
+        getClickActionMode={undefined}
       />
     </Box>
   );
