@@ -11,9 +11,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
-  ;; For describe-database privileges filtering
-   [metabase.driver.sql-jdbc.sync.interface :as sync-intf]
-   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]))
 
 (set! *warn-on-reflection* true)
