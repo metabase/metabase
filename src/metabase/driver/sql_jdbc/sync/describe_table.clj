@@ -397,7 +397,7 @@
   "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fks]],
  i.e. [[describe-fks]]."
   {:added    "0.49.0"
-   :arglists '([driver & {:keys [schema-names table-names]}])}
+   :arglists '([driver & {:keys [schema-names table-names details]}])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -407,7 +407,7 @@
   (if (or (and schema-names (empty? schema-names))
           (and table-names (empty? table-names)))
     []
-    (sql-jdbc.execute/reducible-query db (describe-fks-sql driver args))))
+    (sql-jdbc.execute/reducible-query db (describe-fks-sql driver (assoc args :details (:details db))))))
 
 (defn describe-table-indexes
   "Default implementation of [[metabase.driver/describe-table-indexes]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."

@@ -388,6 +388,7 @@
 (defn- expand-schema-filters-prop [prop]
   (let [prop-name (:name prop)
         disp-name (or (:display-name prop) "")
+        placeholder (or (:placeholder prop) "E.x. public,auth*")
         type-prop-nm (str prop-name "-type")]
     [{:name type-prop-nm
       :display-name disp-name
@@ -401,14 +402,14 @@
       :default "all"}
      {:name (str prop-name "-patterns")
       :type "text"
-      :placeholder "E.x. public,auth*"
+      :placeholder placeholder
       :description (trs "Comma separated names of {0} that should appear in Metabase" (u/lower-case-en disp-name))
       :visible-if  {(keyword type-prop-nm) "inclusion"}
       :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (u/lower-case-en disp-name))
       :required true}
      {:name (str prop-name "-patterns")
       :type "text"
-      :placeholder "E.x. public,auth*"
+      :placeholder placeholder
       :description (trs "Comma separated names of {0} that should NOT appear in Metabase" (u/lower-case-en disp-name))
       :visible-if  {(keyword type-prop-nm) "exclusion"}
       :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (u/lower-case-en disp-name))

@@ -191,6 +191,12 @@
                        "behavior, like improved auto-binning on your bar charts."))
    :visible-if   {"advanced-options" true}})
 
+(def multi-level-schema
+  "Map representing the `multi-level-schema` option for databases. Stores schemas with multiple levels of hierarchy."
+  {:name    "multi-level-schema"
+   :type    :boolean
+   :default false})
+
 (def default-advanced-options
   "Vector containing the three most common options present in the advanced option section of the DB connection form."
   [destination-database-option auto-run-queries let-user-control-scheduling metadata-sync-schedule cache-field-values-schedule refingerprint])
@@ -212,6 +218,7 @@
    :ssl                      default-ssl-details
    :user                     default-user-details
    :ssh-tunnel               ssh-tunnel-preferences
+   :multi-level-schema       multi-level-schema
    :additional-options       additional-options
    :advanced-options-start   advanced-options-start
    :default-advanced-options default-advanced-options})
