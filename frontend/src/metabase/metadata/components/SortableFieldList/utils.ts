@@ -59,6 +59,18 @@ function getFieldDisplayName(field: Field): string {
 }
 
 function getFieldIcon(table: Table, field: Field): IconName {
+  try {
+    const column = tableFieldToColumnMetadata(table, field);
+    return getColumnIcon(column);
+  } catch {
+    return "list"; // the same fallback as in getColumnIcon
+  }
+}
+
+function tableFieldToColumnMetadata(
+  table: Table,
+  field: Field,
+): Lib.ColumnMetadata {
   const metadata = createMinimumMetadata(table, field);
   const databaseId = table.db_id;
   const metadataProvider = Lib.metadataProvider(databaseId, metadata);
@@ -74,7 +86,7 @@ function getFieldIcon(table: Table, field: Field): IconName {
 
   // fieldId should never be a string in this context because it's a raw table field
   if (typeof fieldId === "string") {
-    return "list"; // the same fallback as in getColumnIcon
+    throw new Error("Field comes from a query, not a db table");
   }
 
   const fieldRef: DimensionReference = ["field", fieldId, null];
@@ -82,8 +94,7 @@ function getFieldIcon(table: Table, field: Field): IconName {
     fieldRef,
   ]);
   const column = columns[index];
-
-  return getColumnIcon(column);
+  return column;
 }
 
 /**
