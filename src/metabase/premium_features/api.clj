@@ -1,4 +1,4 @@
-(ns metabase.api.premium-features
+(ns metabase.premium-features.api
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
