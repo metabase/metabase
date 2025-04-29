@@ -78,6 +78,31 @@ describe("NumberInputWidget", () => {
       await userEvent.click(button);
       expect(setValue).toHaveBeenCalledWith(undefined);
     });
+
+    it("should let you submit a value on enter", async () => {
+      const { setValue } = setup({ value: [] });
+      await userEvent.type(screen.getByRole("textbox"), "10{enter}");
+      expect(setValue).toHaveBeenCalledWith([10]);
+    });
+
+    it("should let you submit an empty value on enter if the parameter is not required", async () => {
+      const { setValue } = setup({ value: ["10"] });
+      const input = screen.getByRole("textbox");
+      await userEvent.clear(input);
+      await userEvent.type(input, "{enter}");
+      expect(setValue).toHaveBeenCalledWith(undefined);
+    });
+
+    it("should not let you submit an empty value on enter if the parameter is required", async () => {
+      const { setValue } = setup({
+        value: ["10"],
+        parameter: createMockParameter({ required: true }),
+      });
+      const input = screen.getByRole("textbox");
+      await userEvent.clear(input);
+      await userEvent.type(input, "{enter}");
+      expect(setValue).not.toHaveBeenLastCalledWith(undefined);
+    });
   });
 
   describe("arity of 2", () => {
@@ -250,6 +275,51 @@ describe("NumberInputWidget", () => {
       await userEvent.click(button);
 
       expect(setValue).toHaveBeenCalledWith([55]);
+    });
+
+    it("should let you submit a value on enter", async () => {
+      const { setValue } = setup({ value: [], arity: "n" });
+
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "10{enter}");
+      expect(screen.getByText("10")).toBeInTheDocument();
+      expect(setValue).not.toHaveBeenCalled();
+
+      await userEvent.type(input, "{enter}");
+      expect(setValue).toHaveBeenCalledWith([10]);
+    });
+
+    it("should let you submit multiple values on enter", async () => {
+      const { setValue } = setup({ value: [], arity: "n" });
+
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "10,20{enter}");
+      expect(screen.getByText("10")).toBeInTheDocument();
+      expect(screen.getByText("20")).toBeInTheDocument();
+      expect(setValue).not.toHaveBeenCalled();
+
+      await userEvent.type(input, "{enter}");
+      expect(setValue).toHaveBeenCalledWith([10, 20]);
+    });
+
+    it("should let you submit an empty value on enter if the parameter is not required", async () => {
+      const { setValue } = setup({ value: [10], arity: "n" });
+
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "{backspace}{enter}");
+      expect(setValue).toHaveBeenCalledWith(undefined);
+    });
+
+    it("should not let you submit an empty value on enter if the parameter is required", async () => {
+      const { setValue } = setup({
+        value: [10],
+        parameter: createMockParameter({ required: true }),
+        arity: "n",
+      });
+
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "{backspace}{enter}");
+      expect(setValue).not.toHaveBeenLastCalledWith(undefined);
     });
   });
 });
