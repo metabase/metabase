@@ -8,8 +8,8 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.settings :as premium-features.settings]
    [metabase.premium-features.token-check :as token-check]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
@@ -40,7 +40,7 @@
   (http-fake/with-fake-routes-in-isolation
     {{:address      (#'token-check/token-status-url token @#'token-check/token-check-url)
       :query-params (merge (#'token-check/stats-for-token-request)
-                           {:site-uuid  (public-settings/site-uuid-for-premium-features-token-checks)
+                           {:site-uuid  (premium-features.settings/site-uuid-for-premium-features-token-checks)
                             :mb-version (:tag config/mb-version-info)})}
      (constantly token-check-response)}
     (#'token-check/fetch-token-status* token)))

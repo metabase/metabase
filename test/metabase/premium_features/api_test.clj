@@ -1,4 +1,4 @@
-(ns metabase.api.premium-features-test
+(ns metabase.premium-features.api-test
   (:require
    [clojure.test :refer :all]
    [metabase.premium-features.token-check :as token-check]

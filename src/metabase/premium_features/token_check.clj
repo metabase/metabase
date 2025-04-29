@@ -2,7 +2,9 @@
   "Code relating to the premium features token check, and related logic.
 
   WARNING: Token check data, particularly the user count, is used for billing, so errors here have the potential to be
-  high consequence. Be extra careful when editing this code!"
+  high consequence. Be extra careful when editing this code!
+
+  TODO -- We should move the settings in this namespace into [[metabase.premium-features.settings]]."
   (:require
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
@@ -13,6 +15,7 @@
    [metabase.config :as config]
    [metabase.internal-stats :as internal-stats]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
+   [metabase.premium-features.settings :as premium-features.settings]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -233,7 +236,7 @@
   (cond (mr/validate [:re RemoteCheckedToken] token)
         ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
         ;; reasonable amount of time throw a timeout exception
-        (let [site-uuid (setting/get :site-uuid-for-premium-features-token-checks)]
+        (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)]
           (try (fetch-token-and-parse-body token token-check-url site-uuid)
                (catch Exception e1
                  (log/errorf e1 "Error fetching token status from %s:" token-check-url)

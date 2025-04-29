@@ -30,7 +30,8 @@
 ;; ## Tips
 ;;
 ;; PRO TIP: Check out the [[dev.deps-graph]] namespace for helpful tools to see where a module is used externally, and
-;; for tools for calculating this config.
+;; for tools for calculating this config -- you can use [[dev.deps-graph/print-kondo-config-diff]] to see what updates
+;; you need to make
 {:metabase/modules
  {actions
   {:api  #{metabase.actions.api metabase.actions.core}
@@ -411,10 +412,11 @@
    :uses #{config driver util}}
 
   premium-features
-  {:api  #{metabase.premium-features.core
+  {:api  #{metabase.premium-features.api
+           metabase.premium-features.core
            metabase.premium-features.init
            metabase.premium-features.token-check}
-   :uses #{config db internal-stats plugins settings util}}
+   :uses #{api config db internal-stats plugins settings util}}
 
   public-sharing
   {:api  #{metabase.public-sharing.api
@@ -625,7 +627,9 @@
    :uses #{config db driver legacy-mbql lib models plugins premium-features settings}}
 
   xrays
-  {:api  #{metabase.xrays.api metabase.xrays.core}
+  {:api  #{metabase.xrays.api
+           metabase.xrays.core
+           metabase.xrays.init}
    :uses #{analyze api driver legacy-mbql lib models settings query-processor util}}
 
   enterprise/advanced-config
