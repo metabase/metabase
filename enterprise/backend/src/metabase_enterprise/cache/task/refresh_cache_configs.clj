@@ -1,4 +1,4 @@
-(ns metabase-enterprise.task.cache
+(ns metabase-enterprise.cache.task.refresh-cache-configs
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
@@ -11,7 +11,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.util.concurrent Callable ExecutorService ThreadPoolExecutor TimeUnit SynchronousQueue)
+   (java.util.concurrent Callable ExecutorService SynchronousQueue ThreadPoolExecutor TimeUnit)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
    (org.quartz.spi MutableTrigger)))
 
@@ -317,8 +317,6 @@
    (triggers/with-schedule
     (cron/cron-schedule "0 * * * * ? *"))))
 
-(defenterprise init-cache-task!
-  "Inits periodical task checking for cache expiration"
-  :feature :cache-granular-controls
-  []
-  (task/schedule-task! cache-job cache-trigger))
+(defmethod task/init! ::RefreshCacheConfigs [_]
+  (when (premium-features/has-feature? :cache-granular-controls)
+    (task/schedule-task! cache-job cache-trigger)))

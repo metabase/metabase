@@ -62,7 +62,6 @@
 
   api
   {:api #{metabase.api.auth
-          metabase.api.cache
           metabase.api.card
           metabase.api.collection
           metabase.api.common
@@ -300,7 +299,6 @@
   {:api #{metabase.models.api-key
           metabase.models.application-permissions-revision
           metabase.models.audit-log
-          metabase.models.cache-config
           metabase.models.card
           metabase.models.card.metadata
           metabase.models.collection
