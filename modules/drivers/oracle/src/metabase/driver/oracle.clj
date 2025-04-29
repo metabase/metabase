@@ -292,6 +292,10 @@
         (h2x/at-time-zone target-timezone)
         h2x/->timestamp)))
 
+(defmethod sql.qp/integer-dbtype :oracle
+  [_]
+  "NUMBER(19)")
+
 (def ^:private legacy-max-identifier-length
   "Maximal identifier length for Oracle < 12.2"
   30)
@@ -373,6 +377,10 @@
   [_driver _unit field-or-value]
   (h2x/+ [:raw "timestamp '1970-01-01 00:00:00 UTC'"]
          (num-to-ds-interval :second field-or-value)))
+
+(defmethod sql.qp/float-dbtype :oracle
+  [_]
+  :BINARY_DOUBLE)
 
 (defmethod sql.qp/cast-temporal-string [:oracle :Coercion/ISO8601->DateTime]
   [_driver _coercion-strategy expr]

@@ -643,13 +643,9 @@
   (let [seconds (h2x/- (extract-from-timestamp :epoch y) (extract-from-timestamp :epoch x))]
     (h2x/->integer [:trunc seconds])))
 
-(defmethod sql.qp/->honeysql [:postgres :integer]
-  [driver [_ value]]
-  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
-
-(defmethod sql.qp/->honeysql [:postgres :float]
-  [driver [_ value]]
-  (h2x/maybe-cast "DOUBLE PRECISION" (sql.qp/->honeysql driver value)))
+(defmethod sql.qp/float-dbtype :postgres
+  [_]
+  "DOUBLE PRECISION")
 
 (defn- format-regex-match-first [_fn [identifier pattern]]
   (let [[identifier-sql & identifier-args] (sql/format-expr identifier {:nested true})

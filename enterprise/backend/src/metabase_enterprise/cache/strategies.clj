@@ -62,24 +62,24 @@
 
 (defmulti ^:private fetch-cache-stmt-ee*
   "Generate prepared statement for a db cache backend for a given strategy"
-  {:arglists '([strategy query-hash conn])}
-  (fn [strategy _hash _conn] (:type strategy)))
+  {:arglists '([strategy query-hash])}
+  (fn [strategy _hash] (:type strategy)))
 
-(defmethod fetch-cache-stmt-ee* :ttl [strategy query-hash conn]
-  (backend.db/fetch-cache-stmt-ttl strategy query-hash conn))
+(defmethod fetch-cache-stmt-ee* :ttl [strategy query-hash]
+  (backend.db/fetch-cache-stmt-ttl strategy query-hash))
 
-(defmethod fetch-cache-stmt-ee* :duration [strategy query-hash conn]
+(defmethod fetch-cache-stmt-ee* :duration [strategy query-hash]
   (if-not (and (:duration strategy) (:unit strategy))
     (log/debugf "Caching strategy %s should have :duration and :unit" (pr-str strategy))
     (let [duration       (t/duration (:duration strategy) (keyword (:unit strategy)))
           duration-ago   (t/minus (t/offset-date-time) duration)
           invalidated-at (t/max duration-ago (:invalidated-at strategy))]
-      (backend.db/prepare-statement conn query-hash invalidated-at))))
+      (backend.db/select-cache query-hash invalidated-at))))
 
-(defmethod fetch-cache-stmt-ee* :schedule [{:keys [invalidated-at] :as strategy} query-hash conn]
+(defmethod fetch-cache-stmt-ee* :schedule [{:keys [invalidated-at] :as strategy} query-hash]
   (if-not invalidated-at
     (log/debugf "Caching strategy %s has not run yet" (pr-str strategy))
-    (backend.db/prepare-statement conn query-hash invalidated-at)))
+    (backend.db/select-cache query-hash invalidated-at)))
 
 (defmethod fetch-cache-stmt-ee* :nocache [_ _ _]
   nil)
@@ -87,5 +87,5 @@
 (defenterprise fetch-cache-stmt
   "Returns prepared statement to query for db cache backend."
   :feature :cache-granular-controls
-  [strategy query-hash conn]
-  (fetch-cache-stmt-ee* strategy query-hash conn))
+  [strategy query-hash]
+  (fetch-cache-stmt-ee* strategy query-hash))
