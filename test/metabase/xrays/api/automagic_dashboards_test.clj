@@ -84,12 +84,6 @@
                 (is (=? {:id (u/the-id saved-dashboard)}
                         (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id saved-dashboard)))))))))))))
 
-(deftest metric-xray-test
-  (testing "GET /api/automagic-dashboards/metric/:id"
-    (mt/with-temp [:model/LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
-                                                        :definition {:query {:aggregation ["count"]}}}]
-      (is (some? (api-call! "metric/%s" [metric-id]))))))
-
 (deftest segment-xray-test
   (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
                                                   :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
@@ -502,17 +496,6 @@
         (is (< show-count base-count)))
       (testing "Only \"limit\" cards are produced"
         (is (= show-limit show-count))))))
-
-(deftest metric-xray-show-param-test
-  (testing "x-ray of a metric with show set reduces the number of returned cards"
-    (mt/with-temp [:model/LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
-                                                        :definition {:query {:aggregation ["count"]}}}]
-      (let [show-limit 1
-            {:keys [base-count show-count]} (card-count-check! show-limit "metric/%s" [metric-id])]
-        (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
-          (is (< show-count base-count)))
-        (testing "Only \"limit\" cards are produced"
-          (is (= show-limit show-count)))))))
 
 (deftest segment-xray-show-param-test
   (testing "x-ray of a segment with show set reduces the number of returned cards"

@@ -113,26 +113,6 @@
                 [:email                       ms/Email]
                 [:first_name {:optional true} [:maybe :string]]]]]]])
 
-;; metric events
-
-;; TODO -- are these for LEGACY METRICS? ARE THESE EVENT USED ANYMORE?
-
-(mr/def ::metric
-  [:map {:closed true}
-   [:user-id  pos-int?]
-   [:object   [:fn #(t2/instance-of? :model/LegacyMetric %)]]])
-
-(mr/def :event/metric-create ::metric)
-
-(mr/def ::metric-with-message
-  [:merge
-   ::metric
-   [:map {:closed true}
-    [:revision-message {:optional true} :string]]])
-
-(mr/def :event/metric-update ::metric-with-message)
-(mr/def :event/metric-delete ::metric-with-message)
-
 ;; segment events
 
 (mr/def ::segment

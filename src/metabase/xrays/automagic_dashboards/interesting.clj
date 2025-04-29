@@ -76,7 +76,7 @@
     @fields))
 
 (defn semantic-groups
-  "From a :model/LegacyMetric, construct a mapping of semantic types of linked fields to
+  "From a metric, construct a mapping of semantic types of linked fields to
    sets of fields that can satisfy that type. A linked field is one that is in the
    source table for the metric contribute to the metric itself, is not a PK, and
    has a semantic_type (we assume nil semantic_type fields are boring)."
@@ -95,7 +95,7 @@
   "Get a reference for a given model to be injected into a template (either MBQL, native query, or string)."
   {:arglists '([template-type model])}
   (fn [template-type model]
-    [template-type (mi/model model)]))
+    [template-type ((some-fn mi/model type) model)]))
 
 (defn- optimal-temporal-resolution
   [field]
@@ -152,15 +152,13 @@
   [_ {:keys [display_name full-name]}]
   (or full-name display_name))
 
-(defmethod ->reference [:string :model/LegacyMetric]
-  [_ {:keys [name full-name]}]
+(mu/defmethod ->reference [:string :xrays/MetricInfo]
+  [_template-type {:keys [name full-name]} :- :xrays/MetricInfo]
   (or full-name name))
 
-(defmethod ->reference [:mbql :model/LegacyMetric]
-  [_ {:keys [id definition]}]
-  (if id
-    [:metric id]
-    (-> definition :aggregation first)))
+(mu/defmethod ->reference [:mbql :xrays/MetricInfo]
+  [_template-type {:keys [definition]} :- :xrays/MetricInfo]
+  (-> definition :aggregation first))
 
 (defmethod ->reference [:native :model/Field]
   [_ field]
@@ -469,7 +467,7 @@
      :metrics    (concat (set-score 50 metrics) (set-score 95 linked-metrics)
                          (let [entity (-> context :root :entity)]
                            ;; metric x-rays talk about "this" in the template
-                           (when (mi/instance-of? :model/LegacyMetric entity)
+                           (when (= (type entity) :xrays/MetricInfo)
                              [{:metric-name       "this"
                                :metric-title      (:name entity)
                                :metric-definition {:aggregation [(->reference :mbql entity)]}

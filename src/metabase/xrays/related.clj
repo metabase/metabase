@@ -8,6 +8,7 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
@@ -44,10 +45,6 @@
   especially context-bearing forms."
   {:arglists '([instance])}
   mi/model)
-
-(defmethod definition :model/LegacyMetric
-  [metric]
-  (-> metric :definition ((juxt :aggregation :filter))))
 
 (defmethod definition :model/Card
   [card]
@@ -109,12 +106,6 @@
   (filter-visible (t2/select :model/Card
                              :table_id (:id table)
                              :type :metric
-                             :archived false)))
-
-(defn- legacy-metrics-for-table
-  [table]
-  (filter-visible (t2/select :model/LegacyMetric
-                             :table_id (:id table)
                              :archived false)))
 
 (defn- segments-for-table
@@ -223,7 +214,7 @@
 (defmulti related
   "Return related entities."
   {:arglists '([entity])}
-  mi/model)
+  (some-fn mi/model type))
 
 (defmethod related :model/Card
   [card]
@@ -244,14 +235,10 @@
   [query]
   (related (mi/instance :model/Card query)))
 
-(defmethod related :model/LegacyMetric
-  [metric]
+(mu/defmethod related :xrays/MetricInfo
+  [metric :- :xrays/MetricInfo]
   (let [table (t2/select-one :model/Table :id (:table_id metric))]
     {:table    table
-     :metrics  (->> table
-                    legacy-metrics-for-table
-                    (rank-by-similarity metric)
-                    interesting-mix)
      :segments (->> table
                     segments-for-table
                     (rank-by-similarity metric)

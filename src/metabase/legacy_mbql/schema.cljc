@@ -1048,8 +1048,10 @@
 
 ;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
 ;; expanded to other aggregations/etc. in the expand-macros middleware
+;;
+;; V1 (Legacy) Metrics (which lived in their own table) do not exist anymore! A V2 Metric is just a subtype of a Card.
 (defclause metric
-  metric-id ::lib.schema.id/metric)
+  metric-id ::lib.schema.id/card)
 
 ;; the following are definitions for expression aggregations, e.g.
 ;;

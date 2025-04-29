@@ -142,7 +142,6 @@
    In practice, we gather the entity data (including fields), the dashboard templates, attempt to bind dimensions to
    fields specified in the template, then build metrics, filters, and finally cards based on the bound dimensions."
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [kixi.stats.core :as stats]
@@ -155,7 +154,9 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru trun]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.automagic-dashboards.combination :as combination]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
@@ -172,30 +173,35 @@
 (def ^:private ^{:arglists '([field])} id-or-name
   (some-fn :id :name))
 
-(defmulti linked-metrics
-  "Get user-defined metrics linked to a given entity."
-  {:arglists '([entity])}
-  mi/model)
+(mr/def :xrays/MetricInfo
+  "The automagic dashboard code creates fake (i.e., not a real Toucan instance) Metrics based on aggregation
+  clauses (see [[collect-metrics]]). This is the shape of these fake Metrics. We tag them with
 
-(defmethod linked-metrics :model/LegacyMetric [{metric-name :name :keys [definition]}]
-  [{:metric-name       metric-name
-    :metric-title      metric-name
-    :metric-definition definition
-    :metric-score      100}])
+    ^{:type :xrays/Metric}
 
-(defmethod linked-metrics :model/Table [{table-id :id}]
-  (mapcat
-   linked-metrics
-   (t2/select :model/LegacyMetric :table_id table-id)))
+  metadata so we can dispatch on them. Multimethods that know about them have a dispatch function like
 
-(defmethod linked-metrics :default [_] [])
+    (some-fn mi/model type)"
+  [:and
+   [:map
+    ;; this matches the legacy V1 Metric definition shape -- maybe at some point we should update all this code so our
+    ;; fake Metrics look like modern V2 Metrics instead of a shape no longer used elsewhere in the codebase.
+    [:definition [:map
+                  [:aggregation  any?]
+                  [:source-table pos-int?]]]
+    [:name       :string]
+    [:table_id   pos-int?]
+    [:full-name {:optional true} [:maybe :string]]]
+   [:fn
+    {:error/message "Should have ^{:type :xrays/MetricInfo} metadata."}
+    #(= (type %) :xrays/MetricInfo)]])
 
 (defmulti ->root
   "root is a datatype that is an entity augmented with metadata for the purposes of creating an automatic dashboard with
   respect to that entity. It is called a root because the automated dashboard uses productions to recursively create a
   tree of dashboard cards to fill the dashboards. This multimethod is for turning a given entity into a root."
   {:arglists '([entity])}
-  mi/model)
+  (some-fn mi/model type))
 
 (defmethod ->root :model/Table
   [table]
@@ -205,8 +211,7 @@
    :source                     table
    :database                   (:db_id table)
    :url                        (format "%stable/%s" public-endpoint (u/the-id table))
-   :dashboard-templates-prefix ["table"]
-   :linked-metrics             (linked-metrics table)})
+   :dashboard-templates-prefix ["table"]})
 
 (defmethod ->root :model/Segment
   [segment]
@@ -221,7 +226,7 @@
      :url                        (format "%ssegment/%s" public-endpoint (u/the-id segment))
      :dashboard-templates-prefix ["table"]}))
 
-(defmethod ->root :model/LegacyMetric
+(defmethod ->root :xrays/MetricInfo
   [metric]
   (let [table (->> metric :table_id (t2/select-one :model/Table :id))]
     {:entity                     metric
@@ -468,81 +473,26 @@
                                                (assoc group :title (or comparison_title title))))))
        (instantiate-metadata context available-metrics {}))))
 
-(defn affinities->viz-types
-  "Generate a map of satisfiable affinity sets (sets of dimensions that belong together)
-  to visualization types that would be appropriate for each affinity set."
-  [normalized-card-templates ground-dimensions]
-  (reduce (partial merge-with set/union)
-          {}
-          (for [{:keys [dimensions visualization]} normalized-card-templates
-                :let [dim-set (into #{} (map ffirst) dimensions)]
-                :when (every? ground-dimensions dim-set)]
-            {dim-set #{visualization}})))
-
-(defn user-defined-groups
-  "Create a dashboard group for each user-defined metric."
-  [linked-metrics]
-  (zipmap (map :metric-name linked-metrics)
-          (map (fn [{:keys [metric-name]}]
-                 {:title (format "Your %s Metric" metric-name)
-                  :score 0}) linked-metrics)))
-
-(defn user-defined-metrics->card-templates
-  "Produce card templates for user-defined metrics. The basic algorithm is to generate the
-  cross product of all user defined metrics to all provided dimension affinities to all
-  potential visualization options for these affinities."
-  [affinities->viz-types user-defined-metrics]
-  (let [found-summary? (volatile! false)
-        summary-viz-types #{["scalar" {}] ["smartscalar" {}]}]
-    (for [[dimension-affinities viz-types] affinities->viz-types
-          viz viz-types
-          {:keys [metric-name] :as _user-defined-metric} user-defined-metrics
-          :let [metric-title (if (seq dimension-affinities)
-                               (format "%s by %s" metric-name
-                                       (combination/items->str
-                                        (map (fn [s] (format "[[%s]]" s)) (vec dimension-affinities))))
-                               metric-name)
-                group-name (if (and (not @found-summary?)
-                                    (summary-viz-types viz))
-                             (do (vreset! found-summary? true)
-                                 "Overview")
-                             metric-name)]]
-      {:card-score    100
-       :metrics       [metric-name]
-       :dimensions    (mapv (fn [dim] {dim {}}) dimension-affinities)
-       :visualization viz
-       :width         6
-       :title         (i18n/->UserLocalizedString metric-title nil {})
-       :height        4
-       :group         group-name
-       :card-name     (format "Card[%s][%s]" metric-title (first viz))})))
-
 (defn generate-base-dashboard
   "Produce the \"base\" dashboard from the base context for an item and a dashboard template.
   This includes dashcards and global filters, but does not include related items and is not yet populated.
   Repeated calls of this might be generated (e.g. the main dashboard and related) then combined once using
   create dashboard."
-  [{{user-defined-metrics :linked-metrics :as root} :root :as base-context}
+  [{root :root :as base-context}
    {template-cards      :cards
     :keys               [dashboard_filters]
     :as                 dashboard-template}
    {grounded-dimensions :dimensions
     grounded-metrics    :metrics
     grounded-filters    :filters}]
-  (let [card-templates                 (interesting/normalize-seq-of-maps :card template-cards)
-        user-defined-card-templates    (user-defined-metrics->card-templates
-                                        (affinities->viz-types card-templates grounded-dimensions)
-                                        user-defined-metrics)
-        all-cards                      (into card-templates user-defined-card-templates)
-        dashcards                      (combination/grounded-metrics->dashcards
-                                        base-context
-                                        all-cards
-                                        grounded-dimensions
-                                        grounded-filters
-                                        grounded-metrics)
-        template-with-user-groups      (update dashboard-template
-                                               :groups into (user-defined-groups user-defined-metrics))
-        empty-dashboard                (make-dashboard root template-with-user-groups)]
+  (let [card-templates  (interesting/normalize-seq-of-maps :card template-cards)
+        dashcards       (combination/grounded-metrics->dashcards
+                         base-context
+                         card-templates
+                         grounded-dimensions
+                         grounded-filters
+                         grounded-metrics)
+        empty-dashboard (make-dashboard root dashboard-template)]
     (assoc empty-dashboard
            ;; Adds the filters that show at the top of the dashboard
            ;; Why do we need (or do we) the last remove form?
@@ -688,14 +638,14 @@
                      :zoom-out [up]
                      :related  [sideways sideways]
                      :compare  [compare compare]})
-   :model/LegacyMetric  (let [down     [[:drilldown-fields]]
-                              sideways [[:metrics :segments]]
-                              up       [[:table]]
-                              compare  [[:compare]]]
-                          {:zoom-in  [down down]
-                           :zoom-out [up]
-                           :related  [sideways sideways sideways]
-                           :compare  [compare compare]})
+   :xrays/MetricInfo   (let [down     [[:drilldown-fields]]
+                             sideways [[:metrics :segments]]
+                             up       [[:table]]
+                             compare  [[:compare]]]
+                         {:zoom-in  [down down]
+                          :zoom-out [up]
+                          :related  [sideways sideways sideways]
+                          :compare  [compare compare]})
    :model/Field   (let [sideways [[:fields]]
                         up       [[:table] [:metrics :segments]]
                         compare  [[:compare]]]
@@ -729,7 +679,7 @@
               (drilldown-fields root available-dimensions)
               (related-entities root)
               (comparisons root))
-       (fill-related max-related (get related-selectors (-> root :entity mi/model)))))
+       (fill-related max-related (get related-selectors (-> root :entity ((some-fn mi/model type)))))))
 
 (defn- filter-referenced-fields
   "Return a map of fields referenced in filter clause."
@@ -790,8 +740,8 @@
     source, what dashboard template categories to apply, etc.
   - Additional options such as how many cards to show, a cell query (a drill through), etc."
   {:arglists '([entity opts])}
-  (fn [entity _]
-    (mi/model entity)))
+  (fn [entity _opts]
+    ((some-fn mi/model type) entity)))
 
 (defmethod automagic-analysis :model/Table
   [table opts]
@@ -801,24 +751,27 @@
   [segment opts]
   (automagic-dashboard (merge (->root segment) opts)))
 
-(defmethod automagic-analysis :model/LegacyMetric
+(defmethod automagic-analysis :xrays/MetricInfo
   [metric opts]
   (automagic-dashboard (merge (->root metric) opts)))
 
-(mu/defn- collect-metrics :- [:maybe [:sequential (ms/InstanceOf :model/LegacyMetric)]]
+(mu/defn- collect-metrics :- [:maybe [:sequential :xrays/MetricInfo]]
   [root question]
-  (map (fn [aggregation-clause]
-         (if (-> aggregation-clause
-                 first
-                 qp.util/normalize-token
-                 (= :metric))
-           (->> aggregation-clause second (t2/select-one :model/LegacyMetric :id))
-           (let [table-id (table-id question)]
-             (mi/instance :model/LegacyMetric {:definition {:aggregation  [aggregation-clause]
-                                                            :source-table table-id}
-                                               :name       (names/metric->description root aggregation-clause)
-                                               :table_id   table-id}))))
-       (get-in question [:dataset_query :query :aggregation])))
+  (keep (fn [aggregation-clause]
+          (if (-> aggregation-clause
+                  first
+                  qp.util/normalize-token
+                  (= :metric))
+            ;; any [:metric ...] MBQL clauses these days are V2 Metrics and Automagic Dashboards do not handle them.
+            (log/error "X-Rays do not support V2 Metrics.")
+            ;; construct a 'virtual' metric
+            (when-let [table-id (table-id question)]
+              ^{:type :xrays/MetricInfo}
+              {:definition {:aggregation  [aggregation-clause]
+                            :source-table table-id}
+               :name       (names/metric->description root aggregation-clause)
+               :table_id   table-id})))
+        (get-in question [:dataset_query :query :aggregation])))
 
 (mu/defn- collect-breakout-fields :- [:maybe [:sequential (ms/InstanceOf :model/Field)]]
   [root question]
