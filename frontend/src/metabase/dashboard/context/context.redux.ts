@@ -111,6 +111,7 @@ const mapDispatchToProps = {
   toggleSidebar,
   closeSidebar,
   setParameterName,
+  setParameterValue,
   setParameterType,
   setParameterValue,
   setParameterValueToDefault,
