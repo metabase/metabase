@@ -9,7 +9,7 @@
   /** @typedef {{embedResourceType: string, embedResourceId: string, theme: object}} EmbedSettings */
 
   class MetabaseEmbed {
-    static VERSION = "0.0.1";
+    static VERSION = "1.0.0";
 
     /**
      * @param {object} options
