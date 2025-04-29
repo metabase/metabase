@@ -168,7 +168,6 @@ function Dashboard() {
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
       loading={!dashboard}
-      noWrapper={true}
     >
       {() => {
         if (!dashboard) {
