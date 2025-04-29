@@ -32,7 +32,7 @@ export function AIAnalysisContentWrapper({
             <CopyButton
               value={explanation}
               aria-label={t`Copy`}
-              style={{ color: "var(--color-text-medium)" }}
+              style={{ color: "var(--mb-color-text-medium)" }}
             />
           )}
           {onClose && (

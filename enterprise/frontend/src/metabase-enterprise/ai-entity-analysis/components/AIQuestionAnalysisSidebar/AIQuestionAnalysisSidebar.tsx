@@ -92,7 +92,7 @@ export function AIQuestionAnalysisSidebar({
     return (
       <CopyButton
         value={analysisData.summary}
-        style={{ color: "var(--color-text-medium)" }}
+        style={{ color: "var(--mb-color-text-medium)" }}
         aria-label={t`Copy`}
       />
     );
