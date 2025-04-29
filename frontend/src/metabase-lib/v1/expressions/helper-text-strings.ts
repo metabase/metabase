@@ -17,6 +17,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     displayName: "Count",
     category: CATEGORY.Aggregation,
     description: () => t`Returns the count of rows in the selected data.`,
+    args: () => [],
   },
   {
     name: "cum-count",
@@ -24,6 +25,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     category: CATEGORY.Window,
     description: () => t`The additive total of rows across a breakout.`,
     docsPage: "cumulative",
+    args: () => [],
   },
   {
     name: "sum",
@@ -1371,7 +1373,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         return t`Returns the current timestamp (in milliseconds). Currently ${nowAtTimezone} in ${timezone}.`;
       }
     },
-
+    args: () => [],
     docsPage: "now",
   },
   {
@@ -1413,7 +1415,7 @@ export function getHelpText(
   }
 
   const { description, docsPage } = helperTextConfig;
-  const args = helperTextConfig.args?.() ?? [];
+  const args = helperTextConfig.args();
 
   return {
     ...helperTextConfig,

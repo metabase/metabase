@@ -18,7 +18,7 @@ export enum MBQLClauseCategory {
 export interface HelpText {
   name: string;
   category: MBQLClauseCategory;
-  args?: HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
+  args: HelpTextArg[];
   description: string;
   example: Lib.ExpressionParts;
   displayName: string;
@@ -28,7 +28,7 @@ export interface HelpText {
 export interface HelpTextConfig {
   name: DefinedClauseName;
   category: MBQLClauseCategory;
-  args?: () => HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
+  args: () => HelpTextArg[];
   description: (database: Database, reportTimezone?: string) => string;
   displayName: string;
   docsPage?: string;
