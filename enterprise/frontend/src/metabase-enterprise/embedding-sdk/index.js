@@ -1,4 +1,4 @@
-import { SimpleDataPicker } from "embedding-sdk/components/private/SimpleDataPicker";
+import { SimpleDataPicker } from "embedding-sdk/components/private/data-picker/SimpleDataPicker";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
