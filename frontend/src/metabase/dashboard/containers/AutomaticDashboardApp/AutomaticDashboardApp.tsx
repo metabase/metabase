@@ -141,120 +141,118 @@ const AutomaticDashboardAppInner = ({
   const hasSidebar = related && Object.keys(related).length > 0;
 
   return (
-    <>
-      <div
-        className={cx(CS.relative, "AutomaticDashboard", {
-          "AutomaticDashboard--withSidebar": hasSidebar,
-        })}
-      >
-        <div className="" style={{ marginRight: hasSidebar ? 346 : undefined }}>
-          {isHeaderVisible && (
-            <div
-              className={cx(CS.bgWhite, CS.borderBottom)}
-              data-testid="automatic-dashboard-header"
-            >
-              <div className={CS.wrapper}>
-                <FixedWidthContainer
-                  data-testid="fixed-width-dashboard-header"
-                  isFixedWidth={dashboard?.width === "fixed"}
-                >
-                  <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
-                    <XrayIcon />
-                    <div>
-                      <h2 className={cx(CS.textWrap, CS.mr2)}>
-                        {dashboard && <TransientTitle dashboard={dashboard} />}
-                      </h2>
-                    </div>
-                    {savedDashboardId != null ? (
-                      <Button className={CS.mlAuto} disabled>{t`Saved`}</Button>
-                    ) : (
-                      <ActionButton
-                        className={cx(CS.mlAuto, CS.textNoWrap)}
-                        success
-                        borderless
-                        actionFn={save}
-                      >
-                        {t`Save this`}
-                      </ActionButton>
-                    )}
-                  </div>
-                  {dashboard && tabs.length > 1 && (
-                    <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
-                      <DashboardTabs dashboardId={dashboard.id} />
-                    </div>
-                  )}
-                </FixedWidthContainer>
-              </div>
-            </div>
-          )}
-
-          <div className={cx(CS.wrapper, CS.pb4)}>
-            {parameters && parameters.length > 0 && (
-              <div className={cx(CS.px1, CS.pt1)}>
-                <FixedWidthContainer
-                  id={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}
-                  data-testid="fixed-width-filters"
-                  isFixedWidth={dashboard?.width === "fixed"}
-                >
-                  <ParametersList
-                    className={CS.mt1}
-                    parameters={getValuePopulatedParameters({
-                      parameters,
-                      values: parameterValues,
-                    })}
-                    setParameterValue={setParameterValue}
-                  />
-                </FixedWidthContainer>
-              </div>
-            )}
-            <LoadingAndErrorWrapper
-              className={cx(DashboardS.Dashboard, CS.p1, CS.flexFull)}
-              loading={!dashboard}
-              noBackground
-            >
-              {() =>
-                dashboard && (
-                  <DashboardGridConnected
-                    isXray
-                    dashboard={dashboard}
-                    selectedTabId={selectedTabId}
-                    slowCards={slowCards}
-                    clickBehaviorSidebarDashcard={null}
-                    downloadsEnabled={false}
-                    onEditingChange={_.noop}
-                    autoScrollToDashcardId={undefined}
-                    reportAutoScrolledToDashcard={_.noop}
-                    navigateToNewCardFromDashboard={
-                      navigateToNewCardFromDashboard ?? undefined
-                    }
-                  />
-                )
-              }
-            </LoadingAndErrorWrapper>
-          </div>
-          {more && (
-            <div className={cx(CS.flex, CS.justifyEnd, CS.px4, CS.pb4)}>
-              <Link to={more} className={CS.ml2}>
-                <Button iconRight="chevronright">{t`Show more about this`}</Button>
-              </Link>
-            </div>
-          )}
-        </div>
-        {hasSidebar && (
-          <Box
-            className={cx(
-              CS.absolute,
-              CS.top,
-              CS.right,
-              CS.bottom,
-              S.SuggestionsSidebarWrapper,
-            )}
+    <div
+      className={cx(CS.relative, "AutomaticDashboard", {
+        "AutomaticDashboard--withSidebar": hasSidebar,
+      })}
+    >
+      <div className="" style={{ marginRight: hasSidebar ? 346 : undefined }}>
+        {isHeaderVisible && (
+          <div
+            className={cx(CS.bgWhite, CS.borderBottom)}
+            data-testid="automatic-dashboard-header"
           >
-            <SuggestionsSidebar related={related} />
-          </Box>
+            <div className={CS.wrapper}>
+              <FixedWidthContainer
+                data-testid="fixed-width-dashboard-header"
+                isFixedWidth={dashboard?.width === "fixed"}
+              >
+                <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
+                  <XrayIcon />
+                  <div>
+                    <h2 className={cx(CS.textWrap, CS.mr2)}>
+                      {dashboard && <TransientTitle dashboard={dashboard} />}
+                    </h2>
+                  </div>
+                  {savedDashboardId != null ? (
+                    <Button className={CS.mlAuto} disabled>{t`Saved`}</Button>
+                  ) : (
+                    <ActionButton
+                      className={cx(CS.mlAuto, CS.textNoWrap)}
+                      success
+                      borderless
+                      actionFn={save}
+                    >
+                      {t`Save this`}
+                    </ActionButton>
+                  )}
+                </div>
+                {dashboard && tabs.length > 1 && (
+                  <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
+                    <DashboardTabs dashboardId={dashboard.id} />
+                  </div>
+                )}
+              </FixedWidthContainer>
+            </div>
+          </div>
+        )}
+
+        <div className={cx(CS.wrapper, CS.pb4)}>
+          {parameters && parameters.length > 0 && (
+            <div className={cx(CS.px1, CS.pt1)}>
+              <FixedWidthContainer
+                id={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}
+                data-testid="fixed-width-filters"
+                isFixedWidth={dashboard?.width === "fixed"}
+              >
+                <ParametersList
+                  className={CS.mt1}
+                  parameters={getValuePopulatedParameters({
+                    parameters,
+                    values: parameterValues,
+                  })}
+                  setParameterValue={setParameterValue}
+                />
+              </FixedWidthContainer>
+            </div>
+          )}
+          <LoadingAndErrorWrapper
+            className={cx(DashboardS.Dashboard, CS.p1, CS.flexFull)}
+            loading={!dashboard}
+            noBackground
+          >
+            {() =>
+              dashboard && (
+                <DashboardGridConnected
+                  isXray
+                  dashboard={dashboard}
+                  selectedTabId={selectedTabId}
+                  slowCards={slowCards}
+                  clickBehaviorSidebarDashcard={null}
+                  downloadsEnabled={false}
+                  onEditingChange={_.noop}
+                  autoScrollToDashcardId={undefined}
+                  reportAutoScrolledToDashcard={_.noop}
+                  navigateToNewCardFromDashboard={
+                    navigateToNewCardFromDashboard ?? undefined
+                  }
+                />
+              )
+            }
+          </LoadingAndErrorWrapper>
+        </div>
+        {more && (
+          <div className={cx(CS.flex, CS.justifyEnd, CS.px4, CS.pb4)}>
+            <Link to={more} className={CS.ml2}>
+              <Button iconRight="chevronright">{t`Show more about this`}</Button>
+            </Link>
+          </div>
         )}
       </div>
-    </>
+      {hasSidebar && (
+        <Box
+          className={cx(
+            CS.absolute,
+            CS.top,
+            CS.right,
+            CS.bottom,
+            S.SuggestionsSidebarWrapper,
+          )}
+        >
+          <SuggestionsSidebar related={related} />
+        </Box>
+      )}
+    </div>
   );
 };
 
