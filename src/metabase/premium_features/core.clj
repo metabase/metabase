@@ -21,6 +21,7 @@
   airgap-enabled
   assert-has-feature
   assert-has-any-features
+  clear-token-check-cache
   ee-feature-error
   is-hosted?
   has-any-features?
