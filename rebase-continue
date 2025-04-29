@@ -1,11 +1,3 @@
 {
-  "continuations": [
-    {
-      "command": [
-        "branch",
-        "restack"
-      ],
-      "branch": "emb-355-setup-end-to-end-tests-for-using-the-embedv1js-library"
-    }
-  ]
+  "continuations": null
 }
