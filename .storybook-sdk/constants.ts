@@ -1,0 +1,42 @@
+// Copied from the instance settings and re-ordered, may go out of sync with the real ones
+// Locales in the format `xx_AA` were also changed to `xx-AA`
+export const availableLocales = [
+  "default",
+  "en", // default one
+  "de", // one that we know should be well supported
+  // all the others in alphabetical order
+  "ar",
+  "ar-SA",
+  "bg",
+  "ca",
+  "cs",
+  "da",
+  "es",
+  "fa",
+  "fi",
+  "fr",
+  "he",
+  "hu",
+  "id",
+  "it",
+  "ja",
+  "ko",
+  "lv",
+  "ms",
+  "nb",
+  "nl",
+  "pl",
+  "pt-BR",
+  "ru",
+  "sk",
+  "sl",
+  "sq",
+  "sr",
+  "sv",
+  "tr",
+  "uk",
+  "vi",
+  "zh-CN",
+  "zh-HK",
+  "zh-TW",
+];
