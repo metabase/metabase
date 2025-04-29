@@ -22,11 +22,10 @@ import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
+import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-modal-with-object-id";
 import { getTableEditPathname } from "./url";
-import { useExpandedRowObjectIdTracking } from "./use-expanded-row-id-tracking";
 import { useStandaloneTableQuery } from "./use-standalone-table-query";
 import { useTableCRUD } from "./use-table-crud";
-import { useTableEditingModalController } from "./use-table-modal";
 import { useTableEditingStateApiUpdateStrategy } from "./use-table-state-api-update-strategy";
 import { useTableEditingUndoRedo } from "./use-table-undo-redo";
 
@@ -68,7 +67,22 @@ export const EditTableDataContainer = ({
       : undefined;
   }, [rawDatasetResult]);
 
-  const modalController = useTableEditingModalController();
+  const handleCurrentObjectIdChange = useCallback(
+    (objectId?: string) => {
+      router.push({
+        ...location,
+        pathname: getTableEditPathname(databaseId, tableId, objectId),
+      });
+    },
+    [databaseId, tableId, router, location],
+  );
+
+  const modalController = useTableEditingModalControllerWithObjectId({
+    currentObjectId: objectIdParam,
+    datasetData,
+    onObjectIdChange: handleCurrentObjectIdChange,
+  });
+
   const stateUpdateStrategy =
     useTableEditingStateApiUpdateStrategy(fakeTableQuery);
 
@@ -92,23 +106,6 @@ export const EditTableDataContainer = ({
 
   useMount(() => {
     dispatch(closeNavbar());
-  });
-
-  const handleCurrentObjectIdChange = useCallback(
-    (objectId?: string) => {
-      router.replace({
-        ...location,
-        pathname: getTableEditPathname(databaseId, tableId, objectId),
-      });
-    },
-    [databaseId, tableId, router, location],
-  );
-
-  useExpandedRowObjectIdTracking({
-    objectId: objectIdParam,
-    modalController,
-    datasetData,
-    onObjectIdChange: handleCurrentObjectIdChange,
   });
 
   if (!database || isLoading || !fakeTableQuestion) {

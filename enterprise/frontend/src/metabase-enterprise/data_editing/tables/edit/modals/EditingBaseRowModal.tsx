@@ -27,11 +27,11 @@ import type {
 import type { UpdatedRowCellsHandlerParams } from "../../types";
 import { EditingBodyCellConditional } from "../inputs";
 import type { EditableTableColumnConfig } from "../use-editable-column-config";
-import type { TableEditingModalController } from "../use-table-modal";
-import { TableEditingModalAction } from "../use-table-modal";
 
 import { DeleteRowConfirmationModal } from "./DeleteRowConfirmationModal";
 import S from "./EditingBaseRowModal.module.css";
+import type { TableEditingModalController } from "./use-table-modal";
+import { TableEditingModalAction } from "./use-table-modal";
 
 interface EditingBaseRowModalProps {
   datasetColumns: DatasetColumn[];
