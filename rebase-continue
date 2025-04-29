@@ -1,0 +1,11 @@
+{
+  "continuations": [
+    {
+      "command": [
+        "stack",
+        "restack"
+      ],
+      "branch": "emb-320-setup-new-interactive-embedding-route-with-ee-plugins"
+    }
+  ]
+}
