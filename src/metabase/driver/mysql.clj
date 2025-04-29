@@ -16,6 +16,7 @@
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -36,7 +37,7 @@
    [metabase.util.log :as log])
   (:import
    (java.io File)
-   (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
+   (java.sql DatabaseMetaData ResultSet ResultSetMetaData SQLException Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
    (java.time.format DateTimeFormatter)))
 
@@ -71,6 +72,9 @@
                               :uploads                                true
                               :identifiers-with-spaces                true
                               :expressions/integer                    true
+                              :expressions/float                      true
+                              :expressions/date                       true
+                              :expressions/text                       true
                               :split-part                             true
                               ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
@@ -307,14 +311,9 @@
     (-> [:str_to_date expr (h2x/literal format-str)]
         (h2x/with-database-type-info database-type))))
 
-(defmethod sql.qp/->float :mysql
-  [_ value]
-  ;; no-op as MySQL doesn't support cast to float
-  value)
-
-(defmethod sql.qp/->integer :mysql
-  [_ value]
-  (h2x/maybe-cast :signed value))
+(defmethod sql.qp/integer-dbtype :mysql
+  [_]
+  :signed)
 
 (defmethod sql.qp/->honeysql [:mysql :split-part]
   [driver [_ text divider position]]
@@ -414,10 +413,6 @@
                         (sql.qp/json-query :mysql % stored-field)
                         %)
                      honeysql-expr))))
-
-(defmethod sql.qp/->honeysql [:mysql :integer]
-  [driver [_ value]]
-  (h2x/maybe-cast "SIGNED" (sql.qp/->honeysql driver value)))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
@@ -1030,3 +1025,20 @@
                        (when (seq table-names) [:in :a.table_name table-names])]
                :order-by [:a.table_name]}
               :dialect (sql.qp/quote-style driver)))
+
+(defmethod sql-jdbc/impl-query-canceled? :mysql [_ ^SQLException e]
+  ;; MariaDB and MySQL report different error codes for the timeout caused by using .setQueryTimeout. This happens because they
+  ;; use different mechanisms for causing this timeout. MySQL timesout and terminates the connection externally. MariaDB uses the
+  ;; max_statement_time configuration that can be passed to a SQL statement to set its.
+  ;;
+  ;; Docs for MariaDB:
+  ;; https://mariadb.com/kb/en/e1317/
+  ;; https://mariadb.com/kb/en/e1969/
+  ;; https://mariadb.com/kb/en/e3024/
+  ;;
+  ;; Docs for MySQL:
+  ;; https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
+  ;;
+  ;; MySQL can return 1317 and 3024, but 1969 is not an error code in the mysql reference. All of these codes make sense for MariaDB
+  ;; to return. Hibernate expects 3024, but in testing 1969 was observered.
+  (contains? #{1317 1969 3024} (.getErrorCode e)))

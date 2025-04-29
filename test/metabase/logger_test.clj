@@ -97,6 +97,7 @@
             (io/delete-file f)))))))
 
 (deftest level-enabled?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [set-level check-level expected-value] (= expected-value
                                                  (mt/with-log-level [metabase.logger-test set-level]
                                                    (logger/level-enabled? 'metabase.logger-test check-level)))
