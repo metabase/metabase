@@ -11,10 +11,11 @@ type EmbedSettingKey = keyof SdkIframeEmbedSettings;
 const EMBED_SETTING_KEYS = [
   "apiKey",
   "instanceUrl",
-  "theme",
   "dashboardId",
   "questionId",
   "notebookEditor",
+  "theme",
+  "locale",
 ] as const satisfies EmbedSettingKey[];
 
 class MetabaseEmbed {

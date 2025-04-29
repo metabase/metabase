@@ -21,6 +21,7 @@ export interface SdkIframeEmbedSettings {
   notebookEditor?: boolean;
 
   theme?: MetabaseTheme;
+  locale?: string;
 }
 
 /** Settings used by the embed.js constructor */
