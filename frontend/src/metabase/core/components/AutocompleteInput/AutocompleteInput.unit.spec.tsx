@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+import { render, screen } from "__support__/ui";
 
 import type { AutocompleteInputProps } from "./AutocompleteInput";
 import AutocompleteInput from "./AutocompleteInput";
@@ -66,7 +67,7 @@ describe("AutocompleteInput", () => {
     const filterOptions = (value: string | undefined, options: string[]) => {
       if (value && options) {
         return options.filter(
-          option =>
+          (option) =>
             !option.toLocaleLowerCase().includes(value.toLocaleLowerCase()),
         );
       }

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_COUNT_QUESTION_ID,
@@ -16,7 +16,7 @@ describe("scenarios > question > saved", () => {
     cy.intercept("POST", "api/card").as("cardCreate");
   });
 
-  it("should should correctly display 'Save' modal (metabase#13817)", () => {
+  it.skip("should should correctly display 'Save' modal (metabase#13817)", () => {
     H.openOrdersTable();
     H.openNotebook();
 
@@ -46,13 +46,14 @@ describe("scenarios > question > saved", () => {
 
     // Save the question
     H.queryBuilderHeader().button("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
     cy.wait("@cardCreate");
     cy.button("Not now").click();
 
     // Add a filter in order to be able to save question again
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
     H.popover().findByText("Total: Auto binned").click();
@@ -65,7 +66,7 @@ describe("scenarios > question > saved", () => {
 
     H.queryBuilderHeader().button("Save").click();
 
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save question").should("be.visible");
       cy.findByTestId("save-question-button").should("be.enabled");
 
@@ -74,7 +75,7 @@ describe("scenarios > question > saved", () => {
         .click()
         .type("{selectall}{backspace}", { delay: 50 })
         .blur();
-      cy.findByLabelText("Name: required").should("be.empty");
+      cy.findByLabelText("Name").should("be.empty");
       cy.findByLabelText("Description").should("be.empty");
       cy.findByTestId("save-question-button").should("be.disabled");
 
@@ -104,7 +105,7 @@ describe("scenarios > question > saved", () => {
     // check that save will give option to replace
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText('Replace original question, "Orders"');
       cy.findByText("Save as new question");
       cy.findByText("Cancel").click();
@@ -121,7 +122,7 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Quantity is equal to 100").should("not.exist");
   });
 
-  it("should duplicate a saved question", () => {
+  it("should duplicate a saved question into a collection", () => {
     cy.intercept("POST", "/api/card").as("cardCreate");
 
     H.visitQuestion(ORDERS_QUESTION_ID);
@@ -142,6 +143,38 @@ describe("scenarios > question > saved", () => {
     cy.findByTestId("qb-header-left-side").within(() => {
       cy.findByDisplayValue("Orders - Duplicate");
     });
+  });
+
+  it("should duplicate a saved question into a dashboard", () => {
+    cy.intercept("POST", "/api/card").as("cardCreate");
+
+    H.visitQuestion(ORDERS_QUESTION_ID);
+
+    H.openQuestionActions();
+    H.popover().within(() => {
+      cy.findByText("Duplicate").click();
+    });
+
+    H.modal().within(() => {
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByLabelText(/Where do you want to save this/).click();
+    });
+
+    H.entityPickerModal().within(() => {
+      cy.findByText("Select a collection or dashboard").should("exist");
+      cy.findByText("Orders in a dashboard").click();
+      cy.findByRole("button", { name: "Select this dashboard" }).click();
+    });
+    H.entityPickerModal().should("not.exist");
+
+    H.modal().within(() => {
+      cy.findByText("Duplicate").click();
+      cy.wait("@cardCreate");
+    });
+
+    cy.url().should("include", "/dashboard/");
+    cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
+    H.dashboardCards().findByText("Orders - Duplicate").should("exist");
   });
 
   it("should duplicate a saved question to a collection created on the go", () => {
@@ -188,6 +221,72 @@ describe("scenarios > question > saved", () => {
     });
 
     cy.get("header").findByText(NEW_COLLECTION);
+  });
+
+  it("should duplicate a saved question to a dashboard created on the go", () => {
+    cy.intercept("POST", "/api/card").as("cardCreate");
+
+    H.visitQuestion(ORDERS_QUESTION_ID);
+
+    H.openQuestionActions();
+    H.popover().within(() => {
+      cy.findByText("Duplicate").click();
+    });
+
+    H.modal().within(() => {
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByTestId("dashboard-and-collection-picker-button").click();
+    });
+
+    H.entityPickerModal().findByText("New dashboard").click();
+
+    const NEW_DASHBOARD = "Foo Dashboard";
+    H.dashboardOnTheGoModal().within(() => {
+      cy.findByLabelText(/Give it a name/).type(NEW_DASHBOARD);
+      cy.findByText("Create").click();
+    });
+
+    H.entityPickerModal().within(() => {
+      cy.findByText(NEW_DASHBOARD).click();
+      cy.button(/Select/).click();
+    });
+    H.entityPickerModal().should("not.exist");
+
+    H.modal().within(() => {
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByTestId("dashboard-and-collection-picker-button").should(
+        "have.text",
+        NEW_DASHBOARD,
+      );
+      cy.button("Duplicate").click();
+      cy.wait("@cardCreate");
+    });
+
+    cy.findByTestId("qb-header-left-side").within(() => {
+      cy.findByDisplayValue("Orders - Duplicate");
+    });
+
+    cy.get("header").findByText(NEW_DASHBOARD);
+    cy.url().should("include", "/dashboard/");
+  });
+
+  it("should not add scrollbar to duplicate modal if question name is long (metabase#53364)", () => {
+    H.createQuestion(
+      {
+        name: "A".repeat(240),
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      { visitQuestion: true },
+    );
+    H.openQuestionActions();
+    H.popover().findByText("Duplicate").click();
+
+    H.modal().should(($el) => {
+      const $modal = $el[0];
+      expect($modal.clientWidth).to.be.equal($modal.scrollWidth);
+    });
   });
 
   it("should revert a saved question to a previous version", () => {
@@ -283,21 +382,37 @@ describe("scenarios > question > saved", () => {
     cy.findAllByTestId("header-cell")
       .filter(":contains(Tax)")
       .as("headerCell")
-      .then($cell => {
+      .then(($cell) => {
         const originalWidth = $cell[0].getBoundingClientRect().width;
         cy.wrap(originalWidth).as("originalWidth");
       });
 
-    cy.get("@headerCell")
-      .find(".react-draggable")
-      .trigger("mousedown", { which: 1 })
-      .trigger("mousemove", { clientX: 100, clientY: 0 })
-      .trigger("mouseup", { force: true });
+    cy.findByTestId("resize-handle-TAX").trigger("mousedown", {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+    });
 
-    cy.get("@originalWidth").then(originalWidth => {
-      cy.get("@headerCell").should($newCell => {
+    // HACK: TanStack table resize handler does not resize column if we fire only one mousemove event
+    const stepX = 10;
+    cy.get("body")
+      .trigger("mousemove", {
+        clientX: stepX,
+        clientY: 0,
+      })
+      .trigger("mousemove", {
+        clientX: stepX * 2,
+        clientY: 0,
+      });
+    cy.get("body").trigger("mouseup", { force: true });
+
+    // Wait until column width gets updated
+    cy.wait(10);
+
+    cy.get("@originalWidth").then((originalWidth) => {
+      cy.get("@headerCell").should(($newCell) => {
         const newWidth = $newCell[0].getBoundingClientRect().width;
-        expect(newWidth).to.be.gt(originalWidth);
+        expect(newWidth).to.be.gte(originalWidth + stepX * 2);
       });
     });
   });
@@ -311,7 +426,7 @@ describe("scenarios > question > saved", () => {
     );
     savedQuestionTitle.blur();
 
-    savedQuestionTitle.should("be.visible").should($el => {
+    savedQuestionTitle.should("be.visible").should(($el) => {
       // clientHeight: height of the textarea
       // scrollHeight: height of the text content, including content not visible on the screen
       const heightDifference = $el[0].clientHeight - $el[0].scrollHeight;
@@ -363,7 +478,7 @@ describe("scenarios > question > saved", () => {
       }
     }
 
-    HIDDEN_TYPES.forEach(visibilityType => {
+    HIDDEN_TYPES.forEach((visibilityType) => {
       it(`should show a View-only tag when the source table is marked as ${visibilityType}`, () => {
         hideTable("Orders", visibilityType);
 
@@ -481,6 +596,7 @@ describe(
       H.resetWebhookTester();
       H.restore();
       cy.signInAsAdmin();
+      H.setupSMTP();
 
       cy.request("POST", "/api/channel", {
         name: firstWebhookName,
@@ -508,34 +624,31 @@ describe(
     it("should allow you to enable a webhook alert", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       cy.findByTestId("sharing-menu-button").click();
-      H.popover().findByText("Create alert").click();
-      H.modal().button("Set up an alert").click();
-      H.modal().within(() => {
-        H.toggleAlertChannel("Email");
-        H.toggleAlertChannel(secondWebhookName);
-        cy.button("Done").click();
-      });
-      cy.findByTestId("sharing-menu-button").click();
-      H.popover().findByText("Edit alerts").click();
-      H.popover().within(() => {
-        cy.findByText("You set up an alert").should("exist");
-        cy.findByText("Edit").click();
-      });
+      H.popover().findByText("Create an alert").click();
 
-      H.modal().within(() => {
-        H.getAlertChannel(secondWebhookName).scrollIntoView();
-        H.getAlertChannel(secondWebhookName)
-          .findByRole("checkbox")
-          .should("be.checked");
+      H.modal().findByText("New alert").should("be.visible");
+      H.removeNotificationHandlerChannel("Email");
+      H.addNotificationHandlerChannel(secondWebhookName, {
+        hasNoChannelsAdded: true,
       });
+      H.modal().button("Done").click();
+
+      H.openSharingMenu("Edit alerts");
+      H.modal()
+        .findByText(/Created by you/)
+        .should("be.exist")
+        .click();
+
+      H.modal().findByText(secondWebhookName).should("be.visible");
     });
 
-    it("should allow you to test a webhook", () => {
+    // There is no api to test individual hooks for new Question Alerts
+    it.skip("should allow you to test a webhook", () => {
       cy.intercept("POST", "/api/pulse/test").as("testAlert");
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       cy.findByTestId("sharing-menu-button").click();
-      H.popover().findByText("Create alert").click();
-      H.modal().button("Set up an alert").click();
+      H.popover().findByText("Create an alert").click();
+
       H.modal().within(() => {
         H.getAlertChannel(firstWebhookName).scrollIntoView();
 

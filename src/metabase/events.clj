@@ -22,7 +22,7 @@
 
 (p/import-vars
  [events.schema
-  topic->schema])
+  event-schema])
 
 (set! *warn-on-reflection* true)
 
@@ -104,7 +104,7 @@
   (assert (map? event)
           (format "Invalid event %s: event must be a map." (pr-str event)))
   (try
-    (when-let [schema (and (mu/instrument-ns? *ns*) (events.schema/topic->schema topic))]
+    (when-let [schema (and (mu/instrument-ns? *ns*) (events.schema/event-schema topic))]
       (mu/validate-throw schema event))
     (next-method topic event)
     (catch Throwable e

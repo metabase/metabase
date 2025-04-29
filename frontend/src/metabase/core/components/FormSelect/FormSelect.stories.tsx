@@ -11,11 +11,11 @@ const TEST_OPTIONS = [
 ];
 
 export default {
-  title: "Core/FormSelect",
+  title: "Components/Ask Before Using/FormSelect",
   component: FormSelect,
 };
 
-const Template: StoryFn<typeof FormSelect> = args => {
+const Template: StoryFn<typeof FormSelect> = (args) => {
   const initialValues = { value: undefined };
   const handleSubmit = () => undefined;
 

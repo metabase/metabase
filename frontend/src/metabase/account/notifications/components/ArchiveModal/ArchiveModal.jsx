@@ -6,7 +6,7 @@ import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import { FormMessage } from "metabase/forms";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
-import { formatChannelRecipients } from "metabase/lib/notifications";
+import { formatChannelRecipients } from "metabase/lib/pulse";
 import Settings from "metabase/lib/settings";
 
 import { ModalMessage } from "./ArchiveModal.styled";
@@ -97,7 +97,7 @@ const getSubmitMessage = (type, hasUnsubscribed) => {
   }
 };
 
-const getCancelMessage = hasUnsubscribed => {
+const getCancelMessage = (hasUnsubscribed) => {
   return hasUnsubscribed ? t`Keep it around` : t`I changed my mind`;
 };
 
@@ -122,7 +122,7 @@ const getDateMessage = (item, type) => {
   }
 };
 
-const getRecipientsMessage = item => {
+const getRecipientsMessage = (item) => {
   return t`It’s currently being sent to ${formatChannelRecipients(item)}.`;
 };
 

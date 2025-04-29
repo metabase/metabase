@@ -1,9 +1,9 @@
 (ns metabase.permissions.test-util
   (:require
    [metabase.config :as config]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test.data :as data]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]

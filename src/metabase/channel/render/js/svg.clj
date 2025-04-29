@@ -157,14 +157,17 @@
                                                          (json/encode settings)))]
     (svg-string->bytes svg-string)))
 
-(defn javascript-visualization
-  "Clojure entrypoint to render javascript visualizations."
+(defn ^:dynamic *javascript-visualization*
+  "Clojure entrypoint to render javascript visualizations.
+This functions is dynanic only for testing purposes."
   [cards-with-data dashcard-viz-settings]
   (let [response (.asString (js.engine/execute-fn-name (context) "javascript_visualization"
                                                        (json/encode cards-with-data)
                                                        (json/encode dashcard-viz-settings)
                                                        (json/encode {:applicationColors (public-settings/application-colors)
-                                                                     :startOfWeek (public-settings/start-of-week)})))]
+                                                                     :startOfWeek (public-settings/start-of-week)
+                                                                     :customFormatting (public-settings/custom-formatting)
+                                                                     :tokenFeatures (public-settings/token-features)})))]
     (-> response
         json/decode+kw
         (update :type (fnil keyword "unknown")))))

@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
@@ -17,9 +18,9 @@
 
 (deftest ^:parallel calculate-names-even-without-metadata-test
   (testing "Even if metadata is missing, we should still be able to calculate reasonable display names"
-    (doseq [query [(-> lib.tu/venues-query
+    (doseq [query [(-> (lib.tu/venues-query)
                        (lib/order-by (meta/field-metadata :orders :total)))
-                   (-> lib.tu/venues-query
+                   (-> (lib.tu/venues-query)
                        (lib/order-by [:field
                                       {:lib/uuid  (str (random-uuid))
                                        :base-type :type/Text}
@@ -29,7 +30,7 @@
                (lib/suggested-name query)))))))
 
 (deftest ^:parallel long-display-name-test
-  (let [query lib.tu/venues-query
+  (let [query (lib.tu/venues-query)
         results (->> query
                      lib/visible-columns
                      (map (comp :long-display-name #(lib/display-info query 0 %))))]
@@ -74,13 +75,12 @@
 
 (deftest ^:parallel display-name-without-metadata-test
   (testing "Some display name is generated for fields even if they cannot be resolved (#33490)"
-    (let [query      lib.tu/venues-query
-          field-id   (inc (apply max (map :id (lib/visible-columns query))))
-          field-name (str field-id)]
+    (let [query      (lib.tu/venues-query)
+          field-id   (inc (apply max (map :id (lib/visible-columns query))))]
       (mu/disable-enforcement
         (is (=? {:name              (str field-id)
-                 :display-name      field-name
-                 :long-display-name (str "join → " field-name)}
+                 :display-name      "Unknown Field"
+                 :long-display-name "join → Unknown Field"}
                 (lib/display-info query [:field {:join-alias "join"} field-id])))))))
 
 (deftest ^:parallel visible-columns-test
@@ -94,7 +94,7 @@
             "Categories__ID"            ; this column is not projected, but should still be returned.
             "Categories__NAME"]
            (map :lib/desired-column-alias
-                (-> lib.tu/venues-query
+                (-> (lib.tu/venues-query)
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)
                                    [(lib/=
@@ -103,7 +103,7 @@
                                   (lib/with-join-fields [(lib/with-join-alias (meta/field-metadata :categories :name) "Categories")])))
                     lib/visible-columns)))))
   (testing "nil has no visible columns (#31366)"
-    (is (empty? (-> lib.tu/venues-query
+    (is (empty? (-> (lib.tu/venues-query)
                     (lib/visible-columns nil)))))
   (testing "Include multiple implicitly joinable columns pointing to the same table and field (##33451)"
     (is (= ["id"
@@ -125,28 +125,28 @@
 (deftest ^:parallel source-cards-test
   (testing "with :source-card"
     (let [query {:lib/type     :mbql/query
-                 :lib/metadata lib.tu/metadata-provider-with-mock-cards
+                 :lib/metadata (lib.tu/metadata-provider-with-mock-cards)
                  :database     (meta/id)
                  :stages       [{:lib/type :mbql.stage/mbql
-                                 :source-card (:id (lib.tu/mock-cards :orders))}]}
-          own-fields (for [field (lib.metadata/fields lib.tu/metadata-provider-with-mock-cards (meta/id :orders))]
+                                 :source-card (:id ((lib.tu/mock-cards) :orders))}]}
+          own-fields (for [field (lib.metadata/fields (lib.tu/metadata-provider-with-mock-cards) (meta/id :orders))]
                        (-> field
                            (assoc :lib/source :source/card)))
-          user-id    (lib.metadata/field lib.tu/metadata-provider-with-mock-cards (meta/id :orders :user-id))
-          product-id (lib.metadata/field lib.tu/metadata-provider-with-mock-cards (meta/id :orders :product-id))]
+          user-id    (lib.metadata/field (lib.tu/metadata-provider-with-mock-cards) (meta/id :orders :user-id))
+          product-id (lib.metadata/field (lib.tu/metadata-provider-with-mock-cards) (meta/id :orders :product-id))]
       (testing "implicitly joinable columns"
         (testing "are included by visible-columns"
           (is (=? (->> (concat own-fields
-                               (for [field (lib.metadata/fields lib.tu/metadata-provider-with-mock-cards (meta/id :people))]
+                               (for [field (lib.metadata/fields (lib.tu/metadata-provider-with-mock-cards) (meta/id :people))]
                                  (assoc field
                                         :lib/source :source/implicitly-joinable
                                         :ident      (lib.metadata.ident/implicitly-joined-ident
-                                                     (:ident user-id) (:ident field))))
-                               (for [field (lib.metadata/fields lib.tu/metadata-provider-with-mock-cards (meta/id :products))]
+                                                     (:ident field) (:ident user-id))))
+                               (for [field (lib.metadata/fields (lib.tu/metadata-provider-with-mock-cards) (meta/id :products))]
                                  (assoc field
                                         :lib/source :source/implicitly-joinable
                                         :ident      (lib.metadata.ident/implicitly-joined-ident
-                                                     (:ident product-id) (:ident field)))))
+                                                     (:ident field) (:ident product-id)))))
                        (sort-by (juxt :name :id)))
                   (sort-by (juxt :name :id) (lib.metadata.calculation/visible-columns query)))))
         (testing "are not included by returned-columns"
@@ -163,19 +163,26 @@
               product-id (m/find-first (comp #{"PRODUCT_ID"} :name) cols)]
           (testing "are included by visible-columns"
             (is (=? (->> (concat own-fields
-                                 (for [field (lib.metadata/fields lib.tu/metadata-provider-with-mock-cards (meta/id :people))]
+                                 (for [field (lib.metadata/fields (lib.tu/metadata-provider-with-mock-cards) (meta/id :people))]
                                    (assoc field
                                           :lib/source :source/implicitly-joinable
-                                          :ident (lib.metadata.ident/implicitly-joined-ident (:ident user-id) (:ident field))))
-                                 (for [field (lib.metadata/fields lib.tu/metadata-provider-with-mock-cards (meta/id :products))]
+                                          :ident (lib.metadata.ident/implicitly-joined-ident (:ident field) (:ident user-id))))
+                                 (for [field (lib.metadata/fields (lib.tu/metadata-provider-with-mock-cards) (meta/id :products))]
                                    (assoc field
                                           :lib/source :source/implicitly-joinable
-                                          :ident (lib.metadata.ident/implicitly-joined-ident (:ident product-id) (:ident field)))))
+                                          :ident (lib.metadata.ident/implicitly-joined-ident (:ident field) (:ident product-id)))))
                          (sort-by (juxt :lib/source :name :id)))
                     (sort-by (juxt :lib/source :name :id) (lib.metadata.calculation/visible-columns query)))))
           (testing "are not included by returned-columns"
             (is (=? (sort-by (juxt :name :id) own-fields)
                     (sort-by (juxt :name :id) (lib.metadata.calculation/returned-columns query))))))))))
+
+(defn- implicitly-joined [fk-ident table-key]
+  (->> (for [field-key (meta/fields table-key)]
+         (-> (meta/field-metadata table-key field-key)
+             (assoc :lib/source :source/implicitly-joinable)
+             (update :ident lib.metadata.ident/implicitly-joined-ident fk-ident)))
+       (sort-by :position)))
 
 (deftest ^:parallel self-join-visible-columns-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -186,16 +193,19 @@
                                                          (meta/field-metadata :orders :id))])
                                 (lib/with-join-fields (for [field [:id :tax]]
                                                         (lib/ref (meta/field-metadata :orders field)))))))
+        join-clause (first (lib/joins query))
         orders-cols (for [field-name ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX"
                                       "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY"]]
                       {:name field-name
                        :lib/desired-column-alias field-name
                        :lib/source :source/table-defaults})
-        joined-cols (for [field-name ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX"
-                                      "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY"]]
-                      {:name field-name
-                       :lib/desired-column-alias (str "Orders__" field-name)
-                       :lib/source :source/joins})]
+        joined-cols (for [field-key [:id :user-id :product-id :subtotal :tax
+                                     :total :discount :created-at :quantity]
+                          :let [field (meta/field-metadata :orders field-key)]]
+                      {:name (:name field)
+                       :lib/desired-column-alias (str "Orders__" (:name field))
+                       :lib/source :source/joins
+                       :ident (lib.metadata.ident/explicitly-joined-ident (:ident field) (:ident join-clause))})]
     (testing "just own columns"
       (is (=? (concat orders-cols joined-cols)
               (lib/visible-columns query -1 (lib.util/query-stage query -1) {:include-implicitly-joinable? false}))))
@@ -203,24 +213,24 @@
       (is (=? (concat orders-cols
                       joined-cols
                       ;; First set of implicit joins
-                      (sort-by :position
-                               (for [field (meta/fields :people)]
-                                 (meta/field-metadata :people field)))
-                      (sort-by :position
-                               (for [field (meta/fields :products)]
-                                 (meta/field-metadata :products field)))
+                      (implicitly-joined (:ident (meta/field-metadata :orders :user-id))
+                                         :people)
+                      (implicitly-joined (:ident (meta/field-metadata :orders :product-id))
+                                         :products)
                       ;; Second set of implicit joins
-                      (sort-by :position
-                               (for [field (meta/fields :people)]
-                                 (meta/field-metadata :people field)))
-                      (sort-by :position
-                               (for [field (meta/fields :products)]
-                                 (meta/field-metadata :products field))))
+                      (implicitly-joined
+                       (lib.metadata.ident/explicitly-joined-ident (meta/ident :orders :user-id) (:ident join-clause))
+                       :people)
+                      (implicitly-joined
+                       (lib.metadata.ident/explicitly-joined-ident
+                        (meta/ident :orders :product-id)
+                        (:ident join-clause))
+                       :products))
               (lib/visible-columns query -1 (lib.util/query-stage query -1)))))))
 
 (deftest ^:parallel visible-columns-excludes-offset-expressions-test
   (testing "visible-columns should exclude expressions which contain :offset"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/order-by (meta/field-metadata :venues :id) :asc)
                     (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
                     (lib/expression "Nested Offset"
@@ -238,7 +248,7 @@
 
 (deftest ^:parallel returned-columns-includes-offset-expressions-test
   (testing "returned-columns should include expressions which contain :offset"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/order-by (meta/field-metadata :venues :id) :asc)
                     (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
                     (lib/expression "Nested Offset"
@@ -255,77 +265,58 @@
                 (lib/returned-columns query)))))))
 
 (deftest ^:parallel implicitly-joinable-requires-numeric-id-test
-  (testing "implicit join requires real field IDs, so SQL models need to provide that metadata (#37067)"
-    (let [model (assoc (lib.tu/mock-cards :orders/native) :type :model)
-          mp    (lib.tu/metadata-provider-with-mock-card model)
-          query (lib/query mp model)]
-      (testing "without FK metadata, only the own columns are returned"
-        (is (= 9 (count (lib/visible-columns query))))
-        (is (= []
-               (->> (lib/visible-columns query)
-                    (remove (comp #{:source/card} :lib/source)))))))
+  (letfn [(query-with-user-id-tweaks [tweaks]
+            (let [base     (-> (lib.tu/mock-cards)
+                               :orders/native
+                               lib.tu/as-model)
+                  metadata (mapv (fn [col]
+                                   (cond-> col
+                                     (= (:name col) "USER_ID") (merge tweaks)))
+                                 (:result-metadata base))
+                  model    (assoc base :result-metadata metadata)]
+              (lib/query (lib.tu/metadata-provider-with-mock-card model) model)))]
+    (testing "implicit join requires real field IDs, so SQL models need to provide that metadata (#37067)"
+      (let [query (query-with-user-id-tweaks nil)]
+        (testing "without FK metadata, only the own columns are returned"
+          (is (= 9 (count (lib/visible-columns query))))
+          (is (= []
+                 (->> (lib/visible-columns query)
+                      (remove (comp #{:source/card} :lib/source)))))))
 
-    (testing "metadata for the FK target field is not sufficient"
-      (let [base    (lib.tu/mock-cards :orders/native)
-            with-fk (for [col (:result-metadata base)]
-                      (if (= (:name col) "USER_ID")
-                        (assoc col :fk-target-field-id (meta/id :people :id))
-                        col))
-            model   (assoc base
-                           :type            :model
-                           :result-metadata with-fk)
-            mp      (lib.tu/metadata-provider-with-mock-card model)
-            query   (lib/query mp model)]
-        (is (= 9 (count (lib/visible-columns query))))
-        (is (= []
-               (->> (lib/visible-columns query)
-                    (remove (comp #{:source/card} :lib/source)))))))
+      (testing "metadata for the FK target field is not sufficient"
+        (let [query (query-with-user-id-tweaks {:fk-target-field-id (meta/id :people :id)})]
+          (is (= 9 (count (lib/visible-columns query))))
+          (is (= []
+                 (->> (lib/visible-columns query)
+                      (remove (comp #{:source/card} :lib/source)))))))
 
-    (testing "an ID for the FK field itself is not sufficient"
-      (let [base    (lib.tu/mock-cards :orders/native)
-            with-id (for [col (:result-metadata base)]
-                      (merge col
-                             (when (= (:name col) "USER_ID")
-                               {:id            (meta/id :orders :user-id)
-                                :semantic-type nil})))
-            model   (assoc base
-                           :type            :model
-                           :result-metadata with-id)
-            mp      (lib.tu/metadata-provider-with-mock-card model)
-            query   (lib/query mp model)]
-        (is (= 9 (count (lib/visible-columns query))))
-        (is (= []
-               (->> (lib/visible-columns query)
-                    (remove (comp #{:source/card} :lib/source)))))))
-    (testing "the ID and :semantic-type :type/FK are sufficient for an implicit join"
-      (let [base          (lib.tu/mock-cards :orders/native)
-            with-fk       (for [col (:result-metadata base)]
-                            (merge col
-                                   (when (= (:name col) "USER_ID")
-                                     {:id            (meta/id :orders :user-id)
-                                      :semantic-type :type/FK})))
-            model         (assoc base
-                                 :type            :model
-                                 :result-metadata with-fk)
-            mp            (lib.tu/metadata-provider-with-mock-card model)
-            query         (lib/query mp model)
-            fields-of     (fn [table-kw order-fn]
-                            (->> (meta/fields table-kw)
-                                 (map #(meta/field-metadata table-kw %))
-                                 (sort-by order-fn)))
-            orders-fields (into {} (for [[index field] (m/indexed ["ID" "SUBTOTAL" "TOTAL" "TAX" "DISCOUNT" "QUANTITY"
-                                                                   "CREATED_AT" "PRODUCT_ID" "USER_ID"])]
-                                     [field index]))
-            orders-cols   (fields-of :orders (comp orders-fields :name))
-            people-cols   (fields-of :people :position)]
-        (is (= 22 (count (lib/visible-columns query))))
-        (is (=? (concat (for [col orders-cols]
-                          {:name       (:name col)
-                           :lib/source :source/card})
-                        (for [col people-cols]
-                          {:name       (:name col)
-                           :lib/source :source/implicitly-joinable}))
-                (lib/visible-columns query)))))))
+      (testing "an ID for the FK field itself is not sufficient"
+        (let [query (query-with-user-id-tweaks {:id            (meta/id :orders :user-id)
+                                                :semantic-type nil})]
+          (is (= 9 (count (lib/visible-columns query))))
+          (is (= []
+                 (->> (lib/visible-columns query)
+                      (remove (comp #{:source/card} :lib/source)))))))
+      (testing "the ID and :semantic-type :type/FK are sufficient for an implicit join"
+        (let [query         (query-with-user-id-tweaks {:id            (meta/id :orders :user-id)
+                                                        :semantic-type :type/FK})
+              fields-of     (fn [table-kw order-fn]
+                              (->> (meta/fields table-kw)
+                                   (map #(meta/field-metadata table-kw %))
+                                   (sort-by order-fn)))
+              orders-fields (into {} (for [[index field] (m/indexed ["ID" "SUBTOTAL" "TOTAL" "TAX" "DISCOUNT" "QUANTITY"
+                                                                     "CREATED_AT" "PRODUCT_ID" "USER_ID"])]
+                                       [field index]))
+              orders-cols   (fields-of :orders (comp orders-fields :name))
+              people-cols   (fields-of :people :position)]
+          (is (= 22 (count (lib/visible-columns query))))
+          (is (=? (concat (for [col orders-cols]
+                            {:name       (:name col)
+                             :lib/source :source/card})
+                          (for [col people-cols]
+                            {:name       (:name col)
+                             :lib/source :source/implicitly-joinable}))
+                  (lib/visible-columns query))))))))
 
 (def cols-fns [lib/visible-columns lib/filterable-columns lib/breakoutable-columns lib/orderable-columns])
 
@@ -405,7 +396,7 @@
         product-id   (lib.metadata/field meta/metadata-provider (meta/id :orders :product-id))]
     (is (some? implicit-cat))
     (is (some? original-cat))
-    (is (= "field__test-data__PUBLIC__PRODUCTS__CATEGORY"
+    (is (= "MvxP-c7scJi3Ypicz7Pko"
            (:ident original-cat)))
     (testing "implicitly joined columns have different idents"
       (testing "from the target column"
@@ -415,7 +406,7 @@
         (is (not= (:ident original-cat)
                   (:ident implicit-cat))))
       (testing "combining the FK and target column idents"
-        (is (= (lib.metadata.ident/implicitly-joined-ident (:ident product-id) (:ident original-cat))
+        (is (= (lib.metadata.ident/implicitly-joined-ident (:ident original-cat) (:ident product-id))
                (:ident implicit-cat)))))))
 
 (deftest ^:parallel explicit-join-columns-get-idents-test
@@ -426,7 +417,7 @@
         original-cat (lib.metadata/field meta/metadata-provider (meta/id :products :category))]
     (is (some? explicit-cat))
     (is (some? original-cat))
-    (is (= "field__test-data__PUBLIC__PRODUCTS__CATEGORY"
+    (is (= "MvxP-c7scJi3Ypicz7Pko"
            (:ident original-cat)))
     (testing "explicitly joined columns have different idents"
       (testing "from the target column"
@@ -436,7 +427,8 @@
         (is (not= (:ident original-cat)
                   (:ident explicit-cat))))
       (testing "combining the join and target column idents"
-        (is (= (lib.metadata.ident/explicitly-joined-ident (-> query lib/joins first :ident) (:ident original-cat))
+        (is (= (->> query lib/joins first :ident
+                    (lib.metadata.ident/explicitly-joined-ident (:ident original-cat)))
                (:ident explicit-cat)))))))
 
 (deftest ^:parallel implicit-join-via-explicitly-joined-column-test
@@ -456,12 +448,12 @@
         (is (not= (:ident user-id)
                   (:ident latitude))))
       (testing "combining the FK and target column idents"
-        (is (= (lib.metadata.ident/implicitly-joined-ident (:ident user-id) (:ident original))
+        (is (= (lib.metadata.ident/implicitly-joined-ident (:ident original) (:ident user-id))
                (:ident latitude)))
         (testing "where the FK ident is based on the explicit join"
           (is (= (lib.metadata.ident/explicitly-joined-ident
-                  (-> query lib/joins second :ident)
-                  (:ident (lib.metadata/field meta/metadata-provider (meta/id :orders :user-id))))
+                  (:ident (lib.metadata/field meta/metadata-provider (meta/id :orders :user-id)))
+                  (-> query lib/joins second :ident))
                  (:ident user-id))))))))
 
 (deftest ^:parallel multiple-implicit-joins-to-same-table-test
@@ -475,9 +467,9 @@
         reporter-email (get by-fk (:id reporter-id))
         assignee-email (get by-fk (:id assignee-id))]
     (testing "multiple FKs for the same table have implicit joins with distinct idents"
-      (is (= (lib.metadata.ident/implicitly-joined-ident (:ident reporter-id) (:ident base-email))
+      (is (= (lib.metadata.ident/implicitly-joined-ident (:ident base-email) (:ident reporter-id))
              (:ident reporter-email)))
-      (is (= (lib.metadata.ident/implicitly-joined-ident (:ident assignee-id) (:ident base-email))
+      (is (= (lib.metadata.ident/implicitly-joined-ident (:ident base-email) (:ident assignee-id))
              (:ident assignee-email)))
       (is (not= (:ident reporter-email)
                 (:ident assignee-email))))))
@@ -529,12 +521,96 @@
         (testing (str "source " column-name " gets the correct ident")
           (is (= (:ident email-col)
                  (lib.metadata.ident/implicitly-joined-ident
-                  (:ident (fk-col column-name (complement :source-alias))) (:ident base-email))))))
+                  (:ident base-email) (:ident (fk-col column-name (complement :source-alias))))))))
 
       (doseq [[column-name email-col] [["REPORTER_ID" jr-email]
                                        ["ASSIGNEE_ID" ja-email]]]
         (testing (str "joined " column-name " gets the correct ident")
           (is (= (:ident email-col)
                  (lib.metadata.ident/implicitly-joined-ident
-                  (:ident (fk-col column-name :source-alias))
-                  (:ident base-email)))))))))
+                  (:ident base-email)
+                  (:ident (fk-col column-name :source-alias))))))))))
+
+(deftest ^:parallel remapped-columns-test
+  (testing "remapped columns appear after expressions but before joins"
+    (let [mp (-> meta/metadata-provider
+                 (lib.tu/remap-metadata-provider (meta/id :venues :category-id) (meta/id :categories :name)))
+          query (-> (lib/query mp (meta/table-metadata :venues))
+                    (lib/with-fields [(meta/field-metadata :venues :id)
+                                      (meta/field-metadata :venues :category-id)])
+                    (lib/expression "price10" (lib/* (meta/field-metadata :venues :price) 10))
+                    (lib/join (-> (lib/join-clause (meta/table-metadata :orders)
+                                                   [(lib/= (meta/field-metadata :venues :id)
+                                                           (meta/field-metadata :orders :id))])
+                                  (lib/with-join-fields [(meta/field-metadata :orders :subtotal)]))))
+          join-ident (:ident (first (lib/joins query)))]
+      (is (=? [{:name  "ID"
+                :ident (meta/ident :venues :id)}
+               {:name  "CATEGORY_ID"
+                :ident (meta/ident :venues :category-id)}
+               {:name  "price10"
+                :ident (lib.options/ident (first (lib/expressions query)))}
+               {:name  "SUBTOTAL"
+                :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :orders :subtotal) join-ident)}]
+              (lib/returned-columns query)))
+      (is (=? [{:name  "ID"
+                :ident (meta/ident :venues :id)}
+               {:name  "CATEGORY_ID"
+                :ident (meta/ident :venues :category-id)}
+               {:name  "price10"
+                :ident (lib.options/ident (first (lib/expressions query)))}
+               {:name  "NAME"
+                :ident (lib.metadata.ident/remap-ident (meta/ident :categories :name) (meta/ident :venues :category-id))}
+               {:name  "SUBTOTAL"
+                :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :orders :subtotal) join-ident)}]
+              (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true}))))))
+
+(deftest ^:parallel remapped-columns-test-2-remapping-in-joins
+  (testing "explicitly joined columns with remaps are added after their join"
+    (let [mp         (-> meta/metadata-provider
+                         (lib.tu/remap-metadata-provider (meta/id :venues :category-id) (meta/id :categories :name)))
+          join1      (-> (lib/join-clause (meta/table-metadata :venues)
+                                          [(lib/= (meta/field-metadata :orders :id)
+                                                  (meta/field-metadata :venues :id))])
+                         (lib/with-join-fields [(meta/field-metadata :venues :price)
+                                                (meta/field-metadata :venues :category-id)]))
+          join2      (-> (lib/join-clause (meta/table-metadata :products)
+                                          [(lib/= (meta/field-metadata :orders :product-id)
+                                                  (meta/field-metadata :products :id))])
+                         (lib/with-join-fields [(meta/field-metadata :products :category)]))
+          base       (-> (lib/query mp (meta/table-metadata :orders))
+                         (lib/with-fields [(meta/field-metadata :orders :id)
+                                           (meta/field-metadata :orders :product-id)
+                                           (meta/field-metadata :orders :subtotal)]))
+          exp-main   [{:name  "ID"
+                       :ident (meta/ident :orders :id)}
+                      {:name  "PRODUCT_ID"
+                       :ident (meta/ident :orders :product-id)}
+                      {:name  "SUBTOTAL"
+                       :ident (meta/ident :orders :subtotal)}]
+          exp-join1  [{:name  "PRICE"
+                       :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :venues :price)
+                                                                          (:ident join1))}
+                      {:name  "CATEGORY_ID"
+                       :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :venues :category-id)
+                                                                          (:ident join1))}
+                      {:name  "NAME"
+                       :ident (lib.metadata.ident/remap-ident
+                               (meta/ident :categories :name)
+                               (lib.metadata.ident/explicitly-joined-ident
+                                (meta/ident :venues :category-id) (:ident join1)))}]
+          exp-join2  [{:name  "CATEGORY"
+                       :ident (lib.metadata.ident/explicitly-joined-ident
+                               (meta/ident :products :category) (:ident join2))}]
+          cols       (fn [query]
+                       (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true}))]
+      (is (=? (concat exp-main exp-join1 exp-join2)
+              (-> base
+                  (lib/join join1)
+                  (lib/join join2)
+                  cols)))
+      (is (=? (concat exp-main exp-join2 exp-join1)
+              (-> base
+                  (lib/join join2)
+                  (lib/join join1)
+                  cols))))))

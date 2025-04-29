@@ -1,6 +1,5 @@
 import querystring from "querystring";
 import { useEffect, useMemo } from "react";
-import _ from "underscore";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import {
@@ -82,7 +81,7 @@ function buildSearchString(object: Record<string, any>) {
     window.location.search.replace("?", ""),
   );
   const filteredSearchParams = Object.fromEntries(
-    Object.entries(currentSearchParams).filter(entry =>
+    Object.entries(currentSearchParams).filter((entry) =>
       QUERY_PARAMS_ALLOW_LIST.includes(entry[0]),
     ),
   );

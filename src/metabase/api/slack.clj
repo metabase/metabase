@@ -3,7 +3,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.config :as config]
@@ -42,10 +41,11 @@
                                 :text "anonymous user"})
                              {:type "text"
                               :text "\n\nDescription:\n"
-                              :style {:bold true}}
-                             {:type "text"
-                              :text (or description "N/A")}
-                             {:type "text"
+                              :style {:bold true}}]}]}
+     {:type "section" :text {:type "mrkdwn" :text (or description "N/A")}}
+     {:type "rich_text"
+      :elements [{:type "rich_text_section"
+                  :elements [{:type "text"
                               :text "\n\nURL:\n"
                               :style {:bold true}}
                              {:type "link"
@@ -83,10 +83,9 @@
   3. truthy, valid token   -> refresh "
   [_route-params
    _query-params
-   {:keys [slack-app-token slack-files-channel slack-bug-report-channel]}
+   {:keys [slack-app-token slack-bug-report-channel]}
    :- [:map
        [:slack-app-token          {:optional true} [:maybe ms/NonBlankString]]
-       [:slack-files-channel      {:optional true} [:maybe ms/NonBlankString]]
        [:slack-bug-report-channel {:optional true} [:maybe :string]]]]
   (validation/check-has-application-permission :setting)
   (try
@@ -94,9 +93,6 @@
     (when (nil? slack-app-token)
       (slack/slack-app-token! nil)
       (slack/clear-channel-cache!))
-
-    (when (nil? slack-files-channel)
-      (slack/slack-files-channel! "metabase_files"))
 
     (when (and slack-app-token
                (not config/is-test?)
@@ -113,18 +109,6 @@
           (slack/refresh-channels-and-usernames-when-needed!))
       ;; clear user/conversation cache when token is newly empty
       (slack/clear-channel-cache!))
-
-    (when slack-files-channel
-      (let [processed-files-channel (slack/process-files-channel-name slack-files-channel)]
-        (when-not (slack/channel-exists? processed-files-channel)
-          ;; Files channel could not be found; clear the token we had previously set since the integration should not be
-          ;; enabled.
-          (slack/slack-token-valid?! false)
-          (slack/slack-app-token! nil)
-          (slack/clear-channel-cache!)
-          (throw (ex-info (tru "Slack channel not found.")
-                          {:errors {:slack-files-channel (tru "channel not found")}})))
-        (slack/slack-files-channel! processed-files-channel)))
 
     (when slack-bug-report-channel
       (let [processed-bug-channel (slack/process-files-channel-name slack-bug-report-channel)]
@@ -155,21 +139,16 @@
                                          ;; TODO FIXME -- this should not use `camelCase` keys
                                          [:diagnosticInfo map?]]]
   (try
-    (let [files-channel (slack/files-channel)
-          bug-report-channel (slack/bug-report-channel)
+    (let [bug-report-channel (slack/bug-report-channel)
           file-content (.getBytes (json/encode diagnostic-info {:pretty true}))
-          file-info (slack/upload-file! file-content
-                                        "diagnostic-info.json"
-                                        files-channel)]
-      (let [blocks (create-slack-message-blocks diagnostic-info file-info)]
-        (slack/post-chat-message!
-         bug-report-channel
-         nil
-         {:blocks blocks})
-        {:success true
-         :file-url (get file-info :permalink_public)}))
+          file-info (slack/upload-file! file-content "diagnostic-info.json")
+          blocks (create-slack-message-blocks diagnostic-info file-info)]
+      (slack/post-chat-message!
+       bug-report-channel
+       nil
+       {:blocks blocks})
+      {:success true
+       :file-url (get file-info :permalink_public)})
     (catch Exception e
       {:success false
        :error (.getMessage e)})))
-
-(api/define-routes)

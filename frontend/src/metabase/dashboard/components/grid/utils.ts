@@ -20,7 +20,7 @@ type DashcardLayout = {
 
 export function generateMobileLayout(desktopLayout: DashcardLayout[]) {
   const mobile: DashcardLayout[] = [];
-  desktopLayout.forEach(item => {
+  desktopLayout.forEach((item) => {
     const card = item.dashcard.card;
 
     mobile.push({
@@ -29,6 +29,7 @@ export function generateMobileLayout(desktopLayout: DashcardLayout[]) {
       y: sumVerticalSpace(mobile),
       h: getMobileHeight(card.display, item.h),
       w: 1,
+      minW: 1,
     });
   });
   return mobile;
@@ -57,7 +58,7 @@ export function generateGridBackground({
   const w = cellSize.width;
   const h = cellSize.height;
 
-  const rectangles = _(cols).times(i => {
+  const rectangles = _(cols).times((i) => {
     const x = i * (cellSize.width + horizontalMargin);
     return `<rect stroke='${cellStrokeColor}' stroke-width='1' fill='none' x='${x}' y='${y}' width='${w}' height='${h}'/>`;
   });

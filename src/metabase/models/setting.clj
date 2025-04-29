@@ -283,6 +283,9 @@
    [:database-local LocalOption]
    [:user-local     LocalOption]
 
+   ;; should this setting be read from env vars?
+   [:can-read-from-env? :boolean]
+
    ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
    ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
    ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
@@ -322,6 +325,7 @@
   clojure.lang.Keyword
   (resolve-setting [k]
     (or (@registered-settings k)
+        (@registered-settings (u/->kebab-case-en k))
         (throw (ex-info (tru "Unknown setting: {0}" k)
                         {::unknown-setting-error true
                          :registered-settings
@@ -392,6 +396,9 @@
   (and
    (not (database-local-only? setting))
    (not (user-local-only? setting))))
+
+(defn- allows-setting-via-env? [setting-definition-or-name]
+  (:can-read-from-env? (resolve-setting setting-definition-or-name)))
 
 (defn- site-wide-only? [setting]
   (and
@@ -475,10 +482,16 @@
                  (str/replace "-" "_")
                  u/upper-case-en)))
 
+(def ^:private env-var-translation-cache
+  "A simple cache for remembering the translation of setting name `:foo-bar?` to Environ-style key `:mb-foo-bar`."
+  (atom {}))
+
 (defn setting-env-map-name
   "Correctly translate a setting to the keyword it will be found at in [[env/env]]."
   [setting-definition-or-name]
-  (keyword (str "mb-" (munge-setting-name (setting-name setting-definition-or-name)))))
+  (let [sname (setting-name setting-definition-or-name)]
+    (or (@env-var-translation-cache sname)
+        ((swap! env-var-translation-cache assoc sname (keyword (str "mb-" (munge-setting-name sname)))) sname))))
 
 (defn env-var-value
   "Get the value of `setting-definition-or-name` from the corresponding env var, if any.
@@ -488,7 +501,8 @@
   environment variable `MB_FOO_BAR`."
   ^String [setting-definition-or-name]
   (let [setting (resolve-setting setting-definition-or-name)]
-    (when (allows-site-wide-values? setting)
+    (when (and (allows-site-wide-values? setting)
+               (allows-setting-via-env? setting))
       (let [v (env/env (setting-env-map-name setting))]
         (when (seq v)
           v)))))
@@ -511,9 +525,12 @@
 (defn- db-value [setting-definition-or-name]
   (t2/select-one-fn :value :model/Setting :key (setting-name setting-definition-or-name)))
 
+(def ^:private db-is-set-up-var (atom nil))
+
 (defn- db-is-set-up? []
   ;; this should never be hit. it is just overly cautious against a NPE here. But no way this cannot resolve
-  (let [f (requiring-resolve 'metabase.db/db-is-set-up?)]
+  (let [f (or @db-is-set-up-var
+              (reset! db-is-set-up-var (requiring-resolve 'metabase.db/db-is-set-up?)))]
     (if f (f) false)))
 
 (defn- db-or-cache-value
@@ -567,6 +584,13 @@
   (let [{:keys [default]} (resolve-setting setting-definition-or-name)]
     default))
 
+(defmacro ^:private or-some [& clauses]
+  ;; Like `clojure.core/or` but for the first non-nil value.
+  (let [[x & rst] clauses]
+    (if (empty? rst)
+      x
+      `(if-some [x# ~x] x# (or-some ~@rst)))))
+
 (defn get-raw-value
   "Get the raw value of a Setting from wherever it may be specified. Value is fetched by trying the following sources in
   order:
@@ -586,20 +610,14 @@
   Three-arity version can be used to specify how to parse non-empty String values (`parse-fn`) and under what
   conditions values can be returned directly (`pred`) -- see [[get-value-of-type]] for `:boolean` for example usage."
   ([setting-definition-or-name]
-   (let [setting    (resolve-setting setting-definition-or-name)
-         source-fns [user-local-value
-                     database-local-value
-                     env-var-value
-                     db-or-cache-value
-                     (cond
-                       (some? (:default setting)) default-value
-                       (:init setting)            (when-not *disable-init*
-                                                    init!))]]
-     (loop [[f & more] source-fns]
-       (let [v (when f (f setting))]
-         (cond
-           (some? v)  v
-           (seq more) (recur more))))))
+   (let [setting (resolve-setting setting-definition-or-name)]
+     (or-some (user-local-value setting)
+              (database-local-value setting)
+              (env-var-value setting)
+              (db-or-cache-value setting)
+              (:default setting)
+              (when (and (:init setting) (not *disable-init*))
+                (init! setting)))))
 
   ([setting-definition-or-name pred parse-fn]
    (let [parse     (fn [v]
@@ -705,8 +723,10 @@
     (if (or (and feature (not (has-feature? feature)))
             (and enabled? (not (enabled?))))
       default
-      (binding [config/*disable-setting-cache* disable-cache?]
-        (getter)))))
+      (if (= config/*disable-setting-cache* disable-cache?) ;; Optimization: only bind dynvar if necessary.
+        (getter)
+        (binding [config/*disable-setting-cache* disable-cache?]
+          (getter))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      set!                                                      |
@@ -1017,6 +1037,7 @@
                  :user-local     :never
                  :deprecated     nil
                  :enabled?       nil
+                 :can-read-from-env?       true
                  ;; Disable auditing by default for user- or database-local settings
                  :audit          (if (site-wide-only? setting) :no-value :never)}
                 (dissoc setting :name :type :default)))
@@ -1035,7 +1056,7 @@
       (when-let [same-munge (first (filter (comp #{munged-name} :munged-name)
                                            (vals @registered-settings)))]
         (when (not= setting-name (:name same-munge)) ;; redefinitions are fine
-          (throw (ex-info (tru "Setting names in would collide: {0} and {1}"
+          (throw (ex-info (tru "Setting names would collide: {0} and {1}"
                                setting-name (:name same-munge))
                           {:existing-setting (dissoc same-munge :on-change :getter :setter)
                            :new-setting      (dissoc <> :on-change :getter :setter)}))))
@@ -1422,9 +1443,8 @@
 
   `options` are passed to [[user-facing-value]].
 
-  This is currently used by `GET /api/setting` ([[metabase.api.setting/GET_]]; admin-only; powers the Admin Settings
-  page) so all admin-visible Settings should be included. We *do not* want to return env var values, since admins
-  are not allowed to modify them.
+  This is currently used by `GET /api/setting` (admin-only; powers the Admin Settings page) so all admin-visible
+  Settings should be included. We *do not* want to return env var values, since admins are not allowed to modify them.
 
   For settings managers who are not admins, only the subset of settings with the :settings-manager visibility level
   are returned."
@@ -1470,7 +1490,7 @@
 
   Settings marked `:sensitive?` (e.g. passwords) are excluded.
 
-  This is currently used by `GET /api/session/properties` ([[metabase.api.session/GET_properties]]) and
+  This is currently used by `GET /api/session/properties` and
   in [[metabase.server.routes.index/load-entrypoint-template]]. These are used as read-only sources of Settings for
   the frontend client. For that reason, these Settings *should* include values that come back from environment
   variables, *unless* they are marked `:sensitive?`."

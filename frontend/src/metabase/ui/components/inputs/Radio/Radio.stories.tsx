@@ -48,7 +48,7 @@ const StateTemplate = (args: RadioProps) => (
 );
 
 export default {
-  title: "Inputs/Radio",
+  title: "Components/Inputs/Radio",
   component: Radio,
   args,
   argTypes,

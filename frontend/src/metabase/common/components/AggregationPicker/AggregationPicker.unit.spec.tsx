@@ -180,7 +180,7 @@ describe("AggregationPicker", () => {
         "Standard deviation of ...",
         "Minimum of ...",
         "Maximum of ...",
-      ].forEach(name => {
+      ].forEach((name) => {
         expect(screen.getByRole("option", { name })).toBeInTheDocument();
       });
     });
@@ -192,7 +192,7 @@ describe("AggregationPicker", () => {
 
       await userEvent.type(screen.getByPlaceholderText("Find..."), "Count");
 
-      ["Count of rows", "Cumulative count of rows"].forEach(name => {
+      ["Count of rows", "Cumulative count of rows"].forEach((name) => {
         expect(screen.getByRole("option", { name })).toBeInTheDocument();
       });
 
@@ -204,7 +204,7 @@ describe("AggregationPicker", () => {
         "Standard deviation of ...",
         "Minimum of ...",
         "Maximum of ...",
-      ].forEach(name => {
+      ].forEach((name) => {
         expect(screen.queryByRole("option", { name })).not.toBeInTheDocument();
       });
     });
@@ -312,12 +312,18 @@ describe("AggregationPicker", () => {
     it("should allow to enter a custom expression containing an aggregation", async () => {
       const { getRecentClauseInfo } = setup({ allowCustomExpressions: true });
 
-      const expression = "count + 1";
+      const expression = "count() + 1";
       const expressionName = "My expression";
 
       await userEvent.click(screen.getByText("Custom Expression"));
-      await userEvent.type(screen.getByLabelText("Expression"), expression);
-      await userEvent.type(screen.getByLabelText("Name"), expressionName);
+      await userEvent.type(
+        screen.getByTestId("custom-expression-query-editor"),
+        expression,
+      );
+      await userEvent.type(
+        screen.getByTestId("expression-name"),
+        expressionName,
+      );
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
       expect(getRecentClauseInfo()?.displayName).toBe(expressionName);
     });

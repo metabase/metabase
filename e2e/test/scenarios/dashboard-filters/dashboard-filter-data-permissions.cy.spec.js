@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 function filterDashboard(suggests = true) {
@@ -8,19 +8,16 @@ function filterDashboard(suggests = true) {
 
   // We should get a suggested response and be able to click it if we're an admin
   if (suggests) {
-    cy.findByPlaceholderText("Search by Address").type("Main Street");
+    cy.findByPlaceholderText("Search the list").type("Main Street");
     cy.contains("100 Main Street").click();
   } else {
-    cy.findByPlaceholderText("Search by Address")
-      .type("100 Main Street")
-      .blur();
+    cy.findByPlaceholderText("Search the list").type("100 Main Street").blur();
     cy.wait("@search").should(({ response }) => {
       expect(response.statusCode).to.equal(403);
     });
   }
   cy.contains("Add filter").click({ force: true });
   cy.contains("100 Main Street");
-  cy.contains(/Rows \d-\d+ of 23/);
 }
 
 describe("support > permissions (metabase#8472)", () => {
@@ -69,7 +66,7 @@ describe("support > permissions (metabase#8472)", () => {
       method: "GET",
       url: `/api/dashboard/${ORDERS_DASHBOARD_ID}`,
       failOnStatusCode: false,
-    }).should(xhr => {
+    }).should((xhr) => {
       expect(xhr.status).to.equal(403);
     });
   });

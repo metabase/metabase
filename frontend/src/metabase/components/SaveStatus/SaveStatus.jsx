@@ -19,7 +19,7 @@ class SaveStatus extends Component {
     this.props.unnotify("save-status");
   };
 
-  notify = undo => {
+  notify = (undo) => {
     clearTimeout(this.state.showSavingingTimeout);
     this.unnotify();
     this.props.notify({ id: "save-status", ...undo });
@@ -53,9 +53,9 @@ class SaveStatus extends Component {
   }
 }
 
-const mapDispatchToProps = dispatch => ({
-  notify: undo => dispatch(addUndo(undo)),
-  unnotify: undoId => dispatch(dismissUndo({ undoId })),
+const mapDispatchToProps = (dispatch) => ({
+  notify: (undo) => dispatch(addUndo(undo)),
+  unnotify: (undoId) => dispatch(dismissUndo({ undoId })),
 });
 
 export default _.compose(

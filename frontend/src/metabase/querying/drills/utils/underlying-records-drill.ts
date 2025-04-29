@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { msgid, ngettext } from "ttag";
 
 import { inflect } from "metabase/lib/formatting/strings";
@@ -13,9 +14,10 @@ export const underlyingRecordsDrill: Drill<
   Lib.UnderlyingRecordsDrillThruInfo
 > = ({ drill, drillInfo, applyDrill }): QuestionChangeClickAction[] => {
   const { tableName, rowCount } = drillInfo;
+  const locale = dayjs.locale();
 
   const tableTitle =
-    tableName && isShortTableName(tableName)
+    tableName && locale === "en" && isShortTableName(tableName)
       ? inflect(tableName, rowCount)
       : ngettext(msgid`record`, `records`, rowCount);
 

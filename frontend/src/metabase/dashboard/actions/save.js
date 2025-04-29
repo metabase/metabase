@@ -35,7 +35,7 @@ export const updateDashboardAndCards = createThunkAction(
       const dashboard = {
         ...dashboards[dashboardId],
         dashcards: dashboards[dashboardId].dashcards.map(
-          dashcardId => dashcards[dashcardId],
+          (dashcardId) => dashcards[dashcardId],
         ),
       };
 
@@ -77,10 +77,10 @@ export const updateDashboardAndCards = createThunkAction(
       });
 
       // update parameter mappings
-      dashboard.dashcards = dashboard.dashcards.map(dc => ({
+      dashboard.dashcards = dashboard.dashcards.map((dc) => ({
         ...dc,
         parameter_mappings: dc.parameter_mappings.filter(
-          mapping =>
+          (mapping) =>
             // filter out mappings for deleted parameters
             _.findWhere(dashboard.parameters, {
               id: mapping.parameter_id,
@@ -96,15 +96,15 @@ export const updateDashboardAndCards = createThunkAction(
       // update modified cards
       await Promise.all(
         dashboard.dashcards
-          .filter(dc => dc.card.isDirty)
-          .map(async dc => CardApi.update(dc.card)),
+          .filter((dc) => dc.card.isDirty)
+          .map(async (dc) => CardApi.update(dc.card)),
       );
 
       trackAddedIFrameDashcards(dashboard);
 
       const dashcardsToUpdate = dashboard.dashcards
-        .filter(dc => !dc.isRemoved)
-        .map(dc => ({
+        .filter((dc) => !dc.isRemoved)
+        .map((dc) => ({
           id: dc.id,
           card_id: dc.card_id,
           dashboard_tab_id: dc.dashboard_tab_id,
@@ -118,7 +118,7 @@ export const updateDashboardAndCards = createThunkAction(
           parameter_mappings: dc.parameter_mappings,
         }));
       const tabsToUpdate = (dashboard.tabs ?? [])
-        .filter(tab => !tab.isRemoved)
+        .filter((tab) => !tab.isRemoved)
         .map(({ id, name }) => ({
           id,
           name,

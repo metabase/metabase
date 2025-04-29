@@ -23,8 +23,8 @@ export const SidesheetCardWithFields = ({
 
   return (
     <SidesheetCard title={<Box pb="sm">{title}</Box>}>
-      <Stack spacing="md">
-        {columns.map(columnMetadata => {
+      <Stack gap="md">
+        {columns.map((columnMetadata) => {
           const columnDisplayInfo = Lib.displayInfo(query, -1, columnMetadata);
 
           return (
@@ -51,7 +51,7 @@ const Column = ({
   columnDisplayInfo: Lib.ColumnDisplayInfo;
 }) => {
   return (
-    <Group spacing="sm" role="listitem">
+    <Group gap="sm" role="listitem">
       <QueryColumnInfoIcon
         position="left-start"
         query={query}

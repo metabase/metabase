@@ -1,4 +1,6 @@
 (ns metabase.query-processor.util.persisted-cache
+  "TODO -- consider whether this belongs here or if we should move some or all of this code into the `model-persistence`
+  module."
   (:require
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -6,7 +8,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.persisted-info :as persisted-info]
+   [metabase.model-persistence.core :as model-persistence]
    [metabase.public-settings :as public-settings]
    [metabase.util.malli :as mu]))
 
@@ -16,15 +18,15 @@
   [card           :- ::lib.schema.metadata/card
    persisted-info :- [:maybe ::lib.schema.metadata/persisted-info]]
   (and persisted-info
-       persisted-info/*allow-persisted-substitution*
+       (model-persistence/allow-persisted-substitution?)
        (:active persisted-info)
        (= (:state persisted-info) "persisted")
        (:definition persisted-info)
        (:query-hash persisted-info)
-       (= (:query-hash persisted-info) (persisted-info/query-hash (:dataset-query card)))
+       (= (:query-hash persisted-info) (model-persistence/query-hash (:dataset-query card)))
        (= (:definition persisted-info)
-          (persisted-info/metadata->definition (:result-metadata card)
-                                               (:table-name persisted-info)))))
+          (model-persistence/metadata->definition (:result-metadata card)
+                                                  (:table-name persisted-info)))))
 
 (mu/defn persisted-info-native-query
   "Returns a native query that selects from the persisted cached table from `persisted-info`. Does not check if

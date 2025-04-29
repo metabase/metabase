@@ -10217,6 +10217,46 @@ databaseChangeLog:
             columnNames: engine, version, status
 
   - changeSet:
+      id: v52.2025-01-05T00:00:01
+      author: escherize
+      comment: set enable-embedding-sdk false when embedding-app-origins-sdk value exists
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE key = 'embedding-app-origins-sdk';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'embedding-app-origins-sdk';
+            - and:
+                - dbms:
+                    type: h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE "KEY" = 'embedding-app-origins-sdk';
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              update setting set value = 'false' where key = 'enable-embedding-sdk';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE setting set `value` = 'false' where `key` = 'enable-embedding-sdk';
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE setting set "VALUE" = 'false' where "KEY" = 'enable-embedding-sdk';
+      rollback: # not needed
+
+  - changeSet:
       id: v53.2024-12-02T16:21:15
       author: noahmoss
       comment: Add cache_config.refresh_automatically column
@@ -10468,6 +10508,644 @@ databaseChangeLog:
                   name: deactivated_at
                   type: ${timestamp_type}
                   remarks: The timestamp at which a user was deactivated
+
+  - changeSet:
+      id: v53.2025-02-20T04:49:39
+      author: johnswanson
+      comment: remove unused cards in usage analytics
+      changes:
+        - sql: |
+            DELETE FROM report_card WHERE entity_id IN (
+              'Y0ZykgQ64HHwAW_MYx-dW',
+              '3CtVT_JDxNvMM5aFLtEHR',
+              'hFpp3c-7Y-CtMOrs3zeyn',
+              'PkIueKBME3DfRFwBsYjuE',
+              '4DlO-I7ry2OaVQy7-RGPU',
+              'lh0sbjKcm9BhiiHPpPxRa',
+              '9shJ0y29V5o1lOSDL4ImJ',
+              'WoQnk12nwOaJ1pcb1wsr4',
+              '-_XgVaPuz7MY8jlG0wSEC',
+              'LXu_IZa1EDg3QOhlwunGy',
+              'Fnu5Kh0gYPN6P8A_fvICu'
+            );
+      rollback: # not needed, these are created on startup using deserialization
+
+  - changeSet:
+      id: v53.2025-04-02T15:25:04
+      author: edpaget
+      comment: create new cluster lock table for instance coordination
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: metabase_cluster_lock
+      changes:
+        - createTable:
+            tableName: metabase_cluster_lock
+            remarks: A table to allow metabase instances to take locks across a cluster
+            columns:
+              - column:
+                  name: lock_name
+                  type: varchar(254)
+                  remarks: a single column that can be used to a lock across a cluster
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+
+  - changeSet:
+      id: v54.2025-01-30T16:10:55
+      author: bshepherdson
+      comment: Add `entity_id` column to the `metabase_database` table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: entity_id
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  - changeSet:
+      id: v54.2025-01-30T16:13:20
+      author: bshepherdson
+      comment: Add `entity_id` column to the `metabase_table` table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_table
+                columnName: entity_id
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  - changeSet:
+      id: v54.2025-01-30T16:14:02
+      author: bshepherdson
+      comment: Add `entity_id` column to the `metabase_field` table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_field
+                columnName: entity_id
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  - changeSet:
+      id: v54.2025-02-14T08:00:00
+      author: qnkhuat
+      comment: add notification.payload_id
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: notification
+              columnName: payload_id
+      changes:
+        - addColumn:
+            tableName: notification
+            columns:
+              - column:
+                  name: payload_id
+                  type: int
+                  remarks: the internal id of the notification
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v54.2025-02-14T08:01:00
+      author: qnkhuat
+      comment: create the notification_card table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification_card
+      changes:
+        - createTable:
+            tableName: notification_card
+            remarks: Card related notifications
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: the card that the alert is connected to
+                  constraints:
+                    nullable: true
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_card_card_id
+                    deleteCascade: true
+              - column:
+                  name: send_once
+                  type: ${boolean.type}
+                  remarks: whether the alert should only run once
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: send_condition
+                  type: varchar(32)
+                  remarks: the condition of the alert
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the recipient was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the recipient was updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v54.2025-02-14T08:03:00
+      author: qnkhuat
+      comment: add notification.creator_id
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: notification
+              columnName: creator_id
+      changes:
+        - addColumn:
+            tableName: notification
+            columns:
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: the id of the creator
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v54.2025-02-14T08:04:00
+      author: qnkhuat
+      comment: add fk constraint to notification.creator_id
+      preConditions:
+        - not:
+          - foreignKeyConstraintExists:
+              foreignKeyName: fk_notification_creator_id
+              foreignKeyTableName: notification
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: notification
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_notification_creator_id
+            onDelete: CASCADE
+            nullable: true
+
+  - changeSet:
+      id: v54.2025-02-14T08:04:01
+      author: qnkhuat
+      comment: Add an index for `notification.creator_id`
+      rollback: # will be removed with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: notification
+                indexName: idx_notification_creator_id
+      changes:
+        - createIndex:
+            indexName: idx_notification_creator_id
+            tableName: notification
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: v54.2025-02-14T08:04:02
+      author: qnkhuat
+      comment: Add an index for `notification_card.card_id`
+      rollback: # will be removed with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: notification_card
+                indexName: idx_notification_card_card_id
+      changes:
+        - createIndex:
+            indexName: idx_notification_card_card_id
+            tableName: notification_card
+            columns:
+              - column:
+                  name: card_id
+
+  - changeSet:
+      id: v54.2025-02-14T08:05:00
+      author: qnkhuat
+      comment: Migrate alert to notification
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateAlertToNotification"
+
+  - changeSet:
+      id: v54.2025-02-14T08:06:00
+      author: qnkhuat
+      comment: Delete all the migrated alerts from notification table
+      changes:
+        - sql: select 1;
+      rollback:
+        # delete all migrated notification on rollback so we can re-run the migration
+        # no need to delete notification_card because the table will be dropped
+        - sql:
+            sql: >-
+              DELETE FROM notification WHERE payload_type = 'notification/card';
+
+  - changeSet:
+      id: v54.2025-02-14T08:07:00
+      author: qnkhuat
+      comment: Update view v_alerts to read from notification tables
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v2/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v2/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v2/h2-alerts.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v1/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v1/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v1/h2-alerts.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v54.2025-03-06T16:55:15
+      author: nvoxland
+      comment: Replacing storing the session key in the "id" column in favor of storing a new hashed version
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: core_session
+            columns:
+              - column:
+                  name: key_hashed
+                  type: varchar(254)
+                  value: "upgrade placeholder"
+                  remarks: Hashed version of the session key
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v54.2025-03-06T16:55:16
+      author: nvoxland
+      comment: Creating index on the hashed session key
+      preConditions:
+      changes:
+        - createIndex:
+            tableName: core_session
+            columns:
+              - column:
+                  name: key_hashed
+            indexName: idx_core_session_key_hashed
+
+  - changeSet:
+      id: v54.2025-03-11T16:00:00
+      author: qnkhuat
+      comment: add notification_subscription.ui_display_type
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: notification_subscription
+              columnName: ui_display_type
+      changes:
+        - addColumn:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: ui_display_type
+                  type: varchar(32)
+                  remarks: the display of the subscription, used for the UI only
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v54.2025-03-17T18:52:44
+      author: noahmoss
+      comment: Migrating zh site locales to zh_CN
+      preConditions:
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE setting SET value = 'zh_CN' where key = 'site-locale' AND value = 'zh';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE setting SET `value` = 'zh_CN' where `key` = 'site-locale' AND `value` = 'zh';
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE setting SET "VALUE" = 'zh_CN' where "KEY" = 'site-locale' AND "VALUE" = 'zh';
+      rollback: # nothing to do; zh_CN is backwards compatible
+
+  - changeSet:
+      id: v54.2025-03-17T18:52:59
+      author: noahmoss
+      comment: Migrating zh user locales to zh_CN
+      preConditions:
+      changes:
+        - sql:
+            sql: >-
+              UPDATE core_user SET locale = 'zh_CN' WHERE locale = 'zh';
+      rollback: # nothing to do; zh_CN is backwards compatible
+
+  - changeSet:
+      id: v54.2025-03-25T16:34:12
+      author: edpaget
+      comment: Add index to field_usage query_execution_id column to support faster deletes
+      rollback: # cannot rollback an index on a fk in mysql
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: field_usage
+                indexName: idx_field_usage_query_execution_id
+      changes:
+        - createIndex:
+            tableName: field_usage
+            columns:
+              - column:
+                  name: query_execution_id
+            indexName: idx_field_usage_query_execution_id
+
+  - changeSet:
+      id: v54.2025-03-27T17:52:01
+      author: luizarakaki
+      comment: updating v_tasks to add new `status` field
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/tasks/v2/postgres-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tasks/v2/mysql-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tasks/v2/h2-tasks.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/tasks/v1/postgres-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tasks/v1/mysql-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tasks/v1/h2-tasks.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v54.2025-03-28T11:22:01
+      author: luizarakaki
+      comment: updating v_content to add new `is_verified` field
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v3/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v3/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v3/h2-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v2/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v2/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v2/h2-content.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v55.2025-03-24T16:28:41
+      author: bshepherdson
+      comment: Add report_card.card_schema
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: report_card
+              columnName: card_schema
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: card_schema
+                  type: int
+                  remarks: Arbitrary revision number for how we store queries in report_card
+                  defaultValue: 20
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v55.2025-03-24T16:36:19
+      author: bshepherdson
+      comment: Creating index on the card_schema
+      preConditions:
+      changes:
+        - createIndex:
+            tableName: report_card
+            columns:
+              - column:
+                  name: card_schema
+            indexName: idx_report_card_card_schema
+
+  - changeSet:
+      id: v55.2025-04-01T07:17:52
+      author: johnswanson
+      comment: Add `db_router` table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: db_router
+      changes:
+        - createTable:
+            tableName: db_router
+            remarks: |
+              Configuration for Database Routers. Currently just holds which user attribute each
+              configured router database should use to choose a mirror database to route to.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: 'The ID of the database this is for.'
+                  constraints:
+                    unique: true
+                    nullable: false
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_db_router_database_id
+              - column:
+                  name: user_attribute
+                  type: varchar(254)
+                  remarks: 'The user attribute used to redirect users to a different database.'
+                  constraints:
+                    nullable: false
+
+
+  - changeSet:
+      id: v55.2025-04-01T07:18:02
+      author: johnswanson
+      comment: Add self-referential foreign key `router_database_id` to metabase_database
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: router_database_id
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: router_database_id
+                  type: int
+                  remarks: The ID of the primary database for this mirror database.
+                  constraints:
+                    unique: false
+                    nullable: true
+
+  - changeSet:
+      id: v55.2025-04-01T07:18:47
+      author: johnswanson
+      comment: add an index for `metabase_database.router_database_id`
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabase_database
+                indexName: idx_unique_metabase_database_router_database_id_name
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_database
+            constraintName: idx_unique_metabase_database_router_database_id_name
+            columnNames: router_database_id, name
+
+  - changeSet:
+      id: v55.2025-04-01T07:18:52
+      author: johnswanson
+      comment: Add foreign key for `router_database_id`
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - foreignKeyConstraintExists:
+            - foreignKeyName: fk_metabase_database_metabase_database_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_database
+            baseColumnNames: router_database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_metabase_database_metabase_database_id
+            onDelete: RESTRICT
+
+
+  - changeSet:
+      id: v55.2025-04-17T08:44:39
+      author: johnswanson
+      comment: Add permissions_group.magic_group_type
+      preConditions: # Not required
+      changes:
+        - addColumn:
+            tableName: permissions_group
+            columns:
+              - column:
+                  name: magic_group_type
+                  type: varchar(254)
+                  remarks: The magic_group_type of the permissions_group
+                  constraints:
+                    unique: true
+                    nullable: true
+
+  - changeSet:
+      id: v55.2025-04-17T08:47:19
+      author: johnswanson
+      comment: Set type on existing permissions groups
+      rollback: #
+      changes:
+        - sql:
+            sql: |
+              UPDATE permissions_group SET magic_group_type='all-internal-users' WHERE name='All Users';
+              UPDATE permissions_group SET magic_group_type='admin' WHERE name='Administrators';
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

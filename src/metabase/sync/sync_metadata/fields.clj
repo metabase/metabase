@@ -40,6 +40,7 @@
     for logging purposes by higher-level sync logic."
   (:require
    [metabase.driver.util :as driver.u]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -53,6 +54,16 @@
    [toucan2.core :as t2]
    [toucan2.util :as t2.util]))
 
+(defsetting auto-cruft-columns
+  "A list of pattern strings that get converted into additional regexes that match Fields that should automatically be
+  marked as visibility-type = `:hidden`. Not to be set directly, this setting lives in the metabase_database.settings json blob."
+  :type :json
+  :database-local :only
+  :visibility :internal
+  :default []
+  :export? true
+  :encryption :no)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -60,13 +71,14 @@
 (mu/defn- sync-and-update! :- ms/IntGreaterThanOrEqualToZero
   "Sync Field instances (i.e., rows in the Field table in the Metabase application DB) for a Table, and update metadata
   properties (e.g. base type and comment/remark) as needed. Returns number of Fields synced."
-  [table       :- i/TableInstance
+  [database    :- i/DatabaseInstance
+   table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
   (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
      ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
-     ;; Re-fetch our metadata because there might be somethings that have changed after calling
+     ;; Re-fetch our metadata because there might be some things that have changed after calling
      ;; `sync-instances`
-     (sync-metadata/update-metadata! table db-metadata (fields.our-metadata/our-metadata table))))
+     (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table))))
 
 (mu/defn sync-fields! :- [:map
                           [:updated-fields ms/IntGreaterThanOrEqualToZero]
@@ -97,7 +109,7 @@
                                                                (set table-metadata)
                                                                database
                                                                table)]
-                                             (sync-and-update! table all-metadata))
+                                             (sync-and-update! database table all-metadata))
                                            (catch Exception e
                                              (log/error e)
                                              0))
@@ -123,4 +135,4 @@
            ;; Also this should be a driver method, not a sql-jdbc.sync method
            db-metadata (fetch-metadata/include-nested-fields-for-table db-metadata database table)]
        {:total-fields   (count db-metadata)
-        :updated-fields (sync-and-update! table db-metadata)}))))
+        :updated-fields (sync-and-update! database table db-metadata)}))))

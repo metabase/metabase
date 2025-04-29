@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
@@ -20,7 +22,7 @@ export const SearchResultsContainer = styled(Paper)<PaperProps>`
   ${breakpointMinSmall} {
     max-height: 400px;
   }
-`;
+` as unknown as typeof Paper;
 
 const selectedStyles = css`
   color: var(--mb-color-brand);
@@ -30,7 +32,7 @@ const selectedStyles = css`
 `;
 
 export const SearchDropdownFooter = styled(Group, {
-  shouldForwardProp: propName => propName !== "isSelected",
+  shouldForwardProp: (propName) => propName !== "isSelected",
 })<{ isSelected?: boolean } & GroupProps>`
   border-top: 1px solid var(--mb-color-border);
 

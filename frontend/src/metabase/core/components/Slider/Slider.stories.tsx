@@ -6,12 +6,12 @@ import CS from "metabase/css/core/index.css";
 import Slider from "./Slider";
 
 export default {
-  title: "Core/Slider",
+  title: "Components/Ask Before Using/Slider",
   component: Slider,
   argTypes: { onChange: { action: "onChange" } },
 };
 
-const Template: StoryFn<SliderProps> = args => {
+const Template: StoryFn<SliderProps> = (args) => {
   const value = [10, 40];
 
   return (

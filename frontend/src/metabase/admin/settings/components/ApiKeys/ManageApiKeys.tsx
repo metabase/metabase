@@ -1,3 +1,4 @@
+/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -29,7 +30,7 @@ function EmptyTableWarning({ onCreate }: { onCreate: () => void }) {
       mt="xl"
       align="center"
       justify="center"
-      spacing="sm"
+      gap="sm"
       data-testid="empty-table-warning"
     >
       <Title>{t`No API keys here yet`}</Title>
@@ -80,7 +81,7 @@ function ApiKeysTable({
       data-testid="api-keys-table"
       columns={columns}
       rows={flatApiKeys}
-      rowRenderer={row => (
+      rowRenderer={(row) => (
         <ApiKeyRow
           apiKey={row}
           setActiveApiKey={setActiveApiKey}
@@ -113,7 +114,7 @@ const ApiKeyRow = ({
     <td>{apiKey.updated_by.common_name}</td>
     <td>{formatDateTimeWithUnit(apiKey.updated_at, "minute")}</td>
     <td>
-      <Group spacing="md" py="md">
+      <Group gap="md" py="md">
         <Icon
           name="pencil"
           className={CS.cursorPointer}
@@ -160,10 +161,10 @@ export const ManageApiKeys = () => {
         activeApiKey={activeApiKey}
       />
       <AuthTabs activeKey="api-keys" />
-      <Stack pl="md" spacing="lg">
+      <Stack pl="md" gap="lg">
         <Group
           align="start"
-          position="apart"
+          justify="space-between"
           data-testid="api-keys-settings-header"
         >
           <Stack>

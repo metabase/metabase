@@ -5,7 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import SettingHeader from "metabase/admin/settings/components/SettingHeader";
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
 import { FormSwitch } from "metabase/forms";
@@ -29,11 +29,11 @@ import { SsoButton } from "./components/SsoButton";
 import JwtAuthCard from "./containers/JwtAuthCard";
 import SamlAuthCard from "./containers/SamlAuthCard";
 
-PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
-  updateIn(sections, ["authentication", "settings"], settings => {
+PLUGIN_ADMIN_SETTINGS_UPDATES.push((sections) =>
+  updateIn(sections, ["authentication", "settings"], (settings) => {
     const [apiKeySettings, otherSettings] = _.partition(
       settings,
-      s => s.key === "api-keys",
+      (s) => s.key === "api-keys",
     );
     return [
       ...otherSettings,
@@ -77,7 +77,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
   }),
 );
 
-PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
+PLUGIN_ADMIN_SETTINGS_UPDATES.push((sections) => ({
   ...sections,
   "authentication/saml": {
     getHidden: () => !hasPremiumFeature("sso_saml"),
@@ -235,7 +235,7 @@ const SSO_PROVIDER = {
   Button: SsoButton,
 };
 
-PLUGIN_AUTH_PROVIDERS.push(providers => {
+PLUGIN_AUTH_PROVIDERS.push((providers) => {
   if (
     (hasPremiumFeature("sso_jwt") || hasPremiumFeature("sso_saml")) &&
     MetabaseSettings.get("other-sso-enabled?")
@@ -247,16 +247,16 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
     !MetabaseSettings.isPasswordLoginEnabled() &&
     !MetabaseSettings.isLdapEnabled()
   ) {
-    providers = providers.filter(p => p.name !== "password");
+    providers = providers.filter((p) => p.name !== "password");
   }
   return providers;
 });
 
 if (hasPremiumFeature("disable_password_login")) {
   PLUGIN_IS_PASSWORD_USER.push(
-    user =>
-      !user.google_auth &&
-      !user.ldap_auth &&
+    (user) =>
+      user.sso_source !== "google" &&
+      user.sso_source !== "ldap" &&
       MetabaseSettings.isPasswordLoginEnabled(),
   );
 }
@@ -269,10 +269,11 @@ if (hasPremiumFeature("sso_ldap")) {
       "ldap-user-provisioning-enabled?": Yup.boolean().default(null),
     },
     UserProvisioning: ({ fields, settings }) => (
-      <Stack spacing="0.75rem" m="2.5rem 0">
+      <Stack gap="0.75rem" m="2.5rem 0">
         <SettingHeader
           id="ldap-user-provisioning-enabled?"
-          setting={settings["ldap-user-provisioning-enabled?"]}
+          title={settings["ldap-user-provisioning-enabled?"].display_name}
+          description={settings["ldap-user-provisioning-enabled?"].description}
         />
         <FormSwitch
           id="ldap-user-provisioning-enabled?"
@@ -283,8 +284,8 @@ if (hasPremiumFeature("sso_ldap")) {
     ),
   });
 
-  PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
-    updateIn(sections, ["authentication/ldap", "settings"], settings => [
+  PLUGIN_ADMIN_SETTINGS_UPDATES.push((sections) =>
+    updateIn(sections, ["authentication/ldap", "settings"], (settings) => [
       {
         key: "ldap-user-provisioning-enabled?",
         display_name: t`User Provisioning`,

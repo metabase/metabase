@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { Text, type TextProps, Textarea } from "metabase/ui";
@@ -35,4 +37,4 @@ export const StyledInput = styled(Textarea)`
 
 export const InteractiveText = styled(Text)<TextProps>`
   ${interactiveDashcardElementCss}
-`;
+` as unknown as typeof Text;

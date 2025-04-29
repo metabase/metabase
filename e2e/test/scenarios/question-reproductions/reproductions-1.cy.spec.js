@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -75,9 +75,9 @@ describe("issue 6239", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
-    cy.get(".ace_text-input").type("CountIf([Total] > 0)").blur();
+    H.CustomExpressionEditor.type("CountIf([Total] > 0)").format();
 
-    cy.findByPlaceholderText("Something nice and descriptive").type("CE");
+    H.CustomExpressionEditor.nameInput().type("CE");
     cy.button("Done").click();
 
     cy.findByTestId("aggregate-step").contains("CE").should("exist");
@@ -137,7 +137,7 @@ describe("issue 9027", () => {
 
     H.startNewNativeQuestion();
 
-    H.focusNativeEditor().type("select 0");
+    H.NativeEditor.focus().type("select 0");
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     H.saveQuestion(QUESTION_NAME, undefined, {
@@ -240,7 +240,7 @@ describe("postgres > user > query", { tags: "@external" }, () => {
     cy.signInAsAdmin();
     cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
       ({ body }) => {
-        const tableId = body.find(table => table.name === "orders").id;
+        const tableId = body.find((table) => table.name === "orders").id;
         H.openTable({
           database: WRITABLE_DB_ID,
           table: tableId,
@@ -277,11 +277,11 @@ describe("issue 14957", { tags: "@external" }, () => {
   });
 
   it("should save a question before query has been executed (metabase#14957)", () => {
-    H.startNewNativeQuestion().as("editor");
+    H.startNewNativeQuestion();
 
     cy.findByTestId("gui-builder-data").click();
     cy.findByLabelText(PG_DB_NAME).click();
-    cy.get("@editor").type("select pg_sleep(60)");
+    H.NativeEditor.type("select pg_sleep(60)");
     H.saveQuestion("14957", undefined, {
       tab: "Browse",
       path: ["Our analytics"],
@@ -297,7 +297,7 @@ describe("postgres > question > custom columns", { tags: "@external" }, () => {
 
     cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
       ({ body }) => {
-        const tableId = body.find(table => table.name === "orders").id;
+        const tableId = body.find((table) => table.name === "orders").id;
         H.openTable({
           database: WRITABLE_DB_ID,
           table: tableId,
@@ -314,14 +314,14 @@ describe("postgres > question > custom columns", { tags: "@external" }, () => {
     cy.findByText("Pick a function or metric").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
-    H.enterCustomColumnDetails({ formula: "Percentile([Subtotal], 0.1)" });
-    cy.findByPlaceholderText("Something nice and descriptive")
-      .as("name")
-      .click();
+    H.enterCustomColumnDetails({
+      formula: "Percentile([Subtotal], 0.1)",
+      format: true,
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Function Percentile expects 1 argument").should("not.exist");
-    cy.get("@name").type("Expression name");
+    H.CustomExpressionEditor.nameInput().type("Expression name");
     cy.button("Done").should("not.be.disabled").click();
     // Todo: Add positive assertions once this is fixed
 
@@ -379,7 +379,7 @@ describe("issue 15876", { tags: "@external" }, () => {
   });
 
   it("should correctly cast to `TIME` (metabase#15876)", () => {
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
 
     cy.findByTestId("query-visualization-root").within(() => {
       correctValues.forEach(({ value, rows }) => {
@@ -429,24 +429,22 @@ function addSummarizeCustomExpression(formula, name) {
   H.summarize({ mode: "notebook" });
   H.popover().contains("Custom Expression").click();
 
-  H.expressionEditorWidget().within(() => {
-    H.enterCustomColumnDetails({
-      formula,
-      name,
-    });
-    cy.button("Done").click();
+  H.enterCustomColumnDetails({
+    formula,
+    name,
+    format: true,
   });
+  H.expressionEditorWidget().button("Done").click();
 }
 
 function addCustomColumn(formula, name) {
   cy.findByText("Custom column").click();
-  H.expressionEditorWidget().within(() => {
-    H.enterCustomColumnDetails({
-      formula,
-      name,
-    });
-    cy.button("Done").click();
+  H.enterCustomColumnDetails({
+    formula,
+    name,
+    format: true,
   });
+  H.expressionEditorWidget().button("Done").click();
 }
 
 describe("issue 17514", () => {
@@ -487,7 +485,7 @@ describe("issue 17514", () => {
 
   describe("scenario 1", () => {
     beforeEach(() => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
       }).then(({ body: card }) => {
@@ -508,7 +506,7 @@ describe("issue 17514", () => {
           ],
         };
 
-        cy.editDashboardCard(card, mapFilterToCard);
+        H.editDashboardCard(card, mapFilterToCard);
 
         H.visitDashboard(dashboard_id);
 
@@ -535,7 +533,7 @@ describe("issue 17514", () => {
       cy.wait("@cardQuery");
 
       cy.findByTestId("parameter-value-widget-target")
-        .findByText("Previous 30 Years")
+        .findByText("Previous 30 years")
         .click();
 
       cy.findByTestId("parameter-value-dropdown")
@@ -550,7 +548,7 @@ describe("issue 17514", () => {
         .findByText("Showing first 2,000 rows")
         .should("be.visible");
 
-      cy.findByTestId("query-builder-main").findByText("79.37").click();
+      cy.findByTestId("query-builder-main").findByText("76.83").click();
 
       cy.findByTestId("click-actions-view").findByText("Filter by this value");
     });
@@ -558,7 +556,7 @@ describe("issue 17514", () => {
 
   describe("scenario 2", () => {
     beforeEach(() => {
-      cy.createQuestion(questionDetails, { visitQuestion: true });
+      H.createQuestion(questionDetails, { visitQuestion: true });
 
       H.openVizSettingsSidebar();
 
@@ -576,7 +574,7 @@ describe("issue 17514", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
 
-      cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByTestId("save-question-modal").within((modal) => {
         cy.findByText("Save").click();
       });
 
@@ -663,7 +661,7 @@ describe("issue 17910", () => {
     cy.intercept("POST", "/api/card").as("card");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
     cy.wait("@card");
@@ -692,7 +690,7 @@ describe("issue 17963", { tags: "@mongo" }, () => {
     cy.signInAsAdmin();
 
     cy.request(`/api/database/${WRITABLE_DB_ID}/schema/`).then(({ body }) => {
-      const tableId = body.find(table => table.name === "orders").id;
+      const tableId = body.find((table) => table.name === "orders").id;
       H.openTable({
         database: WRITABLE_DB_ID,
         table: tableId,
@@ -711,7 +709,7 @@ describe("issue 17963", { tags: "@mongo" }, () => {
       { string: "> quan", field: "Quantity" },
     ]);
 
-    H.blurNativeEditor();
+    H.CustomExpressionEditor.blur();
     cy.button("Done").click();
 
     H.getNotebookStep("filter").findByText("Discount is greater than Quantity");
@@ -727,9 +725,9 @@ describe("issue 17963", { tags: "@mongo" }, () => {
 
 function typeAndSelect(arr) {
   arr.forEach(({ string, field }) => {
-    cy.get(".ace_text-input").type(string);
+    H.CustomExpressionEditor.type(string);
 
-    H.popover().contains(field).click();
+    H.CustomExpressionEditor.selectCompletion(field);
   });
 }
 
@@ -795,13 +793,13 @@ describe("issue 18207", () => {
 
   it("should be possible to group by a string expression (metabase#18207)", () => {
     H.popover().contains("Custom Expression").click();
-    H.expressionEditorWidget().within(() => {
-      H.enterCustomColumnDetails({
-        formula: "Max([Vendor])",
-        name: "LastVendor",
-      });
-      cy.findByText("Done").click();
+
+    H.enterCustomColumnDetails({
+      formula: "Max([Vendor])",
+      name: "LastVendor",
     });
+
+    H.expressionEditorWidget().button("Done").click();
 
     cy.findByTestId("aggregate-step").contains("LastVendor").should("exist");
 
@@ -827,7 +825,7 @@ describe("issue 18207", () => {
   });
 });
 
-describe("issues 11914, 18978, 18977, 23857", { tags: "@flaky" }, () => {
+describe("issues 11914, 18978, 18977, 23857", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -946,7 +944,7 @@ describe("issue 19341", () => {
     H.restore();
     H.mockSessionProperty("enable-nested-queries", false);
     cy.signInAsAdmin();
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: TEST_NATIVE_QUESTION_NAME,
       native: {
         query: "SELECT * FROM products",
@@ -969,10 +967,10 @@ describe("issue 19341", () => {
       );
       cy.findByTestId("loading-indicator").should("not.exist");
 
-      cy.findAllByTestId("result-item").then($result => {
+      cy.findAllByTestId("result-item").then(($result) => {
         const searchResults = $result.toArray();
         const modelTypes = new Set(
-          searchResults.map(k => k.getAttribute("data-model-type")),
+          searchResults.map((k) => k.getAttribute("data-model-type")),
         );
 
         expect(modelTypes).not.to.include("card");
@@ -1076,12 +1074,12 @@ describe("issue 19893", () => {
   });
 
   it.skip("should display correct join source table when joining visited questions (metabase#19893)", () => {
-    cy.createQuestion(QUESTION_1, {
+    H.createQuestion(QUESTION_1, {
       wrapId: true,
       idAlias: "questionId1",
       visitQuestion: true,
     });
-    cy.createQuestion(QUESTION_2, {
+    H.createQuestion(QUESTION_2, {
       wrapId: true,
       idAlias: "questionId2",
       visitQuestion: true,
@@ -1101,8 +1099,8 @@ describe("issue 19893", () => {
   });
 
   it.skip("should display correct join source table when joining non-visited questions (metabase#19893)", () => {
-    cy.createQuestion(QUESTION_1, { wrapId: true, idAlias: "questionId1" });
-    cy.createQuestion(QUESTION_2, { wrapId: true, idAlias: "questionId2" });
+    H.createQuestion(QUESTION_1, { wrapId: true, idAlias: "questionId1" });
+    H.createQuestion(QUESTION_2, { wrapId: true, idAlias: "questionId2" });
 
     cy.then(function () {
       const { questionId1, questionId2 } = this;
@@ -1119,7 +1117,7 @@ describe("issue 19893", () => {
 });
 
 const createQ1PlusQ2Question = (questionId1, questionId2) => {
-  return cy.createQuestion({
+  return H.createQuestion({
     name: "Q1 + Q2",
     query: {
       "source-table": `card__${questionId1}`,
@@ -1146,7 +1144,7 @@ const createQ1PlusQ2Question = (questionId1, questionId2) => {
 
 const assertQ1PlusQ2Joins = () => {
   H.getNotebookStep("join").within(() => {
-    cy.findAllByTestId("notebook-cell-item").then(items => {
+    cy.findAllByTestId("notebook-cell-item").then((items) => {
       cy.wrap(items[0]).should("contain", QUESTION_1.name);
       cy.wrap(items[1]).should("contain", QUESTION_2.name);
     });
@@ -1240,7 +1238,7 @@ describe("issue 20809", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails).then(({ body: { id } }) => {
+    H.createQuestion(questionDetails).then(({ body: { id } }) => {
       const nestedQuestion = {
         dataset_query: {
           database: SAMPLE_DB_ID,
@@ -1281,7 +1279,7 @@ describe("issue 20809", () => {
 
     cy.button("Done").click();
 
-    H.visualize(response => {
+    H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
 

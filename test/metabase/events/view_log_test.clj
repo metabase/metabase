@@ -4,12 +4,12 @@
    [java-time.api :as t]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.embed-test :as embed-test]
-   [metabase.api.public-test :as public-test]
    [metabase.events :as events]
    [metabase.events.view-log :as events.view-log]
    [metabase.http-client :as client]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.public-sharing.api-test :as public-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -183,16 +183,18 @@
   (mt/with-temp [:model/Card  {card-1-id :id} {}
                  :model/Card  {card-2-id :id} {:view_count 2}
                  :model/Table {table-id :id}  {}]
-    (t2/with-call-count [call-count]
+    (let [call-count (atom 0)
+          t2-query-orig t2/query]
       (testing "increment-view-counts!* update the view_count correctly"
-        (#'events.view-log/increment-view-counts!* [;; table-id : 1 views, card-id-1: 2 views, card-id 2: 2 views
-                                                    {:model :model/Table :id table-id}
-                                                    {:model :model/Card  :id card-1-id}
-                                                    {:model :model/Card  :id card-1-id}
-                                                    {:model :model/Card  :id card-2-id}
-                                                    {:model :model/Card  :id card-2-id}])
+        (with-redefs [t2/query (fn [& args] (swap! call-count inc) (apply t2-query-orig args))]
+          (#'events.view-log/increment-view-counts!* [;; table-id : 1 views, card-id-1: 2 views, card-id 2: 2 views
+                                                      {:model :model/Table :id table-id}
+                                                      {:model :model/Card  :id card-1-id}
+                                                      {:model :model/Card  :id card-1-id}
+                                                      {:model :model/Card  :id card-2-id}
+                                                      {:model :model/Card  :id card-2-id}]))
         (is (= 2 ;; one for update card, one for table
-               (call-count))
+               @call-count)
             "and groups db calls by frequency")
         (is (= 1 (t2/select-one-fn :view_count :model/Table table-id))
             "view_count for table-id should be 1")

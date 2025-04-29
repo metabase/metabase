@@ -62,7 +62,7 @@ export default function GaugeContainer({
   };
 
   const segmentMinMaxLabels: GaugeLabelData[] = segments
-    .flatMap(segmentDatum => {
+    .flatMap((segmentDatum) => {
       return [segmentDatum.min, segmentDatum.max];
     })
     // gauge segments could be continuous i.e. the current max and the next min is the same value.
@@ -112,7 +112,7 @@ export default function GaugeContainer({
     });
 
   const segmentLabels: GaugeLabelData[] = segments
-    .filter(segment => segment.label)
+    .filter((segment) => segment.label)
     .map((segment): GaugeLabelData => {
       const angle =
         START_ANGLE +

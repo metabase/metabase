@@ -9,7 +9,7 @@ import {
   PLUGIN_IS_PASSWORD_USER,
 } from "metabase/plugins";
 
-PLUGIN_AUTH_PROVIDERS.push(providers => {
+PLUGIN_AUTH_PROVIDERS.push((providers) => {
   const googleProvider = {
     name: "google",
     // circular dependencies
@@ -21,8 +21,8 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
     : providers;
 });
 
-PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
-  updateIn(sections, ["authentication", "settings"], settings => [
+PLUGIN_ADMIN_SETTINGS_UPDATES.push((sections) =>
+  updateIn(sections, ["authentication", "settings"], (settings) => [
     ...settings,
     {
       key: "google-auth-enabled",
@@ -33,7 +33,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
   ]),
 );
 
-PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
+PLUGIN_ADMIN_SETTINGS_UPDATES.push((sections) => ({
   ...sections,
   "authentication/google": {
     component: GoogleSettingsForm,
@@ -44,4 +44,4 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   },
 }));
 
-PLUGIN_IS_PASSWORD_USER.push(user => !user.google_auth);
+PLUGIN_IS_PASSWORD_USER.push((user) => user.sso_source !== "google");

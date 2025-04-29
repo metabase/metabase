@@ -23,14 +23,14 @@ export function MetabaseLinksToggleDescription() {
           style={{ userSelect: "none", cursor: "pointer" }}
           onClick={(event: MouseEvent) => {
             event.preventDefault();
-            setOpened(opened => !opened);
+            setOpened((opened) => !opened);
           }}
         >
           {t`Learn more`}
         </Anchor>
       </Popover.Target>
       <Popover.Dropdown>
-        <Stack p="md" spacing="sm" maw={420}>
+        <Stack p="md" gap="sm" maw={420}>
           <Text size="sm">
             {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
             {t`This affects all links in the product experience (outside of the admin panel) that point to Metabase.com URLs.`}

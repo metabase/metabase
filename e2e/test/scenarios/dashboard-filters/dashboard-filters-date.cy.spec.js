@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
@@ -35,6 +35,7 @@ describe("scenarios > dashboard > filters > date", () => {
     // Go through each of the filters and make sure they work individually
     Object.entries(DASHBOARD_DATE_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
 
         dateFilterSelector({
@@ -133,9 +134,9 @@ describe("scenarios > dashboard > filters > date", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No default").click();
-    // click on Relative dates…, to open the relative date filter type tabs
+    // click on Relative date range…, to open the relative date filter type tabs
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative dates…").click();
+    cy.findByText("Relative date range…").click();
     // choose Next, under which the new options should be available
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Next").click();

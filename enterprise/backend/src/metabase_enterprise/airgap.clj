@@ -1,13 +1,14 @@
 (ns metabase-enterprise.airgap
-  (:require [buddy.core.keys :as keys]
-            [buddy.sign.jwt :as jwt]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [java-time.api :as t]
-            [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.malli :as mu]
-            [metabase.util.malli.schema :as ms])
+  (:require
+   [buddy.core.keys :as keys]
+   [buddy.sign.jwt :as jwt]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [java-time.api :as t]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import [java.io Reader]))
 
 (set! *warn-on-reflection* true)

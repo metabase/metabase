@@ -16,11 +16,11 @@ import {
 import { data } from "./stories-data";
 
 export default {
-  title: "static-viz/ScatterPlot",
+  title: "Viz/Static Viz/ScatterPlot",
   component: StaticVisualization,
 };
 
-const Template: StoryFn<StaticChartProps> = args => {
+const Template: StoryFn<StaticChartProps> = (args) => {
   return (
     <div style={{ border: "1px solid black", display: "inline-block" }}>
       <StaticVisualization {...args} isStorybook />

@@ -13,15 +13,15 @@ import {
   NodeListItemName,
 } from "./NodeList";
 
-const MainPane = ({ databases, onClose, onItemClick }) => (
-  <SidebarContent title={t`Data Reference`} onClose={onClose}>
+const MainPane = ({ databases, onClose, onItemClick, onBack }) => (
+  <SidebarContent title={t`Data Reference`} onClose={onClose} onBack={onBack}>
     <SidebarContent.Pane>
       <p className={cx(CS.mt2, CS.mb3, CS.textSpaced)}>
         {t`Browse the contents of your databases, tables, and columns. Pick a database to get started.`}
       </p>
       <ul>
         {databases &&
-          databases.map(database => (
+          databases.map((database) => (
             <li key={database.id}>
               <NodeListItemLink
                 onClick={() => onItemClick("database", database)}
@@ -38,7 +38,8 @@ const MainPane = ({ databases, onClose, onItemClick }) => (
 
 MainPane.propTypes = {
   databases: PropTypes.array,
-  onClose: PropTypes.func.isRequired,
+  onClose: PropTypes.func,
+  onBack: PropTypes.func,
   onItemClick: PropTypes.func.isRequired,
 };
 

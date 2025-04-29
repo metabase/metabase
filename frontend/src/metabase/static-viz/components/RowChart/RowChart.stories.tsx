@@ -9,11 +9,11 @@ import {
 import RowChart, { type StaticRowChartProps } from "./RowChart";
 
 export default {
-  title: "static-viz/RowChart",
+  title: "Viz/Static Viz/RowChart",
   component: RowChart,
 };
 
-const Template: StoryFn<StaticRowChartProps> = args => {
+const Template: StoryFn<StaticRowChartProps> = (args) => {
   return <RowChart {...args} />;
 };
 

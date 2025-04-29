@@ -1,19 +1,19 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
-import { useCallback, useMemo, useState } from "react";
+import type { ReactNode, Ref } from "react";
+import { forwardRef, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import SelectList from "metabase/components/SelectList";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import type { ColorName } from "metabase/lib/colors/types";
-import { Popover } from "metabase/ui";
+import { Button, type ButtonProps, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import S from "./BaseBucketPickerPopover.module.css";
 import {
   ChevronDown,
   MoreButton,
   SelectListItem,
-  TriggerButton,
   TriggerIcon,
 } from "./BaseBucketPickerPopover.styled";
 
@@ -75,7 +75,7 @@ function _BaseBucketPickerPopover({
   );
 
   const defaultBucket = useMemo(
-    () => items.find(item => item.default)?.bucket,
+    () => items.find((item) => item.default)?.bucket,
     [items],
   );
 
@@ -112,19 +112,27 @@ function _BaseBucketPickerPopover({
     : items;
 
   return (
-    <Popover opened={isOpened} position="right" onClose={handlePopoverClose}>
+    <Popover
+      opened={isOpened}
+      position="right"
+      onClose={handlePopoverClose}
+      withinPortal={false}
+      onChange={(v) => !v && handlePopoverClose()}
+      floatingStrategy="fixed"
+    >
       <Popover.Target>
         <TriggerButton
           className={cx(classNames.root, className)}
           aria-label={triggerLabel}
           data-testid="dimension-list-item-binning"
-          onClick={event => {
+          onClick={(event) => {
             event.stopPropagation();
             setIsOpened(!isOpened);
           }}
           px="sm"
           miw="35%"
           maw="50%"
+          h="auto"
           py={0}
           variant="subtle"
           color="white"
@@ -146,7 +154,7 @@ function _BaseBucketPickerPopover({
       </Popover.Target>
       <Popover.Dropdown>
         <SelectList p="sm" miw="10rem">
-          {visibleItems.map(item => (
+          {visibleItems.map((item) => (
             <SelectListItem
               id={item.displayName}
               key={item.displayName}
@@ -191,7 +199,7 @@ function isInitiallyExpanded(
   }
 
   return (
-    items.findIndex(item => checkBucketIsSelected(item)) >=
+    items.findIndex((item) => checkBucketIsSelected(item)) >=
     initiallyVisibleItemsCount
   );
 }
@@ -206,6 +214,15 @@ export function getBucketListItem(
     bucket,
   };
 }
+
+const TriggerButton = forwardRef(function TriggerButton(
+  { className, ...props }: ButtonProps,
+  ref: Ref<HTMLButtonElement>,
+) {
+  return (
+    <Button ref={ref} className={cx(S.triggerButton, className)} {...props} />
+  );
+});
 
 export const BaseBucketPickerPopover = Object.assign(_BaseBucketPickerPopover, {
   displayName: "BucketPickerPopover",

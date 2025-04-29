@@ -1,4 +1,7 @@
-import { H } from "e2e/support";
+import xlsx from "xlsx";
+
+const { H } = cy;
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE } = SAMPLE_DATABASE;
@@ -51,7 +54,7 @@ describe("scenarios > public > question", () => {
   });
 
   it("adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)", () => {
-    cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
+    H.createNativeQuestion(questionData).then(({ body: { id } }) => {
       H.visitQuestion(id);
 
       // Make sure metadata fully loaded before we continue
@@ -67,13 +70,15 @@ describe("scenarios > public > question", () => {
       // On page load, query params are added
       cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
 
-      H.filterWidget().contains("Previous 30 Years");
+      H.filterWidget().contains("Previous 30 years");
       H.filterWidget().contains("Affiliate");
 
       cy.wait("@publicQuery");
 
       // Make sure we can download the public question (metabase#21993)
-      cy.get("@uuid").then(publicUuid => {
+      cy.get("@uuid").then((publicUuid) => {
+        H.main().realHover();
+
         H.downloadAndAssert(
           { fileType: "xlsx", questionId: id, publicUuid },
           H.assertSheetRowsCount(5),
@@ -83,7 +88,7 @@ describe("scenarios > public > question", () => {
   });
 
   it("should only allow non-admin users to see a public link if one has already been created", () => {
-    cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
+    H.createNativeQuestion(questionData).then(({ body: { id } }) => {
       H.createPublicQuestionLink(id);
       cy.signOut();
       cy.signInAsNormalUser().then(() => {
@@ -93,7 +98,7 @@ describe("scenarios > public > question", () => {
 
         cy.findByTestId("public-link-popover-content").within(() => {
           cy.findByText("Public link").should("be.visible");
-          cy.findByTestId("public-link-input").should($input => {
+          cy.findByTestId("public-link-input").should(($input) => {
             expect($input.val()).to.match(PUBLIC_QUESTION_REGEX);
           });
           cy.findByText("Remove public URL").should("not.exist");
@@ -105,7 +110,7 @@ describe("scenarios > public > question", () => {
   Object.entries(USERS).map(([userType, setUser]) =>
     describe(`${userType}`, () => {
       it("should be able to view public questions", () => {
-        cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
+        H.createNativeQuestion(questionData).then(({ body: { id } }) => {
           cy.request("POST", `/api/card/${id}/public_link`).then(
             ({ body: { uuid } }) => {
               setUser();
@@ -113,7 +118,7 @@ describe("scenarios > public > question", () => {
 
               cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
 
-              H.filterWidget().contains("Previous 30 Years");
+              H.filterWidget().contains("Previous 30 years");
               H.filterWidget().contains("Affiliate");
 
               cy.findByTestId("visualization-root").should("be.visible");
@@ -125,11 +130,11 @@ describe("scenarios > public > question", () => {
   );
 
   it("should be able to view public questions with snippets", () => {
-    H.startNewNativeQuestion({ display: "table" }).as("editor");
+    H.startNewNativeQuestion({ display: "table" });
 
     // Create a snippet
     cy.icon("snippet").click();
-    cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
+    cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
     H.modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
@@ -139,7 +144,7 @@ describe("scenarios > public > question", () => {
       cy.findByText("Save").click();
     });
 
-    cy.get("@editor").type("{moveToStart}select ");
+    H.NativeEditor.type("{moveToStart}select ");
 
     H.saveQuestion(
       "test question",
@@ -150,7 +155,7 @@ describe("scenarios > public > question", () => {
       },
     );
 
-    cy.get("@questionId").then(id => {
+    cy.get("@questionId").then((id) => {
       H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
         cy.signOut();
         cy.signInAsNormalUser().then(() => {
@@ -162,17 +167,15 @@ describe("scenarios > public > question", () => {
   });
 
   it("should be able to view public questions with card template tags", () => {
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "Nested Question",
       native: {
         query: "SELECT * FROM PEOPLE LIMIT 5",
       },
     }).then(({ body: { id } }) => {
-      H.startNewNativeQuestion({ display: "table" }).as("editor");
+      H.startNewNativeQuestion({ display: "table" });
 
-      cy.get("@editor")
-        .type("select * from {{#")
-        .type(`{leftarrow}{leftarrow}${id}`);
+      H.NativeEditor.type(`select * from {{#${id}`);
 
       H.saveQuestion(
         "test question",
@@ -182,7 +185,7 @@ describe("scenarios > public > question", () => {
           path: ["Our analytics"],
         },
       );
-      cy.get("@questionId").then(id => {
+      cy.get("@questionId").then((id) => {
         H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
           cy.signOut();
           cy.signInAsNormalUser().then(() => {
@@ -196,7 +199,48 @@ describe("scenarios > public > question", () => {
   });
 });
 
-H.describeEE("scenarios [EE] > public > question", () => {
+describe("scenarios > question > public link with extension", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createNativeQuestion(
+      {
+        name: "Question A",
+        native: {
+          query: "SELECT ID from (SELECT * FROM ORDERS LIMIT 1) as order_row",
+        },
+      },
+      {
+        visitQuestion: true,
+        wrapId: true,
+      },
+    ).as("questionId");
+  });
+
+  it("should download a json file when a public link with .json is shared", () => {
+    downloadPublicFileURL("json", (response) => {
+      expect(response.body[0]).to.deep.eq({ ID: 1 });
+    });
+  });
+
+  ["csv", "xlsx"].forEach((fileType) =>
+    it(`should download a ${fileType} file when a public link with .${fileType} is shared`, () => {
+      downloadPublicFileURL(fileType, (response) => {
+        const { SheetNames, Sheets } = xlsx.read(response.body, {
+          type: "binary",
+        });
+
+        const sheetName = SheetNames[0];
+        const sheet = Sheets[sheetName];
+        expect(sheet["A1"].v).to.eq("ID");
+        expect(sheet["A2"].v).to.eq(1);
+      });
+    }),
+  );
+});
+
+describe("scenarios [EE] > public > question", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
 
@@ -231,7 +275,7 @@ H.describeEE("scenarios [EE] > public > question", () => {
     // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
     cy.intercept("/app/locales/de.json").as("deLocale");
 
-    cy.get("@questionId").then(id => {
+    cy.get("@questionId").then((id) => {
       H.visitPublicQuestion(id, {
         params: {
           some_parameter: "some_value",
@@ -251,14 +295,38 @@ H.describeEE("scenarios [EE] > public > question", () => {
 });
 
 const visitPublicURL = () => {
-  cy.findByTestId("public-link-input").should($input => {
+  cy.findByTestId("public-link-input").should(($input) => {
     // Copied URL has no get params
     expect($input.val()).to.match(PUBLIC_QUESTION_REGEX);
   });
   cy.findByTestId("public-link-input")
     .invoke("val")
-    .then(publicURL => {
+    .then((publicURL) => {
       cy.signOut();
       cy.visit(publicURL);
     });
+};
+
+const downloadPublicFileURL = (fileType, validationCallback) => {
+  H.openSharingMenu("Create a public link");
+
+  H.popover().findByText(fileType).click();
+
+  H.popover().findByTestId("public-link-input").invoke("val").as("publicUrl");
+
+  cy.get("@publicUrl").should(
+    "match",
+    new RegExp(`\\/public\\/question\\/.*\\.${fileType}`),
+  );
+
+  cy.get("@publicUrl").then((url) => {
+    cy.request({
+      method: "GET",
+      url: url,
+      followRedirect: true,
+      encoding: "binary",
+    }).then((response) => {
+      validationCallback(response);
+    });
+  });
 };

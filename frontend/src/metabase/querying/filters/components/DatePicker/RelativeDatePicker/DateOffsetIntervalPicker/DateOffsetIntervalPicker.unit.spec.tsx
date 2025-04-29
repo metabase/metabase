@@ -4,16 +4,15 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { DATE_PICKER_UNITS } from "metabase/querying/filters/constants";
 import type {
   DatePickerUnit,
+  RelativeDatePickerValue,
   RelativeIntervalDirection,
 } from "metabase/querying/filters/types";
-
-import type { DateOffsetIntervalValue } from "../types";
 
 import { DateOffsetIntervalPicker } from "./DateOffsetIntervalPicker";
 
 function getDefaultValue(
   direction: RelativeIntervalDirection,
-): DateOffsetIntervalValue {
+): RelativeDatePickerValue {
   return {
     type: "relative",
     value: direction === "last" ? -30 : 30,
@@ -28,7 +27,7 @@ const userEvent = _userEvent.setup({
 });
 
 interface SetupOpts {
-  value: DateOffsetIntervalValue;
+  value: RelativeDatePickerValue;
   availableUnits?: DatePickerUnit[];
   submitButtonLabel?: string;
 }
@@ -62,7 +61,7 @@ describe("DateOffsetIntervalPicker", () => {
 
   describe.each<RelativeIntervalDirection>(["last", "next"])(
     "%s",
-    direction => {
+    (direction) => {
       const defaultValue = getDefaultValue(direction);
 
       it("should change the interval", async () => {
@@ -151,7 +150,7 @@ describe("DateOffsetIntervalPicker", () => {
           value: defaultValue,
         });
 
-        await userEvent.click(screen.getByLabelText("Unit"));
+        await userEvent.click(screen.getByRole("textbox", { name: "Unit" }));
         await userEvent.click(screen.getByText("years"));
 
         expect(onChange).toHaveBeenCalledWith({
@@ -168,13 +167,15 @@ describe("DateOffsetIntervalPicker", () => {
           availableUnits: ["day", "year"],
         });
 
-        await userEvent.click(screen.getByLabelText("Unit"));
+        await userEvent.click(screen.getByRole("textbox", { name: "Unit" }));
         expect(screen.getByText("days")).toBeInTheDocument();
         expect(screen.getByText("years")).toBeInTheDocument();
         expect(screen.queryByText("months")).not.toBeInTheDocument();
 
         const suffix = direction === "last" ? "ago" : "from now";
-        await userEvent.click(screen.getByLabelText("Starting from unit"));
+        await userEvent.click(
+          screen.getByRole("textbox", { name: "Starting from unit" }),
+        );
         expect(screen.getByText(`days ${suffix}`)).toBeInTheDocument();
         expect(screen.getByText(`years ${suffix}`)).toBeInTheDocument();
         expect(screen.queryByText(`months ${suffix}`)).not.toBeInTheDocument();
@@ -264,7 +265,10 @@ describe("DateOffsetIntervalPicker", () => {
         });
 
         const unitText = direction === "last" ? "years ago" : "years from now";
-        await userEvent.click(screen.getByLabelText("Starting from unit"));
+        await userEvent.click(
+          screen.getByRole("textbox", { name: "Starting from unit" }),
+        );
+
         await userEvent.click(screen.getByText(unitText));
 
         expect(onChange).toHaveBeenCalledWith({
@@ -282,13 +286,19 @@ describe("DateOffsetIntervalPicker", () => {
           },
         });
 
-        await userEvent.click(screen.getByLabelText("Starting from unit"));
+        await userEvent.click(
+          screen.getByRole("textbox", { name: "Starting from unit" }),
+        );
 
-        expect(screen.getByText(/months/)).toBeInTheDocument();
-        expect(screen.getByText(/quarters/)).toBeInTheDocument();
-        expect(screen.getByText(/years/)).toBeInTheDocument();
-        expect(screen.queryByText(/hours/)).not.toBeInTheDocument();
-        expect(screen.queryByText(/days/)).not.toBeInTheDocument();
+        expect(screen.getByText(/months (ago|from now)/)).toBeInTheDocument();
+        expect(screen.getByText(/quarters (ago|from now)/)).toBeInTheDocument();
+        expect(screen.getByText(/years (ago|from now)/)).toBeInTheDocument();
+        expect(
+          screen.queryByText(/hours (ago|from now)/),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(/days (ago|from now)/),
+        ).not.toBeInTheDocument();
       });
 
       it("should display the actual date range", () => {

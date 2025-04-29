@@ -25,7 +25,7 @@ export const ChannelCard = ({
     >
       <Flex align="center" gap="sm">
         <Icon name={iconName} c="brand" />
-        <Text weight={700} c="inherit">
+        <Text fw={700} c="inherit">
           {title}
         </Text>
       </Flex>

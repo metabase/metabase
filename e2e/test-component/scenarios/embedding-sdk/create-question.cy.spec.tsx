@@ -1,4 +1,4 @@
-import { CreateQuestion } from "@metabase/embedding-sdk-react";
+import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -7,7 +7,6 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   createQuestion,
-  describeEE,
   entityPickerModal,
   entityPickerModalTab,
   modal,
@@ -21,19 +20,19 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { Flex } from "metabase/ui";
 
-describeEE("scenarios > embedding-sdk > create-question", () => {
+describe("scenarios > embedding-sdk > interactive-question > creating a question", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
   });
 
-  it("can create a question via the CreateQuestion component", () => {
+  it("can create a question via the InteractiveQuestion component", () => {
     cy.signOut();
     mockAuthProviderAndJwtSignIn();
     cy.intercept("POST", "/api/card").as("createCard");
 
     mountSdkContent(
       <Flex p="xl">
-        <CreateQuestion />
+        <InteractiveQuestion questionId="new" />
       </Flex>,
     );
 
@@ -41,24 +40,19 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
     getSdkRoot().contains("Pick your starting data");
 
     popover().within(() => {
-      cy.findByText("Raw Data").click();
       cy.findByText("Orders").click();
     });
 
     getSdkRoot().within(() => {
-      // The question title's header should be "New question" by default.
-      cy.contains("New question");
-
-      cy.findByRole("button", { name: "Visualize" }).click();
-
-      // Should be able to go back to the editor view
-      cy.findByRole("button", { name: "Show editor" }).click();
-
-      // Should be able to visualize the question again
       cy.findByRole("button", { name: "Visualize" }).click();
 
       // Should not show a loading indicator again as the question has not changed (metabase#47564)
       cy.findByTestId("loading-indicator").should("not.exist");
+
+      // Should show a visualization after clicking "Visualize"
+      // and should not show an error message (metabase#55398)
+      cy.findByText("Question not found").should("not.exist");
+      cy.findByText("110.93").should("be.visible"); // table data
 
       // Should be able to save to a new question right away
       cy.findByRole("button", { name: "Save" }).click();
@@ -108,7 +102,7 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
 
     mountSdkContent(
       <Flex p="xl">
-        <CreateQuestion />
+        <InteractiveQuestion questionId="new" />
       </Flex>,
     );
 
@@ -116,24 +110,19 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
     getSdkRoot().contains("Pick your starting data");
 
     popover().within(() => {
-      cy.findByText("Raw Data").click();
       cy.findByText("Orders").click();
     });
 
     getSdkRoot().within(() => {
-      // The question title's header should be "New question" by default.
-      cy.findByText("New question");
-
-      cy.findByRole("button", { name: "Visualize" }).click();
-
-      // Should be able to go back to the editor view
-      cy.findByRole("button", { name: "Show editor" }).click();
-
-      // Should be able to visualize the question again
       cy.findByRole("button", { name: "Visualize" }).click();
 
       // Should not show a loading indicator again as the question has not changed (metabase#47564)
       cy.findByTestId("loading-indicator").should("not.exist");
+
+      // Should show a visualization after clicking "Visualize"
+      // and should not show an error message (metabase#55398)
+      cy.findByText("Question not found").should("not.exist");
+      cy.findByText("110.93").should("be.visible"); // table data
 
       // Should be able to save to a new question right away
       cy.findByRole("button", { name: "Save" }).click();

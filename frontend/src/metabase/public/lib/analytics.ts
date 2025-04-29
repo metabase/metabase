@@ -1,9 +1,10 @@
+import type { ExportFormatType } from "metabase/embedding/components/PublicLinkPopover/types";
 import { trackSchemaEvent } from "metabase/lib/analytics";
-import type { ExportFormatType } from "metabase/sharing/components/PublicLinkPopover/types";
 
 import type {
   DisplayTheme,
   EmbedResource,
+  EmbedResourceDownloadOptions,
   EmbedResourceType,
   EmbeddingDisplayOptions,
   EmbeddingParameterVisibility,
@@ -18,6 +19,9 @@ type Appearance = {
   bordered: boolean;
   theme: DisplayTheme;
   font: "instance" | "custom";
+  enabled_download_types: EmbedResourceDownloadOptions | null;
+
+  /** @deprecated use `enabled_download_types` instead */
   downloads: boolean | null;
 };
 
@@ -115,7 +119,8 @@ function normalizeAppearance(
     bordered: displayOptions.bordered,
     theme: displayOptions.theme ?? "light",
     font: displayOptions.font ? "custom" : "instance",
-    downloads: displayOptions.downloads,
+    enabled_download_types: displayOptions.downloads,
+    downloads: null, // `downloads` is deprecated, use `enabled_download_types` instead.
   };
 }
 

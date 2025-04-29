@@ -72,3 +72,14 @@
 .widgetStatus {
   flex: 0 0 auto;
 }
+
+.TriggerContainer {
+  padding: 0.6875rem;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.25rem;
+  cursor: pointer;
+
+  &.hasValue {
+    border-color: var(--mb-color-brand);
+  }
+}

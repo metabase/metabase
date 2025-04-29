@@ -1,5 +1,4 @@
-import { useState } from "react";
-import _ from "underscore";
+import { useEffect, useState } from "react";
 
 import { TextInput } from "metabase/ui";
 
@@ -18,13 +17,17 @@ export const ChartSettingInput = ({
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState(value);
 
+  useEffect(() => {
+    setInputValue(value);
+  }, [value]);
+
   return (
     <TextInput
       id={id}
       data-testid={id}
       placeholder={placeholder}
       value={inputValue}
-      onChange={e => setInputValue(e.target.value)}
+      onChange={(e) => setInputValue(e.target.value)}
       onBlur={() => {
         if (inputValue !== (value || "")) {
           onChange(inputValue);

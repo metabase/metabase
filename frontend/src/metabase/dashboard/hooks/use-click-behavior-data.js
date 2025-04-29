@@ -12,7 +12,7 @@ import { useStore } from "metabase/lib/redux";
 import { getUserAttributes } from "metabase/selectors/user";
 
 function createGetExtraDataForClick(store, dashcardId) {
-  return clicked => {
+  return (clicked) => {
     const state = store.getState();
     const dashboard = getDashboardComplete(state);
     const dashcard = getDashCardById(state, dashcardId);
@@ -21,16 +21,16 @@ function createGetExtraDataForClick(store, dashcardId) {
     const userAttributes = getUserAttributes(state);
 
     const entitiesByTypeAndId = _.chain(getLinkTargets(clicked.settings))
-      .groupBy(target => target.entity.name)
-      .mapObject(targets =>
+      .groupBy((target) => target.entity.name)
+      .mapObject((targets) =>
         _.chain(targets)
           .map(({ entity, entityType, entityId }) =>
             entityType === "question"
               ? entity.selectors.getObject(state, { entityId })?.card()
               : entity.selectors.getObject(state, { entityId }),
           )
-          .filter(object => object != null)
-          .indexBy(object => object.id)
+          .filter((object) => object != null)
+          .indexBy((object) => object.id)
           .value(),
       )
       .value();

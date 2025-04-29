@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { type Theme, css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { darken } from "metabase/lib/colors";
@@ -28,7 +30,7 @@ interface DataPointTableHeaderProps {
 
 export const DataPointTableHeader = styled.thead<DataPointTableHeaderProps>`
   &:after {
-    ${props => (props.hasBottomSpacing ? tableRowSpacingStyle : null)}
+    ${(props) => (props.hasBottomSpacing ? tableRowSpacingStyle : null)}
   }
 `;
 

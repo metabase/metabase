@@ -34,14 +34,14 @@ import {
   getDatabaseFocusPermissionsUrl,
 } from "../../utils/urls";
 
-const mapDispatchToProps = dispatch => ({
+const mapDispatchToProps = (dispatch) => ({
   dispatch,
   ...bindActionCreators(
     {
       updateDataPermission,
-      switchView: entityType => push(`/admin/permissions/data/${entityType}`),
+      switchView: (entityType) => push(`/admin/permissions/data/${entityType}`),
       navigateToDatabaseList: () => push(DATABASES_BASE_PATH),
-      navigateToItem: item =>
+      navigateToItem: (item) =>
         push(getDatabaseFocusPermissionsUrl(item.entityId)),
     },
     dispatch,
@@ -84,11 +84,11 @@ function DatabasesPermissionsPage({
   sidebarError,
 }) {
   const dispatch = useDispatch();
-  const permissionEditor = useSelector(state =>
+  const permissionEditor = useSelector((state) =>
     getGroupsDataPermissionEditor(state, { params }),
   );
 
-  const showSplitPermsMessage = useSelector(state =>
+  const showSplitPermsMessage = useSelector((state) =>
     getSetting(state, "show-updated-permission-banner"),
   );
 
@@ -105,7 +105,7 @@ function DatabasesPermissionsPage({
   }, [params.databaseId]);
 
   const handleEntityChange = useCallback(
-    entityType => {
+    (entityType) => {
       switchView(entityType);
     },
     [switchView],
@@ -128,7 +128,7 @@ function DatabasesPermissionsPage({
     dispatch(action.actionCreator(item.entityId, item.id, "database"));
   };
 
-  const handleBreadcrumbsItemSelect = item => dispatch(push(item.url));
+  const handleBreadcrumbsItemSelect = (item) => dispatch(push(item.url));
 
   const showLegacyNoSelfServiceWarning =
     PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&

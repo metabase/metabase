@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
@@ -8,7 +8,15 @@ import { IFRAME_CODE, getEmbeddingJsCode } from "./shared/embedding-snippets";
 
 const features = ["none", "all"];
 
-features.forEach(feature => {
+function codeBlock() {
+  return cy.get(".cm-content");
+}
+
+function highlightedTexts() {
+  return cy.findAllByTestId("highlighted-text");
+}
+
+features.forEach((feature) => {
   describe(`[tokenFeatures=${feature}] scenarios > embedding > code snippets`, () => {
     beforeEach(() => {
       H.restore();
@@ -30,7 +38,7 @@ features.forEach(feature => {
           "Insert this code snippet in your server code to generate the signed embedding URL",
         );
 
-        cy.get(".ace_content")
+        codeBlock()
           .first()
           .invoke("text")
           .should(
@@ -53,7 +61,8 @@ features.forEach(feature => {
         .and("contain", "Python")
         .and("contain", "Clojure");
 
-      cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
+      // eslint-disable-next-line no-unsafe-element-filtering
+      codeBlock().last().should("have.text", IFRAME_CODE);
 
       H.modal()
         .findAllByTestId("embed-frontend-select-button")
@@ -71,7 +80,7 @@ features.forEach(feature => {
 
         // set transparent background metabase#23477
         cy.findByText("Dashboard background").click();
-        cy.get(".ace_content")
+        codeBlock()
           .first()
           .invoke("text")
           .should(
@@ -85,9 +94,11 @@ features.forEach(feature => {
           );
 
         if (feature === "all") {
-          cy.findByText("Download buttons").click();
+          // Disable both download options
+          cy.findByText("Export to PDF").click();
+          cy.findByText("Results (csv, xlsx, json, png)").click();
 
-          cy.get(".ace_content")
+          codeBlock()
             .first()
             .invoke("text")
             .should(
@@ -99,6 +110,14 @@ features.forEach(feature => {
                 downloads: false,
               }),
             );
+
+          // Verify that switching tabs keeps the highlighted texts
+          highlightedTexts().should("have.length", 1);
+
+          cy.findByRole("tab", { name: "Parameters" }).click();
+          cy.findByRole("tab", { name: "Look and Feel" }).click();
+
+          highlightedTexts().should("have.length", 1);
         }
       });
     });
@@ -116,7 +135,7 @@ features.forEach(feature => {
           "Insert this code snippet in your server code to generate the signed embedding URL",
         );
 
-        cy.get(".ace_content")
+        codeBlock()
           .first()
           .invoke("text")
           .should(
@@ -132,9 +151,9 @@ features.forEach(feature => {
 
         // hide download button for pro/enterprise users metabase#23477
         if (feature === "all") {
-          cy.findByText("Download buttons").click();
+          cy.findByText("Download (csv, xlsx, json, png)").click();
 
-          cy.get(".ace_content")
+          codeBlock()
             .first()
             .invoke("text")
             .should(
@@ -157,6 +176,16 @@ features.forEach(feature => {
         .and("contain", "Ruby")
         .and("contain", "Python")
         .and("contain", "Clojure");
+
+      if (feature === "all") {
+        // Verify that switching tabs keeps the highlighted texts
+        highlightedTexts().should("have.length", 1);
+
+        cy.findByRole("tab", { name: "Parameters" }).click();
+        cy.findByRole("tab", { name: "Look and Feel" }).click();
+
+        highlightedTexts().should("have.length", 1);
+      }
     });
   });
 });

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { match } from "ts-pattern";
+import { c, t } from "ttag";
 
 import {
   MultiStepPopover,
@@ -14,12 +15,20 @@ import { BreakoutBadgeList } from "../BreakoutBadgeList";
 import { BreakoutPicker } from "../BreakoutPicker";
 import { type SDKBreakoutItem, useBreakoutData } from "../use-breakout-data";
 
+/**
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionBreakoutDropdownProps = Omit<
+  PopoverProps,
+  "children" | "onClose" | "opened"
+>;
+
 export const BreakoutDropdownInner = ({
   question,
   updateQuestion,
   ...popoverProps
-}: QuestionStateParams &
-  Omit<PopoverProps, "children" | "onClose" | "opened">) => {
+}: QuestionStateParams & InteractiveQuestionBreakoutDropdownProps) => {
   const items = useBreakoutData({ question, updateQuestion });
 
   const [step, setStep] = useState<MultiStepState<"picker" | "list">>(null);
@@ -27,9 +36,14 @@ export const BreakoutDropdownInner = ({
   const [selectedBreakout, setSelectedBreakout] = useState<SDKBreakoutItem>();
 
   const label = match(items.length)
-    .with(0, () => "Group")
-    .with(1, () => "1 grouping")
-    .otherwise(value => `${value} groupings`);
+    .with(0, () => t`Group`)
+    .with(1, () => t`1 grouping`)
+    .otherwise(
+      (value) =>
+        c(
+          "{0} refers to a number greater than 1 (i.e. 2 groupings, 10 groupings)",
+        ).t`${value} groupings`,
+    );
 
   const onSelectItem = (item?: SDKBreakoutItem) => {
     setSelectedBreakout(item);
@@ -80,7 +94,16 @@ export const BreakoutDropdownInner = ({
   );
 };
 
-export const BreakoutDropdown = () => {
+/**
+ * Dropdown button for the Breakout component.
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
+export const BreakoutDropdown = (
+  props: InteractiveQuestionBreakoutDropdownProps,
+) => {
   const { question, updateQuestion } = useInteractiveQuestionContext();
 
   if (!question) {
@@ -91,6 +114,7 @@ export const BreakoutDropdown = () => {
     <BreakoutDropdownInner
       question={question}
       updateQuestion={updateQuestion}
+      {...props}
     />
   );
 };

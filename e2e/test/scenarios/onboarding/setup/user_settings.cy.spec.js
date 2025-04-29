@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -175,7 +175,7 @@ describe("user > settings", () => {
 
   describe("when user is authenticated via ldap", () => {
     beforeEach(() => {
-      stubCurrentUser({ ldap_auth: true });
+      stubCurrentUser({ sso_source: "ldap" });
 
       cy.visit("/account/profile");
       cy.wait("@getUser");
@@ -189,7 +189,7 @@ describe("user > settings", () => {
 
   describe("when user is authenticated via google", () => {
     beforeEach(() => {
-      stubCurrentUser({ google_auth: true });
+      stubCurrentUser({ sso_source: "google" });
 
       cy.visit("/account/profile");
       cy.wait("@getUser");

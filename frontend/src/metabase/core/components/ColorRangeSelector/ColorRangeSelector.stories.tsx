@@ -3,16 +3,17 @@ import type { StoryFn } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
 
-import ColorRangeSelector, {
+import {
+  ColorRangeSelector,
   type ColorRangeSelectorProps,
 } from "./ColorRangeSelector";
 
 export default {
-  title: "Core/ColorRangeSelector",
+  title: "Components/Ask Before Using/ColorRangeSelector",
   component: ColorRangeSelector,
 };
 
-const Template: StoryFn<ColorRangeSelectorProps> = args => {
+const Template: StoryFn<ColorRangeSelectorProps> = (args) => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleChange = (value: string[]) => {

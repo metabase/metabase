@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { c, msgid, ngettext, t } from "ttag";
 
-import { Box, Button, Flex, Modal, Switch, Text } from "metabase/ui";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
+import { Box, Switch, Text } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 export function DeleteConfirmModal({
@@ -24,41 +25,31 @@ export function DeleteConfirmModal({
           .t`Delete ${tables.length} tables?`;
 
   return (
-    <Modal
+    <ConfirmModal
       opened={opened}
       title={
         <Text size="lg" style={{ wordBreak: "break-all" }}>
           {title}
         </Text>
       }
+      content={t`This may impact the models and questions that use the table(s) as their data source. This can't be undone.`}
+      message={
+        <Box mb="lg">
+          <Switch
+            size="sm"
+            checked={sendToTrash}
+            label={ngettext(
+              msgid`Also send all models and questions based on this table to the trash`,
+              `Also send all models and questions based on these tables to the trash`,
+              tables.length,
+            )}
+            onChange={(e) => setSendToTrash(e.target.checked)}
+          />
+        </Box>
+      }
+      confirmButtonText={t`Delete`}
+      onConfirm={() => onConfirm(sendToTrash)}
       onClose={onClose}
-      size="md"
-    >
-      <Box>
-        <Text my="lg">
-          {t`This may impact the models and questions that use the table(s) as their data source. This can't be undone.`}
-        </Text>
-      </Box>
-      <Box mb="lg">
-        <Switch
-          size="sm"
-          checked={sendToTrash}
-          label={ngettext(
-            msgid`Also send all models and questions based on this table to the trash`,
-            `Also send all models and questions based on these tables to the trash`,
-            tables.length,
-          )}
-          onChange={e => setSendToTrash(e.target.checked)}
-        />
-      </Box>
-      <Flex gap="sm" justify="flex-end">
-        <Button onClick={onClose}>{t`Cancel`}</Button>
-        <Button
-          onClick={() => onConfirm(sendToTrash)}
-          color="error"
-          variant="filled"
-        >{t`Delete`}</Button>
-      </Flex>
-    </Modal>
+    />
   );
 }

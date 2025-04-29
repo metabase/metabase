@@ -27,7 +27,9 @@ const validEntityTypes = [
 
 export type EntityType = (typeof validEntityTypes)[number];
 
-type TranslateEntityIdRequest = Partial<Record<EntityType, BaseEntityId[]>>;
+export type TranslateEntityIdRequest = Partial<
+  Record<EntityType, BaseEntityId[]>
+>;
 
 export type TranslateEntityIdResponseSuccess = {
   status: "ok";
@@ -46,8 +48,8 @@ export type TranslateEntityIdResponse = Record<
   TranslateEntityIdResponseSuccess | TranslateEntityIdResponseNotFound
 >;
 
-const entityIdApi = Api.injectEndpoints({
-  endpoints: builder => ({
+export const entityIdApi = Api.injectEndpoints({
+  endpoints: (builder) => ({
     translateEntityId: builder.query<
       TranslateEntityIdResponse,
       TranslateEntityIdRequest

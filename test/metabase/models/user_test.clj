@@ -7,21 +7,22 @@
    [metabase.db :as mdb]
    [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.http-client :as client]
-   [metabase.integrations.google]
    [metabase.models.collection :as collection]
    [metabase.models.collection-test :as collection-test]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.permissions-test :as perms-test]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
    [metabase.models.user :as user]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-test :as perms-test]
    [metabase.request.core :as request]
+   [metabase.session.core :as session]
+   [metabase.sso.init]
+   [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.integrations.ldap :as ldap.test]
    [metabase.util :as u]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
@@ -33,8 +34,8 @@
   (fixtures/initialize :test-users :notifications))
 
 (comment
-  ;; this has to be loaded for the Google Auth tests to work
-  metabase.integrations.google/keep-me)
+  ;; this has to be loaded for the Google Auth tests to work (not sure if this is still true)
+  metabase.sso.init/keep-me)
 
 ;;; Tests for permissions-set
 
@@ -212,8 +213,8 @@
   (testing (str "when you create a new user with `is_superuser` set to `true`, it should create a "
                 "PermissionsGroupMembership object")
     (mt/with-temp [:model/User user {:is_superuser true}]
-      (is (= true
-             (t2/exists? :model/PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))))))))
+      (is (true?
+           (t2/exists? :model/PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))))))))
 
 (deftest ldap-sequential-login-attributes-test
   (testing "You should be able to create a new LDAP user if some `login_attributes` are vectors (#10291)"
@@ -358,8 +359,8 @@
                (user-group-names user)))
 
         (testing "their is_superuser flag should be set to true"
-          (is (= true
-                 (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
+          (is (true?
+               (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
 
     (testing "should be able to remove someone from the Admin group"
       (mt/with-temp [:model/User user {:is_superuser true}]
@@ -379,8 +380,8 @@
           (mt/with-temp [:model/User user {:is_superuser true}]
             (u/ignore-exceptions
               (user/set-permissions-groups! user #{(perms-group/all-users) Integer/MAX_VALUE}))
-            (is (= true
-                   (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
+            (is (true?
+                 (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
 
       (testing "Invalid REMOVE operation"
         ;; Attempt to remove someone from All Users + add to a valid group at the same time -- neither should persist
@@ -411,7 +412,9 @@
     (testing "should clear out all existing Sessions"
       (mt/with-temp [:model/User {user-id :id} {}]
         (dotimes [_ 2]
-          (t2/insert! :model/Session {:id (str (random-uuid)), :user_id user-id}))
+          (t2/insert! :model/Session {:id (session/generate-session-id)
+                                      :key_hashed (session/hash-session-key (session/generate-session-key)),
+                                      :user_id user-id}))
         (letfn [(session-count [] (t2/count :model/Session :user_id user-id))]
           (is (= 2
                  (session-count)))
@@ -581,7 +584,7 @@
       (mdb/setup-db! :create-sample-content? true)
       (is (thrown-with-msg?
            Exception
-           #"Instance has not been initialized"
+           #"Metabase instance has not been initialized"
            (user/create-and-invite-user! {:first_name "John"
                                           :last_name  "Smith"
                                           :email      "john.smith@gmail.com"

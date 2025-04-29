@@ -5,11 +5,11 @@ import { useState } from "react";
 import DateWidget from "./DateWidget";
 
 export default {
-  title: "Core/DateWidget",
+  title: "Components/Ask Before Using/DateWidget",
   component: DateWidget,
 };
 
-const Template: StoryFn<typeof DateWidget> = args => {
+const Template: StoryFn<typeof DateWidget> = (args) => {
   const [value, setValue] = useState<Moment>();
   return <DateWidget {...args} value={value} onChange={setValue} />;
 };

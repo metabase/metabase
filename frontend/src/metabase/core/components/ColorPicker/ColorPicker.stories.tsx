@@ -6,11 +6,11 @@ import { color } from "metabase/lib/colors";
 import ColorPicker from "./ColorPicker";
 
 export default {
-  title: "Core/ColorPicker",
+  title: "Components/ColorPicker",
   component: ColorPicker,
 };
 
-const Template: StoryFn<typeof ColorPicker> = args => {
+const Template: StoryFn<typeof ColorPicker> = (args) => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleChange = (value?: string) => {

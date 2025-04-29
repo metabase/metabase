@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 import * as DateFilter from "./helpers/e2e-date-filter-helpers";
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";

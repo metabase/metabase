@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { alpha } from "metabase/lib/colors";
@@ -18,6 +19,6 @@ export const LargeIconContainer = styled.div<{
   height: 4rem;
   width: 4rem;
   border-radius: 50%;
-  background: ${props => alpha(props.color, 0.15)};
-  color: ${props => props.color};
+  background: ${(props) => alpha(props.color, 0.15)};
+  color: ${(props) => props.color};
 `;

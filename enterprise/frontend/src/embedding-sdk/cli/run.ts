@@ -2,12 +2,14 @@ import {
   addDatabaseConnectionStep,
   askForTenancyColumns,
   askIfHasDatabase,
+  checkIfDockerContainerExists,
   checkIfReactProject,
   checkIsDockerRunning,
   checkSdkAvailable,
   createApiKey,
   createModelsAndXrays,
   generateCredentials,
+  generateCredentialsFile,
   generateExpressServerFile,
   generateReactComponentFiles,
   pickDatabaseTables,
@@ -29,15 +31,20 @@ export const CLI_STEPS: CliStepConfig[] = [
   { id: "checkIfReactProject", executeStep: checkIfReactProject },
   { id: "checkSdkAvailable", executeStep: checkSdkAvailable },
   { id: "checkIsDockerRunning", executeStep: checkIsDockerRunning },
-  { id: "askIfHasDatabase", executeStep: askIfHasDatabase },
+  {
+    id: "checkIfDockerContainerExists",
+    executeStep: checkIfDockerContainerExists,
+  },
   { id: "generateCredentials", executeStep: generateCredentials },
   {
     id: "startLocalMetabaseContainer",
     executeStep: startLocalMetabaseContainer,
   },
+  { id: "generateCredentialsFile", executeStep: generateCredentialsFile },
   { id: "pollMetabaseInstance", executeStep: pollMetabaseInstance },
   { id: "setupMetabaseInstance", executeStep: setupMetabaseInstance },
   { id: "createApiKey", executeStep: createApiKey },
+  { id: "askIfHasDatabase", executeStep: askIfHasDatabase },
   { id: "addDatabaseConnection", executeStep: addDatabaseConnectionStep },
   { id: "pickDatabaseTables", executeStep: pickDatabaseTables },
   { id: "createModelsAndXrays", executeStep: createModelsAndXrays },
@@ -48,14 +55,15 @@ export const CLI_STEPS: CliStepConfig[] = [
   {
     id: "askForTenancyColumns",
     executeStep: askForTenancyColumns,
-    runIf: hasValidLicense,
+    runIf: (state) => !state.useSampleDatabase && hasValidLicense(state),
   },
   {
     id: "setupPermissions",
     executeStep: setupPermissions,
 
     // We need at least one table with a tenancy column to set up sandboxing.
-    runIf: state =>
+    runIf: (state) =>
+      !state.useSampleDatabase &&
       hasValidLicense(state) &&
       Object.keys(state.tenancyColumnNames ?? {}).length > 0,
   },

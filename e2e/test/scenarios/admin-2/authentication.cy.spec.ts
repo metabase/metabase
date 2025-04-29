@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 import { setupSaml } from "./sso/shared/helpers.js";
 
@@ -11,8 +11,6 @@ describe("scenarios > admin > settings > authentication", () => {
   describe("page layout", () => {
     describe("oss", { tags: "@OSS" }, () => {
       it("should implement a tab layout for oss customers", () => {
-        H.onlyOnOSS();
-
         cy.visit("/admin/settings/authentication");
 
         cy.log(
@@ -35,7 +33,7 @@ describe("scenarios > admin > settings > authentication", () => {
       });
     });
 
-    H.describeEE("ee", () => {
+    describe("ee", () => {
       it("should implement a tab layout for enterprise customers", () => {
         H.setTokenFeatures("all");
 
@@ -78,7 +76,6 @@ describe("scenarios > admin > settings > user provisioning", () => {
 
   describe("oss", { tags: "@OSS" }, () => {
     it("user provisioning page should not be availble for OSS customers", () => {
-      H.onlyOnOSS();
       cy.visit("/admin/settings/authentication/user-provisioning");
       H.main().within(() => {
         cy.findByText("We're a little lost...");
@@ -86,7 +83,7 @@ describe("scenarios > admin > settings > user provisioning", () => {
     });
   });
 
-  H.describeEE("scim settings management", () => {
+  describe("scim settings management", () => {
     beforeEach(() => {
       H.setTokenFeatures("all");
     });
@@ -125,7 +122,7 @@ describe("scenarios > admin > settings > user provisioning", () => {
         // save to compare with masked token
         scimTokenInput()
           .invoke("val")
-          .then(val => (initialUnmaskedToken = String(val)));
+          .then((val) => (initialUnmaskedToken = String(val)));
         cy.findAllByRole("button", { name: /Done/ }).click();
       });
 
@@ -141,7 +138,9 @@ describe("scenarios > admin > settings > user provisioning", () => {
         .invoke("val")
         .should("contain", "mb_")
         .should("contain", "****************************************")
-        .then(val => expect(val).to.contain(initialUnmaskedToken.slice(0, 7)));
+        .then((val) =>
+          expect(val).to.contain(initialUnmaskedToken.slice(0, 7)),
+        );
 
       cy.log("should be able to regenerate a token");
       cy.findByRole("button", { name: /Regenerate/ }).click();
@@ -158,7 +157,7 @@ describe("scenarios > admin > settings > user provisioning", () => {
           .invoke("val")
           .should("not.contain", "Loading")
           .should("not.contain", "****************************************")
-          .then(val => (regeneratedToken = String(val)));
+          .then((val) => (regeneratedToken = String(val)));
         cy.findByRole("button", { name: /Done/ }).click();
       });
 
@@ -166,7 +165,7 @@ describe("scenarios > admin > settings > user provisioning", () => {
         .invoke("val")
         .should("contain", "mb_")
         .should("contain", "****************************************")
-        .then(val => expect(val).to.contain(regeneratedToken.slice(0, 7)));
+        .then((val) => expect(val).to.contain(regeneratedToken.slice(0, 7)));
 
       cy.log("should be able to cancel regenerating a token");
       cy.findByRole("button", { name: /Regenerate/ }).click();
@@ -181,7 +180,7 @@ describe("scenarios > admin > settings > user provisioning", () => {
         .invoke("val")
         .should("contain", "mb_")
         .should("contain", "****************************************")
-        .then(val => expect(val).to.contain(regeneratedToken.slice(0, 7)));
+        .then((val) => expect(val).to.contain(regeneratedToken.slice(0, 7)));
 
       cy.log("should be able to disable scim and info stay");
       scimToggle().click();
@@ -240,7 +239,7 @@ describe("scenarios > admin > settings > user provisioning", () => {
         "should show error when scim token fails to generate when scim is enabled",
       );
       // enable scim and stop mocking get scim api key request
-      cy.intercept("GET", "/api/ee/scim/api_key", req => {
+      cy.intercept("GET", "/api/ee/scim/api_key", (req) => {
         req.continue();
       });
       cy.request("PUT", "api/setting/scim-enabled", { value: true });

@@ -2,7 +2,6 @@
 import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import Button from "metabase/core/components/Button";
@@ -14,7 +13,7 @@ import Question from "metabase-lib/v1/Question";
 
 const PREVIEW_ROWS_LIMIT = 10;
 
-const getPreviewQuestion = step => {
+const getPreviewQuestion = (step) => {
   const { previewQuery, stageIndex } = step;
   const limit = Lib.currentLimit(previewQuery, stageIndex);
   const hasSuitableLimit = limit !== null && limit <= PREVIEW_ROWS_LIMIT;

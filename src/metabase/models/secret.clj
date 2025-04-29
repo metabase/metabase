@@ -119,6 +119,28 @@
     (reduce-kv reduce-fn db-details (secret-conn-props-by-name driver))
     db-details))
 
+(defn- bytes-without-uri-encoding
+  [value conn-prop]
+  (let [is-bytes? (bytes? value)
+        is-string? (string? value)
+        treatment (get conn-prop :treatment "base64")
+        str-value (cond
+                    is-bytes? (u/bytes-to-string value)
+                    is-string? value)]
+    (cond
+      (and str-value
+           (= "base64" treatment)
+           (re-find uploaded-base-64-prefix-pattern str-value))
+      (-> str-value
+          (str/replace-first uploaded-base-64-prefix-pattern "")
+          u/decode-base64-to-bytes)
+
+      is-string?
+      (u/string-to-bytes value)
+
+      :else
+      value)))
+
 (defn- secret-map-from-details
   "Returns a canonical secret-map containing `:source` and `:value` based solely on `:details`
    When `:details` comes from the client, it may contain updated values for a secret.
@@ -135,16 +157,9 @@
   [details conn-prop]
   (let [kws (->possible-secret-property-names (:name conn-prop))
         value (when-let [^String value (get details (:value kws))]
-                (let [data-uri? (re-find uploaded-base-64-prefix-pattern value)
-                      secret-props (m/index-by (comp keyword :name) (driver.u/expand-secret-conn-prop conn-prop))
-                      treatment (get-in secret-props [(:value kws) :treat-before-posting] "base64")]
-                  (if (and data-uri? (= treatment "base64"))
-                    (-> value
-                        (str/replace-first uploaded-base-64-prefix-pattern "")
-                        u/decode-base64-to-bytes)
-                    (u/string-to-bytes value))))
-        has-path? (contains? details (:path kws))
+                (bytes-without-uri-encoding value conn-prop))
         has-value? (contains? details (:value kws))
+        has-path? (contains? details (:path kws))
         options (get details (:options kws))
         path (get details (:path kws))
         path-map (when has-path?
@@ -167,8 +182,10 @@
               (tru "{0} (a local file path) cannot be used in Metabase hosted environment" (:path kws))
               {:invalid-db-details-entry (select-keys details [(:path kws)])})))
 
-    ;; If the client sent us back protected-password then it should be ignored and value loaded from Secret.
-    (when (and secret-map (not= (:value secret-map) protected-password))
+    (when (and secret-map
+               ;; If the client sent us back protected-password then it should be ignored and value loaded from Secret.
+               (not= (seq (:value secret-map))
+                     (seq (codecs/to-bytes protected-password))))
       (update secret-map :value #(some-> % codecs/to-bytes)))))
 
 (defn- resolve-secret-map
@@ -188,6 +205,8 @@
         result-source (:source result)]
     (when (:value result)
       (cond-> result
+        ;; Fix legacy double encoding stored in secret
+        secret-id (update :value bytes-without-uri-encoding conn-prop)
         ;; Normalizes legacy
         (not result-source) (assoc :source :uploaded)))))
 

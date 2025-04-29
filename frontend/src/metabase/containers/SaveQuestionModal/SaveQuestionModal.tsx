@@ -1,6 +1,4 @@
-import _ from "underscore";
-
-import { skipToken, useGetDashboardQuery } from "metabase/api";
+import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import {
   LLMSuggestionQuestionInfo,
   SaveQuestionForm,
@@ -21,23 +19,16 @@ export const SaveQuestionModal = ({
   question,
   closeOnSuccess,
   initialCollectionId,
-  saveToCollectionId,
+  targetCollection,
   ...modalProps
 }: SaveQuestionModalProps) => {
-  const saveToDashboardId = question.dashboardId();
-  const { data: saveToDashboard } = useGetDashboardQuery(
-    saveToDashboardId ? { id: saveToDashboardId } : skipToken,
-  );
-
-  const initialDashboardTabId =
-    _.first(saveToDashboard?.tabs || [])?.id ?? null;
-
+  useEscapeToCloseModal(modalProps.onClose);
   return (
     <SaveQuestionProvider
       question={question}
       originalQuestion={originalQuestion}
-      onCreate={async question => {
-        const newQuestion = await onCreate(question);
+      onCreate={async (question, options) => {
+        const newQuestion = await onCreate(question, options);
 
         if (closeOnSuccess) {
           modalProps.onClose();
@@ -48,10 +39,9 @@ export const SaveQuestionModal = ({
       onSave={onSave}
       multiStep={multiStep}
       initialCollectionId={initialCollectionId}
-      saveToCollectionId={saveToCollectionId}
-      initialDashboardTabId={initialDashboardTabId}
+      targetCollection={targetCollection}
     >
-      <Modal.Root padding="2.5rem" {...modalProps}>
+      <Modal.Root padding="2.5rem" {...modalProps} closeOnEscape={false}>
         <Modal.Overlay />
         <Modal.Content data-testid="save-question-modal">
           <Modal.Header>
@@ -65,7 +55,6 @@ export const SaveQuestionModal = ({
           </Modal.Header>
           <Modal.Body>
             <SaveQuestionForm
-              saveToDashboard={saveToDashboard}
               onSaveSuccess={() => closeOnSuccess && modalProps.onClose()}
               onCancel={modalProps.onClose}
             />

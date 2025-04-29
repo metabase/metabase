@@ -32,15 +32,15 @@ export function momentifyTimestamps(
 }
 
 export function momentifyObjectsTimestamps(objects, keys) {
-  return _.mapObject(objects, o => momentifyTimestamps(o, keys));
+  return _.mapObject(objects, (o) => momentifyTimestamps(o, keys));
 }
 
 export function momentifyArraysTimestamps(array, keys) {
-  return _.map(array, o => momentifyTimestamps(o, keys));
+  return _.map(array, (o) => momentifyTimestamps(o, keys));
 }
 
 // turns into id indexed map
-export const resourceListToMap = resources =>
+export const resourceListToMap = (resources) =>
   resources.reduce(
     (map, resource) => ({ ...map, [resource.id]: resource }),
     {},
@@ -64,7 +64,7 @@ export const fetchData = async ({
     !reload &&
     existingData &&
     properties &&
-    _.all(properties, p => existingData[p] !== undefined)
+    _.all(properties, (p) => existingData[p] !== undefined)
   ) {
     return existingData;
   }
@@ -120,7 +120,7 @@ export const updateData = async ({
     const data = await queryPromise;
     dispatch(setRequestLoaded(statePath, queryKey));
 
-    (dependentRequestStatePaths || []).forEach(statePath =>
+    (dependentRequestStatePaths || []).forEach((statePath) =>
       dispatch(setRequestUnloaded(statePath)),
     );
 
@@ -191,7 +191,7 @@ export const formDomOnlyProps = ({
  * Decorator for turning a payload creator or thunk (including one returning a promise) into a flux standard action
  */
 export function withAction(actionType) {
-  return payloadOrThunkCreator => {
+  return (payloadOrThunkCreator) => {
     function newCreator(...args) {
       const payloadOrThunk = payloadOrThunkCreator(...args);
       if (typeof payloadOrThunk === "function") {
@@ -223,7 +223,7 @@ export function withAction(actionType) {
  */
 export function withRequestState(getRequestStatePath, getQueryKey) {
   // thunk decorator:
-  return thunkCreator =>
+  return (thunkCreator) =>
     // thunk creator:
     (...args) =>
     // thunk:
@@ -274,7 +274,7 @@ function withCachedData(
   getQueryKey,
 ) {
   // thunk decorator:
-  return thunkCreator =>
+  return (thunkCreator) =>
     // thunk creator:
     (...args) =>
       // thunk:
@@ -297,7 +297,7 @@ function withCachedData(
         const hasRequestedProperties =
           properties &&
           existingData &&
-          _.all(properties, p => existingData[p] !== undefined);
+          _.all(properties, (p) => existingData[p] !== undefined);
 
         // return existing data if
         if (
@@ -336,7 +336,7 @@ function withCachedData(
 }
 
 export function withNormalize(schema) {
-  return thunkCreator =>
+  return (thunkCreator) =>
     (...args) =>
     async (dispatch, getState) =>
       normalize(await thunkCreator(...args)(dispatch, getState), schema);

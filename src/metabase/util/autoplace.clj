@@ -2,7 +2,8 @@
   "NOTE: It's not SUPER high impact if it falls out of sync - hopefully both will place things in a reasonable spot - but
   ideally this namespace should be kept in sync with
   [the frontend version](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dashboard_grid.js)."
-  (:require [metabase.models.dashboard.constants :as dashboard.constants]))
+  (:require
+   [metabase.models.dashboard.constants :as dashboard.constants]))
 
 (def ^:constant default-grid-width
   "The default grid width."
@@ -40,15 +41,15 @@
                                     width
                                     height
                                     default-grid-width)))
-  ([cards size_x size_y grid-width]
+  ([cards size-x size-y grid-width]
    (let [dashboard-tab-id (:dashboard_tab_id (first cards))]
      (first
       (for [row (range 1000)
-            col (range (inc (- grid-width size_x)))
+            col (range (inc (- grid-width size-x)))
             :let [this-card {:col col
                              :row row
-                             :size_x size_x
-                             :size_y size_y
+                             :size_x size-x
+                             :size_y size-y
                              :dashboard_tab_id dashboard-tab-id}]
             :when (not (intersects-with-any-card? cards this-card))]
         this-card)))))

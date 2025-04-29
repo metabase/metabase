@@ -23,7 +23,7 @@ export const UserListElement = ({
     variant="subtle"
     bg={isSelected ? "brand" : undefined}
   >
-    <Text weight={700} color={isSelected ? "brand" : undefined} truncate>
+    <Text fw={700} color={isSelected ? "brand" : undefined} truncate>
       {value.common_name}
     </Text>
   </UserElement>

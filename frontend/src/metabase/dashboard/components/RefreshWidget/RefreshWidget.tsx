@@ -9,13 +9,48 @@ import { RefreshWidgetTarget } from "./RefreshWidgetTarget";
 const toSeconds = (minutes: number) => minutes * 60;
 
 const OPTIONS = [
-  { name: t`Off`, period: null },
-  { name: t`1 minute`, period: toSeconds(1) },
-  { name: t`5 minutes`, period: toSeconds(5) },
-  { name: t`10 minutes`, period: toSeconds(10) },
-  { name: t`15 minutes`, period: toSeconds(15) },
-  { name: t`30 minutes`, period: toSeconds(30) },
-  { name: t`60 minutes`, period: toSeconds(60) },
+  {
+    get name() {
+      return t`Off`;
+    },
+    period: null,
+  },
+  {
+    get name() {
+      return t`1 minute`;
+    },
+    period: toSeconds(1),
+  },
+  {
+    get name() {
+      return t`5 minutes`;
+    },
+    period: toSeconds(5),
+  },
+  {
+    get name() {
+      return t`10 minutes`;
+    },
+    period: toSeconds(10),
+  },
+  {
+    get name() {
+      return t`15 minutes`;
+    },
+    period: toSeconds(15),
+  },
+  {
+    get name() {
+      return t`30 minutes`;
+    },
+    period: toSeconds(30),
+  },
+  {
+    get name() {
+      return t`60 minutes`;
+    },
+    period: toSeconds(60),
+  },
 ];
 
 export const RefreshWidget = ({
@@ -57,7 +92,7 @@ export const RefreshWidget = ({
             c="text-medium"
           >{t`Auto Refresh`}</Box>
           <ul>
-            {OPTIONS.map(option => (
+            {OPTIONS.map((option) => (
               <RefreshOption
                 key={option.period}
                 name={option.name}

@@ -11,11 +11,11 @@ import {
 } from "metabase/static-viz/components/Gauge/stories-data";
 
 export default {
-  title: "static-viz/Gauge",
+  title: "Viz/Static Viz/Gauge",
   component: GaugeContainer,
 };
 
-const Template: StoryFn<GaugeContainerProps> = args => {
+const Template: StoryFn<GaugeContainerProps> = (args) => {
   return <GaugeContainer {...args} />;
 };
 

@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import _ from "underscore";
 
 import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
@@ -54,7 +53,7 @@ export function QuestionActivityTimeline({
     <Timeline
       events={events}
       data-testid="saved-question-history-list"
-      revert={revision => dispatch(revertToRevision(revision))}
+      revert={(revision) => dispatch(revertToRevision(revision))}
       canWrite={question.canWrite()}
     />
   );

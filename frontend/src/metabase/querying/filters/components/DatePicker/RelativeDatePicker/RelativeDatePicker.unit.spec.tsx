@@ -10,7 +10,9 @@ import type {
 import { RelativeDatePicker } from "./RelativeDatePicker";
 
 const TABS = ["Previous", "Current", "Next"];
-const TAB_CASES = TABS.flatMap(fromTab => TABS.map(toTab => [fromTab, toTab]));
+const TAB_CASES = TABS.flatMap((fromTab) =>
+  TABS.map((toTab) => [fromTab, toTab]),
+);
 
 interface SetupOpts {
   value?: RelativeDatePickerValue;
@@ -88,7 +90,7 @@ describe("RelativeDatePicker", () => {
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
-      value: "current",
+      value: 0,
       unit: "week",
     });
   });

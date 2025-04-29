@@ -9,6 +9,42 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
+import {
+  addCardToDashboard,
+  addHeadingDashCardToDashboard,
+  addLinkDashCardToDashboard,
+  addMarkdownDashCardToDashboard,
+  cancelFetchDashboardCardData,
+  closeDashboard,
+  closeSidebar,
+  fetchDashboard,
+  fetchDashboardCardData,
+  hideAddParameterPopover,
+  initialize,
+  navigateToNewCardFromDashboard,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardColumnSettings,
+  onUpdateDashCardVisualizationSettings,
+  removeParameter,
+  reset,
+  setDashboardAttributes,
+  setEditingDashboard,
+  setParameterDefaultValue,
+  setParameterFilteringParameters,
+  setParameterIsMultiSelect,
+  setParameterName,
+  setParameterQueryType,
+  setParameterRequired,
+  setParameterSourceConfig,
+  setParameterSourceType,
+  setParameterTemporalUnits,
+  setParameterType,
+  setSharing,
+  setSidebar,
+  showAddParameterPopover,
+  toggleSidebar,
+  updateDashboardAndCards,
+} from "metabase/dashboard/actions";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
 import {
@@ -35,7 +71,6 @@ import {
 import type { DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import * as dashboardActions from "../../actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 import {
   getClickBehaviorSidebarDashcard,
@@ -96,9 +131,40 @@ const mapStateToProps = (state: State) => {
 };
 
 const mapDispatchToProps = {
-  ...dashboardActions,
+  initialize,
+  cancelFetchDashboardCardData,
+  addCardToDashboard,
+  addHeadingDashCardToDashboard,
+  addMarkdownDashCardToDashboard,
+  addLinkDashCardToDashboard,
+  setEditingDashboard,
+  setDashboardAttributes,
+  setSharing,
+  toggleSidebar,
+  closeSidebar,
   closeNavbar,
   setErrorPage,
+  setParameterName,
+  setParameterType,
+  navigateToNewCardFromDashboard,
+  setParameterDefaultValue,
+  setParameterRequired,
+  setParameterTemporalUnits,
+  setParameterIsMultiSelect,
+  setParameterQueryType,
+  setParameterSourceType,
+  setParameterSourceConfig,
+  setParameterFilteringParameters,
+  showAddParameterPopover,
+  removeParameter,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardVisualizationSettings,
+  onUpdateDashCardColumnSettings,
+  updateDashboardAndCards,
+  setSidebar,
+  hideAddParameterPopover,
+  fetchDashboard,
+  fetchDashboardCardData,
   onChangeLocation: push,
 };
 
@@ -118,15 +184,60 @@ const DashboardApp = (props: DashboardAppProps) => {
     isDirty,
     route,
     router,
-  } = props;
-
-  const {
     documentTitle: _documentTitle,
     isRunning: _isRunning,
     isLoadingComplete: _isLoadingComplete,
-    children,
     location,
-    ...dashboardProps
+    canManageSubscriptions,
+    isAdmin,
+    isNavbarOpen,
+    isSharing,
+    dashboardBeforeEditing,
+    isEditingParameter,
+    slowCards,
+    parameterValues,
+    loadingStartTime,
+    clickBehaviorSidebarDashcard,
+    isAddParameterPopoverOpen,
+    sidebar,
+    isHeaderVisible,
+    isAdditionalInfoVisible,
+    selectedTabId,
+    isNavigatingBackToDashboard,
+    initialize,
+    cancelFetchDashboardCardData,
+    addCardToDashboard,
+    addHeadingDashCardToDashboard,
+    addMarkdownDashCardToDashboard,
+    addLinkDashCardToDashboard,
+    setEditingDashboard,
+    setDashboardAttributes,
+    setSharing,
+    toggleSidebar,
+    closeSidebar,
+    closeNavbar,
+    setErrorPage,
+    setParameterName,
+    setParameterType,
+    navigateToNewCardFromDashboard,
+    setParameterDefaultValue,
+    setParameterRequired,
+    setParameterTemporalUnits,
+    setParameterIsMultiSelect,
+    setParameterQueryType,
+    setParameterSourceType,
+    setParameterSourceConfig,
+    setParameterFilteringParameters,
+    showAddParameterPopover,
+    removeParameter,
+    onReplaceAllDashCardVisualizationSettings,
+    onUpdateDashCardVisualizationSettings,
+    onUpdateDashCardColumnSettings,
+    updateDashboardAndCards,
+    setSidebar,
+    hideAddParameterPopover,
+    fetchDashboard,
+    fetchDashboardCardData,
   } = props;
 
   const parameterQueryParams = location.query;
@@ -141,8 +252,8 @@ const DashboardApp = (props: DashboardAppProps) => {
   const { requestPermission, showNotification } = useWebNotification();
 
   useUnmount(() => {
-    dispatch(dashboardActions.reset());
-    dispatch(dashboardActions.closeDashboard());
+    dispatch(reset());
+    dispatch(closeDashboard());
   });
 
   const slowToastId = useUniqueId();
@@ -218,11 +329,7 @@ const DashboardApp = (props: DashboardAppProps) => {
 
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
-      <DashboardLeaveConfirmationModal
-        route={route}
-        isDirty={isDirty}
-        isEditing={isEditing}
-      />
+      <DashboardLeaveConfirmationModal route={route} />
       <Dashboard
         dashboardId={dashboardId}
         editingOnLoad={editingOnLoad}
@@ -238,7 +345,63 @@ const DashboardApp = (props: DashboardAppProps) => {
         onFullscreenChange={onFullscreenChange}
         onRefreshPeriodChange={onRefreshPeriodChange}
         parameterQueryParams={parameterQueryParams}
-        {...dashboardProps}
+        canManageSubscriptions={canManageSubscriptions}
+        isAdmin={isAdmin}
+        isNavbarOpen={isNavbarOpen}
+        isEditing={isEditing}
+        isSharing={isSharing}
+        dashboardBeforeEditing={dashboardBeforeEditing}
+        isEditingParameter={isEditingParameter}
+        isDirty={isDirty}
+        dashboard={dashboard}
+        slowCards={slowCards}
+        parameterValues={parameterValues}
+        loadingStartTime={loadingStartTime}
+        clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
+        isAddParameterPopoverOpen={isAddParameterPopoverOpen}
+        sidebar={sidebar}
+        isHeaderVisible={isHeaderVisible}
+        isAdditionalInfoVisible={isAdditionalInfoVisible}
+        selectedTabId={selectedTabId}
+        isNavigatingBackToDashboard={isNavigatingBackToDashboard}
+        initialize={initialize}
+        cancelFetchDashboardCardData={cancelFetchDashboardCardData}
+        addCardToDashboard={addCardToDashboard}
+        addHeadingDashCardToDashboard={addHeadingDashCardToDashboard}
+        addMarkdownDashCardToDashboard={addMarkdownDashCardToDashboard}
+        addLinkDashCardToDashboard={addLinkDashCardToDashboard}
+        setEditingDashboard={setEditingDashboard}
+        setDashboardAttributes={setDashboardAttributes}
+        setSharing={setSharing}
+        toggleSidebar={toggleSidebar}
+        closeSidebar={closeSidebar}
+        closeNavbar={closeNavbar}
+        setErrorPage={setErrorPage}
+        setParameterName={setParameterName}
+        setParameterType={setParameterType}
+        navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
+        setParameterDefaultValue={setParameterDefaultValue}
+        setParameterRequired={setParameterRequired}
+        setParameterTemporalUnits={setParameterTemporalUnits}
+        setParameterIsMultiSelect={setParameterIsMultiSelect}
+        setParameterQueryType={setParameterQueryType}
+        setParameterSourceType={setParameterSourceType}
+        setParameterSourceConfig={setParameterSourceConfig}
+        setParameterFilteringParameters={setParameterFilteringParameters}
+        showAddParameterPopover={showAddParameterPopover}
+        removeParameter={removeParameter}
+        onReplaceAllDashCardVisualizationSettings={
+          onReplaceAllDashCardVisualizationSettings
+        }
+        onUpdateDashCardVisualizationSettings={
+          onUpdateDashCardVisualizationSettings
+        }
+        onUpdateDashCardColumnSettings={onUpdateDashCardColumnSettings}
+        updateDashboardAndCards={updateDashboardAndCards}
+        setSidebar={setSidebar}
+        hideAddParameterPopover={hideAddParameterPopover}
+        fetchDashboard={fetchDashboard}
+        fetchDashboardCardData={fetchDashboardCardData}
       />
       {/* For rendering modal urls */}
       {props.children}

@@ -26,7 +26,7 @@ export const MetricFilterControls = ({
 }: MetricFilterControlsProps) => {
   const areAnyFiltersActive = Object.values(metricFilters).some(Boolean);
 
-  const [_, setUserSetting] = useUserSetting(USER_SETTING_KEY);
+  const [_userSetting, setUserSetting] = useUserSetting(USER_SETTING_KEY);
 
   const handleVerifiedFilterChange = useCallback(
     function (evt: ChangeEvent<HTMLInputElement>) {
@@ -54,10 +54,7 @@ export const MetricFilterControls = ({
       <Popover.Dropdown p="lg">
         <Switch
           label={
-            <Text
-              align="end"
-              weight="bold"
-            >{t`Show verified metrics only`}</Text>
+            <Text ta="end" fw="bold">{t`Show verified metrics only`}</Text>
           }
           role="switch"
           checked={Boolean(metricFilters.verified)}

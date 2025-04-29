@@ -12,6 +12,7 @@
    [metabase.lib.test-util.generators.filters :as gen.filters]
    [metabase.lib.test-util.generators.util :as gen.u]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.test.util.random :as tu.rng]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -59,6 +60,12 @@
 ;; - The context contains a stack of previous queries, so we can (with some probability) pop back up that stack to
 ;;   abandon a branch we've been exploring and try something else.
 
+(def sane-iterations-limit
+  "There are circumstances where only a single random query is needed. The [[random-queries-from]] is used to
+  generate sequence of queries of growing complexity. This constant is used to clamp number of operations in caller's
+  code. It's made up; subject to change with further development."
+  40)
+
 (defn- step-key [[op]]
   op)
 
@@ -94,9 +101,9 @@
 (defn- choose-stage
   "Chooses a stage to operator on. 80% act on -1, 20% chooses a stage by index (which might be the last stage)."
   [query]
-  (if (< (rand) 0.8)
+  (if (< (tu.rng/rand) 0.8)
     -1
-    (rand-int (count (:stages query)))))
+    (tu.rng/rand-int (count (:stages query)))))
 
 (def ^:private ^:dynamic *safe-for-old-refs*
   "Controls whether the generators will construct queries with things like multiple joins to the same table, which
@@ -192,7 +199,7 @@
         (testing "freshly added breakout columns"
           (is (= false (breakout-exists? before stage-number column))
               "are not present before")
-          (is (= true  (breakout-exists? after  stage-number column))
+          (is (true?  (breakout-exists? after  stage-number column))
               "are present after")
           (testing "go at the end of the list"
             (is (= (count after-breakouts)
@@ -331,20 +338,36 @@
 (add-step {:kind   :join
            :weight 30})
 
+(def ^:dynamic *available-cards*
+  "To be bound to cards available for use by generator in joins.
+
+  Cards should have a format of `:lib/type :metadata/card`, as returned eg. from [[metabase.lib.metadata/card]].
+
+  Currently modified only in [[metabase.test.util.generators.jvm/with-random-cards]], hence available only in jvm tests
+  at the moment."
+  [])
+
 (defmethod next-steps* :join [query _join]
   (let [stage-number        (choose-stage query)
         strategy            (gen.u/weighted-choice {:left-join  80
                                                     :inner-join 10
-                                                    :right-join 5
-                                                    :full-join  5})
-        ;; TODO: Explicit joins against cards are possible, but we don't have cards yet.
-        condition-space     (for [table (lib.metadata/tables query)
-                                  :let [conditions (lib/suggested-join-conditions query stage-number table)]
-                                  :when (seq conditions)]
-                              [table conditions])]
+                                                    :right-join 10
+                                                    ;; TODO: Make the following driver dependent? Temporarily suppressed
+                                                    ;;       to enable testing with h2.
+                                                    #_#_:full-join  5})
+        ;; TODO: Cards: Does it make sense to generate reasonable conditions for cards? (same type columns?)
+        condition-space     (concat (for [table (lib.metadata/tables query)
+                                          :let [conditions (lib/suggested-join-conditions query stage-number table)]
+                                          :when (seq conditions)]
+                                      [table conditions])
+                                    (for [card *available-cards*
+                                          ;; Using always false join condition for card joins as the results are not
+                                          ;; relevant at the time of writing.
+                                          :let [conditions [(lib/= (lib/+ 1 1) 999)]]]
+                                      [card conditions]))]
     (when-let [[target conditions] (and (seq condition-space)
-                                        (rand-nth condition-space))]
-      [:join stage-number target (rand-nth conditions) strategy])))
+                                        (tu.rng/rand-nth condition-space))]
+      [:join stage-number target (tu.rng/rand-nth conditions) strategy])))
 
 (defmethod run-step* :join [query [_join stage-number target condition strategy]]
   (lib/join query stage-number (lib/join-clause target [condition] strategy)))
@@ -357,13 +380,19 @@
         (is (= (inc (count before-joins))
                (count after-joins)))
         (testing "at the end"
-          (is (=? {:lib/type   :mbql/join
-                   :strategy   strategy
-                   :alias      string?
-                   :fields     :all
-                   :stages     [{:source-table (:id target)}]
-                   :conditions [condition]}
-                  (last after-joins))))))))
+          (let [summaries? (or (seq (lib/aggregations after))
+                               (seq (lib/breakouts after)))]
+            (is (=? {:lib/type   :mbql/join
+                     :strategy   strategy
+                     :alias      string?
+                     :fields     (if summaries?
+                                   (symbol "nil #_\"key is not present.\"")
+                                   :all)
+                     :stages     [(fn [x] (and (map? x)
+                                               (= ((some-fn :source-table :source-card) x)
+                                                  (:id target))))]
+                     :conditions [condition]}
+                    (last after-joins)))))))))
 
 ;; Append stage ==================================================================================
 (add-step {:kind   :append-stage
@@ -440,7 +469,7 @@
 
 (defn- mk-step-control [p-reset p-pop]
   (fn []
-    (let [r (rand)]
+    (let [r (tu.rng/rand)]
       (cond
         (< r p-reset)           :reset
         (< r (+ p-pop p-reset)) :pop
@@ -604,3 +633,14 @@
       (println)
       (println)))
   (print-stats stats))
+
+;; misc ========================================================================
+
+(defn random-query
+  "Genereate single random query, card or table based."
+  [mp]
+  (let [tables (lib.metadata/tables mp)
+        cards *available-cards*]
+    (-> (random-queries-from (lib/query mp (tu.rng/rand-nth (concat tables cards)))
+                             (inc (tu.rng/rand-int sane-iterations-limit)))
+        last)))

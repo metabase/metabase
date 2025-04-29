@@ -1,7 +1,8 @@
 ;; #!/usr/bin/env bb
 (ns release-list.main
-  (:require [babashka.process :refer [shell]]
-            [clojure.string  :as str]))
+  (:require
+   [babashka.process :refer [shell]]
+   [clojure.string  :as str]))
 
 (set! *warn-on-reflection* true)
 

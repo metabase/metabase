@@ -13,7 +13,7 @@ export function findColumnIndexesForColumnSettings(
     columns.map((column, index) => [column.name, index]),
   );
   return columnSettings.map(
-    columnSetting => columnIndexByKey.get(columnSetting.name) ?? -1,
+    (columnSetting) => columnIndexByKey.get(columnSetting.name) ?? -1,
   );
 }
 
@@ -24,5 +24,7 @@ export function findColumnSettingIndexesForColumns(
   const columnSettingIndexByKey = new Map(
     columnSettings.map((columnSetting, index) => [columnSetting.name, index]),
   );
-  return columns.map(column => columnSettingIndexByKey.get(column.name) ?? -1);
+  return columns.map(
+    (column) => columnSettingIndexByKey.get(column.name) ?? -1,
+  );
 }

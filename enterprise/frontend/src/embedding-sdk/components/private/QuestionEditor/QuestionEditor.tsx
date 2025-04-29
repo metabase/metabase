@@ -2,12 +2,14 @@ import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { FlexibleSizeComponent } from "embedding-sdk";
-import { InteractiveQuestion } from "embedding-sdk/components/public/InteractiveQuestion";
+import {
+  type BaseInteractiveQuestionProps,
+  InteractiveQuestion,
+} from "embedding-sdk/components/public/InteractiveQuestion";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Box, Button, Group, Icon, Stack, Tabs } from "metabase/ui";
 
-import type { InteractiveQuestionProps } from "../../public/InteractiveQuestion";
+import { FlexibleSizeComponent } from "../FlexibleSizeComponent";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
 import QuestionEditorS from "./QuestionEditor.module.css";
@@ -41,13 +43,13 @@ const QuestionEditorInner = () => {
     <FlexibleSizeComponent>
       <Tabs
         value={activeTab}
-        onTabChange={setActiveTab}
+        onChange={setActiveTab}
         defaultValue="editor"
         h="100%"
         display="flex"
         style={{ flexDirection: "column", overflow: "hidden" }}
       >
-        <Group position="apart">
+        <Group justify="space-between">
           <Tabs.List>
             <Tabs.Tab value="editor">{t`Editor`}</Tabs.Tab>
             {queryResults && (
@@ -86,7 +88,7 @@ const QuestionEditorInner = () => {
           <Stack h="100%">
             <Box>
               <Button
-                compact
+                size="compact-md"
                 radius="xl"
                 py="sm"
                 px="md"
@@ -143,8 +145,8 @@ export const QuestionEditor = ({
   onSave,
   plugins,
   entityTypeFilter,
-  saveToCollectionId,
-}: InteractiveQuestionProps) => (
+  targetCollection,
+}: BaseInteractiveQuestionProps) => (
   <InteractiveQuestion
     questionId={questionId}
     plugins={plugins}
@@ -152,7 +154,7 @@ export const QuestionEditor = ({
     onBeforeSave={onBeforeSave}
     isSaveEnabled={isSaveEnabled}
     entityTypeFilter={entityTypeFilter}
-    saveToCollectionId={saveToCollectionId}
+    targetCollection={targetCollection}
   >
     <QuestionEditorInner />
   </InteractiveQuestion>

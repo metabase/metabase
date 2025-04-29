@@ -220,3 +220,10 @@
     ;; If we don't know the type of `expr` or `exponent` it's safe to assume `:type/Float` anyway, maybe not as
     ;; specific as `:type/Integer` but better than `:type/*` or `::expression/type.unknown`.
     :type/Float))
+
+(mbql-clause/define-tuple-mbql-clause :integer :- :type/BigInteger
+  [:schema [:or [:ref ::expression/string]
+            [:ref ::expression/number]]])
+
+(mbql-clause/define-tuple-mbql-clause :float :- :type/Float
+  [:schema [:ref ::expression/string]])

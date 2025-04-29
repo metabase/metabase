@@ -482,6 +482,13 @@
            (catch Throwable _
              (t/offset-date-time y M d h m s 0 (t/zone-offset (qp.timezone/results-timezone-id))))))))
 
+(defn- date-str->local-dt
+  "Generate local datetime from `date-str`"
+  [date-str]
+  (when date-str
+    (let [[y M d h m s] (u.time/yyyyMMddhhmmss->parts date-str)]
+      (t/local-date-time y M d h m s 0))))
+
 (defn- date-str->unit-fn
   "Return appropriate function for interval end adjustments in [[exclusive-datetime-range-end]]."
   [date-str]
@@ -522,20 +529,23 @@
 
   First [[date-string->range]] generates range for dates (inclusive by default). Operating on that range,
   this function:
-  1. converts dates to OffsetDateTime, respecting qp's timezone, adding zero temporal padding,
+  1. converts dates to LocalDateTime or OffsetDateTime respecting qp's timezone, adding zero temporal padding,
   2. updates range to correct _end-exclusive datetime_*
   3. formats the range.
 
   This function is meant to be used for generating inclusive intervals for `:type/DateTime` field filters.
 
   * End-exclusive gte lt filters are generated for `:type/DateTime` fields."
-  [raw-date-str]
+  [raw-date-str field-type]
   (let [;; `raw-date-str` is sanitized in case it contains millis and timezone which are incompatible
         ;; with [[date-string->range]]. `substitute-field-filter-test` expects that to happen.
         range-raw (try (date-string->range raw-date-str)
                        (catch Throwable _
-                         (fallback-raw-range raw-date-str)))]
-    (-> (update-vals range-raw date-str->qp-aware-offset-dt)
+                         (fallback-raw-range raw-date-str)))
+        date-str-conversion (if (isa? field-type :type/DateTimeWithTZ)
+                              date-str->qp-aware-offset-dt
+                              date-str->local-dt)]
+    (-> (update-vals range-raw date-str-conversion)
         (m/update-existing :end exclusive-datetime-range-end (date-str->unit-fn (:end range-raw)))
         (maybe-adjust-open-range (date-str->unit-fn ((some-fn :start :end) range-raw)))
         format-date-range)))

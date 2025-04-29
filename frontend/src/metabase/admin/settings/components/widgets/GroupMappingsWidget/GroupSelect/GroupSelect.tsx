@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import GroupSummary from "metabase/admin/people/components/GroupSummary";
+import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
 import type {
   GroupIds,
   UserGroupType,
@@ -31,9 +31,9 @@ type GroupSelectProps = {
 function getSections(groups: UserGroupsType) {
   const adminGroup = groups.find(isAdminGroup);
   const defaultGroup = groups.find(isDefaultGroup);
-  const topGroups = [defaultGroup, adminGroup].filter(g => g != null);
+  const topGroups = [defaultGroup, adminGroup].filter((g) => g != null);
   const groupsExceptDefaultAndAdmin = groups.filter(
-    g => !isAdminGroup(g) && !isDefaultGroup(g),
+    (g) => !isAdminGroup(g) && !isDefaultGroup(g),
   );
 
   if (topGroups.length === 0) {
@@ -84,11 +84,11 @@ export const GroupSelect = ({
         groups
           .filter(
             // find the differing groups between the new `value` on previous `selectedGroupIds`
-            group =>
+            (group) =>
               (selectedGroupIds.includes(group.id) as any) ^
               value.includes(group.id),
           )
-          .forEach(group => onGroupChange(group, value.includes(group.id)));
+          .forEach((group) => onGroupChange(group, value.includes(group.id)));
       }}
       optionDisabledFn={(group: UserGroupType) =>
         (isAdminGroup(group) && isCurrentUser) || !canEditMembership(group)

@@ -3,7 +3,7 @@ import type { StoryObj } from "@storybook/react";
 import SlackStatus, { type SlackStatusProps } from "./SlackStatus";
 
 export default {
-  title: "Admin/Settings/Slack/SlackStatus",
+  title: "App/Admin/Settings/Slack/SlackStatus",
   component: SlackStatus,
   argTypes: {
     Form: { table: { disable: true } },
@@ -12,7 +12,7 @@ export default {
 };
 
 export const Default: StoryObj<SlackStatusProps> = {
-  render: args => {
+  render: (args) => {
     return <SlackStatus {...args} />;
   },
 

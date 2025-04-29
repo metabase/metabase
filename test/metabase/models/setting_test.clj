@@ -124,6 +124,14 @@
   :encryption :when-encryption-key-set
   :feature    :test-feature)
 
+(defsetting test-setting-that-doesnt-allow-env
+  "Setting to test that a setting can be configured to disallow setting it via an environment variable."
+  :can-read-from-env? false
+  :visibility :internal
+  :type :string
+  :encryption :no
+  :default "the default value")
+
 ;; ## HELPER FUNCTIONS
 
 (defn db-fetch-setting
@@ -175,10 +183,10 @@
     (is (= nil
            (setting/user-facing-value :test-setting-2))))
   (testing "`user-facing-value` should work correctly for calculated Settings (no underlying value)"
-    (is (= true
-           (test-setting-calculated-getter)))
-    (is (= true
-           (setting/user-facing-value :test-setting-calculated-getter))))
+    (is (true?
+         (test-setting-calculated-getter)))
+    (is (true?
+         (setting/user-facing-value :test-setting-calculated-getter))))
 
   (testing "`user-facing-value` will initialize pending values"
     (mt/discard-setting-changes [:test-setting-custom-init]
@@ -316,8 +324,8 @@
       (test-setting-1! "COOL")
       (is (= "COOL"
              (test-setting-1)))
-      (is (= true
-             (setting-exists-in-db? :test-setting-1)))
+      (is (true?
+           (setting-exists-in-db? :test-setting-1)))
       (test-setting-1! nil)
       (is (= nil
              (test-setting-1)))
@@ -330,8 +338,8 @@
       (test-setting-2! "COOL")
       (is (= "COOL"
              (test-setting-2)))
-      (is (= true
-             (setting-exists-in-db? :test-setting-2)))
+      (is (true?
+           (setting-exists-in-db? :test-setting-2)))
       (test-setting-2! nil)
       (is (= "[Default Value]"
              (test-setting-2))
@@ -889,16 +897,16 @@
   (testing "Boolean Database-local Settings\n"
     (testing "Site-wide value is `true`"
       (test-boolean-database-local-setting! true)
-      (is (= true
-             (test-boolean-database-local-setting))))
+      (is (true?
+           (test-boolean-database-local-setting))))
     (testing "Site-wide value is `false`"
       (test-boolean-database-local-setting! false)
       (is (= false
              (test-boolean-database-local-setting)))
       (testing "Database-local value is `true`"
         (binding [setting/*database-local-values* {:test-boolean-database-local-setting "true"}]
-          (is (= true
-                 (test-boolean-database-local-setting)))))
+          (is (true?
+               (test-boolean-database-local-setting)))))
       (testing "Database-local value is explicitly set to `nil` -- fall back to site-wide value"
         (binding [setting/*database-local-values* {:test-boolean-database-local-setting nil}]
           (is (= false
@@ -1603,3 +1611,12 @@
     (is (= :no (:encryption (setting/resolve-setting :test-boolean-setting)))))
   (testing "Boolean settings can be encrypted"
     (is (= :when-encryption-key-set (:encryption (setting/resolve-setting :test-boolean-encrypted-setting))))))
+
+(deftest settings-can-disallow-being-set-via-env-vars
+  (test-setting-that-doesnt-allow-env! nil)
+  (is (= "the default value" (test-setting-that-doesnt-allow-env)))
+  (with-redefs [env/env {:mb-test-setting-that-doesnt-allow-env "doesn't work"}]
+    (is (= "the default value" (test-setting-that-doesnt-allow-env))))
+  (testing "You can set them normally though"
+    (test-setting-that-doesnt-allow-env! "this works")
+    (is (= "this works" (test-setting-that-doesnt-allow-env)))))

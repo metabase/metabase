@@ -1,7 +1,9 @@
 (ns metabase.models.database
   (:require
    [clojure.core.match :refer [match]]
+   [clojure.data :as data]
    [medley.core :as m]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.db :as mdb]
@@ -10,25 +12,27 @@
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.util :as driver.u]
    [metabase.models.audit-log :as audit-log]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.secret :as secret]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.setting :as setting]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.quick-task :as quick-task]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.realize :as t2.realize]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -56,15 +60,19 @@
 
 (doto :model/Database
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
+  ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
+  ;; cause duplication rather than good matching if the two instances are later linked by serdes.
+  #_(derive :hook/entity-id))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :before :model/Database
   [_model _explicit-attributes f]
   (fn [temp-object]
     ;; Grant All Users full perms on the temp-object so that tests don't have to manually set permissions
-    (data-perms/set-database-permission! (perms-group/all-users) temp-object :perms/view-data :unrestricted)
-    (data-perms/set-database-permission! (perms-group/all-users) temp-object :perms/create-queries :query-builder-and-native)
-    (data-perms/set-database-permission! (perms-group/all-users) temp-object :perms/download-results :one-million-rows)
+    (perms/set-database-permission! (perms/all-users-group) temp-object :perms/view-data :unrestricted)
+    (perms/set-database-permission! (perms/all-users-group) temp-object :perms/create-queries :query-builder-and-native)
+    (perms/set-database-permission! (perms/all-users-group) temp-object :perms/download-results :one-million-rows)
     (f temp-object)))
 
 (defn- should-read-audit-db?
@@ -72,17 +80,24 @@
   [database-id]
   (and (not (premium-features/enable-audit-app?)) (= database-id audit/audit-db-id)))
 
+(def ^{:arglists '([db-id])
+       :private  true} db-id->router-db-id
+  (mdb/memoize-for-application-db
+   (fn [db-id]
+     (t2/select-one-fn :router_database_id :model/Database :id db-id))))
+
 (defmethod mi/can-read? :model/Database
   ([instance]
    (mi/can-read? :model/Database (u/the-id instance)))
   ([_model pk]
-   (if (should-read-audit-db? pk)
-     false
-     (contains? #{:query-builder :query-builder-and-native}
-                (data-perms/most-permissive-database-permission-for-user
-                 api/*current-user-id*
-                 :perms/create-queries
-                 pk)))))
+   (cond
+     (should-read-audit-db? pk) false
+     (db-id->router-db-id pk) (mi/can-read? :model/Database (db-id->router-db-id pk))
+     :else (contains? #{:query-builder :query-builder-and-native}
+                      (perms/most-permissive-database-permission-for-user
+                       api/*current-user-id*
+                       :perms/create-queries
+                       pk)))))
 
 (defenterprise current-user-can-write-db?
   "OSS implementation. Returns a boolean whether the current user can write the given field."
@@ -92,8 +107,9 @@
 
 (defn- can-write?
   [db-id]
-  (and (not= db-id audit/audit-db-id)
-       (current-user-can-write-db? db-id)))
+  (or (some-> db-id db-id->router-db-id can-write?)
+      (and (not= db-id audit/audit-db-id)
+           (current-user-can-write-db? db-id))))
 
 (defmethod mi/can-write? :model/Database
   ;; Lack of permission to change database details will also exclude the `details` field from the HTTP response,
@@ -129,20 +145,84 @@
     ;; so we just manually nullify it here
     (assoc database :cache_field_values_schedule nil)))
 
+(defn- is-destination?
+  "Is this database a destination database for some router database?"
+  [db]
+  (boolean (:router_database_id db)))
+
+(defn should-sync?
+  "Should this database be synced?"
+  [db]
+  (not (is-destination? db)))
+
 (defn- check-and-schedule-tasks-for-db!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
   (try
     ;; this is done this way to avoid circular dependencies
-    ((requiring-resolve 'metabase.sync.task.sync-databases/check-and-schedule-tasks-for-db!) database)
+    (when (should-sync? database)
+      ((requiring-resolve 'metabase.sync.task.sync-databases/check-and-schedule-tasks-for-db!) database))
     (catch Throwable e
       (log/error e "Error scheduling tasks for DB"))))
 
-(defn check-and-schedule-tasks!
-  "(Re)schedule sync operation tasks for any database which is not yet being synced regularly."
+(defn maybe-test-and-migrate-details!
+  "When a driver has db-details to test and migrate:
+   we loop through them until we find one that works and update the database with the working details."
+  [{:keys [engine details] :as database}]
+  (if-let [details-to-test (seq (driver/db-details-to-test-and-migrate (keyword engine) details))]
+    (do
+      (log/infof "Attempting to connect to %d possible legacy details" (count details-to-test))
+      (loop [[test-details & tail] details-to-test]
+        (if test-details
+          (if (driver.u/can-connect-with-details? engine (assoc test-details :engine engine))
+            (let [keys-remaining (-> test-details keys set)
+                  [_ removed _] (data/diff keys-remaining (-> details keys set))]
+              (log/infof "Successfully connected, migrating to: %s" (pr-str {:keys keys-remaining :keys-removed removed}))
+              (t2/update! :model/Database (:id database) {:details test-details})
+              test-details)
+            (recur tail))
+          ;; if we go through the list and we can't fine a working detail to test, keep original value
+          details)))
+    details))
+
+(defn health-check-database!
+  "Checks database health off-thread.
+   - checks connectivity
+   - cleans-up ambiguous legacy, db-details"
+  [{:keys [engine] :as database}]
+  (when-not (or (:is_audit database) (:is_sample database))
+    (log/info (u/format-color :cyan "Health check: queueing %s {:id %d}" (:name database) (:id database)))
+    (quick-task/submit-task!
+     (fn []
+       (let [details (maybe-test-and-migrate-details! database)
+             engine (name engine)
+             driver (keyword engine)
+             details-map (assoc details :engine engine)]
+         (try
+           (log/info (u/format-color :cyan "Health check: checking %s {:id %d}" (:name database) (:id database)))
+           (u/with-timeout (driver.u/db-connection-timeout-ms)
+             (or (driver/can-connect? driver details-map)
+                 (throw (Exception. "Failed to connect to Database"))))
+           (log/info (u/format-color :green "Health check: success %s {:id %d}" (:name database) (:id database)))
+           (analytics/inc! :metabase-database/status {:driver engine :healthy true})
+
+           (catch Throwable e
+             (let [humanized-message (some->> (.getMessage e)
+                                              (driver/humanize-connection-error-message driver))
+                   reason (if (keyword? humanized-message) "user-input" "exception")]
+               (log/error e (u/format-color :red "Health check: failure with error %s {:id %d :reason %s :message %s}"
+                                            (:name database)
+                                            (:id database)
+                                            reason
+                                            humanized-message))
+               (analytics/inc! :metabase-database/status {:driver engine :healthy false :reason reason})))))))))
+
+(defn check-health!
+  "Health checks databases connected to metabase asynchronously using a thread pool."
   []
+  (analytics/clear! :metabase-database/status)
   (doseq [database (t2/select :model/Database)]
-    (check-and-schedule-tasks-for-db! database)))
+    (health-check-database! database)))
 
 ;; TODO - something like NSNotificationCenter in Objective-C would be really really useful here so things that want to
 ;; implement behavior when an object is deleted can do it without having to put code here
@@ -155,21 +235,23 @@
     (catch Throwable e
       (log/error e "Error unscheduling tasks for DB."))))
 
+;; TODO -- consider whether this should live HERE or inside the `permissions` module.
 (defn- set-new-database-permissions!
   [database]
-  (t2/with-transaction [_conn]
-    (let [all-users-group  (perms-group/all-users)
-          non-magic-groups (perms-group/non-magic-groups)
-          non-admin-groups (conj non-magic-groups all-users-group)]
-      (if (:is_audit database)
-        (doseq [group non-admin-groups]
-          (data-perms/set-database-permission! group database :perms/view-data :unrestricted)
-          (data-perms/set-database-permission! group database :perms/create-queries :no)
-          (data-perms/set-database-permission! group database :perms/download-results :one-million-rows)
-          (data-perms/set-database-permission! group database :perms/manage-table-metadata :no)
-          (data-perms/set-database-permission! group database :perms/manage-database :no))
-        (doseq [group non-admin-groups]
-          (data-perms/set-new-database-permissions! group database))))))
+  (when-not (is-destination? database)
+    (t2/with-transaction [_conn]
+      (let [all-users-group  (perms/all-users-group)
+            non-magic-groups (perms/non-magic-groups)
+            non-admin-groups (conj non-magic-groups all-users-group)]
+        (if (:is_audit database)
+          (doseq [group non-admin-groups]
+            (perms/set-database-permission! group database :perms/view-data :unrestricted)
+            (perms/set-database-permission! group database :perms/create-queries :no)
+            (perms/set-database-permission! group database :perms/download-results :one-million-rows)
+            (perms/set-database-permission! group database :perms/manage-table-metadata :no)
+            (perms/set-database-permission! group database :perms/manage-database :no))
+          (doseq [group non-admin-groups]
+            (perms/set-new-database-permissions! group database)))))))
 
 (t2/define-after-insert :model/Database
   [database]
@@ -201,7 +283,9 @@
       (and (driver.impl/registered? driver)
            (map? (:details database))
            (not *normalizing-details*))
-      normalize-details)))
+      normalize-details
+
+      true serdes/add-entity-id)))
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
@@ -291,12 +375,10 @@
   [_database]
   [:name :engine])
 
-(defsetting persist-models-enabled
-  (deferred-tru "Whether to enable models persistence for a specific Database.")
-  :default        false
-  :type           :boolean
-  :visibility     :public
-  :database-local :only)
+(defmethod serdes/hash-required-fields :model/Database
+  [_database]
+  {:model :model/Database
+   :required-fields [:name :engine]})
 
 (defmethod mi/exclude-internal-content-hsql :model/Database
   [_model & {:keys [table-alias]}]
@@ -390,16 +472,16 @@
    json-generator))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
-
 (defmethod serdes/make-spec "Database"
   [_model-name {:keys [include-database-secrets]}]
   {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-               :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample :metadata_sync_schedule :name
-               :points_of_interest :refingerprint :settings :timezone :uploads_enabled :uploads_schema_name
-               :uploads_table_prefix]
+               :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
+               :metadata_sync_schedule :name :points_of_interest :refingerprint :settings :timezone :uploads_enabled
+               :uploads_schema_name :uploads_table_prefix]
    :skip      [;; deprecated field
                :cache_ttl]
    :transform {:created_at          (serdes/date)
+               :entity_id           (serdes/backfill-entity-id-transformer)
                ;; details should be imported if available regardless of options
                :details             {:export-with-context
                                      (fn [current _ details]
@@ -409,7 +491,15 @@
                                          ::serdes/skip))
                                      :import identity}
                :creator_id          (serdes/fk :model/User)
+               :router_database_id (serdes/fk :model/Database)
                :initial_sync_status {:export identity :import (constantly "complete")}}})
+
+(defmethod serdes/extract-query "Database"
+  [model-name {:keys [where]}]
+  (t2/reducible-select (keyword "model" model-name) {:where
+                                                     [:and
+                                                      (or where true)
+                                                      [:= :router_database_id nil]]}))
 
 (defmethod serdes/entity-id "Database"
   [_ {:keys [name]}]
@@ -450,4 +540,17 @@
                   :created-at    true
                   :updated-at    true}
    :search-terms [:name :description]
+   :where        [:= :router_database_id nil]
    :render-terms {:initial-sync-status true}})
+
+(defenterprise hydrate-router-user-attribute
+  "OSS implementation. Hydrates router user attribute on the databases."
+  metabase-enterprise.database-routing.model
+  [_k databases]
+  (for [database databases]
+    (assoc database :router_user_attribute nil)))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :router_user_attribute]
+  "Batch hydrate `Tables` for the given `Database`."
+  [_model k databases]
+  (hydrate-router-user-attribute k databases))

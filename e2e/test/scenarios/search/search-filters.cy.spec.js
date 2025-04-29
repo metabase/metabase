@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -69,12 +69,12 @@ const TEST_NATIVE_QUESTION_NAME = "GithubUptimeisMagnificentlyHigh";
 const TEST_CREATED_AT_FILTERS = [
   ["Today", "thisday"],
   ["Yesterday", "past1days"],
-  ["Previous Week", "past1weeks"],
-  ["Previous 7 Days", "past7days"],
-  ["Previous 30 Days", "past30days"],
-  ["Previous Month", "past1months"],
-  ["Previous 3 Months", "past3months"],
-  ["Previous 12 Months", "past12months"],
+  ["Previous week", "past1weeks"],
+  ["Previous 7 days", "past7days"],
+  ["Previous 30 days", "past30days"],
+  ["Previous month", "past1months"],
+  ["Previous 3 months", "past3months"],
+  ["Previous 12 months", "past12months"],
 ];
 
 describe("scenarios > search", () => {
@@ -99,7 +99,7 @@ describe("scenarios > search", () => {
       beforeEach(() => {
         H.setActionsEnabledForDB(SAMPLE_DB_ID);
 
-        cy.createQuestion({
+        H.createQuestion({
           name: "Orders Model",
           query: { "source-table": ORDERS_ID },
           type: "model",
@@ -124,7 +124,7 @@ describe("scenarios > search", () => {
           });
         });
 
-        cy.createQuestion(
+        H.createQuestion(
           {
             name: "Products Model",
             query: { "source-table": PRODUCTS_ID },
@@ -133,7 +133,7 @@ describe("scenarios > search", () => {
           { wrapId: true, idAlias: "modelId" },
         );
 
-        cy.get("@modelId").then(modelId => {
+        cy.get("@modelId").then((modelId) => {
           createModelIndex({
             modelId,
             pkName: "ID",
@@ -152,7 +152,7 @@ describe("scenarios > search", () => {
           });
 
           const regex = new RegExp(`${type}$`);
-          cy.findAllByTestId("search-result-item").each(result => {
+          cy.findAllByTestId("search-result-item").each((result) => {
             cy.wrap(result)
               .should("have.attr", "aria-label")
               .and("match", regex);
@@ -177,7 +177,7 @@ describe("scenarios > search", () => {
           });
 
           const regex = new RegExp(`${type}$`);
-          cy.findAllByTestId("search-result-item").each(result => {
+          cy.findAllByTestId("search-result-item").each((result) => {
             cy.wrap(result)
               .should("have.attr", "aria-label")
               .and("match", regex);
@@ -199,9 +199,9 @@ describe("scenarios > search", () => {
 
         cy.url().should("not.contain", "type");
 
-        cy.findAllByTestId("search-result-item").then($results => {
+        cy.findAllByTestId("search-result-item").then(($results) => {
           const uniqueResults = new Set(
-            $results.toArray().map(el => {
+            $results.toArray().map((el) => {
               const label = el.getAttribute("aria-label");
               return label.split(" ").slice(-1)[0];
             }),
@@ -217,11 +217,11 @@ describe("scenarios > search", () => {
         // create a question from a normal and admin user, then we can query the question
         // created by that user as an admin
         cy.signInAsNormalUser();
-        cy.createQuestion(NORMAL_USER_TEST_QUESTION);
+        H.createQuestion(NORMAL_USER_TEST_QUESTION);
         cy.signOut();
 
         cy.signInAsAdmin();
-        cy.createQuestion(ADMIN_TEST_QUESTION);
+        H.createQuestion(ADMIN_TEST_QUESTION);
       });
 
       it("should hydrate created_by filter", () => {
@@ -387,7 +387,7 @@ describe("scenarios > search", () => {
         });
       });
 
-      ["normal", "sandboxed"].forEach(userType => {
+      ["normal", "sandboxed"].forEach((userType) => {
         it(`should allow ${userType} (non-admin) user to see users and filter by created_by`, () => {
           cy.signIn(userType);
           cy.visit("/");
@@ -430,7 +430,7 @@ describe("scenarios > search", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
         // We'll create a question as a normal user, then edit it as an admin user
-        cy.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
+        H.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
           ({ body: { id: questionId } }) => {
             cy.signOut();
             cy.signInAsNormalUser();
@@ -440,14 +440,14 @@ describe("scenarios > search", () => {
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
               .click();
-            cy.findByTestId("save-question-modal").within(modal => {
+            cy.findByTestId("save-question-modal").within((modal) => {
               cy.findByText("Save").click();
             });
           },
         );
 
         // We'll create a question as an admin user, then edit it as a normal user
-        cy.createQuestion(LAST_EDITED_BY_ADMIN_QUESTION).then(
+        H.createQuestion(LAST_EDITED_BY_ADMIN_QUESTION).then(
           ({ body: { id: questionId } }) => {
             cy.signInAsAdmin();
             cy.visit(`/question/${questionId}`);
@@ -456,7 +456,7 @@ describe("scenarios > search", () => {
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
               .click();
-            cy.findByTestId("save-question-modal").within(modal => {
+            cy.findByTestId("save-question-modal").within((modal) => {
               cy.findByText("Save").click();
             });
           },
@@ -634,7 +634,7 @@ describe("scenarios > search", () => {
         });
       });
 
-      ["normal", "sandboxed"].forEach(userType => {
+      ["normal", "sandboxed"].forEach((userType) => {
         it(`should allow ${userType} (non-admin) user to see users and filter by last_edited_by`, () => {
           cy.signIn(userType);
           cy.visit("/");
@@ -676,7 +676,7 @@ describe("scenarios > search", () => {
     describe("created_at filter", () => {
       beforeEach(() => {
         cy.signInAsNormalUser();
-        cy.createQuestion(NORMAL_USER_TEST_QUESTION);
+        H.createQuestion(NORMAL_USER_TEST_QUESTION);
         cy.signOut();
         cy.signInAsAdmin();
       });
@@ -762,7 +762,7 @@ describe("scenarios > search", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
         // We'll create a question as a normal user, then edit it as an admin user
-        cy.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
+        H.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
           ({ body: { id: questionId } }) => {
             cy.signOut();
             cy.signInAsNormalUser();
@@ -772,7 +772,7 @@ describe("scenarios > search", () => {
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
               .click();
-            cy.findByTestId("save-question-modal").within(modal => {
+            cy.findByTestId("save-question-modal").within((modal) => {
               cy.findByText("Save").click();
             });
             cy.signOut();
@@ -858,7 +858,7 @@ describe("scenarios > search", () => {
       });
     });
 
-    H.describeEE("verified filter", () => {
+    describe("verified filter", () => {
       beforeEach(() => {
         H.setTokenFeatures("all");
         H.createModerationReview({
@@ -876,7 +876,7 @@ describe("scenarios > search", () => {
           cy.findByText('Results for "orders"').should("exist");
         });
 
-        cy.findAllByTestId("search-result-item").each(result => {
+        cy.findAllByTestId("search-result-item").each((result) => {
           cy.wrap(result).within(() => {
             cy.findByLabelText("verified_filled icon").should("exist");
           });
@@ -895,7 +895,7 @@ describe("scenarios > search", () => {
 
         cy.wait("@search");
 
-        cy.findAllByTestId("search-result-item").each(result => {
+        cy.findAllByTestId("search-result-item").each((result) => {
           cy.wrap(result).within(() => {
             cy.findByLabelText("verified_filled icon").should("exist");
           });
@@ -915,7 +915,7 @@ describe("scenarios > search", () => {
         let verifiedElementCount = 0;
         let unverifiedElementCount = 0;
         cy.findAllByTestId("search-result-item")
-          .each($el => {
+          .each(($el) => {
             if (!$el.find('[aria-label="verified_filled icon"]').length) {
               unverifiedElementCount++;
             } else {
@@ -932,14 +932,14 @@ describe("scenarios > search", () => {
     describe("native query filter", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
-        cy.createNativeQuestion({
+        H.createNativeQuestion({
           name: TEST_NATIVE_QUESTION_NAME,
           native: {
             query: "SELECT 'reviews';",
           },
         });
 
-        cy.createNativeQuestion({
+        H.createNativeQuestion({
           name: "Native Query",
           native: {
             query: `SELECT '${TEST_NATIVE_QUESTION_NAME}';`,
@@ -1016,7 +1016,7 @@ describe("scenarios > search", () => {
           .click();
         cy.findAllByTestId("search-result-item").should("have.length", 0);
 
-        cy.archiveCollection(FIRST_COLLECTION_ID);
+        H.archiveCollection(FIRST_COLLECTION_ID);
         cy.reload();
         cy.findAllByTestId("search-result-item").should("have.length", 1);
         // TODO: eventually re-enable when FE can properly identify the parent collection
@@ -1075,10 +1075,10 @@ function expectSearchResultItemNameContent(
   { itemNames },
   { strict } = { strict: true },
 ) {
-  cy.findAllByTestId("search-result-item-name").then($searchResultLabel => {
+  cy.findAllByTestId("search-result-item-name").then(($searchResultLabel) => {
     const searchResultLabelList = $searchResultLabel
       .toArray()
-      .map(el => el.textContent);
+      .map((el) => el.textContent);
 
     if (strict) {
       expect(searchResultLabelList).to.have.length(itemNames.length);

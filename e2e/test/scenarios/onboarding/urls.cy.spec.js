@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -32,7 +32,7 @@ describe("URLs", () => {
     [
       `/browse/databases/${SAVED_QUESTIONS_VIRTUAL_DB_ID}`,
       `/browse/databases/${SAVED_QUESTIONS_VIRTUAL_DB_ID}-saved-questions`,
-    ].forEach(url => {
+    ].forEach((url) => {
       it("should open 'Saved Questions' database correctly", () => {
         cy.visit(url);
         cy.findByRole("heading", { name: "Databases" });

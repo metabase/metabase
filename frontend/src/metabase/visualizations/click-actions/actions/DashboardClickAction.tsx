@@ -54,7 +54,7 @@ function getAction(
       };
     case "dashboard-reset":
       return {
-        action: () => dispatch => {
+        action: () => (dispatch) => {
           const tabId = getDashboardDrillTab(clicked);
 
           if (tabId) {
@@ -64,7 +64,7 @@ function getAction(
           const parameterIdValuePairs = getDashboardDrillParameters(clicked);
           parameterIdValuePairs
             .map(([id, value]) => setParameterValue(id, value))
-            .forEach(action => dispatch(action));
+            .forEach((action) => dispatch(action));
         },
       };
   }

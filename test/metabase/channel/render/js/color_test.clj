@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.js.engine :as js.engine]
+   [metabase.formatter :as formatter]
    [metabase.test :as mt]))
 
 (def ^:private red "#ff0000")
@@ -66,3 +67,24 @@
                                                                                                           :color "#ff0000",
                                                                                                           :highlight_row true}]})
                                                 "any value" "test" 1))))))
+
+(deftest text-wrapper-null-empty-str-test
+  (testing "get-background-color should correctly handle not-null operator for nulls and empty strings (VIZ-87)"
+    (let [test-script "function makeCellBackgroundGetter(rows, colsJSON, settingsJSON) {
+                         cols = JSON.parse(colsJSON);
+                         settings = JSON.parse(settingsJSON);
+                         return function(value, rowIndex, columnName) {
+                           if (value === null || value === undefined) {
+                             return null;
+                           }
+                           return settings['color'];
+                         }
+                       }"]
+      (with-test-js-engine! test-script
+        (let [color-selector (js.color/make-color-selector {:cols [{:name "test"}]
+                                                            :rows [[1] [2] [3] [4]]}
+                                                           {"color" red})]
+          (testing "TextWrapper cell with original value of empty string should receive color"
+            (is (= red (js.color/get-background-color color-selector (formatter/->TextWrapper "" "") "test" 0))))
+          (testing "TextWrapper cell with original value of nil should not receive color"
+            (is (nil? (js.color/get-background-color color-selector (formatter/->TextWrapper "" nil) "test" 0)))))))))

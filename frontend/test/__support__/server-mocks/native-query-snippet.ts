@@ -8,7 +8,7 @@ export function setupNativeQuerySnippetEndpoints(
   { snippets = [] }: { snippets?: NativeQuerySnippet[] } = { snippets: [] },
 ) {
   fetchMock.get(PATH, () => snippets);
-  snippets.forEach(snippet =>
+  snippets.forEach((snippet) =>
     fetchMock.get(`${PATH}/${snippet.id}`, () => snippet),
   );
 }

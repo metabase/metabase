@@ -25,7 +25,7 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
   ref: Ref<HTMLDivElement>,
 ) {
   return (
-    <Group {...props} ref={ref} noWrap>
+    <Group {...props} ref={ref} wrap="nowrap">
       <ColorPill color={value} isAuto={isAuto} onClick={onClick} />
       <ColorInput
         value={!isAuto ? value : undefined}

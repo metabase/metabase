@@ -10,7 +10,7 @@ import {
 
 import {
   GOAL_LINE_SERIES_ID,
-  ORIGINAL_INDEX_DATA_KEY,
+  INDEX_KEY,
   TIMELINE_EVENT_DATA_NAME,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
@@ -70,7 +70,7 @@ export const useChartEvents = (
   const onOpenQuestion = useCallback(
     (cardId?: CardId) => {
       const nextCard =
-        rawSeries.find(series => series.card.id === cardId)?.card ?? card;
+        rawSeries.find((series) => series.card.id === cardId)?.card ?? card;
       if (onChangeCardAndRun) {
         onChangeCardAndRun({
           nextCard,
@@ -225,7 +225,7 @@ export const useChartEvents = (
           );
 
           if (eventData) {
-            onChangeCardAndRun(eventData);
+            onChangeCardAndRun?.(eventData);
           }
         },
       },
@@ -273,7 +273,7 @@ export const useChartEvents = (
       let dataIndex: number | undefined;
 
       const seriesModel = chartModel.seriesModels.find(
-        seriesModel => seriesModel.dataKey === hoveredSeriesDataKey,
+        (seriesModel) => seriesModel.dataKey === hoveredSeriesDataKey,
       );
       // If hovering a bar series, we highlight the entire series to ensure that
       // all the data labels show
@@ -417,7 +417,7 @@ function getTransformedDatumIndex(
   originalDatumIndex: number,
 ) {
   const transformedDatumIndex = transformedDataset.findIndex(
-    datum => datum[ORIGINAL_INDEX_DATA_KEY] === originalDatumIndex,
+    (datum) => datum[INDEX_KEY] === originalDatumIndex,
   );
 
   if (transformedDatumIndex === -1) {

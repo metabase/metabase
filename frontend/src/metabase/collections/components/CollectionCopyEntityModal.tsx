@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import Collections from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
-import withToast from "metabase/hoc/Toast";
 import { connect } from "metabase/lib/redux";
 import { entityTypeForObject } from "metabase/lib/schema";
 
@@ -58,7 +57,7 @@ function CollectionCopyEntityModal({
         collection_id: initialCollectionId,
       }}
       title={title}
-      copy={async values => {
+      copy={async (values) => {
         return entityObject.copy(dissoc(values, "id"));
       }}
       onClose={onClose}
@@ -69,4 +68,4 @@ function CollectionCopyEntityModal({
 }
 
 // eslint-disable-next-line import/no-default-export
-export default withToast(connect(mapStateToProps)(CollectionCopyEntityModal));
+export default connect(mapStateToProps)(CollectionCopyEntityModal);

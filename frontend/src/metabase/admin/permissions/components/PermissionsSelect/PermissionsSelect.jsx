@@ -3,9 +3,8 @@ import { Fragment, memo, useState } from "react";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Toggle from "metabase/core/components/Toggle";
-import Tooltip from "metabase/core/components/Tooltip";
 import { lighten } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 
 import {
   ActionsList,
@@ -51,10 +50,10 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   isHighlighted,
 }) {
   const [toggleState, setToggleState] = useState(false);
-  const selectedOption = options.find(option => option.value === value);
+  const selectedOption = options.find((option) => option.value === value);
   const selectableOptions = hasChildren
     ? options
-    : options.filter(option => option !== selectedOption);
+    : options.filter((option) => option !== selectedOption);
 
   const selectedOptionValue = (
     <PermissionsSelectRoot
@@ -74,7 +73,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
       )}
 
       {warning && (
-        <Tooltip tooltip={warning}>
+        <Tooltip label={warning}>
           <WarningIcon />
         </Tooltip>
       )}
@@ -102,7 +101,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
       {({ onClose }) => (
         <Fragment>
           <OptionsList role="listbox">
-            {selectableOptions.map(option => (
+            {selectableOptions.map((option) => (
               <OptionsListItem
                 role="option"
                 key={option.value}

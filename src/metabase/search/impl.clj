@@ -3,21 +3,18 @@
    [clojure.string :as str]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
-   [metabase.permissions.util :as perms.u]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
-   [metabase.search.config
-    :as search.config
-    :refer [SearchableModel SearchContext]]
+   [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -64,16 +61,16 @@
         user-id     (:current-user-id search-ctx)
         db-id       (database/table-id->database-id instance-id)]
     (and
-     (data-perms/user-has-permission-for-table? user-id :perms/view-data :unrestricted db-id instance-id)
-     (data-perms/user-has-permission-for-table? user-id :perms/create-queries :query-builder db-id instance-id))))
+     (perms/user-has-permission-for-table? user-id :perms/view-data :unrestricted db-id instance-id)
+     (perms/user-has-permission-for-table? user-id :perms/create-queries :query-builder db-id instance-id))))
 
 (defmethod check-permissions-for-model :indexed-entity
   [search-ctx instance]
   (let [user-id (:current-user-id search-ctx)
         db-id   (:database_id instance)]
     (and
-     (= :query-builder-and-native (data-perms/full-db-permission-for-user user-id :perms/create-queries db-id))
-     (= :unrestricted (data-perms/full-db-permission-for-user user-id :perms/view-data db-id)))))
+     (= :query-builder-and-native (perms/full-db-permission-for-user user-id :perms/create-queries db-id))
+     (= :unrestricted (perms/full-db-permission-for-user user-id :perms/view-data db-id)))))
 
 (defmethod check-permissions-for-model :metric
   [search-ctx instance]
@@ -251,7 +248,7 @@
    [:is-impersonated-user?               {:optional true} :boolean]
    [:is-sandboxed-user?                  {:optional true} :boolean]
    [:is-superuser?                                        :boolean]
-   [:current-user-perms                                   [:set perms.u/PathSchema]]
+   [:current-user-perms                                   [:set perms/PathSchema]]
    [:archived                            {:optional true} [:maybe :boolean]]
    [:created-at                          {:optional true} [:maybe ms/NonBlankString]]
    [:created-by                          {:optional true} [:maybe [:set ms/PositiveInt]]]
@@ -267,7 +264,8 @@
    [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
-   [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]])
+   [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
+   [:include-metadata?                   {:optional true} [:maybe boolean?]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -283,6 +281,7 @@
            is-impersonated-user?
            is-sandboxed-user?
            include-dashboard-questions?
+           include-metadata?
            is-superuser?
            last-edited-at
            last-edited-by
@@ -329,6 +328,7 @@
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
+                 (some? include-metadata?)                   (assoc :include-metadata? include-metadata?)
                  (seq ids)                                   (assoc :ids ids))]
     (when (and (seq ids)
                (not= (count models) 1))
@@ -402,6 +402,21 @@
        (map #(u/update-some % :dashboard select-keys [:id :name :moderation_status]))
        (map #(dissoc % :dashboard_id))))
 
+(defn- add-metadata [search-results]
+  (let [card-ids (into #{}
+                       (comp
+                        (filter #(= (:model %) "card"))
+                        (map :id))
+                       search-results)
+        card-metadata (if (empty? card-ids)
+                        {}
+                        (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in card-ids]))]
+    (map (fn [{:keys [model id] :as item}]
+           (if (= model "card")
+             (assoc item :result_metadata (card-metadata id))
+             item))
+         search-results)))
+
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
   [search-ctx :- search.config/SearchContext]
@@ -416,6 +431,7 @@
         total-results     (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                             true hydrate-dashboards
                             true hydrate-user-metadata
+                            (:include-metadata? search-ctx) (add-metadata)
                             (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
                             true (add-collection-effective-location)
                             true (map serialize))]

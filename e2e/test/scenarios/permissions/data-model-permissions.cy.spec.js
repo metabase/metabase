@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -7,7 +7,7 @@ const { ORDERS_ID } = SAMPLE_DATABASE;
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const DATA_MODEL_PERMISSION_INDEX = 3;
 
-H.describeEE("scenarios > admin > permissions", () => {
+describe("scenarios > admin > permissions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -120,7 +120,7 @@ H.describeEE("scenarios > admin > permissions", () => {
 
     // Find foreign key from table the user does not have access to
     cy.findByTestId("column-USER_ID").within(() => {
-      cy.findByText("Field access denied");
+      cy.findByPlaceholderText("Field access denied").should("be.visible");
     });
   });
 });

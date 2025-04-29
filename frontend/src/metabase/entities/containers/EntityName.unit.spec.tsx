@@ -1,11 +1,9 @@
-import { screen } from "@testing-library/react";
-
 import {
   setupCardEndpoints,
   setupUserEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { createMockCard, createMockUser } from "metabase-types/api/mocks";
 
 import { EntityName } from "./EntityName";

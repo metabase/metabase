@@ -5,11 +5,11 @@ import { useState } from "react";
 import DateSelector, { type DateSelectorProps } from "./DateSelector";
 
 export default {
-  title: "Core/DateSelector",
+  title: "Components/Ask Before Using/DateSelector",
   component: DateSelector,
 };
 
-const Template: StoryFn<DateSelectorProps> = args => {
+const Template: StoryFn<DateSelectorProps> = (args) => {
   const [value, setValue] = useState(args.value);
   return <DateSelector {...args} value={value} onChange={setValue} />;
 };

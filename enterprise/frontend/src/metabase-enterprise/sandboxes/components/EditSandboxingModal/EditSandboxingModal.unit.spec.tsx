@@ -11,7 +11,6 @@ import {
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
-  mockScrollBy,
   renderWithProviders,
   screen,
   waitFor,
@@ -66,7 +65,6 @@ const setup = ({
   policy?: GroupTableAccessPolicy;
 } = {}) => {
   mockGetBoundingClientRect();
-  mockScrollBy();
   const database = createSampleDatabase();
 
   setupDatabasesEndpoints([database]);
@@ -176,7 +174,7 @@ describe("EditSandboxingModal", () => {
         await userEvent.click(await screen.findByText("Select a question"));
         await screen.findByTestId("entity-picker-modal");
         await userEvent.click(
-          await screen.findByRole("button", { name: /sandbox question/i }),
+          await screen.findByRole("link", { name: /sandbox question/i }),
         );
 
         await userEvent.click(screen.getByText("Save"));
@@ -226,7 +224,7 @@ describe("EditSandboxingModal", () => {
       await userEvent.click(await screen.findByText("Select a question"));
       await screen.findByTestId("entity-picker-modal");
       await userEvent.click(
-        await screen.findByRole("button", { name: /sandbox question/i }),
+        await screen.findByRole("link", { name: /sandbox question/i }),
       );
 
       await userEvent.click(screen.getByText("Save"));

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -47,7 +47,7 @@ describe("scenarios > dashboard > filters > reset", () => {
     }).then(({ body: dashboardCard }) => {
       const { card_id, dashboard_id } = dashboardCard;
 
-      cy.editDashboardCard(dashboardCard, {
+      H.editDashboardCard(dashboardCard, {
         parameter_mappings: [
           {
             parameter_id: FILTER_ONE.id,
@@ -113,7 +113,7 @@ describe("scenarios > dashboard > filters > reset", () => {
     }).then(({ body: dashboardCard }) => {
       const { card_id, dashboard_id } = dashboardCard;
 
-      cy.editDashboardCard(dashboardCard, {
+      H.editDashboardCard(dashboardCard, {
         parameter_mappings: [
           {
             parameter_id: FILTER_ONE.id,

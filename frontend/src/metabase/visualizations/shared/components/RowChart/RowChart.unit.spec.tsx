@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { NumberValue } from "d3-scale";
 
+import { render, screen } from "__support__/ui";
 import { measureTextWidth } from "metabase/lib/measure-text";
 
 import type { ChartFont } from "../../types/style";
@@ -60,59 +60,95 @@ const defaultProps = {
 };
 
 const setup = (props?: Partial<RowChartProps<TestDatum>>) => {
-  render(<RowChart {...defaultProps} {...props} />);
+  const { container } = render(<RowChart {...defaultProps} {...props} />);
   const bars = screen
     .getAllByRole("graphics-symbol")
-    .filter(el => el.getAttribute("aria-roledescription") === "bar");
+    .filter((el) => el.getAttribute("aria-roledescription") === "bar");
   const dataLabels = screen.queryAllByTestId("data-label");
   const goalLine = screen
     .queryAllByRole("graphics-symbol")
-    .find(el => el.getAttribute("aria-roledescription") === "goal line");
+    .find((el) => el.getAttribute("aria-roledescription") === "goal line");
+
+  const xTicks = Array.from(
+    container // eslint-disable-line testing-library/no-container
+      .getElementsByClassName("visx-axis-bottom")[0] // eslint-disable-line testing-library/no-node-access
+      ?.getElementsByTagName("tspan") || [], // eslint-disable-line testing-library/no-node-access
+  ).map((tspan) => tspan.textContent);
+
+  const yTicks = Array.from(
+    container // eslint-disable-line testing-library/no-container
+      .getElementsByClassName("visx-axis-left")[0] // eslint-disable-line testing-library/no-node-access
+      ?.getElementsByTagName("tspan") || [], // eslint-disable-line testing-library/no-node-access
+  ).map((tspan) => tspan.textContent);
 
   return {
     bars,
     dataLabels,
     goalLine,
+    xTicks,
+    yTicks,
   };
 };
 
 describe("RowChart", () => {
   describe("axes", () => {
     it("should render Y-ticks", () => {
-      setup({ series: [series1] });
+      const { yTicks } = setup({ series: [series1] });
 
-      const ticks = ["foo", "bar", "baz"];
-      ticks.forEach(tick => expect(screen.getByText(tick)).toBeInTheDocument());
+      expect(yTicks).toStrictEqual(["foo", "bar", "baz"]);
     });
 
     it("should not render Y-ticks when disabled", () => {
-      setup({
+      const { yTicks } = setup({
         series: [series1],
         hasYAxis: false,
       });
-      expect(screen.queryByText("foo")).not.toBeInTheDocument();
+
+      expect(yTicks).toStrictEqual([]);
+    });
+
+    it("should render the last tick", () => {
+      const { xTicks } = setup({ series: [series1], xValueRange: [0, 1] });
+      expect(xTicks).toStrictEqual([
+        "0",
+        "0.1",
+        "0.2",
+        "0.3",
+        "0.4",
+        "0.5",
+        "0.6",
+        "0.7",
+        "0.8",
+        "0.9",
+        "1",
+      ]);
     });
 
     it("should render nice values for X-ticks", () => {
-      setup({ series: [series1] });
-      const ticks = ["0", "100", "200"];
+      const { xTicks } = setup({ series: [series1] });
 
-      // visx duplicates certain ticks
-      ticks.forEach(tick =>
-        expect(screen.getAllByText(tick)[0]).toBeInTheDocument(),
-      );
+      expect(xTicks).toStrictEqual([
+        "0",
+        "50",
+        "100",
+        "150",
+        "200",
+        "250",
+        "300",
+      ]);
     });
 
     it("should not render X-ticks when disabled", () => {
-      setup({
+      const { xTicks } = setup({
         series: [series1],
         hasXAxis: false,
       });
-      expect(screen.queryByText("50")).not.toBeInTheDocument();
+
+      expect(xTicks).toStrictEqual([]);
     });
 
     it("should apply formatting", () => {
-      setup({
+      const { xTicks, yTicks } = setup({
         series: [series1],
         tickFormatters: {
           xTickFormatter: (value: string) => `x_${value}`,
@@ -120,12 +156,16 @@ describe("RowChart", () => {
         },
       });
 
-      const ticks = ["y_foo", "y_bar", "y_baz", "x_0", "x_100", "x_200"];
-
-      // visx duplicates certain ticks
-      ticks.forEach(tick =>
-        expect(screen.getAllByText(tick)[0]).toBeInTheDocument(),
-      );
+      expect(xTicks).toStrictEqual([
+        "x_0",
+        "x_50",
+        "x_100",
+        "x_150",
+        "x_200",
+        "x_250",
+        "x_300",
+      ]);
+      expect(yTicks).toStrictEqual(["y_foo", "y_bar", "y_baz"]);
     });
 
     it("should render labels when specified", () => {
@@ -173,7 +213,7 @@ describe("RowChart", () => {
 
     it("should render data labels for specified series", () => {
       const { dataLabels } = setup({ labelledSeries: ["series 1"] });
-      expect(dataLabels.map(el => el.textContent)).toStrictEqual([
+      expect(dataLabels.map((el) => el.textContent)).toStrictEqual([
         "100",
         "200",
         "300",
@@ -185,7 +225,7 @@ describe("RowChart", () => {
         labelledSeries: ["series 1"],
         labelsFormatter: (value: NumberValue) => `_${value}_`,
       });
-      expect(dataLabels.map(el => el.textContent)).toStrictEqual([
+      expect(dataLabels.map((el) => el.textContent)).toStrictEqual([
         "_100_",
         "_200_",
         "_300_",
@@ -292,11 +332,11 @@ describe("RowChart", () => {
       const firstSeriesBars = bars.slice(0, 3);
       const secondSeriesBars = bars.slice(3);
 
-      firstSeriesBars.forEach(bar =>
+      firstSeriesBars.forEach((bar) =>
         expect(bar).toHaveAttribute("opacity", "0.4"),
       );
 
-      secondSeriesBars.forEach(bar =>
+      secondSeriesBars.forEach((bar) =>
         expect(bar).toHaveAttribute("opacity", "1"),
       );
     });
@@ -309,7 +349,7 @@ describe("RowChart", () => {
 
       const { bars } = setup({ hoveredData, series: [series1] });
 
-      expect(bars.map(bar => bar.getAttribute("opacity"))).toStrictEqual([
+      expect(bars.map((bar) => bar.getAttribute("opacity"))).toStrictEqual([
         "0.4",
         "1",
         "0.4",

@@ -1,10 +1,10 @@
 import { MetabaseProvider, defineMetabaseTheme } from "embedding-sdk";
 import { storybookSdkAuthDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
-import { getSdkStorybookDarkTheme } from "embedding-sdk/test/storybook-dark-theme";
 import {
   dashboardIdArgType,
   dashboardIds,
 } from "embedding-sdk/test/storybook-id-args";
+import { storybookThemes } from "embedding-sdk/test/storybook-themes";
 
 import {
   EditableDashboard,
@@ -13,7 +13,7 @@ import {
 
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 
-const darkTheme = getSdkStorybookDarkTheme();
+const darkTheme = storybookThemes.dark;
 
 export default {
   title: "EmbeddingSDK/EditableDashboard",

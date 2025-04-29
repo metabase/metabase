@@ -17,6 +17,7 @@
                               :dashboard-subscription-filters
                               :disable-password-login
                               :database-auth-providers
+                              :development-mode
                               :email-allow-list
                               :email-restrict-recipients
                               :embedding
@@ -37,7 +38,8 @@
                               :sso-saml
                               :upload_management
                               :whitelabel
-                              :collection-cleanup}
+                              :collection-cleanup
+                              :database-routing}
     (is (= {:advanced_permissions           true
             :attached_dwh                   true
             :audit_app                      true
@@ -48,6 +50,7 @@
             :dashboard_subscription_filters true
             :disable_password_login         true
             :database_auth_providers        true
+            :development-mode               true
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true
@@ -67,5 +70,6 @@
             :sso_saml                       true
             :upload_management              false
             :whitelabel                     true
-            :collection_cleanup             true}
+            :collection_cleanup             true
+            :database_routing               true}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

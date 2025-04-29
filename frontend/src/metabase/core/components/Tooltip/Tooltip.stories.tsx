@@ -3,11 +3,11 @@ import type { StoryFn } from "@storybook/react";
 import Tooltip from "./Tooltip";
 
 export default {
-  title: "Core/Tooltip",
+  title: "Deprecated/Components/Tooltip",
   component: Tooltip,
 };
 
-const Template: StoryFn<typeof Tooltip> = args => {
+const Template: StoryFn<typeof Tooltip> = (args) => {
   return <Tooltip {...args}>Hover me</Tooltip>;
 };
 

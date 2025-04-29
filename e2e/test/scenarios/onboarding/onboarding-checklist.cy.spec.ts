@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import type { ChecklistItemValue } from "metabase/home/components/Onboarding/types";
 
 describe("Onboarding checklist page", () => {
@@ -23,7 +23,7 @@ describe("Onboarding checklist page", () => {
       ).should("be.visible");
       cy.contains(
         "Hover over a table and click the yellow lightning bolt",
-      ).should("not.exist");
+      ).should("not.be.visible");
     });
   });
 
@@ -71,7 +71,7 @@ describe("Onboarding checklist page", () => {
   });
 });
 
-H.describeEE("Inaccessible Onboarding checklist", () => {
+describe("Inaccessible Onboarding checklist", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -159,7 +159,7 @@ H.describeWithSnowplow("Onboarding checklist events", () => {
       );
       H.expectGoodSnowplowEvents(PAGE_VIEW);
 
-      items.forEach(i => {
+      items.forEach((i) => {
         cy.findByTestId(`${i}-item`).click();
         H.expectGoodSnowplowEvent({
           event: "onboarding_checklist_item_expanded",

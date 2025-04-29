@@ -225,14 +225,18 @@
    ;; flow the `:options` from the field we're aggregating. This is important, for some reason.
    ;; See [[metabase.query-processor-test.aggregation-test/field-settings-for-aggregate-fields-test]]
    (when first-arg
+     ;; This might be an inner aggregation expression without an ident of its own, but that's fine since we're only
+     ;; here for its type!
      (select-keys (lib.metadata.calculation/metadata query stage-number first-arg) [:settings :semantic-type]))
-   ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)))
+   ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)
+   {:ident (lib.options/ident clause)}))
 
 (lib.common/defop count       [] [x])
 (lib.common/defop cum-count   [] [x])
-(lib.common/defop count-where [x y])
+(lib.common/defop count-where [x])
 (lib.common/defop avg         [x])
 (lib.common/defop distinct    [x])
+(lib.common/defop distinct-where [expr condition])
 (lib.common/defop max         [x])
 (lib.common/defop median      [x])
 (lib.common/defop min         [x])
@@ -289,8 +293,9 @@
                             (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)]
                               (-> metadata
                                   (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
-                                  (assoc :lib/source :source/aggregations
-                                         :lib/source-uuid (:lib/uuid (second aggregation)))))))))))
+                                  (assoc :lib/source      :source/aggregations
+                                         :lib/source-uuid (lib.options/uuid  aggregation)
+                                         :ident           (lib.options/ident aggregation))))))))))
 
 (def ^:private OperatorWithColumns
   [:merge
@@ -322,8 +327,7 @@
 
   ([query :- ::lib.schema/query
     stage-number :- :int]
-   (let [db-features (or (:features (lib.metadata/database query)) #{})
-         stage (lib.util/query-stage query stage-number)
+   (let [stage (lib.util/query-stage query stage-number)
          columns (lib.metadata.calculation/visible-columns query stage-number stage)
          with-columns (fn [{:keys [requires-column? supported-field] :as operator}]
                         (cond
@@ -342,7 +346,7 @@
       (into []
             (comp (filter (fn [op]
                             (let [feature (:driver-feature op)]
-                              (or (nil? feature) (db-features feature)))))
+                              (or (nil? feature) (lib.metadata/database-supports? query feature)))))
                   (keep with-columns)
                   (map #(assoc % :lib/type :operator/aggregation)))
             lib.schema.aggregation/aggregation-operators)))))

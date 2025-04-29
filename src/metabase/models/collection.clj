@@ -17,9 +17,8 @@
    [metabase.models.api-key :as api-key]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
-   [metabase.permissions.util :as perms.u]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
@@ -134,10 +133,10 @@
   ([_model pk]
    (mi/can-write? (t2/select-one :model/Collection pk))))
 
-(defmethod mi/can-read? :model/Collection
+(mu/defmethod mi/can-read? :model/Collection
   ([instance]
    (perms/can-read-audit-helper :model/Collection instance))
-  ([_ pk]
+  ([_model pk :- pos-int?]
    (mi/can-read? (t2/select-one :model/Collection :id pk))))
 
 (def AuthorityLevel
@@ -244,7 +243,8 @@
   (when (contains? collection :location)
     (when-not (valid-location-path? location)
       (let [msg (tru "Invalid Collection location: path is invalid.")]
-        (throw (ex-info msg {:status-code 400, :errors {:location msg}}))))
+        (throw (ex-info msg {:status-code 400, :errors {:location msg}
+                             :collection collection}))))
     ;; if this is a Personal Collection it's only allowed to go in the Root Collection: you can't put it anywhere else!
     (when (:personal_owner_id collection)
       (when-not (= location "/")
@@ -334,25 +334,37 @@
       (and first-name last-name) (trs "{0} {1}''s Personal Collection" first-name last-name)
       :else                      (trs "{0}''s Personal Collection" (or first-name last-name email)))))
 
+(mu/defn user->personal-collection-names :- ms/Map
+  "Come up with a nice name for the Personal Collection for the passed `user-or-ids`.
+  Returns a map of user-id -> name"
+  [user-or-ids user-or-site]
+  (into {} (when-let [ids (seq (filter some? (map u/the-id user-or-ids)))]
+             (t2/select-pk->fn #(format-personal-collection-name (:first_name %) (:last_name %) (:email %) user-or-site)
+                               [:model/User :first_name :last_name :email :id]
+                               :id [:in ids]))))
+
 (mu/defn user->personal-collection-name :- ms/NonBlankString
-  "Come up with a nice name for the Personal Collection for `user-or-id`."
+  "Calls `user->personal-collection-names` for a single user-id and returns the name"
   [user-or-id user-or-site]
-  (let [{first-name :first_name
-         last-name  :last_name
-         email      :email} (t2/select-one ['User :first_name :last_name :email]
-                                           :id (u/the-id user-or-id))]
-    (format-personal-collection-name first-name last-name email user-or-site)))
+  (first (vals (user->personal-collection-names [user-or-id] user-or-site))))
+
+(defn personal-collections-with-ui-details
+  "Like `personal-collection-with-ui-details`, but for a sequence of collections and returns a sequence of modified collections"
+  [collections]
+  (let [collection-names (user->personal-collection-names (filter some? (map :personal_owner_id collections)) :user)]
+    (map (fn [{:keys [personal_owner_id] :as collection}]
+           (if-not personal_owner_id
+             collection
+             (let [collection-name (get collection-names personal_owner_id)]
+               (assoc collection
+                      :name collection-name
+                      :slug (u/slugify collection-name))))) collections)))
 
 (defn personal-collection-with-ui-details
   "For Personal collection, we make sure the collection's name and slug is translated to user's locale
   This is only used for displaying purposes, For insertion or updating  the name, use site's locale instead"
-  [{:keys [personal_owner_id] :as collection}]
-  (if-not personal_owner_id
-    collection
-    (let [collection-name (user->personal-collection-name personal_owner_id :user)]
-      (assoc collection
-             :name collection-name
-             :slug (u/slugify collection-name)))))
+  [collection]
+  (first (personal-collections-with-ui-details [collection])))
 
 (def ^:private CollectionWithLocationAndPersonalOwnerID
   "Schema for a Collection instance that has a valid `:location`, and a `:personal_owner_id` key *present* (but not
@@ -588,17 +600,24 @@
              [:collection :c]
              [{:union-all (keep identity [{:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
                                            :from   [[:collection :c]]
-                                           :join   [[:permissions :p]
-                                                    [:= :c.id :p.collection_id]
-                                                    [:permissions_group :pg] [:= :pg.id :p.group_id]
-                                                    [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
-                                           :where  [:and
-                                                    [:= :pgm.user_id [:inline current-user-id]]
-                                                    [:= :p.perm_type (h2x/literal "perms/collection-access")]
-                                                    [:or
-                                                     [:= :p.perm_value (h2x/literal "read-and-write")]
-                                                     (when (= :read (:permission-level visibility-config))
-                                                       [:= :p.perm_value (h2x/literal "read")])]]}
+                                           :where [:exists {:select [1]
+                                                            :from [[:permissions :p]]
+                                                            :where [:and
+                                                                    [:= :c.id :p.collection_id]
+                                                                    [:= :p.perm_type (h2x/literal "perms/collection-access")]
+                                                                    [:or
+                                                                     [:= :p.perm_value (h2x/literal "read-and-write")]
+                                                                     (when (= :read (:permission-level visibility-config))
+                                                                       [:= :p.perm_value (h2x/literal "read")])]
+                                                                    [:exists {:select [1]
+                                                                              :from [[:permissions_group :pg]]
+                                                                              :where [:and
+                                                                                      [:= :pg.id :p.group_id]
+                                                                                      [:exists {:select [1]
+                                                                                                :from [[:permissions_group_membership :pgm]]
+                                                                                                :where [:and
+                                                                                                        [:= :pgm.group_id :pg.id]
+                                                                                                        [:= :pgm.user_id [:inline current-user-id]]]}]]}]]}]}
                                           {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
                                            :from   [[:collection :c]]
                                            :where  [:= :type (h2x/literal "trash")]}
@@ -953,7 +972,7 @@
 ;;; |                                    Recursive Operations: Moving & Archiving                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn perms-for-archiving :- [:set perms.u/PathSchema]
+(mu/defn perms-for-archiving :- [:set perms/PathSchema]
   "Return the set of Permissions needed to archive or unarchive a `collection`. Since archiving a Collection is
   *recursive* (i.e., it applies to all the descendant Collections of that Collection), we require write ('curate')
   permissions for the Collection itself and all its descendants, but not for its parent Collection.
@@ -985,7 +1004,7 @@
                             (t2/select-pks-set :model/Collection :location [:like (str (children-location collection) "%")])))]
      (perms/collection-readwrite-path collection-or-id))))
 
-(mu/defn perms-for-moving :- [:set perms.u/PathSchema]
+(mu/defn perms-for-moving :- [:set perms/PathSchema]
   "Return the set of Permissions needed to move a `collection`. Like archiving, moving is recursive, so we require
   perms for both the Collection and its descendants; we additionally require permissions for its new parent Collection.
 

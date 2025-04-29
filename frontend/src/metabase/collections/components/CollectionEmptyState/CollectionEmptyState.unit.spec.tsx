@@ -34,15 +34,15 @@ async function setup({
 }
 
 describe("empty collection", () => {
-  it("should show the 'create a new' button if the user has write access", async () => {
+  it("should show the 'new' menu button if the user has write access", async () => {
     await setup();
 
-    expect(screen.getByText("Create a new…")).toBeInTheDocument();
+    expect(screen.getByText("New")).toBeInTheDocument();
   });
 
-  it("should not show the 'create a new' button if the user lacks write access", async () => {
+  it("should not show the 'new' menu button if the user lacks write access", async () => {
     await setup({ collection: { can_write: false } });
 
-    expect(screen.queryByText("Create a new…")).not.toBeInTheDocument();
+    expect(screen.queryByText("New")).not.toBeInTheDocument();
   });
 });

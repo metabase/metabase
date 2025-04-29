@@ -5,11 +5,11 @@ import { Form, FormProvider } from "metabase/forms";
 import FormToggle from "./FormToggle";
 
 export default {
-  title: "Core/FormToggle",
+  title: "Components/Ask Before Using/FormToggle",
   component: FormToggle,
 };
 
-const Template: StoryFn<typeof FormToggle> = args => {
+const Template: StoryFn<typeof FormToggle> = (args) => {
   const initialValues = { value: false };
   const handleSubmit = () => undefined;
 

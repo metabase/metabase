@@ -55,7 +55,9 @@ export function Sidesheet({
         w={sizes[size]}
         bg="bg-light"
         data-testid="sidesheet"
-        className={cx(Styles.SidesheetContent, Animation.slideLeft)}
+        classNames={{
+          content: cx(Styles.SidesheetContent, Animation.slideLeft),
+        }}
         aria-labelledby={titleId}
       >
         <Modal.Header bg="bg-light" px="xl">
@@ -76,7 +78,7 @@ export function Sidesheet({
           }}
         >
           <Stack
-            spacing="lg"
+            gap="lg"
             px={removeBodyPadding ? 0 : "xl"}
             pb={removeBodyPadding ? 0 : "xl"}
             mt={title ? "none" : "md"}

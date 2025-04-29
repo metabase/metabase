@@ -11,7 +11,7 @@ import { CurrentDatePicker } from "./CurrentDatePicker";
 
 const DEFAULT_VALUE: RelativeDatePickerValue = {
   type: "relative",
-  value: "current",
+  value: 0,
   unit: "hour",
 };
 
@@ -54,7 +54,7 @@ describe("CurrentDatePicker", () => {
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
-      value: "current",
+      value: 0,
       unit: "week",
     });
   });
@@ -65,7 +65,7 @@ describe("CurrentDatePicker", () => {
     await userEvent.hover(screen.getByText("Week"));
 
     expect(
-      screen.getByText("Right now, this is Dec 29, 2019 – Jan 4, 2020"),
+      await screen.findByText("Right now, this is Dec 29, 2019 – Jan 4, 2020"),
     ).toBeInTheDocument();
   });
 });

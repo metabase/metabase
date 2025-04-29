@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { render, screen } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import { CollectionInstanceAnalyticsIcon } from "./CollectionInstanceAnalyticsIcon";
@@ -51,14 +51,14 @@ describe("CollectionInstanceAnalyticsIcon", () => {
       return screen.getByLabelText("audit icon");
     }
 
-    ["collection", "dashboard", "model", "question"].forEach(entity => {
+    ["collection", "dashboard", "model", "question"].forEach((entity) => {
       it(`displays the correct tooltip for ${entity}`, async () => {
         renderInstanceAnalyticsCollection({
           entity: entity,
         });
         expect(queryOfficialIcon()).toBeInTheDocument();
         await userEvent.hover(queryOfficialIcon());
-        expect(screen.getByRole("tooltip")).toHaveTextContent(
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(
           `This is a read-only Usage Analytics ${entity}`,
         );
       });

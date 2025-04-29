@@ -214,9 +214,71 @@
        (t/offset-time t)                ; time-tz
        cnt])]])                         ; num-crows
 
+(tx/defdataset attempted-murders-no-time
+  "A dataset for testing temporal values with and without timezones. Records of number of crow counts spoted and the
+  date/time when they spotting occured in several different column types.
+
+  No Database we support supports all of these different types, so the expectation is that we'll use the closest
+  equivalent for each column."
+  [["attempts"
+    [{:field-name "date",           :base-type :type/Date}
+     {:field-name "datetime",       :base-type :type/DateTime}
+     {:field-name "datetime_ltz",   :base-type :type/DateTimeWithLocalTZ}
+     {:field-name "datetime_tz",    :base-type :type/DateTimeWithZoneOffset}
+     {:field-name "datetime_tz_id", :base-type :type/DateTimeWithZoneID}
+     {:field-name "num_crows",      :base-type :type/Integer}]
+    (for [[cnt t] [[6 #t "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"]
+                   [8 #t "2019-11-02T00:14:14.246-07:00[America/Los_Angeles]"]
+                   [6 #t "2019-11-03T23:35:17.906-08:00[America/Los_Angeles]"]
+                   [7 #t "2019-11-04T01:04:09.593-08:00[America/Los_Angeles]"]
+                   [8 #t "2019-11-05T14:23:46.411-08:00[America/Los_Angeles]"]
+                   [4 #t "2019-11-06T18:51:16.270-08:00[America/Los_Angeles]"]
+                   [6 #t "2019-11-07T02:45:34.443-08:00[America/Los_Angeles]"]
+                   [4 #t "2019-11-08T19:51:39.753-08:00[America/Los_Angeles]"]
+                   [3 #t "2019-11-09T09:59:10.483-08:00[America/Los_Angeles]"]
+                   [1 #t "2019-11-10T08:41:35.860-08:00[America/Los_Angeles]"]
+                   [5 #t "2019-11-11T08:09:08.892-08:00[America/Los_Angeles]"]
+                   [3 #t "2019-11-12T07:36:16.088-08:00[America/Los_Angeles]"]
+                   [2 #t "2019-11-13T04:28:40.489-08:00[America/Los_Angeles]"]
+                   [9 #t "2019-11-14T09:52:17.242-08:00[America/Los_Angeles]"]
+                   [7 #t "2019-11-15T16:07:25.292-08:00[America/Los_Angeles]"]
+                   [7 #t "2019-11-16T13:32:16.936-08:00[America/Los_Angeles]"]
+                   [1 #t "2019-11-17T14:11:38.076-08:00[America/Los_Angeles]"]
+                   [3 #t "2019-11-18T20:47:27.902-08:00[America/Los_Angeles]"]
+                   [5 #t "2019-11-19T00:35:23.146-08:00[America/Los_Angeles]"]
+                   [1 #t "2019-11-20T20:09:55.752-08:00[America/Los_Angeles]"]]]
+      [(t/local-date t)                 ; date
+       (t/local-date-time t)            ; datetime
+       (t/offset-date-time t)           ; datetime-ltz
+       (t/offset-date-time t)           ; datetime-tz
+       t                                ; datetime-tz-id
+       cnt])]])
+
 (tx/defdataset dots-in-names
   [["objects.stuff"
     [{:field-name "dotted.name", :base-type :type/Text}]
     [["toucan_cage"]
      ["four_loko"]
      ["ouija_board"]]]])
+
+(tx/defdataset string-nums-db
+  [["string_nums"
+    [{:field-name "int_col"   :base-type :type/Text}
+     {:field-name "float_col" :base-type :type/Text}
+     {:field-name "mix_col"   :base-type :type/Text}]
+    [["0" "0.5" "0"]
+     ["1" "1.5" "0.5"]
+     ["2" "2.5" "1"]
+     ["3" "3.5" "2.7587"]
+     ["4" "4.5" "3"]]]])
+
+(tx/defdataset rounding-nums-db
+  [["nums"
+    [{:field-name "int_col"        :base-type :type/Integer}
+     {:field-name "float_up_col"   :base-type :type/Float}
+     {:field-name "float_down_col" :base-type :type/Float}]
+    [[0 0.6 0.2]
+     [1 1.6 1.1]
+     [2 2.6 2.4]
+     [3 3.6 3.3]
+     [4 4.6 4.0]]]])

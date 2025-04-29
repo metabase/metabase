@@ -1,5 +1,9 @@
 import type { ReactNode } from "react";
 
+import type { InputSettingType } from "./actions";
+import type { DashboardId } from "./dashboard";
+import type { UserId } from "./user";
+
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
   "type/Number"?: NumberFormattingSettings;
@@ -53,7 +57,8 @@ export type EngineFieldType =
   | "select"
   | "textFile"
   | "info"
-  | "section";
+  | "section"
+  | "hidden";
 
 export type EngineFieldTreatType = "base64";
 
@@ -63,7 +68,7 @@ export interface EngineFieldOption {
 }
 
 export interface EngineSource {
-  type: "official" | "community" | "partner";
+  type: "official" | "community";
   contact: EngineSourceContact | null;
 }
 
@@ -80,7 +85,15 @@ export interface ScheduleSettings {
   schedule_minute?: number | null;
 }
 
-export type ScheduleType = "hourly" | "daily" | "weekly" | "monthly";
+export type ScheduleType =
+  | "every_n_minutes"
+  | "hourly"
+  | "daily"
+  | "weekly"
+  | "monthly"
+  // 'cron' type implies usage of more complex expressions represented
+  // by raw cron string.
+  | "cron";
 
 export type ScheduleDayType =
   | "sun"
@@ -128,6 +141,20 @@ export type LoadingMessage =
   | "loading-results";
 
 export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
+
+export type GdrivePayload = {
+  status: "not-connected" | "syncing" | "active" | "error";
+  url?: string;
+  message?: string; // only for errors
+  created_at?: number;
+  created_by_id?: UserId;
+  sync_started_at?: number;
+  last_sync_at?: number;
+  next_sync_at?: number;
+  error_message?: string;
+  db_id?: number;
+  error?: string;
+};
 
 const tokenStatusFeatures = [
   "advanced-config",
@@ -215,6 +242,7 @@ export const tokenFeatures = [
   "collection_cleanup",
   "query_reference_validation",
   "cache_preemptive",
+  "database_routing",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -233,7 +261,9 @@ export interface SettingDefinition<Key extends SettingKey = SettingKey> {
   is_env_setting?: boolean;
   value?: SettingValue<Key>;
   default?: SettingValue<Key>;
+  display_name?: string;
   description?: string | ReactNode | null;
+  type?: InputSettingType;
 }
 
 export type UpdateChannel = "latest" | "beta" | "nightly";
@@ -244,6 +274,8 @@ export interface OpenAiModel {
 }
 
 export type HelpLinkSetting = "metabase" | "hidden" | "custom";
+
+export type AutocompleteMatchStyle = "off" | "prefix" | "substring";
 
 export interface UploadsSettings {
   db_id: number | null;
@@ -272,6 +304,7 @@ interface InstanceSettings {
   "show-homepage-data": boolean;
   "show-homepage-pin-message": boolean;
   "show-homepage-xrays": boolean;
+  "site-name": string;
   "site-uuid": string;
   "subscription-allowed-domains": string | null;
   "uploads-settings": UploadsSettings;
@@ -292,6 +325,7 @@ interface AdminSettings {
   "active-users-count"?: number;
   "deprecation-notice-version"?: string;
   "embedding-secret-key"?: string;
+  "redirect-all-requests-to-https": boolean;
   "query-caching-min-ttl": number;
   "query-caching-ttl-ratio": number;
   "google-auth-auto-create-accounts-domain": string | null;
@@ -308,9 +342,11 @@ interface AdminSettings {
   "version-info": VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
+  "show-sdk-embed-terms": boolean | null;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
   "store-url": string;
+  gsheets: Partial<GdrivePayload>;
 }
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
@@ -322,7 +358,6 @@ interface SettingsManagerSettings {
   "session-cookie-samesite": SessionCookieSameSite;
   "slack-app-token": string | null;
   "slack-bug-report-channel": string | null;
-  "slack-files-channel": string | null;
   "slack-token": string | null;
   "slack-token-valid?": boolean;
 }
@@ -343,7 +378,8 @@ interface PublicSettings {
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
   "custom-homepage": boolean;
-  "custom-homepage-dashboard": number | null;
+  "custom-homepage-dashboard": DashboardId | null;
+  "development-mode?": boolean;
   "ee-ai-features-enabled"?: boolean;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
@@ -358,6 +394,7 @@ interface PublicSettings {
   "has-user-setup": boolean;
   "help-link": HelpLinkSetting;
   "help-link-custom-destination": string;
+  "humanization-strategy": "simple" | "none";
   "hide-embed-branding?": boolean;
   "is-hosted?": boolean;
   "ldap-configured?": boolean;
@@ -366,7 +403,7 @@ interface PublicSettings {
   "ldap-group-membership-filter": string;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
-  "native-query-autocomplete-match-style": "substring" | "prefix" | "off";
+  "native-query-autocomplete-match-style": AutocompleteMatchStyle;
   "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
@@ -377,6 +414,7 @@ interface PublicSettings {
   "setup-token": string | null;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
+  "show-google-sheets-integration": boolean;
   "site-locale": string;
   "site-url": string;
   "snowplow-enabled": boolean;
@@ -443,3 +481,34 @@ export type Settings = InstanceSettings &
 export type SettingKey = keyof Settings;
 
 export type SettingValue<Key extends SettingKey = SettingKey> = Settings[Key];
+
+export type IllustrationSettingValue = "default" | "none" | "custom";
+export interface EnterpriseSettings extends Settings {
+  "application-colors"?: Record<string, string>;
+  "application-logo-url"?: string;
+  "login-page-illustration"?: IllustrationSettingValue;
+  "login-page-illustration-custom"?: string;
+  "landing-page-illustration"?: IllustrationSettingValue;
+  "landing-page-illustration-custom"?: string;
+  "no-data-illustration"?: IllustrationSettingValue;
+  "no-data-illustration-custom"?: string;
+  "no-object-illustration"?: IllustrationSettingValue;
+  "no-object-illustration-custom"?: string;
+  "landing-page"?: string;
+  "ee-ai-features-enabled"?: boolean;
+  "ee-openai-api-key"?: string;
+  "ee-openai-model"?: string;
+  "saml-user-provisioning-enabled?"?: boolean;
+  "scim-enabled"?: boolean | null;
+  "scim-base-url"?: string;
+  "send-new-sso-user-admin-email?"?: boolean;
+  /**
+   * @deprecated
+   */
+  application_logo_url?: string;
+}
+
+export type EnterpriseSettingKey = keyof EnterpriseSettings;
+export type EnterpriseSettingValue<
+  Key extends EnterpriseSettingKey = EnterpriseSettingKey,
+> = EnterpriseSettings[Key];

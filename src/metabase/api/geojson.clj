@@ -3,7 +3,6 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -15,7 +14,9 @@
   (:import
    (java.io BufferedReader)
    (java.net InetAddress URL)
-   (org.apache.commons.io.input ReaderInputStream)))
+   (org.apache.commons.io.input ReaderInputStream)
+   (org.apache.http.conn DnsResolver)
+   (org.apache.http.impl.conn SystemDefaultDnsResolver)))
 
 (set! *warn-on-reflection* true)
 
@@ -125,15 +126,30 @@
 
 (def ^:private connection-timeout-ms 8000)
 
+(def ^DnsResolver ^:private ^:dynamic  *system-dns-resolver* (SystemDefaultDnsResolver.))
+
+(def ^:private non-link-local-dns-resolver
+  (reify
+    DnsResolver
+    (^"[Ljava.net.InetAddress;" resolve [_ ^String host]
+      (let [addresses (.resolve *system-dns-resolver* host)]
+        (if (some #(.isLinkLocalAddress ^InetAddress %) addresses)
+          (throw (ex-info (invalid-location-msg) {:status-code 400
+                                                  :link-local true}))
+          addresses)))))
+
 (defn- url->geojson
   [url]
   (let [resp (try (http/get url {:as                 :reader
                                  :redirect-strategy  :none
                                  :socket-timeout     connection-timeout-ms
                                  :connection-timeout connection-timeout-ms
-                                 :throw-exceptions   false})
-                  (catch Throwable _
-                    (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))))
+                                 :throw-exceptions   false
+                                 :dns-resolver       non-link-local-dns-resolver})
+                  (catch Throwable e
+                    (if (:link-local (ex-data e))
+                      (throw (ex-info (ex-message e) (dissoc (ex-data e) :link-local) e))
+                      (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400})))))
         success? (<= 200 (:status resp) 399)
         allowed-content-types #{"application/geo+json"
                                 "application/vnd.geo+json"
@@ -204,5 +220,3 @@
       (read-url-and-respond decoded-url respond)
       (catch Throwable e
         (raise e)))))
-
-(api/define-routes)

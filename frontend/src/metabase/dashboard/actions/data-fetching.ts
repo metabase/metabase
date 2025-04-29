@@ -105,7 +105,7 @@ function isNewAdditionalSeriesCard(
 ) {
   return (
     card.id !== dashcard.card_id &&
-    !dashcard.series?.some(s => s.id === card.id)
+    !dashcard.series?.some((s) => s.id === card.id)
   );
 }
 
@@ -114,7 +114,7 @@ export const setDocumentTitle = createAction<string>(SET_DOCUMENT_TITLE);
 
 const updateLoadingTitle = createThunkAction(
   SET_DOCUMENT_TITLE,
-  totalCards => (_dispatch, getState) => {
+  (totalCards) => (_dispatch, getState) => {
     const loadingDashCards = getLoadingDashCards(getState());
     const loadingComplete = totalCards - loadingDashCards.loadingIds.length;
     return `${loadingComplete}/${totalCards} loaded`;
@@ -282,6 +282,7 @@ export const fetchCardDataAction = createAsyncThunk<
       cancelled = true;
     });
 
+    const metadata = getMetadata(getState());
     const queryOptions = {
       cancelled: deferred.promise,
     };
@@ -299,7 +300,11 @@ export const fetchCardDataAction = createAsyncThunk<
       );
     } else if (dashboardType === "public") {
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(PublicApi.dashboardCardQuery, card)(
+        maybeUsePivotEndpoint(
+          PublicApi.dashboardCardQuery,
+          card,
+          metadata,
+        )(
           {
             uuid: dashcard.dashboard_id,
             dashcardId: dashcard.id,
@@ -314,7 +319,11 @@ export const fetchCardDataAction = createAsyncThunk<
       );
     } else if (dashboardType === "embed") {
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(EmbedApi.dashboardCardQuery, card)(
+        maybeUsePivotEndpoint(
+          EmbedApi.dashboardCardQuery,
+          card,
+          metadata,
+        )(
           {
             token: dashcard.dashboard_id,
             dashcardId: dashcard.id,
@@ -329,10 +338,11 @@ export const fetchCardDataAction = createAsyncThunk<
       );
     } else if (dashboardType === "transient" || dashboardType === "inline") {
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(MetabaseApi.dataset, card)(
-          { ...datasetQuery, ignore_cache: ignoreCache },
-          queryOptions,
-        ),
+        maybeUsePivotEndpoint(
+          MetabaseApi.dataset,
+          card,
+          metadata,
+        )({ ...datasetQuery, ignore_cache: ignoreCache }, queryOptions),
       );
     } else {
       const dashcardBeforeEditing = getDashCardBeforeEditing(
@@ -366,9 +376,12 @@ export const fetchCardDataAction = createAsyncThunk<
             dashboard_id: dashcard.dashboard_id,
             dashboard_load_id: dashboardLoadId,
           };
-
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(endpoint, card)(requestBody, queryOptions),
+        maybeUsePivotEndpoint(
+          endpoint,
+          card,
+          metadata,
+        )(requestBody, queryOptions),
       );
     }
 
@@ -555,7 +568,7 @@ export const clearCardData = createAction(
 function getDatasetQueryParams(datasetQuery: Partial<DatasetQuery> = {}) {
   const parameters =
     datasetQuery?.parameters
-      ?.map(parameter => ({
+      ?.map((parameter) => ({
         ...parameter,
         value: parameter.value ?? null,
       }))
@@ -625,7 +638,7 @@ export const fetchDashboard = createAsyncThunk(
         entities = {
           dashboard: { [dashId]: loadedDashboard },
           dashcard: Object.fromEntries(
-            loadedDashboard.dashcards.map(id => [
+            loadedDashboard.dashcards.map((id) => [
               id,
               getDashCardById(getState(), id),
             ]),

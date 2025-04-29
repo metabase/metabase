@@ -1,11 +1,11 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.test :as mt]
@@ -182,7 +182,7 @@
                      (run-ad-hoc-query))))
               (testing "sanity check: should be able to run query as saved Question before block perms are set."
                 (is (run-saved-question))
-                (is (= true (check-block-perms))))
+                (is (true? (check-block-perms))))
               ;; 'grant' the block permissions.
               (testing "the highest permission level from any group wins (block doesn't override other groups anymore)"
                 (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
@@ -196,7 +196,7 @@
                        (run-ad-hoc-query))))
                 (testing "should STILL be able to run query as saved Question"
                   (is (run-saved-question))
-                  (is (= true (check-block-perms)))))
+                  (is (true? (check-block-perms)))))
               (testing "once blocked in all groups, now access is truly blocked"
                 (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
                 (testing "disallow running the query"

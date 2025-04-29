@@ -112,7 +112,7 @@ describe("ErrorDiagnosticsModal", () => {
     "metric",
   ];
 
-  entityNames.forEach(entityName => {
+  entityNames.forEach((entityName) => {
     it(`should show entity definition checkbox for ${entityName} definition`, () => {
       setup({
         ...defaultErrorPayload,
@@ -191,10 +191,7 @@ describe("ErrorDiagnosticsModal", () => {
       const state = createMockState({
         settings: mockSettings({
           "enable-embedding": true,
-          "slack-app-token": "test-token",
-          "slack-bug-report-channel": "test-channel",
           "bug-reporting-enabled": true,
-          "slack-token-valid?": true,
         }),
       });
 

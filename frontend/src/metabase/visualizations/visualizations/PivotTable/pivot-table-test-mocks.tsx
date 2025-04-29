@@ -53,6 +53,7 @@ const rows = [
 const pivotSettings = {
   "pivot.show_column_totals": true,
   "pivot.show_row_totals": true,
+  "pivot.condense_duplicate_totals": true,
   "pivot_table.collapsed_rows": {
     rows: [cols[0].name, cols[1].name, cols[2].name],
     value: [],
@@ -90,7 +91,7 @@ export function PivotTableTestWrapper(props?: any) {
       settings={vizSettings}
       data={{ rows, cols }}
       onVisualizationClick={() => {}}
-      onUpdateVisualizationSettings={newSettings =>
+      onUpdateVisualizationSettings={(newSettings) =>
         setVizSettings({ ...vizSettings, ...newSettings })
       }
       isNightMode={false}

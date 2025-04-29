@@ -32,7 +32,7 @@ const searchField2 = metadata.field(SEARCH_FIELD_2_ID) as Field;
 const noValuesField = metadata.field(NO_VALUES_FIELD_ID) as Field;
 
 describe("getQueryType", () => {
-  describe.each(["string", "location"])("parameter type %s", type => {
+  describe.each(["string", "location"])("parameter type %s", (type) => {
     it.each([
       ["=", "list"],
       ["!=", "list"],
@@ -51,7 +51,7 @@ describe("getQueryType", () => {
     );
   });
 
-  describe.each(["number"])("parameter type %s", type => {
+  describe.each(["number"])("parameter type %s", (type) => {
     it.each([
       ["=", "list"],
       ["!=", "list"],
@@ -202,7 +202,7 @@ describe("canSearchParameterValues", () => {
     "does-not-contain",
     "starts-with",
     "ends-with",
-  ])("should allow to search for %s string operator", operator => {
+  ])("should allow to search for %s string operator", (operator) => {
     const parameter = createMockUiParameter({
       type: `string/${operator}`,
       fields: [searchField],
@@ -214,7 +214,7 @@ describe("canSearchParameterValues", () => {
 
   it.each(["=", "!="])(
     "should allow to search for %s numeric operator",
-    operator => {
+    (operator) => {
       const parameter = createMockUiParameter({
         type: `number/${operator}`,
         fields: [searchField],
@@ -226,7 +226,7 @@ describe("canSearchParameterValues", () => {
 
   it.each([">", "<", ">=", "<=", "between"])(
     "should not allow to search for %s numeric operator",
-    operator => {
+    (operator) => {
       const parameter = createMockUiParameter({
         type: `number/${operator}`,
         fields: [searchField],

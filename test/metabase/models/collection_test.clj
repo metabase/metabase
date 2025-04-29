@@ -9,9 +9,9 @@
    [metabase.audit :as audit]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -42,6 +42,45 @@
                                                                                       "MetaBase@metabase.com"
                                                                                       :site)))
              (var-get #'collection/collection-slug-max-length))))))
+
+(deftest user->personal-collection-name-test
+  (testing "test that we can get the name of a user's personal collection as :site"
+    (is (= "Lucky Pigeon's Personal Collection"
+           (collection/user->personal-collection-name (mt/user->id :lucky) :site))))
+  (testing "test that we can get the name of a user's personal collection as :user"
+    (is (= "Lucky Pigeon's Personal Collection"
+           (collection/user->personal-collection-name (mt/user->id :lucky) :user)))))
+
+(deftest user->personal-collection-names-test
+  (is (= {(mt/user->id :rasta) "Rasta Toucan's Personal Collection"
+          (mt/user->id :lucky) "Lucky Pigeon's Personal Collection"}
+         (collection/user->personal-collection-names [(mt/user->id :lucky) (mt/user->id :rasta)] :site))))
+
+(deftest personal-collection-with-ui-details-test
+  (testing "With personal_owner"
+    (is (= {:personal_owner_id (mt/user->id :lucky)
+            :name              "Lucky Pigeon's Personal Collection"
+            :slug              "lucky_pigeon_s_personal_collection"}
+           (collection/personal-collection-with-ui-details {:personal_owner_id (mt/user->id :lucky)})))
+    (testing "Without personal_owner"
+      (is (= {:other             "value"
+              :personal_owner_id nil}
+             (collection/personal-collection-with-ui-details {:other "value" :personal_owner_id nil}))))))
+
+(deftest personal-collections-with-ui-details-test
+  (is (= [{:personal_owner_id (mt/user->id :lucky)
+           :name              "Lucky Pigeon's Personal Collection"
+           :slug              "lucky_pigeon_s_personal_collection"}
+
+          {:personal_owner_id (mt/user->id :rasta)
+           :name              "Rasta Toucan's Personal Collection"
+           :slug              "rasta_toucan_s_personal_collection"}
+
+          {:personal_owner_id nil
+           :other             "No personal Id"}]
+         (collection/personal-collections-with-ui-details [{:personal_owner_id (mt/user->id :lucky)}
+                                                           {:personal_owner_id (mt/user->id :rasta)}
+                                                           {:personal_owner_id nil :other "No personal Id"}]))))
 
 (deftest ^:parallel create-collection-test
   (testing "test that we can create a new Collection with valid inputs"
@@ -1058,8 +1097,8 @@
                                                                    {:namespace "snippets"})]
         (mt/with-temp [model object {:collection_id (u/the-id e)}]
           (archive-collection! e)
-          (is (= true
-                 (t2/select-one-fn :archived model :id (u/the-id object)))))))
+          (is (true?
+               (t2/select-one-fn :archived model :id (u/the-id object)))))))
 
     (testing (format "Test that archiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; archiving C should cause object to be archived
@@ -1067,8 +1106,8 @@
                                                                      {:namespace "snippets"})]
         (mt/with-temp [model object {:collection_id (u/the-id e)}]
           (archive-collection! c)
-          (is (= true
-                 (t2/select-one-fn :archived model :id (u/the-id object)))))))))
+          (is (true?
+               (t2/select-one-fn :archived model :id (u/the-id object)))))))))
 
 (deftest nested-collection-unarchiving-objects-test
   (doseq [model [:model/Card :model/Dashboard :model/NativeQuerySnippet :model/Pulse]]
@@ -1417,6 +1456,7 @@
              (group->perms [a b c] group))))))
 
 (deftest ^:parallel valid-location-path?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [path expected] (= expected
                           (#'collection/valid-location-path? path))
     nil       false
@@ -1668,14 +1708,14 @@
         (let [c1-hash (serdes/identity-hash c1)
               c2-hash (serdes/identity-hash c2)]
           (is (= "f2620cc6"
-                 (serdes/raw-hash ["top level" :yolocorp "ROOT" now])
+                 (serdes/raw-hash ["top level" :yolocorp "ROOT" (:created_at c1)])
                  c1-hash)
               "Top-level collections should use a parent hash of 'ROOT'")
           (is (= "a27aef0f"
-                 (serdes/raw-hash ["nested" :yolocorp c1-hash now])
+                 (serdes/raw-hash ["nested" :yolocorp c1-hash (:created_at c2)])
                  c2-hash))
           (is (= "e816af2d"
-                 (serdes/raw-hash ["grandchild" :yolocorp c2-hash now])
+                 (serdes/raw-hash ["grandchild" :yolocorp c2-hash (:created_at c3)])
                  (serdes/identity-hash c3))))))))
 
 (deftest instance-analytics-collections-test

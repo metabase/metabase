@@ -23,6 +23,7 @@ import type {
   GetUserKeyValueRequest,
   Group,
   GroupListQuery,
+  LoggerPreset,
   ModelCacheRefreshStatus,
   ModelIndex,
   NativeQuerySnippet,
@@ -46,6 +47,7 @@ import {
   SEARCH_MODELS,
 } from "metabase-types/api";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
+import type { Notification } from "metabase-types/api/notification";
 
 import type { TagType } from "./constants";
 import { TAG_TYPE_MAPPING } from "./constants";
@@ -92,7 +94,7 @@ export function provideActivityItemListTags(
   items: RecentItem[] | PopularItem[],
 ): TagDescription<TagType>[] {
   return [
-    ...ACTIVITY_MODELS.map(model => listTag(TAG_TYPE_MAPPING[model])),
+    ...ACTIVITY_MODELS.map((model) => listTag(TAG_TYPE_MAPPING[model])),
     ...items.flatMap(provideActivityItemTags),
   ];
 }
@@ -136,6 +138,10 @@ export function provideApiKeyTags(apiKey: ApiKey): TagDescription<TagType>[] {
   return [idTag("api-key", apiKey.id)];
 }
 
+export function provideAutocompleteSuggestionListTags(): TagDescription<TagType>[] {
+  return [listTag("table"), listTag("field")];
+}
+
 export function provideBookmarkListTags(
   bookmarks: Bookmark[],
 ): TagDescription<TagType>[] {
@@ -151,8 +157,12 @@ export function provideBookmarkTags(
   ];
 }
 
+export function provideCardAutocompleteSuggestionListTags(): TagDescription<TagType>[] {
+  return [listTag("card")];
+}
+
 export function provideCardListTags(cards: Card[]): TagDescription<TagType>[] {
-  return [listTag("card"), ...cards.flatMap(card => provideCardTags(card))];
+  return [listTag("card"), ...cards.flatMap((card) => provideCardTags(card))];
 }
 
 export function provideCardTags(card: Card): TagDescription<TagType>[] {
@@ -186,7 +196,7 @@ export function provideCollectionItemListTags(
   models: CollectionItemModel[] = Array.from(COLLECTION_ITEM_MODELS),
 ): TagDescription<TagType>[] {
   return [
-    ...models.map(model => listTag(TAG_TYPE_MAPPING[model])),
+    ...models.map((model) => listTag(TAG_TYPE_MAPPING[model])),
     ...items.flatMap(provideCollectionItemTags),
   ];
 }
@@ -202,7 +212,7 @@ export function provideCollectionListTags(
 ): TagDescription<TagType>[] {
   return [
     listTag("collection"),
-    ...collections.flatMap(collection => provideCollectionTags(collection)),
+    ...collections.flatMap((collection) => provideCollectionTags(collection)),
   ];
 }
 
@@ -210,6 +220,21 @@ export function provideCollectionTags(
   collection: Collection,
 ): TagDescription<TagType>[] {
   return [idTag("collection", collection.id)];
+}
+
+export function provideLoggerPresetListTags(
+  presets: LoggerPreset[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("logger-preset"),
+    ...presets.flatMap(provideLoggerPresetTags),
+  ];
+}
+
+export function provideLoggerPresetTags(
+  preset: LoggerPreset,
+): TagDescription<TagType>[] {
+  return [idTag("logger-preset", preset.id)];
 }
 
 export function provideModelIndexTags(
@@ -223,7 +248,7 @@ export function provideModelIndexListTags(
 ): TagDescription<TagType>[] {
   return [
     listTag("model-index"),
-    ...modelIndexes.flatMap(modelIndex => provideModelIndexTags(modelIndex)),
+    ...modelIndexes.flatMap((modelIndex) => provideModelIndexTags(modelIndex)),
   ];
 }
 
@@ -245,7 +270,7 @@ export function provideChannelListTags(
 ): TagDescription<TagType>[] {
   return [
     listTag("channel"),
-    ...channels.flatMap(channel => provideChannelTags(channel)),
+    ...channels.flatMap((channel) => provideChannelTags(channel)),
   ];
 }
 
@@ -275,6 +300,9 @@ export function provideDatabaseTags(
 ): TagDescription<TagType>[] {
   return [
     idTag("database", database.id),
+    ...(database.router_database_id
+      ? [idTag("database", database.router_database_id)]
+      : []),
     ...(database.tables ? provideTableListTags(database.tables) : []),
   ];
 }
@@ -284,7 +312,7 @@ export function provideDashboardListTags(
 ): TagDescription<TagType>[] {
   return [
     listTag("dashboard"),
-    ...dashboards.map(dashboard => idTag("dashboard", dashboard.id)),
+    ...dashboards.map((dashboard) => idTag("dashboard", dashboard.id)),
   ];
 }
 
@@ -292,8 +320,8 @@ export function provideDashboardTags(
   dashboard: Dashboard,
 ): TagDescription<TagType>[] {
   const cards = dashboard.dashcards
-    .flatMap(dashcard => (isVirtualDashCard(dashcard) ? [] : [dashcard]))
-    .map(dashcard => dashcard.card);
+    .flatMap((dashcard) => (isVirtualDashCard(dashcard) ? [] : [dashcard]))
+    .map((dashcard) => dashcard.card);
 
   return [
     idTag("dashboard", dashboard.id),
@@ -369,6 +397,34 @@ export function provideFieldValuesTags(id: FieldId): TagDescription<TagType>[] {
   return [idTag("field-values", id)];
 }
 
+export function provideRemappedFieldValuesTags(
+  id: FieldId,
+  searchFieldId: FieldId,
+): TagDescription<TagType>[] {
+  return [
+    ...provideFieldValuesTags(id),
+    ...provideFieldValuesTags(searchFieldId),
+  ];
+}
+
+export function provideNotificationListTags(
+  notifications: Notification[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("notification"),
+    ...notifications.flatMap(provideNotificationTags),
+  ];
+}
+
+export function provideNotificationTags(
+  notification: Notification,
+): TagDescription<TagType>[] {
+  return [
+    idTag("notification", notification.id),
+    ...(notification.creator ? provideUserTags(notification.creator) : []),
+  ];
+}
+
 export function providePermissionsGroupListTags(
   groups: GroupListQuery[],
 ): TagDescription<TagType>[] {
@@ -389,7 +445,7 @@ export function providePermissionsGroupTags(
 ): TagDescription<TagType>[] {
   return [
     idTag("permissions-group", group.id),
-    ...group.members.map(member => idTag("user", member.user_id)),
+    ...group.members.map((member) => idTag("user", member.user_id)),
   ];
 }
 
@@ -410,7 +466,7 @@ export function providePersistedInfoTags(
 
 /**
  * We have to differentiate between the `persisted-info` and `persisted-model` tags
- * because the model cache refresh lives on the card api `/api/card/model/:id/refresh`.
+ * because the model cache refresh lives on the card api `/api/persist/card/:id/refresh`.
  * That endpoint doesn't have information about the persisted info id, so we have to
  * map the model id to the `card_id` on the ModelCacheRefreshStatus.
  */
@@ -437,7 +493,7 @@ export function provideSearchItemListTags(
   models: SearchModel[] = Array.from(SEARCH_MODELS),
 ): TagDescription<TagType>[] {
   return [
-    ...models.map(model => listTag(TAG_TYPE_MAPPING[model])),
+    ...models.map((model) => listTag(TAG_TYPE_MAPPING[model])),
     ...items.flatMap(provideSearchItemTags),
   ];
 }
@@ -517,6 +573,10 @@ export function provideTaskListTags(tasks: Task[]): TagDescription<TagType>[] {
   return [listTag("task"), ...tasks.flatMap(provideTaskTags)];
 }
 
+export function provideUniqueTasksListTags(): TagDescription<TagType>[] {
+  return [listTag("unique-tasks")];
+}
+
 export function provideTaskTags(task: Task): TagDescription<TagType>[] {
   return [idTag("task", task.id)];
 }
@@ -558,7 +618,7 @@ export function provideTimelineTags(
 export function provideUserListTags(
   users: UserInfo[],
 ): TagDescription<TagType>[] {
-  return [listTag("user"), ...users.flatMap(user => provideUserTags(user))];
+  return [listTag("user"), ...users.flatMap((user) => provideUserTags(user))];
 }
 
 export function provideUserTags(user: UserInfo): TagDescription<TagType>[] {

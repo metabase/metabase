@@ -13,7 +13,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.number :as u.number]))
 
 (comment lib/keep-me)
 
@@ -27,7 +28,7 @@
                      :expressions [[:+ {:lib/uuid string? :lib/expression-name "myadd"}
                                     1
                                     [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]]}]}
-          (-> lib.tu/venues-query
+          (-> (lib.tu/venues-query)
               (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id)))
               (dissoc :lib/metadata)))))
 
@@ -80,7 +81,7 @@
                          (lib/upper string-field) :type/Text
                          (lib/lower string-field) :type/Text])]
       (testing (str "expression: " (pr-str expr))
-        (let [query (-> lib.tu/venues-query
+        (let [query (-> (lib.tu/venues-query)
                         (lib/expression "myexpr" expr))
               resolved (lib.expression/resolve-expression query 0 "myexpr")]
           (testing (pr-str resolved)
@@ -94,7 +95,7 @@
            :display-name "double-price"
            :lib/source   :source/expressions}
           (lib/metadata
-           (-> lib.tu/venues-query
+           (-> (lib.tu/venues-query)
                (lib/expression "double-price"
                                (lib/* (lib.tu/field-clause :venues :price {:base-type :type/Integer}) 2)))
            -1
@@ -122,12 +123,12 @@
                 -1
                 :day]]
     (is (= "DATE_minus_1_day"
-           (lib/column-name lib.tu/venues-query -1 clause)))
+           (lib/column-name (lib.tu/venues-query) -1 clause)))
     (is (= "Date - 1 day"
-           (lib/display-name lib.tu/venues-query -1 clause)))))
+           (lib/display-name (lib.tu/venues-query) -1 clause)))))
 
 (deftest ^:parallel expression-reference-names-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/expression "double-price"
                                   (lib/*
                                    (lib.tu/field-clause :venues :price {:base-type :type/Integer})
@@ -143,14 +144,14 @@
 (deftest ^:parallel coalesce-names-test
   (let [clause [:coalesce {} (lib.tu/field-clause :venues :name) "<Venue>"]]
     (is (= "NAME"
-           (lib/column-name lib.tu/venues-query -1 clause)))
+           (lib/column-name (lib.tu/venues-query) -1 clause)))
     (is (= "Name"
-           (lib/display-name lib.tu/venues-query -1 clause)))))
+           (lib/display-name (lib.tu/venues-query) -1 clause)))))
 
 (defn- infer-first
   [expr]
   (lib/metadata
-   (-> lib.tu/venues-query
+   (-> (lib.tu/venues-query)
        (lib/expression "expr" expr))
    -1
    [:expression {:lib/uuid (str (random-uuid))} "expr"]))
@@ -197,7 +198,7 @@
            :display-name "last-login-plus-2"
            :lib/source   :source/expressions}
           (lib/metadata
-           (-> lib.tu/venues-query
+           (-> (lib.tu/venues-query)
                (lib/expression "last-login-plus-2"
                                [:datetime-add
                                 {:lib/uuid (str (random-uuid))}
@@ -213,7 +214,7 @@
          #?(:clj Throwable :cljs js/Error)
          #"No expression named \"double-price\""
          (lib/metadata
-          (-> lib.tu/venues-query
+          (-> (lib.tu/venues-query)
               (lib/expression "one-hundred" (lib/+ 100 0)))
           -1
           [:expression {:lib/uuid (str (random-uuid))} "double-price"])))))
@@ -232,7 +233,7 @@
           (is (= (condp = arg-2
                    1   :type/Integer
                    1.0 :type/Float)
-                 (lib/type-of lib.tu/venues-query clause)))))
+                 (lib/type-of (lib.tu/venues-query) clause)))))
       (testing "/ should always return type/Float"
         (doseq [arg-2 [1 1.0]
                 :let  [clause [:/ {:lib/uuid (str (random-uuid))} field arg-2]]]
@@ -240,21 +241,21 @@
             (is (= :type/Float
                    (lib.schema.expression/type-of clause)))
             (is (= :type/Float
-                   (lib/type-of lib.tu/venues-query clause)))))))))
+                   (lib/type-of (lib.tu/venues-query) clause)))))))))
 
 (deftest ^:parallel expressions-names-test
   (testing "expressions should include the original expression name"
     (is (=? [{:name         "expr"
               :display-name "expr"}]
-            (-> lib.tu/venues-query
+            (-> (lib.tu/venues-query)
                 (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                 lib/expressions-metadata)))
     (is (=? [{:display-name "expr"
               :named? true}]
-            (-> lib.tu/venues-query
+            (-> (lib.tu/venues-query)
                 (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                 lib/expressions
-                (->> (map (fn [expr] (lib/display-info lib.tu/venues-query expr))))))))
+                (->> (map (fn [expr] (lib/display-info (lib.tu/venues-query) expr))))))))
   ;; TODO: This logic was removed as part of fixing #39059. We might want to bring it back for collisions with other
   ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by the
   ;; QP code, and it should be powered by MLv2 in due course.
@@ -278,16 +279,24 @@
             :name "expr",
             :display-name "expr",
             :lib/source :source/expressions}]
-          (-> lib.tu/venues-query
+          (-> (lib.tu/venues-query)
               (lib/expression "expr" 100)
               (lib/expressions-metadata))))
   (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Integer, :ident string?} 100]]
-          (-> lib.tu/venues-query
+          (-> (lib.tu/venues-query)
               (lib/expression "expr" 100)
               (lib/expressions))))
   (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Text, :ident string?} "value"]]
-          (-> lib.tu/venues-query
+          (-> (lib.tu/venues-query)
               (lib/expression "expr" "value")
+              (lib/expressions))))
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Float, :ident string?} 1.23]]
+          (-> (lib.tu/venues-query)
+              (lib/expression "expr" 1.23)
+              (lib/expressions))))
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Boolean, :ident string?} false]]
+          (-> (lib.tu/venues-query)
+              (lib/expression "expr" false)
               (lib/expressions)))))
 
 (deftest ^:parallel expressionable-columns-test
@@ -308,7 +317,7 @@
 
 (deftest ^:parallel expressionable-columns-exclude-expressions-containing-offset
   (testing "expressionable-columns should filter out expressions which contain :offset"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/order-by (meta/field-metadata :venues :id) :asc)
                     (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
                     (lib/expression "Nested Offset"
@@ -326,7 +335,7 @@
 
 (deftest ^:parallel infix-display-name-with-expressions-test
   (testing "#32063"
-    (let [query (lib/query lib.tu/metadata-provider-with-mock-cards (:orders lib.tu/mock-cards))
+    (let [query (lib/query (lib.tu/metadata-provider-with-mock-cards) (:orders (lib.tu/mock-cards)))
           query (-> query
                     (lib/expression "Unit price" (lib//
                                                   (lib.tu/field-literal-ref query "SUBTOTAL")
@@ -340,7 +349,7 @@
     (testing "various pemutations on venues"
       (let [query (reduce (fn [query [label expr]]
                             (lib/expression query -1 label expr))
-                          lib.tu/venues-query
+                          (lib.tu/venues-query)
                           [["name+price" (lib/concat (meta/field-metadata :venues :name)
                                                      (meta/field-metadata :venues :price))]
                            ["$price"     (lib/concat "$" (meta/field-metadata :venues :price))]
@@ -387,7 +396,7 @@
         (is (empty? (lib/expressions dropped)))))))
 
 (deftest ^:parallel with-expression-name-test
-  (let [query         (-> lib.tu/venues-query
+  (let [query         (-> (lib.tu/venues-query)
                           (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                           (lib/aggregate (lib/count))
                           (lib/filter (lib/< (meta/field-metadata :venues :price) 4)))
@@ -459,12 +468,12 @@
     (let [expr (lib/with-expression-name 0 "zero")]
       (is (=? [:value {:name "zero", :display-name "zero", :effective-type :type/Integer} 0]
               expr))
-      (is (= "zero" (lib/display-name lib.tu/venues-query expr))))))
+      (is (= "zero" (lib/display-name (lib.tu/venues-query) expr))))))
 
 (deftest ^:parallel diagnose-expression-test
   (testing "correct expression are accepted silently"
     (are [mode expr] (nil? (lib.expression/diagnose-expression
-                            lib.tu/venues-query 0 mode
+                            (lib.tu/venues-query) 0 mode
                             (lib.convert/->pMBQL expr)
                             #?(:clj nil :cljs js/undefined)))
       :expression  [:/ [:field 1 nil] 100]
@@ -472,21 +481,21 @@
       :filter      [:= [:field 1 {:base-type :type/Integer}] 3])))
 
 (deftest ^:parallel diagnose-expression-test-2
-  (testing "correct expression are accepted silently"
-    (testing "type errors are reported"
-      (binding [lib.schema.expression/*suppress-expression-type-check?* false]
-        (are [mode expr] (=? {:message #"Type error: .*"}
-                             (lib.expression/diagnose-expression
-                              lib.tu/venues-query 0 mode
-                              (lib.convert/->pMBQL expr)
-                              #?(:clj nil :cljs js/undefined)))
-          :expression  [:/ [:field 1 {:base-type :type/Address}] 100]
-             ;; To make this test case work, the aggregation schema has to be
-             ;; tighter and not allow anything. That's a bigger piece of work,
-             ;; because it makes expressions and aggregations mutually recursive
-             ;; or requires a large amount of duplication.
-          #_#_:aggregation [:sum [:is-empty [:field 1 {:base-type :type/Boolean}]]]
-          :filter      [:sum [:field 1 {:base-type :type/Integer}]])))))
+  (testing "type errors are reported"
+    (are [mode expr] (=? {:message  "Types are incompatible."
+                          :friendly true}
+                         (lib.expression/diagnose-expression
+                          (lib.tu/venues-query) 0 mode
+                          (lib.convert/->pMBQL expr)
+                          #?(:clj nil :cljs js/undefined)))
+      :expression  [:/ [:field 1 {:base-type :type/Address}] 100]
+        ;; To make this test case work, the aggregation schema has to be
+        ;; tighter and not allow anything. That's a bigger piece of work,
+        ;; because it makes expressions and aggregations mutually recursive
+        ;; or requires a large amount of duplication.
+      #_#_:aggregation [:sum [:is-empty [:field 1 {:base-type :type/Boolean}]]]
+      :filter      [:sum [:field 1 {:base-type :type/Integer}]]
+      :filter      [:value "not a boolean" {:base_type :type/Text}])))
 
 (deftest ^:parallel diagnose-expression-test-3
   (testing "correct expression are accepted silently"
@@ -501,7 +510,7 @@
                                lib.convert/->pMBQL)
             query (reduce-kv (fn [query expr-name expr]
                                (lib/expression query 0 expr-name expr))
-                             lib.tu/venues-query
+                             (lib.tu/venues-query)
                              exprs)
             expressions (lib/expressions query)
             c-pos (some (fn [[i e]]
@@ -540,6 +549,49 @@
                                                   (lib/< (lib/offset (meta/field-metadata :orders :subtotal) -1)
                                                          100)
                                                   nil))))))
+
+(deftest ^:parallel diagnose-expression-literals-without-feature-support-test
+  (testing "top-level literals are not allowed if the :expression-literals feature is not supported"
+    (let [restricted-provider (meta/updated-metadata-provider update :features disj :expression-literals)
+          query (lib/query restricted-provider (meta/table-metadata :orders))
+          expr  (lib.expression/value true)]
+      (doseq [mode [:expression :filter]]
+        (is (=? {:message  "Standalone constants are not supported."
+                 :friendly true}
+                (lib.expression/diagnose-expression query 0 mode expr nil)))))))
+
+(deftest ^:parallel diagnose-expression-literal-values-test
+  (let [query     (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        int-expr  [:value 1 nil]
+        str-expr  [:value "foo" nil]
+        bool-expr [:value true nil]
+        diagnose-expr (fn [mode expr]
+                        (lib.expression/diagnose-expression query 0 mode (lib.convert/->pMBQL expr) nil))]
+    (testing "valid literal expressions are accepted"
+      (are [mode expr] (nil? (diagnose-expr mode expr))
+        :expression  int-expr
+        :expression  str-expr
+        :expression  bool-expr
+        :filter      bool-expr))
+    (testing "invalid literal expressions are rejected when not suppressing type checks"
+      (are [mode expr] (=? {:message "Types are incompatible."} (diagnose-expr mode expr))
+        :filter str-expr
+        :filter int-expr))))
+
+(deftest ^:parallel diagnose-expression-nested-aggregation-test
+  (let [query     (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        diagnose-expr (fn [expr]
+                        (lib.expression/diagnose-expression query 0 :aggregation (lib.convert/->pMBQL expr) nil))]
+    (testing "valid aggregation expressions are accepted"
+      (are [expr] (nil? (diagnose-expr expr))
+        [:avg [:field 1]]
+        [:offset {:lib/uuid (str (random-uuid))} [:sum [:field 42]] 1]))
+    (testing "invalid aggregation expressions are rejected"
+      (are [expr culprit] (= (str "Embedding " culprit " in aggregation functions is not supported")
+                             (:message (diagnose-expr expr)))
+        [:sum [:avg [:field 1]]]                                                  "Average"
+        [:min [:offset {:lib/uuid (str (random-uuid))} [:field 42] 1]]            "Offset"
+        [:offset {:lib/uuid (str (random-uuid))} [:sum [:cum-sum [:field 42]]] 1] "CumulativeSum"))))
 
 (deftest ^:parallel date-and-time-string-literals-test-1-dates
   (are [types input] (= types (lib.schema.expression/type-of input))
@@ -589,3 +641,10 @@
     #{:type/DateTime :type/Text} "2024-07-02 12:34:56.789+07:00"
     #{:type/DateTime :type/Text} "2024-07-02 12:34:56-03:00"
     #{:type/DateTime :type/Text} "2024-07-02 12:34+02:03"))
+
+(deftest ^:parallel value-test
+  (are [expected value] (=? expected (lib.expression/value value))
+    [:value {:base-type :type/Text} "abc"]       "abc"
+    [:value {:base-type :type/Integer} 123]      123
+    [:value {:base-type :type/Boolean} false]    false
+    [:value {:base-type :type/BigInteger} "123"] (u.number/bigint "123")))

@@ -32,7 +32,7 @@ export const LicenseInput = ({
 }: LicenseInputProps) => {
   const [value, setValue] = useState(token ?? "");
 
-  const handleChange: InputProps["onChange"] = e => setValue(e.target.value);
+  const handleChange: InputProps["onChange"] = (e) => setValue(e.target.value);
 
   const handleActivate = () => {
     onUpdate(value);

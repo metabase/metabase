@@ -7,11 +7,11 @@ import {
 } from "./SegmentedControl";
 
 export default {
-  title: "Components/SegmentedControl",
+  title: "Deprecated/Components/SegmentedControl",
   component: SegmentedControl,
 };
 
-const Template: StoryFn<SegmentedControlProps<number>> = args => {
+const Template: StoryFn<SegmentedControlProps<number>> = (args) => {
   const [{ value }, updateArgs] = useArgs();
   const handleChange = (value: unknown) => updateArgs({ value });
 

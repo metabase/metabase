@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import Card from "metabase/components/Card";
@@ -12,7 +13,10 @@ type Props = {
 
 export function TabHintToast({ className, onClose }: Props) {
   return (
-    <Card className={`${className} ${TabHintToastS.ToastCard}`}>
+    <Card
+      data-testid="tab-hint-toast"
+      className={cx(className, TabHintToastS.ToastCard)}
+    >
       <Icon className={TabHintToastS.TabIcon} name="tab" />
       <Box
         component="span"

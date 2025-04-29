@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 
 import type { QuarterYearPickerValue } from "metabase/querying/filters/types";
-import { Box, QuarterPicker } from "metabase/ui";
+import { Box, type DateValue, QuarterPicker } from "metabase/ui";
 
 type QuarterYearPickerProps = {
   value?: QuarterYearPickerValue;
@@ -13,7 +13,7 @@ export function QuarterYearPicker({ value, onChange }: QuarterYearPickerProps) {
     ? dayjs().year(value.year).quarter(value.quarter).toDate()
     : undefined;
 
-  const handleChange = (value: Date) => {
+  const handleChange = (value: DateValue) => {
     const date = dayjs(value);
     onChange({
       type: "quarter",

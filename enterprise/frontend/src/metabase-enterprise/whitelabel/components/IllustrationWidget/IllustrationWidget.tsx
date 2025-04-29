@@ -9,7 +9,7 @@ import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
   IllustrationSettingValue,
-} from "metabase-enterprise/settings/types";
+} from "metabase-types/api";
 
 import { ImageUploadInfoDot } from "../ImageUploadInfoDot";
 
@@ -46,20 +46,26 @@ const IMAGE_SIZE_LIMIT = 2 * MB;
 
 interface SelectOption {
   label: string;
-  value: string;
+  value: IllustrationSettingValue;
 }
 const SELECT_OPTIONS: Record<IllustrationType, SelectOption[]> = {
   background: [
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Lighthouse`, value: "default" },
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`No illustration`, value: "none" },
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Custom`, value: "custom" },
   ],
   icon: [
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Sailboat`, value: "default" },
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`No illustration`, value: "none" },
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Custom`, value: "custom" },
   ],
-};
+} as const;
 
 export function IllustrationWidget({
   id,
@@ -80,7 +86,7 @@ export function IllustrationWidget({
     settingValues[customIllustrationSetting] ?? undefined;
 
   async function handleChange(value: IllustrationSettingValue) {
-    setValue(value);
+    setValue(value ?? "none");
     setErrorMessage("");
     // Avoid saving the same value
     // When setting.value is set to the default value its value would be `null`
@@ -91,7 +97,7 @@ export function IllustrationWidget({
     if (value === "custom" && customIllustrationSource) {
       await onChange("custom");
     } else if (value !== "custom") {
-      await onChange(value);
+      await onChange(value ?? "none");
     }
   }
 
@@ -106,7 +112,7 @@ export function IllustrationWidget({
       }
 
       const reader = new FileReader();
-      reader.onload = async readerEvent => {
+      reader.onload = async (readerEvent) => {
         const dataUri = readerEvent.target?.result as string;
         if (!(await isFileIntact(dataUri))) {
           setErrorMessage(
@@ -190,11 +196,11 @@ export function IllustrationWidget({
               </Text>
               {customIllustrationSource && (
                 <Button
-                  leftIcon={<Icon name="close" />}
+                  leftSection={<Icon name="close" />}
                   variant="subtle"
                   c="text-dark"
                   ml="md"
-                  compact
+                  size="compact-md"
                   onClick={handleRemoveCustomIllustration}
                   aria-label={t`Remove custom illustration`}
                 />
@@ -211,7 +217,7 @@ export function IllustrationWidget({
 }
 
 async function isFileIntact(dataUri: string) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const image = document.createElement("img");
     image.src = dataUri;
     image.onerror = () => resolve(false);

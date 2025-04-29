@@ -2,11 +2,14 @@ import cx from "classnames";
 import { useEffect, useState } from "react";
 
 import AdminS from "metabase/css/admin.module.css";
-import { TextInput } from "metabase/ui";
+import { TextInput, type TextInputProps } from "metabase/ui";
 
 type Value = string | null;
 
-export interface SettingInputProps {
+export type SettingInputProps = Pick<
+  TextInputProps,
+  "disabled" | "onClick" | "autoFocus" | "type" | "id"
+> & {
   setting: {
     key: string;
     value?: string | null;
@@ -14,14 +17,9 @@ export interface SettingInputProps {
     placeholder?: string;
   };
   onChange: (value: Value) => void;
-  autoFocus?: boolean;
-  fireOnChange?: boolean;
   errorMessage?: string;
-  id?: string;
-  type: "text" | "password";
   normalize?: (value: Value) => Value;
-  disabled?: boolean;
-}
+};
 
 const identity = (value: Value) => value;
 
@@ -34,6 +32,7 @@ export const SettingTextInput = ({
   type = "text",
   normalize = identity,
   disabled,
+  onClick,
 }: SettingInputProps) => {
   const [valueState, setValueState] = useState<string>(setting.value ?? "");
   const changeHandler = (e: { target: HTMLInputElement }) => {
@@ -56,12 +55,13 @@ export const SettingTextInput = ({
       error={!!errorMessage}
       id={id}
       type={type}
-      onChange={event => setValueState(event.target.value)}
+      onChange={(event) => setValueState(event.target.value)}
       value={valueState}
       placeholder={setting.placeholder}
       onBlur={changeHandler}
       autoFocus={autoFocus}
       disabled={disabled}
+      onClick={onClick}
     />
   );
 };

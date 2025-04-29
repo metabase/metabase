@@ -1,4 +1,6 @@
-import { H } from "e2e/support";
+const { H } = cy;
+import { dedent } from "ts-dedent";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -93,20 +95,23 @@ describe("scenarios > question > summarize sidebar", () => {
       toBinning: "10 bins",
     });
 
-    H.getDimensionByName({ name: "Total" }).should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
-    H.getDimensionByName({ name: "Quantity" }).should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
+    H.getDimensionByName({ name: "Total" })
+      .scrollIntoView()
+      .should("have.attr", "aria-selected", "true")
+      .findByLabelText("Binning strategy")
+      .should("be.visible");
+    H.getDimensionByName({ name: "Quantity" })
+      .should("have.attr", "aria-selected", "true")
+      .findByLabelText("Binning strategy")
+      .should("be.visible");
+    H.getDimensionByName({ name: "Discount" }).within(() => {
+      cy.button("Add dimension").realHover();
+      cy.findByLabelText("Binning strategy").should("be.visible");
+    });
   });
 
   it("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "14649_min",
         query: {
@@ -141,13 +146,13 @@ describe("scenarios > question > summarize sidebar", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.summarize({ mode: "notebook" });
     H.popover().contains("Custom Expression").click();
-    H.expressionEditorWidget().within(() => {
-      H.enterCustomColumnDetails({
-        formula: "2 * Max([Total])",
-        name: "twice max total",
-      });
-      cy.findByText("Done").click();
+
+    H.enterCustomColumnDetails({
+      formula: "2 * Max([Total])",
+      name: "twice max total",
     });
+
+    H.expressionEditorWidget().button("Done").click();
     cy.findByTestId("aggregate-step")
       .contains("twice max total")
       .should("exist");
@@ -163,19 +168,18 @@ describe("scenarios > question > summarize sidebar", () => {
     H.summarize({ mode: "notebook" });
 
     H.popover().contains("Custom Expression").click();
-    H.expressionEditorWidget().within(() => {
-      H.enterCustomColumnDetails({
-        formula:
-          "sum([Total]) / (sum([Product → Price]) * average([Quantity]))",
-      });
+    H.enterCustomColumnDetails({
+      formula: "sum([Total]) / (sum([Product → Price]) * average([Quantity]))",
+      format: true,
     });
 
-    H.popover().within(() => {
-      cy.get(".ace_text-layer").should(
-        "have.text",
-        "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))",
-      );
-    });
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      dedent`
+        Sum([Total]) /
+          (Sum([Product → Price]) * Average([Quantity]))
+      `.trim(),
+    );
   });
 
   it("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {
@@ -183,15 +187,13 @@ describe("scenarios > question > summarize sidebar", () => {
     H.summarize({ mode: "notebook" });
     H.popover().contains("Custom Expression").click();
 
-    H.enterCustomColumnDetails({ formula: "Distinct([R" });
+    H.enterCustomColumnDetails({ formula: "Distinct([R", blur: false });
 
     cy.log(
       "**The point of failure for ANY non-numeric value reported in v0.36.4**",
     );
     // the default type for "Reviewer" is "No semantic type"
-    cy.findByTestId("expression-suggestions-list").within(() => {
-      cy.contains("Reviewer");
-    });
+    H.CustomExpressionEditor.completion("Reviewer").should("be.visible");
   });
 
   it("summarizing by distinct datetime should allow granular selection (metabase#13098)", () => {
@@ -200,9 +202,10 @@ describe("scenarios > question > summarize sidebar", () => {
     H.summarize({ mode: "notebook" });
     H.popover().within(() => {
       cy.findByText("Number of distinct values of ...").click();
-      cy.findByLabelText("Temporal bucket").click();
+      cy.findByLabelText("Temporal bucket").realHover().click();
     });
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover()
       .last()
       .within(() => {
@@ -212,7 +215,7 @@ describe("scenarios > question > summarize sidebar", () => {
   });
 
   it("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "12625",
         query: {
@@ -232,16 +235,22 @@ describe("scenarios > question > summarize sidebar", () => {
     H.summarize();
 
     cy.findAllByTestId("header-cell").should("have.length", 4);
-    cy.get(".test-TableInteractive-headerCellData--sorted").as("sortedCell");
+    H.tableHeaderColumn("Sum of Subtotal")
+      .closest("[data-testid=header-cell]")
+      .findByLabelText("chevrondown icon");
 
     cy.log('At this point only "Sum of Subtotal" should be sorted');
-    cy.get("@sortedCell").its("length").should("eq", 1);
+    H.tableInteractiveHeader("header-sort-indicator")
+      .findAllByTestId("header-sort-indicator")
+      .should("have.length", 1);
 
     cy.log("Remove the sorted metric");
     removeMetricFromSidebar("Sum of Subtotal");
 
     cy.log('"Sum of Total" should not be sorted, nor any other header cell');
-    cy.get("@sortedCell").should("not.exist");
+    H.tableInteractiveHeader("header-sort-indicator")
+      .findAllByTestId("header-sort-indicator")
+      .should("have.length", 0);
 
     cy.findAllByTestId("header-cell")
       .should("have.length", 3)

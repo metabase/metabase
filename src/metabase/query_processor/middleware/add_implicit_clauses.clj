@@ -74,7 +74,13 @@
          (or (and not-multiply-bracketed?
                   (some-> (lib.util.match/match-one field-ref :field)
                           (mbql.u/update-field-options dissoc :binning :temporal-unit)
-                          (cond-> coercion-strategy (mbql.u/assoc-field-options :qp/ignore-coercion true))))
+                          (cond->
+                           (or coercion-strategy
+                               (and (pos-int? field-id)
+                                    (some-> (qp.store/metadata-provider)
+                                            (lib.metadata/field field-id)
+                                            :coercion-strategy)))
+                            (mbql.u/assoc-field-options :qp/ignore-coercion true))))
              ;; otherwise construct a field reference that can be used to refer to this Field.
              ;; Force string id field if expression contains just field. See issue #28451.
              (if (and (not= ref-type :expression)

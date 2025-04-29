@@ -13,7 +13,7 @@ export const getSeriesColors = (
   settings: VisualizationSettings,
 ) => {
   const assignments = _.chain(seriesVizSettingsKeys)
-    .map(key => [key, getIn(settings, [SERIES_SETTING_KEY, key, "color"])])
+    .map((key) => [key, getIn(settings, [SERIES_SETTING_KEY, key, "color"])])
     .filter(([_key, color]) => color != null)
     .object()
     .value();

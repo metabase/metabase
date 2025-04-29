@@ -1,5 +1,4 @@
 import { getIn } from "icepick";
-import _ from "underscore";
 
 import type {
   DatabaseEntityId,

@@ -1,0 +1,35 @@
+name: Open PR to Bump Backend Deps
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    # weekly on Mondays
+    - cron: '00 0 * * 1'
+
+  push:
+    branches:
+      - auto-upgrade-backend-deps-job
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump-deps:
+    name: Open PRs to Bump Backend Deps
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ (github.ref_name == 'master' && '1') || '0' }}
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: 'update-be-deps'
+      - name: Open PRs to Upgrade Backend Deps
+        uses: ./.github/actions/upgrade-backend-deps
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}

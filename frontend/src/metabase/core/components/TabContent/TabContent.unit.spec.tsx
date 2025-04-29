@@ -1,6 +1,7 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
+
+import { render, screen } from "__support__/ui";
 
 import Tab from "../Tab";
 import TabList from "../TabList";

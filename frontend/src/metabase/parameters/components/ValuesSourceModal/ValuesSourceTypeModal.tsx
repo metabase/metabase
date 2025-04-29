@@ -23,7 +23,10 @@ import type Field from "metabase-lib/v1/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
-import { isValidSourceConfig } from "metabase-lib/v1/parameters/utils/parameter-source";
+import {
+  getQueryType,
+  isValidSourceConfig,
+} from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
   getParameterType,
   isNumberParameter,
@@ -40,7 +43,6 @@ import type { State } from "metabase-types/store";
 import type { FetchParameterValuesOpts } from "../../actions";
 import { fetchParameterValues } from "../../actions";
 
-import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 import S from "./ValuesSourceTypeModal.module.css";
 import {
   ModalBodyWithPane,
@@ -48,11 +50,12 @@ import {
   ModalErrorMessage,
   ModalHelpMessage,
   ModalLabel,
+  ModalLoadingAndErrorWrapper,
   ModalMain,
   ModalPane,
   ModalSection,
   ModalTextArea,
-} from "./ValuesSourceTypeModal.styled";
+} from "./ValuesSourceTypeModalComponents";
 import { getStaticValues, getValuesText } from "./utils";
 
 interface ModalOwnProps {
@@ -468,7 +471,7 @@ const getSourceValues = (values: ParameterValue[] = []) => {
 };
 
 const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
-  return fields.find(field => _.isEqual(field.reference(), fieldReference));
+  return fields.find((field) => _.isEqual(field.reference(), fieldReference));
 };
 
 const getFieldFilter = (parameter: Parameter) => {
@@ -497,7 +500,7 @@ const getSourceTypeOptions = (
     ...(hasFields(parameter)
       ? [{ name: t`From connected fields`, value: null }]
       : []),
-    ...(isNumberParameter(parameter)
+    ...(isNumberParameter(parameter) && getQueryType(parameter) === "search"
       ? []
       : ([
           { name: t`From another model or question`, value: "card" },

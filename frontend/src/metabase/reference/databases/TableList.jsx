@@ -25,7 +25,9 @@ import {
 } from "../selectors";
 
 const emptyStateData = {
-  message: t`Tables in this database will appear here as they're added`,
+  get message() {
+    return t`Tables in this database will appear here as they're added`;
+  },
   icon: "table2",
 };
 
@@ -41,7 +43,7 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-const createListItem = table => (
+const createListItem = (table) => (
   <ListItem
     data-testid="table-list-item"
     key={table.id}
@@ -53,7 +55,7 @@ const createListItem = table => (
   />
 );
 
-const createSchemaSeparator = table => (
+const createSchemaSeparator = (table) => (
   <li className={R.schemaSeparator}>{table.schema_name}</li>
 );
 
@@ -63,8 +65,8 @@ export const separateTablesBySchema = (
   createListItem,
 ) => {
   const sortedTables = _.chain(tables)
-    .sortBy(t => t.name)
-    .sortBy(t => t.schema_name)
+    .sortBy((t) => t.name)
+    .sortBy((t) => t.schema_name)
     .value();
 
   return sortedTables.map((table, index, sortedTables) => {
@@ -124,7 +126,7 @@ class TableList extends Component {
                         createListItem,
                       )
                     : _.sortBy(tables, "name").map(
-                        table =>
+                        (table) =>
                           table &&
                           table.id &&
                           table.name &&

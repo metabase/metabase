@@ -6,47 +6,46 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.macro :as tools.macro]
-   [clojurewerkz.quartzite.scheduler :as qs]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [medley.core :as m]
    [metabase.api.card :as api.card]
-   [metabase.api.common.openapi]
+   [metabase.api.macros :as api.macros]
+   [metabase.api.open-api :as open-api]
    [metabase.api.test-util :as api.test-util]
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.http-client :as client]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.card.metadata :as card.metadata]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.revision :as revision]
+   [metabase.notification.api.notification-test :as api.notification-test]
+   [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.request.core :as request]
-   [metabase.sync.task.sync-databases :as task.sync-databases]
-   [metabase.task :as task]
-   [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)
-   (org.apache.poi.ss.usermodel DataFormatter)
-   (org.quartz.impl StdSchedulerFactory)))
+   (org.apache.poi.ss.usermodel DataFormatter)))
 
 (set! *warn-on-reflection* true)
 
@@ -249,12 +248,12 @@
                  :model/Card     card-1 {:database_id (mt/id)}
                  :model/Card     card-2 {:database_id (u/the-id db)}]
     (with-cards-in-readable-collection! [card-1 card-2]
-      (is (= true
-             (card-returned? :database (mt/id) card-1)))
+      (is (true?
+           (card-returned? :database (mt/id) card-1)))
       (is (= false
              (card-returned? :database db      card-1)))
-      (is (= true
-             (card-returned? :database db      card-2))))))
+      (is (true?
+           (card-returned? :database db      card-2))))))
 
 (deftest ^:parallel authentication-test
   (is (= (get request/response-unauthentic :body) (client/client :get 401 "card")))
@@ -272,12 +271,12 @@
                    :model/Card     card-1   {:table_id (u/the-id table-1)}
                    :model/Card     card-2   {:table_id (u/the-id table-2)}]
       (with-cards-in-readable-collection! [card-1 card-2]
-        (is (= true
-               (card-returned? :table (u/the-id table-1) (u/the-id card-1))))
+        (is (true?
+             (card-returned? :table (u/the-id table-1) (u/the-id card-1))))
         (is (= false
                (card-returned? :table (u/the-id table-2) (u/the-id card-1))))
-        (is (= true
-               (card-returned? :table (u/the-id table-2) (u/the-id card-2))))))))
+        (is (true?
+             (card-returned? :table (u/the-id table-2) (u/the-id card-2))))))))
 
 ;; Make sure `model_id` is required when `f` is :table
 (deftest ^:parallel model_id-requied-when-f-is-table
@@ -705,24 +704,27 @@
 
 (deftest ^:parallel doc-test
   (testing "Make sure generated docstring resolves Malli schemas in the registry correctly (#46799)"
-    (let [openapi-object             (metabase.api.common.openapi/openapi-object #'api.card/routes)
+    (let [openapi-object             (open-api/open-api-spec (api.macros/ns-handler 'metabase.api.card) "/api/card")
           schemas                    (get-in openapi-object [:components :schemas])
-          body-properties            (get-in openapi-object [:paths "/" :post :requestBody :content "application/json" :schema :properties])
-          type-schema-ref            (some-> (get-in body-properties [:type :$ref])
+          body-properties            (get-in openapi-object [:paths "/api/card/" :post :requestBody :content "application/json" :schema :properties])
+          _                          (is (some? body-properties))
+          type-schema-ref            (some-> (get-in body-properties ["type" :$ref])
                                              (str/replace #"^#/components/schemas/" "")
                                              (str/replace #"\Q~1\E" "/"))
+          _                          (is (some? type-schema-ref))
           type-schema                (get schemas type-schema-ref)
-          result-metadata-schema-ref (some-> (get-in body-properties [:result_metadata :$ref])
+          result-metadata-schema-ref (some-> (get-in body-properties ["result_metadata" :$ref])
                                              (str/replace #"^#/components/schemas/" "")
                                              (str/replace #"\Q~1\E" "/"))
+          _                          (is (some? result-metadata-schema-ref))
           result-metadata-schema     (get schemas result-metadata-schema-ref)]
       (testing 'type
-        (testing type-schema-ref
-          (is (=? {:type "string", :enum [:question :metric :model]}
+        (testing (pr-str type-schema-ref)
+          (is (=? {:type :string, :enum [:question :metric :model]}
                   type-schema))))
       (testing 'result_metadata
         (testing (pr-str result-metadata-schema-ref)
-          (is (=? {:type        "array"
+          (is (=? {:type        :array
                    :description "value must be an array of valid results column metadata maps."
                    :optional    true}
                   result-metadata-schema)))))))
@@ -918,17 +920,14 @@
                       (mt/user-http-request :crowberto :post 200 "card"
                                             (merge (mt/with-temp-defaults :model/Card)
                                                    {:dataset_query query})))))
-            (let [metadata (-> (qp/process-query query)
-                               :data
-                               :results_metadata
-                               :columns)]
+            (let [card     (mt/card-with-metadata
+                            (merge (mt/with-temp-defaults :model/Card)
+                                   {:dataset_query query}))
+                  metadata (:result_metadata card)]
               (testing (format "with result metadata\n%s" (u/pprint-to-str metadata))
                 (is (some? metadata))
                 (is (=? {:id pos-int?}
-                        (mt/user-http-request :crowberto :post 200 "card"
-                                              (merge (mt/with-temp-defaults :model/Card)
-                                                     {:dataset_query   query
-                                                      :result_metadata metadata}))))))))))))
+                        (mt/user-http-request :crowberto :post 200 "card" card)))))))))))
 
 (deftest save-card-with-empty-result-metadata-test
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
@@ -1205,11 +1204,81 @@
 
 (deftest update-card-with-type-and-dataset-test
   (testing "can toggle model using only type"
-    (mt/with-temp [:model/Card card {:dataset_query {}}]
-      (is (=? {:type "model"}
-              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
-      (is (=? {:type "question"}
-              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"}))))))
+    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query orders
+                                                      {:fields [$id $subtotal $created_at]})}]
+      (let [base-metadata [{:id    (mt/id :orders :id)
+                            :ident (mt/ident :orders :id)
+                            :name  "ID"}
+                           {:id    (mt/id :orders :subtotal)
+                            :ident (mt/ident :orders :subtotal)
+                            :name  "SUBTOTAL"}
+                           {:id    (mt/id :orders :created_at)
+                            :ident (mt/ident :orders :created_at)
+                            :name  "CREATED_AT"}]]
+        (is (=? {:type            "question"
+                 :result_metadata base-metadata}
+                (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))
+            "initial result_metadata is inferred correctly")
+
+        (is (=? {:type            "model"
+                 :result_metadata (mapv #(lib/add-model-ident % (:entity_id card)) base-metadata)}
+                (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
+        (is (=? {:type            "question"
+                 :result_metadata base-metadata}
+                (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"})))))))
+
+(deftest update-card-with-type-and-dataset-test-2-native-query
+  (testing "can toggle model using only type for a native query"
+    (mt/with-temp [:model/Card card (mt/card-with-metadata
+                                     {:dataset_query
+                                      (mt/native-query {:query "SELECT id, subtotal, created_at FROM orders"})})]
+      (let [base-metadata [{:name      "ID"
+                            :ident     (lib/native-ident "ID" (:entity_id card))
+                            :field_ref ["field" "ID" {:base-type "type/BigInteger"}]}
+                           {:name      "SUBTOTAL"
+                            :ident     (lib/native-ident "SUBTOTAL" (:entity_id card))
+                            :field_ref ["field" "SUBTOTAL" {:base-type "type/Float"}]}
+                           {:name      "CREATED_AT"
+                            :ident     (lib/native-ident "CREATED_AT" (:entity_id card))
+                            :field_ref ["field" "CREATED_AT" {:base-type string?}]}]]
+        (is (=? {:type            "question"
+                 :result_metadata base-metadata}
+                (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))
+            "initial result_metadata is inferred correctly")
+
+        (is (=? {:type            "model"
+                 :result_metadata (mapv #(lib/add-model-ident % (:entity_id card)) base-metadata)}
+                (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
+        (is (=? {:type            "question"
+                 :result_metadata base-metadata}
+                (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"})))))))
+
+(deftest update-native-card-with-changed-columns-test
+  (testing "metadata is recomputed correctly when the query changes"
+    (mt/with-temp [:model/Card card (mt/card-with-metadata
+                                     {:dataset_query
+                                      (mt/native-query {:query "SELECT id, subtotal, created_at FROM orders"})})]
+      (let [base-metadata [{:name      "ID"
+                            :ident     (lib/native-ident "ID" (:entity_id card))
+                            :field_ref ["field" "ID" {:base-type "type/BigInteger"}]}
+                           {:name      "SUBTOTAL"
+                            :ident     (lib/native-ident "SUBTOTAL" (:entity_id card))
+                            :field_ref ["field" "SUBTOTAL" {:base-type "type/Float"}]}
+                           {:name      "CREATED_AT"
+                            :ident     (lib/native-ident "CREATED_AT" (:entity_id card))
+                            :field_ref ["field" "CREATED_AT" {:base-type string?}]}]]
+        (is (=? {:type            "question"
+                 :result_metadata base-metadata}
+                (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))
+            "initial result_metadata is inferred correctly")
+
+        (is (=? {:type            "model"
+                 :result_metadata (mapv #(lib/add-model-ident % (:entity_id card)) base-metadata)}
+                (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
+                                      (assoc card :type "model"))))
+        (is (=? {:type            "question"
+                 :result_metadata base-metadata}
+                (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"})))))))
 
 (deftest update-card-with-metric-type
   (testing "can update a metric"
@@ -1350,8 +1419,8 @@
                             (archived?))]
         (is (= false
                (archived?)))
-        (is (= true
-               (set-archived! true)))
+        (is (true?
+             (set-archived! true)))
         (is (= false
                (set-archived! false)))))))
 
@@ -1780,39 +1849,31 @@
 ;;; |                                        Card updates that impact alerts                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- rasta-alert-not-working [body-map]
-  (mt/email-to :rasta {:subject "One of your alerts has stopped working"
-                       :body    body-map}))
-
-(defn- crowberto-alert-not-working [body-map]
-  (mt/email-to :crowberto {:subject "One of your alerts has stopped working"
-                           :body    body-map}))
-
 (deftest alert-deletion-test
   (doseq [{:keys [message card deleted? expected-email-re f]}
           [{:message           "Archiving a Card should trigger Alert deletion"
             :deleted?          true
             :expected-email-re #"Alerts about [A-Za-z]+ \(#\d+\) have stopped because the question was archived by Rasta Toucan"
-            :f                 (fn [{:keys [card]}]
+            :f                 (fn [card]
                                  (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}
            {:message           "Validate changing a display type triggers alert deletion"
             :card              {:display :table}
             :deleted?          true
             :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
-            :f                 (fn [{:keys [card]}]
+            :f                 (fn [card]
                                  (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))}
            {:message           "Changing the display type from line to table should force a delete"
             :card              {:display :line}
             :deleted?          true
             :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
-            :f                 (fn [{:keys [card]}]
+            :f                 (fn [card]
                                  (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :table}))}
            {:message           "Removing the goal value will trigger the alert to be deleted"
             :card              {:display                :line
                                 :visualization_settings {:graph.goal_value 10}}
             :deleted?          true
             :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
-            :f                 (fn [{:keys [card]}]
+            :f                 (fn [card]
                                  (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:visualization_settings {:something "else"}}))}
            {:message           "Adding an additional breakout does not cause the alert to be removed if no goal is set"
             :card              {:display                :line
@@ -1823,9 +1884,8 @@
                                                          [[:field
                                                            (mt/id :checkins :date)
                                                            {:temporal-unit :hour}]])}
-            :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Crowberto Corv"
             :deleted?          false
-            :f                 (fn [{:keys [card]}]
+            :f                 (fn [card]
                                  (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                                        {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
                                                                                  [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
@@ -1841,73 +1901,60 @@
                                                            {:temporal-unit :hour}]])}
             :deleted?          true
             :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Crowberto Corv"
-            :f                 (fn [{:keys [card]}]
+            :f                 (fn [card]
                                  (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                                        {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
                                                                                  [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
                                                                                                      [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}]]
     (testing message
-      (mt/test-helpers-set-global-values!
-        (mt/with-temp
-          [:model/Card           card  card
-           :model/Pulse                 pulse {:alert_condition  "rows"
-                                               :alert_first_only false
-                                               :creator_id       (mt/user->id :rasta)
-                                               :name             "Original Alert Name"}
-
-           :model/PulseCard             _     {:pulse_id (u/the-id pulse)
-                                               :card_id  (u/the-id card)
-                                               :position 0}
-           :model/PulseChannel          pc    {:pulse_id (u/the-id pulse)}
-           :model/PulseChannelRecipient _     {:user_id          (mt/user->id :crowberto)
-                                               :pulse_channel_id (u/the-id pc)}
-           :model/PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
-                                               :pulse_channel_id (u/the-id pc)}]
-          (mt/with-temporary-setting-values [site-url "https://metabase.com"]
-            (with-cards-in-writeable-collection! card
-              (mt/with-fake-inbox
-                (when deleted?
-                  (u/with-timeout 5000
-                    (mt/with-expected-messages 2
-                      (f {:card card}))
-                    (is (= (merge (crowberto-alert-not-working {(str expected-email-re) true})
-                                  (rasta-alert-not-working     {(str expected-email-re) true}))
-                           (mt/regex-email-bodies expected-email-re))
-                        (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email-re)))))
-                (if deleted?
-                  (is (= nil (t2/select-one :model/Pulse :id (u/the-id pulse)))
-                      "Alert should have been deleted")
-                  (is (not= nil (t2/select-one :model/Pulse :id (u/the-id pulse)))
-                      "Alert should not have been deleted"))))))))))
+      (notification.tu/with-channel-fixtures [:channel/email]
+        (api.notification-test/with-send-messages-sync!
+          (notification.tu/with-card-notification
+            [notification {:card     (merge {:name "YOLO"} card)
+                           :handlers [{:channel_type :channel/email
+                                       :recipients  [{:type    :notification-recipient/user
+                                                      :user_id (mt/user->id :crowberto)}
+                                                     {:type    :notification-recipient/user
+                                                      :user_id (mt/user->id :rasta)}
+                                                     {:type    :notification-recipient/raw-value
+                                                      :details {:value "ngoc@metabase.com"}}]}]}]
+            (when deleted?
+              (let [[email] (notification.tu/with-mock-inbox-email!
+                              (f (->> notification :payload :card_id (t2/select-one :model/Card))))]
+                (is (=? {:bcc     #{"rasta@metabase.com" "crowberto@metabase.com" "ngoc@metabase.com"}
+                         :subject "One of your alerts has stopped working"
+                         :body    [{(str expected-email-re) true}]}
+                        (mt/summarize-multipart-single-email email expected-email-re)))))
+            (if deleted?
+              (is (= nil (t2/select-one :model/Notification :id (:id notification)))
+                  "Alert should have been deleted")
+              (is (not= nil (t2/select-one :model/Notification :id (:id notification)))
+                  "Alert should not have been deleted"))))))))
 
 (deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesnt-delete-the-alert
-  (is (= {:emails-1 {}
-          :pulse-1  true
-          :emails-2 {}
-          :pulse-2  true}
-         (mt/with-temp [:model/Card           card  {:display                :line
-                                                     :visualization_settings {:graph.goal_value 10}}
-                        :model/Pulse                 pulse {:alert_condition  "goal"
-                                                            :alert_first_only false
-                                                            :creator_id       (mt/user->id :rasta)
-                                                            :name             "Original Alert Name"}
-                        :model/PulseCard             _     {:pulse_id (u/the-id pulse)
-                                                            :card_id  (u/the-id card)
-                                                            :position 0}
-                        :model/PulseChannel          pc    {:pulse_id (u/the-id pulse)}
-                        :model/PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
-                                                            :pulse_channel_id (u/the-id pc)}]
-           (with-cards-in-writeable-collection! card
-             (mt/with-fake-inbox
-               (array-map
-                :emails-1 (do
-                            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :area})
-                            (mt/regex-email-bodies #"the question was edited by Rasta Toucan"))
-                :pulse-1  (boolean (t2/select-one :model/Pulse :id (u/the-id pulse)))
-                :emails-2 (do
-                            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :bar})
-                            (mt/regex-email-bodies #"the question was edited by Rasta Toucan"))
-                :pulse-2  (boolean (t2/select-one :model/Pulse :id (u/the-id pulse))))))))))
+  (doseq [{:keys [message display]}
+          [{:message "Changing display type from line to area should not delete alert"
+            :display :area}
+           {:message "Changing display type from line to bar should not delete alert"
+            :display :bar}]]
+    (testing message
+      (notification.tu/with-channel-fixtures [:channel/email]
+        (api.notification-test/with-send-messages-sync!
+          (notification.tu/with-card-notification
+            [notification {:card     {:name "Test Card"
+                                      :display :line
+                                      :visualization_settings {:graph.goal_value 10}}
+                           :handlers [{:channel_type :channel/email
+                                       :recipients   [{:type    :notification-recipient/user
+                                                       :user_id (mt/user->id :crowberto)}
+                                                      {:type    :notification-recipient/user
+                                                       :user_id (mt/user->id :rasta)}
+                                                      {:type    :notification-recipient/raw-value
+                                                       :details {:value "ngoc@metabase.com"}}]}]}]
+            (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+              (mt/user-http-request :rasta :put 200 (str "card/" (->> notification :payload :card_id)) {:display display})
+              (is (t2/exists? :model/Notification (:id notification))
+                  "Alert should not have been deleted"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          DELETING A CARD (DEPRECATED)                                          |
@@ -1924,126 +1971,6 @@
 (deftest deleting-a-card-that-doesnt-exist-should-return-a-404---1957-
   (is (= "Not found."
          (mt/user-http-request :crowberto :delete 404 "card/12345"))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                  Timelines                                                     |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- timelines-request
-  [card include-events?]
-  (if include-events?
-    (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card) "/timelines") :include "events")
-    (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card) "/timelines"))))
-
-(defn- timelines-range-request
-  [card {:keys [start end]}]
-  (apply mt/user-http-request (concat [:rasta :get 200
-                                       (str "card/" (u/the-id card) "/timelines")
-                                       :include "events"]
-                                      (when start [:start start])
-                                      (when end [:end end]))))
-
-(defn- timeline-names [timelines]
-  (->> timelines (map :name) set))
-
-(defn- event-names [timelines]
-  (->> timelines (mapcat :events) (map :name) set))
-
-(deftest timelines-test
-  (testing "GET /api/card/:id/timelines"
-    (mt/with-temp [:model/Collection coll-a {:name "Collection A"}
-                   :model/Collection coll-b {:name "Collection B"}
-                   :model/Collection coll-c {:name "Collection C"}
-                   :model/Card card-a {:name          "Card A"
-                                       :collection_id (u/the-id coll-a)}
-                   :model/Card card-b {:name          "Card B"
-                                       :collection_id (u/the-id coll-b)}
-                   :model/Card card-c {:name          "Card C"
-                                       :collection_id (u/the-id coll-c)}
-                   :model/Timeline tl-a {:name          "Timeline A"
-                                         :collection_id (u/the-id coll-a)}
-                   :model/Timeline tl-b {:name          "Timeline B"
-                                         :collection_id (u/the-id coll-b)}
-                   :model/Timeline _ {:name          "Timeline B-old"
-                                      :collection_id (u/the-id coll-b)
-                                      :archived      true}
-                   :model/Timeline _ {:name          "Timeline C"
-                                      :collection_id (u/the-id coll-c)}
-                   :model/TimelineEvent _ {:name        "event-aa"
-                                           :timeline_id (u/the-id tl-a)}
-                   :model/TimelineEvent _ {:name        "event-ab"
-                                           :timeline_id (u/the-id tl-a)}
-                   :model/TimelineEvent _ {:name        "event-ba"
-                                           :timeline_id (u/the-id tl-b)}
-                   :model/TimelineEvent _ {:name        "event-bb"
-                                           :timeline_id (u/the-id tl-b)
-                                           :archived    true}]
-      (testing "Timelines in the collection of the card are returned"
-        (is (= #{"Timeline A"}
-               (timeline-names (timelines-request card-a false)))))
-      (testing "Timelines in the collection have a hydrated `:collection` key"
-        (is (= #{(u/the-id coll-a)}
-               (->> (timelines-request card-a false)
-                    (map #(get-in % [:collection :id]))
-                    set))))
-      (testing "check that `:can_write` key is hydrated"
-        (is (every?
-             #(contains? % :can_write)
-             (map :collection (timelines-request card-a false)))))
-      (testing "Only un-archived timelines in the collection of the card are returned"
-        (is (= #{"Timeline B"}
-               (timeline-names (timelines-request card-b false)))))
-      (testing "Timelines have events when `include=events` is passed"
-        (is (= #{"event-aa" "event-ab"}
-               (event-names (timelines-request card-a true)))))
-      (testing "Timelines have only un-archived events when `include=events` is passed"
-        (is (= #{"event-ba"}
-               (event-names (timelines-request card-b true)))))
-      (testing "Timelines with no events have an empty list on `:events` when `include=events` is passed"
-        (is (= '()
-               (->> (timelines-request card-c true) first :events)))))))
-
-(deftest timelines-range-test
-  (testing "GET /api/card/:id/timelines?include=events&start=TIME&end=TIME"
-    (mt/with-temp [:model/Collection collection {:name "Collection"}
-                   :model/Card card {:name          "Card A"
-                                     :collection_id (u/the-id collection)}
-                   :model/Timeline tl-a {:name          "Timeline A"
-                                         :collection_id (u/the-id collection)}
-                   ;; the temp defaults set {:time_matters true}
-                   :model/TimelineEvent _ {:name        "event-a"
-                                           :timeline_id (u/the-id tl-a)
-                                           :timestamp   #t "2020-01-01T10:00:00.0Z"}
-                   :model/TimelineEvent _ {:name        "event-b"
-                                           :timeline_id (u/the-id tl-a)
-                                           :timestamp   #t "2021-01-01T10:00:00.0Z"}
-                   :model/TimelineEvent _ {:name        "event-c"
-                                           :timeline_id (u/the-id tl-a)
-                                           :timestamp   #t "2022-01-01T10:00:00.0Z"}
-                   :model/TimelineEvent _ {:name        "event-d"
-                                           :timeline_id (u/the-id tl-a)
-                                           :timestamp   #t "2023-01-01T10:00:00.0Z"}]
-      (testing "Events are properly filtered when given only `start=` parameter"
-        (is (= #{"event-c" "event-d"}
-               (event-names (timelines-range-request card {:start "2022-01-01T10:00:00.0Z"})))))
-      (testing "Events are properly filtered when given only `end=` parameter"
-        (is (= #{"event-a" "event-b" "event-c"}
-               (event-names (timelines-range-request card {:end "2022-01-01T10:00:00.0Z"})))))
-      (testing "Events are properly filtered when given `start=` and `end=` parameters"
-        (is (= #{"event-b" "event-c"}
-               (event-names (timelines-range-request card {:start "2020-12-01T10:00:00.0Z"
-                                                           :end   "2022-12-01T10:00:00.0Z"})))))
-      (mt/with-temp [:model/TimelineEvent _ {:name         "event-a2"
-                                             :timeline_id  (u/the-id tl-a)
-                                             :timestamp    #t "2020-01-01T10:00:00.0Z"
-                                             :time_matters false}]
-        (testing "Events are properly filtered considering the `time_matters` state."
-          ;; notice that event-a and event-a2 have the same timestamp, but different time_matters states.
-          ;; time_matters = false effectively means "We care only about the DATE of this event", so
-          ;; if a start or end timestamp is on the same DATE (regardless of time), include the event
-          (is (= #{"event-a2"}
-                 (event-names (timelines-range-request card {:start "2020-01-01T11:00:00.0Z"
-                                                             :end   "2020-12-01T10:00:00.0Z"})))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            CSV/JSON/XLSX DOWNLOADS                                             |
@@ -2680,7 +2607,7 @@
           (update-card card {:description "a new description"})
           (is (empty? (reviews card)))))
       (testing "Does not add nil moderation reviews when there are reviews but not verified"
-        ;; testing that we aren't just adding a nil moderation each time we update a card
+       ;; testing that we aren't just adding a nil moderation each time we update a card
         (with-card :verified
           (is (verified? card))
           (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
@@ -2806,8 +2733,8 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Card card]
         (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (u/the-id card)))]
-          (is (= true
-                 (boolean (t2/exists? :model/Card :id (u/the-id card), :public_uuid uuid)))))))))
+          (is (true?
+               (boolean (t2/exists? :model/Card :id (u/the-id card), :public_uuid uuid)))))))))
 
 (deftest share-card-preconditions-test
   (testing "POST /api/card/:id/public_link"
@@ -2989,15 +2916,11 @@
     (let [query          (mt/mbql-query venues {:fields [$id $name]})
           modified-query (mt/mbql-query venues {:fields [$id $name $price]})
           norm           (comp u/upper-case-en :name)
-          to-native      (fn [q]
-                           {:database (:database q)
-                            :type     :native
-                            :native   (qp.compile/compile q)})
-          update-card!  (fn [card]
-                          (mt/user-http-request :crowberto :put 200
-                                                (str "card/" (u/the-id card)) card))]
+          update-card!   (fn [card]
+                           (mt/user-http-request :crowberto :put 200
+                                                 (str "card/" (u/the-id card)) card))]
       (doseq [[query-type query modified-query] [["mbql"   query modified-query]
-                                                 ["native" (to-native query) (to-native modified-query)]]]
+                                                 #_["native" (to-native query) (to-native modified-query)]]]
         (testing (str "For: " query-type)
           (mt/with-model-cleanup [:model/Card]
             (let [{metadata :result_metadata
@@ -3063,109 +2986,6 @@
           (is (= "details-only" (-> query-result
                                     :data :cols last :visibility_type))
               "in cols (important for the saved metadata)"))))))
-
-(defn- do-with-persistence-setup! [f]
-  ;; mt/with-temp-scheduler! actually just reuses the current scheduler. The scheduler factory caches by name set in
-  ;; the resources/quartz.properties file and we reuse that scheduler
-  (let [sched (.getScheduler
-               (StdSchedulerFactory. (doto (java.util.Properties.)
-                                       (.setProperty "org.quartz.scheduler.instanceName" (str (gensym "card-api-test")))
-                                       (.setProperty "org.quartz.scheduler.instanceID" "AUTO")
-                                       (.setProperty "org.quartz.properties" "non-existant")
-                                       (.setProperty "org.quartz.threadPool.threadCount" "6")
-                                       (.setProperty "org.quartz.threadPool.class" "org.quartz.simpl.SimpleThreadPool"))))]
-    ;; a binding won't work since we need to cross thread boundaries
-    (with-redefs [task/scheduler (constantly sched)]
-      (try
-        (qs/standby sched)
-        (#'task.persist-refresh/job-init!)
-        (#'task.sync-databases/job-init)
-        (mt/with-temporary-setting-values [:persisted-models-enabled true]
-          ;; Use a postgres DB because it supports the :persist-models feature
-          (mt/with-temp [:model/Database db {:settings {:persist-models-enabled true} :engine :postgres}]
-            (f db)))
-        (finally
-          (qs/shutdown sched))))))
-
-(defmacro ^:private with-persistence-setup!
-  "Sets up a temp scheduler, a temp database and enabled persistence. Scheduler will be in standby mode so that jobs
-  won't run. Just check for trigger presence."
-  [db-binding & body]
-  `(do-with-persistence-setup! (fn [~db-binding] ~@body)))
-
-(defn- job-info-for-individual-refresh
-  "Return a set of PersistedInfo ids of all jobs scheduled for individual refreshes."
-  []
-  (some->> (deref #'task.persist-refresh/refresh-job-key)
-           task/job-info
-           :triggers
-           (map :data)
-           (filter (comp #{"individual"} #(get % "type")))
-           (map #(get % "persisted-id"))
-           set))
-
-(deftest refresh-persistence
-  (testing "Can schedule refreshes for models"
-    (with-persistence-setup! db
-      (mt/with-temp
-        [:model/Card          model      {:type :model :database_id (u/the-id db)}
-         :model/Card          notmodel   {:type :question :database_id (u/the-id db)}
-         :model/Card          archived   {:type :model :archived true :database_id (u/the-id db)}
-         :model/PersistedInfo pmodel     {:card_id (u/the-id model) :database_id (u/the-id db)}
-         :model/PersistedInfo pnotmodel  {:card_id (u/the-id notmodel) :database_id (u/the-id db)}
-         :model/PersistedInfo parchived  {:card_id (u/the-id archived) :database_id (u/the-id db)}]
-        (testing "Can refresh models"
-          (mt/user-http-request :crowberto :post 204 (format "card/%d/refresh" (u/the-id model)))
-          (is (contains? (job-info-for-individual-refresh)
-                         (u/the-id pmodel))
-              "Missing refresh of model"))
-        (testing "Won't refresh archived models"
-          (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id archived)))
-          (is (not (contains? (job-info-for-individual-refresh)
-                              (u/the-id pnotmodel)))
-              "Scheduled refresh of archived model"))
-        (testing "Won't refresh cards no longer models"
-          (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id notmodel)))
-          (is (not (contains? (job-info-for-individual-refresh)
-                              (u/the-id parchived)))
-              "Scheduled refresh of archived model"))))))
-
-(deftest unpersist-persist-model-test
-  (with-persistence-setup! db
-    (mt/with-temp
-      [:model/Card          model     {:database_id (u/the-id db), :type :model}
-       :model/PersistedInfo pmodel    {:database_id (u/the-id db), :card_id (u/the-id model)}]
-      (testing "Can't unpersist models without :cache-granular-controls feature flag enabled"
-        (mt/with-premium-features #{}
-          (mt/user-http-request :crowberto :post 402 (format "card/%d/unpersist" (u/the-id model)))
-          (is (= "persisted"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
-      (testing "Can unpersist models with the :cache-granular-controls feature flag enabled"
-        (mt/with-premium-features #{:cache-granular-controls}
-          (mt/user-http-request :crowberto :post 204 (format "card/%d/unpersist" (u/the-id model)))
-          (is (= "off"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
-      (testing "Can't re-persist models with the :cache-granular-controls feature flag enabled"
-        (mt/with-premium-features #{}
-          (mt/user-http-request :crowberto :post 402 (format "card/%d/persist" (u/the-id model)))
-          (is (= "off"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
-      (testing "Can re-persist models with the :cache-granular-controls feature flag enabled"
-        (mt/with-premium-features #{:cache-granular-controls}
-          (mt/user-http-request :crowberto :post 204 (format "card/%d/persist" (u/the-id model)))
-          (is (= "creating"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel)))))))
-    (mt/with-temp
-      [:model/Card          notmodel  {:database_id (u/the-id db), :type :question}
-       :model/PersistedInfo pnotmodel {:database_id (u/the-id db), :card_id (u/the-id notmodel)}]
-      (mt/with-premium-features #{:cache-granular-controls}
-        (testing "Allows unpersisting non-model cards"
-          (mt/user-http-request :crowberto :post 204 (format "card/%d/unpersist" (u/the-id notmodel)))
-          (is (= "off"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pnotmodel)))))
-        (testing "Can't re-persist non-model cards"
-          (is (= "Card is not a model"
-                 (mt/user-http-request :crowberto :post 400 (format "card/%d/persist" (u/the-id notmodel))))))))))
 
 (defn param-values-url
   "Returns an URL used to get values for parameter of a card.
@@ -3321,7 +3141,7 @@
           (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc"))))
           (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc" "search-query")))))))))
 
-(deftest paramters-using-old-style-field-values
+(deftest parameters-using-old-style-field-values
   (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
     (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
       (testing "without search query"
@@ -3590,8 +3410,8 @@
                                   (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
                                   (lib/limit 2))]
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
-          (is (=? {:data {:rows [["1" "Red Medicine" "4" 10.0646 -165.374 3]
-                                 ["2" "Stout Burgers & Beers" "11" 34.0996 -118.329 2]]}}
+          (is (=? {:data {:rows [[1 "Red Medicine" 4 10.0646 -165.374 3]
+                                 [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]}}
                   (mt/user-http-request :crowberto :post 202 (format "card/%d/query" card-id)))))))))
 
 (deftest ^:parallel validate-template-tags-test
@@ -3788,6 +3608,52 @@
            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
                (api.test-util/select-query-metadata-keys-for-debugging)))))))
 
+(deftest card-metadata-has-entity-ids-test
+  (mt/with-temp
+    [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)
+                                  :database_id (mt/id)}
+     :model/Card {card-id-2 :id} {:dataset_query
+                                  {:type     :native
+                                   :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */"
+                                              :template-tags
+                                              {"id"      {:name         "id"
+                                                          :display-name "Id"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :people :id) nil]
+                                                          :widget-type  :id
+                                                          :default      nil}
+                                               "name"    {:name         "name"
+                                                          :display-name "Name"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :people :name) nil]
+                                                          :widget-type  :category
+                                                          :default      nil}
+                                               "source"  {:name         "source"
+                                                          :display-name "Source"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :people :source) nil]
+                                                          :widget-type  :category
+                                                          :default      nil}
+                                               "user_id" {:name         "user_id"
+                                                          :display-name "User"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :orders :user_id) nil]
+                                                          :widget-type  :id
+                                                          :default      nil}}}
+                                   :database (mt/id)}
+                                  :query_type :native
+                                  :database_id (mt/id)}]
+    (testing "Simple card"
+      (is (=? {:fields api.test-util/all-have-entity-ids?
+               :tables api.test-util/all-have-entity-ids?
+               :databases api.test-util/all-have-entity-ids?}
+              (mt/user-http-request :crowberto :get 200 (str "card/" card-id-1 "/query_metadata")))))
+    (testing "Parameterized native query"
+      (is (=? {:fields api.test-util/all-have-entity-ids?
+               :tables api.test-util/all-have-entity-ids?
+               :databases api.test-util/all-have-entity-ids?}
+              (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata")))))))
+
 (deftest card-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
@@ -3863,12 +3729,26 @@
 (deftest dashboard-internal-card-creation
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Collection {other-coll-id :id} {}
-                 :model/Dashboard {dash-id :id} {:collection_id coll-id}]
+                 :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                 :model/DashboardTab {dt1-id :id} {:dashboard_id dash-id}
+                 :model/DashboardTab {dt2-id :id} {:dashboard_id dash-id}]
     (testing "We can create a dashboard internal card"
       (let [card-id (:id (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query)
                                                                                   :dashboard_id dash-id)))]
         (testing "We autoplace a dashboard card for the new question"
-          (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id))))
+          (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+    (testing "We can create a dashboard internal card on a particular tab"
+      (let [card-on-1st-tab-id (:id (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query)
+                                                                                             :dashboard_id dash-id
+                                                                                             :dashboard_tab_id dt1-id)))
+            card-on-2nd-tab-id (:id (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query)
+                                                                                             :dashboard_id dash-id
+                                                                                             :dashboard_tab_id dt2-id)))]
+        (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-on-1st-tab-id :dashboard_tab_id dt1-id))
+        (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-on-2nd-tab-id :dashboard_tab_id dt2-id))))
+    (testing "We can't specify a tab ID without specifying a dashboard"
+      (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
+                                                               :dashboard_tab_id dt1-id)))
     (testing "We can't create a dashboard internal card with a collection_id different that its dashboard's"
       (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
                                                                :dashboard_id dash-id
@@ -3937,7 +3817,21 @@
       (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dash-id)
 
       (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived false})
-      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :dashboard_tab_id dt-id :card_id card-id)))))
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :dashboard_tab_id dt-id :card_id card-id))))
+  (testing "even when the card was on a tab before, it gets autoplaced to the first tab"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/DashboardTab {first-tab-id :id} {:dashboard_id dash-id}
+                   :model/DashboardTab {dt-id :id} {:dashboard_id dash-id}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dash-id :dashboard_tab_id dt-id :card_id card-id}]
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:dashboard_id dash-id})
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :dashboard_tab_id dt-id :card_id card-id))
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived true})
+      (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dash-id)
+
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived false})
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :dashboard_tab_id first-tab-id :card_id card-id)))))
 
 (deftest move-question-to-collection-test
   (testing "We can move a dashboard question to a collection"
@@ -3952,6 +3846,65 @@
                                                                            :dashboard_id  nil})))
       (is (= coll-id (t2/select-one-fn :collection_id :model/Card card-id)))
       (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+
+(deftest move-question-to-dashboard-can-choose-tab-test
+  (testing "We can move a question to a dashboard, choosing a particular tab"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/DashboardTab {dt1-id :id} {:dashboard_id dash-id}
+                   :model/DashboardTab {dt2-id :id} {:dashboard_id dash-id}
+                   :model/Card {card-1-id :id} {:collection_id coll-id}
+                   :model/Card {card-2-id :id} {:collection_id coll-id}]
+      (mt/user-http-request :rasta :put 200 (str "card/" card-1-id) {:dashboard_id dash-id
+                                                                     :dashboard_tab_id dt1-id})
+      (mt/user-http-request :rasta :put 200 (str "card/" card-2-id) {:dashboard_id dash-id
+                                                                     :dashboard_tab_id dt2-id})
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-1-id :dashboard_tab_id dt1-id))
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-2-id :dashboard_tab_id dt2-id)))))
+
+(deftest moving-archived-question-to-dashboard-can-specify-tab-test
+  (testing "We can unarchive a question and move it to a specific dashboard tab"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/DashboardTab {dt1-id :id} {:dashboard_id dash-id}
+                   :model/DashboardTab {dt2-id :id} {:dashboard_id dash-id}
+                   :model/Card {card-1-id :id} {:collection_id coll-id :archived true}
+                   :model/Card {card-2-id :id} {:collection_id coll-id :archived true}]
+      (mt/user-http-request :rasta :put 200 (str "card/" card-1-id)
+                            {:dashboard_id dash-id
+                             :dashboard_tab_id dt1-id})
+      (mt/user-http-request :rasta :put 200 (str "card/" card-2-id)
+                            {:dashboard_id dash-id
+                             :dashboard_tab_id dt2-id})
+      (is (false? (:archived (t2/select-one :model/Card :id card-1-id))))
+      (is (false? (:archived (t2/select-one :model/Card :id card-2-id))))
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-1-id :dashboard_tab_id dt1-id))
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-2-id :dashboard_tab_id dt2-id)))))
+
+(deftest moving-archived-dqs-can-specify-tab-test
+  (testing "We can specify a dashboard_tab_id when unarchiving a question that's already a DQ"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/DashboardTab {dt1-id :id} {:dashboard_id dash-id}
+                   :model/DashboardTab {dt2-id :id} {:dashboard_id dash-id}
+                   :model/Card {card-1-id :id} {:collection_id coll-id
+                                                :archived true
+                                                :dashboard_id dash-id}
+                   :model/Card {card-2-id :id} {:collection_id coll-id
+                                                :archived true
+                                                :dashboard_id dash-id}]
+      ;; Unarchive DQs and specify their tabs
+      (mt/user-http-request :rasta :put 200 (str "card/" card-1-id)
+                            {:dashboard_tab_id dt1-id
+                             :archived false})
+      (mt/user-http-request :rasta :put 200 (str "card/" card-2-id)
+                            {:dashboard_tab_id dt2-id
+                             :archived false})
+      ;; Verify cards are unarchived and associated with correct tabs
+      (is (false? (:archived (t2/select-one :model/Card :id card-1-id))))
+      (is (false? (:archived (t2/select-one :model/Card :id card-2-id))))
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-1-id :dashboard_tab_id dt1-id))
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-2-id :dashboard_tab_id dt2-id)))))
 
 (deftest move-question-to-collection-remove-reference-test
   (testing "We can move a dashboard question to a collection and remove the old reference to it"
@@ -4188,3 +4141,206 @@
             :moderation_status nil}
            (-> (mt/user-http-request :rasta :get 200 (str "card/" card-id))
                :dashboard)))))
+
+(deftest dashboard-questions-can-be-created-without-specifying-a-collection-id
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:name "My Dashboard"
+                                                   :collection_id coll-id}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
+      (testing "Specifying only `collection_id` works"
+        (mt/user-http-request :rasta :post 200 "card/"
+                              (assoc (card-with-name-and-query)
+                                     :collection_id coll-id)))
+      (testing "Specifying only `dashboard_id` works"
+        (mt/user-http-request :rasta :post 200 "card/"
+                              (assoc (card-with-name-and-query)
+                                     :dashboard_id dash-id)))
+      (testing "Specifying both works"
+        (mt/user-http-request :rasta :post 200 "card/"
+                              (assoc (card-with-name-and-query)
+                                     :collection_id coll-id
+                                     :dashboard_id dash-id)))
+      (testing "Specifying both fails if they're different"
+        (is (= (tru "Mismatch detected between Dashboard''s `collection_id` ({0}) and `collection_id` ({1})"
+                    coll-id
+                    nil)
+               (mt/user-http-request :rasta :post 400 "card/"
+                                     (assoc (card-with-name-and-query)
+                                            :collection_id nil
+                                            :dashboard_id dash-id))))))))
+
+(deftest cannot-move-question-to-dashboard-without-permissions
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                   :model/Collection {coll-id-2 :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id-2}
+                   :model/Card {card-id :id} {:collection_id coll-id-1}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id-1)
+      (testing "with read-only permissions on the destination collection"
+        (perms/revoke-collection-permissions! (perms-group/all-users) coll-id-2)
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id-2)
+        (testing "just to be sure, we can't directly move it to the read-only collection"
+          (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:collection_id coll-id-2}))
+        (testing "we can't move it to the dashboard in the read-only collection"
+          (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id})
+          (is (not= dash-id (t2/select-one-fn :dashboard_id :model/Card :id card-id)))))
+      (testing "with no permissions on the destination collection"
+        (perms/revoke-collection-permissions! (perms-group/all-users) coll-id-2)
+        (testing "just to be sure, we can't directly move it to the no-perms collection"
+          (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:collection_id coll-id-2}))
+        (testing "we can't move it to the dashboard in the no-perms collection"
+          (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id})
+          (is (not= dash-id (t2/select-one-fn :dashboard_id :model/Card :id card-id))))))
+    (testing "the root collection works the same way"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Dashboard {dash-id :id} {:collection_id nil}
+                     :model/Card {card-id :id} {:collection_id coll-id}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
+        (testing "can't move to the root collection"
+          (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))))
+
+(deftest cannot-join-question-with-itself
+  (testing "Cannot join card with itself."
+    (let [mp (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/aggregate (lib/count))
+                    (as-> $q (lib/breakout $q (m/find-first (comp #{"Created At"} :display-name)
+                                                            (lib/breakoutable-columns $q)))))]
+      (doseq [card-type-a [:question :metric :model]]
+        (mt/with-temp [:model/Card {:keys [id]} {:dataset_query (lib/->legacy-MBQL query) :type card-type-a}]
+          (let [card (lib.metadata/card mp id)
+                columns (lib/returned-columns (lib/query mp card))
+                right-column (m/find-first (comp #{"ID"} :display-name) columns)
+                query-with-self-join (lib/join query
+                                               (lib/join-clause card
+                                                                [(lib/=
+                                                                  (lib.metadata/field mp (mt/id :orders :id))
+                                                                  right-column)]))]
+            (doseq [card-type-b [:question :metric :model]]
+              (mt/user-http-request :crowberto :put 400 (str "card/" id)
+                                    {:dataset_query (lib/->legacy-MBQL query-with-self-join)
+                                     :type card-type-b}))))))))
+
+(deftest cannot-use-self-as-source
+  (testing "Cannot use self as source for card."
+    (let [mp (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (doseq [card-type-a [:question :model]]
+        (mt/with-temp [:model/Card {:keys [id]} {:dataset_query (lib/->legacy-MBQL query) :type card-type-a}]
+          (let [query-with-self-source (lib/with-different-table query (str "card__" id))]
+            (doseq [card-type-b [:question :model]]
+              (mt/user-http-request :crowberto :put 400 (str "card/" id)
+                                    {:dataset_query (lib/->legacy-MBQL query-with-self-source)
+                                     :type card-type-b}))))))))
+
+(deftest cannot-save-metric-with-formula-cycle
+  (testing "Cannot aggregate a metric with itself."
+    (let [mp (mt/metadata-provider)
+          query-a (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/aggregate (lib/count))
+                      (as-> $q (lib/breakout $q (m/find-first (comp #{"Created At"} :display-name)
+                                                              (lib/breakoutable-columns $q)))))]
+      (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type :metric}]
+        (let [query-b (lib/aggregate query-a (lib.metadata/metric mp id-a))]
+          (mt/with-temp [:model/Card {id-b :id} {:dataset_query (lib/->legacy-MBQL query-b) :type :metric}]
+            (let [query-with-cycle (lib/aggregate query-a (lib.metadata/metric mp id-b))]
+              (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
+                                    {:dataset_query (lib/->legacy-MBQL query-with-cycle)
+                                     :type :metric}))))))))
+
+(deftest cannot-join-question-with-other-question-joining-original
+  (testing "Cannot join in a chain of cards to make cycle."
+    (let [mp (mt/metadata-provider)
+          query-a (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/aggregate (lib/count))
+                      (as-> $q (lib/breakout $q (m/find-first (comp #{"Created At"} :display-name)
+                                                              (lib/breakoutable-columns $q)))))]
+      (doseq [card-type-a [:question :metric :model]]
+        (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type card-type-a}]
+          (let [card-a (lib.metadata/card mp id-a)
+                columns (lib/returned-columns (lib/query mp card-a))
+                right-column-a (m/find-first (comp #{"ID"} :display-name) columns)
+                query-b (lib/join query-a
+                                  (lib/join-clause card-a
+                                                   [(lib/=
+                                                     (lib.metadata/field mp (mt/id :orders :id))
+                                                     right-column-a)]))]
+            (doseq [card-type-b [:question :metric :model]]
+              (mt/with-temp [:model/Card {id-b :id} {:dataset_query (lib/->legacy-MBQL query-b) :type card-type-b}]
+                (let [card-b (lib.metadata/card mp id-b)
+                      columns (lib/returned-columns (lib/query mp card-b))
+                      left-column-b (m/find-first (comp #{"ID"} :display-name) columns)
+                      query-cycle (lib/join query-a
+                                            (lib/join-clause card-b
+                                                             [(lib/=
+                                                               left-column-b
+                                                               right-column-a)]))]
+                  (doseq [card-type-c [:question :metric :model]]
+                    (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
+                                          {:dataset_query (lib/->legacy-MBQL query-cycle)
+                                           :type card-type-c})))))))))))
+
+(deftest e2e-card-update-invalidates-cache-test
+  (testing "Card update invalidates card's cache (#55955)"
+    (let [existing-config (t2/select-one :model/CacheConfig :model_id 0 :model "root")]
+      (try
+        ;; First delete the existing root config because if that exists (shouldn't, but you know..)
+        ;; with-temp will fail. This is imho simpler then checking whether that exists and based on the result of
+        ;; the query either doing update or insert.
+        (when existing-config
+          (t2/delete! :model/CacheConfig :model_id 0 :model "root"))
+        (mt/with-temp
+          [:model/CacheConfig
+           _
+           {:model_id 0
+            :model "root"
+            :strategy "ttl"
+            :config {:multiplier 99999, :min_duration_ms 1}}
+
+           :model/Card
+           model
+           {:type :model
+            :dataset_query (let [mp (mt/metadata-provider)]
+                             (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                 (lib/limit 10)
+                                 lib.convert/->legacy-MBQL))}]
+          (letfn [;; Query results should get cached on following request.
+                  (card-query-post-request
+                    []
+                    (mt/user-http-request :rasta :post 202 (str "card/" (:id model) "/query")
+                                          {:collection_preview false
+                                           :ignore_cache       false
+                                           :parameters         []}))
+                  ;; Query cache should get invalidated on following request.
+                  (card-put-request [result_metadata]
+                    (mt/user-http-request :rasta :put 200
+                                          (str "card/" (:id model))
+                                          {:result_metadata result_metadata}))]
+            (let [post-response (do (card-query-post-request)
+                                    (card-query-post-request))
+                  raw-results-metadata (get-in post-response [:data :results_metadata :columns])]
+              (testing "Base: Initial query is cached (2nd post request's response)"
+                (is (some? (:cached post-response))))
+              (let [put-resonse (card-put-request (cons (assoc (first raw-results-metadata) :display_name "This is ID")
+                                                        (rest raw-results-metadata)))]
+                (testing "Base: Put changes results_metadata successfully"
+                  (is (= "This is ID"
+                         (-> put-resonse :result_metadata first :display_name))))))
+            (testing "Card request not cached. Preceding post successfully invalidated the cache."
+              (let [post-response (card-query-post-request)
+                    id-display-name (-> post-response :data :results_metadata :columns first :display_name)]
+                (testing "Cache is NOT being used, cache was invalidated"
+                  (is (nil? (:cached post-response))))
+                (testing "Metadata edit persists"
+                  (is (= "This is ID" id-display-name)))))
+            (testing "Last post request cached the query successfully"
+              (let [post-response (card-query-post-request)
+                    id-display-name (-> post-response :data :results_metadata :columns first :display_name)]
+                (testing "Cache is being used."
+                  (is (some? (:cached post-response))))
+                (testing "Metadata edit persists"
+                  (is (= "This is ID" id-display-name)))))))
+        (finally
+          (when existing-config
+            (t2/insert! :model/CacheConfig existing-config)))))))

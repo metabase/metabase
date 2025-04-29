@@ -21,7 +21,7 @@ describe("TimelinePanel", () => {
     });
 
     setup(props);
-    await userEvent.click(screen.getByText("Add an event"));
+    await userEvent.click(screen.getByText("Create event"));
 
     expect(props.onNewEvent).toHaveBeenCalled();
   });
@@ -33,7 +33,7 @@ describe("TimelinePanel", () => {
     });
 
     setup(props);
-    await userEvent.click(screen.getByText("Add an event"));
+    await userEvent.click(screen.getByText("Create event"));
 
     expect(props.onNewEvent).toHaveBeenCalled();
   });
@@ -46,7 +46,7 @@ describe("TimelinePanel", () => {
 
     setup(props);
 
-    expect(screen.queryByText("Add an event")).not.toBeInTheDocument();
+    expect(screen.queryByText("Create event")).not.toBeInTheDocument();
   });
 });
 

@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
 import { useCreateDashboardMutation } from "metabase/api";
@@ -36,8 +35,19 @@ const DASHBOARD_SCHEMA = Yup.object({
 });
 
 export interface CreateDashboardProperties {
+  /**
+   * Dashboard title
+   */
   name: string;
+
+  /**
+   * Dashboard description
+   */
   description: string | null;
+
+  /**
+   * @internal
+   */
   collection_id: CollectionId;
 }
 
@@ -56,7 +66,7 @@ export function CreateDashboardForm({
   filterPersonalCollections,
   collectionId,
 }: CreateDashboardFormOwnProps) {
-  const initialCollectionId = useSelector(state =>
+  const initialCollectionId = useSelector((state) =>
     Collections.selectors.getInitialCollectionId(state, { collectionId }),
   );
 
@@ -88,7 +98,7 @@ export function CreateDashboardForm({
       onSubmit={handleCreate}
     >
       {() => (
-        <Form as={Stack} spacing={0}>
+        <Form as={Stack} gap={0}>
           <FormTextInput
             labelProps={{ mb: "xs", fw: 800 }}
             name="name"

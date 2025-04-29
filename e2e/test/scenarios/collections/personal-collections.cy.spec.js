@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -62,7 +62,7 @@ describe("personal collections", () => {
       H.popover().findByText("Other users' personal collections").click();
       cy.location("pathname").should("eq", "/collection/users");
       cy.findByTestId("browsercrumbs").findByText(/All personal collections/i);
-      Object.values(USERS).forEach(user => {
+      Object.values(USERS).forEach((user) => {
         const FULL_NAME = `${user.first_name} ${user.last_name}`;
         cy.findByText(FULL_NAME);
       });
@@ -120,7 +120,7 @@ describe("personal collections", () => {
     });
 
     it("should be able view other users' personal sub-collections (metabase#15339)", () => {
-      cy.createCollection({
+      H.createCollection({
         name: "Foo",
         parent_id: NO_DATA_PERSONAL_COLLECTION_ID,
       });
@@ -132,7 +132,7 @@ describe("personal collections", () => {
   });
 
   describe("all users", () => {
-    Object.keys(USERS).forEach(user => {
+    Object.keys(USERS).forEach((user) => {
       describe(`${user} user`, () => {
         beforeEach(() => {
           cy.signIn(user);
@@ -174,12 +174,10 @@ describe("personal collections", () => {
 });
 
 function addNewCollection(name) {
-  H.openNewCollectionItemFlowFor("collection");
+  H.newButton("Collection").click();
   cy.findByPlaceholderText("My new fantastic collection").type(name, {
     delay: 0,
   });
 
-  cy.findByTestId("new-collection-modal").then(modal => {
-    cy.findByText("Create").click();
-  });
+  cy.findByTestId("new-collection-modal").button("Create").click();
 }

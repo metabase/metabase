@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -56,7 +56,7 @@ describe("issue 35954", () => {
         H.restore();
         cy.signInAsAdmin();
 
-        cy.createQuestionAndDashboard({
+        H.createQuestionAndDashboard({
           questionDetails,
           cardDetails: {
             size_x: 16,
@@ -86,7 +86,7 @@ describe("issue 35954", () => {
 
           cy.log("Drill down to the question from the dashboard");
           cy.findByTestId("legend-caption-title").click();
-          cy.get("@questionId").then(id => {
+          cy.get("@questionId").then((id) => {
             cy.location("pathname").should(
               "eq",
               `/question/${id}-${questionDetails.name}`,
@@ -119,7 +119,7 @@ describe("issue 35954", () => {
 
           cy.findByLabelText(`Back to ${dashboardDetails.name}`).click();
 
-          cy.get("@dashboardId").then(id => {
+          cy.get("@dashboardId").then((id) => {
             cy.location("pathname").should(
               "eq",
               `/dashboard/${id}-${dashboardDetails.name.toLowerCase()}`,
@@ -209,6 +209,7 @@ describe("issue 35954", () => {
 
         H.visitDashboard(id);
         H.openSharingMenu("Embed");
+
         H.modal().findByText("Static embedding").click();
 
         cy.findByTestId("embedding-preview").within(() => {
@@ -288,6 +289,7 @@ function connectFilterToColumn(column, index = 0) {
   });
 
   H.popover().within(() => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByText(column).eq(index).click();
   });
 }

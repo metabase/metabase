@@ -1,5 +1,6 @@
-import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+import { act, render, screen } from "__support__/ui";
 
 import { useActionButtonLabel } from "./use-action-button-label";
 

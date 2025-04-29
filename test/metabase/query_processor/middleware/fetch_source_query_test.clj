@@ -137,7 +137,7 @@
   (testing "make sure that the `resolve-source-cards` middleware correctly resolves native queries"
     (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                                       meta/metadata-provider
-                                      [(:dataset-query (lib.tu/mock-cards :venues/native))])
+                                      [(:dataset-query (:venues/native (lib.tu/mock-cards)))])
       (is (=? (assoc (default-result-with-inner-query
                       {:aggregation  [[:count]]
                        :breakout     [[:field "price" {:base-type :type/Integer}]]
@@ -180,14 +180,20 @@
                 {:source-table "card__2", :limit 25})))))))
 
 (defn- nested-nested-app-db-provider []
-  (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-      (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-       [(mt/mbql-query venues {:limit 100})
-        {:database lib.schema.id/saved-questions-virtual-database-id
-         :type     :query
-         :query    {:source-table "card__1"
-                    :limit        50}}])
-      (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :type :model}]})))
+  (let [base     (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                     (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                      [(mt/mbql-query venues {:limit 100})
+                       {:database lib.schema.id/saved-questions-virtual-database-id
+                        :type     :query
+                        :query    {:source-table "card__1"
+                                   :limit        50}}]))
+        card     (lib.metadata/card base 1)
+        eid      (lib/random-ident)
+        metadata (mapv #(update % :ident lib/model-ident eid) (:result-metadata card))]
+    (lib.tu/merged-mock-metadata-provider base {:cards [{:id              1
+                                                         :type            :model
+                                                         :entity-id       eid
+                                                         :result-metadata metadata}]})))
 
 (deftest ^:parallel nested-nested-queries-test-2
   (testing "Marks datasets as from a dataset"

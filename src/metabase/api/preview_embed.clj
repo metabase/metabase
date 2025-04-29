@@ -122,5 +122,3 @@
      :token-params     token-params
      :query-params     (api.embed.common/parse-query-params query-params)
      :qp               qp.pivot/run-pivot-query)))
-
-(api/define-routes)

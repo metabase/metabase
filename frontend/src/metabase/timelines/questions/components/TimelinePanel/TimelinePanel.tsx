@@ -42,7 +42,7 @@ const TimelinePanel = ({
     <PanelRoot>
       {!isEmpty && canWrite && (
         <PanelToolbar>
-          <Button onClick={onNewEvent}>{t`Add an event`}</Button>
+          <Button onClick={onNewEvent}>{t`Create event`}</Button>
         </PanelToolbar>
       )}
       {!isEmpty ? (

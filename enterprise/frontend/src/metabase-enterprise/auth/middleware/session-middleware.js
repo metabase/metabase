@@ -23,7 +23,7 @@ export const createSessionMiddleware = (
 ) => {
   let intervalId;
 
-  const sessionMiddlware = store => next => action => {
+  const sessionMiddlware = (store) => (next) => (action) => {
     if (intervalId == null || resetActions.includes(action.type)) {
       clearInterval(intervalId);
 

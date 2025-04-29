@@ -120,24 +120,6 @@
   transition: background 0.3s linear;
 }
 
-.Loading {
-  background-color: color-mix(
-    in srgb,
-    var(--mb-color-bg-white) 70%,
-    transparent
-  );
-  transition: opacity 0.5s;
-}
-
-.Loading.LoadingHidden {
-  background-color: transparent;
-  pointer-events: none;
-}
-
-.Loading.LoadingHidden * {
-  pointer-events: none;
-}
-
 .QueryError {
   flex-direction: column;
   justify-content: center;
@@ -283,8 +265,13 @@
     opacity 0.25s;
 }
 
-.RunButton.RunButtonCompact {
-  padding: 16px 32px;
+.RunButton.RunButtonCircular {
+  padding: 0.25rem 1.5rem;
+  border: none;
+
+  .RunButtonIcon {
+    transform: translateX(2px);
+  }
 }
 
 .RunButton.RunButtonHidden {
@@ -294,7 +281,7 @@
 
 @media (prefers-reduced-motion) {
   .RunButton,
-  .RunButton.RunButtonCompact,
+  .RunButton.RunButtonCircular,
   .RunButton.RunButtonHidden {
     transition-duration: 10ms;
   }
@@ -334,4 +321,32 @@
 /* need to do this ugliness to override the locally scoped font size from Scalar.css */
 .QueryBuilder .ScalarValue {
   font-size: 5em;
+}
+
+.Overlay {
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-bg-white) 75%,
+    transparent
+  );
+  transition:
+    opacity 0.5s,
+    background-color 0.5s;
+
+  &.OverlayActive {
+    cursor: pointer;
+
+    &:hover {
+      background-color: color-mix(
+        in srgb,
+        var(--mb-color-brand) 3%,
+        color-mix(in srgb, var(--mb-color-bg-white) 75%, transparent)
+      );
+    }
+  }
+
+  &.OverlayHidden {
+    background-color: transparent;
+    pointer-events: none;
+  }
 }

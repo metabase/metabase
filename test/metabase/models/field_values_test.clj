@@ -9,11 +9,15 @@
    [metabase.models.serialization :as serdes]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
-  (:import (clojure.lang ExceptionInfo)))
+  (:import
+   (clojure.lang ExceptionInfo)))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private base-types-without-field-values
   #{:type/*
@@ -287,6 +291,8 @@
          (sync/sync-database! db)
          (let [table-id        (t2/select-one-fn :id :model/Table :db_id (u/the-id db) :name "FOO")
                field-id        (t2/select-one-fn :id :model/Field :table_id table-id :name "CATEGORY_ID")
+               ;; Manually activate Field values since they are not created during sync (#53387)
+               _               (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id field-id))
                field-values-id (t2/select-one-fn :id :model/FieldValues :field_id field-id)]
            ;; Add in human readable values for remapping
            (is (t2/update! :model/FieldValues field-values-id {:human_readable_values ["a" "b" "c"]}))
@@ -361,10 +367,10 @@
     (let [field-id (mt/id :venues :id)]
       (try
         (is (thrown-with-msg? ExceptionInfo
-                              #"Full FieldValues shouldnt have hash_key"
+                              #"Full FieldValues shouldn't have hash_key"
                               (t2/insert! :model/FieldValues :field_id field-id :hash_key "12345")))
         (is (thrown-with-msg? ExceptionInfo
-                              #"Full FieldValues shouldnt have hash_key"
+                              #"Full FieldValues shouldn't have hash_key"
                               (t2/insert! :model/FieldValues :field_id field-id :type :full :hash_key "12345")))
         (is (thrown-with-msg? ExceptionInfo
                               #"Advanced FieldValues require a hash_key"
@@ -396,7 +402,7 @@
                                [sandbox-id {:type :full, :hash_key nil}]
                                [full-id {:type :sandbox, :hash_key "random-hash"}]]]
         (is (thrown-with-msg? ExceptionInfo
-                              #"Cant update field_id, type, or hash_key for a FieldValues."
+                              #"Can't update field_id, type, or hash_key for a FieldValues."
                               (t2/update! :model/FieldValues id update-map)))))
 
     (testing "The model hooks permits mention of the existing values"
@@ -441,23 +447,24 @@
                    :model/Table       table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
                    :model/Field       field {:name "sku" :table_id (:id table)}
                    :model/FieldValues fv    {:field_id (:id field)}]
-      (is (= "6f5bb4ba"
+      (is (= "cb0ff8ea"
              (serdes/raw-hash [(serdes/identity-hash field)])
              (serdes/identity-hash fv))))))
 
 (deftest select-coherence-test
   (testing "We cannot perform queries with invalid mixes of type and hash_key, which would return nothing"
-    (t2/select :model/FieldValues :field_id 1)
-    (t2/select :model/FieldValues :field_id 1 :type :full)
-    (is (thrown-with-msg? ExceptionInfo
-                          #"Invalid query - :full FieldValues cannot have a hash_key"
-                          (t2/select :model/FieldValues :field_id 1 :type :full :hash_key "12345")))
+    (let [field-id (mt/id :venues :id)]
+      (t2/select :model/FieldValues :field_id field-id)
+      (t2/select :model/FieldValues :field_id field-id :type :full)
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Invalid query - :full FieldValues cannot have a hash_key"
+                            (t2/select :model/FieldValues :field_id field-id :type :full :hash_key "12345")))
 
-    (t2/select :model/FieldValues :field_id 1 :type :sandbox)
-    (t2/select :model/FieldValues :field_id 1 :type :sandbox :hash_key "12345")
-    (is (thrown-with-msg? ExceptionInfo
-                          #"Invalid query - Advanced FieldValues can only specify a non-empty hash_key"
-                          (t2/select :model/FieldValues :field_id 1 :type :sandbox :hash_key nil)))))
+      (t2/select :model/FieldValues :field_id field-id :type :sandbox)
+      (t2/select :model/FieldValues :field_id field-id :type :sandbox :hash_key "12345")
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Invalid query - Advanced FieldValues can only specify a non-empty hash_key"
+                            (t2/select :model/FieldValues :field_id field-id :type :sandbox :hash_key nil))))))
 
 (deftest select-safety-filter-test
   (testing "We do not modify queries that omit type"

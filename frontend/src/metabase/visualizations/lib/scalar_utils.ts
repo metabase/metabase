@@ -22,7 +22,6 @@ export function compactifyValue(
     ...formatOptions,
     compact: false,
   });
-
   const canCompact = typeof fullScalarValue === "string";
   if (!canCompact) {
     return { displayValue: fullScalarValue, fullScalarValue };

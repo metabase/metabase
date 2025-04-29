@@ -1,0 +1,17 @@
+.levelsGroup {
+  width: 100%;
+
+  & > [data-year-level="true"] {
+    width: 100%;
+  }
+}
+
+.calendarHeader {
+  width: 100%;
+}
+
+/* mantine styles are inline for this icon, so we have to override it with important */
+.calendarHeaderControlIcon {
+  width: var(--mantine-spacing-md) !important;
+  height: var(--mantine-spacing-md) !important;
+}

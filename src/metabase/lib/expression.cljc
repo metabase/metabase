@@ -1,11 +1,11 @@
 (ns metabase.lib.expression
-  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace])
+  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace float])
   (:require
    [clojure.string :as str]
-   [malli.error :as me]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -22,7 +22,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.number :as u.number]))
 
 (mu/defn column-metadata->expression-ref :- :mbql.clause/expression
   "Given `:metadata/column` column metadata for an expression, construct an `:expression` reference."
@@ -66,6 +67,7 @@
           :display-name        (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
           :base-type           (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
           :lib/source          :source/expressions}
+         {:ident (lib.options/ident (resolve-expression query stage-number expression-name))}
          (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
            {:metabase.lib.field/temporal-unit unit})
          (when lib.metadata.calculation/*propagate-binning-and-bucketing*
@@ -233,6 +235,7 @@
     ;; if there are explicit fields selected, add the expression to them
     (and (vector? (:fields stage))
          add-to-fields?)
+    ;; TODO: Construct this ref with lib/ref rather than hand-rolling it?
     (update :fields conj (lib.options/ensure-uuid [:expression {} (lib.util/expression-name expression)]))))
 
 (mu/defn expression :- ::lib.schema/query
@@ -273,7 +276,7 @@
 ;; Kondo gets confused
 #_{:clj-kondo/ignore [:unresolved-namespace :syntax]}
 (lib.common/defop / [x y & more])
-(lib.common/defop case [x y & more])
+(lib.common/defop case [cases] [cases fallback])
 (lib.common/defop coalesce [x y & more])
 (lib.common/defop abs [x])
 (lib.common/defop log [x])
@@ -299,9 +302,11 @@
 (lib.common/defop get-quarter [t])
 (lib.common/defop get-day-of-week [t] [t mode])
 (lib.common/defop datetime-add [t i unit])
+(lib.common/defop date [s])
 (lib.common/defop datetime-subtract [t i unit])
 (lib.common/defop concat [s1 s2 & more])
 (lib.common/defop substring [s start end])
+(lib.common/defop split-part [s delimiter index])
 (lib.common/defop replace [s search replacement])
 (lib.common/defop regex-match-first [s regex])
 (lib.common/defop length [s])
@@ -313,10 +318,22 @@
 (lib.common/defop host [s])
 (lib.common/defop domain [s])
 (lib.common/defop subdomain [s])
+(lib.common/defop path [s])
 (lib.common/defop month-name [n])
 (lib.common/defop quarter-name [n])
 (lib.common/defop day-name [n])
 (lib.common/defop offset [x n])
+(lib.common/defop text [x])
+(lib.common/defop integer [x])
+(lib.common/defop float [x])
+
+(mu/defn value :- ::lib.schema.expression/expression
+  "Creates a `:value` clause for the `literal`. Converts bigint literals to strings for serialization purposes."
+  [literal :- [:or :string number? :boolean [:fn u.number/bigint?]]]
+  (let [base-type (lib.schema.expression/type-of literal)]
+    (lib.options/ensure-uuid [:value
+                              {:base-type base-type, :effective-type base-type}
+                              (cond-> literal (u.number/bigint? literal) str)])))
 
 (mu/defn- expression-metadata :- ::lib.schema.metadata/column
   [query                 :- ::lib.schema/query
@@ -333,7 +350,8 @@
                       :lib/source-column-alias :lib/source-uuid :lib/type])
         (assoc :lib/source   :source/expressions
                :name         expression-name
-               :display-name expression-name))))
+               :display-name expression-name
+               :ident        (lib.options/ident expression-definition)))))
 
 (mu/defn expressions-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get metadata about the expressions in a given stage of a `query`."
@@ -445,20 +463,11 @@
              (assoc :lib/expression-name new-name))
          (assoc opts :name new-name :display-name new-name))))))
 
-(def ^:private expression-explainer
-  (mr/explainer ::lib.schema.expression/expression))
-
 (def ^:private aggregation-validator
   (mr/validator ::lib.schema.aggregation/aggregation))
 
-(def ^:private aggregation-explainer
-  (mr/explainer ::lib.schema.aggregation/aggregation))
-
 (def ^:private filter-validator
   (mr/validator ::lib.schema/filterable))
-
-(def ^:private filter-explainer
-  (mr/explainer ::lib.schema/filterable))
 
 (defn- expression->name
   [expr]
@@ -475,15 +484,55 @@
    (some #(cyclic-definition node->children %) (keys node->children)))
   ([node->children start]
    (cyclic-definition node->children start []))
-  ([node->children node path]
-   (if (some #{node} path)
-     (drop-while (complement #{node}) (conj path node))
-     (some #(cyclic-definition node->children % (conj path node))
+  ([node->children node node-path]
+   (if (some #{node} node-path)
+     (drop-while (complement #{node}) (conj node-path node))
+     (some #(cyclic-definition node->children % (conj node-path node))
            (node->children node)))))
+
+(defn- aggregation-function?
+  [tag]
+  (lib.hierarchy/isa? tag ::lib.schema.aggregation/aggregation-clause-tag))
+
+(defn- aggregation-expr?
+  [expr]
+  (and (vector? expr) (-> expr first aggregation-function?)))
+
+(def ^:private window-function
+  #{:cum-count :cum-sum :offset})
+
+(defn- window-expression?
+  [expr]
+  (and (vector? expr) (-> expr first window-function boolean)))
+
+(defn- invalid-nesting
+  ([expr]
+   (invalid-nesting expr []))
+  ([expr path-tags]
+   (cond
+     (and (window-expression? expr)
+          (some aggregation-function? path-tags))
+     (first expr)
+
+     (and (aggregation-expr? expr)
+          (some (every-pred aggregation-function? (complement window-function)) path-tags))
+     (first expr)
+
+     (lib.util/clause? expr)
+     (some #(invalid-nesting % (conj path-tags (first expr))) (nnext expr)))))
+
+(comment
+  (invalid-nesting [:sum {:lib/uuid (str (random-uuid))}
+                    [:avg {:lib/uuid (str (random-uuid))}
+                     [:field {:lib/uuid (str (random-uuid))} 123]]])
+  (lib.hierarchy/isa? :sum ::lib.schema.aggregation/aggregation-clause-tag)
+  -)
 
 (mu/defn diagnose-expression :- [:maybe [:map [:message :string]]]
   "Checks `expr` for type errors and, if `expression-mode` is :expression and
   `expression-position` is provided, for cyclic references with other expressions.
+  As a special case, it checks that window functions are not embedded in each other
+  and in aggregation functions.
 
   - `expr` is a pMBQL expression usually created from a legacy MBQL expression created
   using the custom column editor in the FE. It is expected to have been normalized and
@@ -500,30 +549,49 @@
    expression-mode     :- [:enum :expression :aggregation :filter]
    expr                :- :any
    expression-position :- [:maybe :int]]
-  (let [[validator explainer] (clojure.core/case expression-mode
-                                :expression [expression-validator expression-explainer]
-                                :aggregation [aggregation-validator aggregation-explainer]
-                                :filter [filter-validator filter-explainer])]
-    (or (when-not (validator expr)
-          (let [error (explainer expr)
-                humanized (str/join ", " (me/humanize error))]
-            {:message (i18n/tru "Type error: {0}" humanized)}))
-        (when-let [path (and (= expression-mode :expression)
-                             expression-position
-                             (let [exprs (expressions query stage-number)
-                                   edited-expr (nth exprs expression-position)
-                                   edited-name (expression->name edited-expr)
-                                   deps (-> (m/index-by expression->name exprs)
-                                            (assoc edited-name expr)
-                                            (update-vals referred-expressions))]
-                               (cyclic-definition deps)))]
-          {:message  (i18n/tru "Cycle detected: {0}" (str/join " → " path))
-           :friendly true})
-        (when (and (= expression-mode :expression)
-                   (lib.util.match/match-one expr :offset))
-          {:message  (i18n/tru "OFFSET is not supported in custom columns")
-           :friendly true})
-        (when (and (= expression-mode :filter)
-                   (lib.util.match/match-one expr :offset))
-          {:message  (i18n/tru "OFFSET is not supported in custom filters")
-           :friendly true}))))
+  (binding [lib.schema.expression/*suppress-expression-type-check?* false]
+    (let [validator (clojure.core/case expression-mode
+                      :expression expression-validator
+                      :aggregation aggregation-validator
+                      :filter filter-validator)]
+      (or (when-not (validator expr)
+            {:message  (i18n/tru "Types are incompatible.")
+             :friendly true})
+          (when-let [dependency-path (and (= expression-mode :expression)
+                                          expression-position
+                                          (let [exprs (expressions query stage-number)
+                                                edited-expr (nth exprs expression-position)
+                                                edited-name (expression->name edited-expr)
+                                                deps (-> (m/index-by expression->name exprs)
+                                                         (assoc edited-name expr)
+                                                         (update-vals referred-expressions))]
+                                            (cyclic-definition deps)))]
+            {:message (i18n/tru "Cycle detected: {0}" (str/join " → " dependency-path))
+             :friendly true})
+          (when-let [nested (invalid-nesting expr)]
+            {:message (i18n/tru "Embedding {0} in aggregation functions is not supported"
+                                ;; special names duplicated from
+                                ;; frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts
+                                (clojure.core/case nested
+                                  :avg            "Average"
+                                  :count-where    "CountIf"
+                                  :cum-count      "CumulativeCount"
+                                  :cum-sum        "CumulativeSum"
+                                  :distinct-where "DistinctIf"
+                                  :stddev         "StandardDeviation"
+                                  :sum-where      "SumIf"
+                                  :var            "Variance"
+                                  (-> nested name u/->camelCaseEn u/capitalize-first-char)))
+             :friendly true})
+          (when (and (= expression-mode :expression)
+                     (lib.util.match/match-one expr :offset))
+            {:message  (i18n/tru "OFFSET is not supported in custom columns")
+             :friendly true})
+          (when (and (= expression-mode :filter)
+                     (lib.util.match/match-one expr :offset))
+            {:message  (i18n/tru "OFFSET is not supported in custom filters")
+             :friendly true})
+          (when (and (lib.schema.common/is-clause? :value expr)
+                     (not (lib.metadata/database-supports? query :expression-literals)))
+            {:message  (i18n/tru "Standalone constants are not supported.")
+             :friendly true})))))

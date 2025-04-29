@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports -- this is only used in stories
 import { within } from "@storybook/test";
 
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";

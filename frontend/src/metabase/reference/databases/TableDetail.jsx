@@ -103,7 +103,7 @@ const propTypes = {
   onSubmit: PropTypes.func.isRequired,
 };
 
-const TableDetail = props => {
+const TableDetail = (props) => {
   const {
     style,
     entity,
@@ -127,10 +127,11 @@ const TableDetail = props => {
     handleReset,
   } = useFormik({
     initialValues: {},
-    onSubmit: fields => onSubmit(fields, { ...props, resetForm: handleReset }),
+    onSubmit: (fields) =>
+      onSubmit(fields, { ...props, resetForm: handleReset }),
   });
 
-  const getFormField = name => ({
+  const getFormField = (name) => ({
     ...getFieldProps(name),
     ...getFieldMeta(name),
   });

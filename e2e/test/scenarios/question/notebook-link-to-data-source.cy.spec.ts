@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -33,9 +33,9 @@ describe("scenarios > notebook > link to data source", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.on("window:before:load", win => {
+    cy.on("window:before:load", (win) => {
       // prevent Cypress opening in a new window/tab and spy on this method
-      cy.stub(win, "open").callsFake(url => {
+      cy.stub(win, "open").callsFake((url) => {
         expect(win.open).to.be.calledOnce;
         // replace the current page with the linked data source upon ctrl/meta click
         win.location.assign(url);
@@ -56,7 +56,7 @@ describe("scenarios > notebook > link to data source", () => {
     cy.log("Meta/Ctrl click on the fields picker behaves as a regular click");
     H.getNotebookStep("data").findByTestId("fields-picker").click(clickConfig);
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
     });
     // Regular click on the fields picker again to close the popover
     H.getNotebookStep("data").findByTestId("fields-picker").click();
@@ -172,7 +172,7 @@ describe("scenarios > notebook > link to data source", () => {
         cy.findAllByTestId("header-cell")
           .should("have.length", "1")
           .and("have.text", "FOO");
-        cy.get("#main-data-grid")
+        H.tableInteractiveBody()
           .findByTestId("cell-data")
           .should("have.text", "1");
         cy.findByTestId("question-row-count").should(
@@ -350,7 +350,7 @@ describe("scenarios > notebook > link to data source", () => {
         .click(clickConfig);
 
       cy.log("Make sure the source model is rendered in a simple mode");
-      cy.get("@nestedModelId").then(id => {
+      cy.get("@nestedModelId").then((id) => {
         cy.location("pathname").should(
           "eq",
           `/model/${id}-nested-model-based-on-a-question`,
@@ -382,7 +382,7 @@ describe("scenarios > notebook > link to data source", () => {
         .click(clickConfig);
 
       cy.log("Make sure the source model is rendered in a simple mode");
-      cy.get("@nestedModelId").then(id => {
+      cy.get("@nestedModelId").then((id) => {
         cy.location("pathname").should(
           "eq",
           `/model/${id}-nested-model-based-on-a-model`,
@@ -467,7 +467,7 @@ describe("scenarios > notebook > link to data source", () => {
       });
     });
 
-    H.describeEE("sandboxing", () => {
+    describe("sandboxing", () => {
       beforeEach(() => {
         H.setTokenFeatures("all");
 
@@ -531,7 +531,7 @@ describe("scenarios > notebook > link to data source", () => {
         );
         H.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
-          columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+          columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
         });
       });
     });

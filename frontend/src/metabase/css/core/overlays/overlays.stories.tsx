@@ -52,7 +52,7 @@ const ReduxDecorator = (Story: StoryFn) => {
   );
 };
 
-const Template: StoryFn<OverlaysDemoProps> = args => {
+const Template: StoryFn<OverlaysDemoProps> = (args) => {
   return <OverlaysDemo {...args} />;
 };
 
@@ -77,7 +77,7 @@ const scenarioDefaults: Scenario = {
 export const AllOverlays: Scenario = scenarioDefaults;
 
 export default {
-  title: "Design System/Overlays",
+  title: "Patterns/Overlays",
   component: (...args: any) => {
     return <OverlaysDemo {...args} />;
   },
@@ -217,60 +217,35 @@ const launchAThenB = async (
 
 export const MantineModalCanLaunchLegacyModal: Scenario = {
   ...scenarioDefaults,
-  play: props => launchAThenB("Mantine Modal", "Legacy Modal", props),
+  play: (props) => launchAThenB("Mantine Modal", "Legacy Modal", props),
 };
 
 export const LegacyModalCanLaunchMantineModal: Scenario = {
   ...scenarioDefaults,
-  play: props => launchAThenB("Legacy Modal", "Mantine Modal", props),
-};
-
-export const MantineModalCanLaunchLegacyPopover: Scenario = {
-  ...scenarioDefaults,
-  play: props => launchAThenB("Mantine Modal", "Legacy Popover", props),
-};
-
-export const MantinePopoverCanLaunchLegacyPopover: Scenario = {
-  ...scenarioDefaults,
-  play: props => launchAThenB("Mantine Popover", "Legacy Popover", props),
-};
-
-export const MantinePopoverCanLaunchLegacyTooltip: Scenario = {
-  ...scenarioDefaults,
-  play: props => launchAThenB("Mantine Popover", "Legacy Tooltip", props),
+  play: (props) => launchAThenB("Legacy Modal", "Mantine Modal", props),
 };
 
 export const MantinePopoverCanLaunchLegacySelect: Scenario = {
   ...scenarioDefaults,
-  play: props => launchAThenB("Mantine Popover", "Legacy Select", props),
+  play: (props) => launchAThenB("Mantine Popover", "Legacy Select", props),
 };
 
 export const MantinePopoverCanLaunchLegacyModal: Scenario = {
   ...scenarioDefaults,
-  play: props => launchAThenB("Mantine Popover", "Legacy Modal", props),
-};
-
-export const LegacyPopoverCanLaunchMantinePopover: Scenario = {
-  ...scenarioDefaults,
-  play: props => launchAThenB("Legacy Popover", "Mantine Popover", props),
-};
-
-export const MantineModalCanLaunchLegacyTooltip: Scenario = {
-  ...scenarioDefaults,
-  play: props => launchAThenB("Mantine Modal", "Legacy Tooltip", props),
+  play: (props) => launchAThenB("Mantine Popover", "Legacy Modal", props),
 };
 
 export const MantineModalCanLaunchLegacySelect: Scenario = {
   ...scenarioDefaults,
-  play: props => launchAThenB("Mantine Modal", "Legacy Select", props),
+  play: (props) => launchAThenB("Mantine Modal", "Legacy Select", props),
 };
 
 export const MantineModalCanLaunchMantineHovercard: Scenario = {
   ...scenarioDefaults,
-  play: props => launchAThenB("Mantine Modal", "Mantine HoverCard", props),
+  play: (props) => launchAThenB("Mantine Modal", "Mantine HoverCard", props),
 };
 
 export const MantineModalCanLaunchMantineSelect: Scenario = {
   ...scenarioDefaults,
-  play: props => launchAThenB("Mantine Modal", "Mantine Select", props),
+  play: (props) => launchAThenB("Mantine Modal", "Mantine Select", props),
 };

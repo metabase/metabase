@@ -11,15 +11,19 @@
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.parameters.substitution
+    :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.boolean-is-comparison :as sql.qp.boolean-is-comparison]
    [metabase.driver.sql.util :as sql.u]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -38,12 +42,14 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :sqlserver, :parent :sql-jdbc)
+(driver/register! :sqlserver, :parent #{:sql-jdbc
+                                        ::sql.qp.boolean-is-comparison/boolean-is-comparison})
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :uuid-type                              true
                               :convert-timezone                       true
                               :datetime-diff                          true
+                              :expression-literals                    true
                               :index-info                             true
                               :now                                    true
                               :regex                                  false
@@ -313,6 +319,10 @@
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
   (date-add :minute (h2x// expr 60) (h2x/literal "1970-01-01")))
 
+(defmethod sql.qp/float-dbtype :sqlserver
+  [_]
+  :float)
+
 (defn- sanitize-contents
   "Parsed xml may contain whitespace elements as `\"\n\n\t\t\"` in its contents. Leave only maps in content for
   purposes of [[zone-id->windows-zone]]."
@@ -556,6 +566,10 @@
   [driver [_ arg power]]
   [:power (h2x/cast :float (sql.qp/->honeysql driver arg)) (sql.qp/->honeysql driver power)])
 
+(defmethod sql.qp/->honeysql [:sqlserver :avg]
+  [driver [_ field]]
+  [:avg [:cast (sql.qp/->honeysql driver field) :float]])
+
 (defn- format-approx-percentile-cont
   [_tag [expr p :as _args]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})
@@ -722,7 +736,7 @@
       (fix-order-bys (dissoc m :order-by))
 
       (m :guard (partial add-limit? &parents))
-      (fix-order-bys (assoc m :limit qp.i/absolute-max-results)))))
+      (fix-order-bys (assoc m :limit limit/absolute-max-results)))))
 
 (defmethod sql.qp/preprocess :sqlserver
   [driver inner-query]
@@ -846,3 +860,18 @@
 (defmethod driver.sql/->prepared-substitution [:sqlserver Boolean]
   [driver bool]
   (driver.sql/->prepared-substitution driver (if bool 1 0)))
+
+(defmethod sql.params.substitution/->replacement-snippet-info [:sqlserver UUID]
+  [_driver this]
+  {:replacement-snippet (format "'%s'" (str this))})
+
+(defmethod sql.qp/->integer :sqlserver
+  [driver value]
+  ;; value can be either string or float
+  ;; if it's a float, coversion to float does nothing
+  ;; if it's a string, we can't round, so we need to convert to float first
+  (h2x/maybe-cast (sql.qp/integer-dbtype driver)
+                  [:round (sql.qp/->float driver value) 0]))
+
+(defmethod sql-jdbc/impl-query-canceled? :sqlserver [_ e]
+  (= (sql-jdbc/get-sql-state e) "HY008"))

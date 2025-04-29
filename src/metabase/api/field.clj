@@ -19,6 +19,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.quick-task :as quick-task]
    [metabase.xrays.core :as xrays]
    [toucan2.core :as t2])
   (:import
@@ -119,7 +120,7 @@
           ;; been synced when JSON unfolding was enabled. This assumes the JSON field is already updated to have
           ;; JSON unfolding enabled.
           (let [table (field/table old-field)]
-            (sync/submit-task! (fn [] (sync/sync-table! table))))))
+            (quick-task/submit-task! (fn [] (sync/sync-table! table))))))
       (t2/update! :model/Field
                   :table_id (:table_id old-field)
                   :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
@@ -190,7 +191,7 @@
                  (t2/hydrate :dimensions :has_field_values)
                  (field/hydrate-target-with-write-perms))
       (when (not= effective-type (:effective_type field))
-        (sync/submit-task! (fn [] (sync/refingerprint-field! <>)))))))
+        (quick-task/submit-task! (fn [] (sync/refingerprint-field! <>)))))))
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
 
@@ -454,5 +455,3 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (-> (t2/select-one :model/Field :id id) api/read-check xrays/related))
-
-(api/define-routes)

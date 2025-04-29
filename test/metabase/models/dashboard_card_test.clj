@@ -25,7 +25,8 @@
                (when-not (or (= :id k)
                              (.endsWith (name k) "_id")
                              (= :created_at k)
-                             (= :updated_at k))
+                             (= :updated_at k)
+                             (= :card_schema k))
                  [k (f v)])))))
 
 (deftest ^:parallel retrieve-dashboard-card-test
@@ -319,7 +320,7 @@
                                                     :col                    3
                                                     :created_at             now}]
         (is (= "1311d6dc"
-               (serdes/raw-hash [(serdes/identity-hash card) (serdes/identity-hash dash) {} 6 3 now])
+               (serdes/raw-hash [(serdes/identity-hash card) (serdes/identity-hash dash) {} 6 3 (:created_at dashcard)])
                (serdes/identity-hash dashcard)))))))
 
 (deftest ^:parallel from-decoded-json-test

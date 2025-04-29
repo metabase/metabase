@@ -3,15 +3,15 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.table :as api.table]
    [metabase.config :as config]
+   [metabase.database-routing.core :as database-routing]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
-   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
@@ -19,22 +19,21 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.field :refer [readable-fields-only]]
    [metabase.models.interface :as mi]
-   [metabase.models.persisted-info :as persisted-info]
    [metabase.models.secret :as secret]
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.permissions.core :as perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.sample-data :as sample-data]
+   [metabase.server.streaming-response]
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
-   [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
@@ -43,6 +42,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -82,11 +82,12 @@
   native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
   Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
   [dbs :- [:maybe [:sequential :map]]]
+  (perms/prime-db-cache (map :id dbs))
   (for [db dbs]
     (assoc db
            :native_permissions
            (if (= :query-builder-and-native
-                  (data-perms/full-db-permission-for-user
+                  (perms/full-db-permission-for-user
                    api/*current-user-id*
                    :perms/create-queries
                    (u/the-id db)))
@@ -153,7 +154,7 @@
      (completing conj #(t2/hydrate % :collection :metrics))
      []
      (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
-                                     :result_metadata :type :source_card_id
+                                     :result_metadata :type :source_card_id :card_schema
                                      [{:select   [:status]
                                        :from     [:moderation_review]
                                        :where    [:and
@@ -253,14 +254,25 @@
              include-editable-data-model?
              include-analytics?
              exclude-uneditable-details?
-             include-only-uploadable?]}]
-  (let [dbs (t2/select :model/Database (merge {:order-by [:%lower.name :%lower.engine]}
-                                              (when-not include-analytics?
-                                                {:where [:= :is_audit false]})))
-        filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
+             include-only-uploadable?
+             router-database-id]}]
+  (let [filter-on-router-database-id (when (some->> router-database-id
+                                                    (perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes))
+                                       router-database-id)
+        dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
+                                        :where [:and
+                                                (when-not include-analytics?
+                                                  [:= :is_audit false])
+                                                (if filter-on-router-database-id
+                                                  [:= :router_database_id router-database-id]
+                                                  [:= :router_database_id nil])]})
+        filter-by-data-access? (not (or include-editable-data-model?
+                                        exclude-uneditable-details?
+                                        filter-on-router-database-id))]
     (cond-> (add-native-perms-info dbs)
       include-tables?              add-tables
       true                         add-can-upload-to-dbs
+      true                         (t2/hydrate :router_user_attribute)
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) %))
       filter-by-data-access?       (#(filter mi/can-read? %))
@@ -289,16 +301,18 @@
   in [[metabase.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
   database details."
   [_route-params
-   {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics]}
+   {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics
+           router_database_id]}
    :- [:map
        [:include                     {:optional true} (mu/with-api-error-message
                                                        [:maybe [:= "tables"]]
-                                                       (deferred-tru "include must be either empty or the value 'tables'"))]
+                                                       (deferred-tru "include must be either empty or the value ''tables''"))]
        [:include_analytics           {:default false} [:maybe :boolean]]
        [:saved                       {:default false} [:maybe :boolean]]
        [:include_editable_data_model {:default false} [:maybe :boolean]]
        [:exclude_uneditable_details  {:default false} [:maybe :boolean]]
-       [:include_only_uploadable     {:default false} [:maybe :boolean]]]]
+       [:include_only_uploadable     {:default false} [:maybe :boolean]]
+       [:router_database_id          {:optional true} [:maybe ms/PositiveInt]]]]
   (let [include-tables?                 (= include "tables")
         include-saved-questions-tables? (and saved include-tables?)
         only-editable?                  (or include_only_uploadable exclude_uneditable_details)
@@ -308,7 +322,8 @@
                                                       :include-editable-data-model?    include_editable_data_model
                                                       :exclude-uneditable-details?     only-editable?
                                                       :include-analytics?              include_analytics
-                                                      :include-only-uploadable?        include_only_uploadable)
+                                                      :include-only-uploadable?        include_only_uploadable
+                                                      :router-database-id              router_database_id)
                                             [])]
     {:data  db-list-res
      :total (count db-list-res)}))
@@ -345,20 +360,46 @@
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
-(defn get-database
+(mu/defn- get-database
+  ([id] (get-database id {}))
+  ([id :- ms/PositiveInt
+    {:keys [include-editable-data-model?
+            exclude-uneditable-details?
+            include-mirror-databases?]}
+    :- [:map
+        [:include-editable-data-model? {:optional true :default false} ms/MaybeBooleanValue]
+        [:exclude-uneditable-details? {:optional true :default false} ms/MaybeBooleanValue]
+        [:include-mirror-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
+   (let [filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))
+         database               (api/check-404 (if include-mirror-databases?
+                                                 (t2/select-one :model/Database :id id)
+                                                 (t2/select-one :model/Database :id id :router_database_id nil)))
+         router-db-id           (:router_database_id database)]
+     (cond-> database
+       filter-by-data-access? api/read-check
+       (or exclude-uneditable-details?
+           router-db-id)      api/write-check))))
+
+(mu/defn- check-database-exists
+  ([id] (check-database-exists id {}))
+  ([id :- ms/PositiveInt
+    {:keys [include-mirror-databases?]}
+    :- [:map
+        [:include-mirror-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
+   (api/check-404 (if (and include-mirror-databases? api/*is-superuser?*)
+                    (t2/exists? :model/Database :id id)
+                    (t2/exists? :model/Database :id id :router_database_id nil)))))
+
+(defn- present-database
   "Get a single Database with `id`."
-  [id {:keys [include include-editable-data-model? exclude-uneditable-details?]}]
-  (let [filter-by-data-access?       (not (or include-editable-data-model? exclude-uneditable-details?))
-        database                     (api/check-404 (t2/select-one :model/Database :id id))]
-    (cond-> database
-      filter-by-data-access?       api/read-check
-      exclude-uneditable-details?  api/write-check
-      true                         add-expanded-schedules
-      true                         (get-database-hydrate-include include)
-      true                         add-can-upload
-      include-editable-data-model? check-db-data-model-perms
-      (mi/can-write? database)     (->
-                                    (assoc :can-manage true)))))
+  [db {:keys [include include-editable-data-model?]}]
+  (cond-> db
+    true                         (t2/hydrate :router_user_attribute)
+    true                         add-expanded-schedules
+    true                         (get-database-hydrate-include include)
+    true                         add-can-upload
+    include-editable-data-model? check-db-data-model-perms
+    (mi/can-write? db)           (assoc :can-manage true)))
 
 (api.macros/defendpoint :get "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
@@ -378,10 +419,18 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    {:keys [include include_editable_data_model exclude_uneditable_details]}
-   :- [:map [:include {:optional true} [:maybe [:enum "tables" "tables.fields"]]]]]
-  (get-database id {:include include
-                    :include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)
-                    :exclude-uneditable-details? (Boolean/parseBoolean exclude_uneditable_details)}))
+   :- [:map
+       [:include {:optional true} [:maybe [:enum "tables" "tables.fields"]]]
+       [:include_editable_data_model {:optional true} ms/MaybeBooleanValue]
+       [:exclude_uneditable_details {:optional true} ms/MaybeBooleanValue]]]
+  (present-database
+   (get-database id {:include include
+                     :include-editable-data-model? include_editable_data_model
+                     :exclude-uneditable-details? exclude_uneditable_details
+                     :include-mirror-databases? true})
+   {:include include
+    :include-editable-data-model? include_editable_data_model
+    :exclude-uneditable-details? exclude_uneditable_details}))
 
 (def ^:private database-usage-models
   "List of models that are used to report usage on a database."
@@ -433,7 +482,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (api/check-404 (t2/exists? :model/Database :id id))
+  (check-database-exists id)
   (let [table-ids (t2/select-pks-set :model/Table :db_id id)]
     (first (mdb.query/query
             {:select [:*]
@@ -455,9 +504,7 @@
   (saved-cards-virtual-db-metadata :question :include-tables? true, :include-fields? true))
 
 (defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive? skip-fields?]
-  (let [db (-> (if include-editable-data-model?
-                 (api/check-404 (t2/select-one :model/Database :id id))
-                 (api/read-check :model/Database id))
+  (let [db (-> (get-database id {:include-editable-data-model? include-editable-data-model?})
                (t2/hydrate
                 (if skip-fields?
                   [:tables :segments :metrics]
@@ -535,7 +582,8 @@
                         second
                         (str/replace #"-" " ")
                         u/lower-case-en)]
-    (t2/select [:model/Card :id :type :database_id :name :collection_id [:collection.name :collection_name]]
+    (t2/select [:model/Card :id :type :database_id :name :collection_id
+                [:collection.name :collection_name] :card_schema]
                {:where    [:and
                            [:= :report_card.database_id database-id]
                            [:= :report_card.archived false]
@@ -613,7 +661,7 @@
 
 (defsetting native-query-autocomplete-match-style
   (deferred-tru
-   (str "Matching style for native query editor's autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
+   (str "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
         "Larger instances can have performance issues matching using substring, so can use prefix matching, "
         " or turn autocompletions off."))
   :visibility :public
@@ -644,7 +692,7 @@
    {:keys [prefix substring]} :- [:map
                                   [:prefix    {:optional true} [:maybe ms/NonBlankString]]
                                   [:substring {:optional true} [:maybe ms/NonBlankString]]]]
-  (api/read-check :model/Database id)
+  (api/read-check (get-database id))
   (when (and (str/blank? prefix) (str/blank? substring))
     (throw (ex-info (tru "Must include prefix or search") {:status-code 400})))
   (try
@@ -670,7 +718,7 @@
    {:keys [query include_dashboard_questions]} :- [:map
                                                    [:query                       ms/NonBlankString]
                                                    [:include_dashboard_questions {:optional true} ms/BooleanValue]]]
-  (api/read-check :model/Database id)
+  (api/read-check (get-database id))
   (try
     (->> (autocomplete-cards id query include_dashboard_questions)
          (filter mi/can-read?)
@@ -684,7 +732,7 @@
   "Get a list of all `Fields` in `Database`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/read-check :model/Database id)
+  (get-database id)
   (let [fields (filter mi/can-read? (-> (t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
                                                    :table_id        [:in (t2/select-fn-set :id :model/Table, :db_id id)]
                                                    :visibility_type [:not-in ["sensitive" "retired"]])
@@ -709,7 +757,7 @@
   (let [[db-perm-check field-perm-check] (if (Boolean/parseBoolean include_editable_data_model)
                                            [check-db-data-model-perms mi/can-write?]
                                            [api/read-check mi/can-read?])]
-    (db-perm-check (t2/select-one :model/Database :id id))
+    (db-perm-check (get-database id {:include-editable-data-model? true}))
     (sort-by (comp u/lower-case-en :name :table)
              (filter field-perm-check (-> (database/pk-fields {:id id})
                                           (t2/hydrate :table))))))
@@ -760,7 +808,7 @@
                             (:name field)))]
     (contains? driver-props "ssl")))
 
-(mu/defn- test-connection-details :- :map
+(mu/defn test-connection-details :- :map
   "Try a making a connection to database `engine` with `details`.
 
   If the `details` has SSL explicitly enabled, go with that and do not accept plaintext connections. If it is disabled,
@@ -824,18 +872,18 @@
                                        (when (some? auto_run_queries)
                                          {:auto_run_queries auto_run_queries})))))
         (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
-        (snowplow/track-event! ::snowplow/database
-                               {:event        :database-connection-successful
-                                :database     engine
-                                :database-id  (u/the-id <>)
-                                :source       connection_source
-                                :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
+        (analytics/track-event! :snowplow/database
+                                {:event        :database-connection-successful
+                                 :database     engine
+                                 :database-id  (u/the-id <>)
+                                 :source       connection_source
+                                 :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
       ;; failed to connect, return error
       (do
-        (snowplow/track-event! ::snowplow/database
-                               {:event    :database-connection-failed
-                                :database engine
-                                :source   connection_source})
+        (analytics/track-event! :snowplow/database
+                                {:event    :database-connection-failed
+                                 :database engine
+                                 :source   connection_source})
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
 
@@ -876,45 +924,6 @@
                 details))
             details
             (database/sensitive-fields-for-db database)))))
-
-(api.macros/defendpoint :post "/:id/persist"
-  "Attempt to enable model persistence for a database. If already enabled returns a generic 204."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (api/check (public-settings/persisted-models-enabled)
-             400
-             (tru "Persisting models is not enabled."))
-  (api/let-404 [database (t2/select-one :model/Database :id id)]
-    (api/write-check database)
-    (if (-> database :settings :persist-models-enabled)
-      ;; todo: some other response if already persisted?
-      api/generic-204-no-content
-      (let [[success? error] (ddl.i/check-can-persist database)
-            schema           (ddl.i/schema-name database (public-settings/site-uuid))]
-        (if success?
-          ;; do secrets require special handling to not clobber them or mess up encryption?
-          (do (t2/update! :model/Database id {:settings (assoc (:settings database) :persist-models-enabled true)})
-              (task.persist-refresh/schedule-persistence-for-database!
-               database
-               (public-settings/persisted-model-refresh-cron-schedule))
-              api/generic-204-no-content)
-          (throw (ex-info (ddl.i/error->message error schema)
-                          {:error error
-                           :database (:name database)})))))))
-
-(api.macros/defendpoint :post "/:id/unpersist"
-  "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (api/let-404 [database (t2/select-one :model/Database :id id)]
-    (api/write-check database)
-    (if (-> database :settings :persist-models-enabled)
-      (do (t2/update! :model/Database id {:settings (dissoc (:settings database) :persist-models-enabled)})
-          (persisted-info/mark-for-pruning! {:database_id id})
-          (task.persist-refresh/unschedule-persistence-for-database! database)
-          api/generic-204-no-content)
-      ;; todo: a response saying this was a no-op? an error? same on the post to persist
-      api/generic-204-no-content)))
 
 (api.macros/defendpoint :put "/:id"
   "Update a `Database`."
@@ -1003,6 +1012,8 @@
   (api/check-superuser)
   (api/let-404 [db (t2/select-one :model/Database :id id)]
     (api/check-403 (mi/can-write? db))
+    (t2/delete! :model/Database :router_database_id id)
+    (database-routing/delete-associated-database-router! id)
     (t2/delete! :model/Database :id id)
     (events/publish-event! :event/database-delete {:object db :user-id api/*current-user-id*}))
   api/generic-204-no-content)
@@ -1015,7 +1026,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   ;; just wrap this in a future so it happens async
-  (let [db (api/write-check (t2/select-one :model/Database :id id))]
+  (let [db (api/write-check (get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-manual-sync {:object db :user-id api/*current-user-id*})
     (if-let [ex (try
                   ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
@@ -1027,10 +1038,11 @@
                     e))]
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do
-        (sync/submit-task!
+        (quick-task/submit-task!
          (fn []
-           (sync/sync-db-metadata! db)
-           (sync/analyze-db! db)))
+           (database-routing/with-database-routing-off
+             (sync/sync-db-metadata! db)
+             (sync/analyze-db! db))))
         {:status :ok}))))
 
 (api.macros/defendpoint :post "/:id/dismiss_spinner"
@@ -1039,7 +1051,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   ;; manual full sync needs to be async, but this is a simple update of `Database`
-  (let [db     (api/write-check (t2/select-one :model/Database :id id))
+  (let [db     (api/write-check (get-database id {:exclude-uneditable-details? true}))
         tables (map api/write-check (:tables (first (add-tables [db]))))]
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
@@ -1062,17 +1074,18 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   ;; just wrap this is a future so it happens async
-  (let [db (api/write-check (t2/select-one :model/Database :id id))]
+  (let [db (api/write-check (get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-manual-scan {:object db :user-id api/*current-user-id*})
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
     (request/as-admin
-      (if *rescan-values-async*
-        (sync/submit-task!
-         (fn []
-           (sync/update-field-values! db)))
-        (sync/update-field-values! db))))
+      (database-routing/with-database-routing-off
+        (if *rescan-values-async*
+          (quick-task/submit-task!
+           (fn []
+             (sync/update-field-values! db)))
+          (sync/update-field-values! db)))))
   {:status :ok})
 
 (defn- delete-all-field-values-for-database! [database-or-id]
@@ -1088,7 +1101,7 @@
   "Discards all saved field values for this `Database`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [db (api/write-check (t2/select-one :model/Database :id id))]
+  (let [db (api/write-check (get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-discard-field-values {:object db :user-id api/*current-user-id*})
     (delete-all-field-values-for-database! db))
   {:status :ok})
@@ -1108,18 +1121,19 @@
   [database-id schema-name]
   (or
    (contains? #{:query-builder :query-builder-and-native}
-              (data-perms/schema-permission-for-user api/*current-user-id*
-                                                     :perms/create-queries
-                                                     database-id
-                                                     schema-name))
+              (perms/schema-permission-for-user api/*current-user-id*
+                                                :perms/create-queries
+                                                database-id
+                                                schema-name))
    (current-user-can-manage-schema-metadata? database-id schema-name)))
 
 (api.macros/defendpoint :get "/:id/syncable_schemas"
   "Returns a list of all syncable schemas found for the database `id`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [db (api/check-404 (t2/select-one :model/Database id))]
-    (api/check-403 (mi/can-write? db))
+  (let [db (get-database id {:exclude-uneditable-details? true})]
+    (api/check-403 (or (:is_attached_dwh db)
+                       (mi/can-write? db)))
     (->> db
          (driver/syncable-schemas (:engine db))
          (vec)
@@ -1136,9 +1150,7 @@
                              (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
                              schemas)
                            (filter (partial can-read-schema? id) schemas)))]
-    (if include-editable-data-model?
-      (api/check-404 (t2/select-one :model/Database id))
-      (api/read-check :model/Database id))
+    (get-database id {:include-editable-data-model? include-editable-data-model?})
     (->> (t2/select-fn-set :schema :model/Table
                            :db_id id :active true
                            (merge
@@ -1246,6 +1258,16 @@
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
          (map api.table/card->virtual-table))))
 
+(api.macros/defendpoint :get "/:id/healthcheck"
+  "Reports whether the database can currently connect"
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (let [{:keys [engine details]} (t2/select-one :model/Database :id id)]
+    ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
+    (binding [h2/*allow-testing-h2-connections* true]
+      (if-let [err-map (test-database-connection engine details)]
+        (merge err-map {:status "error"})
+        {:status "ok"}))))
+
 (api.macros/defendpoint :get ["/:virtual-db/datasets/:schema"
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the datasets virtual database."
@@ -1257,5 +1279,3 @@
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
          (map api.table/card->virtual-table))))
-
-(api/define-routes)

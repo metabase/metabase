@@ -1,7 +1,8 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import BaseSelectList from "metabase/components/SelectList";
-import { alpha, color } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 import { Button, type ButtonProps, Icon } from "metabase/ui";
 
@@ -18,12 +19,6 @@ export const ChevronDown = styled(Icon)`
   opacity: 0.75;
 `;
 
-export const TriggerButton = styled(Button)<ButtonProps>`
-  color: ${() => alpha(color("text-white"), 0.5)};
-  border-radius: 0;
-  border-left: 2px solid ${() => alpha(color("border"), 0.1)};
-`;
-
 export const SelectListItem = styled(BaseSelectList.Item)<{
   activeColor: ColorName;
 }>`
@@ -31,11 +26,11 @@ export const SelectListItem = styled(BaseSelectList.Item)<{
   font-weight: 400;
 
   &[aria-selected="true"] {
-    background-color: ${props => color(props.activeColor)};
+    background-color: ${(props) => color(props.activeColor)};
   }
 
   &:hover {
-    background-color: ${props => color(props.activeColor)};
+    background-color: ${(props) => color(props.activeColor)};
   }
 `;
 

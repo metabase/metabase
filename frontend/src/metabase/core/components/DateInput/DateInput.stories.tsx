@@ -5,11 +5,11 @@ import { useState } from "react";
 import DateInput from "./DateInput";
 
 export default {
-  title: "Core/DateInput",
+  title: "Components/Ask Before Using/DateInput",
   component: DateInput,
 };
 
-const Template: StoryFn<typeof DateInput> = args => {
+const Template: StoryFn<typeof DateInput> = (args) => {
   const [value, setValue] = useState<Moment>();
   return <DateInput {...args} value={value} onChange={setValue} />;
 };

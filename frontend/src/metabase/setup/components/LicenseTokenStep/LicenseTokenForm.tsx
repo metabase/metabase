@@ -26,7 +26,7 @@ export const LicenseTokenForm = ({
     <FormProvider
       initialValues={{ license_token: initialValue }}
       validationSchema={LICENSE_TOKEN_SCHEMA}
-      onSubmit={values => onSubmit(values.license_token)}
+      onSubmit={(values) => onSubmit(values.license_token)}
     >
       {({ errors, setValues }) => (
         <Form>
@@ -35,7 +35,7 @@ export const LicenseTokenForm = ({
               aria-label={t`Token`}
               placeholder={t`Paste your token here`}
               name="license_token"
-              onChange={e => {
+              onChange={(e) => {
                 const val = e.target.value;
                 const trimmed = val.trim();
                 if (val !== trimmed) {

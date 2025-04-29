@@ -1,3 +1,4 @@
+/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
@@ -57,7 +58,7 @@ class FormattingWidget extends Component {
             <h3 className={CS.mb3}>{name}</h3>
             <ColumnSettings
               value={value[type]}
-              onChange={settings => onChange({ ...value, [type]: settings })}
+              onChange={(settings) => onChange({ ...value, [type]: settings })}
               column={column}
               allowlist={new Set(settings)}
             />

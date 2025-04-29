@@ -18,6 +18,13 @@ describe("Transform Embedding Theme Override", () => {
           "text-tertiary": "green",
           "background-disabled": "pink",
         },
+
+        // we should strip any explicit "undefined" values and apply default component values
+        components: {
+          popover: {
+            zIndex: undefined,
+          },
+        },
       },
       "Roboto",
     );

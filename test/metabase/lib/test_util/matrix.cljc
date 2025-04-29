@@ -7,7 +7,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]))
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.util :as u]))
 
 (defn- metadata-with-column-of-type
   [column-type]
@@ -19,6 +20,7 @@
                      :database-required false
                      :table-id 1
                      :name "TEST_ME"
+                     :ident (u/generate-nano-id)
                      :coercion-strategy nil
                      :settings nil
                      :caveats nil
@@ -62,6 +64,7 @@
                        :database-required false,
                        :table-id 1,
                        :name "ID",
+                       :ident (u/generate-nano-id)
                        :coercion-strategy nil,
                        :settings nil,
                        :caveats nil,
@@ -116,6 +119,7 @@
                        :custom-position 0,
                        :active true,
                        :id 10,
+                       :ident (u/generate-nano-id)
                        :parent-id nil,
                        :points-of-interest nil,
                        :visibility-type :normal,
@@ -135,6 +139,7 @@
                        :database-required false
                        :table-id 10
                        :name "FK_ID"
+                       :ident (u/generate-nano-id)
                        :coercion-strategy nil
                        :settings nil
                        :caveats nil

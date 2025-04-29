@@ -1,4 +1,3 @@
-import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
@@ -13,7 +12,13 @@ import {
   setupNullGetUserKeyValueEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { CollectionContent } from "metabase/collections/components/CollectionContent";
 import {
   createMockCollection,
@@ -58,7 +63,7 @@ const uploadedModel2 = createMockCollectionItem({
   name: "my second uploaded model",
   collection: secondCollection,
   model: "dataset",
-  based_on_upload: 123,
+  based_on_upload: 124,
 });
 
 async function setupCollectionContent(overrides = {}) {
@@ -226,7 +231,7 @@ describe("FileUploadStatus", () => {
     });
 
     expect(
-      await screen.findByRole("link", { name: "Start exploring" }),
+      await screen.findByRole("link", { name: /Start exploring/ }),
     ).toHaveAttribute("href", "/model/3");
   });
 
@@ -260,7 +265,7 @@ describe("FileUploadStatus", () => {
     });
 
     expect(
-      await screen.findByRole("link", { name: "Start exploring" }),
+      await screen.findByRole("link", { name: /Start exploring/ }),
     ).toHaveAttribute("href", "/model/3");
   });
 
@@ -303,7 +308,7 @@ describe("FileUploadStatus", () => {
     });
 
     expect(
-      await screen.findByRole("link", { name: "Start exploring" }),
+      await screen.findByRole("link", { name: /Start exploring/ }),
     ).toHaveAttribute("href", "/model/3");
   });
 
@@ -350,7 +355,7 @@ describe("FileUploadStatus", () => {
     });
 
     expect(
-      await screen.findByRole("link", { name: "Start exploring" }),
+      await screen.findByRole("link", { name: /Start exploring/ }),
     ).toHaveAttribute("href", "/model/3");
     await screen.findByText("Data added to Fancy Table");
   });
@@ -369,7 +374,6 @@ describe("FileUploadStatus", () => {
     expect(
       await screen.findByText("Select upload destination"),
     ).toBeInTheDocument();
-
     await userEvent.click(screen.getByText("Replace data in a model"));
     const submitButton = await screen.findByRole("button", {
       name: "Replace model data",
@@ -398,7 +402,7 @@ describe("FileUploadStatus", () => {
     });
 
     expect(
-      await screen.findByRole("link", { name: "Start exploring" }),
+      await screen.findByRole("link", { name: /Start exploring/ }),
     ).toHaveAttribute("href", "/model/3");
     await screen.findByText("Data replaced in Fancy Table");
   });
@@ -485,7 +489,7 @@ describe("FileUploadStatus", () => {
       });
 
       expect(
-        await screen.findByRole("link", { name: "Start exploring" }),
+        await screen.findByRole("link", { name: /Start exploring/ }),
       ).toHaveAttribute("href", "/model/3");
     });
   });

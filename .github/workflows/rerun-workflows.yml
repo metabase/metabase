@@ -2,7 +2,7 @@ name: Re-run Flaky Workflows
 
 on:
   workflow_run:
-    workflows: [Backend, Driver Tests, E2E Tests, Frontend, Backend-Cloverage]
+    workflows: [Run tests]
     types: [completed]
     branches: [master, 'release-x.**', 'backport-**']
 
@@ -25,7 +25,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: lts/Hydrogen # 18.x.x
+          node-version: lts/Jod # 22.x.x
       - run: npm install @slack/web-api
       - name: Trigger a re-run
         uses: actions/github-script@v7

@@ -1,7 +1,7 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 
-["admin", "normal"].forEach(user => {
+["admin", "normal"].forEach((user) => {
   describe(`search > ${user} user`, () => {
     beforeEach(() => {
       H.restore();

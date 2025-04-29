@@ -65,7 +65,7 @@ const EngineButton = ({
   options,
   onChange,
 }: EngineButtonProps): JSX.Element => {
-  const option = options.find(option => option.value === engineKey);
+  const option = options.find((option) => option.value === engineKey);
 
   const handleClick = useCallback(() => {
     onChange(undefined);
@@ -137,7 +137,7 @@ const EngineSearch = ({
   );
 
   return (
-    <EngineSearchRoot role="combobox" aria-expanded="true">
+    <EngineSearchRoot role="combobox">
       <Input
         value={searchText}
         placeholder={t`Search for a database…`}
@@ -290,7 +290,7 @@ const getVisibleOptions = (
   searchText: string,
 ): EngineOption[] => {
   if (isSearching) {
-    return options.filter(e => includesIgnoreCase(e.name, searchText));
+    return options.filter((e) => includesIgnoreCase(e.name, searchText));
   } else if (isExpanded) {
     return options;
   } else {

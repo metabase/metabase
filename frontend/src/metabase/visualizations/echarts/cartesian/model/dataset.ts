@@ -6,11 +6,12 @@ import { checkNumber, isNotNull } from "metabase/lib/types";
 import { isEmpty } from "metabase/lib/validate";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
+  INDEX_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
-  ORIGINAL_INDEX_DATA_KEY,
   OTHER_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
+  X_AXIS_RAW_VALUE_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getBreakoutDistinctValues } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
@@ -151,7 +152,7 @@ export const getJoinedCardsDataset = (
       card,
       data: { rows, cols },
     } = cardSeries;
-    const datasetColumns = cols.map(column => ({
+    const datasetColumns = cols.map((column) => ({
       column,
       isMetric: isMetric(column),
     }));
@@ -188,6 +189,13 @@ export const getJoinedCardsDataset = (
   return Array.from(groupedData.values());
 };
 
+export const appendDataIndex = (dataset: ChartDataset) => {
+  return dataset.map((datum, index) => ({
+    ...datum,
+    [INDEX_KEY]: index,
+  }));
+};
+
 type TransformFn = (
   record: Datum,
   index: number,
@@ -205,7 +213,7 @@ export const transformDataset = (
 ): ChartDataset => {
   // Filter out transforms that don't apply
   const effectiveTransforms = transforms
-    .map(transform => {
+    .map((transform) => {
       if (typeof transform === "function") {
         return transform;
       } else if (transform.condition) {
@@ -236,12 +244,12 @@ export const computeTotal = (datum: Datum, keys: DataKey[]): number =>
 export const getNormalizedDatasetTransform = (
   stackModels: StackModel[],
 ): TransformFn => {
-  return datum => {
+  return (datum) => {
     const normalizedDatum = {
       ...datum,
     };
 
-    stackModels.forEach(stackModel => {
+    stackModels.forEach((stackModel) => {
       const total = computeTotal(datum, stackModel.seriesKeys);
 
       // Compute normalized values for metrics
@@ -260,7 +268,7 @@ export const getKeyBasedDatasetTransform = (
   keys: DataKey[],
   valueTransform: (value: RowValue) => RowValue,
 ): TransformFn => {
-  return datum => {
+  return (datum) => {
     const transformedRecord = { ...datum };
     for (const key of keys) {
       if (key in datum) {
@@ -271,20 +279,33 @@ export const getKeyBasedDatasetTransform = (
   };
 };
 
+export const applyXAxisTransformations = (
+  xAxisTransformFn: (value: RowValue) => RowValue,
+): TransformFn => {
+  return (datum) => {
+    const transformedRecord = { ...datum };
+    transformedRecord[X_AXIS_RAW_VALUE_DATA_KEY] = datum[X_AXIS_DATA_KEY];
+    transformedRecord[X_AXIS_DATA_KEY] = xAxisTransformFn(
+      datum[X_AXIS_DATA_KEY],
+    );
+    return transformedRecord;
+  };
+};
+
 export const getNullReplacerTransform = (
   settings: ComputedVisualizationSettings,
   seriesModels: SeriesModel[],
 ): TransformFn => {
   const replaceNullsWithZeroDataKeys = seriesModels
     .filter(
-      seriesModel =>
+      (seriesModel) =>
         settings.series(seriesModel.legacySeriesSettingsObjectKey)[
           "line.missing"
         ] === "zero",
     )
-    .map(seriesModel => seriesModel.dataKey);
+    .map((seriesModel) => seriesModel.dataKey);
 
-  return datum => {
+  return (datum) => {
     const transformedDatum = { ...datum };
     for (const key of replaceNullsWithZeroDataKeys) {
       transformedDatum[key] = datum[key] != null ? datum[key] : 0;
@@ -297,7 +318,7 @@ const hasInterpolatedAreaSeries = (
   seriesModels: SeriesModel[],
   settings: ComputedVisualizationSettings,
 ) => {
-  return seriesModels.some(seriesModel => {
+  return seriesModels.some((seriesModel) => {
     const seriesSettings = settings.series(
       seriesModel.legacySeriesSettingsObjectKey,
     );
@@ -319,7 +340,7 @@ const getStackedAreasInterpolateTransform = (
   const areaStackSeriesKeysSet = new Set(areaStackSeriesKeys);
   return (datum: Datum) => {
     const hasAtLeastOneSeriesValue = areaStackSeriesKeys.some(
-      key => datum[key] != null,
+      (key) => datum[key] != null,
     );
     if (!hasAtLeastOneSeriesValue) {
       return datum;
@@ -342,7 +363,7 @@ function getOtherSeriesTransform(
 ): ConditionalTransform {
   return {
     condition: groupedSeriesModels.length > 0,
-    fn: datum => ({
+    fn: (datum) => ({
       ...datum,
       [OTHER_DATA_KEY]: getAggregatedOtherSeriesValue(
         groupedSeriesModels,
@@ -368,7 +389,7 @@ function getStackedValueTransformFunction(
       //    value we are currently stacking
       const belowSeriesKeys = Object.keys(transformedSeriesValues);
       const rawBelowTotal = belowSeriesKeys
-        .map(belowSeriesKey => datum[belowSeriesKey])
+        .map((belowSeriesKey) => datum[belowSeriesKey])
         .reduce((total: number, rowValue) => {
           if (typeof rowValue !== "number") {
             return total;
@@ -395,7 +416,7 @@ function getStackedValueTransformFunction(
         transformedTotal - transformedRawBelowTotal;
     }
 
-    seriesDataKeys.forEach(seriesDataKey => {
+    seriesDataKeys.forEach((seriesDataKey) => {
       getStackedTransformedValue(
         seriesDataKey,
         getNumberOrZero(datum[seriesDataKey]) >= 0 ? "+" : "-",
@@ -416,7 +437,7 @@ function getStackedValueTransform(
 
   const isNonLinearAxis = isPow || isLog;
 
-  return stackModels.map(stackModel => ({
+  return stackModels.map((stackModel) => ({
     condition: isNonLinearAxis,
     fn: getStackedValueTransformFunction(
       stackModel.seriesKeys,
@@ -434,7 +455,7 @@ function getStackedDataLabelTransform(
     fn: (datum: Datum) => {
       const transformedDatum = { ...datum };
 
-      seriesDataKeys.forEach(seriesDataKey => {
+      seriesDataKeys.forEach((seriesDataKey) => {
         const value = datum[seriesDataKey];
         if (typeof value !== "number") {
           return;
@@ -508,20 +529,20 @@ export function filterNullDimensionValues(
 ) {
   const filteredDataset: ChartDataset = [];
 
-  dataset.forEach((datum, originalIndex) => {
+  dataset.forEach((datum) => {
     if (datum[X_AXIS_DATA_KEY] == null) {
       showWarning?.(nullDimensionWarning().text);
       return;
     }
     filteredDataset.push({
       ...datum,
-      [ORIGINAL_INDEX_DATA_KEY]: originalIndex,
     });
   });
 
   return filteredDataset;
 }
 
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 export const NO_X_AXIS_VALUES_ERROR_MESSAGE = t`There is no data to display. Check the query to ensure there are non-null x-axis values.`;
 
 export function replaceZeroesForLogScale(
@@ -532,13 +553,13 @@ export function replaceZeroesForLogScale(
   let minNonZeroValue = Infinity;
   let sign: number | undefined = undefined;
 
-  dataset.forEach(datum => {
+  dataset.forEach((datum) => {
     const datumNumericValues = seriesDataKeys
-      .map(key => getNumberOr(datum[key], null))
+      .map((key) => getNumberOr(datum[key], null))
       .filter(isNotNull);
 
-    const hasPositive = datumNumericValues.some(value => value > 0);
-    const hasNegative = datumNumericValues.some(value => value < 0);
+    const hasPositive = datumNumericValues.some((value) => value > 0);
+    const hasNegative = datumNumericValues.some((value) => value < 0);
 
     if (sign === undefined && hasPositive) {
       sign = 1;
@@ -554,8 +575,8 @@ export function replaceZeroesForLogScale(
     minNonZeroValue = Math.min(
       minNonZeroValue,
       ...datumNumericValues
-        .map(value => Math.abs(value))
-        .filter(number => number !== 0),
+        .map((value) => Math.abs(value))
+        .filter((number) => number !== 0),
     );
   });
 
@@ -605,10 +626,7 @@ const interpolateTimeSeriesData = (
 
   for (let i = 0; i < dataset.length; i++) {
     const datum = dataset[i];
-    result.push({
-      ...datum,
-      [ORIGINAL_INDEX_DATA_KEY]: datum[ORIGINAL_INDEX_DATA_KEY] ?? i,
-    });
+    result.push(datum);
 
     if (i === dataset.length - 1) {
       break;
@@ -659,7 +677,7 @@ export function scaleDataset(
     return transformedRecord;
   };
 
-  return dataset.map(datum => {
+  return dataset.map((datum) => {
     return transformFn(datum);
   });
 }
@@ -671,15 +689,15 @@ const getYAxisScaleTransforms = (
   settings: ComputedVisualizationSettings,
 ) => {
   const stackedSeriesKeys = new Set(
-    stackModels.flatMap(stackModel => stackModel.seriesKeys),
+    stackModels.flatMap((stackModel) => stackModel.seriesKeys),
   );
   const nonStackedSeriesKeys = seriesModels
-    .filter(seriesModel => !stackedSeriesKeys.has(seriesModel.dataKey))
-    .map(seriesModel => seriesModel.dataKey);
+    .filter((seriesModel) => !stackedSeriesKeys.has(seriesModel.dataKey))
+    .map((seriesModel) => seriesModel.dataKey);
 
   const nonStackedTransform = getKeyBasedDatasetTransform(
     nonStackedSeriesKeys,
-    value => yAxisScaleTransforms.toEChartsAxisValue(value),
+    (value) => yAxisScaleTransforms.toEChartsAxisValue(value),
   );
   const stackedTransforms = getStackedValueTransform(
     settings,
@@ -710,13 +728,14 @@ export const applyVisualizationSettingsDataTransformations = (
   settings: ComputedVisualizationSettings,
   showWarning?: ShowWarning,
 ) => {
-  const barSeriesModels = seriesModels.filter(seriesModel => {
+  dataset = appendDataIndex(dataset);
+  const barSeriesModels = seriesModels.filter((seriesModel) => {
     const seriesSettings = settings.series(
       seriesModel.legacySeriesSettingsObjectKey,
     );
     return seriesSettings.display === "bar";
   });
-  const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
+  const seriesDataKeys = seriesModels.map((seriesModel) => seriesModel.dataKey);
 
   if (
     isNumericAxis(xAxisModel) ||
@@ -756,7 +775,7 @@ export const applyVisualizationSettingsDataTransformations = (
     ),
     {
       condition: isCategoryAxis(xAxisModel),
-      fn: getKeyBasedDatasetTransform([X_AXIS_DATA_KEY], value => {
+      fn: applyXAxisTransformations((value) => {
         return isCategoryAxis(xAxisModel) && value == null
           ? ECHARTS_CATEGORY_AXIS_NULL_VALUE
           : value;
@@ -764,7 +783,7 @@ export const applyVisualizationSettingsDataTransformations = (
     },
     {
       condition: isNumericAxis(xAxisModel) || isTimeSeriesAxis(xAxisModel),
-      fn: getKeyBasedDatasetTransform([X_AXIS_DATA_KEY], value => {
+      fn: applyXAxisTransformations((value) => {
         return isNumericAxis(xAxisModel) || isTimeSeriesAxis(xAxisModel)
           ? xAxisModel.toEChartsAxisValue(value)
           : value;
@@ -778,7 +797,7 @@ export const applyVisualizationSettingsDataTransformations = (
         hasInterpolatedAreaSeries(seriesModels, settings),
       fn: getStackedAreasInterpolateTransform(
         seriesModels,
-        stackModels.find(stackModel => stackModel.display === "area")
+        stackModels.find((stackModel) => stackModel.display === "area")
           ?.seriesKeys ?? [],
       ),
     },
@@ -855,10 +874,10 @@ export const getSortedSeriesModels = (
   // Overall, this is bad to not having a name and key distinction between breakout series with such values and we should fix this.
   const usedDataKeys = new Set();
   const orderedSeriesModels = breakoutSeriesOrder
-    .filter(orderSetting => orderSetting.enabled)
-    .map(orderSetting => {
+    .filter((orderSetting) => orderSetting.enabled)
+    .map((orderSetting) => {
       const foundSeries = seriesModels.find(
-        seriesModel =>
+        (seriesModel) =>
           seriesModel.vizSettingsKey === orderSetting.key &&
           !usedDataKeys.has(seriesModel.dataKey),
       );
@@ -893,7 +912,7 @@ export const replaceValues = (
   dataset: ChartDataset,
   replacer: ReplacerFn,
 ): ChartDataset => {
-  return dataset.map(datum => {
+  return dataset.map((datum) => {
     return getObjectKeys(datum).reduce((updatedRow, dataKey) => {
       updatedRow[dataKey] = replacer(dataKey, datum[dataKey]);
       return updatedRow;
@@ -924,7 +943,7 @@ export const getDatasetExtents = (
 export const getSeriesExtent = (dataset: ChartDataset, key: DataKey) => {
   let extent: Extent | null = null;
 
-  dataset.forEach(datum => {
+  dataset.forEach((datum) => {
     const value = datum[key];
 
     if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -959,7 +978,7 @@ export const getCardColumnByDataKeyMap = (
   return data.cols.reduce(
     (acc, column) => {
       if (breakoutValues != null) {
-        breakoutValues.forEach(breakoutValue => {
+        breakoutValues.forEach((breakoutValue) => {
           acc[getDatasetKey(column, card.id, breakoutValue)] = column;
         });
       } else {

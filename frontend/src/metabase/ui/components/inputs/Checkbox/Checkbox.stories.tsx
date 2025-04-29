@@ -76,7 +76,7 @@ const StateTemplate = (args: CheckboxProps) => (
 );
 
 export default {
-  title: "Inputs/Checkbox",
+  title: "Components/Inputs/Checkbox",
   component: Checkbox,
   args,
   argTypes,

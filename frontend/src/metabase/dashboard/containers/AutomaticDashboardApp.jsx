@@ -9,7 +9,6 @@ import ActionButton from "metabase/components/ActionButton";
 import Card from "metabase/components/Card";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
@@ -19,28 +18,20 @@ import { getIsHeaderVisible, getTabs } from "metabase/dashboard/selectors";
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import title from "metabase/hoc/Title";
-import withToast from "metabase/hoc/Toast";
 import { color } from "metabase/lib/colors";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
+import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Icon } from "metabase/ui";
+import { Box, Flex, Icon, Title, Tooltip } from "metabase/ui";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
-import { FixedWidthContainer } from "../components/Dashboard/Dashboard.styled";
+import { FixedWidthContainer } from "../components/Dashboard/DashboardComponents";
 import { useDashboardUrlQuery } from "../hooks/use-dashboard-url-query";
 
-import {
-  ItemContent,
-  ItemDescription,
-  ItemLink,
-  ListRoot,
-  SidebarHeader,
-  SidebarRoot,
-  SuggestionsSidebarWrapper,
-  XrayIcon,
-} from "./AutomaticDashboardApp.styled";
+import S from "./AutomaticDashboardApp.module.css";
+import { XrayIcon } from "./XrayIcon";
 
 const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
   `/auto/dashboard/${splat}${hash.replace(/^#?/, "?")}`;
@@ -55,6 +46,7 @@ const mapStateToProps = (state, props) => ({
 const mapDispatchToProps = {
   saveDashboard: Dashboards.actions.save,
   invalidateCollections: Collections.actions.invalidateLists,
+  addUndo,
 };
 
 class AutomaticDashboardAppInner extends Component {
@@ -70,25 +62,27 @@ class AutomaticDashboardAppInner extends Component {
   }
 
   save = async () => {
-    const { dashboard, triggerToast, saveDashboard, invalidateCollections } =
+    const { dashboard, addUndo, saveDashboard, invalidateCollections } =
       this.props;
     // remove the transient id before trying to save
     const { payload: newDashboard } = await saveDashboard(
       dissoc(dashboard, "id"),
     );
     invalidateCollections();
-    triggerToast(
-      <div className={cx(CS.flex, CS.alignCenter)}>
-        {t`Your dashboard was saved`}
-        <Link
-          className={cx(CS.link, CS.textBold, CS.ml1)}
-          to={Urls.dashboard(newDashboard)}
-        >
-          {t`See it`}
-        </Link>
-      </div>,
-      { icon: "dashboard" },
-    );
+    addUndo({
+      message: (
+        <div className={cx(CS.flex, CS.alignCenter)}>
+          {t`Your dashboard was saved`}
+          <Link
+            className={cx(CS.link, CS.textBold, CS.ml1)}
+            to={Urls.dashboard(newDashboard)}
+          >
+            {t`See it`}
+          </Link>
+        </div>
+      ),
+      icon: "dashboard",
+    });
 
     this.setState({ savedDashboardId: newDashboard.id });
   };
@@ -137,7 +131,7 @@ class AutomaticDashboardAppInner extends Component {
                   isFixedWidth={dashboard?.width === "fixed"}
                 >
                   <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
-                    <XrayIcon name="bolt" size={24} />
+                    <XrayIcon />
                     <div>
                       <h2 className={cx(CS.textWrap, CS.mr2)}>
                         {dashboard && <TransientTitle dashboard={dashboard} />}
@@ -196,11 +190,17 @@ class AutomaticDashboardAppInner extends Component {
           )}
         </div>
         {hasSidebar && (
-          <SuggestionsSidebarWrapper
-            className={cx(CS.absolute, CS.top, CS.right, CS.bottom)}
+          <Box
+            className={cx(
+              CS.absolute,
+              CS.top,
+              CS.right,
+              CS.bottom,
+              S.SuggestionsSidebarWrapper,
+            )}
           >
             <SuggestionsSidebar related={related} />
-          </SuggestionsSidebarWrapper>
+          </Box>
         )}
       </div>
     );
@@ -210,7 +210,6 @@ class AutomaticDashboardAppInner extends Component {
 export const AutomaticDashboardAppConnected = _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   DashboardData,
-  withToast,
   title(({ dashboard }) => dashboard && dashboard.name),
 )(AutomaticDashboardAppInner);
 
@@ -223,25 +222,33 @@ const TransientTitle = ({ dashboard }) =>
 
 const RELATED_CONTENT = {
   compare: {
-    title: t`Compare`,
+    get title() {
+      return t`Compare`;
+    },
     icon: "compare",
   },
   "zoom-in": {
-    title: t`Zoom in`,
+    get title() {
+      return t`Zoom in`;
+    },
     icon: "zoom_in",
   },
   "zoom-out": {
-    title: t`Zoom out`,
+    get title() {
+      return t`Zoom out`;
+    },
     icon: "zoom_out",
   },
   related: {
-    title: t`Related`,
+    get title() {
+      return t`Related`;
+    },
     icon: "connections",
   },
 };
 
 const SuggestionsList = ({ suggestions, section }) => (
-  <ListRoot>
+  <Box component="ol" my="sm">
     {Object.keys(suggestions).map((s, i) => (
       <li key={i} className={CS.my2}>
         <SuggestionSectionHeading>
@@ -249,31 +256,31 @@ const SuggestionsList = ({ suggestions, section }) => (
         </SuggestionSectionHeading>
         {suggestions[s].length > 0 &&
           suggestions[s].map((item, itemIndex) => (
-            <ItemLink
+            <Link
               key={itemIndex}
               to={item.url}
-              className={cx(CS.hoverParent, CS.hoverVisibility)}
+              className={cx(CS.hoverParent, CS.hoverVisibility, S.ItemLink)}
             >
               <Card className={CS.p2} hoverable>
-                <ItemContent>
+                <Flex align="center">
                   <Icon
                     name={RELATED_CONTENT[s].icon}
                     color={color("accent4")}
                     className={CS.mr1}
                   />
                   <h4 className={CS.textWrap}>{item.title}</h4>
-                  <ItemDescription className={CS.hoverChild}>
-                    <Tooltip tooltip={item.description}>
+                  <Box ml="auto" className={CS.hoverChild}>
+                    <Tooltip label={item.description}>
                       <Icon name="info_outline" color={color("bg-dark")} />
                     </Tooltip>
-                  </ItemDescription>
-                </ItemContent>
+                  </Box>
+                </Flex>
               </Card>
-            </ItemLink>
+            </Link>
           ))}
       </li>
     ))}
-  </ListRoot>
+  </Box>
 );
 
 const SuggestionSectionHeading = ({ children }) => (
@@ -290,10 +297,10 @@ const SuggestionSectionHeading = ({ children }) => (
 );
 
 const SuggestionsSidebar = ({ related }) => (
-  <SidebarRoot>
-    <SidebarHeader>{t`More X-rays`}</SidebarHeader>
+  <Flex direction="column" py="md" px="xl">
+    <Title py="sm" px={0} order={2}>{t`More X-rays`}</Title>
     <SuggestionsList suggestions={related} />
-  </SidebarRoot>
+  </Flex>
 );
 
 // Workaround until AutomaticDashboardApp is refactored to be a function component

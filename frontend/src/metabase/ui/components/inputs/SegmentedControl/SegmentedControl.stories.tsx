@@ -22,10 +22,11 @@ const args = {
     },
   ],
   fullWidth: false,
+  shouldAnimate: true,
 };
 
 export default {
-  title: "Inputs/SegmentedControl",
+  title: "Components/Inputs/SegmentedControl",
   component: SegmentedControl,
   args,
 };
@@ -50,5 +51,26 @@ export const FullWidth = {
       },
     ],
     fullWidth: true,
+  },
+};
+
+export const Color = {
+  args: {
+    data: [
+      {
+        label: "Light",
+        value: "light",
+      },
+      {
+        label: "Dark",
+        value: "dark",
+      },
+      {
+        label: "Transparent",
+        value: "transparent",
+      },
+    ],
+    color: "brand",
+    c: "var(--mb-color-text-white)",
   },
 };

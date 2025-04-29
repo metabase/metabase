@@ -86,6 +86,11 @@
   (reset! cache {})
   nil)
 
+(defn registered-schema
+  "Get the schema registered for `k`, if any."
+  [k]
+  (get @registry* k))
+
 (defn schema
   "Get the Malli schema for `type` from the registry."
   [type]
@@ -116,6 +121,7 @@
      ([type schema]
       `(register! ~type ~schema))
      ([type docstring schema]
+      (assert (string? docstring))
       `(metabase.util.malli.registry/def ~type
          (-with-doc ~schema ~docstring)))))
 

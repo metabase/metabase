@@ -193,6 +193,13 @@
                    (= (:status result) :failed))
            (streaming-response/write-error! os result export-format)))))))
 
+(defn transforming-query-response
+  "Decorate the streaming rff to transform the top-level payload."
+  [rff f]
+  (fn [metadata]
+    (let [rf (rff metadata)]
+      (completing rf (comp f rf)))))
+
 (defmacro streaming-response
   "Return results of processing a query as a streaming response. This response implements the appropriate Ring/Compojure
   protocols, so return or `respond` with it directly. `export-format` is one of `:api` (for normal JSON API
@@ -200,7 +207,7 @@
 
   Typical example:
 
-    (api/defendpoint-schema GET \"/whatever\" []
+    (api.macros/defendpoint :get \"/whatever\" []
       (qp.streaming/streaming-response [rff :json]
         (qp/process-query (qp/userland-query-with-default-constraints query) rff)))
 

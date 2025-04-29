@@ -2,21 +2,20 @@ import type * as React from "react";
 import { jt, t } from "ttag";
 
 import { isTableDisplay } from "metabase/lib/click-behavior";
-import { Icon } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
 import type { DashboardCard, DatasetColumn } from "metabase-types/api";
 
-import { Heading, SidebarHeader } from "../ClickBehaviorSidebar.styled";
+import S from "../ClickBehaviorSidebar.module.css";
+import { Heading } from "../ClickBehaviorSidebarComponents";
 
-import {
-  ChevronIconContainer,
-  ColumnClickBehaviorHeader,
-  ItemName,
-} from "./ClickBehaviorSidebarHeader.styled";
+import ClickBehaviorSidebarHeaderS from "./ClickBehaviorSidebarHeader.module.css";
 
 function DefaultHeader({ children }: { children: React.ReactNode }) {
   return (
     <Heading>{jt`Click behavior for ${(
-      <ItemName key="name">{children}</ItemName>
+      <span className={ClickBehaviorSidebarHeaderS.ItemName} key="name">
+        {children}
+      </span>
     )}`}</Heading>
   );
 }
@@ -31,12 +30,15 @@ function HeaderContent({ dashcard, selectedColumn, onUnsetColumn }: Props) {
   if (isTableDisplay(dashcard)) {
     if (selectedColumn) {
       return (
-        <ColumnClickBehaviorHeader onClick={onUnsetColumn}>
-          <ChevronIconContainer>
+        <Box
+          className={ClickBehaviorSidebarHeaderS.ColumnClickBehaviorHeader}
+          onClick={onUnsetColumn}
+        >
+          <Box className={ClickBehaviorSidebarHeaderS.ChevronIconContainer}>
             <Icon name="chevronleft" size={12} />
-          </ChevronIconContainer>
+          </Box>
           <DefaultHeader>{selectedColumn.display_name}</DefaultHeader>
-        </ColumnClickBehaviorHeader>
+        </Box>
       );
     }
     return <Heading>{t`On-click behavior for each column`}</Heading>;
@@ -46,8 +48,8 @@ function HeaderContent({ dashcard, selectedColumn, onUnsetColumn }: Props) {
 
 export const ClickBehaviorSidebarHeader = (props: Props) => {
   return (
-    <SidebarHeader>
+    <Box className={S.SidebarHeader}>
       <HeaderContent {...props} />
-    </SidebarHeader>
+    </Box>
   );
 };

@@ -1254,6 +1254,7 @@
       (binding [*recreate-db-if-stale?* false]
         (log/infof "DB for %s is stale! Deleteing and running test again\n" dataset)
         (t2/delete! :model/Database :id (mt/id))
+        (tx/destroy-db! driver/*driver* (tx/get-dataset-definition dataset))
         (apply count-of-grouping dataset field-grouping relative-datetime-args))
       (let [results (mt/run-mbql-query checkins
                       {:aggregation [[:count]]

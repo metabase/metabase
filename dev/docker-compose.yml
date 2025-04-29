@@ -74,7 +74,7 @@ services:
 #       Hopefully one of our node geniuses can figure it out.
   # Just build the frontend. Mounts local dev so nothing else needed
   fe-builder:
-    image: node:18.14
+    image: node:22-bullseye
     container_name: fe-builder
     working_dir: /dev/metabase
     volumes:

@@ -1,7 +1,6 @@
 import cx from "classnames";
-import { Component } from "react";
-import * as React from "react";
-import { findDOMNode } from "react-dom";
+import type * as React from "react";
+import { Component, createRef } from "react";
 import _ from "underscore";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
@@ -47,7 +46,7 @@ export type TokenFieldProps = {
   placeholder?: string | undefined;
   multi?: boolean;
   validateValue?: (value: any) => boolean;
-  parseFreeformValue?: (value: any) => any;
+  parseFreeformValue?: (value: string | undefined) => any;
   updateOnInputChange?: boolean;
   optionRenderer?: (option: any) => React.ReactNode;
   valueRenderer?: (value: any) => React.ReactNode;
@@ -89,8 +88,7 @@ const defaultStyleValue = {
 };
 
 class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
-  inputRef: React.RefObject<HTMLInputElement>;
-  scrollElement = null;
+  inputRef = createRef<HTMLInputElement>();
 
   constructor(props: TokenFieldProps) {
     super(props);
@@ -104,8 +102,6 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
       isAllSelected: false,
       listIsHovered: false,
     };
-
-    this.inputRef = React.createRef();
   }
 
   UNSAFE_componentWillMount() {
@@ -176,7 +172,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     const { options = [], value, removeSelected = true } = props;
     let { searchValue, selectedOptionValue } = this.state;
     const selectedValueIds = new Set(
-      value.map(v => JSON.stringify(this._id(v))),
+      value.map((v) => JSON.stringify(this._id(v))),
     );
 
     const filterOption =
@@ -185,7 +181,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
         String(this._label(option) || "").indexOf(searchValue) >= 0);
 
     let selectedCount = 0;
-    const filteredOptions = options.filter(option => {
+    const filteredOptions = options.filter((option) => {
       const isSelected = selectedValueIds.has(
         JSON.stringify(this._id(this._value(option))),
       );
@@ -211,7 +207,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
 
     if (
       selectedOptionValue == null ||
-      !_.find(filteredOptions, option =>
+      !_.find(filteredOptions, (option) =>
         this._valueIsEqual(selectedOptionValue, this._value(option)),
       )
     ) {
@@ -290,7 +286,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     } else if (event.keyCode === KEYCODE_UP) {
       // up arrow
       event.preventDefault();
-      const index = _.findIndex(filteredOptions, option =>
+      const index = _.findIndex(filteredOptions, (option) =>
         this._valueIsEqual(selectedOptionValue, this._value(option)),
       );
       if (index > 0) {
@@ -301,7 +297,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     } else if (keyCode === KEYCODE_DOWN) {
       // down arrow
       event.preventDefault();
-      const index = _.findIndex(filteredOptions, option =>
+      const index = _.findIndex(filteredOptions, (option) =>
         this._valueIsEqual(selectedOptionValue, this._value(option)),
       );
       if (index >= 0 && index < filteredOptions.length - 1) {
@@ -350,7 +346,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
       e.preventDefault();
       const string = e.clipboardData.getData("Text");
       const lines = this.props.multi ? string.split(/\n|,/g) : [string];
-      const values = lines.map(this.props.parseFreeformValue).filter(s => s);
+      const values = lines.map(this.props.parseFreeformValue).filter((s) => s);
       if (values.length > 0) {
         this.addValue(values);
       }
@@ -374,7 +370,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     const { multi } = this.props;
     const { filteredOptions, selectedOptionValue } = this.state;
     const input = this.inputRef.current;
-    const option = _.find(filteredOptions, option =>
+    const option = _.find(filteredOptions, (option) =>
       this._valueIsEqual(selectedOptionValue, this._value(option)),
     );
     if (option) {
@@ -436,7 +432,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
 
   removeValue(valueToRemove: any) {
     const { value, onChange } = this.props;
-    const values = value.filter(v => !this._valueIsEqual(v, valueToRemove));
+    const values = value.filter((v) => !this._valueIsEqual(v, valueToRemove));
     onChange(values);
   }
 
@@ -444,18 +440,8 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     return JSON.stringify(v1) === JSON.stringify(v2);
   }
 
-  componentDidUpdate(prevProps: TokenFieldProps, prevState: TokenFieldState) {
+  componentDidUpdate(prevProps: TokenFieldProps) {
     const input = this.inputRef.current;
-
-    if (
-      prevState.selectedOptionValue !== this.state.selectedOptionValue &&
-      this.scrollElement != null
-    ) {
-      const element = findDOMNode(this.scrollElement);
-      if (element && isObscured(element) && element instanceof Element) {
-        element.scrollIntoView({ block: "nearest" });
-      }
-    }
 
     // if we added a value then scroll to the last item (the input)
     if (this.props.value.length > prevProps.value.length) {
@@ -564,12 +550,12 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
             {multi && (
               <TokenFieldAddon
                 isValid={validateValue(v)}
-                onClick={e => {
+                onClick={(e) => {
                   e.preventDefault();
                   this.removeValue(v);
                   this.inputRef?.current?.blur();
                 }}
-                onMouseDown={e => e.preventDefault()}
+                onMouseDown={(e) => e.preventDefault()}
               >
                 <Icon
                   name="close"
@@ -617,7 +603,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}
         >
-          {filteredOptions.map(option => (
+          {filteredOptions.map((option) => (
             <li className={CS.mr1} key={this._key(option)}>
               <div
                 className={cx(
@@ -642,13 +628,13 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
                       ),
                   },
                 )}
-                onClick={e => {
+                onClick={(e) => {
                   this.addOption(option);
                   // clear the input value, and search value if last option
                   this.clearInputValue(filteredOptions.length === 1);
                   e.preventDefault();
                 }}
-                onMouseDown={e => e.preventDefault()}
+                onMouseDown={(e) => e.preventDefault()}
               >
                 {optionRenderer(option)}
               </div>

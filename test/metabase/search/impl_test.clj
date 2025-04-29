@@ -1,5 +1,5 @@
 (ns metabase.search.impl-test
-  "There are a lot more tests around search in [[metabase.api.search-test]]. TODO: we should move more of those tests
+  "There are a lot more tests around search in [[metabase.search.api-test]]. TODO: we should move more of those tests
   into this namespace."
   (:require
    [clojure.set :as set]

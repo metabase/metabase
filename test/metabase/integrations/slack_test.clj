@@ -1,6 +1,7 @@
 (ns metabase.integrations.slack-test
   (:require
    [clj-http.fake :as http-fake]
+   [clojure.set :as s]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.integrations.slack :as slack]
@@ -68,13 +69,13 @@
       (tu/with-temporary-setting-values [slack-app-token "test-token"]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Invalid token"
+             #"Slack API error: invalid_auth"
              (thunk)))
-        (try
-          (thunk)
-          (catch clojure.lang.ExceptionInfo e
-            (is (= {:slack-token "Invalid token"}
-                   (:errors (ex-data e))))))))))
+        (let [expected-error-markers (set {:error-code "invalid_auth" :error-type :slack/invalid-token})]
+          (try
+            (thunk)
+            (catch clojure.lang.ExceptionInfo e
+              (is (s/subset? expected-error-markers (set (ex-data e)))))))))))
 
 (defn- test-auth!
   "Test that a Slack API `endpoint` function works as expected when Slack token is missing or invalid."
@@ -91,6 +92,24 @@
 (deftest conversations-list-test
   (testing "conversations-list"
     (test-auth! conversations-endpoint slack/conversations-list)
+
+    (testing ":private_channel flag determines the \"types\" param sent to slack"
+      (are [opts conversation-types]
+           (let [request (atom nil)]
+             (http-fake/with-fake-routes
+               {conversations-endpoint
+                (fn [req]
+                  (reset! request req)
+                  (mock-200-response (mock-conversations-response-body req)))}
+               (tu/with-temporary-setting-values [slack-token "test-token"
+                                                  slack-app-token nil]
+                 (slack/conversations-list opts)))
+             (let [{:keys [query-string]} @request
+                   {:keys [types]}        (parse-query-string query-string)]
+               (= conversation-types types)))
+        {}                        "public_channel"
+        {:private-channels false} "public_channel"
+        {:private-channels true}  "public_channel,private_channel"))
 
     (testing "should be able to fetch channels and paginate"
       (http-fake/with-fake-routes {conversations-endpoint (comp mock-200-response mock-conversations-response-body)}
@@ -115,8 +134,8 @@
                                                               (is (= "Bearer\nabc"
                                                                      (get headers "Authorization")))
                                                               (mock-200-response (mock-conversations-response-body request)))}
-          (is (= true
-                 (slack/valid-token? "abc"))))
+          (is (true?
+               (slack/valid-token? "abc"))))
         (testing "invalid token should return false"
           (http-fake/with-fake-routes {conversations-endpoint (constantly
                                                                (mock-200-response {:ok    false
@@ -157,28 +176,10 @@
               (is (= expected-result
                      (slack/users-list))))))))))
 
-(deftest files-channel-test
-  (testing "files-channel"
-    (testing "Should be able to get the files-channel from the cache (if it exists)"
-      (tu/with-temporary-setting-values [slack-files-channel "general"
-                                         slack-cached-channels-and-usernames
-                                         {:channels (mapv (fn [c] {:name c :id c})
-                                                          ["general" "random" "off-topic"
-                                                           "cooking" "john" "james" "jordan"])}]
-        (is (= "general" (slack/files-channel))))
-      (tu/with-temporary-setting-values [slack-files-channel "not_in_the_cache"
-                                         slack-cached-channels-and-usernames
-                                         {:channels [{:name "general" :id "C0G9QKBBL"}]}]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Slack channel named.*is missing.*"
-             (slack/files-channel)))))))
-
 (deftest upload-file!-test
   (testing "upload-file!"
     (let [image-bytes (.getBytes "fake-picture")
           filename    "wow.gif"
-          channel-id  "C13372B6X"
           upload-url  "https://files.slack.com/upload/v1/CwABAAAAWgoAAZnBg"
           fake-upload-routes {#"^https://slack.com/api/files\.getUploadURLExternal.*"
                               (fn [_] (mock-200-response {:ok         true
@@ -195,7 +196,7 @@
                                            slack-app-token nil]
           (is (= {:url "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
                   :id "DDDDDDDDD-EEEEEEEEE"}
-                 (slack/upload-file! image-bytes filename channel-id)))))
+                 (slack/upload-file! image-bytes filename)))))
       ;; Slack app token requires joining the `metabase_files` channel before uploading a file
       (http-fake/with-fake-routes
         (assoc fake-upload-routes
@@ -205,67 +206,7 @@
                                            slack-app-token "test-token"]
           (is (= {:url "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
                   :id "DDDDDDDDD-EEEEEEEEE"}
-                 (slack/upload-file! image-bytes filename channel-id))))
-        (testing (str "upload-file! will attempt to join channels by internal slack id"
-                      " but we can continue to use the channel name for posting")
-          (let [filename    "wow.gif"
-                channel-id  "metabase_files"
-                slack-id    "CQXPZKNQ3RK"
-                joined?     (atom false)
-                channel-info [{:display-name "#random",
-                               :name "random",
-                               :id "CT2FNGZSRPL",
-                               :type "channel"}
-                              {:display-name "#general",
-                               :name "general",
-                               :id "C4Q6LXLRA46",
-                               :type "channel"}
-                              {:display-name "#metabase_files",
-                               :name channel-id,
-                               ;; must look up "metabase_files" and find the id below
-                               :id slack-id,
-                               :type "channel"}]
-                post          (var-get #'slack/POST)]
-            (with-redefs [slack/POST (fn [endpoint payload]
-                                       (case endpoint
-                                         "files.completeUploadExternal"
-                                         (if @joined?
-                                           (json/decode+kw (slurp "./test_resources/slack_upload_file_response.json"))
-                                           (throw (ex-info "Not in that channel"
-                                                           {:error-code "not_in_channel"})))
-                                         "conversations.join"
-                                         (reset! joined? (= (-> payload :form-params :channel)
-                                                            slack-id))
-                                         (post endpoint payload)))]
-              (tu/with-temporary-setting-values [slack/slack-app-token "slack-configured?"
-                                                 slack/slack-cached-channels-and-usernames
-                                                 {:channels channel-info}]
-                (slack/upload-file! (.getBytes "fake-picture") filename channel-id)
-                (is @joined? (str "Did not attempt to join with slack-id " slack-id))))))))))
-
-(deftest maybe-lookup-id-test
-  (let [f (var-get #'slack/maybe-lookup-id)]
-    (testing "On new v2 shape"
-      (testing "Returns original if not found"
-        (is (= "needle"
-               (f "needle" {:channels [{:display-name "#other1"
-                                        :name         "other1"
-                                        :type         "channel"
-                                        :id           "CR65C4ZJVIW"}
-                                       {:display-name "#other2"
-                                        :name         "other2"
-                                        :type         "channel"
-                                        :id           "C87LQNL0Y23"}]}))))
-      (testing "Returns the slack internal id if found"
-        (is (= "slack-id"
-               (f "needle" {:channels [{:display-name "#other1"
-                                        :name         "other1"
-                                        :type         "channel"
-                                        :id           "CR65C4ZJVIW"}
-                                       {:display-name "#needle"
-                                        :name         "needle"
-                                        :type         "channel"
-                                        :id           "slack-id"}]})))))))
+                 (slack/upload-file! image-bytes filename))))))))
 
 (deftest post-chat-message!-test
   (testing "post-chat-message!"
@@ -297,7 +238,7 @@
             (try
               (slack/post-chat-message! "C94712B6X" ":wow:")
               (catch Throwable e
-                (is (= "Invalid token" (ex-message e)))
+                (is (= :slack/invalid-token (:error-type (ex-data e))))
                 (let [recipient->emails (mt/summarize-multipart-email #"Your Slack connection stopped working.")]
                   (is (=? {:from "notifications@metabase.com",
                            :subject "Your Slack connection stopped working",
@@ -312,7 +253,7 @@
             (try
               (slack/post-chat-message! "C94712B6X" ":wow:")
               (catch Throwable e
-                (is (= "Invalid token" (ex-message e)))
+                (is (= :slack/invalid-token (:error-type (ex-data e))))
                 (is (= {} (mt/summarize-multipart-email #"Your Slack connection stopped working.")))))))
 
         (testing "No email is sent during token validation checks, even if `slack-token-valid?` is currently true"
@@ -326,3 +267,31 @@
 (deftest slack-cache-updated-at-nil
   (tu/with-temporary-setting-values [slack-channels-and-usernames-last-updated nil]
     (is (= (var-get #'slack/zoned-time-epoch) (slack/slack-channels-and-usernames-last-updated)))))
+
+(def auth-endpoint #"^https://slack\.com/api/auth\.test.*")
+
+(deftest refresh-channels-and-usernames!-test
+  (testing "Chooses correct value for :private-channels if groups:read scope is available"
+    (are [oauth-scopes conversation-types]
+         (let [request (atom nil)]
+           (tu/with-temporary-setting-values [slack-app-token "test"
+                                              slack-token nil]
+             (http-fake/with-fake-routes
+               {auth-endpoint
+                (constantly
+                 {:status 200
+                  :body (json/encode {:ok true})
+                  :headers {"x-oauth-scopes" oauth-scopes}})
+                conversations-endpoint
+                (fn [req]
+                  (reset! request req)
+                  {:status 200, :body (json/encode {:ok true})})
+                users-endpoint
+                (constantly {:status 200, :body (json/encode {:ok true})})}
+               (slack/refresh-channels-and-usernames!)
+               (let [{:keys [query-string]} @request
+                     {:keys [types]}        (parse-query-string query-string)]
+                 (= conversation-types types)))))
+
+      ""            "public_channel"
+      "groups:read" "public_channel,private_channel")))

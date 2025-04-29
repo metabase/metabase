@@ -6,6 +6,7 @@ import { data } from "metabase/static-viz/components/PieChart/stories-data";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
+import type { Series } from "metabase-types/api";
 
 import { PieChart } from "./PieChart";
 
@@ -17,7 +18,7 @@ export default {
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(PieChart);
 
-const Template: StoryFn = args => {
+const Template: StoryFn = (args) => {
   const { backgroundColor, ...props } = args;
 
   const theme: MetabaseTheme = {
@@ -46,7 +47,7 @@ const Template: StoryFn = args => {
       <Box h={500} style={{ backgroundColor }}>
         <Visualization
           {...props}
-          rawSeries={data.defaultSettings}
+          rawSeries={data.defaultSettings as unknown as Series}
           width={500}
         />
       </Box>

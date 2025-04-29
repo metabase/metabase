@@ -82,11 +82,13 @@ const UserProfileForm = ({
               />
             </>
           )}
-          <FormSelect
-            name="locale"
-            title={t`Language`}
-            options={localeOptions}
-          />
+          <div data-testid="user-locale-select">
+            <FormSelect
+              name="locale"
+              title={t`Language`}
+              options={localeOptions}
+            />
+          </div>
           <FormSubmitButton title={t`Update`} disabled={!dirty} primary />
           <FormErrorMessage />
         </Form>

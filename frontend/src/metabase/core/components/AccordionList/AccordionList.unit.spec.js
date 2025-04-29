@@ -1,7 +1,6 @@
-/* eslint-disable jest/expect-expect */
-import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { fireEvent, render, screen } from "__support__/ui";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import AccordionList from "metabase/core/components/AccordionList";
 
@@ -48,7 +47,7 @@ describe("AccordionList", () => {
 
   it("should show search field is searchable is set", () => {
     render(<AccordionList sections={SECTIONS} searchable />);
-    screen.getByRole("img", { name: /search/i });
+    expect(screen.getByRole("img", { name: /search/i })).toBeInTheDocument();
   });
 
   it("should close the section when header is clicked", () => {
@@ -88,7 +87,7 @@ describe("AccordionList", () => {
     const SEARCH_FIELD = screen.getByPlaceholderText("Find...");
     const sections = ["Widgets", "Doohickeys"];
 
-    sections.forEach(name => {
+    sections.forEach((name) => {
       const SECTION = screen.queryByText(name);
       expect(SEARCH_FIELD.compareDocumentPosition(SECTION)).toBe(
         Node.DOCUMENT_POSITION_FOLLOWING,
@@ -149,13 +148,13 @@ describe("AccordionList", () => {
 });
 
 function assertAbsence(array) {
-  array.forEach(item => {
+  array.forEach((item) => {
     expect(screen.queryByText(item)).not.toBeInTheDocument();
   });
 }
 
 function assertPresence(array) {
-  array.forEach(item => {
+  array.forEach((item) => {
     expect(screen.getByText(item)).toBeInTheDocument();
   });
 }

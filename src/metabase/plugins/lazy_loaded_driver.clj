@@ -41,9 +41,7 @@
   referring to one of the default maps in `driver.common`, a entire custom map, or a list of maps to `merge:` (e.g.
   for overriding part, but not all, of a default option)."
   [{:keys [connection-properties]}]
-  (->> (map parse-connection-property connection-properties)
-       (map u/one-or-many)
-       (apply concat)))
+  (into [] (mapcat #(u/one-or-many (parse-connection-property %))) connection-properties))
 
 (defn- make-initialize! [driver add-to-classpath! init-steps]
   (fn [_]

@@ -4,7 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.table :as api.table]
-   [metabase.models.data-permissions :as data-perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -16,7 +16,7 @@
   Returns nil if no question was found."
   [table-or-table-id user-or-user-id]
   (t2/select-one :model/Card
-                 {:select [:c.id :c.dataset_query :c.result_metadata]
+                 {:select [:c.id :c.dataset_query :c.result_metadata :c.card_schema]
                   :from   [[:sandboxes]]
                   :join   [[:permissions_group_membership :pgm] [:= :sandboxes.group_id :pgm.group_id]
                            [:report_card :c] [:= :c.id :sandboxes.card_id]]
@@ -102,5 +102,3 @@
   (fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
                                   :include-hidden-fields?       include_hidden_fields
                                   :include-editable-data-model? include_editable_data_model}))
-
-(api/define-routes)

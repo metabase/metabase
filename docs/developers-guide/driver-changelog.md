@@ -4,6 +4,67 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.55.0
+
+- Added a feature `:expression-literals` for drivers that support expressions consisting of a single string, number, or boolean literal value.
+
+- Added a new abstract driver mix-in `:metabase.driver.sql.query-processor.boolean-is-comparison/boolean-is-comparison` that can be inherited by drivers that require boolean literal constants to be converted to comparison expressions in the top level of WHERE, AND, OR, NOT, and CASE clauses.
+
+- Added the multi-method `float-dbtype` which returns the name of the float type we coerce to for coercion strategies and the `float()` custom expression function.
+
+- Added a feature `:expressions/float` for drivers that support casting text to floats.
+
+- Added the multi-method `integer-dbtype` that allows the driver to control which type integers are cast to.
+
+## Metabase 0.54.0
+
+- Added the multi-method `allowed-promotions` that allows driver control over which column type promotions are supported for uploads.
+
+- Added the multi-method `alter-table-columns!`, like `alter-columns!` but accepts additional kw-arg opts.
+  Existing implementations of `alter-columns!` will be used by default.
+
+- `alter-columns!` is now marked as deprecated. Drivers
+  should seek to implement the new `alter-table-columns!` method.
+
+- The multimethod `metabase.driver.sql-jdbc.sync.interface/alter-table-columns-sql` has been added, like `alter-columns-sql` but accepts additional kw-arg opts. Existing implementations of `alter-columns-sql` will be used by default.
+
+- `metabase.driver.sql-jdbc.sync.interface/alter-columns-sql` is now marked as deprecated. Drivers should seek to implement the new `alter-table-columns-sql` method.
+
+- Added a feature `:test/arrays` and multimethod `native-array-query` to enable the testing of array types for
+  databases that support them.
+
+- Added a feature `:expressions/text` for drivers that support casting to text
+
+- Added a feature `:expressions/date` for drivers that support casting text to date
+
+- Added a feature `:expressions/integer` for drivers that support casting text to integer
+
+- Added a feature `:distinct-where` for drivers that support the `distinct-where` function.
+
+- Added a feature `:split-part` for drivers that support the `split-part` function.
+
+## Metabase 0.53.12
+
+- Add `metabase.driver/query-canceled?` for drivers to test if an exception is due to a query being canceled due to user action
+- Add `metabase.driver.sql-jdbc/impl-query-canceled?` for JDBC drivers. This is the implemenation of query-canceled for jdbc and allows testing directly against `java.sql.SQLException` throwables without worrying about the exception cause chain.
+
+## Metabase 0.53.10
+
+- Added `metabase.driver.sql-jdbc.sync/describe-fields-pre-process-xf` for JDBC drivers. This allows manipulating the results of `metabase.driver.sql-jdbc.sync/describe-fields-sql` without reimplementing `driver/describe-fields`.
+
+## Metabase 0.53.0
+
+- Added the multimethod `bad-connection-details` to allow mocking bad connection parameters for tests.
+
+- Added `driver/dynamic-database-types-lookup` and its `:postgres` implementation. The method generates map
+  of `database_type` to `base_type`, for dynamic types, ie. those which are not covered
+  by `sql-jdbc.sync/database-type->base-type`. Its original purpose was to enable mapping of user defined enums in
+  postgres to appropriate base type in results metadata.
+
+## Metabase 0.52.12
+
+- Added the multimethod `metabase.driver/db-details-to-test-and-migrate`. This can be used to cleanup and migrate ambiguous connection details from previous versions.
+
 ## Metabase 0.52.0
 
 - The Docker image for Metabase 0.52.0 now uses Java 21 instead of Java 11. Please make sure to test your driver

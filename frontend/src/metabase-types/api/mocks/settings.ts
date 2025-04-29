@@ -1,10 +1,10 @@
 import dayjs from "dayjs";
 
-import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
 import type {
   Engine,
   EngineField,
   EngineSource,
+  EnterpriseSettings,
   FontFile,
   SettingDefinition,
   SettingKey,
@@ -15,7 +15,6 @@ import type {
   VersionInfo,
   VersionInfoRecord,
 } from "metabase-types/api";
-
 export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   "driver-name": "PostgreSQL",
   "details-fields": [],
@@ -48,12 +47,6 @@ export const createMockEngines = (
     "driver-name": "CommunityEngine",
     source: createMockEngineSource({
       type: "community",
-    }),
-  }),
-  partnerEngine: createMockEngine({
-    "driver-name": "PartnerEngine",
-    source: createMockEngineSource({
-      type: "partner",
     }),
   }),
   ...opts,
@@ -131,6 +124,7 @@ export const createMockTokenFeatures = (
   query_reference_validation: false,
   serialization: false,
   cache_preemptive: false,
+  database_routing: false,
   ...opts,
 });
 
@@ -180,6 +174,7 @@ export const createMockSettings = (
   "help-link": "metabase",
   "help-link-custom-destination": "",
   "deprecation-notice-version": undefined,
+  "development-mode?": false,
   "ee-ai-features-enabled": false,
   "ee-openai-model": "",
   "ee-openai-api-key": "",
@@ -208,10 +203,13 @@ export const createMockSettings = (
   "enable-xrays": false,
   engines: createMockEngines(),
   "example-dashboard-id": 1,
+  gsheets: {},
+  "humanization-strategy": "simple",
   "has-user-setup": true,
   "hide-embed-branding?": true,
   "instance-creation": dayjs().toISOString(),
   "show-static-embed-terms": true,
+  "show-sdk-embed-terms": true,
   "google-auth-auto-create-accounts-domain": null,
   "google-auth-client-id": null,
   "google-auth-configured": false,
@@ -236,6 +234,7 @@ export const createMockSettings = (
   "persisted-model-refresh-cron-schedule": "0 0 0/6 * * ? *",
   "premium-embedding-token": null,
   "read-only-mode": false,
+  "redirect-all-requests-to-https": false,
   "report-timezone-short": "UTC",
   "report-timezone-long": "Europe/London",
   "saml-configured": false,
@@ -251,6 +250,7 @@ export const createMockSettings = (
   "slack-bug-report-channel": null,
   "snowplow-enabled": false,
   "show-database-syncing-modal": false,
+  "show-google-sheets-integration": false,
   "show-homepage-data": false,
   "show-homepage-pin-message": false,
   "show-homepage-xrays": false,
@@ -259,10 +259,10 @@ export const createMockSettings = (
   "show-updated-permission-modal": false,
   "show-updated-permission-banner": false,
   "site-locale": "en",
+  "site-name": "Metabae",
   "site-url": "http://localhost:3000",
   "site-uuid": "1234",
   "slack-app-token": null,
-  "slack-files-channel": null,
   "slack-token": null,
   "slack-token-valid?": false,
   "start-of-week": "sunday",

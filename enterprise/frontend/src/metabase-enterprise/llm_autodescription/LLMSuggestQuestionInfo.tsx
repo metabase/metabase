@@ -22,7 +22,7 @@ export const LLMSuggestQuestionInfo = ({
   const questionWithCollectionId: Question =
     initialQuestion.setCollectionId(collectionId);
 
-  const question = useSelector(state =>
+  const question = useSelector((state) =>
     getSubmittableQuestion(state, questionWithCollectionId),
   );
 
@@ -64,7 +64,7 @@ export const LLMSuggestQuestionInfo = ({
       <Button
         onClick={handleClick}
         className={className}
-        leftIcon={<Icon name="ai" color={iconColor} />}
+        leftSection={<Icon name="ai" color={iconColor} />}
         variant="subtle"
       />
     </Tooltip>

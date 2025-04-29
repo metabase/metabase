@@ -9,6 +9,10 @@
 
 set -euo pipefail
 
+echo "This script is deprecated. Please use mage instead."
+echo "see:"
+echo "./bin/mage"
+
 STAGED_FILES=$(git diff --name-status --cached -- "*.clj" "*.cljc" "*.cljs" | grep -E '[AM]' | cut -f2 || true)
 
 if [ "${#STAGED_FILES}" -gt 0 ]; then
@@ -19,10 +23,8 @@ if [ "${#STAGED_FILES}" -gt 0 ]; then
 
   output=$(clojure -T:cljfmt fix "{:paths [${args[*]}]}" 2>&1)
 
-  ## Return a non-zero error code if any files were formatted since this will cause the commit to abort
   if [ -n "$output" ]; then
     echo $output
-    exit 1
   else
     echo "All staged clj, cljc, or cljs formatted correctly"
   fi

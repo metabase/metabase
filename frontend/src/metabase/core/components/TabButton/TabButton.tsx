@@ -1,5 +1,7 @@
 import type { UniqueIdentifier } from "@dnd-kit/core";
+// eslint-disable-next-line no-restricted-imports
 import { type Theme, css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import type {
   ChangeEventHandler,
@@ -142,7 +144,7 @@ const _TabButton = forwardRef(function TabButton(
           disabled={!isRenaming}
           onChange={onRename}
           onKeyPress={handleInputKeyPress}
-          onFocus={e => e.currentTarget.select()}
+          onFocus={(e) => e.currentTarget.select()}
           onBlur={onFinishRenaming}
           aria-labelledby={getTabId(idPrefix, value)}
           id={getTabButtonInputId(idPrefix, value)}
@@ -198,9 +200,9 @@ export const RenameableTabButtonStyled = styled(_TabButton)<{
   canRename: boolean;
 }>`
   ${TabButtonInputWrapper} {
-    ${props => props.isRenaming && getBorderStyle(props.theme)}
+    ${(props) => props.isRenaming && getBorderStyle(props.theme)}
     :hover {
-      ${props =>
+      ${(props) =>
         props.canRename && props.isSelected && getBorderStyle(props.theme)}
     }
   }
@@ -213,6 +215,7 @@ export function RenameableTabButton({
   renameMenuLabel = t`Rename`,
   renameMenuIndex = 0,
   canRename = true,
+  tabIndex,
   ...props
 }: RenameableTabButtonProps) {
   const { value: selectedValue } = useContext(TabContext);
@@ -266,7 +269,7 @@ export function RenameableTabButton({
       isSelected={isSelected}
       isRenaming={canRename && isRenaming}
       canRename={canRename}
-      onRename={e => setLabel(e.target.value)}
+      onRename={(e) => setLabel(e.target.value)}
       onFinishRenaming={onFinishEditing}
       onInputDoubleClick={() => setIsRenaming(canRename)}
       menuItems={

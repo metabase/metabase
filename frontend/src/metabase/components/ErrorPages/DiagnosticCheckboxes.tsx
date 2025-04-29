@@ -17,7 +17,7 @@ export const DiagnosticCheckboxes = ({
   errorInfo,
   applicationName,
 }: DiagnosticCheckboxesProps) => (
-  <Stack spacing="md" pt="md">
+  <Stack gap="md" pt="md">
     <FormCheckbox
       name="reporter"
       label={c("This is part of the bug reporting modal")

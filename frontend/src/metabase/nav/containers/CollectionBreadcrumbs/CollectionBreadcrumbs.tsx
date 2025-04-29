@@ -1,5 +1,4 @@
 import { useLocation } from "react-use";
-import _ from "underscore";
 
 import { useGetCollectionQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";

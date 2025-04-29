@@ -57,8 +57,8 @@ class Metadata {
   databasesList({ savedQuestions = true } = {}): Database[] {
     return _.chain(this.databases)
       .values()
-      .filter(db => savedQuestions || !db.is_saved_questions)
-      .sortBy(db => db.name)
+      .filter((db) => savedQuestions || !db.is_saved_questions)
+      .sortBy((db) => db.name)
       .value();
   }
 

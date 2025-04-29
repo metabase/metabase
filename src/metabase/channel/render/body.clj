@@ -9,17 +9,17 @@
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
    [metabase.formatter :as formatter]
-   [metabase.models.timeline-event :as timeline-event]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.streaming :as qp.streaming]
-   [metabase.query-processor.streaming.common :as common]
+   [metabase.query-processor.streaming.common :as streaming.common]
+   [metabase.timeline.core :as timeline]
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.net URL)
    (java.text DecimalFormat DecimalFormatSymbols)))
@@ -64,9 +64,8 @@
 
 (defn show-in-table?
   "Should this column be shown in a rendered table in a Pulse?"
-  [{:keys [semantic_type visibility_type] :as _column}]
-  (and (not (isa? semantic_type :type/Description))
-       (not (contains? #{:details-only :retired :sensitive} visibility_type))))
+  [{:keys [visibility_type] :as _column}]
+  (not (contains? #{:details-only :retired :sensitive} visibility_type)))
 
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
@@ -109,45 +108,27 @@
 
 (defn- query-results->header-row
   "Returns a row structure with header info from `cols`. These values are strings that are ready to be rendered as HTML"
-  [remapping-lookup card cols include-bar?]
-  {:row       (for [maybe-remapped-col cols
-                    :when              (show-in-table? maybe-remapped-col)
-                    :let               [col (if (:remapped_to maybe-remapped-col)
-                                              (nth cols (get remapping-lookup (:name maybe-remapped-col)))
-                                              maybe-remapped-col)
-                                        col-name (column-name card col)]
-                    ;; If this column is remapped from another, it's already
-                    ;; in the output and should be skipped
-                    :when              (not (:remapped_from maybe-remapped-col))]
-                (if (isa? ((some-fn :effective_type :base_type) col) :type/Number)
-                  (formatter/map->NumericWrapper {:num-str col-name :num-value col-name})
-                  col-name))
-   :bar-width (when include-bar? 99)})
-
-(defn- normalize-bar-value
-  "Normalizes bar-value into a value between 0 and 100, where 0 corresponds to `min-value` and 100 to `max-value`"
-  [bar-value min-value max-value]
-  (float
-   (/
-    (* (- (double bar-value) min-value)
-       100)
-    (- max-value min-value))))
+  [remapping-lookup card cols]
+  {:row
+   (for [maybe-remapped-col cols
+         :when              (show-in-table? maybe-remapped-col)
+         :let               [col (if (:remapped_to maybe-remapped-col)
+                                   (nth cols (get remapping-lookup (:name maybe-remapped-col)))
+                                   maybe-remapped-col)
+                             col-name (column-name card col)]
+         ;; If this column is remapped from another, it's already
+         ;; in the output and should be skipped
+         :when              (not (:remapped_from maybe-remapped-col))]
+     (if (isa? ((some-fn :effective_type :base_type) col) :type/Number)
+       (formatter/map->NumericWrapper {:num-str col-name :num-value col-name})
+       col-name))})
 
 (mu/defn- query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
-  [timezone-id :- [:maybe :string]
-   remapping-lookup
-   cols
-   rows
-   viz-settings
-   {:keys [bar-column min-value max-value]}]
-  (let [formatters (into []
-                         (map #(formatter/create-formatter timezone-id % viz-settings))
-                         cols)]
+  [timezone-id :- [:maybe :string] remapping-lookup cols rows viz-settings]
+  (let [formatters (into [] (map #(formatter/create-formatter timezone-id % viz-settings)) cols)]
     (for [row rows]
-      {:bar-width (some-> (and bar-column (bar-column row))
-                          (normalize-bar-value min-value max-value))
-       :row (for [[maybe-remapped-col maybe-remapped-row-cell fmt-fn] (map vector cols row formatters)
+      {:row (for [[maybe-remapped-col maybe-remapped-row-cell fmt-fn] (map vector cols row formatters)
                   :when (and (not (:remapped_from maybe-remapped-col))
                              (show-in-table? maybe-remapped-col))
                   :let [[_formatter row-cell] (if (:remapped_to maybe-remapped-col)
@@ -162,23 +143,12 @@
   HTML"
   ([timezone-id :- [:maybe :string]
     card
-    data]
-   (prep-for-html-rendering timezone-id card data {}))
-
-  ([timezone-id :- [:maybe :string]
-    card
-    {:keys [cols rows viz-settings], :as _data}
-    {:keys [bar-column] :as data-attributes}]
-   (let [remapping-lookup (create-remapping-lookup cols)]
+    {:keys [cols rows viz-settings], :as _data}]
+   (let [remapping-lookup (create-remapping-lookup cols)
+         row-limit        (min (public-settings/attachment-table-row-limit) 100)]
      (cons
-      (query-results->header-row remapping-lookup card cols bar-column)
-      (query-results->row-seq
-       timezone-id
-       remapping-lookup
-       cols
-       (take (min (public-settings/attachment-table-row-limit) 100) rows)
-       viz-settings
-       data-attributes)))))
+      (query-results->header-row remapping-lookup card cols)
+      (query-results->row-seq timezone-id remapping-lookup cols (take row-limit rows) viz-settings)))))
 
 (defn- strong-limit-text [number]
   [:strong {:style (style/style {:color style/color-gray-3})} (h (formatter/format-number number))])
@@ -207,7 +177,7 @@
 ;;; |                                                     render                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def RenderedPartCard
+(mr/def ::RenderedPartCard
   "Schema used for functions that operate on pulse card contents and their attachments"
   [:map
    [:attachments                  [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
@@ -231,7 +201,16 @@
       [ordered-cols ordered-rows])
     [(:cols data) (:rows data)]))
 
-(mu/defmethod render :table :- RenderedPartCard
+(defn- minibar-columns
+  "Return a list of column definitions for which minibar charts are enabled"
+  [cols viz-settings]
+  (filter
+   (fn [col] (get-in viz-settings [::mb.viz/column-settings
+                                   {::mb.viz/column-name (:name col)}
+                                   ::mb.viz/show-mini-bar]))
+   cols))
+
+(mu/defmethod render :table :- ::RenderedPartCard
   [_chart-type
    _render-type
    timezone-id :- [:maybe :string]
@@ -242,18 +221,20 @@
         data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
+        filtered-cols               (filter show-in-table? ordered-cols)
+        minibar-cols                (minibar-columns (get-in unordered-data [:results_metadata :columns] []) viz-settings)
         table-body                  [:div
                                      (table/render-table
                                       (js.color/make-color-selector unordered-data viz-settings)
-                                      {:cols-for-color-lookup (mapv :name ordered-cols)
-                                       :col-names             (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
-                                      (prep-for-html-rendering timezone-id card data))
+                                      {:cols-for-color-lookup (mapv :name filtered-cols)
+                                       :col-names             (streaming.common/column-titles filtered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
+                                      (prep-for-html-rendering timezone-id card data)
+                                      filtered-cols
+                                      viz-settings
+                                      minibar-cols)
                                      (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
-    {:attachments
-     nil
-
-     :content
-     table-body}))
+    {:content     table-body
+     :attachments nil}))
 
 (def ^:private default-date-styles
   {:year "YYYY"
@@ -339,7 +320,7 @@
                (DecimalFormat. base))]
      (.format fmt value))))
 
-(mu/defmethod render :progress :- RenderedPartCard
+(mu/defmethod render :progress :- ::RenderedPartCard
   [_chart-type
    render-type
    _timezone-id
@@ -366,23 +347,14 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
-(defn dashcard-timeline-events
-  "Look for a timeline and corresponding events associated with this dashcard."
-  [{{:keys [collection_id] :as _card} :card}]
-  (let [timelines (t2/select :model/Timeline
-                             :collection_id collection_id
-                             :archived false)]
-    (->> (t2/hydrate timelines :creator [:collection :can_write])
-         (map #(timeline-event/include-events-singular % {:events/all? true})))))
-
 (defn- add-dashcard-timeline-events
   "If there's a timeline associated with this card, add its events in."
   [card-with-data]
-  (if-some [timeline-events (seq (dashcard-timeline-events card-with-data))]
+  (if-some [timeline-events (seq (timeline/dashcard-timeline-events card-with-data))]
     (assoc card-with-data :timeline_events timeline-events)
     card-with-data))
 
-(mu/defmethod render :gauge :- RenderedPartCard
+(mu/defmethod render :gauge :- ::RenderedPartCard
   [_chart-type render-type _timezone-id :- [:maybe :string] card _dashcard data]
   (let [image-bundle (image-bundle/make-image-bundle
                       render-type
@@ -396,7 +368,7 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
-(mu/defmethod render :row :- RenderedPartCard
+(mu/defmethod render :row :- ::RenderedPartCard
   [_chart-type render-type _timezone-id card _dashcard {:keys [rows cols] :as _data}]
   (let [viz-settings (get card :visualization_settings)
         data {:rows rows
@@ -420,7 +392,7 @@
                (when (= col-name (:name col))
                  [idx col])))))
 
-(mu/defmethod render :scalar :- RenderedPartCard
+(mu/defmethod render :scalar :- ::RenderedPartCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]
   (let [field-name    (:scalar.field viz-settings)
         [row-idx col] (or (when field-name
@@ -450,7 +422,7 @@
 ;; As of 2024-03-21, isomorphic chart types include: line, area, bar (LAB), and trend charts
 ;; Because this effort began with LAB charts, this method is written to handle multi-series dashcards.
 ;; Trend charts were added more recently and will not have multi-series.
-(mu/defmethod render :javascript_visualization :- RenderedPartCard
+(mu/defmethod render :javascript_visualization :- ::RenderedPartCard
   [_chart-type render-type _timezone-id card dashcard data]
   (let [series-cards-results                   (:series-results dashcard)
         cards-with-data                        (->> series-cards-results
@@ -460,7 +432,7 @@
                                                     (m/distinct-by #(get-in % [:card :id])))
         viz-settings                           (or (get dashcard :visualization_settings)
                                                    (get card :visualization_settings))
-        {rendered-type :type content :content} (js.svg/javascript-visualization cards-with-data viz-settings)]
+        {rendered-type :type content :content} (js.svg/*javascript-visualization* cards-with-data viz-settings)]
     (case rendered-type
       :svg
       (let [image-bundle (image-bundle/make-image-bundle
@@ -477,7 +449,19 @@
       :html
       {:content [:div content] :attachments nil})))
 
-(mu/defmethod render :smartscalar :- RenderedPartCard
+(defn- smart-scalar-comparison-statement
+  [unit value]
+  (case unit
+    :minute  (tru "vs. previous minute: {0}" value)
+    :hour    (tru "vs. previous hour: {0}" value)
+    :day     (tru "vs. previous day: {0}" value)
+    :week    (tru "vs. previous week: {0}" value)
+    :month   (tru "vs. previous month: {0}" value)
+    :quarter (tru "vs. previous quarter: {0}" value)
+    :year    (tru "vs. previous year: {0}" value)
+    (tru "vs. previous {0}: {1}" (str/replace (name unit) "-" " ") value)))
+
+(mu/defmethod render :smartscalar :- ::RenderedPartCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols insights viz-settings]}]
   (letfn [(col-of-type [t c] (or (isa? (:effective_type c) t)
                                  ;; computed and agg columns don't have an effective type
@@ -485,20 +469,25 @@
           (where [f coll] (some #(when (f %) %) coll))
           (percentage [arg] (if (number? arg)
                               (format-percentage arg)
-                              " - "))
-          (format-unit [unit] (str/replace (name unit) "-" " "))]
+                              " - "))]
     (let [[_time-col metric-col] (if (col-of-type :type/Temporal (first cols)) cols (reverse cols))
 
           {:keys [last-value previous-value unit last-change] :as _insight}
           (where (comp #{(:name metric-col)} :col) insights)]
       (if (and last-value previous-value unit last-change)
-        (let [value           (format-cell timezone-id last-value metric-col viz-settings)
-              previous        (format-cell timezone-id previous-value metric-col viz-settings)
-              adj             (if (pos? last-change) (tru "Up") (tru "Down"))
-              delta-statement (if (= last-value previous-value)
-                                "No change"
-                                (str adj " " (percentage last-change)))
-              comparison-statement (str " vs. previous " (format-unit unit) ": " previous)]
+        (let [value                (format-cell timezone-id last-value metric-col viz-settings)
+              previous             (format-cell timezone-id previous-value metric-col viz-settings)
+              delta-statement      (cond
+                                     (= last-value previous-value)
+                                     (tru "No change")
+
+                                     (pos? last-change)
+                                     (tru "Up {0}" (percentage last-change))
+
+                                     (neg? last-change)
+                                     (tru "Down {0}" (percentage last-change)))
+              comparison-statement (smart-scalar-comparison-statement unit previous)
+              statement            (str delta-statement " " comparison-statement)]
           {:attachments nil
            :content     [:div
                          [:div {:style (style/style (style/scalar-style))}
@@ -507,11 +496,9 @@
                                                    :font-size     :16px
                                                    :font-weight   700
                                                    :padding-right :16px})}
-                          delta-statement
-                          comparison-statement]]
-           :render/text (str value "\n"
-                             delta-statement
-                             comparison-statement)})
+                          statement]]
+
+           :render/text (str value "\n" statement)})
         ;; In other words, defaults to plain scalar if we don't have actual changes
         {:attachments nil
          :content     [:div
@@ -564,7 +551,7 @@
                              [k value])) funnel-viz raw-rows)]
       (remove nil? rows-data))))
 
-(mu/defmethod render :funnel_normal :- RenderedPartCard
+(mu/defmethod render :funnel_normal :- ::RenderedPartCard
   [_chart-type render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (formatter/graphing-column-row-fns card data)
@@ -589,14 +576,14 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
-(mu/defmethod render :funnel :- RenderedPartCard
+(mu/defmethod render :funnel :- ::RenderedPartCard
   [_chart-type render-type timezone-id card dashcard data]
   (let [viz-settings (get card :visualization_settings)]
     (if (= (get viz-settings :funnel.type) "bar")
       (render :javascript_visualization render-type timezone-id card dashcard data)
       (render :funnel_normal render-type timezone-id card dashcard data))))
 
-(mu/defmethod render :empty :- RenderedPartCard
+(mu/defmethod render :empty :- ::RenderedPartCard
   [_chart-type render-type _timezone-id _card _dashcard _data]
   (let [image-bundle (image-bundle/no-results-image-bundle render-type)]
     {:attachments
@@ -613,7 +600,7 @@
        (trs "No results")]]
      :render/text (trs "No results")}))
 
-(mu/defmethod render :attached :- RenderedPartCard
+(mu/defmethod render :attached :- ::RenderedPartCard
   [_chart-type render-type _timezone-id _card _dashcard _data]
   (let [image-bundle (image-bundle/attached-image-bundle render-type)]
     {:attachments
@@ -629,7 +616,7 @@
                       :color      style/color-gray-4})}
        (trs "This question has been included as a file attachment")]]}))
 
-(mu/defmethod render :unknown :- RenderedPartCard
+(mu/defmethod render :unknown :- ::RenderedPartCard
   [_chart-type _render-type _timezone-id _card _dashcard _data]
   {:attachments
    nil
@@ -643,10 +630,10 @@
     [:br]
     (trs "Please view this card in Metabase.")]})
 
-(mu/defmethod render :card-error :- RenderedPartCard
+(mu/defmethod render :card-error :- ::RenderedPartCard
   [_chart-type _render-type _timezone-id _card _dashcard _data]
   @card-error-rendered-info)
 
-(mu/defmethod render :render-error :- RenderedPartCard
+(mu/defmethod render :render-error :- ::RenderedPartCard
   [_chart-type _render-type _timezone-id _card _dashcard _data]
   @error-rendered-info)

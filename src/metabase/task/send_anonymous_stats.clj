@@ -4,19 +4,19 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.analytics.stats :as stats]
+   [metabase.analytics.core :as analytics]
    [metabase.public-settings :as public-settings]
    [metabase.task :as task]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
-(jobs/defjob ^{:doc "If we can collect usage data, do so and send it home"} SendAnonymousUsageStats [_]
+(task/defjob ^{:doc "If we can collect usage data, do so and send it home"} SendAnonymousUsageStats [_]
   (when (public-settings/anon-tracking-enabled)
     (log/debug "Sending anonymous usage stats.")
     (try
       ;; TODO: add in additional request params if anonymous tracking is enabled
-      (stats/phone-home-stats!)
+      (analytics/phone-home-stats!)
       (catch Throwable e
         (log/error e "Error sending anonymous usage stats")))))
 

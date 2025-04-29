@@ -12,7 +12,7 @@ export const CollectionIcon = ({
   collection,
   question,
 }: {
-  collection: Collection;
+  collection: Collection | null | undefined;
   question: Question;
 }) => {
   if (!collection?.type) {

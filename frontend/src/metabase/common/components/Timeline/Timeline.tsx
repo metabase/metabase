@@ -2,11 +2,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
-import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
 import { getRelativeTime } from "metabase/lib/time";
 import type { RevisionOrModerationEvent } from "metabase/plugins";
-import { Icon } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 import type { Revision } from "metabase-types/api";
 
 import {
@@ -48,7 +47,7 @@ export function Timeline({
               <EventHeader>
                 <span>{title}</span>
                 {revision && canWrite && isNotFirstEvent && (
-                  <Tooltip tooltip={t`Revert to this version`}>
+                  <Tooltip label={t`Revert to this version`}>
                     <Button
                       icon="revert"
                       onlyIcon

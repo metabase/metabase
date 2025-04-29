@@ -19,7 +19,7 @@ import Questions from "metabase/entities/questions";
 import { useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Icon, Select } from "metabase/ui";
+import { Button, Icon, Select } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type {
   CardId,
@@ -31,13 +31,9 @@ import type {
   EntityCustomDestinationClickBehavior,
 } from "metabase-types/api";
 
-import { Heading } from "../../ClickBehaviorSidebar.styled";
+import { Heading } from "../../ClickBehaviorSidebarComponents";
 import { SidebarItem } from "../../SidebarItem";
-import {
-  LinkTargetEntityPickerContent,
-  SelectedEntityPickerContent,
-  SelectedEntityPickerIcon,
-} from "../LinkOptions.styled";
+import S from "../LinkOptions.module.css";
 
 const LINK_TARGETS = {
   question: {
@@ -79,16 +75,30 @@ function PickerControl({
   }, [Entity, clickBehavior.targetId, getPickerButtonLabel]);
 
   return (
-    <SidebarItem.Selectable isSelected padded={false}>
-      <LinkTargetEntityPickerContent onClick={onClick}>
-        <SelectedEntityPickerIcon name={pickerIcon} />
-        <SelectedEntityPickerContent>
-          {renderLabel()}
-          <Icon name="chevrondown" size={12} className={CS.mlAuto} />
-        </SelectedEntityPickerContent>
-      </LinkTargetEntityPickerContent>
-      <SidebarItem.CloseIcon onClick={onCancel} />
-    </SidebarItem.Selectable>
+    <Button.Group>
+      <Button
+        onClick={onClick}
+        justify="flex-start"
+        leftSection={<Icon name={pickerIcon} />}
+        rightSection={<Icon name="chevrondown" size={12} />}
+        size="lg"
+        variant="filled"
+        classNames={{
+          root: S.ButtonRoot,
+          label: S.ButtonLabel,
+        }}
+        w="100%"
+      >
+        <SidebarItem.Name>{renderLabel()}</SidebarItem.Name>
+      </Button>
+      <Button
+        onClick={onCancel}
+        miw="3rem"
+        size="lg"
+        variant="filled"
+        rightSection={<Icon name="close" />}
+      />
+    </Button.Group>
   );
 }
 
@@ -218,7 +228,7 @@ export function LinkedEntityPicker({
     ? (clickBehavior.tabId ?? defaultDashboardTabId)
     : undefined;
   const dashboardTabExists = dashboardTabs.some(
-    tab => tab.id === dashboardTabId,
+    (tab) => tab.id === dashboardTabId,
   );
   const dashboardTabIdValue =
     typeof dashboardTabId === "undefined" ? undefined : String(dashboardTabId);
@@ -293,7 +303,7 @@ export function LinkedEntityPicker({
         <PickerComponent
           title={getModalTitle()}
           value={initialPickerValue as any} // typescript isn't smart enough to know which picker we're using
-          onChange={newTarget => {
+          onChange={(newTarget) => {
             handleSelectLinkTargetEntityId(newTarget.id);
             setIsPickerOpen(false);
           }}
@@ -313,7 +323,7 @@ export function LinkedEntityPicker({
               ? undefined
               : t`The selected tab is no longer available`
           }
-          data={dashboardTabs.map(tab => ({
+          data={dashboardTabs.map((tab) => ({
             label: tab.name,
             value: String(tab.id),
           }))}

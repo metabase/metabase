@@ -1,8 +1,3 @@
-.TableSearchContainer {
-  padding: 0.5rem;
-  border-bottom: 1px solid var(--mb-color-border);
-}
-
 .TriggerContainer {
   width: 100%;
   position: relative;

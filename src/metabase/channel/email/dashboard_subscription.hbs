@@ -49,7 +49,9 @@
             <hr>
             <div class="footer" style="font-size: 11px; width: max-content; margin: 0 auto">
               Sent from <a href="{{context.site_url}}" style="color: {{context.application_color}}">{{context.site_url}}</a>.
-              <a href="{{computed.management_url}}" style="color: {{context.application_color}}">{{computed.management_text}}</a>
+              {{#if computed.management_url}}
+                <a href="{{computed.management_url}}" style="color: {{context.application_color}}">{{computed.management_text}}</a>
+              {{/if}}
             </div>
           </div>
         </td>

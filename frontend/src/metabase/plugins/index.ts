@@ -1,3 +1,4 @@
+import type React from "react";
 import type {
   ComponentType,
   Dispatch,
@@ -6,7 +7,6 @@ import type {
   SetStateAction,
 } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import type { AnySchema } from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
@@ -34,13 +34,16 @@ import type {
   ModelFilterSettings,
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/core/components/Link";
+import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
-import type { GroupProps, IconName, IconProps } from "metabase/ui";
+import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
+  BaseEntityId,
   BaseUser,
   Bookmark,
   CacheableDashboard,
@@ -53,11 +56,14 @@ import type {
   Dashboard,
   Database as DatabaseType,
   Dataset,
+  FieldId,
   Group,
   GroupPermissions,
   GroupsPermissions,
   ModelCacheRefreshStatus,
+  Pulse,
   Revision,
+  TableId,
   User,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
@@ -71,8 +77,10 @@ import type {
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUNCTIONS = [];
 
-// function to determine the landing page
-export const PLUGIN_LANDING_PAGE = [];
+export const PLUGIN_LANDING_PAGE = {
+  getLandingPage: () => "/",
+  LandingPageWidget: PluginPlaceholder,
+};
 
 export const PLUGIN_REDUX_MIDDLEWARES = [];
 
@@ -87,9 +95,7 @@ export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS: ((
 ) => AdminPathKey[])[] = [];
 
 export const PLUGIN_ADMIN_TOOLS = {
-  INDEX_ROUTE: "model-caching",
-  EXTRA_ROUTES_INFO: [],
-  EXTRA_ROUTES: [],
+  COMPONENT: null,
 };
 
 export const PLUGIN_ADMIN_TROUBLESHOOTING = {
@@ -173,7 +179,9 @@ export const PLUGIN_ADMIN_USER_FORM_FIELDS = {
 };
 
 // menu items in people management tab
-export const PLUGIN_ADMIN_USER_MENU_ITEMS = [];
+export const PLUGIN_ADMIN_USER_MENU_ITEMS = [] as Array<
+  (user: User) => { title: string; link: string }
+>;
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 
 // auth settings
@@ -197,7 +205,6 @@ export const PLUGIN_LDAP_FORM_FIELDS = {
     settings: {
       [setting: string]: {
         display_name?: string | undefined;
-        warningMessage?: string | undefined;
         description?: string | ReactNode | undefined;
         note?: string | undefined;
       };
@@ -263,9 +270,20 @@ export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS = {};
 export const PLUGIN_SNIPPET_SIDEBAR_MODALS = [];
 export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
 
-export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
-  Component: undefined,
-};
+interface PluginDashboardSubscriptionParametersSectionOverride {
+  Component?: ComponentType<{
+    className?: string;
+    parameters: UiParameter[];
+    hiddenParameters?: string;
+    dashboard: Dashboard;
+    pulse: Pulse;
+    setPulseParameters: (parameters: UiParameter[]) => void;
+  }>;
+}
+export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE: PluginDashboardSubscriptionParametersSectionOverride =
+  {
+    Component: undefined,
+  };
 
 export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
   isEnabled: () => false,
@@ -274,20 +292,10 @@ export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
 
 const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
   type: null,
-  name: t`Regular`,
+  get name() {
+    return t`Regular`;
+  },
   icon: "folder",
-};
-
-type AuthorityLevelMenuItem = {
-  title: string;
-  icon: string;
-  action: () => void;
-};
-
-type CleanUpMenuItem = {
-  title: string;
-  icon: string;
-  link: string;
 };
 
 export type ItemWithCollection = { collection: CollectionEssentials };
@@ -308,27 +316,28 @@ export const PLUGIN_COLLECTIONS = {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
-  isRegularCollection: (_: Partial<Collection> | Bookmark) => true,
+  isRegularCollection: (_data: Partial<Collection> | Bookmark) => true,
   getCollectionType: (
-    _: Partial<Collection>,
+    _collection: Partial<Collection>,
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
     AUTHORITY_LEVEL_REGULAR,
   useGetDefaultCollectionId: null as GetCollectionIdType | null,
-  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "",
+  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "" as BaseEntityId | "",
   INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE: UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
-  ): AuthorityLevelMenuItem[] => [],
+  ): React.ReactNode[] => [],
   getIcon: getIconBase,
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
   ) => items as Item[],
   canCleanUp: (_collection: Collection) => false as boolean,
-  getCleanUpMenuItems: (
+  useGetCleanUpMenuItems: (
     _collection: Collection,
-    _itemCount: number,
-  ): CleanUpMenuItem[] => [],
+  ): { menuItems: JSX.Element[] } => ({
+    menuItems: [],
+  }),
   cleanUpRoute: null as React.ReactElement | null,
   cleanUpAlert: (() => null) as (props: {
     collection: Collection;
@@ -407,7 +416,7 @@ export type SidebarCacheFormProps = {
   item: CacheableDashboard | Question;
   model: CacheableModel;
   onClose: () => void;
-} & GroupProps;
+} & StackProps;
 
 export type PreemptiveCachingSwitchProps = {
   handleSwitchToggle: () => void;
@@ -490,6 +499,15 @@ export const PLUGIN_APPLICATION_PERMISSIONS = {
   },
 };
 
+// Comes with PLUGIN_APPLICATION_PERMISSIONS
+export interface UserWithApplicationPermissions extends User {
+  permissions?: {
+    can_access_monitoring: boolean;
+    can_access_setting: boolean;
+    can_access_subscription: boolean;
+  };
+}
+
 export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
   UserTypeToggle: () => null as any,
   UserTypeCell: null,
@@ -518,8 +536,18 @@ export const PLUGIN_EMBEDDING = {
   isInteractiveEmbeddingEnabled: (_state: State) => false,
 };
 
+export interface SimpleDataPickerProps {
+  filterByDatabaseId: number | null;
+  selectedEntity?: TableId;
+  isInitiallyOpen: boolean;
+  triggerElement: ReactNode;
+  setSourceTableFn: (tableId: TableId) => void;
+  entityTypes: EmbeddingEntityType[];
+}
+
 export const PLUGIN_EMBEDDING_SDK = {
   isEnabled: () => false,
+  SimpleDataPicker: (_props: SimpleDataPickerProps) => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
@@ -558,8 +586,21 @@ export const PLUGIN_AUDIT = {
   InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
 };
 
+type GdriveConnectionModalProps = {
+  isModalOpen: boolean;
+  onClose: () => void;
+  reconnect: boolean;
+};
+
 export const PLUGIN_UPLOAD_MANAGEMENT = {
   UploadManagementTable: PluginPlaceholder,
+  GdriveSyncStatus: PluginPlaceholder,
+  GdriveConnectionModal:
+    PluginPlaceholder as ComponentType<GdriveConnectionModalProps>,
+  GdriveSidebarMenuItem: PluginPlaceholder as ComponentType<{
+    onClick: () => void;
+  }>,
+  GdriveDbMenu: PluginPlaceholder,
 };
 
 export const PLUGIN_IS_EE_BUILD = {
@@ -572,6 +613,29 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
    */
   areDownloadsEnabled: (_args: {
     hide_download_button?: boolean | null;
-    downloads?: boolean | null;
-  }) => true,
+    downloads?: string | boolean | null;
+  }) => ({ pdf: true, results: true }),
+};
+
+export const PLUGIN_DB_ROUTING = {
+  DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+  }>,
+  getDatabaseNameFieldProps: (_isSlug: boolean) => ({}),
+  getDestinationDatabaseRoutes: (_IsAdmin: any) =>
+    null as React.ReactElement | null,
+  useRedirectDestinationDatabase: (
+    _database: Pick<DatabaseType, "id" | "router_database_id"> | undefined,
+  ): void => {},
+  getPrimaryDBEngineFieldState: (
+    _database: Pick<Database, "router_user_attribute">,
+  ): "default" | "hidden" | "disabled" => "default",
+};
+
+export const PLUGIN_API = {
+  getFieldValuesUrl: (fieldId: FieldId) => `/api/field/${fieldId}/values`,
+  getRemappedFieldValueUrl: (fieldId: FieldId, remappedFieldId: FieldId) =>
+    `/api/field/${fieldId}/remapping/${remappedFieldId}`,
+  getSearchFieldValuesUrl: (fieldId: FieldId, searchFieldId: FieldId) =>
+    `/api/field/${fieldId}/search/${searchFieldId}`,
 };

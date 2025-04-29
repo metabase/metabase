@@ -2,7 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.permissions.util :as perms.u]
+   [metabase.permissions.core :as perms]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -234,7 +234,7 @@
    [:context               {:optional true} [:maybe :keyword]]
    [:is-impersonated-user? {:optional true} [:maybe :boolean]]
    [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
-   [:current-user-perms [:set perms.u/PathSchema]]
+   [:current-user-perms [:set perms/PathSchema]]
 
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]
@@ -256,7 +256,8 @@
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
    [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
-   [:include-dashboard-questions?        {:optional true} :boolean]])
+   [:include-dashboard-questions?        {:optional true} :boolean]
+   [:include-metadata?                   {:optional true} :boolean]])
 
 (defmulti column->string
   "Turn a complex column into a string"

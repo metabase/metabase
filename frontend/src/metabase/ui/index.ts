@@ -1,10 +1,11 @@
-export { rem, useMantineTheme } from "@mantine/core";
+export { rem, useCombobox, useMantineTheme } from "@mantine/core";
 export type {
-  TabsValue,
+  FloatingPosition,
+  MantineSize,
+  MantineStyleProps,
   MantineTheme,
-  MantineThemeOverride,
   MantineThemeOther,
-  MantineStyleSystemProps,
+  MantineThemeOverride,
 } from "@mantine/core";
 export { useHover } from "@mantine/hooks";
 export * from "./components";

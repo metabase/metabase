@@ -1,3 +1,3 @@
-export type { SelectItemProps } from "@mantine/core";
-
 export * from "./MultiAutocomplete";
+export * from "./MultiAutocompleteOption";
+export * from "./MultiAutocompleteValue";

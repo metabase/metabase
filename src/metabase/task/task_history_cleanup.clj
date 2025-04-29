@@ -24,7 +24,7 @@
          "Task history cleanup successful, rows were deleted"
          "Task history cleanup successful, no rows were deleted")))))
 
-(jobs/defjob
+(task/defjob
   ^{:doc "Delete older TaskHistory rows -- see docstring of `task-history/cleanup-task-history!` for more details."}
   TaskHistoryCleanup [_]
   (task-history-cleanup!))

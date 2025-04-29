@@ -23,8 +23,11 @@ import {
   useRegenerateScimTokenMutation,
 } from "metabase-enterprise/api";
 import { hasAnySsoPremiumFeature } from "metabase-enterprise/settings";
-import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
-import type { SettingValue, Settings } from "metabase-types/api";
+import type {
+  EnterpriseSettings,
+  SettingValue,
+  Settings,
+} from "metabase-types/api";
 
 import { CopyScimInput, getTextInputStyles } from "./ScimInputs";
 import { ScimTextWarning } from "./ScimTextWarning";
@@ -138,11 +141,11 @@ export const UserProvisioning = ({
         loading={maskedTokenRequest.isLoading}
         error={scimTokenError}
       >
-        <Stack pl="md" spacing="2.5rem">
+        <Stack pl="md" gap="2.5rem">
           <Box maw="35rem">
             <div>
-              <Stack spacing="2.5rem">
-                <Stack spacing=".5rem">
+              <Stack gap="2.5rem">
+                <Stack gap=".5rem">
                   <Text
                     fz="1.25rem"
                     fw="bold"
@@ -168,7 +171,7 @@ export const UserProvisioning = ({
 
                 {(isScimInitialized || isScimIncorrectlyIniailized) && (
                   <Stack
-                    spacing="2rem"
+                    gap="2rem"
                     opacity={isScimEnabled ? 1 : 0.5}
                     style={{ pointerEvents: isScimEnabled ? "auto" : "none" }}
                   >
@@ -213,7 +216,7 @@ export const UserProvisioning = ({
                 <>
                   <Divider my="2.5rem" />
 
-                  <Stack spacing=".5rem">
+                  <Stack gap=".5rem">
                     <Text
                       fz="1.25rem"
                       fw="bold"

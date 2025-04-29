@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-direct-helper-import
 import { H } from "e2e/support";
 
 export const visitApiKeySettings = () => {

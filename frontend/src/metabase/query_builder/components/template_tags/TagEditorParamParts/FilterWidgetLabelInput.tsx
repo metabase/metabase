@@ -21,7 +21,7 @@ export function FilterWidgetLabelInput({
       <TextInputBlurChange
         id={`tag-editor-display-name_${tag.id}`}
         value={tag["display-name"]}
-        onBlurChange={e => onChange(e.target.value)}
+        onBlurChange={(e) => onChange(e.target.value)}
       />
     </InputContainer>
   );

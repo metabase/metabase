@@ -1,15 +1,16 @@
 (ns metabase.models.api-key
-  (:require [clojure.core.memoize :as memoize]
-            [crypto.random :as crypto-random]
-            [metabase.db :as mdb]
-            [metabase.models.audit-log :as audit-log]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.util :as u]
-            [metabase.util.password :as u.password]
-            [metabase.util.secret :as u.secret]
-            [methodical.core :as methodical]
-            [toucan2.core :as t2]))
+  (:require
+   [clojure.core.memoize :as memoize]
+   [crypto.random :as crypto-random]
+   [metabase.db :as mdb]
+   [metabase.models.audit-log :as audit-log]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.util :as u]
+   [metabase.util.password :as u.password]
+   [metabase.util.secret :as u.secret]
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 ;; the prefix length, the length of `mb_1234`
 (def ^:private prefix-length 7)
@@ -38,7 +39,7 @@
           (fn [api-key-id]
             (let [{name :group-name
                    id   :group-id} (->> (api-key-id->permissions-groups api-key-id)
-                                        (sort-by #(= (:group-id %) (u/the-id (perms-group/all-users))))
+                                        (sort-by #(= (:group-id %) (u/the-id (perms/all-users-group))))
                                         first)]
               {:name name :id id}))]
       (for [api-key api-keys]
@@ -67,13 +68,13 @@
   (u.secret/secret
    (str "mb_" (crypto-random/base64 bytes-key-length))))
 
-(def ^:private string-key-length (count (u.secret/expose (generate-key))))
+(def ^:private string-key-length (delay (count (u.secret/expose (generate-key)))))
 
 (defn mask
   "Given an API key, returns a string of the same length with all but the prefix masked with `*`s"
   [key]
   (->> (concat (prefix key) (repeat "*"))
-       (take string-key-length)
+       (take @string-key-length)
        (apply str)))
 
 (defn- add-key

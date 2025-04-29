@@ -5,7 +5,6 @@
   instead of running like 10 separate queries? -- Cam"
   (:require
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -30,7 +29,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 (set! *warn-on-reflection* true)
 
@@ -227,7 +227,7 @@
   [pivot-column-mapping :- ::pivot-column-mapping]
   ;; the first query doesn't need any special mapping, it already has all the columns
   (if pivot-column-mapping
-    (apply juxt (for [mapping pivot-column-mapping]
+    (perf/juxt* (for [mapping pivot-column-mapping]
                   (if mapping
                     #(nth % mapping)
                     (constantly nil))))
@@ -359,7 +359,9 @@
         metadata-provider  (or (:lib/metadata query)
                                (lib.metadata.jvm/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
-        returned-columns   (lib/returned-columns query)
+        unique-name-fn     (lib.util/unique-name-generator)
+        returned-columns   (->> (lib/returned-columns query)
+                                (mapv #(update % :name unique-name-fn)))
         {:source/keys [aggregations breakouts]} (group-by :lib/source returned-columns)
         column-alias->index (into {}
                                   (map-indexed (fn [i column] [(:lib/desired-column-alias column) i]))
@@ -572,7 +574,7 @@
   results -- "
   [query :- ::lib.schema/query]
   (let [remapped-query          (->> query
-                                     lib.convert/->legacy-MBQL
+                                     lib/->legacy-MBQL
                                      qp.add-dimension-projections/add-remapped-columns
                                      (lib.query/query (qp.store/metadata-provider)))
         remap                   (remapped-indexes (lib/breakouts remapped-query))
@@ -603,7 +605,8 @@
                                 (pivot-options query (get query :viz-settings))
                                 (pivot-options query (get-in query [:info :visualization-settings]))
                                 (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures])))
-             query             (assoc-in query [:middleware :pivot-options] pivot-opts)
+             query             (-> query
+                                   (assoc-in [:middleware :pivot-options] pivot-opts))
              all-queries       (generate-queries query pivot-opts)
              column-mapping-fn (make-column-mapping-fn query)]
          (process-multiple-queries all-queries rff column-mapping-fn))))))

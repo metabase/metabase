@@ -1,0 +1,28 @@
+.dropdown {
+  display: flex;
+  flex-direction: row;
+}
+
+.target {
+  /**
+   * The target needs to have a size for Mantine to be able to position the
+   * popover correctly.
+   */
+  width: 2px;
+  height: 2px;
+}
+
+.tooltip {
+  background: var(--mb-color-background);
+  z-index: 1000;
+  width: 400px;
+  max-height: 500px;
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  font-size: 14px;
+
+  &:empty {
+    display: none;
+  }
+}

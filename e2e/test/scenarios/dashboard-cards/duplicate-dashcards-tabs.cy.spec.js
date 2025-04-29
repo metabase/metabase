@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createMockDashboardCard,
@@ -55,9 +55,9 @@ H.describeWithSnowplow("scenarios > dashboard cards > duplicate", () => {
     cy.signInAsAdmin();
     H.enableTracking();
 
-    cy.createQuestion(MAPPED_QUESTION_CREATE_INFO).then(
+    H.createQuestion(MAPPED_QUESTION_CREATE_INFO).then(
       ({ body: { id: mappedQuestionId } }) => {
-        cy.createDashboard(DASHBOARD_CREATE_INFO).then(
+        H.createDashboard(DASHBOARD_CREATE_INFO).then(
           ({ body: { id: dashboardId } }) => {
             cy.request("PUT", `/api/dashboard/${dashboardId}`, {
               dashcards: [createMappedDashcard(mappedQuestionId)],
@@ -81,10 +81,14 @@ H.describeWithSnowplow("scenarios > dashboard cards > duplicate", () => {
 
     H.findDashCardAction(H.getDashboardCard(0), "Duplicate").click();
     H.expectGoodSnowplowEvent(EVENTS.duplicateDashcard);
+
+    // check that the new card loads _before_ saving
+    cy.findAllByText("Products").should("have.length", 2);
+    // Also confirm with the card content (VIZ-289)
+    cy.findAllByText("Small Marble Shoes").should("have.length", 2);
+
     H.saveDashboard();
     H.expectGoodSnowplowEvent(EVENTS.saveDashboard);
-
-    cy.findAllByText("Products").should("have.length", 2);
 
     // 2. Confirm filter still works
     H.filterWidget().click();

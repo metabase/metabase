@@ -45,7 +45,7 @@ export class Mode {
       ...(mode.hasDrills
         ? queryDrill(question, clicked, this.isDrillEnabled)
         : []),
-      ...(mode.clickActions?.flatMap(drill => drill(props)) ?? []),
+      ...(mode.clickActions?.flatMap((drill) => drill(props)) ?? []),
     ];
 
     if (!actions.length && mode.fallback) {

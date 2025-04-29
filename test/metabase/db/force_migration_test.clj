@@ -28,8 +28,8 @@
               {:name "Egypt"
                :period "3100BC"}))
 
-;; This test tests 4 things:
-;; - It forces release the locks if there is one
+;; This test tests 4 (on h2) or 3 (on others) things:
+;; - It forces release the locks if there is one (only on h2, others use a session lock that can't be forced)
 ;; - When running migrations, when a migration fails, ignores it and move on to the next migration
 ;; - All custom migrations are executed in a transaction, if it fails, nothing should be commited
 ;; - All migrations are executed in the order it's defined
@@ -44,7 +44,8 @@
                                 (#'liquibase/liquibase-connection)
                                 (#'liquibase/database))
               lock-service (.getLockService (LockServiceFactory/getInstance) database)]
-          (.acquireLock lock-service)
+          (when (= driver/*driver* :h2)
+            (.acquireLock lock-service))
           (db.setup/migrate! data-source :force)
 
           (testing "Make sure the migrations that intended to succeed are succeed"

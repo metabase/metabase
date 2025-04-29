@@ -20,8 +20,11 @@ import { advancedPermissionsSlice } from "metabase-enterprise/advanced_permissio
 import { getImpersonations } from "metabase-enterprise/advanced_permissions/selectors";
 import type { AdvancedPermissionsStoreState } from "metabase-enterprise/advanced_permissions/types";
 import { shared } from "metabase-enterprise/shared/reducer";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
-import { createMockImpersonation } from "metabase-types/api/mocks/permissions";
+import {
+  createMockDatabase,
+  createMockImpersonation,
+  createMockTable,
+} from "metabase-types/api/mocks";
 
 const groupId = 2;
 const databaseId = 1;
@@ -113,7 +116,7 @@ describe("impersonation modal", () => {
 
     expect(
       await screen.findByRole("link", { name: /edit settings/i }),
-    ).toHaveAttribute("href", "/admin/databases/1");
+    ).toHaveAttribute("href", "/admin/databases/1/edit");
   });
 
   it("should refer to 'users' instead of 'roles' for redshift impersonation", async () => {

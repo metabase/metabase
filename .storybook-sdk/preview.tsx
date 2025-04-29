@@ -27,6 +27,18 @@ export const globalTypes: GlobalTypes = {
       icon: "paintbrush",
       items: storybookThemeOptions,
       showName: true,
+      dynamicTitle: true,
+    },
+  },
+  user: {
+    name: "User",
+    description: "User to use for sdk components",
+    defaultValue: "admin",
+    toolbar: {
+      icon: "user",
+      items: ["admin", "normal"],
+      showName: true,
+      dynamicTitle: true,
     },
   },
 };

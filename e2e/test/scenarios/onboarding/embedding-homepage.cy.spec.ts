@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 H.describeWithSnowplow(
   "scenarios > embedding-homepage > snowplow events",
@@ -8,8 +8,8 @@ H.describeWithSnowplow(
       H.resetSnowplow();
 
       cy.signInAsAdmin();
-      cy.intercept("GET", "/api/session/properties", req => {
-        req.continue(res => {
+      cy.intercept("GET", "/api/session/properties", (req) => {
+        req.continue((res) => {
           res.body["embedding-homepage"] = "visible";
           res.body["example-dashboard-id"] = 1;
           res.body["setup-license-active-at-setup"] = true;

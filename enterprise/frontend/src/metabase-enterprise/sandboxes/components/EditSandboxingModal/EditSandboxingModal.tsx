@@ -36,6 +36,7 @@ import AttributeMappingEditor, {
   AttributeOptionsEmptyState,
 } from "../AttributeMappingEditor";
 
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const ERROR_MESSAGE = t`An error occurred.`;
 
 const getNormalizedPolicy = (
@@ -112,7 +113,7 @@ const EditSandboxingModal = ({
   }, [normalizedPolicy]);
 
   const remainingAttributesOptions = attributes.filter(
-    attribute => !(attribute in policy.attribute_remappings),
+    (attribute) => !(attribute in policy.attribute_remappings),
   );
 
   const hasAttributesOptions = attributes.length > 0;
@@ -153,7 +154,7 @@ const EditSandboxingModal = ({
                 value: false,
               },
             ]}
-            onChange={shouldUseSavedQuestion =>
+            onChange={(shouldUseSavedQuestion) =>
               setShouldUseSavedQuestion(!shouldUseSavedQuestion)
             }
             vertical
@@ -165,10 +166,10 @@ const EditSandboxingModal = ({
               {t`Pick a saved question that returns the custom view of this table that these users should see.`}
             </div>
             <Button
-              data-testid="collection-picker-button"
+              data-testid="custom-view-picker-button"
               onClick={showModal}
               fullWidth
-              rightIcon={<Icon name="ellipsis" />}
+              rightSection={<Icon name="ellipsis" />}
               styles={{
                 inner: {
                   justifyContent: "space-between",
@@ -185,7 +186,7 @@ const EditSandboxingModal = ({
                     ? getQuestionPickerValue(policyCard)
                     : undefined
                 }
-                onChange={newCard => {
+                onChange={(newCard) => {
                   setPolicy({ ...policy, card_id: newCard.id });
                   hideModal();
                 }}
@@ -205,7 +206,7 @@ const EditSandboxingModal = ({
               <AttributeMappingEditor
                 value={policy.attribute_remappings}
                 policyTable={policyTable}
-                onChange={attribute_remappings =>
+                onChange={(attribute_remappings) =>
                   setPolicy({ ...policy, attribute_remappings })
                 }
                 shouldUseSavedQuestion={shouldUseSavedQuestion}
@@ -282,9 +283,13 @@ interface PolicySummaryProps {
 }
 
 const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
+  const headingId = _.uniqueId();
   return (
-    <div>
-      <div className={cx(CS.px1, CS.pb2, CS.textUppercase, CS.textSmall)}>
+    <div aria-labelledby={headingId}>
+      <div
+        id={headingId}
+        className={cx(CS.px1, CS.pb2, CS.textUppercase, CS.textSmall)}
+      >
         {t`Summary`}
       </div>
       <SummaryRow

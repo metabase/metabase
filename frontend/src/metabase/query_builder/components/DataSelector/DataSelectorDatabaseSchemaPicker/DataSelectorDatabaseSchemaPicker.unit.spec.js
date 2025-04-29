@@ -1,7 +1,5 @@
-import { render } from "@testing-library/react";
-
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createMockDatabase, createMockSchema } from "metabase-types/api/mocks";
@@ -9,7 +7,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import DataSelectorDatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
 
-const setup = opts => {
+const setup = (opts) => {
   const state = createMockState({
     entities: createMockEntitiesState({ databases: [opts.database] }),
   });

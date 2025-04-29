@@ -104,7 +104,7 @@ export function elementIsInView(element, percentX = 1, percentY = 1) {
     element = element.parentElement;
   }
 
-  return parentRects.every(parentRect => {
+  return parentRects.every((parentRect) => {
     const visiblePixelX =
       Math.min(elementRect.right, parentRect.right) -
       Math.max(elementRect.left, parentRect.left);
@@ -190,7 +190,7 @@ function getTextNodeAtPosition(root, index) {
   const treeWalker = document.createTreeWalker(
     root,
     NodeFilter.SHOW_TEXT,
-    elem => {
+    (elem) => {
       if (index > elem.textContent.length) {
         index -= elem.textContent.length;
         return NodeFilter.FILTER_REJECT;
@@ -257,7 +257,7 @@ function isMetabaseUrl(url) {
 }
 
 function isAbsoluteUrl(url) {
-  return ["/", "http:", "https:", "mailto:"].some(prefix =>
+  return ["/", "http:", "https:", "mailto:"].some((prefix) =>
     url.startsWith(prefix),
   );
 }
@@ -293,7 +293,7 @@ let metaKey;
 let ctrlKey;
 window.addEventListener(
   "mouseup",
-  e => {
+  (e) => {
     metaKey = e.metaKey;
     ctrlKey = e.ctrlKey;
   },
@@ -308,9 +308,9 @@ export function open(
   url,
   {
     // custom function for opening in same window
-    openInSameWindow = url => clickLink(url, false),
+    openInSameWindow = (url) => clickLink(url, false),
     // custom function for opening in new window
-    openInBlankWindow = url => clickLink(url, true),
+    openInBlankWindow = (url) => clickLink(url, true),
     // custom function for opening in same app instance
     openInSameOrigin,
     ignoreSiteUrl = false,
@@ -377,7 +377,7 @@ export function shouldOpenInBlankWindow(
   return false;
 }
 
-const getOrigin = url => {
+const getOrigin = (url) => {
   try {
     return new URL(url, window.location.origin).origin;
   } catch {
@@ -385,7 +385,7 @@ const getOrigin = url => {
   }
 };
 
-const getLocation = url => {
+const getLocation = (url) => {
   try {
     const { pathname, search, hash } = new URL(url, window.location.origin);
     const query = querystring.parse(search.substring(1));
@@ -450,8 +450,10 @@ export function removeAllChildren(element) {
 }
 
 export function parseDataUri(url) {
+  // https://regexr.com/8e8gt
   const match =
-    url && url.match(/^data:(?:([^;]+)(?:;([^;]+))?)?(;base64)?,(.*)$/);
+    url &&
+    url.match(/^data:(?:([^;]+)(?:;([^;]+))?)?(;base64)?,((?:(?!\1|,).)*)$/);
   if (match) {
     let [, mimeType, charset, base64, data] = match;
     if (charset === "base64" && !base64) {
@@ -530,7 +532,7 @@ export function isSmallScreen() {
 /**
  * @param {MouseEvent<Element, MouseEvent>} event
  */
-export const getEventTarget = event => {
+export const getEventTarget = (event) => {
   let target = document.getElementById("popover-event-target");
   if (!target) {
     target = document.createElement("div");

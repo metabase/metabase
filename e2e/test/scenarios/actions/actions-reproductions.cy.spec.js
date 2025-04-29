@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -37,13 +37,14 @@ describe("metabase#31587", () => {
           const actionButtonContainer = cy.findByTestId(
             "action-button-full-container",
           );
+          // eslint-disable-next-line no-unsafe-element-filtering
           const dashCard = cy
             .findAllByTestId("dashcard-container")
             .last()
             .should("have.text", "Click Me");
 
-          actionButtonContainer.then(actionButtonElem => {
-            dashCard.then(dashCardElem => {
+          actionButtonContainer.then((actionButtonElem) => {
+            dashCard.then((dashCardElem) => {
               expect(actionButtonElem[0].scrollHeight).to.eq(
                 dashCardElem[0].scrollHeight,
               );
@@ -64,13 +65,14 @@ describe("metabase#31587", () => {
           const actionButtonContainer = cy.findByTestId(
             "action-button-full-container",
           );
+          // eslint-disable-next-line no-unsafe-element-filtering
           const dashCard = cy
             .findAllByTestId("dashcard-container")
             .last()
             .should("have.text", "Click Me");
 
-          actionButtonContainer.then(actionButtonElem => {
-            dashCard.then(dashCardElem => {
+          actionButtonContainer.then((actionButtonElem) => {
+            dashCard.then((dashCardElem) => {
               expect(actionButtonElem[0].scrollHeight).to.eq(
                 dashCardElem[0].scrollHeight,
               );
@@ -148,7 +150,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   };
 
   function setupDashboard() {
-    cy.createDashboard(DASHBOARD_DETAILS).then(
+    H.createDashboard(DASHBOARD_DETAILS).then(
       ({ body: { id: dashboardId } }) => {
         cy.wrap(dashboardId).as("dashboardId");
       },
@@ -192,7 +194,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createQuestion(MODEL_DETAILS, {
+    H.createQuestion(MODEL_DETAILS, {
       wrapId: true,
       idAlias: "modelId",
     });
@@ -200,7 +202,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   });
 
   it("can submit query action linked with dashboard parameters (metabase#32974)", () => {
-    cy.get("@modelId").then(modelId => {
+    cy.get("@modelId").then((modelId) => {
       H.createAction({ ...QUERY_ACTION, model_id: modelId }).then(
         ({ body: { id: actionId } }) => {
           cy.wrap(actionId).as("actionId");
@@ -229,7 +231,7 @@ describe("issue 51020", () => {
     H.modal().findByLabelText("Name").type("Dash");
     H.modal().button("Create").click();
 
-    cy.button("Add a saved question").click();
+    cy.button("Add a chart").click();
     cy.findByTestId("add-card-sidebar").findByText(questionName).click();
 
     cy.findByLabelText("Add a filter or parameter").click();
@@ -419,7 +421,7 @@ describe("issue 32840", () => {
       },
     );
 
-    cy.get("@modelId").then(modelId => {
+    cy.get("@modelId").then((modelId) => {
       H.createAction({
         type: "implicit",
         kind: "row/update",
@@ -450,6 +452,44 @@ describe("issue 32840", () => {
       });
     cy.wait("@executeAction");
     H.modal().findByText("July 19, 2023, 7:44 PM").should("be.visible");
+  });
+});
+
+describe("issue 41831", () => {
+  beforeEach(() => {
+    H.restore("without-models");
+    cy.signInAsAdmin();
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+    cy.visit("/");
+  });
+
+  it("new action button is hidden without models", () => {
+    cy.findByRole("button", { name: "New" }).click();
+    cy.findByRole("dialog").within(() => {
+      cy.findByText("Action").should("not.exist");
+    });
+  });
+});
+
+describe("issue 32750", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+    cy.visit("/");
+  });
+
+  it("modal do not dissapear on viewport change", () => {
+    cy.findByRole("button", { name: "New" }).click();
+    cy.findByRole("dialog").within(() => {
+      cy.findByText("Action").click();
+    });
+
+    cy.findByTestId("action-creator").should("be.visible");
+    cy.viewport(320, 800);
+    cy.findByTestId("action-creator").should("be.visible");
+    cy.viewport(1440, 800);
+    cy.findByTestId("action-creator").should("be.visible");
   });
 });
 

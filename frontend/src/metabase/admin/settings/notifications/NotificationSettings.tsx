@@ -51,15 +51,15 @@ export const NotificationSettings = () => {
           {hasChannels && (
             <Button
               variant="subtle"
-              compact
-              leftIcon={<Icon name="add" />}
+              size="compact-md"
+              leftSection={<Icon name="add" />}
               onClick={() => setWebhookModal("create")}
             >{c("Short for 'Add another Webhook'").t`Add another`}</Button>
           )}
         </Flex>
         {hasChannels ? (
           <Stack>
-            {channels?.map(c => (
+            {channels?.map((c) => (
               <ChannelBox
                 key={`channel-${c.id}`}
                 title={c.name}

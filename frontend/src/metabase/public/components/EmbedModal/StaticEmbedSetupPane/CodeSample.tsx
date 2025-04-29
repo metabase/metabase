@@ -1,20 +1,22 @@
 import cx from "classnames";
-import type { ChangeEvent } from "react";
+import { type ChangeEvent, useMemo } from "react";
 
+import type { CodeLanguage } from "metabase/components/CodeEditor";
+import { CodeEditor } from "metabase/components/CodeEditor";
 import { CopyButton } from "metabase/components/CopyButton";
-import AceEditor from "metabase/components/TextEditor";
 import Select, { Option } from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import type { CodeSampleOption } from "metabase/public/lib/types";
 
 import { CopyButtonContainer } from "./CodeSample.styled";
+import { getHighlightedRanges } from "./utils";
 
 interface CodeSampleProps {
   selectedOptionId: CodeSampleOption["id"];
   source: string;
   languageOptions: CodeSampleOption[];
   title?: string;
-  textHighlightMode: string;
+  language: CodeLanguage;
   highlightedTexts?: string[];
 
   dataTestId?: string;
@@ -29,13 +31,18 @@ export const CodeSample = ({
   source,
   title,
   languageOptions,
-  dataTestId,
-  textHighlightMode,
   highlightedTexts,
+  dataTestId,
+  language,
   className,
   onChangeOption,
   onCopy,
 }: CodeSampleProps): JSX.Element => {
+  const highlightRanges = useMemo(
+    () => getHighlightedRanges(source, highlightedTexts),
+    [source, highlightedTexts],
+  );
+
   return (
     <div className={className} data-testid={dataTestId}>
       {(title || languageOptions.length > 1) && (
@@ -52,7 +59,7 @@ export const CodeSample = ({
                 dataTestId,
               }}
             >
-              {languageOptions.map(option => (
+              {languageOptions.map((option) => (
                 <Option key={option.id} value={option.id}>
                   {option.name}
                 </Option>
@@ -71,14 +78,12 @@ export const CodeSample = ({
           CS.overflowHidden,
         )}
       >
-        <AceEditor
+        <CodeEditor
           className={CS.z1}
-          value={source}
-          mode={textHighlightMode}
-          theme="ace/theme/metabase"
-          sizeToFit
+          language={language}
+          highlightRanges={highlightRanges}
           readOnly
-          highlightedTexts={highlightedTexts}
+          value={source}
         />
         {source && (
           <CopyButtonContainer>
