@@ -14,7 +14,7 @@ interface Props {
 }
 
 /**
- * Controlled component that fires onChange events on blur
+ * Controlled component that fires on*Change events on blur
  */
 export const NameDescriptionInput = ({
   description,
