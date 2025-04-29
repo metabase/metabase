@@ -1,10 +1,15 @@
 (ns metabase.core.initialization-status
   "Code related to tracking the progress of metabase initialization.
    This is kept in a separate, tiny namespace so it can be loaded right away when the application launches
-   (and so we don't need to wait for [[metabase.core.core]] to load to check the status).")
+   (and so we don't need to wait for [[metabase.core.core]] to load to check the status)."
+  (:require
+   [java-time.api :as t]))
 
 (defonce ^:private progress-atom
   (atom 0))
+
+(defonce ^:private timing-atom
+  (atom (t/instant)))
 
 (defn complete?
   "Is Metabase initialized and ready to be served?"
@@ -20,6 +25,9 @@
   "Update the Metabase initialization progress to a new value, a floating-point value between `0` and `1`."
   [^Float new-progress]
   {:pre [(float? new-progress) (<= 0.0 new-progress 1.0)]}
+  (let [now (t/instant)]
+    (prn "TIME SINCE LAST STEP" (t/time-between @timing-atom now :millis))
+    (reset! timing-atom now))
   (reset! progress-atom new-progress))
 
 (defn set-complete!
