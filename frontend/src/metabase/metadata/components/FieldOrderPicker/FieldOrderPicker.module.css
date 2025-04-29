@@ -1,0 +1,3 @@
+.root {
+  overflow: visible; /* prevent trigger button focus state from being cut off */
+}

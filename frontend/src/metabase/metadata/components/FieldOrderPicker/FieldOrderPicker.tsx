@@ -11,6 +11,8 @@ import {
 } from "metabase/ui";
 import type { TableFieldOrder } from "metabase-types/api";
 
+import S from "./FieldOrderPicker.module.css";
+
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   value: TableFieldOrder;
   onChange: (value: TableFieldOrder) => void;
@@ -28,6 +30,9 @@ export const FieldOrderPicker = ({ value, onChange, ...props }: Props) => {
 
   return (
     <Select
+      classNames={{
+        root: S.root,
+      }}
       comboboxProps={{
         middlewares: {
           flip: true,
