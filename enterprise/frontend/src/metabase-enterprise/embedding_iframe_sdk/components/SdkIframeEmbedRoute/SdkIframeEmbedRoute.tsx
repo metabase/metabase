@@ -12,10 +12,8 @@ import { setIsEmbeddingSdk } from "metabase/redux/embed";
 import { Box, Center, Loader } from "metabase/ui";
 
 import { useSdkIframeEmbedEventBus } from "../../hooks/use-sdk-iframe-embed-event-bus";
-import type {
-  SdkIframeEmbedSettings,
-  StoreWithSdkState,
-} from "../../types/store";
+import type { SdkIframeEmbedSettings } from "../../types/embed";
+import type { StoreWithSdkState } from "../../types/store";
 
 import S from "./SdkIframeEmbedRoute.module.css";
 
@@ -73,9 +71,16 @@ export const SdkIframeEmbedView = ({
 }: {
   settings: SdkIframeEmbedSettings;
 }) => {
-  const { dashboardId, questionId } = settings;
+  const { dashboardId, questionId, notebookEditor } = settings;
 
-  return match({ dashboardId, questionId })
+  return match({ dashboardId, questionId, notebookEditor })
+    .with({ notebookEditor: true }, () => (
+      <InteractiveQuestion
+        questionId="new"
+        height="100%"
+        isSaveEnabled={false}
+      />
+    ))
     .with({ dashboardId: P.nonNullable }, ({ dashboardId }) => (
       <InteractiveDashboard
         dashboardId={dashboardId}
