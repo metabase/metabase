@@ -313,7 +313,7 @@
         (let [[list-status list-response] (hm-get-all-connections)]
           (if (and (= :ok list-status) (not (some (partial = conn-id) (set (map :id (:body list-response))))))
             (u/prog1 {:status "not-connected"}
-              (log/errorf "Removing google drive connection %s because harbormaster gives a 403 error for it." conn-id)
+              (log/warnf "Removing google drive connection %s because harbormaster gives a 403 error for it." conn-id)
               (reset-gsheets-status!))
             ;; It doesn't look like a spot where we can remove the connection, so we just return the error
             (assoc (setting->response saved-setting)
