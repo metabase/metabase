@@ -5,6 +5,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
+   [metabase.channel.template.core :as channel.template]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -110,5 +111,16 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/http :notification/system-event]
-  [_channel-type _payload-type notification-payload _template _recipients]
-  [{:body notification-payload}])
+  [channel-type _payload-type {:keys [context] :as notification-payload} template _recipients]
+  (let [event-name (:event_name context)
+        template   (or template
+                       (channel.template/default-template :notification/system-event context channel-type))]
+    (assert template (str "No template found for event " event-name))
+    (def template template)
+    (def notification-payload notification-payload)
+    [{:body (json/decode (channel.template/render-template template notification-payload))}]))
+
+(json/decode (channel.template/render-template {:channel_type :channel/http,
+                                                :details
+                                                {:type "http/handlebars-text",
+                                                 :body "{\"record\": {{{json-encode record}}} }"}} notification-payload))
