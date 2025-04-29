@@ -1,6 +1,7 @@
 (ns metabase.channel.template.handlebars-helper
   (:refer-clojure :exclude [count])
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.models.setting :as setting]
    [metabase.util.date-2 :as u.date]
@@ -181,6 +182,85 @@
   [x [y] _kparams _options]
   (<= x y))
 
+(defhelper empty
+  "Checks if a collection is empty.
+
+   Example:
+   ```
+   {{#if (empty items)}}
+     <span class=\"empty\">No items</span>
+   {{/if}}
+   ```
+
+   Arguments:
+   - collection: The collection to check for emptiness"
+  [collection _params _kparams _options]
+  (empty? collection))
+
+(defhelper contains
+  "Checks if a collection contains a value.
+
+   Example:
+   ```
+   {{#if (contains items \"apple\")}}
+     <span class=\"apple\">Apple</span>
+   {{/if}}
+   ```
+
+   Arguments:
+   - string: The string to check for the value
+   - substring: The substring to check for in the string"
+  [string [substring] _kparams _options]
+  (contains? string substring))
+
+(defhelper starts-with
+  "Checks if a string starts with a substring.
+
+   Example:
+   ```
+   {{#if (starts-with \"Hello\" \"He\")}}
+     <span class=\"hello\">Hello</span>
+   {{/if}}
+   ```
+
+   Arguments:
+   - string: The string to check for the value
+   - substring: The substring to check for in the string"
+  [string [substring] _kparams _options]
+  (str/starts-with? string substring))
+
+(defhelper ends-with
+  "Checks if a string ends with a substring.
+
+   Example:
+   ```
+   {{#if (ends-with \"Hello\" \"lo\")}}
+     <span class=\"hello\">Hello</span>
+   {{/if}}
+   ```
+
+   Arguments:
+   - string: The string to check for the value
+   - substring: The substring to check for in the string"
+  [string [substring] _kparams _options]
+  (str/ends-with? string substring))
+
+(defhelper regexp
+  "Checks if a string matches a regular expression.
+
+   Example:
+   ```
+   {{#if (regexp \"Hello\" \"^H.*o$\")}}
+     <span class=\"hello\">Hello</span>
+   {{/if}}
+   ```
+
+   Arguments:
+   - string: The string to check for the value
+   - regex: The regular expression to check for in the string"
+  [string [regex] _kparams _options]
+  (some? (re-matches (re-pattern regex) string)))
+
 (defhelper format-date
   "Formats a date according to specified pattern.
 
@@ -268,6 +348,11 @@
    "ge"            #'ge
    "lt"            #'lt
    "le"            #'le
+   "empty"         #'empty
+   "contains"      #'contains
+   "starts-with"   #'starts-with
+   "ends-with"     #'ends-with
+   "regexp"        #'regexp
    "format-date"   #'format-date
    "now"           #'now
    "card-url"      #'card-url
