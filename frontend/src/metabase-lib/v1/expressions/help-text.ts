@@ -1,3 +1,4 @@
+import { isNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";
 import type {
   ClauseArgDefinition,
@@ -57,6 +58,6 @@ function getExample(
   return {
     operator: name as Lib.ExpressionOperator,
     options: {},
-    args: args.flatMap((arg) => arg.example),
+    args: args.flatMap((arg) => arg.example).filter(isNotNull),
   };
 }

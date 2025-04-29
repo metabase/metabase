@@ -13,8 +13,11 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import Markdown from "metabase/core/components/Markdown";
 import { Box, Flex, Icon, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { getClauseDefinition, getHelpText } from "metabase-lib/v1/expressions";
-import type { HelpText } from "metabase-lib/v1/expressions/types";
+import {
+  type HelpText,
+  getClauseDefinition,
+  getHelpText,
+} from "metabase-lib/v1/expressions";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import {
@@ -173,7 +176,9 @@ export function HelpText({
                     {wrapPlaceholder(name)}
                   </Box>
                   <Box data-testid={`arg-${name}-description`}>
-                    <Markdown components={components}>{description}</Markdown>
+                    <Markdown components={components}>
+                      {description ?? ""}
+                    </Markdown>
                   </Box>
                 </Fragment>
               ))}
