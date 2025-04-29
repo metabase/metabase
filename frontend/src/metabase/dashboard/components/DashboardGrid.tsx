@@ -531,7 +531,7 @@ class DashboardGridInner extends Component<
       totalNumGridCols: number;
       downloadsEnabled: boolean;
       shouldAutoScrollTo: boolean;
-      reportAutoScrolledToDashcard: () => void;
+      reportAutoScrolledToDashcard?: () => void;
     },
   ) {
     return (
