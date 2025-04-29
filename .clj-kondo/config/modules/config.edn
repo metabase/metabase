@@ -203,7 +203,7 @@
 
   eid-translation
   {:api  #{metabase.eid-translation.core}
-   :uses #{}}
+   :uses #{settings util}}
 
   embedding
   {:api  #{metabase.embedding.api

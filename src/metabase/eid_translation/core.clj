@@ -1,4 +1,14 @@
-(ns metabase.eid-translation.core)
+(ns metabase.eid-translation.core
+  (:require
+   [metabase.eid-translation.util]
+   [potemkin :as p]))
+
+(comment metabase.eid-translation.util/keep-me)
+
+(p/import-vars
+ [metabase.eid-translation.util
+  ->id
+  model->entity-ids->ids])
 
 (def statuses
   "Possible statuses from an entity-id -> id translation:
