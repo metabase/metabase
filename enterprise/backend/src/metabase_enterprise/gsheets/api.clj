@@ -167,6 +167,14 @@
         (when-not (= delete-status :ok)
           (log/debugf "Unable to delete gdrive connection %s." id))))))
 
+(mu/defn hm-get-all-connections :- :hm-client/http-reply
+  "Get all connections from harbormaster."
+  []
+  (hm.client/make-request :get "/api/v2/mb/connections"))
+
+(comment
+  (hm-get-all-connections))
+
 (mu/defn hm-get-gdrive-conn :- :hm-client/http-reply
   "Get a specific gdrive connection by id."
   [id]
@@ -269,7 +277,7 @@
                                 cannot-check-message
                                 {:gdrive/conn-id conn-id
                                  :hm/exception e})))))
-        [hm-status {hm-body :body}] hm-response]
+        [hm-status {hm-status-code :status hm-body :body}] hm-response]
     (if (= :ok hm-status)
       (let [{:keys [status status-reason error last-sync-at last-sync-started-at]
              :as   _} (normalize-gdrive-conn hm-body)]
@@ -296,15 +304,30 @@
                           :last_sync_at (.getEpochSecond ^Instant (t/instant last-sync-at))
                           :hm/response (loggable-response hm-response))
             (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
-            (log/errorf "Error getting status of connection %s: %s %s" conn-id (:status-reason hm-body) (:error-detail hm-body)))))
-      (if (empty? saved-setting)
+            (log/errorf "Error getting status of connection %s: status-reason=`%s` error-detail=`%s`" conn-id (:status-reason hm-body) (:error-detail hm-body)))))
+      (cond
+        (empty? saved-setting)
         {:status "not-connected"}
+
+        (= 403 hm-status-code)
+        (let [[list-status list-response] (hm-get-all-connections)]
+          (if (and (= :ok list-status) (not (some (partial = conn-id) (set (map :id (:body list-response))))))
+            (u/prog1 {:status "not-connected"}
+              (log/warnf "Removing google drive connection %s because harbormaster gives a 403 error for it." conn-id)
+              (reset-gsheets-status!))
+            ;; It doesn't look like a spot where we can remove the connection, so we just return the error
+            (assoc (setting->response saved-setting)
+                   :status "error"
+                   :error_message cannot-check-message
+                   :hm/response (loggable-response hm-response))))
+
+        :else
         (u/prog1 (assoc (setting->response saved-setting)
                         :status "error"
                         :error_message cannot-check-message
                         :hm/response (loggable-response hm-response))
           (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
-          (log/errorf "Error getting status of connection %s: %s %s" conn-id (:status-reason hm-body) (:error-detail hm-body)))))))
+          (log/errorf "Error getting status of connection %s: status-reason=`%s` error-detail=`%s`" conn-id (:status-reason hm-body) (:error-detail hm-body)))))))
 
 (api.macros/defendpoint :get "/connection" :- :gsheets/response
   "Check the status of a connection. This endpoint gets polled by FE to determine when to
