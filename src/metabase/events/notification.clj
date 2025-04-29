@@ -103,14 +103,12 @@
   (maybe-send-notification-for-topic! topic event-info))
 
 (def ^:private table-hydrate
-  [:model/Table :name])
+  [:model/Table :name :field_order])
 
 (def ^:private table-hydrate-schema [:table {:optional true}
                                      [:map
-                                      [:name
-                                       {:description "The name of the table"
-                                        :gen/return "orders"}
-                                       :string]]])
+                                      [:name :string]
+                                      [:field_order :keyword]]])
 
 (mr/def ::nano-id ms/NonBlankString)
 
