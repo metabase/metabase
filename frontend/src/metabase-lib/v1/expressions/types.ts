@@ -25,10 +25,10 @@ export type ExpressionType =
   | "string";
 
 export type ClauseArgDefinition = {
-  name: string;
+  name?: string;
   type?: ExpressionType;
-  description: string;
-  example:
+  description?: string;
+  example?:
     | Lib.ExpressionParts
     | Lib.ExpressionArg
     | (Lib.ExpressionParts | Lib.ExpressionArg)[];
