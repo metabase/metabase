@@ -1401,11 +1401,11 @@ We support tz database time zone names.`,
   },
 ];
 
-export const getHelpText = (
+export function getHelpText(
   name: string,
   database: Database,
   reportTimezone?: string,
-): HelpText | undefined => {
+): HelpText | undefined {
   const helperTextConfig = HELPER_TEXT_STRINGS.find((h) => h.name === name);
 
   if (!helperTextConfig) {
@@ -1418,28 +1418,25 @@ export const getHelpText = (
   return {
     ...helperTextConfig,
     args,
-    example: getHelpExample(name, args),
+    example: getExample(name, args),
     description: description(database, reportTimezone),
     docsUrl: docsPage
       ? `questions/query-builder/expressions/${docsPage}`
       : "questions/query-builder/expressions",
   };
-};
+}
 
 /**
  * Build the expression example as a Lib.ExpressionParts manually.
  * This is necessary because we don't have a query to refer to in the examples.
  */
-const getHelpExample = (
-  name: string,
-  args: HelpTextArg[],
-): Lib.ExpressionParts => {
+function getExample(name: string, args: HelpTextArg[]): Lib.ExpressionParts {
   return {
     operator: name as Lib.ExpressionOperator,
     options: {},
     args: args.flatMap((arg) => arg.example),
   };
-};
+}
 
 function op(
   operator: Lib.ExpressionOperator,
