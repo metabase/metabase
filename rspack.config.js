@@ -9,6 +9,8 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
 
+const sdkIframeEmbedConfig = require("./rspack.sdk-iframe-embed.config.js")
+
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
@@ -379,38 +381,4 @@ if (devMode) {
   );
 }
 
-const iframeEmbedConfig = {
-  name: 'iframe_sdk_embed_v1',
-  entry: ENTERPRISE_SRC_PATH + "/embedding_iframe_sdk/embed.v1.ts",
-  output: {
-    path: BUILD_PATH + "/app",
-    filename: 'embed.v1.js',
-    library: 'metabase.embed',
-    libraryTarget: 'umd',
-    globalObject: 'this',
-  },
-  module: {
-    rules: [
-      {
-        test: /\.(ts|js)$/,
-        use: [
-          {
-            loader: "builtin:swc-loader",
-            options: {
-              jsc: { loose: true, transform: {}, parser: { syntax: "typescript" }, },
-              sourceMaps: false,
-              minify: false,
-              env: { targets: ["defaults"] },
-            },
-          },
-        ],
-        type: "javascript/auto",
-      },
-    ],
-  },
-  optimization: { splitChunks: false, runtimeChunk: false },
-  devtool: false,
-  devServer: { hot: false }
-}
-
-module.exports = [config, iframeEmbedConfig];
+module.exports = [config, sdkIframeEmbedConfig];
