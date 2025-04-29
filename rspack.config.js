@@ -390,7 +390,17 @@ const iframeEmbedConfig = {
     rules: [
       {
         test: /\.(ts|js)$/,
-        use: [SWC_LOADER],
+        use: [
+          {
+            loader: "builtin:swc-loader",
+            options: {
+              jsc: { loose: true, transform: {}, parser: { syntax: "typescript" }, },
+              sourceMaps: false,
+              minify: false,
+              env: { targets: ["defaults"] },
+            },
+          },
+        ],
         type: "javascript/auto",
       },
     ],
