@@ -26,9 +26,12 @@
 
     (jobExecutionVetoed [_ _])
 
-    (jobWasExecuted [_ _ job-exception]
+    (jobWasExecuted [_ ctx job-exception]
       (try
-        (prometheus/inc! :metabase-tasks/quartz-tasks-executed {:status (if job-exception "failed" "succeeded")})
+        (let [tags {:status (if job-exception "failed" "succeeded")
+                    :job-name (.. ctx getJobDetail getKey toString)}]
+          (prometheus/inc! :metabase-tasks/quartz-tasks-executed tags)
+          (prometheus/observe! :metabase-tasks/quartz-tasks-execution-time-ms tags (.getJobRunTime ctx)))
         (catch Throwable e
           (log/error e "Failed to record Prometheus metric for Quartz job completion"))))))
 
