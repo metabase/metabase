@@ -14,6 +14,7 @@
    [metabase.api.docs]
    [metabase.api.field]
    [metabase.api.geojson]
+   [metabase.api.logger]
    [metabase.api.macros :as api.macros]
    [metabase.api.native-query-snippet]
    [metabase.api.open-api :as open-api]
