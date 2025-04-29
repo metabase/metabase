@@ -32,12 +32,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Adds up all the values of the column.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column or number to sum.`;
-        },
+        name: t`column`,
+        description: t`The column or number to sum.`,
         example: dimension(t`Subtotal`),
       },
     ],
@@ -49,12 +45,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`The rolling sum of a column across a breakout.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column or number to sum.`;
-        },
+        name: t`column`,
+        description: t`The column or number to sum.`,
         example: dimension(t`Subtotal`),
       },
     ],
@@ -67,12 +59,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`The number of distinct values in this column.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column whose distinct values to count.`;
-        },
+        name: t`column`,
+        description: t`The column whose distinct values to count.`,
         example: dimension(t`Last Name`),
       },
     ],
@@ -85,21 +73,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     category: CATEGORY.Aggregation,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column to count distinct values in.`;
-        },
+        name: t`column`,
+        description: t`The column to count distinct values in.`,
         example: dimension(t`Customer ID`),
       },
       {
-        get name() {
-          return t`condition`;
-        },
-        get description() {
-          return t`Something that evaluates to \`true\` or \`false\`.`;
-        },
+        name: t`condition`,
+        description: t`Something that evaluates to \`true\` or \`false\`.`,
         example: op("=", dimension(t`Order Status`), "Completed"),
       },
     ],
@@ -111,12 +91,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Calculates the standard deviation of the column.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The numeric column to get standard deviation of.`;
-        },
+        name: t`column`,
+        description: t`The numeric column to get standard deviation of.`,
         example: dimension(t`Population`),
       },
     ],
@@ -129,21 +105,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns the value of an aggregation expression in a different row`,
     args: () => [
       {
-        get name() {
-          return t`expression`;
-        },
-        get description() {
-          return t`The value to get from a different row.`;
-        },
+        name: t`expression`,
+        description: t`The value to get from a different row.`,
         example: op("sum", dimension(t`Total`)),
       },
       {
-        get name() {
-          return t`rowOffset`;
-        },
-        get description() {
-          return t`Row number relative to the current row, for example \`-1\` for the previous row or \`1\` for the next row.`;
-        },
+        name: t`rowOffset`,
+        description: t`Row number relative to the current row, for example \`-1\` for the previous row or \`1\` for the next row.`,
         example: -1,
       },
     ],
@@ -156,12 +124,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the average of the values in the column.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The numeric column whose values to average.`;
-        },
+        name: t`column`,
+        description: t`The numeric column whose values to average.`,
         example: dimension(t`Quantity`),
       },
     ],
@@ -173,12 +137,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the median of all the values of a column.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The numeric column whose values to average.`;
-        },
+        name: t`column`,
+        description: t`The numeric column whose values to average.`,
         example: dimension(t`Quantity`),
       },
     ],
@@ -190,12 +150,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the smallest value found in the column`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The numeric column whose minimum you want to find.`;
-        },
+        name: t`column`,
+        description: t`The numeric column whose minimum you want to find.`,
         example: dimension(t`Salary`),
       },
     ],
@@ -207,12 +163,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the largest value found in the column.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The numeric column whose maximum you want to find.`;
-        },
+        name: t`column`,
+        description: t`The numeric column whose maximum you want to find.`,
         example: dimension(t`Age`),
       },
     ],
@@ -225,12 +177,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns the percent of rows in the data that match the condition, as a decimal.`,
     args: () => [
       {
-        get name() {
-          return t`condition`;
-        },
-        get description() {
-          return t`Something that should evaluate to \`true\` or \`false\`.`;
-        },
+        name: t`condition`,
+        description: t`Something that should evaluate to \`true\` or \`false\`.`,
         example: op("=", dimension(t`Source`), "Google"),
       },
     ],
@@ -242,12 +190,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Only counts rows where the condition is \`true\`.`,
     args: () => [
       {
-        get name() {
-          return t`condition`;
-        },
-        get description() {
-          return t`Something that should evaluate to \`true\` or \`false\`.`;
-        },
+        name: t`condition`,
+        description: t`Something that should evaluate to \`true\` or \`false\`.`,
         example: op(">", dimension(t`Subtotal`), 100),
       },
     ],
@@ -261,21 +205,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Sums up the specified column only for rows where the condition is \`true\`.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The numeric column to sum.`;
-        },
+        name: t`column`,
+        description: t`The numeric column to sum.`,
         example: dimension(t`Subtotal`),
       },
       {
-        get name() {
-          return t`condition`;
-        },
-        get description() {
-          return t`Something that evaluates to \`true\` or \`false\`.`;
-        },
+        name: t`condition`,
+        description: t`Something that evaluates to \`true\` or \`false\`.`,
         example: op("=", dimension(t`Order Status`), "Valid"),
       },
     ],
@@ -288,12 +224,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the numeric variance for a given column.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column or number to get the variance of.`;
-        },
+        name: t`column`,
+        description: t`The column or number to get the variance of.`,
         example: dimension(t`Temperature`),
       },
     ],
@@ -305,12 +237,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the median value of the specified column.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column or number to get the median of.`;
-        },
+        name: t`column`,
+        description: t`The column or number to get the median of.`,
         example: dimension(t`Age`),
       },
     ],
@@ -323,21 +251,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns the value of the column at the percentile value.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column or number to get the percentile of.`;
-        },
+        name: t`column`,
+        description: t`The column or number to get the percentile of.`,
         example: dimension(t`Score`),
       },
       {
-        get name() {
-          return t`percentile-value`;
-        },
-        get description() {
-          return t`The value of the percentile.`;
-        },
+        name: t`percentile-value`,
+        description: t`The value of the percentile.`,
         example: 0.9,
       },
     ],
@@ -350,12 +270,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Converts a number or date to text. Useful for applying text filters or joining with other columns based on text comparisons.`,
     args: () => [
       {
-        get name() {
-          return t`value`;
-        },
-        get description() {
-          return t`The number or date to convert to text.`;
-        },
+        name: t`value`,
+        description: t`The number or date to convert to text.`,
         example: dimension("User ID"),
       },
     ],
@@ -368,12 +284,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Converts a string or float value to an integer number.`,
     args: () => [
       {
-        get name() {
-          return t`value`;
-        },
-        get description() {
-          return t`The string or float column to convert to integers. Float values are rounded.`;
-        },
+        name: t`value`,
+        description: t`The string or float column to convert to integers. Float values are rounded.`,
         example: dimension("User ID"),
       },
     ],
@@ -385,12 +297,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Converts a string to a floating-point number.`,
     args: () => [
       {
-        get name() {
-          return t`value`;
-        },
-        get description() {
-          return t`The string column to convert to floats.`;
-        },
+        name: t`value`,
+        description: t`The string column to convert to floats.`,
         example: dimension("Text Rating"),
       },
     ],
@@ -402,12 +310,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Converts an ISO 8601 date string to a date.`,
     args: () => [
       {
-        get name() {
-          return t`value`;
-        },
-        get description() {
-          return t`The string to convert to a date.`;
-        },
+        name: t`value`,
+        description: t`The string to convert to a date.`,
         example: "2025-03-20",
       },
     ],
@@ -419,12 +323,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the string of text in all lower case.`,
     args: () => [
       {
-        get name() {
-          return t`value`;
-        },
-        get description() {
-          return t`The column with values to convert to lower case.`;
-        },
+        name: t`value`,
+        description: t`The column with values to convert to lower case.`,
         example: dimension(t`Status`),
       },
     ],
@@ -436,12 +336,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the text in all upper case.`,
     args: () => [
       {
-        get name() {
-          return t`value`;
-        },
-        get description() {
-          return t`The column with values to convert to upper case.`;
-        },
+        name: t`value`,
+        description: t`The column with values to convert to upper case.`,
         example: dimension(t`Status`),
       },
     ],
@@ -453,30 +349,18 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns a portion of the supplied text.`,
     args: () => [
       {
-        get name() {
-          return t`value`;
-        },
-        get description() {
-          return t`The column or text to return a portion of.`;
-        },
+        name: t`value`,
+        description: t`The column or text to return a portion of.`,
         example: dimension(t`Title`),
       },
       {
-        get name() {
-          return t`position`;
-        },
-        get description() {
-          return t`The position to start copying characters. Index starts at position \`1\`.`;
-        },
+        name: t`position`,
+        description: t`The position to start copying characters. Index starts at position \`1\`.`,
         example: 1,
       },
       {
-        get name() {
-          return t`length`;
-        },
-        get description() {
-          return t`The number of characters to return.`;
-        },
+        name: t`length`,
+        description: t`The number of characters to return.`,
         example: 10,
       },
     ],
@@ -490,30 +374,18 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Splits a string on a specified delimiter and returns the nth substring.`,
     args: () => [
       {
-        get name() {
-          return t`text`;
-        },
-        get description() {
-          return t`The column or text to return a portion of.`;
-        },
+        name: t`text`,
+        description: t`The column or text to return a portion of.`,
         example: dimension(t`Title`),
       },
       {
-        get name() {
-          return t`delimiter`;
-        },
-        get description() {
-          return t`The pattern describing where each split should occur.`;
-        },
+        name: t`delimiter`,
+        description: t`The pattern describing where each split should occur.`,
         example: ",",
       },
       {
-        get name() {
-          return t`position`;
-        },
-        get description() {
-          return t`Which substring to return after the split. Index starts at position \`1\`.`;
-        },
+        name: t`position`,
+        description: t`Which substring to return after the split. Index starts at position \`1\`.`,
         example: 1,
       },
     ],
@@ -526,21 +398,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Extracts matching substrings according to a regular expression.`,
     args: () => [
       {
-        get name() {
-          return t`value`;
-        },
-        get description() {
-          return t`The column or text to search through.`;
-        },
+        name: t`value`,
+        description: t`The column or text to search through.`,
         example: dimension(t`Address`),
       },
       {
-        get name() {
-          return t`regular_expression`;
-        },
-        get description() {
-          return t`The regular expression to match.`;
-        },
+        name: t`regular_expression`,
+        description: t`The regular expression to match.`,
         example: "[0-9]+",
       },
     ],
@@ -553,28 +417,18 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Combine two or more strings of text together.`,
     args: () => [
       {
-        get name() {
-          return t`value1`;
-        },
-        get description() {
-          return t`The column or text to begin with.`;
-        },
+        name: t`value1`,
+        description: t`The column or text to begin with.`,
         example: dimension(t`Last Name`),
       },
       {
-        get name() {
-          return t`value2`;
-        },
-        get description() {
-          return t`This will be added to the end of \`$value1\`.`;
-        },
+        name: t`value2`,
+        description: t`This will be added to the end of \`$value1\`.`,
         example: ", ",
       },
       {
         name: "…",
-        get description() {
-          return t`This will be added to the end of \`$value2\`, and so on.`;
-        },
+        description: t`This will be added to the end of \`$value2\`, and so on.`,
         example: dimension(t`First Name`),
       },
     ],
@@ -588,12 +442,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Extracts the pathname from a URL. E.g., \`${'path("https://www.example.com/path/to/page.html?key1=value)'}\` would return \`${"/path/to/page.html"}\`.`,
     args: () => [
       {
-        get name() {
-          return t`url`;
-        },
-        get description() {
-          return t`A column containing URLs`;
-        },
+        name: t`url`,
+        description: t`A column containing URLs`,
         example: dimension(t`URL`),
       },
     ],
@@ -605,30 +455,18 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Replaces a part of the input text with new text.`,
     args: () => [
       {
-        get name() {
-          return t`value`;
-        },
-        get description() {
-          return t`The column or text to search through.`;
-        },
+        name: t`value`,
+        description: t`The column or text to search through.`,
         example: dimension(t`Title`),
       },
       {
-        get name() {
-          return t`find`;
-        },
-        get description() {
-          return t`The text to find.`;
-        },
+        name: t`find`,
+        description: t`The text to find.`,
         example: t`Enormous`,
       },
       {
-        get name() {
-          return t`replace`;
-        },
-        get description() {
-          return t`The text to use as the replacement.`;
-        },
+        name: t`replace`,
+        description: t`The text to use as the replacement.`,
         example: t`Gigantic`,
       },
     ],
@@ -640,12 +478,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the number of characters in text.`,
     args: () => [
       {
-        get name() {
-          return t`value`;
-        },
-        get description() {
-          return t`The column or text you want to get the length of.`;
-        },
+        name: t`value`,
+        description: t`The column or text you want to get the length of.`,
         example: dimension(t`Comment`),
       },
     ],
@@ -658,12 +492,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Removes leading and trailing whitespace from a string of text.`,
     args: () => [
       {
-        get name() {
-          return t`value`;
-        },
-        get description() {
-          return t`The column or text you want to trim.`;
-        },
+        name: t`value`,
+        description: t`The column or text you want to trim.`,
         example: dimension(t`Comment`),
       },
     ],
@@ -675,12 +505,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Removes trailing whitespace from a string of text.`,
     args: () => [
       {
-        get name() {
-          return t`value`;
-        },
-        get description() {
-          return t`The column or text you want to trim.`;
-        },
+        name: t`value`,
+        description: t`The column or text you want to trim.`,
         example: dimension(t`Comment`),
       },
     ],
@@ -692,12 +518,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Removes leading whitespace from a string of text.`,
     args: () => [
       {
-        get name() {
-          return t`value`;
-        },
-        get description() {
-          return t`The column or text you want to trim.`;
-        },
+        name: t`value`,
+        description: t`The column or text you want to trim.`,
         example: dimension(t`Comment`),
       },
     ],
@@ -710,12 +532,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Extracts the host (domain name and TLD, eg. \`"metabase.com"\` from \`"status.metabase.com"\`) from a URL or email`,
     args: () => [
       {
-        get name() {
-          return t`urlOrEmail`;
-        },
-        get description() {
-          return t`The URL or Email column to extract the host from.`;
-        },
+        name: t`urlOrEmail`,
+        description: t`The URL or Email column to extract the host from.`,
         example: dimension(t`Email`),
       },
     ],
@@ -728,12 +546,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Extracts the domain name (eg. \`"metabase"\`) from a URL or email`,
     args: () => [
       {
-        get name() {
-          return t`urlOrEmail`;
-        },
-        get description() {
-          return t`The URL or Email column to extract domain names from.`;
-        },
+        name: t`urlOrEmail`,
+        description: t`The URL or Email column to extract domain names from.`,
         example: dimension(t`Email`),
       },
     ],
@@ -746,12 +560,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Extracts the first subdomain (eg. \`"status"\` from \`"status.metabase.com"\`, \`""\` from \`"bbc.co.uk"\`) from a URL. Ignores \`"www"\`.`,
     args: () => [
       {
-        get name() {
-          return t`url`;
-        },
-        get description() {
-          return t`The URL column to extract the subdomain from.`;
-        },
+        name: t`url`,
+        description: t`The URL column to extract the subdomain from.`,
         example: dimension(t`ProfileImage`),
       },
     ],
@@ -764,12 +574,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns the localized short name (eg. \`"Apr"\`) for the given month number (eg. \`4\`)`,
     args: () => [
       {
-        get name() {
-          return t`monthNumber`;
-        },
-        get description() {
-          return t`Column or expression giving the number of a month in the year, \`1\` to \`12\`.`;
-        },
+        name: t`monthNumber`,
+        description: t`Column or expression giving the number of a month in the year, \`1\` to \`12\`.`,
         example: dimension(t`Birthday Month`),
       },
     ],
@@ -782,12 +588,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns a string like \`"Q1"\`, given the quarter number`,
     args: () => [
       {
-        get name() {
-          return t`quarterNumber`;
-        },
-        get description() {
-          return t`Column or expression giving the number of a quarter of the year, \`1\` to \`4\`.`;
-        },
+        name: t`quarterNumber`,
+        description: t`Column or expression giving the number of a quarter of the year, \`1\` to \`4\`.`,
         example: dimension(t`Fiscal Quarter`),
       },
     ],
@@ -800,12 +602,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns the localized name of a day of the week, given the day's number.`,
     args: () => [
       {
-        get name() {
-          return t`dayNumber`;
-        },
-        get description() {
-          return t`Column or expression giving the number of a day of the week, \`1\` to \`7\`. Which day is \`1\` is defined in your localization setting; default Sunday.`;
-        },
+        name: t`dayNumber`,
+        description: t`Column or expression giving the number of a day of the week, \`1\` to \`7\`. Which day is \`1\` is defined in your localization setting; default Sunday.`,
         example: dimension(t`Weekday`),
       },
     ],
@@ -818,12 +616,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns the absolute (positive) value of the specified column.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column or number to return absolute (positive) value of.`;
-        },
+        name: t`column`,
+        description: t`The column or number to return absolute (positive) value of.`,
         example: dimension(t`Debt`),
       },
     ],
@@ -835,12 +629,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Rounds a decimal number down.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column or number to round down.`;
-        },
+        name: t`column`,
+        description: t`The column or number to round down.`,
         example: dimension(t`Price`),
       },
     ],
@@ -852,12 +642,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Rounds a decimal number up.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column or number to round up.`;
-        },
+        name: t`column`,
+        description: t`The column or number to round up.`,
         example: dimension(t`Price`),
       },
     ],
@@ -870,12 +656,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Rounds a decimal number either up or down to the nearest integer value.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column or number to round to nearest integer.`;
-        },
+        name: t`column`,
+        description: t`The column or number to round to nearest integer.`,
         example: dimension(t`Temperature`),
       },
     ],
@@ -887,12 +669,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the square root.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column or number to return square root value of.`;
-        },
+        name: t`column`,
+        description: t`The column or number to return square root value of.`,
         example: dimension(t`Hypotenuse`),
       },
     ],
@@ -904,21 +682,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Raises a number to the power of the exponent value.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column or number raised to the exponent.`;
-        },
+        name: t`column`,
+        description: t`The column or number raised to the exponent.`,
         example: dimension(t`Length`),
       },
       {
-        get name() {
-          return t`exponent`;
-        },
-        get description() {
-          return t`The value of the exponent.`;
-        },
+        name: t`exponent`,
+        description: t`The value of the exponent.`,
         example: 2,
       },
     ],
@@ -930,12 +700,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the base 10 log of the number.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column or number to return the natural logarithm value of.`;
-        },
+        name: t`column`,
+        description: t`The column or number to return the natural logarithm value of.`,
         example: dimension(t`Value`),
       },
     ],
@@ -948,30 +714,18 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Get the difference between two datetime values (\`$datetime2\` minus \`$datetime1\`) using the specified unit of time.`,
     args: () => [
       {
-        get name() {
-          return t`datetime1`;
-        },
-        get description() {
-          return t`The column or expression with your datetime value.`;
-        },
+        name: t`datetime1`,
+        description: t`The column or expression with your datetime value.`,
         example: dimension(t`Created At`),
       },
       {
-        get name() {
-          return t`datetime2`;
-        },
-        get description() {
-          return t`The column or expression with your datetime value.`;
-        },
+        name: t`datetime2`,
+        description: t`The column or expression with your datetime value.`,
         example: dimension(t`Shipped At`),
       },
       {
-        get name() {
-          return t`unit`;
-        },
-        get description() {
-          return t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, or ${"second"}.`;
-        },
+        name: t`unit`,
+        description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, or ${"second"}.`,
         example: "month",
       },
     ],
@@ -985,12 +739,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns Euler's number, e, raised to the power of the supplied number.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column or number to return the exponential value of.`;
-        },
+        name: t`column`,
+        description: t`The column or number to return the exponential value of.`,
         example: dimension(t`Interest Months`),
       },
     ],
@@ -1003,35 +753,23 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns \`true\` if \`$string1\` contains \`$string2\` within it (or \`$string3\`, etc. if specified).`,
     args: () => [
       {
-        get name() {
-          return t`string1`;
-        },
-        get description() {
-          return t`The column or text to check.`;
-        },
+        name: t`string1`,
+        description: t`The column or text to check.`,
         example: dimension(t`Title`),
       },
       {
-        get name() {
-          return t`string2`;
-        },
-        get description() {
-          return t`The string of text to look for.`;
-        },
+        name: t`string2`,
+        description: t`The string of text to look for.`,
         example: t`Small`,
       },
       {
         name: "…",
-        get description() {
-          return t`You can add more values to look for.`;
-        },
+        description: t`You can add more values to look for.`,
         example: t`Medium`,
       },
       {
         name: "caseSensitivity",
-        get description() {
-          return t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`;
-        },
+        description: t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`,
         example: "case-insensitive",
         template: '"case-insensitive"',
       },
@@ -1045,35 +783,23 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns \`true\` if \`$string1\` does not contain \`$string2\` within it (and \`$string3\`, etc. if specified).`,
     args: () => [
       {
-        get name() {
-          return t`string1`;
-        },
-        get description() {
-          return t`The column or text to check.`;
-        },
+        name: t`string1`,
+        description: t`The column or text to check.`,
         example: dimension(t`Title`),
       },
       {
-        get name() {
-          return t`string2`;
-        },
-        get description() {
-          return t`The string of text to look for.`;
-        },
+        name: t`string2`,
+        description: t`The string of text to look for.`,
         example: t`Small`,
       },
       {
         name: "…",
-        get description() {
-          return t`You can add more values to look for.`;
-        },
+        description: t`You can add more values to look for.`,
         example: t`Medium`,
       },
       {
         name: "caseSensitivity",
-        get description() {
-          return t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`;
-        },
+        description: t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`,
         example: "case-insensitive",
         template: '"case-insensitive"',
       },
@@ -1087,35 +813,23 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns true if the beginning of the \`$string1\` matches the \`$string2\` (or \`$string3\`, etc. if specified).`,
     args: () => [
       {
-        get name() {
-          return t`string1`;
-        },
-        get description() {
-          return t`The column or text to check.`;
-        },
+        name: t`string1`,
+        description: t`The column or text to check.`,
         example: dimension(t`Title`),
       },
       {
-        get name() {
-          return t`string2`;
-        },
-        get description() {
-          return t`The string of text to look for.`;
-        },
+        name: t`string2`,
+        description: t`The string of text to look for.`,
         example: t`Small`,
       },
       {
         name: "…",
-        get description() {
-          return t`You can add more values to look for.`;
-        },
+        description: t`You can add more values to look for.`,
         example: t`Medium`,
       },
       {
         name: "caseSensitivity",
-        get description() {
-          return t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`;
-        },
+        description: t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`,
         example: "case-insensitive",
         template: '"case-insensitive"',
       },
@@ -1129,35 +843,23 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns true if the end of the \`$string1\` matches the \`$string2\` (or \`$string3\`, etc. if specified).`,
     args: () => [
       {
-        get name() {
-          return t`string1`;
-        },
-        get description() {
-          return t`The column or text to check.`;
-        },
+        name: t`string1`,
+        description: t`The column or text to check.`,
         example: dimension(t`Title`),
       },
       {
-        get name() {
-          return t`string2`;
-        },
-        get description() {
-          return t`The string of text to look for.`;
-        },
+        name: t`string2`,
+        description: t`The string of text to look for.`,
         example: t`Small`,
       },
       {
         name: "…",
-        get description() {
-          return t`You can add more values to look for.`;
-        },
+        description: t`You can add more values to look for.`,
         example: t`Medium`,
       },
       {
         name: "caseSensitivity",
-        get description() {
-          return t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`;
-        },
+        description: t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`,
         example: "case-insensitive",
         template: '"case-insensitive"',
       },
@@ -1171,30 +873,18 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Checks a date or number column's values to see if they're within the specified range.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The date or numeric column that should be within the start and end values.`;
-        },
+        name: t`column`,
+        description: t`The date or numeric column that should be within the start and end values.`,
         example: dimension(t`Created At`),
       },
       {
-        get name() {
-          return t`start`;
-        },
-        get description() {
-          return t`The beginning of the range.`;
-        },
+        name: t`start`,
+        description: t`The beginning of the range.`,
         example: "2019-01-01",
       },
       {
-        get name() {
-          return t`end`;
-        },
-        get description() {
-          return t`The end of the range.`;
-        },
+        name: t`end`,
+        description: t`The end of the range.`,
         example: "2022-12-31",
       },
     ],
@@ -1206,21 +896,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Gets a time interval of specified length`,
     args: () => [
       {
-        get name() {
-          return t`number`;
-        },
-        get description() {
-          return t`Period of interval, where negative values are back in time.`;
-        },
+        name: t`number`,
+        description: t`Period of interval, where negative values are back in time.`,
         example: 7,
       },
       {
-        get name() {
-          return t`unit`;
-        },
-        get description() {
-          return t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`;
-        },
+        name: t`unit`,
+        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
         example: "day",
       },
     ],
@@ -1233,30 +915,18 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Checks a date column's values to see if they're within the relative range.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The date column to return interval of.`;
-        },
+        name: t`column`,
+        description: t`The date column to return interval of.`,
         example: dimension(t`Created At`),
       },
       {
-        get name() {
-          return t`number`;
-        },
-        get description() {
-          return t`Period of interval, where negative values are back in time.`;
-        },
+        name: t`number`,
+        description: t`Period of interval, where negative values are back in time.`,
         example: -1,
       },
       {
-        get name() {
-          return t`unit`;
-        },
-        get description() {
-          return t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`;
-        },
+        name: t`unit`,
+        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
         example: "month",
       },
     ],
@@ -1269,48 +939,28 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns true if a column's value falls within an interval, starting from an initial, offsetting interval.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The date column to check.`;
-        },
+        name: t`column`,
+        description: t`The date column to check.`,
         example: dimension(t`Created At`),
       },
       {
-        get name() {
-          return t`value`;
-        },
-        get description() {
-          return t`Period of the interval, where negative numbers go back in time.`;
-        },
+        name: t`value`,
+        description: t`Period of the interval, where negative numbers go back in time.`,
         example: -20,
       },
       {
-        get name() {
-          return t`unit`;
-        },
-        get description() {
-          return t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`;
-        },
+        name: t`unit`,
+        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
         example: "month",
       },
       {
-        get name() {
-          return t`offsetValue`;
-        },
-        get description() {
-          return t`The initial interval period to start from, where negative values are back in time.`;
-        },
+        name: t`offsetValue`,
+        description: t`The initial interval period to start from, where negative values are back in time.`,
         example: -10,
       },
       {
-        get name() {
-          return t`offsetUnit`;
-        },
-        get description() {
-          return t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`;
-        },
+        name: t`offsetUnit`,
+        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
         example: "year",
       },
     ],
@@ -1322,21 +972,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Gets a timestamp relative to the current time`,
     args: () => [
       {
-        get name() {
-          return t`number`;
-        },
-        get description() {
-          return t`Period of interval, where negative values are back in time.`;
-        },
+        name: t`number`,
+        description: t`Period of interval, where negative values are back in time.`,
         example: -30,
       },
       {
-        get name() {
-          return t`unit`;
-        },
-        get description() {
-          return t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`;
-        },
+        name: t`unit`,
+        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
         example: "day",
       },
     ],
@@ -1348,12 +990,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Checks if a column is null`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column to check.`;
-        },
+        name: t`column`,
+        description: t`The column to check.`,
         example: dimension(t`Discount`),
       },
     ],
@@ -1366,12 +1004,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Checks if a column is not null`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column to check.`;
-        },
+        name: t`column`,
+        description: t`The column to check.`,
         example: dimension(t`Discount`),
       },
     ],
@@ -1383,12 +1017,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Checks if a column is empty`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column to check.`;
-        },
+        name: t`column`,
+        description: t`The column to check.`,
         example: dimension(t`Name`),
       },
     ],
@@ -1401,12 +1031,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Checks if a column is not empty`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column to check.`;
-        },
+        name: t`column`,
+        description: t`The column to check.`,
         example: dimension(t`Name`),
       },
     ],
@@ -1419,28 +1045,18 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Looks at the values in each argument in order and returns the first non-null value for each row.`,
     args: () => [
       {
-        get name() {
-          return t`value1`;
-        },
-        get description() {
-          return t`The column or value to return.`;
-        },
+        name: t`value1`,
+        description: t`The column or value to return.`,
         example: dimension(t`Comments`),
       },
       {
-        get name() {
-          return t`value2`;
-        },
-        get description() {
-          return t`If \`$value1\` is empty, \`$value2\` gets returned if its not empty.`;
-        },
+        name: t`value2`,
+        description: t`If \`$value1\` is empty, \`$value2\` gets returned if its not empty.`,
         example: dimension(t`Notes`),
       },
       {
         name: "…",
-        get description() {
-          return t`If \`$value1\` is empty, and \`$value2\` is empty, the next non-empty one will be returned.`;
-        },
+        description: t`If \`$value1\` is empty, and \`$value2\` is empty, the next non-empty one will be returned.`,
         example: t`No comments`,
       },
     ],
@@ -1454,28 +1070,18 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Alias for \`if()\`. Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
     args: () => [
       {
-        get name() {
-          return t`condition`;
-        },
-        get description() {
-          return t`Something that should evaluate to \`true\` or \`false\`.`;
-        },
+        name: t`condition`,
+        description: t`Something that should evaluate to \`true\` or \`false\`.`,
         example: op(">", dimension(t`Weight`), 200),
       },
       {
-        get name() {
-          return t`output`;
-        },
-        get description() {
-          return t`The value that will be returned if the preceding condition is \`true\`.`;
-        },
+        name: t`output`,
+        description: t`The value that will be returned if the preceding condition is \`true\`.`,
         example: t`Large`,
       },
       {
         name: "…",
-        get description() {
-          return t`You can add more conditions to test.`;
-        },
+        description: t`You can add more conditions to test.`,
         example: [op(">", dimension(t`Weight`), 150), t`Medium`, t`Small`],
       },
     ],
@@ -1489,28 +1095,18 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Alias for \`case()\`. Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
     args: () => [
       {
-        get name() {
-          return t`condition`;
-        },
-        get description() {
-          return t`Something that should evaluate to \`true\` or \`false\`.`;
-        },
+        name: t`condition`,
+        description: t`Something that should evaluate to \`true\` or \`false\`.`,
         example: op(">", dimension(t`Weight`), 200),
       },
       {
-        get name() {
-          return t`output`;
-        },
-        get description() {
-          return t`The value that will be returned if the preceding condition is \`true\`.`;
-        },
+        name: t`output`,
+        description: t`The value that will be returned if the preceding condition is \`true\`.`,
         example: t`Large`,
       },
       {
         name: "…",
-        get description() {
-          return t`You can add more conditions to test.`;
-        },
+        description: t`You can add more conditions to test.`,
         example: [op(">", dimension(t`Weight`), 150), t`Medium`, t`Small`],
       },
     ],
@@ -1523,28 +1119,18 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns true if \`value1\` equals \`$value2\` (or \`$value3\`, etc. if specified).`,
     args: () => [
       {
-        get name() {
-          return t`value1`;
-        },
-        get description() {
-          return t`The column or value to check.`;
-        },
+        name: t`value1`,
+        description: t`The column or value to check.`,
         example: dimension(t`Category`),
       },
       {
-        get name() {
-          return t`value2`;
-        },
-        get description() {
-          return t`The column or value to look for.`;
-        },
+        name: t`value2`,
+        description: t`The column or value to look for.`,
         example: "Widget",
       },
       {
         name: "…",
-        get description() {
-          return t`You can add more values to look for.`;
-        },
+        description: t`You can add more values to look for.`,
         example: "Gadget",
       },
     ],
@@ -1558,28 +1144,18 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns true if \`$value1\` doesn't equal \`$value2\` (and \`$value3\`, etc. if specified).`,
     args: () => [
       {
-        get name() {
-          return t`value1`;
-        },
-        get description() {
-          return t`The column or value to check.`;
-        },
+        name: t`value1`,
+        description: t`The column or value to check.`,
         example: dimension(t`Category`),
       },
       {
-        get name() {
-          return t`value2`;
-        },
-        get description() {
-          return t`The column or value to look for.`;
-        },
+        name: t`value2`,
+        description: t`The column or value to look for.`,
         example: "Widget",
       },
       {
         name: "…",
-        get description() {
-          return t`You can add more values to look for.`;
-        },
+        description: t`You can add more values to look for.`,
         example: "Gadget",
       },
     ],
@@ -1592,12 +1168,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Takes a datetime and returns an integer with the number of the year.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The datetime column.`;
-        },
+        name: t`column`,
+        description: t`The datetime column.`,
         example: dimension(t`Created At`),
       },
     ],
@@ -1610,12 +1182,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Takes a datetime and returns an integer (\`1\`-\`4\`) with the number of the quarter in the year.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The datetime column.`;
-        },
+        name: t`column`,
+        description: t`The datetime column.`,
         example: dimension(t`Created At`),
       },
     ],
@@ -1628,12 +1196,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Takes a datetime and returns an integer (\`1\`-\`12\`) with the number of the month in the year.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The datetime column.`;
-        },
+        name: t`column`,
+        description: t`The datetime column.`,
         example: dimension(t`Created At`),
       },
     ],
@@ -1645,27 +1209,20 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Extracts the week of the year as an integer.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The name of the column with your date or datetime value.`;
-        },
+        name: t`column`,
+        description: t`The name of the column with your date or datetime value.`,
         example: dimension(t`Created At`),
       },
       {
-        get name() {
-          return t`mode`;
-        },
-        // TODO: This is the only place that's not easy to replace the application name.
-        get description() {
+        name: t`mode`,
+        description:
+          // TODO: This is the only place that's not easy to replace the application name.
           // eslint-disable-next-line no-literal-metabase-strings -- Hard to replace the application name because it's not a React component
-          return t`Optional. The default is \`"ISO"\`.
+          t`Optional. The default is \`"ISO"\`.
   - ISO: Week 1 starts on the Monday before the first Thursday of January.
   - US: Week 1 starts on Jan 1. All other weeks start on Sunday.
   - Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
-  `;
-        },
+  `,
         example: "iso",
       },
     ],
@@ -1679,12 +1236,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Takes a datetime and returns an integer (\`1\`-\`31\`) with the number of the day of the month.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The datetime column.`;
-        },
+        name: t`column`,
+        description: t`The datetime column.`,
         example: dimension(t`Created At`),
       },
     ],
@@ -1697,12 +1250,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Takes a datetime and returns an integer (\`1\`-\`7\`) with the number of the day of the week. Which day is \`1\` is defined in your localization settings.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The datetime column.`;
-        },
+        name: t`column`,
+        description: t`The datetime column.`,
         example: dimension(t`Created At`),
       },
     ],
@@ -1715,12 +1264,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Takes a datetime and returns an integer (\`0\`-\`23\`) with the number of the hour. No AM/PM.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The datetime column.`;
-        },
+        name: t`column`,
+        description: t`The datetime column.`,
         example: dimension(t`Created At`),
       },
     ],
@@ -1733,12 +1278,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Takes a datetime and returns an integer (\`0\`-\`59\`) with the number of the minute in the hour.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The datetime column.`;
-        },
+        name: t`column`,
+        description: t`The datetime column.`,
         example: dimension(t`Created At`),
       },
     ],
@@ -1751,12 +1292,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Takes a datetime and returns an integer (\`0\`-\`59\`) with the number of the seconds in the minute.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The datetime column.`;
-        },
+        name: t`column`,
+        description: t`The datetime column.`,
         example: dimension(t`Created At`),
       },
     ],
@@ -1768,30 +1305,18 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Adds some units of time to a date or timestamp value.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column with your date or timestamp values.`;
-        },
+        name: t`column`,
+        description: t`The column with your date or timestamp values.`,
         example: dimension(t`Created At`),
       },
       {
-        get name() {
-          return t`amount`;
-        },
-        get description() {
-          return t`The number of units to be added.`;
-        },
+        name: t`amount`,
+        description: t`The number of units to be added.`,
         example: 1,
       },
       {
-        get name() {
-          return t`unit`;
-        },
-        get description() {
-          return t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`;
-        },
+        name: t`unit`,
+        description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`,
         example: "month",
       },
     ],
@@ -1805,30 +1330,18 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Subtracts some units of time to a date or timestamp value.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column with your date or timestamp values.`;
-        },
+        name: t`column`,
+        description: t`The column with your date or timestamp values.`,
         example: dimension(t`Created At`),
       },
       {
-        get name() {
-          return t`amount`;
-        },
-        get description() {
-          return t`The number of units to be subtracted.`;
-        },
+        name: t`amount`,
+        description: t`The number of units to be subtracted.`,
         example: 1,
       },
       {
-        get name() {
-          return t`unit`;
-        },
-        get description() {
-          return t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`;
-        },
+        name: t`unit`,
+        description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`,
         example: "month",
       },
     ],
@@ -1869,30 +1382,18 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
 We support tz database time zone names.`,
     args: () => [
       {
-        get name() {
-          return t`column`;
-        },
-        get description() {
-          return t`The column with your date or timestamp values.`;
-        },
+        name: t`column`,
+        description: t`The column with your date or timestamp values.`,
         example: dimension(t`Created At`),
       },
       {
-        get name() {
-          return t`target`;
-        },
-        get description() {
-          return t`The timezone you want to assign to your column.`;
-        },
+        name: t`target`,
+        description: t`The timezone you want to assign to your column.`,
         example: "Asia/Ho_Chi_Minh",
       },
       {
-        get name() {
-          return t`source`;
-        },
-        get description() {
-          return t`The current time zone. Only required for timestamps with no time zone.`;
-        },
+        name: t`source`,
+        description: t`The current time zone. Only required for timestamps with no time zone.`,
         example: "UTC",
       },
     ],
