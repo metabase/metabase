@@ -259,6 +259,21 @@ const TemplateHelperTooltip = ({
   );
 };
 
+const DEFAULT_CHANNELS = {
+  email: {
+    get name() {
+      return t`Email`;
+    },
+    type: "email",
+  },
+  slack: {
+    get name() {
+      return t`Slack`;
+    },
+    type: "slack",
+  },
+} as ChannelApiResponse["channels"];
+
 export const NotificationChannelsPicker = ({
   notificationHandlers,
   channels: nullableChannels,
@@ -277,20 +292,7 @@ export const NotificationChannelsPicker = ({
 
   const usersListOptions: User[] = users?.data || (user ? [user] : []);
 
-  const channels = (nullableChannels || {
-    email: {
-      get name() {
-        return t`Email`;
-      },
-      type: "email",
-    },
-    slack: {
-      get name() {
-        return t`Slack`;
-      },
-      type: "slack",
-    },
-  }) as ChannelApiResponse["channels"];
+  const channels = nullableChannels || DEFAULT_CHANNELS;
 
   const { emailHandler, slackHandler, hookHandlers } =
     getNotificationHandlersGroupedByTypes(notificationHandlers);
@@ -687,12 +689,15 @@ export const NotificationChannelsPicker = ({
                     placeholder={t`Alert from {{payload.result.table.name}} table`}
                     templateContext={templateContext}
                     defaultValue={getTemplateValue("email", "subject")}
+                    onChange={(value) => {
+                      handleTemplateBlur("email", "subject", value);
+                    }}
                     onFocus={(initialValue) => {
                       handleTemplateBlur("email", "subject", initialValue);
                     }}
-                    onBlur={(newValue) => {
-                      handleTemplateBlur("email", "subject", newValue);
-                    }}
+                    // onBlur={(newValue) => {
+                    //   handleTemplateBlur("email", "subject", newValue);
+                    // }}
                     error={
                       validationErrors.email.subject
                         ? t`Subject cannot be empty`
@@ -722,8 +727,11 @@ export const NotificationChannelsPicker = ({
                         onFocus={(initialValue) => {
                           handleTemplateBlur("email", "body", initialValue);
                         }}
-                        onBlur={(newValue) => {
-                          handleTemplateBlur("email", "body", newValue);
+                        // onBlur={(newValue) => {
+                        //   handleTemplateBlur("email", "body", newValue);
+                        // }}
+                        onChange={(value) => {
+                          handleTemplateBlur("email", "body", value);
                         }}
                         error={
                           validationErrors.email.body
