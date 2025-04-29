@@ -119,7 +119,7 @@
                                (assoc existing-context :user-id user-id)
                                (let [iid (nano-id/nano-id)]
                                  {:invocation-id    iid
-                                  :invocation-scope [[:grid/edit iid]]
+                                  :invocation-stack [[:grid/edit iid]]
                                   :user-id          user-id}))})
          :effects
          (filter (comp #{:effect/row.modified} first))
@@ -145,7 +145,7 @@
     [false false] ::no-op))
 
 (defmethod actions/handle-effects!* :effect/row.modified
-  [_ {:keys [user-id invocation-scope]} diffs]
+  [_ {:keys [user-id invocation-stack]} diffs]
   (let [table->fields (u/group-by identity select-table-pk-fields concat (distinct (map :table-id diffs)))
         diff->pk      (u/for-map [{:keys [table-id before after] :as diff} diffs
                                   :when (or before after)]
@@ -153,7 +153,7 @@
     ;; undo snapshots, but only if we're not executing an undo
     ;; TODO fix tests that execute actions without a user scope
     (when user-id
-      (when-not (some (comp #{"undo"} namespace first) invocation-scope)
+      (when-not (some (comp #{"undo"} namespace first) invocation-stack)
         ((requiring-resolve 'metabase-enterprise.data-editing.undo/track-change!)
          user-id (u/for-map [[table-id diffs] (group-by :table-id diffs)]
                    [table-id (u/for-map [{:keys [before after] :as diff} diffs

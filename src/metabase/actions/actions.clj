@@ -198,12 +198,12 @@
    & {:as _opts}]
   (let [invocation-id  (nano-id/nano-id)
         context-before (-> (assoc ctx :invocation-id invocation-id)
-                           (update :invocation-scope u/conjv [action-kw invocation-id]))]
+                           (update :invocation-stack u/conjv [action-kw invocation-id]))]
     (actions.events/publish-action-invocation! action-kw context-before inputs)
     (try
       (u/prog1 (perform-action!* action-kw context-before inputs)
         (let [{context-after :context, :keys [outputs]} <>]
-          (doseq [k [:invocation-id :invocation-scope :user-id]]
+          (doseq [k [:invocation-id :invocation-stack :user-id]]
             (assert (= (k context-before) (k context-after)) (format "Output context must not change %s" k)))
           ;; We might in future want effects to propagate all the up to the root scope ¯\_(ツ)_/¯
           (handle-effects! context-after)

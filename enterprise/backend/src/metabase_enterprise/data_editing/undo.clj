@@ -93,11 +93,10 @@
        (for [[table-id table-updates] table-id->row-pk->old-new-values
              [row-pk [old new]] table-updates]
          {:batch_num  next-batch-num
-          ;; Need to find an atomic solution that MySQL flavored databases support.
-          #_[:+ [:inline 1] [:coalesce {:from [(t2/table-name :model/Undo)] :select [[[:max :batch_num]]]} 0]]
           :table_id   table-id
           :user_id    user-id
           :row_pk     row-pk
+          :scope     "{\"pew\": true}"
           :raw_before old
           :raw_after  new}))))
   ;; We do this in multiple statements because:
@@ -186,7 +185,7 @@
           :let [rows (batch->rows undo? sub-batch)
                 iid  (nano-id/nano-id)
                 opts {:existing-context {:invocation_id iid
-                                         :invocation-scope [[(if undo? :undo/undo :undo/redo) iid]]}}]]
+                                         :invocation-stack [[(if undo? :undo/undo :undo/redo) iid]]}}]]
     (case (if undo? (invert category) category)
       :create (try (data-editing/perform-bulk-action! :bulk/create user-id table-id rows opts)
                    (catch Exception e
