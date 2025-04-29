@@ -49,8 +49,7 @@ type ReduxProps = ConnectedProps<typeof connector>;
 export type DashboardDataProps = {
   dashboardId: DashboardId;
   noLink: boolean;
-} & WithRouterProps &
-  ReduxProps;
+} & WithRouterProps;
 
 export type DashboardDataReturnedProps = DashboardDataProps &
   Omit<ReduxProps, "navigateToNewCardFromDashboard"> & {
@@ -62,12 +61,12 @@ export type DashboardDataReturnedProps = DashboardDataProps &
 /**
  * @deprecated HOCs are deprecated
  */
-export const DashboardData = <T extends object>(
-  ComposedComponent: ComponentType<DashboardDataReturnedProps & T>,
+export const DashboardData = (
+  ComposedComponent: ComponentType<DashboardDataReturnedProps>,
 ) =>
   connector(
-    class DashboardDataInner extends Component<DashboardDataProps & T> {
-      async load(props: DashboardDataProps) {
+    class DashboardDataInner extends Component<DashboardDataReturnedProps> {
+      async load(props: DashboardDataReturnedProps) {
         const {
           initialize,
           fetchDashboard,
@@ -112,7 +111,7 @@ export const DashboardData = <T extends object>(
         this.props.cancelFetchDashboardCardData();
       }
 
-      UNSAFE_componentWillReceiveProps(nextProps: DashboardDataProps) {
+      UNSAFE_componentWillReceiveProps(nextProps: DashboardDataReturnedProps) {
         if (nextProps.dashboardId !== this.props.dashboardId) {
           this.load(nextProps);
           return;
@@ -142,7 +141,7 @@ export const DashboardData = <T extends object>(
         const { navigateToNewCardFromDashboard, ...props } = this.props;
         return (
           <ComposedComponent
-            {...(props as unknown as T)}
+            {...props}
             // if noLink is provided, don't include navigateToNewCardFromDashboard
             navigateToNewCardFromDashboard={
               this.props.noLink ? null : navigateToNewCardFromDashboard
