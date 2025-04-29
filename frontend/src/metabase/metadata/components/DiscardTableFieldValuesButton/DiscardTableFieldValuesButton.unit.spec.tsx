@@ -54,6 +54,45 @@ describe("DiscardTableFieldValuesButton", () => {
     expect(button).toHaveTextContent("Discard cached field values");
   });
 
+  it("resets success message timer after next click", async () => {
+    const { table } = setup();
+
+    const button = screen.getByRole("button");
+    expect(button).toHaveTextContent("Discard cached field values");
+
+    await userEvent.click(button);
+    expect(
+      fetchMock.calls(`path:/api/table/${table.id}/discard_values`, {
+        method: "POST",
+      }),
+    ).toHaveLength(1);
+    expect(button).toHaveTextContent("Discard triggered!");
+
+    await act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(button).toHaveTextContent("Discard triggered!");
+    await userEvent.click(button);
+    expect(
+      fetchMock.calls(`path:/api/table/${table.id}/discard_values`, {
+        method: "POST",
+      }),
+    ).toHaveLength(2);
+
+    await act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(button).toHaveTextContent("Discard triggered!");
+
+    await act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(button).toHaveTextContent("Discard cached field values");
+  });
+
   it("should show error message toast", async () => {
     const { table } = setup();
 
