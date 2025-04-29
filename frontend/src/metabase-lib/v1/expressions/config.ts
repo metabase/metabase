@@ -6,7 +6,6 @@ import type * as Lib from "metabase-lib";
 import {
   MBQLClauseCategory as CATEGORY,
   type MBQLClauseDefinition,
-  type MBQLClauseFunctionConfig,
 } from "./types";
 
 const names = new Set();
@@ -14,26 +13,17 @@ const names = new Set();
 function defineClauses<const T extends Record<string, MBQLClauseDefinition>>(
   options: Partial<MBQLClauseDefinition>,
   clauses: T,
-): Record<keyof T, MBQLClauseFunctionConfig> {
-  const result = {} as Record<keyof T, MBQLClauseFunctionConfig>;
+): Record<keyof T, MBQLClauseDefinition> {
+  const result = {} as Record<keyof T, MBQLClauseDefinition>;
   for (const name in clauses) {
     if (names.has(name)) {
       throw new Error(`Duplicate clause name: ${name}`);
     }
     names.add(name);
-
-    const defn = clauses[name];
     result[name] = {
-      ...options,
       name,
-      type: defn.type,
-      displayName: defn.displayName,
-      description: defn.description,
-      docsPage: defn.docsPage,
-      hasOptions: Boolean(defn.hasOptions),
-      multiple: Boolean(defn.multiple),
-      argType: defn.argType ?? ((index) => defn.args()[index].type),
-      args: defn.args,
+      ...options,
+      ...clauses[name],
     };
   }
   return result;

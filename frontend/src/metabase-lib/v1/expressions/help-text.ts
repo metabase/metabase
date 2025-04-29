@@ -27,8 +27,7 @@ export function getHelpText(
     return null;
   }
 
-  const { displayName, description, category, docsPage } = clause;
-  const args = clause.args();
+  const { displayName, args, description, category, docsPage } = clause;
 
   if (!description || !category) {
     return null;

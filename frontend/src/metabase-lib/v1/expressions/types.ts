@@ -58,7 +58,7 @@ export type MBQLClauseFunctionConfig = {
   name: DefinedClauseName;
   displayName: string;
   type: ExpressionType;
-  args(): ClauseArgDefinition[];
+  args: ClauseArgDefinition[];
   argType(
     index: number,
     args: unknown[],
