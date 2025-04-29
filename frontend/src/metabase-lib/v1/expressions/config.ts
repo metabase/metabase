@@ -1612,7 +1612,16 @@ const LOGICAL_OPERATORS = defineClauses(
       displayName: "AND",
       type: "boolean",
       multiple: true,
-      args: () => [{ type: "boolean" }, { type: "boolean" }],
+      args: () => [
+        {
+          name: "arg1",
+          type: "boolean",
+        },
+        {
+          name: "arg2",
+          type: "boolean",
+        },
+      ],
       argType() {
         return "boolean";
       },
@@ -1621,7 +1630,16 @@ const LOGICAL_OPERATORS = defineClauses(
       displayName: "OR",
       type: "boolean",
       multiple: true,
-      args: () => [{ type: "boolean" }, { type: "boolean" }],
+      args: () => [
+        {
+          name: "arg1",
+          type: "boolean",
+        },
+        {
+          name: "arg2",
+          type: "boolean",
+        },
+      ],
       argType() {
         return "boolean";
       },
@@ -1629,7 +1647,12 @@ const LOGICAL_OPERATORS = defineClauses(
     not: {
       displayName: "NOT",
       type: "boolean",
-      args: () => [{ type: "boolean" }],
+      args: () => [
+        {
+          name: "arg",
+          type: "boolean",
+        },
+      ],
     },
   },
 );
@@ -1640,7 +1663,16 @@ const NUMERIC_OPERATORS = defineClauses(
     "*": {
       displayName: "*",
       type: "number",
-      args: () => [{ type: "number" }, { type: "number" }],
+      args: () => [
+        {
+          name: "number1",
+          type: "number",
+        },
+        {
+          name: "number2",
+          type: "number",
+        },
+      ],
       multiple: true,
       argType(_index, _args, type) {
         if (type === "aggregation") {
@@ -1652,7 +1684,16 @@ const NUMERIC_OPERATORS = defineClauses(
     "/": {
       displayName: "/",
       type: "number",
-      args: () => [{ type: "number" }, { type: "number" }],
+      args: () => [
+        {
+          name: "number1",
+          type: "number",
+        },
+        {
+          name: "number2",
+          type: "number",
+        },
+      ],
       multiple: true,
       argType(_index, _args, type) {
         if (type === "aggregation") {
@@ -1664,7 +1705,16 @@ const NUMERIC_OPERATORS = defineClauses(
     "-": {
       displayName: "-",
       type: "number",
-      args: () => [{ type: "number" }, { type: "number" }],
+      args: () => [
+        {
+          name: "number1",
+          type: "number",
+        },
+        {
+          name: "number2",
+          type: "number",
+        },
+      ],
       multiple: true,
       argType(_index, _args, type) {
         if (type === "aggregation") {
@@ -1676,7 +1726,16 @@ const NUMERIC_OPERATORS = defineClauses(
     "+": {
       displayName: "+",
       type: "number",
-      args: () => [{ type: "number" }, { type: "number" }],
+      args: () => [
+        {
+          name: "number1",
+          type: "number",
+        },
+        {
+          name: "number2",
+          type: "number",
+        },
+      ],
       multiple: true,
       argType(_index, _args, type) {
         if (type === "aggregation") {
@@ -1694,12 +1753,30 @@ const EQUALITY_OPERATORS = defineClauses(
     "=": {
       displayName: "=",
       type: "boolean",
-      args: () => [{ type: "expression" }, { type: "expression" }],
+      args: () => [
+        {
+          name: "arg1",
+          type: "expression",
+        },
+        {
+          name: "arg2",
+          type: "expression",
+        },
+      ],
     },
     "!=": {
       displayName: "!=",
       type: "boolean",
-      args: () => [{ type: "expression" }, { type: "expression" }],
+      args: () => [
+        {
+          name: "arg1",
+          type: "expression",
+        },
+        {
+          name: "arg2",
+          type: "expression",
+        },
+      ],
     },
   },
 );
@@ -1710,22 +1787,58 @@ export const COMPARISON_OPERATORS = defineClauses(
     "<=": {
       displayName: "<=",
       type: "boolean",
-      args: () => [{ type: "expression" }, { type: "expression" }],
+      args: () => [
+        {
+          name: "arg1",
+          type: "expression",
+        },
+        {
+          name: "arg2",
+          type: "expression",
+        },
+      ],
     },
     ">=": {
       displayName: ">=",
       type: "boolean",
-      args: () => [{ type: "expression" }, { type: "expression" }],
+      args: () => [
+        {
+          name: "arg1",
+          type: "expression",
+        },
+        {
+          name: "arg2",
+          type: "expression",
+        },
+      ],
     },
     "<": {
       displayName: "<",
       type: "boolean",
-      args: () => [{ type: "expression" }, { type: "expression" }],
+      args: () => [
+        {
+          name: "arg1",
+          type: "expression",
+        },
+        {
+          name: "arg2",
+          type: "expression",
+        },
+      ],
     },
     ">": {
       displayName: ">",
       type: "boolean",
-      args: () => [{ type: "expression" }, { type: "expression" }],
+      args: () => [
+        {
+          name: "arg1",
+          type: "expression",
+        },
+        {
+          name: "arg2",
+          type: "expression",
+        },
+      ],
     },
   },
 );

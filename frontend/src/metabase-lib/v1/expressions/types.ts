@@ -25,7 +25,7 @@ export type ExpressionType =
   | "string";
 
 export type ClauseArgDefinition = {
-  name?: string;
+  name: string;
   type: ExpressionType;
   description?: string;
   example?:
