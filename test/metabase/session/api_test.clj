@@ -11,6 +11,7 @@
    [metabase.session.models.session :as session]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.settings.models.setting]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -479,7 +480,7 @@
 
     (testing "Authenticated settings manager"
       (mt/with-test-user :lucky
-        (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+        (with-redefs [metabase.settings.models.setting/has-advanced-setting-access? (constantly true)]
           (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
                  (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))))
 
