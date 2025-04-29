@@ -150,31 +150,40 @@ const EditSandboxingModal = ({
 
       <div>
         <div className={cx(CS.px3, CS.pb3)}>
-          <div className={CS.pb2}>
-            {t`When the following rules are applied, this group will see a customized version of the table.`}
-          </div>
-          <div className={CS.pb4}>
-            {t`These rules don’t apply to native queries.`}
-          </div>
-          <h4 className={CS.pb1}>{t`How do you want to filter this table?`}</h4>
-          <Radio
-            value={!shouldUseSavedQuestion}
-            options={[
-              { name: t`Filter by a column in the table`, value: true },
-              ...(hasSavedQuestionSandboxingFeature
-                ? [
-                    {
-                      name: t`Use a saved question to create a custom view for this table`,
-                      value: false,
-                    },
-                  ]
-                : []),
-            ]}
-            onChange={(shouldUseSavedQuestion) =>
-              setShouldUseSavedQuestion(!shouldUseSavedQuestion)
-            }
-            vertical
-          />
+          {hasSavedQuestionSandboxingFeature ? (
+            <div>
+              <div className={CS.pb2}>
+                {t`When the following rules are applied, this group will see a customized version of the table.`}
+              </div>
+              <div className={CS.pb4}>
+                {t`These rules don’t apply to native queries.`}
+              </div>
+              <h4
+                className={CS.pb1}
+              >{t`How do you want to filter this table?`}</h4>
+              <Radio
+                value={!shouldUseSavedQuestion}
+                options={[
+                  { name: t`Filter by a column in the table`, value: true },
+                  {
+                    name: t`Use a saved question to create a custom view for this table`,
+                    value: false,
+                  },
+                ]}
+                onChange={(shouldUseSavedQuestion) =>
+                  setShouldUseSavedQuestion(!shouldUseSavedQuestion)
+                }
+                vertical
+              />
+            </div>
+          ) : (
+            <div>
+              <div className={CS.pb2}>
+                {t`Users in this group will only see rows where the selected column matches their user attribute value.`}
+              </div>
+              <div>{t`This rule doesn't apply to native queries`}</div>
+            </div>
+          )}
         </div>
         {shouldUseSavedQuestion && (
           <div className={cx(CS.px3, CS.pb3)}>
