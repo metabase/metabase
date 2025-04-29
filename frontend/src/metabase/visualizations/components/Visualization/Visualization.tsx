@@ -696,7 +696,7 @@ class Visualization extends PureComponent<
           className={className}
           style={style}
           data-testid="visualization-root"
-          data-viz-ui-name={visualization?.uiName}
+          data-viz-ui-name={visualization?.getUiName()}
           ref={this.props.forwardedRef}
         >
           {!!hasHeader && (
