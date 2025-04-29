@@ -57,6 +57,18 @@ describe("NameDescriptionInput", () => {
 
       expect(onNameChange).toHaveBeenCalledTimes(0);
     });
+
+    it("should show pencil icon on hover but not when focused", async () => {
+      setup();
+
+      const nameInput = screen.getByPlaceholderText("Enter name");
+
+      await userEvent.hover(nameInput);
+      expect(screen.getByLabelText("pencil icon")).toBeInTheDocument();
+
+      await userEvent.click(nameInput);
+      expect(screen.queryByLabelText("pencil icon")).not.toBeInTheDocument();
+    });
   });
 
   describe("description", () => {
@@ -85,6 +97,18 @@ describe("NameDescriptionInput", () => {
 
       expect(onDescriptionChange.mock.calls).toEqual([[""]]);
       expect(descriptionInput).toHaveValue("");
+    });
+
+    it("should show pencil icon on hover but not when focused", async () => {
+      setup();
+
+      const descriptionInput = screen.getByPlaceholderText("Enter description");
+
+      await userEvent.hover(descriptionInput);
+      expect(screen.getByLabelText("pencil icon")).toBeInTheDocument();
+
+      await userEvent.click(descriptionInput);
+      expect(screen.queryByLabelText("pencil icon")).not.toBeInTheDocument();
     });
   });
 });
