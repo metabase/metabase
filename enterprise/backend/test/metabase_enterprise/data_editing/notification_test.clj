@@ -350,3 +350,49 @@
                                    :notification   {:payload_type :notification/system-event
                                                     :payload      {:event_name :event/row.created}}
                                    :custom_context {::context true}})))))
+
+(deftest custom-template-test
+  (data-editing.tu/with-temp-test-db!
+    (mt/with-temp [:model/Channel        {http-chn :id} {:type :channel/http}
+                   :model/ChannelTemplate {http-tmpl :id} {:channel_type :channel/http
+                                                           :details {:type :http/handlebars-text
+                                                                     :body "{\"record\": {{{json-encode record}}}, \"new_name\": \"{{changes.NAME.after}}\" }"}}
+                   :model/ChannelTemplate {slack-tmpl :id} {:channel_type :channel/slack
+                                                            :details {:type :slack/handlebars-text
+                                                                      :body "Name Was changed from {{changes.NAME.before}} to {{record.NAME}}"}}
+                   :model/ChannelTemplate {email-tmpl :id} {:channel_type :channel/email
+                                                            :details {:type :email/handlebars-text
+                                                                      :subject "{{editor.first_name}} {{editor.last_name}} has created a row for {{table.name}}"
+                                                                      :body "New record: {{record.status}}"}}]
+      (notification.tu/with-system-event-notification!
+        [_notification {:notification-system-event {:event_name :event/row.updated
+                                                    :table_id   (mt/id :categories)}
+                        :handlers                  [{:channel_type :channel/email
+                                                     :template_id  email-tmpl
+                                                     :recipients [{:type :notification-recipient/user
+                                                                   :user_id (mt/user->id :crowberto)}]}
+                                                    {:channel_type :channel/slack
+                                                     :template_id  slack-tmpl
+                                                     :recipients [{:type :notification-recipient/raw-value
+                                                                   :details {:value "#test-pulse"}}]}
+                                                    {:channel_type :channel/http
+                                                     :template_id  http-tmpl
+                                                     :channel_id   http-chn}]}]
+        (is (=? {:channel/email [{:bcc     ["crowberto@metabase.com"]
+                                  :body    [{:content "New record: "
+                                             :type    "text/html; charset=utf-8"}]
+                                  :from    "notifications@metabase.com"
+                                  :subject "Crowberto Corv has created a row for CATEGORIES"}]
+                 :channel/http [{:body {"record" {"ID" 1, "NAME" "Updated Category"}
+                                        "new_name" "Updated Category"}}]
+                 :channel/slack [{:attachments [{:blocks [{:text {:text "Name Was changed from African to Updated Category"
+                                                                  :type "mrkdwn"}
+                                                           :type "section"}]}]
+                                  :channel-id "#test-pulse"}]}
+                (notification.tu/with-captured-channel-send!
+                  (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
+                    (mt/user-http-request
+                     :crowberto
+                     :put
+                     (data-editing.tu/table-url (mt/id :categories))
+                     {:rows [{:ID 1 :NAME "Updated Category"}]})))))))))
