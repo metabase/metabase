@@ -83,7 +83,7 @@ export const EditTableDataHeader = ({
           <Button
             leftSection={<Icon name="add" />}
             variant="filled"
-            onClick={onCreate}
+            onClick={() => onCreate()}
             disabled={shouldDisableActions}
           >{t`New record`}</Button>
           <Flex gap="xs">

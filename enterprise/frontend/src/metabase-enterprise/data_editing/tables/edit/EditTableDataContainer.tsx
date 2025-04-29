@@ -1,5 +1,6 @@
 import type { Location } from "history";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import { push } from "react-router-redux";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -21,6 +22,8 @@ import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
+import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-modal-with-object-id";
+import { getTableEditPathname } from "./url";
 import { useStandaloneTableQuery } from "./use-standalone-table-query";
 import { useTableCRUD } from "./use-table-crud";
 import { useTableEditingStateApiUpdateStrategy } from "./use-table-state-api-update-strategy";
@@ -30,12 +33,13 @@ type EditTableDataContainerProps = {
   params: {
     dbId: string;
     tableId: string;
+    objectId?: string;
   };
   location: Location<{ filter?: string }>;
 };
 
 export const EditTableDataContainer = ({
-  params: { dbId: dbIdParam, tableId: tableIdParam },
+  params: { dbId: dbIdParam, tableId: tableIdParam, objectId: objectIdParam },
   location,
 }: EditTableDataContainerProps) => {
   const databaseId = parseInt(dbIdParam, 10);
@@ -61,21 +65,43 @@ export const EditTableDataContainer = ({
       : undefined;
   }, [rawDatasetResult]);
 
+  const handleCurrentObjectIdChange = useCallback(
+    (objectId?: string) => {
+      dispatch(
+        push({
+          ...location,
+          pathname: getTableEditPathname(databaseId, tableId, objectId),
+        }),
+      );
+    },
+    [databaseId, tableId, location, dispatch],
+  );
+
+  const {
+    state: modalState,
+    openCreateRowModal,
+    openEditRowModal,
+    closeModal,
+  } = useTableEditingModalControllerWithObjectId({
+    currentObjectId: objectIdParam,
+    datasetData,
+    onObjectIdChange: handleCurrentObjectIdChange,
+  });
+
   const stateUpdateStrategy =
     useTableEditingStateApiUpdateStrategy(fakeTableQuery);
 
   const {
-    isCreateRowModalOpen,
-    expandedRowIndex,
     isInserting,
-    closeCreateRowModal,
     tableFieldMetadataMap,
-
     handleRowCreate,
     handleCellValueUpdate,
     handleExpandedRowDelete,
-    handleModalOpenAndExpandedRow,
-  } = useTableCRUD({ tableId, datasetData, stateUpdateStrategy });
+  } = useTableCRUD({
+    tableId,
+    datasetData,
+    stateUpdateStrategy,
+  });
 
   const { undo, redo, isUndoLoading, isRedoLoading, currentActionLabel } =
     useTableEditingUndoRedo({
@@ -109,7 +135,7 @@ export const EditTableDataContainer = ({
             isLoading={isFetching}
             isUndoLoading={isUndoLoading}
             isRedoLoading={isRedoLoading}
-            onCreate={handleModalOpenAndExpandedRow}
+            onCreate={openCreateRowModal}
             onQuestionChange={handleQuestionChange}
             refetchTableDataQuery={refetch}
             onUndo={undo}
@@ -127,7 +153,7 @@ export const EditTableDataContainer = ({
                 data={datasetData}
                 fieldMetadataMap={tableFieldMetadataMap}
                 onCellValueUpdate={handleCellValueUpdate}
-                onRowExpandClick={handleModalOpenAndExpandedRow}
+                onRowExpandClick={openEditRowModal}
               />
             </Box>
             <Flex
@@ -152,16 +178,15 @@ export const EditTableDataContainer = ({
         )}
       </Stack>
       <EditingBaseRowModal
-        opened={isCreateRowModalOpen}
-        onClose={closeCreateRowModal}
+        modalState={modalState}
+        onClose={closeModal}
         onEdit={handleCellValueUpdate}
         onRowCreate={handleRowCreate}
         onRowDelete={handleExpandedRowDelete}
         datasetColumns={datasetData.cols}
-        currentRowIndex={expandedRowIndex}
         currentRowData={
-          expandedRowIndex !== undefined
-            ? datasetData.rows[expandedRowIndex]
+          modalState.rowIndex !== undefined
+            ? datasetData.rows[modalState.rowIndex]
             : undefined
         }
         fieldMetadataMap={tableFieldMetadataMap}
