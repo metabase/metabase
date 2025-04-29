@@ -374,10 +374,6 @@ describe("scenarios > models", () => {
           .and("contain.text", "Orders, Count");
         getResults()
           .eq(4)
-          .should("have.attr", "data-model-type", "card")
-          .and("contain.text", "Orders");
-        getResults()
-          .eq(5)
           .should("have.attr", "data-model-type", "table")
           .and("contain.text", "Orders");
       });
