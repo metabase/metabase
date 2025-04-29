@@ -1434,20 +1434,10 @@ const getHelpExample = (
   name: string,
   args: HelpTextArg[],
 ): Lib.ExpressionParts => {
-  const parameters: (Lib.ExpressionArg | Lib.ExpressionParts)[] = [];
-
-  for (const arg of args) {
-    if (Array.isArray(arg.example)) {
-      parameters.push(...arg.example);
-    } else {
-      parameters.push(arg.example);
-    }
-  }
-
   return {
     operator: name as Lib.ExpressionOperator,
     options: {},
-    args: parameters,
+    args: args.flatMap((arg) => arg.example),
   };
 };
 
