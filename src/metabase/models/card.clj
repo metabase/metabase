@@ -10,7 +10,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
-   [metabase.cache.models.cache-config :as cache-config]
+   [metabase.cache.core :as cache]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
@@ -1262,7 +1262,7 @@
                                          :status              nil
                                          :text                (tru "Unverified due to edit")}))
     ;; Invalidate the cache for card
-    (cache-config/invalidate! {:questions [(:id card-before-update)]
+    (cache/invalidate-config! {:questions [(:id card-before-update)]
                                :with-overrides? true})
     ;; ok, now save the Card
     (t2/update! :model/Card (:id card-before-update)

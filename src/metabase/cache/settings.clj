@@ -1,8 +1,8 @@
 (ns metabase.cache.settings
   (:require
-   [metabase.settings.models.setting :as setting :refer [defsetting]]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (defsetting enable-query-caching
   (deferred-tru "Allow caching results of queries that take a long time to run.")

@@ -2,7 +2,7 @@
   (:require
    [java-time.api :as t]
    [metabase.cache.api]
-   [metabase.cache.models.cache-config :as cache-config]
+   [metabase.cache.core :as cache]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.util.log :as log]
@@ -56,7 +56,7 @@
               :order-by :ordering
               :limit    [:inline 1]}
         item (t2/select-one :model/CacheConfig :id q)]
-    (cache-config/card-strategy item card)))
+    (cache/card-strategy item card)))
 
 ;;; Strategy execution
 
