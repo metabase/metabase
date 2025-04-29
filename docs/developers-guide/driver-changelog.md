@@ -10,6 +10,8 @@ title: Driver interface changelog
 
 - Added a new abstract driver mix-in `:metabase.driver.sql.query-processor.boolean-is-comparison/boolean-is-comparison` that can be inherited by drivers that require boolean literal constants to be converted to comparison expressions in the top level of WHERE, AND, OR, NOT, and CASE clauses.
 
+- The multimethod `metabase.driver.sql.parameters.substitution/time-grouping->replacement-snippet-info` has been added.  This is effectively `->replacement-snippet-info` for the new native query time grouping feature, but is its own separate multimethod because it needs an extra parameter.
+
 ## Metabase 0.54.0
 
 - Added the multi-method `allowed-promotions` that allows driver control over which column type promotions are supported for uploads.
