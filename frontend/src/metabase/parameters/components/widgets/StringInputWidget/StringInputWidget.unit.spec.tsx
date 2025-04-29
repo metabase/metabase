@@ -1,12 +1,33 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
+import type { Parameter, ParameterValueOrArray } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 import { StringInputWidget } from "./StringInputWidget";
 
-const mockSetValue = jest.fn();
-const mockParameter = createMockParameter();
+type SetupOpts = {
+  value?: ParameterValueOrArray | undefined;
+  parameter?: Parameter;
+  isMultiSelect?: boolean;
+};
+
+function setup({
+  value,
+  parameter = createMockParameter(),
+  isMultiSelect,
+}: SetupOpts = {}) {
+  const setValue = jest.fn();
+  render(
+    <StringInputWidget
+      value={value}
+      parameter={parameter}
+      isMultiSelect={isMultiSelect}
+      setValue={setValue}
+    />,
+  );
+  return { setValue };
+}
 
 describe("StringInputWidget", () => {
   beforeEach(() => {
@@ -15,13 +36,7 @@ describe("StringInputWidget", () => {
 
   describe("arity of 1", () => {
     it("should render an input populated with a value", () => {
-      render(
-        <StringInputWidget
-          value={["foo"]}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-        />,
-      );
+      setup({ value: ["foo"] });
 
       const textbox = screen.getByRole("textbox");
       expect(textbox).toBeInTheDocument();
@@ -29,13 +44,7 @@ describe("StringInputWidget", () => {
     });
 
     it("should render an empty input", () => {
-      render(
-        <StringInputWidget
-          value={undefined}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-        />,
-      );
+      setup({ value: undefined });
 
       const textbox = screen.getByRole("textbox");
       expect(textbox).toBeInTheDocument();
@@ -43,13 +52,7 @@ describe("StringInputWidget", () => {
     });
 
     it("should render a disabled update button, until the value is changed", async () => {
-      render(
-        <StringInputWidget
-          value={["foo"]}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-        />,
-      );
+      setup({ value: ["foo"] });
 
       const button = screen.getByRole("button", { name: "Update filter" });
       expect(button).toBeInTheDocument();
@@ -60,90 +63,59 @@ describe("StringInputWidget", () => {
     });
 
     it("should let you update the input with a new value", async () => {
-      render(
-        <StringInputWidget
-          value={["foo"]}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-        />,
-      );
+      const { setValue } = setup({ value: ["foo"] });
 
       const textbox = screen.getByRole("textbox");
-
       await userEvent.type(textbox, "bar");
-
       const button = screen.getByRole("button", { name: "Update filter" });
       await userEvent.click(button);
-      expect(mockSetValue).toHaveBeenCalledWith(["foobar"]);
+
+      expect(setValue).toHaveBeenCalledWith(["foobar"]);
     });
 
     it("should let you update the input with an undefined value", async () => {
-      render(
-        <StringInputWidget
-          value={["a"]}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-        />,
-      );
+      const { setValue } = setup({ value: ["a"] });
 
       const textbox = screen.getByRole("textbox");
       const button = screen.getByRole("button", { name: "Update filter" });
       await userEvent.type(textbox, "{backspace}{enter}");
       await userEvent.click(button);
-      expect(mockSetValue).toHaveBeenCalledWith(undefined);
+
+      expect(setValue).toHaveBeenCalledWith(undefined);
     });
   });
 
   describe("arity of n", () => {
     it("should render a token field input", () => {
-      render(
-        <StringInputWidget
-          value={["foo", "bar"]}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-          isMultiSelect
-        />,
-      );
+      setup({ value: ["foo", "bar"], isMultiSelect: true });
 
       const values = screen.getAllByRole("list")[0];
       expect(values).toHaveTextContent("foobar");
     });
 
     it("should correctly parse number inputs", async () => {
-      render(
-        <StringInputWidget
-          value={undefined}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-          isMultiSelect
-        />,
-      );
+      const { setValue } = setup({ value: undefined, isMultiSelect: true });
 
       const input = screen.getByRole("combobox");
       await userEvent.type(input, "foo{enter}bar{enter}baz{enter}");
 
       const button = screen.getByRole("button", { name: "Add filter" });
       await userEvent.click(button);
-      expect(mockSetValue).toHaveBeenCalledWith(["foo", "bar", "baz"]);
+      expect(setValue).toHaveBeenCalledWith(["foo", "bar", "baz"]);
     });
 
     it("should be unsettable", async () => {
-      render(
-        <StringInputWidget
-          value={["foo", "bar"]}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-          isMultiSelect
-        />,
-      );
+      const { setValue } = setup({
+        value: ["foo", "bar"],
+        isMultiSelect: true,
+      });
 
       const input = screen.getByRole("combobox");
       await userEvent.type(input, "{backspace}{backspace}");
 
       const button = screen.getByRole("button", { name: "Update filter" });
-
       await userEvent.click(button);
-      expect(mockSetValue).toHaveBeenCalledWith(undefined);
+      expect(setValue).toHaveBeenCalledWith(undefined);
     });
   });
 });
