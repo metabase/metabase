@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useRescanTableFieldValuesMutation } from "metabase/api";
+import { useDiscardTableFieldValuesMutation } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Button } from "metabase/ui";
@@ -11,16 +11,16 @@ interface Props {
   tableId: TableId;
 }
 
-export const RescanFieldsButton = ({ tableId }: Props) => {
+export const DiscardFieldValuesButton = ({ tableId }: Props) => {
   const dispatch = useDispatch();
 
   const [started, setStarted] = useState(false);
   const timeoutIdRef = useRef<number>();
-  const [rescanTableFieldValues, { error }] =
-    useRescanTableFieldValuesMutation();
+  const [discardTableFieldValues, { error }] =
+    useDiscardTableFieldValuesMutation();
 
   const handleClick = async () => {
-    const response = await rescanTableFieldValues(tableId);
+    const response = await discardTableFieldValues(tableId);
 
     if (!response.error) {
       setStarted(true);
@@ -35,7 +35,7 @@ export const RescanFieldsButton = ({ tableId }: Props) => {
       dispatch(
         addUndo({
           icon: "warning",
-          message: t`Failed to start scan`,
+          message: t`Failed to discard values`,
           toastColor: "error",
         }),
       );
@@ -43,8 +43,8 @@ export const RescanFieldsButton = ({ tableId }: Props) => {
   }, [dispatch, error]);
 
   return (
-    <Button variant="default" onClick={handleClick}>
-      {started ? t`Scan triggered!` : t`Re-scan table`}
+    <Button c="error" variant="subtle" onClick={handleClick}>
+      {started ? t`Discard triggered!` : t`Discard cached field values`}
     </Button>
   );
 };

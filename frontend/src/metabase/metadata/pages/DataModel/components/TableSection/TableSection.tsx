@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import {
-  useDiscardTableFieldValuesMutation,
   useGetTableQueryMetadataQuery,
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
@@ -13,9 +12,10 @@ import {
   SortableFieldList,
 } from "metabase/metadata/components";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Button, Card, Flex, Stack, Switch, Text } from "metabase/ui";
+import { Card, Flex, Stack, Switch, Text } from "metabase/ui";
 import type { FieldId, TableId } from "metabase-types/api";
 
+import { DiscardFieldValuesButton } from "./DiscardFieldValuesButton";
 import { RescanFieldsButton } from "./RescanFieldsButton";
 
 interface Props {
@@ -34,7 +34,6 @@ export const TableSection = ({ tableId }: Props) => {
   });
   const [updateTable] = useUpdateTableMutation();
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
-  const [discardTableFieldValues] = useDiscardTableFieldValuesMutation();
 
   if (error || isLoading || !table) {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
@@ -103,13 +102,7 @@ export const TableSection = ({ tableId }: Props) => {
 
         <RescanFieldsButton tableId={tableId} />
 
-        <Button
-          c="error"
-          variant="subtle"
-          onClick={() => discardTableFieldValues(tableId)}
-        >
-          {t`Discard cached field values`}
-        </Button>
+        <DiscardFieldValuesButton tableId={tableId} />
       </Stack>
     </Stack>
   );
