@@ -1,6 +1,5 @@
 import { type ActionImpl, KBarContext, useRegisterActions } from "kbar";
 import { type DependencyList, useContext } from "react";
-import _ from "underscore";
 
 import { trackSimpleEvent } from "metabase/lib/analytics";
 
@@ -35,14 +34,15 @@ export const useRegisterShortcut = (
         return {
           ...shortcutDef,
           id,
-          perform: _.compose(
-            () =>
+          perform: (action: ActionImpl, event?: KeyboardEvent) => {
+            perform(action, event);
+            if (event) {
               trackSimpleEvent({
                 event: "keyboard_shortcut_performed",
                 event_detail: id,
-              }),
-            perform,
-          ),
+              });
+            }
+          },
           ...rest,
         };
       })

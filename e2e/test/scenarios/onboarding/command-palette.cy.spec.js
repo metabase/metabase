@@ -435,13 +435,31 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
       event: "keyboard_shortcut_performed",
       event_detail: "create-new-collection",
     });
+    H.openCommandPalette();
+    H.commandPalette().findByRole("option", { name: "New dashboard" }).click();
+    cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
+    cy.realPress("Escape");
+
+    // Using a command palette action registered as a shortcut should only
+    // emit snowplow events when using keyboard shortcuts, not command palette
+    H.expectGoodSnowplowEvent(
+      {
+        event: "keyboard_shortcut_performed",
+        event_detail: "create-new-dashboard",
+      },
+      0,
+    );
+
     cy.realPress("c").realPress("d");
     cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
     cy.realPress("Escape");
-    H.expectGoodSnowplowEvent({
-      event: "keyboard_shortcut_performed",
-      event_detail: "create-new-dashboard",
-    });
+    H.expectGoodSnowplowEvent(
+      {
+        event: "keyboard_shortcut_performed",
+        event_detail: "create-new-dashboard",
+      },
+      1,
+    );
 
     cy.realPress("g").realPress("d");
     cy.location("pathname").should("contain", "browse/databases");
