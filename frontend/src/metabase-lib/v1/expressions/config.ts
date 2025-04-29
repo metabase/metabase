@@ -19,7 +19,6 @@ function defineClauses<const T extends Record<string, MBQLClauseDefinition>>(
     }
     names.add(name);
     result[name] = {
-      name,
       ...options,
       ...clauses[name],
     };
