@@ -107,6 +107,7 @@ const config = {
     "app-embed": "./app-embed.js",
     "vendor-styles": "./css/vendor.css",
     styles: "./css/index.module.css",
+    "iframe-sdk-embed-v1": ENTERPRISE_SRC_PATH + "/embedding_iframe_sdk/embed.v1.ts",
   },
 
   // we override it for dev mode below
@@ -121,7 +122,14 @@ const config = {
   output: {
     path: BUILD_PATH + "/app/dist",
     // for production, dev mode is overridden below
-    filename: "[name].[contenthash].js",
+    filename: (data) => {
+      // place the embedding script at the top-level
+      if (data.chunk?.name === "iframe-sdk-embed-v1") {
+        return "../embed.v1.js";
+      }
+
+      return "[name].[contenthash].js";
+    },
     publicPath: "app/dist/",
     hashFunction: "xxhash64",
     clean: !devMode,

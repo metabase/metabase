@@ -61,6 +61,8 @@
 /resources/frontend_client/embed.html
 /resources/frontend_client/index.html
 /resources/frontend_client/public.html
+/resources/frontend_client/app/embed.v1.js
+/resources/frontend_client/app/embed.v1.js.map
 /resources/embedding-sdk
 /resources/i18n/*.edn
 /resources/instance_analytics.zip
