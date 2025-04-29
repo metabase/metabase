@@ -21,7 +21,7 @@ import S from "./SdkIframeEmbedRoute.module.css";
 
 export const SdkIframeEmbedRoute = () => {
   const store = useStore();
-  const { iframeSettings } = useSdkIframeEmbedEventBus();
+  const { embedSettings } = useSdkIframeEmbedEventBus();
 
   useEffect(() => {
     // we are not using getSdkStore so `isEmbeddingSdk: true` isn't set automatically
@@ -29,30 +29,30 @@ export const SdkIframeEmbedRoute = () => {
   }, [store]);
 
   const authConfig = useMemo(() => {
-    if (!iframeSettings) {
+    if (!embedSettings) {
       return;
     }
 
     // TODO: add support for SSO auth once the new SSO implementation on the SDK is ready
-    if (!iframeSettings.instanceUrl || !iframeSettings.apiKey) {
+    if (!embedSettings.instanceUrl || !embedSettings.apiKey) {
       return;
     }
 
     return defineMetabaseAuthConfig({
-      metabaseInstanceUrl: iframeSettings.instanceUrl,
-      apiKey: iframeSettings.apiKey,
+      metabaseInstanceUrl: embedSettings.instanceUrl,
+      apiKey: embedSettings.apiKey,
     });
-  }, [iframeSettings]);
+  }, [embedSettings]);
 
-  const { theme } = iframeSettings ?? {};
-
-  if (iframeSettings === null || !authConfig) {
+  if (embedSettings === null || !authConfig) {
     return (
       <Center h="100%" mih="100vh">
         <Loader />
       </Center>
     );
   }
+
+  const { theme } = embedSettings;
 
   return (
     <MetabaseProviderInternal
@@ -62,7 +62,7 @@ export const SdkIframeEmbedRoute = () => {
       classNames={{ portalContainer: S.SdkIframeEmbedPortalContainer }}
     >
       <Box h="100vh" bg={theme?.colors?.background}>
-        <SdkIframeEmbedView settings={iframeSettings} />
+        <SdkIframeEmbedView settings={embedSettings} />
       </Box>
     </MetabaseProviderInternal>
   );
