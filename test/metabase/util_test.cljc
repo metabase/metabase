@@ -26,6 +26,7 @@
          (u/add-period "   "))))
 
 (deftest ^:parallel url?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [s expected] (= expected
                        (u/url? s))
     "http://google.com"                                                                      true
@@ -61,6 +62,7 @@
     "http:/"                                                                                 false))
 
 (deftest ^:parallel state?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [x expected] (= expected
                        (u/state? x))
     "louisiana"            true
@@ -159,6 +161,7 @@
     {}                                         [:c]              {}))
 
 (deftest ^:parallel base64-string?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [s expected]    (= expected
                           (u/base64-string? s))
     "ABc="         true
@@ -296,6 +299,7 @@
     "metabase.com"   "cam.saul+1@metabase.com"))
 
 (deftest ^:parallel email-in-domain-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [in-domain? email domain] (= in-domain?
                                     (u/email-in-domain? email domain))
     true  "cam@metabase.com"          "metabase.com"
@@ -440,6 +444,7 @@
                         :to-compare #(dissoc % :id :god_id)})))))
 
 (deftest ^:parallel empty-or-distinct?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [xs expected] (= expected
                         (u/empty-or-distinct? xs))
     nil     true

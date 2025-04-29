@@ -19,7 +19,7 @@ import { handlebarsLanguage as handlebars } from "@xiechao/codemirror-lang-handl
 import { getNonce } from "get-nonce";
 import { type RefObject, useEffect } from "react";
 
-import S from "./CodeBlock.module.css";
+import S from "./CodeEditor.module.css";
 import type { CodeLanguage } from "./types";
 
 export function getLanguageExtension(language: CodeLanguage): Extension {
