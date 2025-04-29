@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-editing.api
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase-enterprise.data-editing.undo :as undo]
    [metabase.actions.core :as actions]
@@ -18,19 +19,34 @@
 
 (set! *warn-on-reflection* true)
 
-;; TODO consider moving this down into the bulk/row update actions
+;; TODO consider moving this down somewhere generic, like in handle-effects!*
 (defn- invalidate-field-values! [table-id rows]
-  (let [field-name-xf (comp (mapcat keys)
-                            (distinct)
-                            (map name)
-                            (map u/lower-case-en))
-        field-names (into #{} field-name-xf rows)
-        fields (when (seq field-names)
-                 (t2/select :model/Field
-                            :table_id table-id
-                            :name [:in field-names]
-                            :has_field_values [:in ["list" "auto-list"]]))]
-    (run! field-values/create-or-update-full-field-values! fields)))
+  ;; Be conservative with respect to case sensitivity, invalidate every field when there is ambiguity.
+  (let [ln->values  (u/group-by first second (for [row rows [k v] row] [(u/lower-case-en (name k)) v]))
+        lower-names (keys ln->values)
+        ln->ids     (when (seq lower-names)
+                      (u/group-by
+                       :lower_name :id
+                       (t2/query {:select [:id [[:lower :name] :lower_name]]
+                                  :from   [(t2/table-name :model/Field)]
+                                  :where  [:and
+                                           [:= :table_id table-id]
+                                           [:in [:lower :name] lower-names]
+                                           [:in :has_field_values ["list" "auto-list"]]
+                                           [:= :semantic_type "type/Category"]]})))
+        stale-fields (->> (for [[lower-name field-ids] ln->ids
+                                :let [new-values (into #{} (filter some?) (ln->values lower-name))
+                                      old-values (into #{} cat (t2/select-fn-vec :values :model/FieldValues
+                                                                                 :field_id [:in field-ids]))]]
+                            (when (seq (set/difference new-values old-values))
+                              field-ids))
+                          (apply concat))]
+    ;; Note that for now we only rescan field values when values are *added* and not when they are *removed*.
+    (when (seq stale-fields)
+      ;; Using a future is not ideal, it would be better to use a queue and a single worker, to avoid tying up threads.
+      (future
+        (->> (t2/select :model/Field :id [:in stale-fields])
+             (run! field-values/create-or-update-full-field-values!))))))
 
 (defn require-authz?
   "Temporary hack to have auth be off by default, only on if MB_DATA_EDITING_AUTHZ=true.
