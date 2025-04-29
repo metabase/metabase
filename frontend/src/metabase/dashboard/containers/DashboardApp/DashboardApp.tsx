@@ -73,17 +73,17 @@ export const DashboardApp = ({
     onRefreshPeriodChange,
     autoScrollToDashcardId,
     reportAutoScrolledToDashcard,
+    theme,
+    setTheme,
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
 
   useDashboardUrlQuery(router, location);
-
   const onLoadDashboard = (result: SuccessfulFetchDashboardResult) => {
     const dashboard = result.payload.dashboard;
-
     try {
       if (editingOnLoad) {
         onRefreshPeriodChange(null);
-        setEditingDashboard(dashboard);
+        dispatch(setEditingDashboard(dashboard));
       }
       if (addCardOnLoad != null) {
         const searchParams = new URLSearchParams(window.location.search);
@@ -109,33 +109,33 @@ export const DashboardApp = ({
   };
 
   return (
-    <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
-      <ErrorBoundary message={error}>
-        <DashboardContextProvider
-          dashboardId={dashboardId}
-          parameterQueryParams={parameterQueryParams}
-          isFullscreen={isFullscreen}
-          onFullscreenChange={onFullscreenChange}
-          hasNightModeToggle={hasNightModeToggle}
-          onNightModeChange={onNightModeChange}
-          isNightMode={isNightMode}
-          refreshPeriod={refreshPeriod}
-          setRefreshElapsedHook={setRefreshElapsedHook}
-          onRefreshPeriodChange={onRefreshPeriodChange}
-          autoScrollToDashcardId={autoScrollToDashcardId}
-          reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
-          onLoad={onLoadDashboard}
-          onError={(result) => dispatch(setErrorPage(result.payload))}
-        >
-          <DashboardTitle />
-          <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
-            <DashboardLeaveConfirmationModal route={route} />
-            <Dashboard />
-            {/* For rendering modal urls */}
-            {children}
-          </div>
-        </DashboardContextProvider>
-      </ErrorBoundary>
-    </div>
+    <ErrorBoundary message={error}>
+      <DashboardContextProvider
+        dashboardId={dashboardId}
+        parameterQueryParams={parameterQueryParams}
+        theme={theme}
+        setTheme={setTheme}
+        isFullscreen={isFullscreen}
+        onFullscreenChange={onFullscreenChange}
+        hasNightModeToggle={hasNightModeToggle}
+        onNightModeChange={onNightModeChange}
+        isNightMode={isNightMode}
+        refreshPeriod={refreshPeriod}
+        setRefreshElapsedHook={setRefreshElapsedHook}
+        onRefreshPeriodChange={onRefreshPeriodChange}
+        autoScrollToDashcardId={autoScrollToDashcardId}
+        reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
+        onLoad={onLoadDashboard}
+        onError={(result) => dispatch(setErrorPage(result.payload))}
+      >
+        <DashboardTitle />
+        <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
+          <DashboardLeaveConfirmationModal route={route} />
+          <Dashboard />
+          {/* For rendering modal urls */}
+          {children}
+        </div>
+      </DashboardContextProvider>
+    </ErrorBoundary>
   );
 };

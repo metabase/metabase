@@ -16,6 +16,7 @@ import { navigateToNewCardFromDashboard } from "../actions";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
 import type {
+  CancelledFetchDashboardResult,
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
   EmbedDisplayParams,
@@ -138,7 +139,10 @@ const DashboardContextProviderInner = ({
 
       if (isSuccessfulFetchDashboardResult(result)) {
         onLoad?.(result);
-      } else if (isFailedFetchDashboardResult(result)) {
+      } else if (
+        isFailedFetchDashboardResult(result) &&
+        !isCancelledFetchDashboardResult(result)
+      ) {
         onError?.(result);
       }
     },
@@ -286,4 +290,10 @@ export function isFailedFetchDashboardResult(
   result: FetchDashboardResult,
 ): result is FailedFetchDashboardResult {
   return isObject(result.payload) && "error" in result;
+}
+
+export function isCancelledFetchDashboardResult(
+  result: FetchDashboardResult,
+): result is CancelledFetchDashboardResult {
+  return isObject(result.payload) && Boolean(result.payload.isCancelled);
 }

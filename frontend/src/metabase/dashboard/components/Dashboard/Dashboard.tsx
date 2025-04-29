@@ -5,10 +5,6 @@ import { useListDatabasesQuery } from "metabase/api";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
-import type {
-  CancelledFetchDashboardResult,
-  FetchDashboardResult,
-} from "metabase/dashboard/types";
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
@@ -16,7 +12,6 @@ import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
 import { DashboardGridConnected } from "../DashboardGrid";
@@ -323,11 +318,4 @@ function Dashboard() {
     </DashboardLoadingAndErrorWrapper>
   );
 }
-
-export function isCancelledFetchDashboardResult(
-  result: FetchDashboardResult,
-): result is CancelledFetchDashboardResult {
-  return isObject(result.payload) && Boolean(result.payload.isCancelled);
-}
-
 export { Dashboard };
