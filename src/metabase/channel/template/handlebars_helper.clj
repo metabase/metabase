@@ -1,6 +1,7 @@
 (ns metabase.channel.template.handlebars-helper
   (:refer-clojure :exclude [count])
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.models.setting :as setting]
    [metabase.util.date-2 :as u.date]
@@ -101,7 +102,7 @@
    Example:
    ```
    {{#if (ne status \"cancelled\")}}
-     <p>Order is still active</p>
+     Order is still active
    {{/if}}
    ```
 
@@ -117,9 +118,9 @@
    Example:
    ```
    {{#if (gt price 100)}}
-     <span class=\"expensive\">{{price}}</span>
+     Expensive
    {{else}}
-     <span>{{price}}</span>
+     Cheap
    {{/if}}
    ```
 
@@ -129,15 +130,15 @@
   [x [y] _kparams _options]
   (> x y))
 
-(defhelper ge
+(defhelper gte
   "Checks if first value is greater than or equal to second value.
 
    Example:
    ```
-   {{#if (ge stock 10)}}
-     <span class=\"in-stock\">In Stock</span>
+   {{#if (gte stock 10)}}
+     In Stock
    {{else}}
-     <span class=\"low-stock\">Low Stock</span>
+     Low Stock
    {{/if}}
    ```
 
@@ -153,7 +154,7 @@
    Example:
    ```
    {{#if (lt temperature 0)}}
-     <span class=\"freezing\">{{temperature}}°C</span>
+     Freezing
    {{else}}
      <span>{{temperature}}°C</span>
    {{/if}}
@@ -165,13 +166,13 @@
   [x [y] _kparams _options]
   (< x y))
 
-(defhelper le
+(defhelper lte
   "Checks if first value is less than or equal to second value.
 
    Example:
    ```
-   {{#if (le remaining 5)}}
-     <span class=\"warning\">Only {{remaining}} left!</span>
+   {{#if (lte remaining 5)}}
+     Only {{remaining}} left!
    {{/if}}
    ```
 
@@ -180,6 +181,85 @@
    - y: Second value to compare"
   [x [y] _kparams _options]
   (<= x y))
+
+(defhelper empty
+  "Checks if a collection is empty.
+
+   Example:
+   ```
+   {{#if (empty items)}}
+     No items
+   {{/if}}
+   ```
+
+   Arguments:
+   - collection: The collection to check for emptiness"
+  [collection _params _kparams _options]
+  (empty? collection))
+
+(defhelper contains
+  "Checks if a string contains a sub-string
+
+   Example:
+   ```
+   {{#if (contains text \"foo\")}}
+     Foo
+   {{/if}}
+   ```
+
+   Arguments:
+   - string: The string to check for the value
+   - substring: The substring to check for in the string"
+  [string [substring] _kparams _options]
+  (str/includes? string substring))
+
+(defhelper starts-with
+  "Checks if a string starts with a substring.
+
+   Example:
+   ```
+   {{#if (starts-with \"Hello\" \"He\")}}
+     Hello
+   {{/if}}
+   ```
+
+   Arguments:
+   - string: The string to check for the value
+   - substring: The substring to check for in the string"
+  [string [substring] _kparams _options]
+  (str/starts-with? string substring))
+
+(defhelper ends-with
+  "Checks if a string ends with a substring.
+
+   Example:
+   ```
+   {{#if (ends-with \"Hello\" \"lo\")}}
+     Hello
+   {{/if}}
+   ```
+
+   Arguments:
+   - string: The string to check for the value
+   - substring: The substring to check for in the string"
+  [string [substring] _kparams _options]
+  (str/ends-with? string substring))
+
+(defhelper regexp
+  "Checks if a string matches a regular expression.
+
+   Example:
+   ```
+   {{#if (regexp \"Hello\" \"^H.*o$\")}}
+     Hello
+   {{/if}}
+   ```
+
+   Arguments:
+   - string: The string to check for the value
+   - regex: The regular expression to check for in the string"
+  [string [regex] _kparams _options]
+  (some? (re-matches (re-pattern regex) string)))
 
 (defhelper format-date
   "Formats a date according to specified pattern.
@@ -259,20 +339,6 @@
   [id [parameters] _kparams _options]
   (urls/dashboard-url id (map #(update-keys % keyword) parameters)))
 
-(def default-helpers
-  "A list of default helpers."
-  {"count"         #'count
-   "eq"            #'eq
-   "ne"            #'ne
-   "gt"            #'gt
-   "ge"            #'ge
-   "lt"            #'lt
-   "le"            #'le
-   "format-date"   #'format-date
-   "now"           #'now
-   "card-url"      #'card-url
-   "dashboard-url" #'dashboard-url})
-
 (def ^:private built-in-helpers-info
   (map
    #(assoc % :type :built-in)
@@ -282,9 +348,9 @@
    Example:
    ```
    {{#if author}}
-     <h1>{{firstName}} {{lastName}}</h1>
+     {{firstName}} {{lastName}}
    {{else}}
-     <h1>Unknown Author</h1>
+     Unknown Author
    {{/if}}
    ```
 
@@ -297,7 +363,7 @@
    Example:
    ```
    {{#unless license}}
-     <p>WARNING: This entry has no license!</p>
+     WARNING: This entry has no license!
    {{/unless}}
    ```
 
@@ -309,9 +375,9 @@
    Example:
    ```
    {{#each people}}
-     <li>{{this}}</li>
+     {{this}}
    {{else}}
-     <li>No people to display</li>
+     No people to display
    {{/each}}
    ```
 
@@ -367,6 +433,25 @@
      {:name helper-name
       :doc  (-> helper meta :doc)
       :type :custom})))
+
+(def default-helpers
+  "A list of default helpers."
+  {"count"         #'count
+   "eq"            #'eq
+   "ne"            #'ne
+   "gt"            #'gt
+   "gte"           #'gte
+   "lt"            #'lt
+   "lte"           #'lte
+   "empty"         #'empty
+   "contains"      #'contains
+   "starts-with"   #'starts-with
+   "ends-with"     #'ends-with
+   "regexp"        #'regexp
+   "format-date"   #'format-date
+   "now"           #'now
+   "card-url"      #'card-url
+   "dashboard-url" #'dashboard-url})
 
 ;; Exposing this via settings so FE can find it
 ;; TODO: the better way is to follow metabase.lib's steps by writing this as cljc so FE can access it directly.
