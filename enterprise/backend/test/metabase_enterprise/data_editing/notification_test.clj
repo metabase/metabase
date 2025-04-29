@@ -182,6 +182,33 @@
                                              :type "text/html; charset=utf-8"}]}
                                  email)))}))))
 
+(deftest record-and-changes-is-coerced-properly
+  (actions.tu/with-actions-test-data-tables #{"categories"}
+    (test-row-notification!
+     {:event_name :event/row.updated}
+     (fn [notification]
+       ;; why testing coercion against the name column?
+       ;; for one it's quite hard to setup custom test data so I decided to just roll with it
+       ;; but also this test that failure in coercion is ignored (e.g: failed to convert name to datetime)
+       (mt/with-temp [:model/ChannelTemplate {tmpl-id :id} {:name "My Custom template"
+                                                            :channel_type :channel/email
+                                                            :details {:type :email/handlebars-text
+                                                                      :subject "Hello"
+                                                                      :body (str "Name: {{record.NAME}}\n"
+                                                                                 "Name: {{changes.NAME.before}}\n"
+                                                                                 "Name: {{changes.NAME.after}}")}}]
+         (t2/update! :model/NotificationHandler (->> notification :handlers first :id) {:template_id tmpl-id})
+         (t2/update! :model/Field (mt/id :categories :name) {:coercion_strategy :Coercion/ISO8601->Date})
+         (mt/user-http-request
+          :crowberto
+          :put
+          (data-editing.tu/table-url (mt/id :categories))
+          {:rows [{:ID 1 :NAME "2025-03-25T00:00:00Z"}]})))
+     {:channel/email (fn [[email :as _emails]]
+                       (is (=? {:body    [{:content "Name: 2025-03-25\nName: African\nName: 2025-03-25"
+                                           :type "text/html; charset=utf-8"}]}
+                               email)))})))
+
 (deftest create-row-notification-webhook-test
   (test-row-notification!
    {:event_name :event/row.updated}

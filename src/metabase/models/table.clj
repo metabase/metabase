@@ -145,7 +145,7 @@
 (defn ordered-fields
   "Return the fields of a table in the order specified by `:field_order`."
   [table-id field-order]
-  (t2/select [:model/Field :id :name]
+  (t2/select :model/Field
              :table_id  table-id
              {:order-by (case field-order
                           :custom       [[:custom_position :asc]]
