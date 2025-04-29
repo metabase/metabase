@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { P, match } from "ts-pattern";
 
 import {
@@ -8,6 +8,7 @@ import {
 } from "embedding-sdk";
 import { MetabaseProviderInternal } from "embedding-sdk/components/public/MetabaseProvider";
 import { useStore } from "metabase/lib/redux";
+import { setIsEmbeddingSdk } from "metabase/redux/embed";
 import { Box, Center, Loader } from "metabase/ui";
 
 import { useSdkIframeEmbedEventBus } from "../../hooks/use-sdk-interactive-embed-event";
@@ -21,6 +22,11 @@ import S from "./SdkIframeEmbedRoute.module.css";
 export const SdkIframeEmbedRoute = () => {
   const store = useStore();
   const { iframeAuthConfig, iframeSettings } = useSdkIframeEmbedEventBus();
+
+  useEffect(() => {
+    // tell the redux store we're embedding the SDK components in an iframe
+    store.dispatch(setIsEmbeddingSdk(true));
+  }, [store]);
 
   const authConfig = useMemo(() => {
     if (!iframeAuthConfig) {
