@@ -66,7 +66,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     backgroundColor: "transparent",
 
     toolbar: {
-      backgroundColor: "var(--mb-color-background)",
+      backgroundColor: "var(--mb-color-background-disabled)",
     },
   },
 
