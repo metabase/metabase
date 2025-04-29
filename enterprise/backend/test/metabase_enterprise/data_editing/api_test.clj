@@ -513,6 +513,7 @@
         (let [table-id     @table
               url          (data-editing.tu/table-url table-id)
               field-id     (t2/select-one-fn :id :model/Field :table_id table-id :name "n")
+              _            (t2/update! :model/Field {:id field-id} {:semantic_type "type/Category"})
               field-values #(vec (:values (field-values/get-latest-full-field-values field-id)))
               create!      #(mt/user-http-request :crowberto :post 200 url {:rows %})
               update!      #(mt/user-http-request :crowberto :put  200 url {:rows %})]
