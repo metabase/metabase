@@ -279,7 +279,7 @@
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::metric
-  "A V2 Metric is a special subtype of a Card. Not convinced we really need this as opposed to just using `::card` --
+  "A V2 Metric! This a special subtype of a Card. Not convinced we really need this as opposed to just using `::card` --
   see my notes on `::type`."
   [:merge
    ::card
