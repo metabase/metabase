@@ -385,8 +385,9 @@ const iframeEmbedConfig = {
   output: {
     path: BUILD_PATH + "/app",
     filename: 'embed.v1.js',
+    library: 'metabase.embed',
+    libraryTarget: 'umd',
     globalObject: 'this',
-    library: { name: 'metabase.embed', type: 'umd', export: 'default' },
   },
   module: {
     rules: [
