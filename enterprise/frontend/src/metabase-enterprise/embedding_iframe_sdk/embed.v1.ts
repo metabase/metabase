@@ -33,7 +33,7 @@ class MetabaseEmbed {
   /**
    * Merge these settings with the current settings.
    */
-  public updateSettings(settings: Partial<SdkIframeEmbedSettings>): void {
+  public updateSettings(settings: Partial<SdkIframeEmbedSettings>) {
     if (!this._isEmbedReady) {
       warn("embed settings must be ready before updating the settings");
       return;
@@ -51,7 +51,7 @@ class MetabaseEmbed {
     this._sendMessage("metabase.embed.updateSettings", allowedSettings);
   }
 
-  public destroy(): void {
+  public destroy() {
     if (this.iframe) {
       window.removeEventListener("message", this._handleMessage);
       this.iframe.remove();
@@ -60,7 +60,7 @@ class MetabaseEmbed {
     }
   }
 
-  private _setup(): void {
+  private _setup() {
     const { instanceUrl, target, apiKey, iframeClassName } = this._settings;
 
     this.iframe = document.createElement("iframe");
@@ -96,9 +96,7 @@ class MetabaseEmbed {
     parentContainer.appendChild(this.iframe);
   }
 
-  private _validateEmbedSettings(
-    settings: Partial<SdkIframeEmbedSettings>,
-  ): void {
+  private _validateEmbedSettings(settings: Partial<SdkIframeEmbedSettings>) {
     if (
       settings.notebookEditor &&
       (settings.dashboardId || settings.questionId)
@@ -111,9 +109,7 @@ class MetabaseEmbed {
     }
   }
 
-  private _handleMessage = (
-    event: MessageEvent<SdkIframeEmbedTagMessage>,
-  ): void => {
+  private _handleMessage = (event: MessageEvent<SdkIframeEmbedTagMessage>) => {
     if (!event.data) {
       return;
     }
@@ -128,7 +124,7 @@ class MetabaseEmbed {
     }
   };
 
-  private _sendMessage(type: string, data: unknown): void {
+  private _sendMessage(type: string, data: unknown) {
     if (this.iframe?.contentWindow) {
       this.iframe.contentWindow.postMessage({ type, data }, "*");
     }
