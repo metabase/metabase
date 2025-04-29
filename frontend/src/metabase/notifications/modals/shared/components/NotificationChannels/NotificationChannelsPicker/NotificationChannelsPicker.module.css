@@ -15,15 +15,17 @@
   color: var(--mb-color-text-primary);
 }
 
-.customTemplateIcon {
-  color: var(--mb-color-text-primary);
-
-  path {
-    stroke-width: 0.75;
-  }
-}
-
 .customTemplateItem,
 .customTemplateChevron {
   border: none !important;
+}
+.customTemplateChevron {
+  margin-left: 0;
+}
+
+:global(.cm-line) {
+  transition: opacity 200ms ease;
+}
+.defaultTemplate :global(.cm-editor:not(.cm-focused) .cm-line) {
+  opacity: 0.5;
 }

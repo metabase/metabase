@@ -1,0 +1,46 @@
+.root {
+  /* position: relative; */
+  display: grid;
+  width: 100%;
+  height: calc(100% - 5.5rem);
+  overflow: auto;
+}
+
+.rootPreviewOpen {
+  grid-template-columns: 50% 50%;
+  transition: grid-template-columns 0.3s ease;
+}
+
+.rootNoPreview {
+  grid-template-columns: 100%;
+  transition: grid-template-columns 0.3s ease;
+}
+
+.modalContent {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.modalBody {
+  padding: 0;
+  height: 100%;
+  overflow: auto;
+  flex-grow: 1;
+}
+
+.modalFooter {
+  position: relative;
+  z-index: 1002;
+  background-color: var(--mb-color-bg-white);
+}
+
+.modalHeader {
+  position: relative;
+  z-index: 1003;
+  background: transparent;
+}
+
+.modalClose {
+  z-index: 1004;
+}

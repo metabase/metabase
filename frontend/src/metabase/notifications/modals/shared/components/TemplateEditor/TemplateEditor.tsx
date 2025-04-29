@@ -36,6 +36,7 @@ export interface TemplateEditorProps
     | "basicSetup"
     | "value"
     | "onBlur"
+    | "onFocus"
     | "minHeight"
   > {
   variant?: "textarea" | "textinput";
@@ -43,6 +44,7 @@ export interface TemplateEditorProps
   defaultValue?: string;
   onChange?: (value: string) => void;
   onBlur?: (value: string) => void;
+  onFocus?: (value: string) => void;
   minHeight?: string;
   placeholder?: string;
   templateContext?: Record<string, any>;
@@ -93,6 +95,7 @@ export const TemplateEditor = ({
   error,
   templateContext,
   onBlur,
+  onFocus,
   ...rest
 }: TemplateEditorProps) => {
   const helpers = useSetting("default-handlebars-helpers");
@@ -165,6 +168,9 @@ export const TemplateEditor = ({
           if (ref.current && !ref.current.view?.hasFocus) {
             ref.current.view?.focus();
           }
+        }}
+        onFocus={() => {
+          onFocus?.(internalValue);
         }}
         onKeyDown={(e) => {
           // Prevent Escape key from propagating to the modal

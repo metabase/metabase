@@ -7,6 +7,11 @@
    [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
+(def ^:private retention-total-batches 100)
+(def ^:private retention-total-rows 1000)
+(def ^:private retention-batches-per-table 100)
+(def ^:private retention-batches-per-user 50)
+
 (methodical/defmethod t2/table-name :model/Undo [_model] :data_edit_undo_chain)
 
 (t2/deftransforms :model/Undo
@@ -38,6 +43,44 @@
                                      [:not :undone]
                                      :undone)]}]))
 
+(defn- batch-to-prune-from
+  "Return the largest batch_num that we should no longer retain, if we only want to keep a certain number of batches
+  matching the given where clause. Returns 0 if we do not need to prune anything."
+  [batches-to-keep & [where]]
+  (-> {:select   [:batch_num]
+       :from     [(t2/table-name :model/Undo)]
+       :where    (or where true)
+       :group-by :batch_num
+       :order-by [[:batch_num :desc]]
+       :limit    1
+       :offset   batches-to-keep}
+      t2/query
+      first
+      :batch_num
+      (or 0)))
+
+(defn- batch-to-prune-from-for-rows
+  "This is like [[batch-to-prune-from], except that we're enforcing a max on the row count."
+  [rows-to-keep & [where]]
+  (-> {:select   [:batch_num]
+       :from     [(t2/table-name :model/Undo)]
+       :where    (or where true)
+       :order-by [[:id :desc]]
+       :limit    1
+       :offset   rows-to-keep}
+      t2/query
+      first
+      :batch_num
+      (or 0)))
+
+(defn- prune-from-batch! [batch-num & [where]]
+  (t2/delete! :model/Undo
+              :batch_num [:<= batch-num]
+              {:where (or where true)}))
+
+(defn- prune-batches! [batches-to-keep & [where]]
+  (prune-from-batch! (batch-to-prune-from batches-to-keep where) where))
+
 (defn track-change!
   "Insert some snapshot data based on edits made to the given table."
   [user-id table-id->row-pk->old-new-values]
@@ -68,7 +111,19 @@
                   ;; Note: we intentionally also orphan changes to other rows.
                   ;:row_pk [:in row-pks]
                   :batch_num [:>= batch_num]
-                  :undone true))))
+                  :undone true)))
+
+  ;; Pruning. Fairly naive implementation. Doesn't assume we were fully pruned before this update.
+
+  (prune-from-batch! (max (batch-to-prune-from-for-rows retention-total-rows)
+                          (batch-to-prune-from retention-total-batches)))
+
+  (doseq [table-id (keys table-id->row-pk->old-new-values)]
+    (let [where-table [:= :table_id table-id]]
+      (prune-batches! retention-batches-per-table where-table)))
+
+  (let [where-user [:= :user_id user-id]]
+    (prune-batches! retention-batches-per-user where-user)))
 
 (defn next-batch-num
   "Return the batch number of the new change that we would (un-)revert.
