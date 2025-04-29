@@ -206,7 +206,6 @@ class AutomaticDashboardAppInner extends Component<AutomaticDashboardAppInnerPro
                 slowCards={this.props.slowCards}
                 clickBehaviorSidebarDashcard={null}
                 downloadsEnabled={false}
-                onEditingChange={_.noop}
                 autoScrollToDashcardId={undefined}
                 reportAutoScrolledToDashcard={_.noop}
                 navigateToNewCardFromDashboard={

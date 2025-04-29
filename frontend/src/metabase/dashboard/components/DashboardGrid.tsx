@@ -149,10 +149,9 @@ export type DashboardGridProps = {
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
-  onEditingChange?: (dashboard: Dashboard | null) => void;
   downloadsEnabled: boolean;
-  autoScrollToDashcardId: DashCardId | undefined;
-  reportAutoScrolledToDashcard: () => void;
+  autoScrollToDashcardId?: DashCardId;
+  reportAutoScrolledToDashcard?: () => void;
 };
 
 type DashboardGridInnerProps = DashboardGridProps &
