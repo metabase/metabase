@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-320-setup-new-interactive-embedding-route-with-ee-plugins",
-    "hash": "2cb489cd99ce23879470c24ec95961d8781907ac"
+    "hash": "9b3a7d909f6230edcf6d2605635a513de83ce631"
   },
   "upstream": {
     "branch": "emb-355-setup-end-to-end-tests-for-using-the-embedv1js-library"
