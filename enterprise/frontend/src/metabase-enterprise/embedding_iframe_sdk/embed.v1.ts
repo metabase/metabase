@@ -140,3 +140,5 @@ const warn = (...messages: unknown[]) =>
 
 // Initialize the global object
 (window as any)["metabase.embed"] = { MetabaseEmbed };
+
+export { MetabaseEmbed };
