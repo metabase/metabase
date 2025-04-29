@@ -1,4 +1,4 @@
-(ns metabase.models.task-history
+(ns metabase.task-history.models.task-history
   (:require
    [java-time.api :as t]
    [metabase.models.interface :as mi]

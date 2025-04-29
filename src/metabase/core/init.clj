@@ -30,9 +30,11 @@
    [metabase.settings.init]
    [metabase.sso.init]
    [metabase.sync.init]
+   [metabase.task-history.init]
    [metabase.task.init]
    [metabase.tiles.init]
-   [metabase.user-key-value.init]))
+   [metabase.user-key-value.init]
+   [metabase.xrays.init]))
 
 ;; load EE init code on system launch if it exists.
 (when (and (not *compile-files*)

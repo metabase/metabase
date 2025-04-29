@@ -30,7 +30,8 @@
 ;; ## Tips
 ;;
 ;; PRO TIP: Check out the [[dev.deps-graph]] namespace for helpful tools to see where a module is used externally, and
-;; for tools for calculating this config.
+;; for tools for calculating this config -- you can use [[dev.deps-graph/print-kondo-config-diff]] to see what updates
+;; you need to make
 {:metabase/modules
  {actions
   {:api  #{metabase.actions.api metabase.actions.core}
@@ -226,7 +227,7 @@
 
   events
   {:api  #{metabase.events metabase.events.init metabase.events.notification}
-   :uses #{api channel driver models notification premium-features util}}
+   :uses #{api channel driver models notification premium-features task-history util}}
 
   formatter
   {:api  #{metabase.formatter}
@@ -309,7 +310,7 @@
   {:api #{metabase.model-persistence.api
           metabase.model-persistence.core
           metabase.model-persistence.init}
-   :uses #{api db driver events lib models premium-features settings query-processor request task util}}
+   :uses #{api db driver events lib models premium-features settings query-processor request task task-history util}}
 
   models
   {:api #{metabase.models.api-key
@@ -348,7 +349,6 @@
           metabase.models.secret
           metabase.models.serialization
           metabase.models.table
-          metabase.models.task-history
           metabase.models.user
           metabase.models.user-parameter-value
           metabase.models.util.spec-update
@@ -407,6 +407,7 @@
            query-processor
            request
            task
+           task-history
            util}}
 
   permissions
@@ -427,10 +428,11 @@
    :uses #{config driver util}}
 
   premium-features
-  {:api  #{metabase.premium-features.core
+  {:api  #{metabase.premium-features.api
+           metabase.premium-features.core
            metabase.premium-features.init
            metabase.premium-features.token-check}
-   :uses #{config db internal-stats plugins settings util}}
+   :uses #{api config db internal-stats plugins settings util}}
 
   public-sharing
   {:api  #{metabase.public-sharing.api
@@ -444,7 +446,7 @@
            metabase.pulse.init
            metabase.pulse.task.send-pulses}
    :uses #{api channel config db driver events integrations models notification permissions plugins premium-features
-           query-processor request task util
+           query-processor request task task-history util
            enterprise/advanced-config enterprise/advanced-permissions enterprise/sandbox}}
 
   query-analysis
@@ -491,7 +493,6 @@
            api
            audit
            config
-           db
            driver
            events
            formatter
@@ -584,7 +585,7 @@
           metabase.sync.schedules
           metabase.sync.task.sync-databases
           metabase.sync.util}
-   :uses #{analyze api audit config db driver events lib models query-processor settings task util}}
+   :uses #{analyze api audit config db driver events lib models query-processor settings task task-history util}}
 
   task
   {:api #{metabase.task
@@ -596,12 +597,24 @@
            db
            driver
            integrations
-           models
            plugins
            premium-features
            settings
+           task-history
            util
            enterprise/task}}
+
+  task-history
+  {:api  #{metabase.task-history.api
+           metabase.task-history.core
+           metabase.task-history.init}
+   :uses #{api
+           models
+           permissions
+           premium-features
+           request
+           task
+           util}}
 
   tiles
   {:api  #{metabase.tiles.api
@@ -629,7 +642,9 @@
    :uses #{config db driver legacy-mbql lib models plugins settings}}
 
   xrays
-  {:api  #{metabase.xrays.api metabase.xrays.core}
+  {:api  #{metabase.xrays.api
+           metabase.xrays.core
+           metabase.xrays.init}
    :uses #{analyze api driver legacy-mbql lib models settings query-processor util}}
 
   enterprise/advanced-config

@@ -18,10 +18,10 @@
    [metabase.api.native-query-snippet]
    [metabase.api.open-api :as open-api]
    [metabase.api.premium-features]
+   [metabase.api.preview-embed]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
    [metabase.api.slack]
    [metabase.api.table]
-   [metabase.api.task]
    [metabase.api.testing]
    [metabase.api.user]
    [metabase.api.util]
@@ -36,6 +36,7 @@
    [metabase.model-persistence.api]
    [metabase.notification.api]
    [metabase.permissions.api]
+   [metabase.premium-features.api]
    [metabase.public-sharing.api]
    [metabase.pulse.api]
    [metabase.revisions.api]
@@ -46,6 +47,7 @@
    [metabase.setup.api]
    [metabase.sso.api]
    [metabase.sync.api]
+   [metabase.task-history.api]
    [metabase.tiles.api]
    [metabase.timeline.api]
    [metabase.user-key-value.api]
@@ -64,10 +66,10 @@
          metabase.api.dataset/keep-me
          metabase.api.field/keep-me
          metabase.api.geojson/keep-me
+         metabase.api.logger/keep-me
          metabase.api.native-query-snippet/keep-me
          metabase.api.slack/keep-me
          metabase.api.table/keep-me
-         metabase.api.task/keep-me
          metabase.api.testing/keep-me
          metabase.api.user/keep-me
          metabase.api.util/keep-me
@@ -82,6 +84,7 @@
          metabase.segments.api/keep-me
          metabase.settings.api/keep-me
          metabase.setup.api/keep-me
+         metabase.task-history.api/keep-me
          metabase.tiles.api/keep-me
          metabase.user-key-value.api/keep-me)
 
@@ -155,7 +158,7 @@
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
    "/permissions"          (+auth 'metabase.permissions.api)
    "/persist"              (+auth 'metabase.model-persistence.api)
-   "/premium-features"     (+auth metabase.api.premium-features/routes)
+   "/premium-features"     (+auth metabase.premium-features.api/routes)
    "/preview_embed"        (+auth metabase.embedding.api/preview-embedding-routes)
    "/public"               (+public-exceptions 'metabase.public-sharing.api)
    "/pulse"                metabase.pulse.api/pulse-routes
@@ -167,7 +170,7 @@
    "/setup"                'metabase.setup.api
    "/slack"                (+auth 'metabase.api.slack)
    "/table"                (+auth 'metabase.api.table)
-   "/task"                 (+auth 'metabase.api.task)
+   "/task"                 (+auth 'metabase.task-history.api)
    "/testing"              (if enable-testing-routes? 'metabase.api.testing pass-thru-handler)
    "/tiles"                (+auth 'metabase.tiles.api)
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)

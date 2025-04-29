@@ -1,10 +1,10 @@
-(ns metabase.task.task-history-cleanup-test
+(ns metabase.task-history.task.task-history-cleanup-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.models.task-history-test :as tht]
-   [metabase.task.task-history-cleanup :as cleanup-task]
+   [metabase.task-history.models.task-history-test :as tht]
+   [metabase.task-history.task.task-history-cleanup :as cleanup-task]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
