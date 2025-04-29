@@ -246,6 +246,7 @@ jobs:
       - name: Check if sample app branch exists
         id: check-sample-app-branch
         run: |
+          TEST_SUITE="${{ matrix.test_suite }}"
           REPO_NAME="${TEST_SUITE%-e2e}"
           REPO_URL="https://github.com/metabase/${REPO_NAME}.git"
           echo "Checking if branch '${SAMPLE_APP_BRANCH_NAME}' exists in ${REPO_URL}..."
