@@ -618,38 +618,21 @@
   "Converts a pivot query into a form that selects the raw data as a subquery (with row limit and ordering) and applies
   the aggregations and breakout to the outer query."
   [query]
-  (if (= (keyword (:type query)) :native)
-    (-> query
-        (assoc-in [:query :source-query]
-                  {:native (-> query :native :query)})
-        (m/dissoc-in [:query :source-table])
-        (m/dissoc-in [:query :limit])
-        (m/dissoc-in [:query :order-by])
-        (m/dissoc-in [:query :aggregation])
-        (m/dissoc-in [:query :aggregation-idents])
-        (m/dissoc-in [:query :breakout])
-        (m/dissoc-in [:query :breakout-idents])
-        (m/dissoc-in [:query :native])
-        (dissoc :native)
-        (assoc :type :query))
-    (-> query
-        (assoc-in [:query :source-query]
-                  (select-keys (:query query)
-                               [:source-table :source-query :limit :order-by :aggregation :aggregation-idents :breakout
-                                :breakout-idents]))
-        (m/dissoc-in [:query :source-table])
-        (m/dissoc-in [:query :limit])
-        (m/dissoc-in [:query :order-by])
-        (m/dissoc-in [:query :aggregation])
-        (m/dissoc-in [:query :aggregation-idents])
-        (m/dissoc-in [:query :breakout])
-        (m/dissoc-in [:query :breakout-idents])
-        (m/dissoc-in [:query :native])
-        (dissoc :native)
-        (assoc :type :query))))
-
-(comment
-  (qp/process-query {:database 1 :type :query :query {:source-query  {:native "select * from products limit 2"}}}))
+  (-> query
+      (assoc-in [:query :source-query]
+                (select-keys (:query query)
+                             [:source-table :source-query :limit :order-by :aggregation :aggregation-idents :breakout
+                              :breakout-idents]))
+      (m/dissoc-in [:query :source-table])
+      (m/dissoc-in [:query :limit])
+      (m/dissoc-in [:query :order-by])
+      (m/dissoc-in [:query :aggregation])
+      (m/dissoc-in [:query :aggregation-idents])
+      (m/dissoc-in [:query :breakout])
+      (m/dissoc-in [:query :breakout-idents])
+      (m/dissoc-in [:query :native])
+      (dissoc :native)
+      (assoc :type :query)))
 
 (defn- original-cols
   [query]
@@ -664,9 +647,6 @@
 
 (defn outer-query-with-breakouts
   [query pivot-row-names pivot-col-names]
-  (def query query)
-  (def pivot-row-names pivot-row-names)
-  (def pivot-col-names pivot-col-names)
   (try
     (let [base-query-cols (original-cols query)
           pivot-row-cols (reduce
@@ -696,14 +676,14 @@
       (log/error e "Error in outer-query-with-breakouts")
       (throw e))))
 
-(defn run-pivot-query
+(mu/defn run-pivot-query
   "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
   yourself."
   ([query]
    (run-pivot-query query nil))
 
-  ([query #_#_:- ::qp.schema/query
-    rff   #_#_:- [:maybe ::qp.schema/rff]]
+  ([query :- ::qp.schema/query
+    rff   :- [:maybe ::qp.schema/rff]]
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
      (qp.setup/with-qp-setup [query query]
@@ -730,5 +710,4 @@
                                    (lib/query (qp.store/metadata-provider) query3))
                all-queries       (generate-queries query4 {})
                column-mapping-fn (make-column-mapping-fn query4)]
-           ;; (qp/process-query (first all-queries))
            (process-multiple-queries all-queries rff column-mapping-fn)))))))
