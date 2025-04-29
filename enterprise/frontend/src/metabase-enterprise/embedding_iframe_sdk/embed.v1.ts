@@ -8,6 +8,7 @@ const EMBEDDING_ROUTE = "embed/sdk/v1";
 
 const EMBED_SETTING_KEYS = [
   "apiKey",
+  "instanceUrl",
   "theme",
   "dashboardId",
   "questionId",
