@@ -1,4 +1,4 @@
-(ns metabase.api.embed
+(ns metabase.embedding.api.embed
   "Various endpoints that use [JSON web tokens](https://jwt.io/introduction/) to fetch Cards and Dashboards.
    The endpoints are the same as the ones in `api/public/`, and differ only in the way they are authorized.
 
@@ -17,8 +17,8 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.dataset :as api.dataset]
-   [metabase.api.embed.common :as api.embed.common]
    [metabase.api.macros :as api.macros]
+   [metabase.embedding.api.common :as api.embed.common]
    [metabase.events :as events]
    [metabase.public-sharing.api :as api.public]
    [metabase.query-processor.card :as qp.card]

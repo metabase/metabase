@@ -12,15 +12,12 @@
    [metabase.api.database]
    [metabase.api.dataset]
    [metabase.api.docs]
-   [metabase.api.embed]
    [metabase.api.field]
    [metabase.api.geojson]
-   [metabase.api.logger]
    [metabase.api.macros :as api.macros]
    [metabase.api.native-query-snippet]
    [metabase.api.open-api :as open-api]
    [metabase.api.premium-features]
-   [metabase.api.preview-embed]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
    [metabase.api.slack]
    [metabase.api.table]
@@ -33,6 +30,7 @@
    [metabase.channel.api]
    [metabase.cloud-migration.api]
    [metabase.config :as config]
+   [metabase.embedding.api]
    [metabase.indexed-entities.api]
    [metabase.login-history.api]
    [metabase.model-persistence.api]
@@ -64,11 +62,9 @@
          metabase.api.dashboard/keep-me
          metabase.api.database/keep-me
          metabase.api.dataset/keep-me
-         metabase.api.embed/keep-me
          metabase.api.field/keep-me
          metabase.api.geojson/keep-me
          metabase.api.native-query-snippet/keep-me
-         metabase.api.preview-embed/keep-me
          metabase.api.slack/keep-me
          metabase.api.table/keep-me
          metabase.api.task/keep-me
@@ -146,7 +142,7 @@
    "/dataset"              'metabase.api.dataset
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/email"                metabase.channel.api/email-routes
-   "/embed"                (+message-only-exceptions 'metabase.api.embed)
+   "/embed"                (+message-only-exceptions metabase.embedding.api/embedding-routes)
    "/field"                (+auth 'metabase.api.field)
    "/geojson"              'metabase.api.geojson
    "/google"               (+auth metabase.sso.api/google-auth-routes)
@@ -160,7 +156,7 @@
    "/permissions"          (+auth 'metabase.permissions.api)
    "/persist"              (+auth 'metabase.model-persistence.api)
    "/premium-features"     (+auth metabase.api.premium-features/routes)
-   "/preview_embed"        (+auth 'metabase.api.preview-embed)
+   "/preview_embed"        (+auth metabase.embedding.api/preview-embedding-routes)
    "/public"               (+public-exceptions 'metabase.public-sharing.api)
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)

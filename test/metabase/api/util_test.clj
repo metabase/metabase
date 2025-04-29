@@ -3,8 +3,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.api.embed.common :as api.embed.common]
    [metabase.api.util :as api.util]
+   [metabase.embedding.api.common :as api.embed.common]
    [metabase.test :as mt]
    [metabase.util.log :as log]))
 

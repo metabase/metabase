@@ -1,18 +1,47 @@
-(ns metabase.embed.settings
+(ns metabase.embedding.settings
   "Settings related to embedding Metabase in other applications."
   (:require
    [clojure.string :as str]
    [crypto.random :as crypto-random]
    [metabase.analytics.core :as analytics]
-   [metabase.embed.app-origins-sdk :as aos]
+   [metabase.config :as config]
+   [metabase.embedding.app-origins-sdk :as aos]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.embed :as embed]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
+
+(defsetting embedding-secret-key
+  (deferred-tru "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.")
+  :encryption :when-encryption-key-set
+  :visibility :admin
+  :audit :no-value
+  :setter (fn [new-value]
+            (when (seq new-value)
+              (assert (u/hexadecimal-string? new-value)
+                      (i18n/tru "Invalid embedding-secret-key! Secret key must be a hexadecimal-encoded 256-bit key (i.e., a 64-character string).")))
+            (setting/set-value-of-type! :string :embedding-secret-key new-value)))
+
+(defsetting show-static-embed-terms
+  (deferred-tru "Check if the static embedding licensing should be hidden in the static embedding flow")
+  :type    :boolean
+  :default true
+  :export? true
+  :getter  (fn []
+             (if-not (and config/ee-available? (:valid (premium-features/token-status)))
+               (setting/get-value-of-type :boolean :show-static-embed-terms)
+               false)))
+
+(defsetting show-sdk-embed-terms
+  (deferred-tru "Check if admin should see the SDK licensing terms popup")
+  :type    :boolean
+  :default true
+  :can-read-from-env? false
+  :doc false
+  :export? true)
 
 (mu/defn- make-embedding-toggle-setter
   "Creates a boolean setter for various boolean embedding-enabled flavors, all tracked by snowplow."
@@ -22,8 +51,8 @@
       (let [old-value (setting/get-value-of-type :boolean setting-key)]
         (when (not= new-value old-value)
           (setting/set-value-of-type! :boolean setting-key new-value)
-          (when (and new-value (str/blank? (embed/embedding-secret-key)))
-            (embed/embedding-secret-key! (crypto-random/hex 32)))
+          (when (and new-value (str/blank? (embedding-secret-key)))
+            (embedding-secret-key! (crypto-random/hex 32)))
           (analytics/track-event! :snowplow/embed_share
                                   {:event                      (keyword (str event-name (if new-value "-enabled" "-disabled")))
                                    :embedding-app-origin-set   (boolean

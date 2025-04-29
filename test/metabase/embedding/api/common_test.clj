@@ -1,10 +1,10 @@
-(ns metabase.api.embed.common-test
+(ns metabase.embedding.api.common-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.analytics.stats :as stats]
    [metabase.api.common :as api]
-   [metabase.api.embed.common :as api.embed.common]
    [metabase.eid-translation.core :as eid-translation]
+   [metabase.embedding.api.common :as api.embed.common]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))

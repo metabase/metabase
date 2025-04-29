@@ -1,4 +1,4 @@
-(ns metabase.api.embed.common
+(ns metabase.embedding.api.common
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -11,6 +11,7 @@
    [metabase.api.dashboard :as api.dashboard]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.eid-translation.core :as eid-translation]
+   [metabase.embedding.jwt :as embed]
    [metabase.models.card :as card]
    [metabase.models.params :as params]
    [metabase.models.resolution :as models.resolution]
@@ -20,7 +21,6 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.settings.core :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -341,6 +341,9 @@
 
 ;; -------------------- Entity Id Translation Analytics --------------------
 
+;;; TODO -- I think most of this stuff should get moved into the `eid-translation` module
+
+;;; TODO -- move into a `.settings` namespace
 (defsetting entity-id-translation-counter
   (deferred-tru "A counter for tracking the number of entity_id -> id translations. Whenever we call [[model->entity-ids->ids]], we increment this counter by the number of translations.")
   :encryption :no
@@ -351,7 +354,7 @@
   :default    eid-translation/default-counter
   :doc false)
 
-(mu/defn update-translation-count!
+(mu/defn- update-translation-count!
   "Update the entity-id translation counter with the results of a batch of entity-id translations."
   [results :- [:sequential eid-translation/Status]]
   (let [processed-result (frequencies results)]

@@ -1,11 +1,11 @@
-(ns ^:mb/driver-tests metabase.api.preview-embed-test
+(ns ^:mb/driver-tests metabase.embedding.api.preview-embed-test
   (:require
    [buddy.sign.jwt :as jwt]
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
    [metabase.api.dashboard-test :as api.dashboard-test]
-   [metabase.api.embed-test :as embed-test]
-   [metabase.api.preview-embed :as api.preview-embed]
+   [metabase.embedding.api.embed-test :as embed-test]
+   [metabase.embedding.api.preview-embed :as api.preview-embed]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.test :as mt]
    [metabase.util :as u]

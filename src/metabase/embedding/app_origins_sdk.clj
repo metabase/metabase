@@ -1,4 +1,4 @@
-(ns metabase.embed.app-origins-sdk
+(ns metabase.embedding.app-origins-sdk
   (:require
    [clojure.string :as str]
    [metabase.settings.core  :as setting :refer [defsetting]]
