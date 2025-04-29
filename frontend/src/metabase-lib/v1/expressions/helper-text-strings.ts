@@ -41,7 +41,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or number to sum.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Subtotal`],
+        example: dimension(t`Subtotal`),
       },
     ],
   },
@@ -59,7 +59,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or number to sum.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Subtotal`],
+        example: dimension(t`Subtotal`),
       },
     ],
     docsPage: "cumulative",
@@ -78,7 +78,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column whose distinct values to count.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Last Name`],
+        example: dimension(t`Last Name`),
       },
     ],
   },
@@ -97,7 +97,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column to count distinct values in.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Customer ID`],
+        example: dimension(t`Customer ID`),
       },
       {
         get name() {
@@ -107,7 +107,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`Something that evaluates to \`true\` or \`false\`.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["=", ["dimension", t`Order Status`], "Completed"],
+        example: op("=", dimension(t`Order Status`), "Completed"),
       },
     ],
   },
@@ -125,7 +125,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The numeric column to get standard deviation of.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Population`],
+        example: dimension(t`Population`),
       },
     ],
   },
@@ -144,7 +144,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The value to get from a different row.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["sum", ["dimension", t`Total`]],
+        example: op("sum", dimension(t`Total`)),
       },
       {
         get name() {
@@ -172,7 +172,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The numeric column whose values to average.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Quantity`],
+        example: dimension(t`Quantity`),
       },
     ],
   },
@@ -190,7 +190,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The numeric column whose values to average.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Quantity`],
+        example: dimension(t`Quantity`),
       },
     ],
   },
@@ -208,7 +208,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The numeric column whose minimum you want to find.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Salary`],
+        example: dimension(t`Salary`),
       },
     ],
   },
@@ -226,7 +226,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The numeric column whose maximum you want to find.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Age`],
+        example: dimension(t`Age`),
       },
     ],
   },
@@ -245,7 +245,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`Something that should evaluate to \`true\` or \`false\`.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["=", ["dimension", t`Source`], "Google"],
+        example: op("=", dimension(t`Source`), "Google"),
       },
     ],
   },
@@ -263,7 +263,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`Something that should evaluate to \`true\` or \`false\`.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: [">", ["dimension", t`Subtotal`], 100],
+        example: op(">", dimension(t`Subtotal`), 100),
       },
     ],
     docsPage: "countif",
@@ -283,7 +283,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The numeric column to sum.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Subtotal`],
+        example: dimension(t`Subtotal`),
       },
       {
         get name() {
@@ -293,7 +293,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`Something that evaluates to \`true\` or \`false\`.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["=", ["dimension", t`Order Status`], "Valid"],
+        example: op("=", dimension(t`Order Status`), "Valid"),
       },
     ],
     docsPage: "sumif",
@@ -312,7 +312,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or number to get the variance of.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Temperature`],
+        example: dimension(t`Temperature`),
       },
     ],
   },
@@ -330,7 +330,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or number to get the median of.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Age`],
+        example: dimension(t`Age`),
       },
     ],
   },
@@ -349,7 +349,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or number to get the percentile of.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Score`],
+        example: dimension(t`Score`),
       },
       {
         get name() {
@@ -376,7 +376,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The number or date to convert to text.`;
         },
-        example: ["dimension", "User ID"],
+        example: dimension("User ID"),
       },
     ],
   },
@@ -394,7 +394,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The string or float column to convert to integers. Float values are rounded.`;
         },
-        example: ["dimension", "User ID"],
+        example: dimension("User ID"),
       },
     ],
   },
@@ -411,7 +411,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The string column to convert to floats.`;
         },
-        example: ["dimension", "Text Rating"],
+        example: dimension("Text Rating"),
       },
     ],
   },
@@ -446,7 +446,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column with values to convert to lower case.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Status`],
+        example: dimension(t`Status`),
       },
     ],
   },
@@ -464,7 +464,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column with values to convert to upper case.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Status`],
+        example: dimension(t`Status`),
       },
     ],
   },
@@ -482,7 +482,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or text to return a portion of.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Title`],
+        example: dimension(t`Title`),
       },
       {
         get name() {
@@ -520,7 +520,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or text to return a portion of.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Title`],
+        example: dimension(t`Title`),
       },
       {
         get name() {
@@ -557,7 +557,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or text to search through.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Address`],
+        example: dimension(t`Address`),
       },
       {
         get name() {
@@ -585,7 +585,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or text to begin with.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Last Name`],
+        example: dimension(t`Last Name`),
       },
       {
         get name() {
@@ -602,7 +602,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`This will be added to the end of \`$value2\`, and so on.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`First Name`],
+        example: dimension(t`First Name`),
       },
     ],
     docsPage: "concat",
@@ -622,7 +622,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`A column containing URLs`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`URL`],
+        example: dimension(t`URL`),
       },
     ],
   },
@@ -640,7 +640,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or text to search through.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Title`],
+        example: dimension(t`Title`),
       },
       {
         get name() {
@@ -680,7 +680,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or text you want to get the length of.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Comment`],
+        example: dimension(t`Comment`),
       },
     ],
   },
@@ -699,7 +699,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or text you want to trim.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Comment`],
+        example: dimension(t`Comment`),
       },
     ],
   },
@@ -717,7 +717,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or text you want to trim.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Comment`],
+        example: dimension(t`Comment`),
       },
     ],
   },
@@ -735,7 +735,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or text you want to trim.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Comment`],
+        example: dimension(t`Comment`),
       },
     ],
   },
@@ -754,7 +754,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The URL or Email column to extract the host from.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Email`],
+        example: dimension(t`Email`),
       },
     ],
   },
@@ -773,7 +773,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The URL or Email column to extract domain names from.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Email`],
+        example: dimension(t`Email`),
       },
     ],
   },
@@ -792,7 +792,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The URL column to extract the subdomain from.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`ProfileImage`],
+        example: dimension(t`ProfileImage`),
       },
     ],
   },
@@ -811,7 +811,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`Column or expression giving the number of a month in the year, \`1\` to \`12\`.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Birthday Month`],
+        example: dimension(t`Birthday Month`),
       },
     ],
   },
@@ -830,7 +830,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`Column or expression giving the number of a quarter of the year, \`1\` to \`4\`.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Fiscal Quarter`],
+        example: dimension(t`Fiscal Quarter`),
       },
     ],
   },
@@ -849,7 +849,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`Column or expression giving the number of a day of the week, \`1\` to \`7\`. Which day is \`1\` is defined in your localization setting; default Sunday.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Weekday`],
+        example: dimension(t`Weekday`),
       },
     ],
   },
@@ -868,7 +868,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or number to return absolute (positive) value of.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Debt`],
+        example: dimension(t`Debt`),
       },
     ],
   },
@@ -886,7 +886,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or number to round down.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Price`],
+        example: dimension(t`Price`),
       },
     ],
   },
@@ -904,7 +904,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or number to round up.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Price`],
+        example: dimension(t`Price`),
       },
     ],
   },
@@ -923,7 +923,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or number to round to nearest integer.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Temperature`],
+        example: dimension(t`Temperature`),
       },
     ],
   },
@@ -941,7 +941,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or number to return square root value of.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Hypotenuse`],
+        example: dimension(t`Hypotenuse`),
       },
     ],
   },
@@ -959,7 +959,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or number raised to the exponent.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Length`],
+        example: dimension(t`Length`),
       },
       {
         get name() {
@@ -986,7 +986,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or number to return the natural logarithm value of.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Value`],
+        example: dimension(t`Value`),
       },
     ],
   },
@@ -1005,7 +1005,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or expression with your datetime value.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Created At`],
+        example: dimension(t`Created At`),
       },
       {
         get name() {
@@ -1015,7 +1015,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or expression with your datetime value.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Shipped At`],
+        example: dimension(t`Shipped At`),
       },
       {
         get name() {
@@ -1044,7 +1044,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or number to return the exponential value of.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Interest Months`],
+        example: dimension(t`Interest Months`),
       },
     ],
   },
@@ -1063,7 +1063,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or text to check.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Title`],
+        example: dimension(t`Title`),
       },
       {
         get name() {
@@ -1110,7 +1110,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or text to check.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Title`],
+        example: dimension(t`Title`),
       },
       {
         get name() {
@@ -1157,7 +1157,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or text to check.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Title`],
+        example: dimension(t`Title`),
       },
       {
         get name() {
@@ -1204,7 +1204,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or text to check.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Title`],
+        example: dimension(t`Title`),
       },
       {
         get name() {
@@ -1251,7 +1251,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The date or numeric column that should be within the start and end values.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Created At`],
+        example: dimension(t`Created At`),
       },
       {
         get name() {
@@ -1314,7 +1314,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The date column to return interval of.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Created At`],
+        example: dimension(t`Created At`),
       },
       {
         get name() {
@@ -1323,7 +1323,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Period of interval, where negative values are back in time.`;
         },
-        example: "-1",
+        example: -1,
       },
       {
         get name() {
@@ -1351,7 +1351,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The date column to check.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Created At`],
+        example: dimension(t`Created At`),
       },
       {
         get name() {
@@ -1431,7 +1431,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column to check.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Discount`],
+        example: dimension(t`Discount`),
       },
     ],
     docsPage: "isnull",
@@ -1450,7 +1450,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column to check.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Discount`],
+        example: dimension(t`Discount`),
       },
     ],
   },
@@ -1468,7 +1468,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column to check.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Name`],
+        example: dimension(t`Name`),
       },
     ],
     docsPage: "isempty",
@@ -1487,7 +1487,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column to check.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Name`],
+        example: dimension(t`Name`),
       },
     ],
   },
@@ -1506,7 +1506,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or value to return.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Comments`],
+        example: dimension(t`Comments`),
       },
       {
         get name() {
@@ -1516,7 +1516,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`If \`$value1\` is empty, \`$value2\` gets returned if its not empty.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Notes`],
+        example: dimension(t`Notes`),
       },
       {
         name: "…",
@@ -1545,7 +1545,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`Something that should evaluate to \`true\` or \`false\`.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: [">", ["dimension", t`Weight`], 200],
+        example: op(">", dimension(t`Weight`), 200),
       },
       {
         get name() {
@@ -1566,7 +1566,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: [
           "args",
           // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-          [[">", ["dimension", t`Weight`], 150], t`Medium`, t`Small`],
+          [op(">", dimension(t`Weight`), 150), t`Medium`, t`Small`],
         ],
       },
     ],
@@ -1587,7 +1587,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`Something that should evaluate to \`true\` or \`false\`.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: [">", ["dimension", t`Weight`], 200],
+        example: op(">", dimension(t`Weight`), 200),
       },
       {
         get name() {
@@ -1608,7 +1608,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: [
           "args",
           // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-          [[">", ["dimension", t`Weight`], 150], t`Medium`, t`Small`],
+          [op(">", dimension(t`Weight`), 150), t`Medium`, t`Small`],
         ],
       },
     ],
@@ -1628,7 +1628,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or value to check.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Category`],
+        example: dimension(t`Category`),
       },
       {
         get name() {
@@ -1664,7 +1664,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column or value to check.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Category`],
+        example: dimension(t`Category`),
       },
       {
         get name() {
@@ -1699,7 +1699,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The datetime column.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Created At`],
+        example: dimension(t`Created At`),
       },
     ],
   },
@@ -1718,7 +1718,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The datetime column.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Created At`],
+        example: dimension(t`Created At`),
       },
     ],
   },
@@ -1737,7 +1737,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The datetime column.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Created At`],
+        example: dimension(t`Created At`),
       },
     ],
   },
@@ -1755,7 +1755,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The name of the column with your date or datetime value.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Created At`],
+        example: dimension(t`Created At`),
       },
       {
         get name() {
@@ -1790,7 +1790,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The datetime column.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Created At`],
+        example: dimension(t`Created At`),
       },
     ],
   },
@@ -1809,7 +1809,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The datetime column.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Created At`],
+        example: dimension(t`Created At`),
       },
     ],
   },
@@ -1828,7 +1828,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The datetime column.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Created At`],
+        example: dimension(t`Created At`),
       },
     ],
   },
@@ -1847,7 +1847,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The datetime column.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Created At`],
+        example: dimension(t`Created At`),
       },
     ],
   },
@@ -1866,7 +1866,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The datetime column.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Created At`],
+        example: dimension(t`Created At`),
       },
     ],
   },
@@ -1884,7 +1884,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column with your date or timestamp values.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Created At`],
+        example: dimension(t`Created At`),
       },
       {
         get name() {
@@ -1922,7 +1922,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`The column with your date or timestamp values.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Created At`],
+        example: dimension(t`Created At`),
       },
       {
         get name() {
@@ -1987,7 +1987,7 @@ We support tz database time zone names.`,
           return t`The column with your date or timestamp values.`;
         },
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: ["dimension", t`Created At`],
+        example: dimension(t`Created At`),
       },
       {
         get name() {
@@ -2082,6 +2082,15 @@ function toExpressionParts(
     // @ts-expect-error: we don't handle all the cases here.
     args: args.map(toExpressionParts),
   };
+}
+
+function op(operator: Lib.ExpressionOperator, ...args: unknown[]): Expression {
+  // @ts-expect-error: temporary until we have a better type for args.
+  return [operator, {}, ...args];
+}
+
+function dimension(name: string): Expression {
+  return ["dimension", name];
 }
 
 export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
