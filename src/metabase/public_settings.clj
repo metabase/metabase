@@ -1013,13 +1013,6 @@ See [fonts](../configuring-metabase/fonts.md).")
   :default    true
   :type       :boolean)
 
-(defsetting query-analysis-enabled
-  (deferred-tru "Whether or not we analyze any queries at all")
-  :visibility :admin
-  :export?    false
-  :default    false
-  :type       :boolean)
-
 ;;; TODO -- move the search-related settings into the `:search` module. Only settings used across the entire application
 ;;; should live in this namespace.
 

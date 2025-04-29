@@ -458,11 +458,6 @@
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
-(defmethod sql.qp/->honeysql [:snowflake :integer]
-  [driver [_ arg]]
-  ;; BIGINT is an alias for NUMBER
-  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver arg)))
-
 (defmethod sql.qp/->honeysql [:snowflake :split-part]
   [driver [_ text divider position]]
   (let [position (sql.qp/->honeysql driver position)]

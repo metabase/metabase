@@ -11,7 +11,7 @@
     (mt/user-http-request :lucky :get 403 "logger/presets"))
   (testing "admins have access"
     (is (=? [{:id "sync"
-              :display_name "Sync issue"
+              :display_name "Sync issue troubleshooting"
               :loggers #(every? (every-pred :name :level) %)}]
             (mt/user-http-request :crowberto :get 200 "logger/presets")))))
 
