@@ -21,10 +21,9 @@ const MetabotQuestionInner = () => {
         onRedirectUrl={setRedirectUrl}
         onMessages={setMessages}
       />
-      {messages.length > 0 &&
-        messages.map((message, index) => (
-          <Message key={index} message={message} />
-        ))}
+      {messages.map((message, index) => (
+        <Message key={index} message={message} />
+      ))}
       {redirectUrl && (
         <InteractiveAdHocQuestion
           questionPath={redirectUrl}
