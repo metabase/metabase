@@ -411,7 +411,7 @@
    ```
 
    Arguments:
-   /jso- context: The new context to use
+   - context: The new context to use
    - blockParam: Optional block parameter name to define reference"}
     {:name "lookup"
      :doc  "Looks up a value in an object or array using dynamic parameter resolution.
