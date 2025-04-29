@@ -1,4 +1,4 @@
-import { type ChangeEvent, useState } from "react";
+import { type ChangeEvent, type FormEvent, useState } from "react";
 import { t } from "ttag";
 
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
@@ -6,7 +6,7 @@ import { deserializeStringParameterValue } from "metabase/querying/parameters/ut
 import { Box, MultiAutocomplete, TextInput } from "metabase/ui";
 import type { Parameter, ParameterValueOrArray } from "metabase-types/api";
 
-import { Footer, WidgetLabel, WidgetRoot } from "../Widget";
+import { Footer, WidgetLabel } from "../Widget";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 
 type StringInputWidgetProps = {
@@ -43,12 +43,22 @@ export function StringInputWidget({
     setUnsavedValue(trimmedInputValue.length > 0 ? [trimmedInputValue] : []);
   };
 
-  const handleUpdateClick = () => {
+  const handleValueSubmit = () => {
     setValue(unsavedValue.length > 0 ? unsavedValue : undefined);
   };
 
+  const handleFormSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    handleValueSubmit();
+  };
+
   return (
-    <WidgetRoot className={className} w={WIDTH}>
+    <Box
+      component="form"
+      className={className}
+      w={WIDTH}
+      onSubmit={handleFormSubmit}
+    >
       {label && <WidgetLabel>{label}</WidgetLabel>}
       <Box m="sm">
         {isMultiSelect ? (
@@ -75,9 +85,9 @@ export function StringInputWidget({
           defaultValue={parameter.default}
           isValueRequired={parameter.required ?? false}
           isValid
-          onClick={handleUpdateClick}
+          onClick={handleValueSubmit}
         />
       </Footer>
-    </WidgetRoot>
+    </Box>
   );
 }

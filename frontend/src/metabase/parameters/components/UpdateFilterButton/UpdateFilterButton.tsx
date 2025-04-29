@@ -30,6 +30,7 @@ export function UpdateFilterButton(props: UpdateButtonProps) {
 
   return (
     <Button
+      type="submit"
       disabled={isDisabled || !isValid}
       onClick={onClick}
       variant="filled"

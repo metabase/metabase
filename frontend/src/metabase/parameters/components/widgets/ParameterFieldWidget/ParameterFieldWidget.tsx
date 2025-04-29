@@ -1,10 +1,11 @@
 import cx from "classnames";
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
+import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import {
@@ -15,7 +16,8 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import type { Dashboard, RowValue } from "metabase-types/api";
 
-import { Footer, WidgetRoot } from "../Widget";
+import { Footer } from "../Widget";
+import { MIN_WIDTH } from "../constants";
 
 import FieldValuesWidget from "./FieldValuesWidget";
 import { normalizeValue } from "./normalizeValue";
@@ -55,8 +57,17 @@ export function ParameterFieldWidget({
     unsavedValue.every((value) => value != null) &&
     (supportsMultipleValues || unsavedValue.length === numFields);
 
+  const handleValueSubmit = () => {
+    setValue(unsavedValue);
+  };
+
+  const handleFormSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    handleValueSubmit();
+  };
+
   return (
-    <WidgetRoot>
+    <Box component="form" miw={MIN_WIDTH} onSubmit={handleFormSubmit}>
       <div className={CS.p1}>
         {verboseName && !isEqualsOp && (
           <div className={cx(CS.textBold, CS.mb1)}>{verboseName}...</div>
@@ -104,9 +115,9 @@ export function ParameterFieldWidget({
           defaultValue={parameter.default}
           isValueRequired={parameter.required ?? false}
           isValid={isValid}
-          onClick={() => setValue(unsavedValue)}
+          onClick={handleValueSubmit}
         />
       </Footer>
-    </WidgetRoot>
+    </Box>
   );
 }
