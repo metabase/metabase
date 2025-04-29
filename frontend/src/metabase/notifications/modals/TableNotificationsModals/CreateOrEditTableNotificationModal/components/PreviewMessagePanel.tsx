@@ -17,7 +17,6 @@ import type { PreviewNotificationTemplateResponse } from "metabase-types/api";
 import S from "./PreviewMessagePanel.module.css";
 
 interface PreviewMessagePanelProps {
-  opened: boolean;
   onClose: () => void;
   isLoading: boolean;
   error: any;
@@ -25,16 +24,11 @@ interface PreviewMessagePanelProps {
 }
 
 export const PreviewMessagePanel = ({
-  opened,
   onClose,
   isLoading,
   error,
   previewContent,
 }: PreviewMessagePanelProps) => {
-  if (!opened) {
-    return null;
-  }
-
   const htmlContent = previewContent?.body?.[0]?.content;
 
   return (
