@@ -138,7 +138,4 @@ const raiseError = (message: string) => {
 const warn = (...messages: unknown[]) =>
   console.warn("[metabase.embed.warning]", ...messages);
 
-// Initialize the global object
-(window as any)["metabase.embed"] = { MetabaseEmbed };
-
 export { MetabaseEmbed };
