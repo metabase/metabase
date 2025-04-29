@@ -5,8 +5,8 @@ import type {
   RawSeries,
   VisualizerColumnReference,
   VisualizerDataSource,
-  VisualizerVizDefinition,
 } from "metabase-types/api";
+import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
 import {
   copyColumn,
@@ -60,7 +60,7 @@ function mapColumnVizSettings(
 function processColumnsForDataSource(
   dataSource: VisualizerDataSource,
   columns: DatasetColumn[],
-  state: VisualizerVizDefinition,
+  state: VisualizerVizDefinitionWithColumns,
 ): ColumnInfo[] {
   const columnInfos: ColumnInfo[] = [];
 
@@ -93,7 +93,7 @@ function processColumnsForDataSource(
 export function getInitialStateForMultipleSeries(rawSeries: RawSeries) {
   const mainCard = rawSeries[0].card;
 
-  const state: VisualizerVizDefinition = {
+  const state: VisualizerVizDefinitionWithColumns = {
     display: mainCard.display,
     columns: [],
     columnValuesMapping: {},

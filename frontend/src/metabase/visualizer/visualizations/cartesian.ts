@@ -27,13 +27,15 @@ import type {
   VisualizerColumnReference,
   VisualizerDataSource,
   VisualizerDataSourceId,
-  VisualizerVizDefinition,
 } from "metabase-types/api";
+import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
 import { removeColumnFromStateUnlessUsedElseWhere } from "./utils";
 
 export const cartesianDropHandler = (
-  state: Draft<VisualizerVizDefinition> | VisualizerVizDefinition,
+  state:
+    | Draft<VisualizerVizDefinitionWithColumns>
+    | VisualizerVizDefinitionWithColumns,
   { active, over }: DragEndEvent,
   {
     dataSourceMap,
@@ -96,7 +98,7 @@ export const cartesianDropHandler = (
 };
 
 export function replaceMetricColumnAsScatterBubbleSize(
-  state: VisualizerVizDefinition,
+  state: VisualizerVizDefinitionWithColumns,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataSource: VisualizerDataSource,
@@ -132,7 +134,7 @@ export function replaceMetricColumnAsScatterBubbleSize(
 }
 
 export function addMetricColumnToCartesianChart(
-  state: VisualizerVizDefinition,
+  state: VisualizerVizDefinitionWithColumns,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataSource: VisualizerDataSource,
@@ -158,7 +160,7 @@ export function addMetricColumnToCartesianChart(
 }
 
 export function addDimensionColumnToCartesianChart(
-  state: VisualizerVizDefinition,
+  state: VisualizerVizDefinitionWithColumns,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataSource: VisualizerDataSource,
@@ -189,7 +191,9 @@ export function addDimensionColumnToCartesianChart(
  * If the column is already in use, it will not be added again.
  */
 export function addColumnToCartesianChart(
-  state: Draft<VisualizerVizDefinition> | VisualizerVizDefinition,
+  state:
+    | Draft<VisualizerVizDefinitionWithColumns>
+    | VisualizerVizDefinitionWithColumns,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataset: Dataset,
@@ -250,7 +254,7 @@ export function addColumnToCartesianChart(
  * @param columnName the column to remove
  */
 export function removeBubbleSizeFromCartesianChart(
-  state: VisualizerVizDefinition,
+  state: VisualizerVizDefinitionWithColumns,
   columnName: string,
 ) {
   if (state.settings["scatter.bubble"] === columnName) {
@@ -271,7 +275,7 @@ export function removeBubbleSizeFromCartesianChart(
  * @param columnName the column to remove
  */
 export function removeColumnFromCartesianChart(
-  state: VisualizerVizDefinition,
+  state: VisualizerVizDefinitionWithColumns,
   columnName: string,
 ) {
   const isMultiseries =
@@ -309,7 +313,7 @@ export function removeColumnFromCartesianChart(
 }
 
 function removeDimensionFromMultiSeriesChart(
-  state: VisualizerVizDefinition,
+  state: VisualizerVizDefinitionWithColumns,
   columnName: string,
 ) {
   const originalDimensions = [...(state.settings["graph.dimensions"] ?? [])];
@@ -346,7 +350,9 @@ function removeDimensionFromMultiSeriesChart(
 }
 
 export function maybeImportDimensionsFromOtherDataSources(
-  state: Draft<VisualizerVizDefinition> | VisualizerVizDefinition,
+  state:
+    | Draft<VisualizerVizDefinitionWithColumns>
+    | VisualizerVizDefinitionWithColumns,
   newDimension: DatasetColumn,
   datasetMap: Record<string, Dataset>,
   dataSourceMap: Record<string, VisualizerDataSource>,
@@ -383,7 +389,7 @@ export function maybeImportDimensionsFromOtherDataSources(
 }
 
 export function isCompatibleWithCartesianChart(
-  state: VisualizerVizDefinition,
+  state: VisualizerVizDefinitionWithColumns,
   { data }: Dataset,
 ) {
   const ownDimensions = state.settings["graph.dimensions"] ?? [];
@@ -417,7 +423,7 @@ export function isCompatibleWithCartesianChart(
 }
 
 export function combineWithCartesianChart(
-  state: VisualizerVizDefinition,
+  state: VisualizerVizDefinitionWithColumns,
   { data }: Dataset,
   dataSource: VisualizerDataSource,
 ) {

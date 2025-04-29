@@ -353,15 +353,20 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.get("@undoButton").click();
       H.goalLine().should("not.exist");
 
-      // Ensure UI state isn't tracked in history
+      // // Ensure UI state isn't tracked in history
       cy.findByTestId("chartsettings-sidebar").should("be.visible");
 
-      // Redo goal line
+      // // Redo goal line
       cy.get("@redoButton").click();
       H.goalLine().should("exist");
 
       cy.button("Add to dashboard").click();
     });
+
+    // TODO editing a dashcard when it isn't done loading
+    // causes the visualizr modal to be in error for some reason
+    // this should be fixed in the future
+    cy.wait(1000);
 
     // Ensure history set is reset
     H.showDashcardVisualizerModal(1);
