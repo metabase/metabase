@@ -26,7 +26,7 @@
   [^Float new-progress]
   {:pre [(float? new-progress) (<= 0.0 new-progress 1.0)]}
   (let [now (t/instant)]
-    (prn "TIME SINCE LAST STEP" (t/time-between @timing-atom now :millis))
+    (prn "Step: " new-progress "   TIME SINCE LAST STEP" (t/time-between @timing-atom now :millis))
     (reset! timing-atom now))
   (reset! progress-atom new-progress))
 
