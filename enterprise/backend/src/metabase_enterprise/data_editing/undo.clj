@@ -84,18 +84,22 @@
 (defn track-change!
   "Insert some snapshot data based on edits made to the given table."
   [user-id table-id->row-pk->old-new-values]
-  (t2/insert!
-   :model/Undo
-   (for [[table-id table-updates] table-id->row-pk->old-new-values
-         [row-pk [old new]] table-updates]
-     {:batch_num  (inc (or (t2/select-one-fn :max_batch_num [:model/Undo [[:max :batch_num] :max_batch_num]]) 0))
-      ;; Need to find an atomic solution that MySQL flavored databases support.
-      #_[:+ [:inline 1] [:coalesce {:from [(t2/table-name :model/Undo)] :select [[[:max :batch_num]]]} 0]]
-      :table_id   table-id
-      :user_id    user-id
-      :row_pk     row-pk
-      :raw_before old
-      :raw_after  new}))
+  (t2/with-transaction [_conn]
+    (let [seq-name       "undo_batch_num"
+          next-batch-num (or (t2/select-one-fn :next_val [:sequences :next_val] :name seq-name {:for :update}) 1)]
+      (t2/update! :sequences {:name seq-name} {:next_val (inc next-batch-num)})
+      (t2/insert!
+       :model/Undo
+       (for [[table-id table-updates] table-id->row-pk->old-new-values
+             [row-pk [old new]] table-updates]
+         {:batch_num  next-batch-num
+          ;; Need to find an atomic solution that MySQL flavored databases support.
+          #_[:+ [:inline 1] [:coalesce {:from [(t2/table-name :model/Undo)] :select [[[:max :batch_num]]]} 0]]
+          :table_id   table-id
+          :user_id    user-id
+          :row_pk     row-pk
+          :raw_before old
+          :raw_after  new}))))
   ;; We do this in multiple statements because:
   ;; - it's much simpler
   ;; - typically there is only one table, and this is more efficient in that case

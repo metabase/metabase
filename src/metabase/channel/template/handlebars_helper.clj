@@ -1,5 +1,5 @@
 (ns metabase.channel.template.handlebars-helper
-  (:refer-clojure :exclude [count])
+  (:refer-clojure :exclude [count empty])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
