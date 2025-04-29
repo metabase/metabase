@@ -15,10 +15,10 @@
      * @param {object} options
      * @param {string} options.instanceUrl
      * @param {string | HTMLElement} options.target
-     * @param {string} options.iframeClassName
      * @param {string} options.apiKey
-     * @param {string} options.resourceType
-     * @param {string} options.resourceId
+     * @param {string | undefined} options.iframeClassName
+     * @param {string | number | undefined} options.dashboardId
+     * @param {string | number | undefined} options.questionId
      */
     constructor(options) {
       /** @type {string} */
@@ -27,7 +27,7 @@
       /** @type {string | HTMLElement} */
       this.target = options.target;
 
-      /** @type {string} */
+      /** @type {string | undefined} */
       this.iframeClassName = options.iframeClassName;
 
       /** @type {string} */
@@ -138,7 +138,6 @@
         this.updateSettings(this.embedSettings);
 
         // TODO: implement SSO-based authentication once the new SSO implementation on the SDK is ready
-        //       we use API keys for now
         this._sendMessage("metabase.embed.authenticate", {
           apiKey: this.apiKey,
           metabaseInstanceUrl: this.instanceUrl,
