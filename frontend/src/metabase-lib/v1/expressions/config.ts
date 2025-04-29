@@ -1,8 +1,6 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 
-import type * as Lib from "metabase-lib";
-
 import {
   MBQLClauseCategory as CATEGORY,
   type MBQLClauseDefinition,
@@ -29,19 +27,12 @@ function defineClauses<const T extends Record<string, MBQLClauseDefinition>>(
   return result;
 }
 
-function op(
-  operator: string,
-  ...args: (Lib.ExpressionParts | Lib.ExpressionArg)[]
-): Lib.ExpressionParts {
-  return {
-    operator: operator as Lib.ExpressionOperator,
-    options: {},
-    args,
-  };
+function op(operator: string, ...args: unknown[]): any {
+  return { operator, options: {}, args };
 }
 
-function dimension(name: string): Lib.ExpressionParts {
-  return op("dimension" as Lib.ExpressionOperator, name);
+function dimension(name: string) {
+  return op("dimension", name);
 }
 
 const WINDOW = defineClauses(
