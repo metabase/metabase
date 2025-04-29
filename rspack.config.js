@@ -389,6 +389,15 @@ const iframeEmbedConfig = {
     globalObject: 'this',
     library: { name: 'metabase.embed', type: 'umd', export: 'default' },
   },
+  module: {
+    rules: [
+      {
+        test: /\.(ts|js)$/,
+        use: [SWC_LOADER],
+        type: "javascript/auto",
+      },
+    ],
+  },
   optimization: { splitChunks: false, runtimeChunk: false },
   devtool: false,
 }
