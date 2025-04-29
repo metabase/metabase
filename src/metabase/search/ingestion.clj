@@ -118,14 +118,14 @@
   "Update all active engines' existing indexes with the given documents. Passed remove-documents will be deleted from the index."
   [documents-reducible removed-models-reducible]
   (doseq [e (seq (search.engine/active-engines))]
-    (u/prog1
-      ;; We are partitioning the documents into batches at this level and sending each batch to all the engines
-      ;; to avoid having to retain the head of the sequences as we work through all the documents.
-      ;; Individual engines may also partition the documents further if they prefer
-      (search.engine/update! e (eduction (partition-all 150) documents-reducible))
-      (doseq [batch (eduction (partition-all 1000) removed-models-reducible)]
-        (doseq [[group ids] (u/group-by first second batch)]
-          (search.engine/delete! e group ids))))))
+    ;; We are partitioning the documents into batches at this level and sending each batch to all the engines
+    ;; to avoid having to retain the head of the sequences as we work through all the documents.
+    ;; Individual engines may also partition the documents further if they prefer
+    (reduce (fn [_ batch] (search.engine/update! e batch)) nil
+            (eduction (partition-all 150) documents-reducible))
+    (reduce (fn [_ batch] (doseq [[group ids] (u/group-by first second batch)]
+                            (search.engine/delete! e group ids))) nil
+            (eduction (partition-all 1000) removed-models-reducible))))
 
 (defn- extract-model-and-id
   ([update]
