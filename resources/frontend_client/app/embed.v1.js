@@ -4,7 +4,7 @@
   const error = (...messages) => console.error("[mb:embed:error]", ...messages);
   const debug = (...messages) => console.debug("[mb:embed:debug]", ...messages);
 
-  const EMBEDDING_ROUTE = "embed/v2/interactive";
+  const EMBEDDING_ROUTE = "embed/v2";
 
   /** @typedef {{embedResourceType: string, embedResourceId: string, theme: object}} EmbedSettings */
 
