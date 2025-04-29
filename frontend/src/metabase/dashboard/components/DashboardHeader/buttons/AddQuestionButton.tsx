@@ -29,6 +29,10 @@ export const AddQuestionButton = () => {
         id: "dashboard-add-native-question",
         perform: () => dispatch(addDashboardQuestion("native")),
       },
+      {
+        id: "dashboard-toggle-add-question-sidepanel",
+        perform: () => dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion)),
+      },
     ],
     [sidebarOpen],
   );

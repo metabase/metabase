@@ -204,12 +204,12 @@
   unit."
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential {:min 2} ::lib.schema.metadata/column]]
-  (or (when-let [temporal-bucket (lib.temporal-bucket/raw-temporal-bucket a-ref)]
-        (let [matching-columns (filter (fn [col]
-                                         (= (lib.temporal-bucket/raw-temporal-bucket col) temporal-bucket))
-                                       columns)]
-          (when (= (count matching-columns) 1)
-            (first matching-columns))))
+  (or (let [temporal-bucket (lib.temporal-bucket/raw-temporal-bucket a-ref)
+            matching-columns (filter (fn [col]
+                                       (= (lib.temporal-bucket/raw-temporal-bucket col) temporal-bucket))
+                                     columns)]
+        (when (= (count matching-columns) 1)
+          (first matching-columns)))
       (disambiguate-matches-find-match-with-same-binning a-ref columns)))
 
 (mu/defn- disambiguate-matches-prefer-explicit :- [:maybe ::lib.schema.metadata/column]

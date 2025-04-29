@@ -732,7 +732,7 @@
     ;; Does this driver support sandboxing with saved questions?
     :saved-question-sandboxing
 
-    ;; Does this driver support casting text to integers? (`integer()` custom expression function)
+    ;; Does this driver support casting text and floats to integers? (`integer()` custom expression function)
     :expressions/integer
 
     ;; Does this driver support casting values to text? (`text()` custom expression function)

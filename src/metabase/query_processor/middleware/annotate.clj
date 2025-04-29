@@ -562,7 +562,8 @@
 
   (for [col cols]
     (cond-> col
-      ;; Check that the ident isn't already set for this model, to avoid "double-bagging".
+      ;; Check that the ident isn't already set for the source model, to avoid "double-bagging".
+      ;; That only applies to `:source :fields` columns though - not expressions, aggregations, etc.
       (not (lib/valid-model-ident? col card-entity-id))
       (lib/add-model-ident card-entity-id))))
 
@@ -579,14 +580,14 @@
       source-query
       (cond-> (cols-for-source-query inner-query outer-query results)
         true       (u/prog1 #_sq-cols (qp.debug/debug> [`cols-for-source-query <>]))
-        (seq cols) ((fn [sq-cols]
-                      (u/prog1 (flow-field-metadata sq-cols cols model?)
-                        (qp.debug/debug> [`flow-field-metadata 'sq-cols sq-cols 'cols cols 'model? model? '=>
-                                          ^{:portal.viewer/default :portal.viewer/diff}
-                                          [(vec sq-cols) (vec <>)]]))))
         model?     ((fn [sq-cols]
                       (u/prog1 (idents-for-model sq-cols entity-id)
                         (qp.debug/debug> [`idents-for-model entity-id sq-cols '=>
+                                          ^{:portal.viewer/default :portal.viewer/diff}
+                                          [(vec sq-cols) (vec <>)]]))))
+        (seq cols) ((fn [sq-cols]
+                      (u/prog1 (flow-field-metadata sq-cols cols model?)
+                        (qp.debug/debug> [`flow-field-metadata 'sq-cols sq-cols 'cols cols 'model? model? '=>
                                           ^{:portal.viewer/default :portal.viewer/diff}
                                           [(vec sq-cols) (vec <>)]])))))
 

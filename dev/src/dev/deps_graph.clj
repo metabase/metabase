@@ -220,15 +220,19 @@
           static-deps  (ns.parse/deps-from-ns-decl decl)
           dynamic-deps (for [symb (find-dynamically-loaded-namespaces file)]
                          (vary-meta symb assoc ::dynamic :require-and-friends))
-          defenterprise-deps (for [symb (find-defenterprises file)]
-                               (vary-meta symb assoc ::dynamic :defenterprise))
-          defenterprise-schema-deps (for [symb (find-defenterprise-schemas file)]
-                                      (vary-meta symb assoc ::dynamic :defenterprise-schema))
+          ;;
+          ;; excluded from the diff for now, see https://metaboat.slack.com/archives/C0669P4AF9N/p1745875106092029 for
+          ;; rationale.
+          ;;
+          ;; defenterprise-deps (for [symb (find-defenterprises file)]
+          ;;                      (vary-meta symb assoc ::dynamic :defenterprise))
+          ;; defenterprise-schema-deps (for [symb (find-defenterprise-schemas file)]
+          ;;                             (vary-meta symb assoc ::dynamic :defenterprise-schema))
           deps         (into (sorted-set) cat
                              [static-deps
                               dynamic-deps
-                              defenterprise-deps
-                              defenterprise-schema-deps])]
+                              #_defenterprise-deps
+                              #_defenterprise-schema-deps])]
       {:namespace ns-symb
        :module    (module ns-symb)
        :deps      (sort-by pr-str
