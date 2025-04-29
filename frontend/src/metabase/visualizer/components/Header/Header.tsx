@@ -47,12 +47,7 @@ export function Header({
 
   const handleSave = () => {
     onSave(
-      _.pick(visualizerState, [
-        "display",
-        "columns",
-        "columnValuesMapping",
-        "settings",
-      ]),
+      _.pick(visualizerState, ["display", "columnValuesMapping", "settings"]),
     );
   };
 

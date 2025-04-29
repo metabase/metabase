@@ -68,8 +68,10 @@ import type {
   CardId,
   Dashboard,
   DashboardCard,
+  DatasetQuery,
   RawSeries,
   Series,
+  SingleSeries,
   TimelineEvent,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -141,7 +143,12 @@ type VisualizationOwnProps = {
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
   onEditSummary?: () => void;
   query?: NativeQuery;
-  rawSeries?: RawSeries;
+  rawSeries?: (
+    | SingleSeries
+    | {
+        card: Card<DatasetQuery>;
+      }
+  )[];
   visualizerRawSeries?: RawSeries;
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
@@ -329,7 +336,10 @@ class Visualization extends PureComponent<
     if (state.series && state.series[0].card.display !== "table") {
       warnings = warnings.concat(
         rawSeries
-          .filter((s) => s.data && s.data.rows_truncated != null)
+          .filter(
+            (s): s is SingleSeries =>
+              "data" in s && s.data && s.data.rows_truncated != null,
+          )
           .map(
             (s) =>
               t`Data truncated to ${formatNumber(s.data.rows_truncated)} rows.`,

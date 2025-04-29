@@ -1,5 +1,4 @@
 import type {
-  DatasetColumn,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -30,7 +29,6 @@ export type VisualizerColumnValueSource =
 
 export type VisualizerVizDefinition = {
   display: VisualizationDisplay | null;
-  columns: DatasetColumn[];
   columnValuesMapping: Record<string, VisualizerColumnValueSource[]>;
   settings: VisualizationSettings;
 };
