@@ -7,7 +7,7 @@ summary: "Metabase uses both data and semantic types to understand how to format
 
 # Data and field types
 
-Metabase distinguishes between two types of column metadata: data types and field types.
+Metabase distinguishes between two types of column metadata: **data types** and **field types**.
 
 - [**Data types**](#data-types) are the underlying column type as defined in your database, like `Date` or `Text`. Metabase reads the data types during the [database sync process](../databases/sync-scan.md).
 - [**Semantic types**](#semantic-types), also called **field types**, are labels that describe how the data should be interpreted. For example, if you have a column with a data type of `Text` that you use to store emails, you can add a semantic type of `Email` to let people (and Metabase) know what kind of text the column stores.
