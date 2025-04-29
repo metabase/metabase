@@ -366,7 +366,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     // TODO editing a dashcard when it isn't done loading
     // causes the visualizr modal to be in error for some reason
     // this should be fixed in the future
-    cy.wait(250);
+    cy.wait(1000);
 
     // Ensure history set is reset
     H.showDashcardVisualizerModal(1);
