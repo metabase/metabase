@@ -107,7 +107,6 @@ const config = {
     "app-embed": "./app-embed.js",
     "vendor-styles": "./css/vendor.css",
     styles: "./css/index.module.css",
-    "iframe-sdk-embed-v1": ENTERPRISE_SRC_PATH + "/embedding_iframe_sdk/embed.v1.ts",
   },
 
   // we override it for dev mode below
