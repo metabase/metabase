@@ -9,7 +9,6 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SwagButton } from "metabase/admin/settings/components/Swag/SwagButton";
-import { UpsellSSO } from "metabase/admin/upsells";
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { useGetSettingQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
@@ -277,25 +276,9 @@ class SettingsEditor extends Component {
     );
   }
 
-  renderUpsell() {
-    const upsell =
-      this.props.activeSectionName === "authentication" ? (
-        <UpsellSSO source="authentication-sidebar" />
-      ) : null;
-
-    if (!upsell) {
-      return null;
-    }
-
-    return <Box style={{ flexShrink: 0 }}>{upsell}</Box>;
-  }
-
   render() {
     return (
-      <AdminLayout
-        sidebar={this.renderSettingsSections()}
-        upsell={this.renderUpsell()}
-      >
+      <AdminLayout sidebar={this.renderSettingsSections()}>
         <Box w="100%">
           <SaveStatus ref={this.saveStatusRef} />
           <ErrorBoundary>{this.renderSettingsPane()}</ErrorBoundary>

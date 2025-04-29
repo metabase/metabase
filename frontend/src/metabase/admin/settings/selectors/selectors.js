@@ -8,7 +8,6 @@ import { UpsellWhitelabel } from "metabase/admin/upsells";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS,
-  PLUGIN_ADMIN_SETTINGS_AUTH_TABS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
@@ -22,6 +21,7 @@ import {
   StaticEmbeddingSettings,
 } from "../components/EmbeddingSettings";
 import SettingsLicense from "../components/SettingsLicense";
+import { AuthenticationSettingsPage } from "../components/SettingsPages/AuthenticationSettingsPage";
 import { EmailSettingsPage } from "../components/SettingsPages/EmailSettingsPage";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
 import { PublicSharingSettingsPage } from "../components/SettingsPages/PublicSharingSettingsPage";
@@ -143,15 +143,22 @@ export const ADMIN_SETTINGS_SECTIONS = {
   authentication: {
     name: t`Authentication`,
     order: 60,
-    key: "authentication",
-    tabs:
-      PLUGIN_ADMIN_SETTINGS_AUTH_TABS.length <= 1
-        ? undefined
-        : PLUGIN_ADMIN_SETTINGS_AUTH_TABS.map((tab) => ({
-            ...tab,
-            isActive: tab.key === "authentication",
-          })),
-    settings: [], // added by plugins
+    component: () => <AuthenticationSettingsPage tab="authentication" />,
+    settings: [],
+    adminOnly: true,
+  },
+  "authentication/user-provisioning": {
+    name: t`Authentication`,
+    order: 61,
+    component: () => <AuthenticationSettingsPage tab="user-provisioning" />,
+    settings: [],
+    adminOnly: true,
+  },
+  "authentication/api-keys": {
+    name: t`Authentication`,
+    order: 62,
+    component: () => <AuthenticationSettingsPage tab="api-keys" />,
+    settings: [],
     adminOnly: true,
   },
   maps: {

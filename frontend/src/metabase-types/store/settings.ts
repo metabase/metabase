@@ -1,6 +1,6 @@
-import type { Settings } from "metabase-types/api";
+import type { EnterpriseSettings } from "metabase-types/api";
 
 export interface SettingsState {
-  values: Settings;
+  values: EnterpriseSettings;
   loading: boolean;
 }
