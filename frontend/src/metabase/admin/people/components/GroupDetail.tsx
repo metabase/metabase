@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Fragment, useEffect, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
@@ -16,6 +15,8 @@ import {
 import { connect } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
+import type { Group, Member, User } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import {
   createMembership,
@@ -27,7 +28,11 @@ import { getGroupMemberships, getMembershipsByUser } from "../selectors";
 
 import GroupMembersTable from "./GroupMembersTable";
 
-const GroupDescription = ({ group }) =>
+interface GroupDescriptionProps {
+  group: Group;
+}
+
+const GroupDescription = ({ group }: GroupDescriptionProps) =>
   isDefaultGroup(group) ? (
     <div className={cx(CS.px2, CS.textMeasure)}>
       <p>
@@ -49,13 +54,43 @@ const GroupDescription = ({ group }) =>
     </div>
   ) : null;
 
-const mapStateToProps = (state, props) => ({
+interface GroupDetailStateProps {
+  groupMemberships: Member[];
+  membershipsByUser: Record<User["id"], Member[]>;
+  currentUser: User | null;
+}
+
+interface GroupDetailOwnProps {
+  group: Group;
+  users: User[];
+}
+
+const mapStateToProps = (
+  state: State,
+  props: GroupDetailOwnProps,
+): GroupDetailStateProps => ({
+  // @ts-expect-error -- .js file imports with wrong type here, not worth fixing as we should just move to RTKQuery
   groupMemberships: getGroupMemberships(state, props),
   membershipsByUser: getMembershipsByUser(state),
   currentUser: getUser(state),
 });
 
-const mapDispatchToProps = {
+interface GroupDetailDispatchProps {
+  createMembership: (membership: { groupId: number; userId: number }) => void;
+  updateMembership: (membership: Member) => void;
+  deleteMembership: (membershipId: number) => void;
+  loadMemberships: () => void;
+  confirmDeleteMembershipAction: (
+    membershipId: number,
+    userMemberships: Member[],
+  ) => void;
+  confirmUpdateMembershipAction: (
+    membership: Member,
+    userMemberships: Member[],
+  ) => void;
+}
+
+const mapDispatchToProps: GroupDetailDispatchProps = {
   createMembership,
   deleteMembership,
   updateMembership,
@@ -72,7 +107,11 @@ const mapDispatchToProps = {
     ),
 };
 
-const GroupDetail = ({
+type GroupDetailProps = GroupDetailStateProps &
+  GroupDetailOwnProps &
+  GroupDetailDispatchProps;
+
+const GroupDetailInner = ({
   currentUser,
   group,
   users,
@@ -84,22 +123,22 @@ const GroupDetail = ({
   loadMemberships,
   confirmDeleteMembershipAction,
   confirmUpdateMembershipAction,
-}) => {
+}: GroupDetailProps) => {
   const { modalContent, show } = useConfirmation();
   const [addUserVisible, setAddUserVisible] = useState(false);
-  const [alertMessage, setAlertMessage] = useState(null);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
   useEffect(() => {
     loadMemberships();
   }, [loadMemberships]);
 
-  const alert = (alertMessage) => setAlertMessage(alertMessage);
+  const alert = (message: string | null) => setAlertMessage(message);
 
   const onAddUsersClicked = () => setAddUserVisible(true);
 
   const onAddUserCanceled = () => setAddUserVisible(false);
 
-  const onAddUserDone = async (userIds) => {
+  const onAddUserDone = async (userIds: number[]) => {
     setAddUserVisible(false);
     try {
       await Promise.all(
@@ -111,11 +150,18 @@ const GroupDetail = ({
         }),
       );
     } catch (error) {
-      alert(error && typeof error.data ? error.data : error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      alert(errorMessage);
     }
   };
 
-  const handleChange = async (membership) => {
+  const handleChange = async (membership: Member) => {
+    if (!currentUser) {
+      throw new Error("currentUser is not defined");
+      return;
+    }
+
     const confirmation = PLUGIN_GROUP_MANAGERS.getChangeMembershipConfirmation(
       currentUser,
       membership,
@@ -127,6 +173,7 @@ const GroupDetail = ({
 
     show({
       ...confirmation,
+      title: confirmation.title ?? "",
       onConfirm: () =>
         confirmUpdateMembershipAction(
           membership,
@@ -135,7 +182,12 @@ const GroupDetail = ({
     });
   };
 
-  const handleRemove = async (membershipId) => {
+  const handleRemove = async (membershipId: number) => {
+    if (!currentUser) {
+      throw new Error("currentUser is not defined");
+      return;
+    }
+
     const confirmation = PLUGIN_GROUP_MANAGERS.getRemoveMembershipConfirmation(
       currentUser,
       membershipsByUser[currentUser.id],
@@ -148,6 +200,7 @@ const GroupDetail = ({
 
     show({
       ...confirmation,
+      title: confirmation.title ?? "",
       onConfirm: () =>
         confirmDeleteMembershipAction(
           membershipId,
@@ -171,7 +224,7 @@ const GroupDetail = ({
         </Fragment>
       }
       buttonText={t`Add members`}
-      buttonAction={canEditMembership(group) ? onAddUsersClicked : null}
+      buttonAction={canEditMembership(group) ? onAddUsersClicked : undefined}
       buttonDisabled={addUserVisible}
     >
       <GroupDescription group={group} />
@@ -193,4 +246,7 @@ const GroupDetail = ({
   );
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(GroupDetail);
+export const GroupDetail = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(GroupDetailInner);

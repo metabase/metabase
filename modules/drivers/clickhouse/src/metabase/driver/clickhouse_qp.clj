@@ -344,6 +344,10 @@
   ;; casting in clickhouse does not properly handle NULL; this function does
   (h2x/with-database-type-info [:'toFloat64 value] :Float64))
 
+(defmethod sql.qp/->integer :clickhouse
+  [driver value]
+  (sql.qp/->integer-with-round driver value))
+
 (defmethod sql.qp/->honeysql [:clickhouse :value]
   [driver value]
   (let [[_ value {base-type :base_type}] value]
@@ -455,10 +459,6 @@
 (defmethod sql.qp/cast-temporal-byte [:clickhouse :Coercion/ISO8601->Time]
   [_driver _special_type expr]
   expr)
-
-(defmethod sql.qp/->honeysql [:clickhouse :integer]
-  [driver [_ value]]
-  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
 
 ;;; ------------------------------------------------------------------------------------
 ;;; JDBC-related functions

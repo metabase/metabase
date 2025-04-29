@@ -302,6 +302,7 @@
                   result)))))))
 
 (deftest array-query-can-be-cached-test
+  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :test/arrays)
                          :sqlite) ;; Disabling until issue #57301 is resolved
     (with-mock-cache! [save-chan]
