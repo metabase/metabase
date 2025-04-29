@@ -9,7 +9,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.token-check :as token-check]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]

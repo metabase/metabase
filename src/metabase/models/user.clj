@@ -10,10 +10,10 @@
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.setup.core :as setup]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -110,9 +110,9 @@
     (let [current-version (:tag config/mb-version-info)]
       (log/infof "Setting User %s's last_acknowledged_version to %s, the current version" user-id current-version)
       ;; Can't use mw.session/with-current-user due to circular require
-      (binding [api/*current-user-id*       user-id
-                setting/*user-local-values* (delay (atom (user-local-settings user)))]
-        (setting/set! :last-acknowledged-version current-version)))
+      (binding [api/*current-user-id* user-id]
+        (setting/with-user-local-values (delay (atom (user-local-settings user)))
+          (setting/set! :last-acknowledged-version current-version))))
     ;; add the newly created user to the magic perms groups.
     (log/infof "Adding User %s to All Users permissions group..." user-id)
     (when superuser?
@@ -121,8 +121,8 @@
                                 (when superuser? (perms/admin-group))])]
       (perms/allow-changing-all-users-group-members
         ;; do a 'simple' insert against the Table name so we don't trigger the after-insert behavior
-        ;; for [[metabase.permissions.models.permissions-group-membership]]... we don't want it recursively trying to update
-        ;; the user
+        ;; for [[metabase.permissions.models.permissions-group-membership]]... we don't want it recursively trying to
+        ;; update the user
         (t2/insert! (t2/table-name :model/PermissionsGroupMembership)
                     (for [group groups]
                       {:user_id  user-id

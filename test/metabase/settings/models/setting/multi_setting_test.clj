@@ -1,8 +1,8 @@
-(ns metabase.models.setting.multi-setting-test
+(ns metabase.settings.models.setting.multi-setting-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.setting :as setting]
-   [metabase.models.setting.multi-setting :as multi-setting]
+   [metabase.settings.models.setting :as setting]
+   [metabase.settings.models.setting.multi-setting :as multi-setting]
    [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db))

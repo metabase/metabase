@@ -77,7 +77,7 @@
     :model/Secret                            metabase.models.secret
     :model/Segment                           metabase.segments.models.segment
     :model/Session                           metabase.session.models.session
-    :model/Setting                           metabase.models.setting
+    :model/Setting                           metabase.settings.models.setting
     :model/Table                             metabase.models.table
     :model/TablePrivileges                   metabase.models.table-privileges
     :model/TaskHistory                       metabase.models.task-history
