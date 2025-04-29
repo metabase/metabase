@@ -3,7 +3,7 @@
 (function () {
   const error = (...messages) => console.error("[mb:embed:error]", ...messages);
 
-  const EMBEDDING_ROUTE = "embed/v2";
+  const EMBEDDING_ROUTE = "embed/sdk/v1";
 
   /** @typedef {{embedResourceType: string, embedResourceId: number | string, theme: object}} EmbedSettings */
 

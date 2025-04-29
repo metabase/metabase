@@ -11,7 +11,7 @@ export const getRoutes = (store) => (
   <Route>
     {PLUGIN_EMBEDDING_IFRAME_SDK.SdkIframeEmbedRoute && (
       <Route
-        path="embed/v2"
+        path="embed/sdk/v1"
         component={PLUGIN_EMBEDDING_IFRAME_SDK.SdkIframeEmbedRoute}
       />
     )}
