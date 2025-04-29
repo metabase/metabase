@@ -45,15 +45,13 @@ export function StringInputWidget({
     setUnsavedValue(trimmedInputValue.length > 0 ? [trimmedInputValue] : []);
   };
 
-  const handleValueSubmit = () => {
-    setValue(unsavedValue.length > 0 ? unsavedValue : undefined);
-  };
-
-  const handleFormSubmit = (event: FormEvent) => {
+  const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (!(isRequired && isEmpty)) {
-      handleValueSubmit();
+    if (isRequired && isEmpty) {
+      return;
     }
+
+    setValue(unsavedValue.length > 0 ? unsavedValue : undefined);
   };
 
   return (
@@ -61,7 +59,7 @@ export function StringInputWidget({
       component="form"
       className={className}
       w={WIDTH}
-      onSubmit={handleFormSubmit}
+      onSubmit={handleSubmit}
     >
       {label && <WidgetLabel>{label}</WidgetLabel>}
       <Box m="sm">
@@ -89,7 +87,6 @@ export function StringInputWidget({
           defaultValue={parameter.default}
           isValueRequired={parameter.required ?? false}
           isValid
-          onClick={handleValueSubmit}
         />
       </Footer>
     </Box>

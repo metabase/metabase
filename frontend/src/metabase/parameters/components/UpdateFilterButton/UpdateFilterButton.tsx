@@ -8,18 +8,10 @@ interface UpdateButtonProps {
   defaultValue: unknown;
   isValueRequired: boolean;
   isValid?: boolean;
-  onClick?: () => void;
 }
 
 export function UpdateFilterButton(props: UpdateButtonProps) {
-  const {
-    value,
-    unsavedValue,
-    defaultValue,
-    isValueRequired,
-    isValid,
-    onClick = () => {},
-  } = props;
+  const { value, unsavedValue, defaultValue, isValueRequired, isValid } = props;
 
   const { label, isDisabled } = getUpdateButtonProps(
     value,
@@ -32,7 +24,6 @@ export function UpdateFilterButton(props: UpdateButtonProps) {
     <Button
       type="submit"
       disabled={isDisabled || !isValid}
-      onClick={onClick}
       variant="filled"
       aria-label={label}
     >

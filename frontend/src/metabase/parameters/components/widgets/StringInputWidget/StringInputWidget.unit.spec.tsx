@@ -38,17 +38,17 @@ describe("StringInputWidget", () => {
     it("should render an input populated with a value", () => {
       setup({ value: ["foo"] });
 
-      const textbox = screen.getByRole("textbox");
-      expect(textbox).toBeInTheDocument();
+      const input = screen.getByRole("textbox");
+      expect(input).toBeInTheDocument();
       expect(screen.getByDisplayValue("foo")).toBeInTheDocument();
     });
 
     it("should render an empty input", () => {
       setup({ value: undefined });
 
-      const textbox = screen.getByRole("textbox");
-      expect(textbox).toBeInTheDocument();
-      expect(textbox).toHaveAttribute("placeholder", "Enter some text");
+      const input = screen.getByRole("textbox");
+      expect(input).toBeInTheDocument();
+      expect(input).toHaveAttribute("placeholder", "Enter some text");
     });
 
     it("should render a disabled update button, until the value is changed", async () => {
@@ -65,23 +65,46 @@ describe("StringInputWidget", () => {
     it("should let you update the input with a new value", async () => {
       const { setValue } = setup({ value: ["foo"] });
 
-      const textbox = screen.getByRole("textbox");
-      await userEvent.type(textbox, "bar");
+      const input = screen.getByRole("textbox");
+      await userEvent.type(input, "bar");
       const button = screen.getByRole("button", { name: "Update filter" });
       await userEvent.click(button);
-
       expect(setValue).toHaveBeenCalledWith(["foobar"]);
     });
 
     it("should let you update the input with an undefined value", async () => {
       const { setValue } = setup({ value: ["a"] });
 
-      const textbox = screen.getByRole("textbox");
+      const input = screen.getByRole("textbox");
       const button = screen.getByRole("button", { name: "Update filter" });
-      await userEvent.type(textbox, "{backspace}{enter}");
+      await userEvent.type(input, "{backspace}{enter}");
       await userEvent.click(button);
-
       expect(setValue).toHaveBeenCalledWith(undefined);
+    });
+
+    it("should let you submit a value on enter", async () => {
+      const { setValue } = setup({ value: [] });
+      await userEvent.type(screen.getByRole("textbox"), "foo{enter}");
+      expect(setValue).toHaveBeenCalledWith(["foo"]);
+    });
+
+    it("should let you submit an empty value on enter if the parameter is not required", async () => {
+      const { setValue } = setup({ value: ["foo"] });
+      const input = screen.getByRole("textbox");
+      await userEvent.clear(input);
+      await userEvent.type(input, "{enter}");
+      expect(setValue).toHaveBeenCalledWith(undefined);
+    });
+
+    it("should not let you submit an empty value on enter if the parameter is required", async () => {
+      const { setValue } = setup({
+        value: ["foo"],
+        parameter: createMockParameter({ required: true }),
+      });
+      const input = screen.getByRole("textbox");
+      await userEvent.clear(input);
+      await userEvent.type(input, "{enter}");
+      expect(setValue).not.toHaveBeenLastCalledWith(undefined);
     });
   });
 
@@ -112,10 +135,54 @@ describe("StringInputWidget", () => {
 
       const input = screen.getByRole("combobox");
       await userEvent.type(input, "{backspace}{backspace}");
-
       const button = screen.getByRole("button", { name: "Update filter" });
       await userEvent.click(button);
       expect(setValue).toHaveBeenCalledWith(undefined);
+    });
+
+    it("should let you submit a value on enter", async () => {
+      const { setValue } = setup({ value: [], isMultiSelect: true });
+
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "foo{enter}");
+      expect(screen.getByText("foo")).toBeInTheDocument();
+      expect(setValue).not.toHaveBeenCalled();
+
+      await userEvent.type(input, "{enter}");
+      expect(setValue).toHaveBeenCalledWith(["foo"]);
+    });
+
+    it("should let you submit multiple values on enter", async () => {
+      const { setValue } = setup({ value: [], isMultiSelect: true });
+
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "foo,bar{enter}");
+      expect(screen.getByText("foo")).toBeInTheDocument();
+      expect(screen.getByText("bar")).toBeInTheDocument();
+      expect(setValue).not.toHaveBeenCalled();
+
+      await userEvent.type(input, "{enter}");
+      expect(setValue).toHaveBeenCalledWith(["foo", "bar"]);
+    });
+
+    it("should let you submit an empty value on enter if the parameter is not required", async () => {
+      const { setValue } = setup({ value: ["foo"], isMultiSelect: true });
+
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "{backspace}{enter}");
+      expect(setValue).toHaveBeenCalledWith(undefined);
+    });
+
+    it("should not let you submit an empty value on enter if the parameter is required", async () => {
+      const { setValue } = setup({
+        value: ["foo"],
+        parameter: createMockParameter({ required: true }),
+        isMultiSelect: true,
+      });
+
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "{backspace}{enter}");
+      expect(setValue).not.toHaveBeenLastCalledWith(undefined);
     });
   });
 });

@@ -78,20 +78,16 @@ export function NumberInputWidget({
     );
   };
 
-  const handleValueSubmit = () => {
-    if (isValid) {
-      if (allValuesUnset || unsavedArrayValue.length === 0) {
-        setValue(undefined);
-      } else {
-        setValue(serializeNumberParameterValue(unsavedArrayValue));
-      }
-    }
-  };
-
-  const handleFormSubmit = (event: FormEvent) => {
+  const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (isValid && !(isRequired && isEmpty)) {
-      handleValueSubmit();
+    if (!isValid || (isRequired && isEmpty)) {
+      return;
+    }
+
+    if (allValuesUnset || unsavedArrayValue.length === 0) {
+      setValue(undefined);
+    } else {
+      setValue(serializeNumberParameterValue(unsavedArrayValue));
     }
   };
 
@@ -100,7 +96,7 @@ export function NumberInputWidget({
       component="form"
       className={className}
       w={WIDTH}
-      onSubmit={handleFormSubmit}
+      onSubmit={handleSubmit}
     >
       {label && <WidgetLabel>{label}</WidgetLabel>}
       {arity === "n" ? (
@@ -146,7 +142,6 @@ export function NumberInputWidget({
           defaultValue={parameter?.default}
           isValueRequired={parameter?.required ?? false}
           isValid={isValid}
-          onClick={handleValueSubmit}
         />
       </Footer>
     </Box>
