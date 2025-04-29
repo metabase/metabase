@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import EditableText from "metabase/core/components/EditableText";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -45,7 +46,14 @@ export function Header({
   const dispatch = useDispatch();
 
   const handleSave = () => {
-    onSave(visualizerState);
+    onSave(
+      _.pick(visualizerState, [
+        "display",
+        "columns",
+        "columnValuesMapping",
+        "settings",
+      ]),
+    );
   };
 
   const handleChangeTitle = useCallback(
