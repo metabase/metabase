@@ -30,16 +30,17 @@ import type { EditableTableColumnConfig } from "../use-editable-column-config";
 
 import { DeleteRowConfirmationModal } from "./DeleteRowConfirmationModal";
 import S from "./EditingBaseRowModal.module.css";
-import type { TableEditingModalController } from "./use-table-modal";
+import type { TableEditingModalState } from "./use-table-modal";
 import { TableEditingModalAction } from "./use-table-modal";
 
 interface EditingBaseRowModalProps {
   datasetColumns: DatasetColumn[];
   datasetTable?: Table;
+  modalState: TableEditingModalState;
+  onClose: () => void;
   onEdit: (data: UpdatedRowCellsHandlerParams) => Promise<boolean>;
   onRowCreate: (data: Record<string, RowValue>) => Promise<boolean>;
   onRowDelete: (rowIndex: number) => Promise<boolean>;
-  controller: TableEditingModalController;
   currentRowData?: RowValues;
   fieldMetadataMap: Record<FieldWithMetadata["name"], FieldWithMetadata>;
   hasDeleteAction: boolean;
@@ -51,7 +52,8 @@ type EditingFormValues = Record<string, RowValue>;
 
 export function EditingBaseRowModal({
   datasetColumns,
-  controller,
+  modalState,
+  onClose,
   onEdit,
   onRowCreate,
   onRowDelete,
@@ -89,10 +91,10 @@ export function EditingBaseRowModal({
     async (values: EditingFormValues) => {
       const success = await onRowCreate(values);
       if (success) {
-        controller.closeModal();
+        onClose();
       }
     },
-    [controller, onRowCreate],
+    [onClose, onRowCreate],
   );
 
   const {
@@ -111,34 +113,34 @@ export function EditingBaseRowModal({
 
   // Clear new row data when modal is opened
   useEffect(() => {
-    if (controller.state.action === TableEditingModalAction.Create) {
+    if (modalState.action === TableEditingModalAction.Create) {
       resetForm();
       revalidateForm();
     }
-  }, [controller.state.action, resetForm, revalidateForm]);
+  }, [modalState.action, resetForm, revalidateForm]);
 
   const handleValueEdit = useCallback(
     (key: string, value: RowValue) => {
-      if (controller.state.rowIndex != null && isEditingMode) {
+      if (modalState.rowIndex != null && isEditingMode) {
         onEdit({
-          rowIndex: controller.state.rowIndex,
+          rowIndex: modalState.rowIndex,
           updatedData: {
             [key]: value,
           },
         });
       }
     },
-    [isEditingMode, controller.state.rowIndex, onEdit],
+    [isEditingMode, modalState.rowIndex, onEdit],
   );
 
   const handleDeleteConfirmation = useCallback(async () => {
-    if (controller.state.rowIndex !== undefined) {
+    if (modalState.rowIndex !== undefined) {
       closeDeletionModal();
-      controller.closeModal();
+      onClose();
 
-      await onRowDelete(controller.state.rowIndex);
+      await onRowDelete(modalState.rowIndex);
     }
-  }, [closeDeletionModal, onRowDelete, controller]);
+  }, [closeDeletionModal, onRowDelete, modalState.rowIndex, onClose]);
 
   // Columns might be reordered to match the order in `columnsConfig`
   const orderedDatasetColumns = useMemo(() => {
@@ -177,10 +179,7 @@ export function EditingBaseRowModal({
   }
 
   return (
-    <Modal.Root
-      opened={controller.state.action !== null}
-      onClose={controller.closeModal}
-    >
+    <Modal.Root opened={modalState.action !== null} onClose={onClose}>
       <Modal.Overlay />
       <Modal.Content>
         <form onSubmit={handleSubmit}>
@@ -197,7 +196,7 @@ export function EditingBaseRowModal({
                   <Icon name="trash" />
                 </ActionIcon>
               )}
-              <ActionIcon variant="subtle" onClick={controller.closeModal}>
+              <ActionIcon variant="subtle" onClick={onClose}>
                 <Icon name="close" />
               </ActionIcon>
             </Group>
@@ -239,7 +238,7 @@ export function EditingBaseRowModal({
           </Modal.Body>
           {!isEditingMode && (
             <Flex px="xl" className={S.modalFooter} gap="lg" justify="flex-end">
-              <Button variant="subtle" onClick={controller.closeModal}>
+              <Button variant="subtle" onClick={onClose}>
                 {t`Cancel`}
               </Button>
               <Button

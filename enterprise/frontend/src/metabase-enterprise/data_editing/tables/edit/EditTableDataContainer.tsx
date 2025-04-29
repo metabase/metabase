@@ -77,7 +77,12 @@ export const EditTableDataContainer = ({
     [databaseId, tableId, router, location],
   );
 
-  const modalController = useTableEditingModalControllerWithObjectId({
+  const {
+    state: modalState,
+    openCreateRowModal,
+    openEditRowModal,
+    closeModal,
+  } = useTableEditingModalControllerWithObjectId({
     currentObjectId: objectIdParam,
     datasetData,
     onObjectIdChange: handleCurrentObjectIdChange,
@@ -130,7 +135,7 @@ export const EditTableDataContainer = ({
             isLoading={isFetching}
             isUndoLoading={isUndoLoading}
             isRedoLoading={isRedoLoading}
-            onCreate={modalController.openCreateRowModal}
+            onCreate={openCreateRowModal}
             onQuestionChange={handleQuestionChange}
             refetchTableDataQuery={refetch}
             onUndo={undo}
@@ -148,7 +153,7 @@ export const EditTableDataContainer = ({
                 data={datasetData}
                 fieldMetadataMap={tableFieldMetadataMap}
                 onCellValueUpdate={handleCellValueUpdate}
-                onRowExpandClick={modalController.openEditRowModal}
+                onRowExpandClick={openEditRowModal}
               />
             </Box>
             <Flex
@@ -173,14 +178,15 @@ export const EditTableDataContainer = ({
         )}
       </Stack>
       <EditingBaseRowModal
-        controller={modalController}
+        modalState={modalState}
+        onClose={closeModal}
         onEdit={handleCellValueUpdate}
         onRowCreate={handleRowCreate}
         onRowDelete={handleExpandedRowDelete}
         datasetColumns={datasetData.cols}
         currentRowData={
-          modalController.state.rowIndex !== undefined
-            ? datasetData.rows[modalController.state.rowIndex]
+          modalState.rowIndex !== undefined
+            ? datasetData.rows[modalState.rowIndex]
             : undefined
         }
         fieldMetadataMap={tableFieldMetadataMap}

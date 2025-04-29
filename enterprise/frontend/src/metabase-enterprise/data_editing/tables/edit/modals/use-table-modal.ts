@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
 export enum TableEditingModalAction {
   Create = "create",
@@ -46,18 +46,10 @@ export function useTableEditingModalController(): TableEditingModalController {
     }));
   }, []);
 
-  return useMemo(
-    () => ({
-      state: modalState,
-      openCreateRowModal: handleOpenCreateRowModal,
-      openEditRowModal: handleOpenEditRowModal,
-      closeModal: handleCloseModal,
-    }),
-    [
-      modalState,
-      handleOpenCreateRowModal,
-      handleOpenEditRowModal,
-      handleCloseModal,
-    ],
-  );
+  return {
+    state: modalState,
+    openCreateRowModal: handleOpenCreateRowModal,
+    openEditRowModal: handleOpenEditRowModal,
+    closeModal: handleCloseModal,
+  };
 }

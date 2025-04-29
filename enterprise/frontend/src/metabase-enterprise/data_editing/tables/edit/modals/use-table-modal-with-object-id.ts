@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect } from "react";
 
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData } from "metabase-types/api";
@@ -91,13 +91,10 @@ export function useTableEditingModalControllerWithObjectId({
     onObjectIdChange(undefined);
   }, [onObjectIdChange]);
 
-  return useMemo(
-    () => ({
-      state,
-      openCreateRowModal: handleOpenCreateRowModal,
-      openEditRowModal: handleOpenEditRowModal,
-      closeModal: handleCloseModal,
-    }),
-    [state, handleOpenCreateRowModal, handleOpenEditRowModal, handleCloseModal],
-  );
+  return {
+    state,
+    openCreateRowModal: handleOpenCreateRowModal,
+    openEditRowModal: handleOpenEditRowModal,
+    closeModal: handleCloseModal,
+  };
 }

@@ -54,7 +54,13 @@ export const EditTableDashcardVisualization = ({
   visualizationSettings,
   question,
 }: EditTableDashcardVisualizationProps) => {
-  const modalController = useTableEditingModalController();
+  const {
+    state: modalState,
+    openCreateRowModal,
+    openEditRowModal,
+    closeModal,
+  } = useTableEditingModalController();
+
   const stateUpdateStrategy = useTableEditingStateDashcardUpdateStrategy(
     dashcardId,
     cardId,
@@ -128,7 +134,7 @@ export const EditTableDashcardVisualization = ({
           {hasCreateAction && (
             <ActionIcon
               size="md"
-              onClick={modalController.openCreateRowModal}
+              onClick={openCreateRowModal}
               disabled={shouldDisableActions}
             >
               <Icon name="add" tooltip={t`New record`} />
@@ -145,7 +151,7 @@ export const EditTableDashcardVisualization = ({
           data={data}
           fieldMetadataMap={tableFieldMetadataMap}
           onCellValueUpdate={handleCellValueUpdate}
-          onRowExpandClick={modalController.openEditRowModal}
+          onRowExpandClick={openEditRowModal}
           columnsConfig={columnsConfig}
           getColumnSortDirection={getColumnSortDirection}
         />
@@ -163,15 +169,16 @@ export const EditTableDashcardVisualization = ({
         </Text>
       </Flex>
       <EditingBaseRowModal
-        controller={modalController}
+        modalState={modalState}
+        onClose={closeModal}
         hasDeleteAction={hasDeleteAction}
         onEdit={handleCellValueUpdate}
         onRowCreate={handleRowCreate}
         onRowDelete={handleExpandedRowDelete}
         datasetColumns={data.cols}
         currentRowData={
-          modalController.state.rowIndex !== undefined
-            ? data.rows[modalController.state.rowIndex]
+          modalState.rowIndex !== undefined
+            ? data.rows[modalState.rowIndex]
             : undefined
         }
         fieldMetadataMap={tableFieldMetadataMap}
