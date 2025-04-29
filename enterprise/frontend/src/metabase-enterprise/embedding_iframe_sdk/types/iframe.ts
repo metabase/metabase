@@ -5,14 +5,10 @@ import type { SdkStoreState } from "embedding-sdk/store/types";
 
 export type StoreWithSdkState = Store<SdkStoreState, Action>;
 
-export type SdkIframeEmbedPostMessageAction =
-  | {
-      type: "metabase.embed.updateSettings";
-      data: SdkIframeEmbedSettings;
-    }
-  | {
-      type: "metabase.embed.authenticate";
-    };
+export type SdkIframeEmbedPostMessageAction = {
+  type: "metabase.embed.updateSettings";
+  data: SdkIframeEmbedSettings;
+};
 
 export type SdkIframeEmbedSettings = {
   dashboardId?: number | string;
