@@ -15,35 +15,6 @@ export enum MBQLClauseCategory {
   Aggregation = "aggregation",
 }
 
-export interface HelpText {
-  name: string;
-  category: MBQLClauseCategory;
-  args: HelpTextArg[];
-  description: string;
-  example: Lib.ExpressionParts;
-  displayName: string;
-  docsUrl: string;
-}
-
-export interface HelpTextConfig {
-  name: DefinedClauseName;
-  category: MBQLClauseCategory;
-  args: () => HelpTextArg[];
-  description: (database: Database, reportTimezone?: string) => string;
-  displayName: string;
-  docsPage?: string;
-}
-
-export interface HelpTextArg {
-  name: string;
-  description: string;
-  example:
-    | Lib.ExpressionParts
-    | Lib.ExpressionArg
-    | (Lib.ExpressionParts | Lib.ExpressionArg)[];
-  template?: string;
-}
-
 export type ExpressionType =
   | "aggregation"
   | "any"
@@ -53,7 +24,7 @@ export type ExpressionType =
   | "number"
   | "string";
 
-type ClauseArgDefinition = {
+export type ClauseArgDefinition = {
   name: string;
   type?: ExpressionType;
   description: string;

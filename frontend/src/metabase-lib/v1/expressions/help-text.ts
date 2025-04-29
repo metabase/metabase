@@ -1,8 +1,21 @@
 import type * as Lib from "metabase-lib";
-import type { HelpText, HelpTextArg } from "metabase-lib/v1/expressions/types";
+import type {
+  ClauseArgDefinition,
+  MBQLClauseCategory,
+} from "metabase-lib/v1/expressions/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 
 import { getClauseDefinition } from "./clause";
+
+export type HelpText = {
+  name: string;
+  category: MBQLClauseCategory;
+  args: ClauseArgDefinition[];
+  description: string;
+  example: Lib.ExpressionParts;
+  displayName: string;
+  docsUrl: string;
+};
 
 export function getHelpText(
   name: string,
@@ -38,7 +51,10 @@ export function getHelpText(
  * Build the expression example as a Lib.ExpressionParts manually.
  * This is necessary because we don't have a query to refer to in the examples.
  */
-function getExample(name: string, args: HelpTextArg[]): Lib.ExpressionParts {
+function getExample(
+  name: string,
+  args: ClauseArgDefinition[],
+): Lib.ExpressionParts {
   return {
     operator: name as Lib.ExpressionOperator,
     options: {},
