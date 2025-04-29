@@ -1,13 +1,16 @@
 /* eslint-disable import/no-commonjs */
 /* eslint-disable no-undef */
 
-const BUILD_PATH = __dirname + "/resources/frontend_client";
-const ENTERPRISE_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/metabase-enterprise";
+const path = require("path");
+
+const BUILD_PATH = path.resolve(
+  __dirname,
+  "../../../../../resources/frontend_client",
+);
 
 module.exports = {
   name: "iframe_sdk_embed_v1",
-  entry: ENTERPRISE_SRC_PATH + "/embedding_iframe_sdk/embed.v1.ts",
+  entry: __dirname + "/embed.v1.ts",
   output: {
     path: BUILD_PATH + "/app",
     filename: "embed.v1.js",
