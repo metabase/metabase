@@ -24,7 +24,7 @@ export const SdkIframeEmbedRoute = () => {
   const { iframeAuthConfig, iframeSettings } = useSdkIframeEmbedEventBus();
 
   useEffect(() => {
-    // tell the redux store we're embedding the SDK components in an iframe
+    // we are not using getSdkStore so `isEmbeddingSdk: true` isn't set automatically
     store.dispatch(setIsEmbeddingSdk(true));
   }, [store]);
 
