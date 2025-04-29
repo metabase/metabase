@@ -1,9 +1,7 @@
-(ns metabase.api.embed.common
+(ns metabase.embedding.api.common
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [malli.core :as mc]
-   [malli.error :as me]
    [medley.core :as m]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
@@ -11,6 +9,7 @@
    [metabase.api.dashboard :as api.dashboard]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.eid-translation.core :as eid-translation]
+   [metabase.embedding.jwt :as embed]
    [metabase.models.card :as card]
    [metabase.models.params :as params]
    [metabase.models.resolution :as models.resolution]
@@ -18,14 +17,11 @@
    [metabase.public-sharing.api :as api.public]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
-   [metabase.settings.core :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.embed :as embed]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -282,135 +278,6 @@
       (assoc (select-keys param [:type :target :slug])
              :value value))))
 
-;;; -------------------------------------- Entity ID transformation functions ------------------------------------------
-
-(defn- api-model?
-  [model]
-  (isa? (t2/resolve-model model) :hook/entity-id))
-
-;;; This is no longer calculated dynamically so we don't have to load ~20 model namespaces just to figure out which ones
-;;; derive from `:hook/entity-id` just to generate Malli schemas. -- Cam
-(def ^:private api-name->model
-  "Map of model names used on the API to their corresponding model. A test makes sure this map stays in sync."
-  {:action            :model/Action
-   :card              :model/Card
-   :collection        :model/Collection
-   :dashboard         :model/Dashboard
-   :dashboard-card    :model/DashboardCard
-   :dashboard-tab     :model/DashboardTab
-   :dataset           :model/Card
-   :dimension         :model/Dimension
-   :metric            :model/Card
-   :permissions-group :model/PermissionsGroup
-   :pulse             :model/Pulse
-   :pulse-card        :model/PulseCard
-   :pulse-channel     :model/PulseChannel
-   :segment           :model/Segment
-   :snippet           :model/NativeQuerySnippet
-   :timeline          :model/Timeline
-   :user              :model/User})
-
-(defn- ->model
-  "Takes a model keyword or an api-name and returns the corresponding model keyword."
-  [model-or-api-name]
-  (if (api-model? model-or-api-name)
-    model-or-api-name
-    (api-name->model model-or-api-name)))
-
-(def ^:private eid-api-names
-  "Sorted vec of api models that have an entity_id column"
-  (vec (sort (keys api-name->model))))
-
-(def ^:private eid-api-models
-  (vec (sort (vals api-name->model))))
-
-(def ^:private ApiName (into [:enum] eid-api-names))
-(def ^:private ApiModel (into [:enum] eid-api-models))
-
-(def ^:private EntityId
-  "A Malli schema for an entity id, this is a little more loose because it needs to be fast."
-  [:and {:description "entity_id"}
-   :string
-   [:fn {:error/fn (fn [{:keys [value]} _]
-                     (str "\"" value "\" should be 21 characters long, but it is " (count value)))}
-    (fn eid-length-good? [eid] (= 21 (count eid)))]])
-
-(def ^:private ModelToEntityIds
-  "A Malli schema for a map of model names to a sequence of entity ids."
-  (mc/schema [:map-of ApiName [:sequential :string]]))
-
-;; -------------------- Entity Id Translation Analytics --------------------
-
-(defsetting entity-id-translation-counter
-  (deferred-tru "A counter for tracking the number of entity_id -> id translations. Whenever we call [[model->entity-ids->ids]], we increment this counter by the number of translations.")
-  :encryption :no
-  :visibility :internal
-  :export?    false
-  :audit      :never
-  :type       :json
-  :default    eid-translation/default-counter
-  :doc false)
-
-(mu/defn update-translation-count!
-  "Update the entity-id translation counter with the results of a batch of entity-id translations."
-  [results :- [:sequential eid-translation/Status]]
-  (let [processed-result (frequencies results)]
-    (entity-id-translation-counter!
-     (merge-with + processed-result (entity-id-translation-counter)))))
-
-(mu/defn- entity-ids->id-for-model :- [:sequential [:tuple
-                                                    ;; We want to pass incorrectly formatted entity-ids through here,
-                                                    ;; but this is assumed to be an entity-id:
-                                                    :string
-                                                    [:map [:status eid-translation/Status]]]]
-  "Given a model and a sequence of entity ids on that model, return a pairs of entity-id, id."
-  [api-name eids]
-  (let [model (->model api-name) ;; This lookup is safe because we've already validated the api-names
-        eid->id (into {} (t2/select-fn->fn :entity_id :id [model :id :entity_id] :entity_id [:in eids]))]
-    (mapv (fn entity-id-info [entity-id]
-            [entity-id (if-let [id (get eid->id entity-id)]
-                         {:id id :type api-name :status :ok}
-                         ;; handle errors
-                         (if (mr/validate EntityId entity-id)
-                           {:type api-name
-                            :status :not-found}
-                           {:type api-name
-                            :status :invalid-format
-                            :reason (me/humanize (mr/explain EntityId entity-id))}))])
-          eids)))
-
-(defn model->entity-ids->ids
-  "Given a map of model names to a sequence of entity-ids for each, return a map from entity-id -> id."
-  [model-key->entity-ids]
-  (when-not (mr/validate ModelToEntityIds model-key->entity-ids)
-    (throw (ex-info "Invalid format." {:explanation (me/humanize
-                                                     (me/with-spell-checking
-                                                       (mr/explain ModelToEntityIds model-key->entity-ids)))
-                                       :allowed-models (sort (keys api-name->model))
-                                       :status-code 400})))
-  (u/prog1 (into {}
-                 (mapcat
-                  (fn [[model eids]] (entity-ids->id-for-model model eids))
-                  model-key->entity-ids))
-    (update-translation-count! (map :status (vals <>)))))
-
-(mu/defn ->id :- :int
-  "Translates a single entity_id -> id. This reuses the batched version: [[model->entity-ids->ids]].
-   Please use that if you have to do man lookups at once."
-  [api-name-or-model :- [:or ApiName ApiModel] id :- [:or #_id :int #_entity-id :string]]
-  (if (string? id)
-    (let [model (->model api-name-or-model)
-          [[_ {:keys [status] :as info}]] (entity-ids->id-for-model api-name-or-model [id])]
-      (update-translation-count! [status])
-      (if-not (= :ok status)
-        (throw (ex-info "problem looking up id from entity_id"
-                        {:api-name-or-model api-name-or-model
-                         :model model
-                         :id id
-                         :status status}))
-        (:id info)))
-    id))
-
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
 
 (defn card-for-unsigned-token
@@ -419,7 +286,7 @@
   [unsigned-token & {:keys [embedding-params constraints]}]
   {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
   (let [pre-card-id  (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
-        card-id      (->id :model/Card pre-card-id)
+        card-id      (eid-translation/->id :model/Card pre-card-id)
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (apply api.public/public-card :id card-id, constraints)
         api.public/combine-parameters-and-template-tags
@@ -489,7 +356,7 @@
   [unsigned-token & {:keys [embedding-params constraints]}]
   {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
   (let [pre-dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        dashboard-id (->id :model/Dashboard pre-dashboard-id)
+        dashboard-id (eid-translation/->id :model/Dashboard pre-dashboard-id)
         embedding-params (or embedding-params
                              (t2/select-one-fn :embedding_params :model/Dashboard, :id dashboard-id))
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
@@ -583,7 +450,7 @@
    & {:keys [preview] :or {preview false}}]
   (let [unsigned-token                                 (embed/unsign token)
         pre-dashboard-id                               (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        dashboard-id                                   (->id :model/Dashboard pre-dashboard-id)
+        dashboard-id                                   (eid-translation/->id :model/Dashboard pre-dashboard-id)
         _                                              (when-not preview (check-embedding-enabled-for-dashboard dashboard-id))
         slug-token-params                              (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         {parameters                 :parameters

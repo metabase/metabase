@@ -1,12 +1,44 @@
-(ns metabase.embed.settings-test
+(ns metabase.embedding.settings-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.embed.app-origins-sdk :as aos]
-   [metabase.embed.settings :as embed.settings]
+   [metabase.config :as config]
+   [metabase.embedding.app-origins-sdk :as aos]
+   [metabase.embedding.settings :as embed.settings]
+   [metabase.premium-features.token-check :as token-check]
+   [metabase.premium-features.token-check-test :as token-check-test]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(deftest show-static-embed-terms-test
+  (mt/with-test-user :crowberto
+    (mt/with-temporary-setting-values [show-static-embed-terms nil]
+      (testing "Check if the user needs to accept the embedding licensing terms before static embedding"
+        (when-not config/ee-available?
+          (testing "should return true when user is OSS and has not accepted licensing terms"
+            (is (embed.settings/show-static-embed-terms)))
+          (testing "should return false when user is OSS and has already accepted licensing terms"
+            (embed.settings/show-static-embed-terms! false)
+            (is (not (embed.settings/show-static-embed-terms)))))
+        (when config/ee-available?
+          (testing "should return false when an EE user has a valid token"
+            (with-redefs [token-check/fetch-token-status (fn [_x]
+                                                           {:valid    true
+                                                            :status   "fake"
+                                                            :features ["test" "fixture"]
+                                                            :trial    false})]
+              (mt/with-temporary-setting-values [premium-embedding-token (token-check-test/random-token)]
+                (is (not (embed.settings/show-static-embed-terms)))
+                (embed.settings/show-static-embed-terms! false)
+                (is (not (embed.settings/show-static-embed-terms))))))
+          (testing "when an EE user doesn't have a valid token"
+            (mt/with-temporary-setting-values [premium-embedding-token nil show-static-embed-terms nil]
+              (testing "should return true when the user has not accepted licensing terms"
+                (is (embed.settings/show-static-embed-terms)))
+              (testing "should return false when the user has already accepted licensing terms"
+                (embed.settings/show-static-embed-terms! false)
+                (is (not (embed.settings/show-static-embed-terms)))))))))))
 
 (defn- embedding-event?
   "Used to make sure we only test against embedding-events in `snowplow-test/pop-event-data-and-user-id!`."
@@ -166,7 +198,8 @@
         :else (throw (ex-info "Invalid expected-behavior in test-origin-sync." {:expected-behavior expected-behavior}))))))
 
 (deftest sync-origins-test
-  ;; n.b. illegal combinations will be disallowed by [[embed.settings/check-and-sync-settings-on-startup!]], so we don't test syncing for them.
+  ;; n.b. illegal combinations will be disallowed by [[embed.settings/check-and-sync-settings-on-startup!]], so we don't
+  ;; test syncing for them.
   (mt/with-premium-features #{:embedding :embedding-sdk}
     (mt/with-temporary-setting-values [enable-embedding true
                                        enable-embedding-sdk true

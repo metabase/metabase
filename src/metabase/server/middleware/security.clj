@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.config :as config]
-   [metabase.embed.app-origins-sdk :as aos]
+   [metabase.embedding.app-origins-sdk :as aos]
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]
    [metabase.settings.deprecated-grab-bag :as public-settings]

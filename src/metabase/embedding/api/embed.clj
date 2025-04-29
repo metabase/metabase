@@ -1,4 +1,4 @@
-(ns metabase.api.embed
+(ns metabase.embedding.api.embed
   "Various endpoints that use [JSON web tokens](https://jwt.io/introduction/) to fetch Cards and Dashboards.
    The endpoints are the same as the ones in `api/public/`, and differ only in the way they are authorized.
 
@@ -17,8 +17,10 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.dataset :as api.dataset]
-   [metabase.api.embed.common :as api.embed.common]
    [metabase.api.macros :as api.macros]
+   [metabase.eid-translation.core :as eid-translation]
+   [metabase.embedding.api.common :as api.embed.common]
+   [metabase.embedding.jwt :as embedding.jwt]
    [metabase.events :as events]
    [metabase.public-sharing.api :as api.public]
    [metabase.query-processor.card :as qp.card]
@@ -26,7 +28,6 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
-   [metabase.util.embed :as embed]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -52,14 +53,14 @@
   "Translate `entity_id` keys to `card_id` and `dashboard_id` respectively."
   [unsigned :- Token]
   (-> unsigned
-      (conditional-update-in [:resource :question]  #(api.embed.common/->id :model/Card %))
-      (conditional-update-in [:resource :dashboard] #(api.embed.common/->id :model/Dashboard %))))
+      (conditional-update-in [:resource :question]  #(eid-translation/->id :model/Card %))
+      (conditional-update-in [:resource :dashboard] #(eid-translation/->id :model/Dashboard %))))
 
 (defn unsign-and-translate-ids
   "Unsign a JWT and translate `entity_id` keys to `card_id` and `dashboard_id` respectively. If they are already
    sequential ids, they are left as is."
   [message]
-  (translate-token-ids (embed/unsign message)))
+  (translate-token-ids (embedding.jwt/unsign message)))
 
 ;;; ------------------------------------------- /api/embed/card endpoints --------------------------------------------
 
@@ -72,7 +73,7 @@
   [{:keys [token]} :- [:map
                        [:token string?]]]
   (let [unsigned (unsign-and-translate-ids token)]
-    (api.embed.common/check-embedding-enabled-for-card (embed/get-in-unsigned-token-or-throw unsigned [:resource :question]))
+    (api.embed.common/check-embedding-enabled-for-card (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :question]))
     (u/prog1 (api.embed.common/card-for-unsigned-token unsigned, :constraints [:enable_embedding true])
       (events/publish-event! :event/card-read {:object-id (:id <>), :user-id api/*current-user-id*, :context :question}))))
 
@@ -83,12 +84,12 @@
                                                 :or   {constraints (qp.constraints/default-query-constraints)
                                                        qp          qp.card/process-query-for-card-default-qp}
                                                 :as   options}]
-  (let [card-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+  (let [card-id (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.embed.common/process-query-for-card-with-params
      :export-format     export-format
      :card-id           card-id
-     :token-params      (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+     :token-params      (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
      :embedding-params  (t2/select-one-fn :embedding_params :model/Card :id card-id)
      :query-params      (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
      :qp                qp
@@ -138,7 +139,7 @@
   [{:keys [token]} :- [:map
                        [:token string?]]]
   (let [unsigned (unsign-and-translate-ids token)]
-    (api.embed.common/check-embedding-enabled-for-dashboard (embed/get-in-unsigned-token-or-throw unsigned [:resource :dashboard]))
+    (api.embed.common/check-embedding-enabled-for-dashboard (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :dashboard]))
     (u/prog1 (api.embed.common/dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])
       (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*}))))
 
@@ -159,7 +160,7 @@
       :or   {constraints (qp.constraints/default-query-constraints)
              qp          qp.card/process-query-for-card-default-qp}}]
   (let [unsigned-token (unsign-and-translate-ids token)
-        dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+        dashboard-id   (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
     (api.embed.common/process-query-for-dashcard
      :export-format    export-format
@@ -167,7 +168,7 @@
      :dashcard-id      dashcard-id
      :card-id          card-id
      :embedding-params (t2/select-one-fn :embedding_params :model/Dashboard :id dashboard-id)
-     :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+     :token-params     (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
      :query-params     (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
      :constraints      constraints
      :qp               qp
@@ -197,7 +198,7 @@
                                 [:token    string?]
                                 [:field-id ms/PositiveInt]]]
   (let [unsigned-token (unsign-and-translate-ids token)
-        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+        card-id        (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.public/card-and-field-id->values card-id field-id)))
 
@@ -207,7 +208,7 @@
                                 [:token    string?]
                                 [:field-id ms/PositiveInt]]]
   (let [unsigned-token (unsign-and-translate-ids token)
-        dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+        dashboard-id   (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
     (api.public/dashboard-and-field-id->values dashboard-id field-id)))
 
@@ -223,7 +224,7 @@
                              [:value ms/NonBlankString]
                              [:limit {:optional true} [:maybe ms/PositiveInt]]]]
   (let [unsigned-token (unsign-and-translate-ids token)
-        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+        card-id        (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.public/search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
@@ -237,7 +238,7 @@
                              [:value ms/NonBlankString]
                              [:limit {:optional true} [:maybe ms/PositiveInt]]]]
   (let [unsigned-token (unsign-and-translate-ids token)
-        dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+        dashboard-id   (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
     (api.public/search-dashboard-fields dashboard-id field-id search-field-id value (when limit
                                                                                       (Integer/parseInt limit)))))
@@ -254,7 +255,7 @@
    {:keys [value]} :- [:map
                        [:value ms/NonBlankString]]]
   (let [unsigned-token (unsign-and-translate-ids token)
-        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+        card-id        (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.public/card-field-remapped-values card-id field-id remapped-id value)))
 
@@ -268,7 +269,7 @@
    {:keys [value]} :- [:map
                        [:value ms/NonBlankString]]]
   (let [unsigned-token (unsign-and-translate-ids token)
-        dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+        dashboard-id   (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
     (api.public/dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
@@ -326,7 +327,7 @@
                                  [:token     string?]
                                  [:param-key string?]]]
   (let [unsigned (unsign-and-translate-ids token)
-        card-id  (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
+        card-id  (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :question])
         card     (t2/select-one :model/Card :id card-id)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.embed.common/card-param-values {:unsigned-token unsigned
@@ -340,7 +341,7 @@
                                          [:param-key string?]
                                          [:prefix    string?]]
   (let [unsigned (unsign-and-translate-ids token)
-        card-id  (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
+        card-id  (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :question])
         card     (t2/select-one :model/Card :id card-id)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.embed.common/card-param-values {:unsigned-token unsigned
@@ -386,7 +387,7 @@
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
   (let [unsigned   (unsign-and-translate-ids token)
-        card-id    (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
+        card-id    (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :question])
         parameters (json/decode+kw parameters)
         lat-field    (json/decode+kw lat-field)
         lon-field    (json/decode+kw lon-field)]
@@ -406,7 +407,7 @@
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
   (let [unsigned     (unsign-and-translate-ids token)
-        dashboard-id (embed/get-in-unsigned-token-or-throw unsigned [:resource :dashboard])
+        dashboard-id (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :dashboard])
         parameters   (json/decode+kw parameters)
         lat-field    (json/decode+kw lat-field)
         lon-field    (json/decode+kw lon-field)]
