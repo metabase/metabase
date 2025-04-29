@@ -174,11 +174,6 @@ describe("scenarios > question > download", () => {
 
   it("should remember the selected format across page reloads", () => {
     cy.intercept(
-      "GET",
-      "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
-    ).as("fetchFormat");
-
-    cy.intercept(
       "PUT",
       "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
     ).as("saveFormat");
@@ -205,23 +200,23 @@ describe("scenarios > question > download", () => {
         });
     });
 
-    cy.reload();
+    cy.reload().then(() => {
+      cy.intercept(
+        "GET",
+        "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+      ).as("fetchFormat");
 
-    cy.wait("@fetchFormat").then(() => {
-      cy.wait(1000);
-      cy.findByRole("button", { name: "Download results" }).click();
-      H.popover().within(() => {
-        cy.get("[data-checked='true']").should("contain", ".xlsx");
+      cy.wait("@fetchFormat").then(() => {
+        cy.wait(500);
+        cy.findByRole("button", { name: "Download results" }).click();
+        H.popover().within(() => {
+          cy.get("[data-checked='true']").should("contain", ".xlsx");
+        });
       });
     });
   });
 
   it("should remember the download format on dashboards", () => {
-    cy.intercept(
-      "GET",
-      "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
-    ).as("fetchFormat");
-
     cy.intercept(
       "PUT",
       "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
@@ -257,17 +252,22 @@ describe("scenarios > question > download", () => {
             });
         });
 
-        cy.reload();
+        cy.reload().then(() => {
+          cy.intercept(
+            "GET",
+            "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+          ).as("fetchFormat");
 
-        cy.wait("@fetchFormat").then(() => {
-          cy.wait(1000);
-          H.getDashboardCard(0).realHover();
-          H.getDashboardCardMenu(0).click();
-          H.popover().within(() => {
-            cy.findByText("Download results").click();
-          });
-          H.popover().within(() => {
-            cy.get("[data-checked='true']").should("contain", ".xlsx");
+          cy.wait("@fetchFormat").then(() => {
+            cy.wait(500);
+            H.getDashboardCard(0).realHover();
+            H.getDashboardCardMenu(0).click();
+            H.popover().within(() => {
+              cy.findByText("Download results").click();
+            });
+            H.popover().within(() => {
+              cy.get("[data-checked='true']").should("contain", ".xlsx");
+            });
           });
         });
       });
