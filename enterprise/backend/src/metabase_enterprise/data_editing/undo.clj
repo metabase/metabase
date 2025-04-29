@@ -10,7 +10,7 @@
 
 (def ^:private retention-total-batches 100)
 (def ^:private retention-total-rows 1000)
-(def ^:private retention-batches-per-table 100)
+(def ^:private retention-batches-per-scope 100)
 (def ^:private retention-batches-per-user 50)
 
 (methodical/defmethod t2/table-name :model/Undo [_model] :data_edit_undo_chain)
@@ -26,10 +26,17 @@
 
 ;; We must enforce the following invariant for the data in the Undo table:
 ;;
-;; undone` is monotonic in `batch_num`, for each `table_id`, `row_pk` combination.
-;;  i.e., it can only change from `false` to `true` for any logical "cell", as `batch_num` increases.
+;; undone` is monotonic in `batch_num`, for each `scope`.
+;;  i.e., it can only change from `false` to `true` as `batch_num` increases.
 
-(defn- next-batch [undo? user-id table-id]
+(defn- serialize-scope
+  "Convert the scope map or string into a stable string we can do example matches on in the database. Idempotent."
+  [scope]
+  (if (string? scope)
+    scope
+    (->> (or scope "unknown") (walk/postwalk #(if-not (map? %) % (apply sorted-map (apply concat %)))) pr-str)))
+
+(defn- next-batch [undo? user-id scope]
   ;; For now, we assume all the changes are to the same table.
   ;; In the future, we might want to skip multi-table changes when using cmd-Z.
   ;; We may also want to filter based on the type of interaction that caused the change (e.g., grid, workflow, etc)
@@ -38,8 +45,8 @@
                          {:select [[[(if undo? :max :min) :batch_num]]]
                           :from   [(t2/table-name :model/Undo)]
                           :where  [:and
-                                   [:= user-id :user_id]
-                                   [:= table-id :table_id]
+                                   [:= :user_id user-id]
+                                   [:= :scope (serialize-scope scope)]
                                    (if undo?
                                      [:not :undone]
                                      :undone)]}]))
@@ -82,63 +89,49 @@
 (defn- prune-batches! [batches-to-keep & [where]]
   (prune-from-batch! (batch-to-prune-from batches-to-keep where) where))
 
-(defn- serialize-scope
-  "Convert the scope map into a stable string we can do example matches on in the database."
-  [scope]
-  (->> (or scope "unknown") (walk/postwalk #(if-not (map? %) % (apply sorted-map (apply concat %)))) pr-str))
-
 (defn track-change!
   "Insert some snapshot data based on edits made to the given table."
   [user-id scope table-id->row-pk->old-new-values]
-  (t2/with-transaction [_conn]
-    (let [seq-name       "undo_batch_num"
-          next-batch-num (or (t2/select-one-fn :next_val [:sequences :next_val] :name seq-name {:for :update}) 1)]
-      (t2/update! :sequences {:name seq-name} {:next_val (inc next-batch-num)})
-      (t2/insert!
-       :model/Undo
-       (for [[table-id table-updates] table-id->row-pk->old-new-values
-             [row-pk [old new]] table-updates]
-         {:batch_num  next-batch-num
-          :table_id   table-id
-          :user_id    user-id
-          :row_pk     row-pk
-          :scope     (serialize-scope scope)
-          :raw_before old
-          :raw_after  new}))))
-  ;; We do this in multiple statements because:
-  ;; - it's much simpler
-  ;; - typically there is only one table, and this is more efficient in that case
-  (doseq [[table-id table-updates] table-id->row-pk->old-new-values
-          :let [_row-pks (keys table-updates)]]
-    ;; TODO This is the wrong batch number
-    ;; - we need to scope ourselves just to these row-pks
-    ;; - we want to look across all users
-    ;; - we can't rely on `undone` being monotonic if we're searching across multiple row-pks
-    (when-let [{:keys [batch_num]} (first (next-batch false user-id table-id))]
+  (let [scope (serialize-scope scope)]
+    (t2/with-transaction [_conn]
+      (let [seq-name       "undo_batch_num"
+            next-batch-num (or (t2/select-one-fn :next_val [:sequences :next_val] :name seq-name {:for :update}) 1)]
+        (t2/update! :sequences {:name seq-name} {:next_val (inc next-batch-num)})
+        (t2/insert!
+         :model/Undo
+         (for [[table-id table-updates] table-id->row-pk->old-new-values
+               [row-pk [old new]] table-updates]
+           {:batch_num  next-batch-num
+            :table_id   table-id
+            :user_id    user-id
+            :row_pk     row-pk
+            :scope      scope
+            :raw_before old
+            :raw_after  new}))))
+
+    ;; Delete snapshots that have been undone, as we keep a linear history and will no longer be able to "redo" them.
+    (when-let [{:keys [batch_num]} (first (next-batch false user-id scope))]
       (t2/delete! :model/Undo
-                  :table_id table-id
-                  ;; Note: we intentionally also orphan changes to other rows.
-                  ;:row_pk [:in row-pks]
                   :batch_num [:>= batch_num]
-                  :undone true)))
+                  :scope scope
+                  :undone true))
 
-  ;; Pruning. Fairly naive implementation. Doesn't assume we were fully pruned before this update.
+    ;; Pruning. Fairly naive implementation. Doesn't assume we were fully pruned before this update.
 
-  (prune-from-batch! (max (batch-to-prune-from-for-rows retention-total-rows)
-                          (batch-to-prune-from retention-total-batches)))
+    (prune-from-batch! (max (batch-to-prune-from-for-rows retention-total-rows)
+                            (batch-to-prune-from retention-total-batches)))
 
-  (doseq [table-id (keys table-id->row-pk->old-new-values)]
-    (let [where-table [:= :table_id table-id]]
-      (prune-batches! retention-batches-per-table where-table)))
+    (let [where-scope [:= :scope scope]]
+      (prune-batches! retention-batches-per-scope where-scope))
 
-  (let [where-user [:= :user_id user-id]]
-    (prune-batches! retention-batches-per-user where-user)))
+    (let [where-user [:= :user_id user-id]]
+      (prune-batches! retention-batches-per-user where-user))))
 
 (defn next-batch-num
   "Return the batch number of the new change that we would (un-)revert.
   NOTE: this does not check whether there is a conflict preventing us from actually performing it."
-  [undo? user-id table-id]
-  (:batch_num (first (next-batch undo? user-id table-id))))
+  [undo-or-redo user-id scope]
+  (:batch_num (first (next-batch (= :undo undo-or-redo) user-id scope))))
 
 ;; This will be used to fix conflict false positives
 #_{:clj-kondo/ignore [:unused-private-var]}
@@ -186,7 +179,7 @@
 
 (defn- update-table-data!
   "Revert the underlying table data."
-  [undo-or-redo user-id batch]
+  [undo-or-redo user-id scope batch]
   (let [undo?     (= :undo undo-or-redo)
         action-kw (keyword "undo" (name undo-or-redo))]
     (doseq [[[table-id category] sub-batch] (u/group-by (juxt :table_id categorize) batch)
@@ -195,7 +188,7 @@
                   opts {:existing-context {:invocation_id    iid
                                            :invocation-stack [[action-kw iid]]}}]]
       (case (if undo? (invert category) category)
-        :create (try (data-editing/perform-bulk-action! :bulk/create user-id table-id rows opts)
+        :create (try (data-editing/perform-bulk-action! :bulk/create user-id scope table-id rows opts)
                      (catch Exception e
                        ;; Sometimes cols don't support a custom value being provided, e.g., GENERATED ALWAYS AS IDENTITY
                        (throw (ex-info "Failed to un-delete row(s)"
@@ -204,26 +197,26 @@
                                         :table-id  table-id
                                         :pks       (map :row_pk batch)}
                                        e))))
-        :update (data-editing/perform-bulk-action! :bulk/update user-id table-id rows opts)
-        :delete (data-editing/perform-bulk-action! :bulk/delete user-id table-id rows opts)))))
+        :update (data-editing/perform-bulk-action! :bulk/update user-id scope table-id rows opts)
+        :delete (data-editing/perform-bulk-action! :bulk/delete user-id scope table-id rows opts)))))
 
-(defn- undo*! [undo-or-redo user-id table-id]
+(defn- undo*! [undo-or-redo user-id scope]
   (let [undo? (= :undo undo-or-redo)
-        batch (next-batch undo? user-id table-id)]
+        batch (next-batch undo? user-id scope)]
     (cond
       (not (seq batch)) (throw (ex-info (if undo?
                                           "No previous versions found"
                                           "No subsequent versions found")
-                                        {:error    :undo/none
-                                         :user-id  user-id
-                                         :table-id table-id}))
+                                        {:error   :undo/none
+                                         :user-id user-id
+                                         :scope   scope}))
       (conflict? undo? batch) (throw (ex-info "Blocked by other changes"
                                               ;; It would be nice if we gave the batch_num for the first conflict.
-                                              {:error    :undo/conflict
-                                               :user-id  user-id
-                                               :table-id table-id}))
+                                              {:error   :undo/conflict
+                                               :user-id user-id
+                                               :scope   scope}))
       :else
-      (do (update-table-data! undo-or-redo user-id batch)
+      (do (update-table-data! undo-or-redo user-id scope batch)
           (t2/update! :model/Undo
                       {:batch_num (:batch_num (first batch))}
                       {:undone undo?})
@@ -235,10 +228,10 @@
 
 (defn undo!
   "Rollback the given user's last change to the given table."
-  [user-id table-id]
-  (undo*! :undo user-id table-id))
+  [user-id scope]
+  (undo*! :undo user-id scope))
 
 (defn redo!
   "Rollback the given user's last change to the given table."
-  [user-id table-id]
-  (undo*! :redo user-id table-id))
+  [user-id scope]
+  (undo*! :redo user-id scope))

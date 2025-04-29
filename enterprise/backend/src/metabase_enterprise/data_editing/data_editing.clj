@@ -105,12 +105,13 @@
 (defn perform-bulk-action!
   "Operates on rows in the database, supply an action-kw: :bulk/create, :bulk/update, :bulk/delete.
   The input `rows` is given different semantics depending on the action type, see actions/perform-action!."
-  [action-kw user-id table-id rows & {:keys [existing-context]}]
-  ;; TODO make this work for multi instances by using the metabase_cluster_lock table
+  [action-kw user-id scope table-id rows & {:keys [existing-context]}]
+  ;; TODO make this work for multi instances by using the metabase_cluster_lock table, or something similar
   ;; https://github.com/metabase/metabase/pull/56173/files
   (locking #'perform-bulk-action!
     (->> (actions/perform-action!
           action-kw
+          scope
           [{:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
             :table-id table-id
             :arg      rows}]
@@ -120,7 +121,8 @@
                                (let [iid (nano-id/nano-id)]
                                  {:invocation-id    iid
                                   :invocation-stack [[:grid/edit iid]]
-                                  :user-id          user-id}))})
+                                  :user-id          user-id
+                                  :scope            scope}))})
          :effects
          (filter (comp #{:effect/row.modified} first))
          (map second))))
@@ -129,9 +131,9 @@
   "Inserts rows into the table, recording their creation as an event. Returns the inserted records.
   Expects rows that are acceptable directly by [[actions/perform-action!]]. If casts or reversing coercion strategy
   are required, that work must be done before calling this function."
-  [user-id table-id rows]
+  [user-id scope table-id rows]
   (api/check-500 user-id)
-  (let [res (perform-bulk-action! :bulk/create user-id table-id rows)]
+  (let [res (perform-bulk-action! :bulk/create user-id scope table-id rows)]
     {:created-rows (map :after res)}))
 
 (defn- row-update-event
@@ -146,10 +148,22 @@
 
 (defmethod actions/handle-effects!* :effect/row.modified
   [_ {:keys [user-id invocation-stack scope]} diffs]
-  (let [table->fields (u/group-by identity select-table-pk-fields concat (distinct (map :table-id diffs)))
-        diff->pk      (u/for-map [{:keys [table-id before after] :as diff} diffs
-                                  :when (or before after)]
-                        [diff (get-row-pks (table->fields table-id) (or after before))])]
+  (let [table-ids        (distinct (map :table-id diffs))
+        table->pk-fields (u/group-by identity select-table-pk-fields concat table-ids)
+        table->keymap    (u/for-map [table-id table-ids
+                                     :let [fields (t2/select-fn-vec :name [:model/Field :name] :table_id table-id)]]
+                           [table-id (merge (u/for-map [f fields]
+                                              [(keyword (u/lower-case-en f)) (keyword f)])
+                                            (u/for-map [f fields]
+                                              [(keyword (u/upper-case-en f)) (keyword f)])
+                                            (let [kws (map keyword fields)]
+                                              (zipmap kws kws)))])
+        diff->pk-diff    (u/for-map [{:keys [table-id before after] :as diff} diffs
+                                     :when (or before after)
+                                     :let [keymap (table->keymap table-id)]]
+                           [diff {:pk     (get-row-pks (table->pk-fields table-id) (or after before))
+                                  :before (when before (update-keys before keymap))
+                                  :after  (when after (update-keys after keymap))}])]
     ;; undo snapshots, but only if we're not executing an undo
     ;; TODO fix tests that execute actions without a user scope
     (when user-id
@@ -159,18 +173,17 @@
          scope
          (u/for-map [[table-id diffs] (group-by :table-id diffs)]
            [table-id (u/for-map [{:keys [before after] :as diff} diffs
-                                 :when (or before after)]
-                       [(diff->pk diff) [before after]])]))))
+                                 :when (or before after)
+                                 :let [{:keys [pk before after]} (diff->pk-diff diff)]]
+                       [pk [before after]])]))))
     ;; table notification system events
     (doseq [[event payloads] (->> diffs
                                   (group-by row-update-event)
                                   (remove (comp #{::no-op} key)))]
       (doseq [[table-id payloads] (group-by :table-id payloads)
               :let [db-id       (:db-id (first payloads))
-                    row-changes (for [{:keys [before after] :as diff} payloads]
-                                  {:pk     (diff->pk diff)
-                                   :before before
-                                   :after  after})]]
+                    row-changes (for [diff payloads]
+                                  (diff->pk-diff diff))]]
         (doseq [row-change row-changes]
           (events/publish-event! event {:actor_id   user-id
                                         :row_change row-change

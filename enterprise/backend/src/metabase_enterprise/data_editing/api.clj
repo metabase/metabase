@@ -61,23 +61,31 @@
   "Insert row(s) into the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
+   {:keys [rows scope]} :- [:map
+                            [:rows [:sequential {:min 1} :map]]
+                            ;; TODO make this non-optional in the future
+                            [:scope {:optional true} :map]]]
   (check-permissions)
   (let [rows' (data-editing/apply-coercions table-id rows)
-        res   (data-editing/insert! api/*current-user-id* table-id rows')]
+        scope (or scope {:table-id table-id})
+        res   (data-editing/insert! api/*current-user-id* scope table-id rows')]
     {:created-rows (invalidate-and-present! table-id (:created-rows res))}))
 
 (api.macros/defendpoint :put "/table/:table-id"
   "Update row(s) within the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
+   {:keys [rows scope]} :- [:map
+                            [:rows [:sequential {:min 1} :map]]
+                            ;; TODO make this non-optional in the future
+                            [:scope {:optional true} :map]]]
   (check-permissions)
   (if (empty? rows)
     {:updated []}
     (let [user-id api/*current-user-id*
+          scope   (or scope {:table-id table-id})
           rows    (data-editing/apply-coercions table-id rows)
-          rows    (map :after (data-editing/perform-bulk-action! :bulk/update user-id table-id rows))]
+          rows    (map :after (data-editing/perform-bulk-action! :bulk/update user-id scope table-id rows))]
       {:updated (invalidate-and-present! table-id rows)})))
 
 ;; This is a POST instead of DELETE as not all web proxies pass on the body of DELETE requests.
@@ -85,10 +93,14 @@
   "Delete row(s) from the given table"
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
+   {:keys [rows scope]} :- [:map
+                            [:rows [:sequential {:min 1} :map]]
+                            ;; make this non-optional in the future
+                            [:scope {:optional true} :map]]]
   (check-permissions)
-  (let [user-id api/*current-user-id*]
-    (data-editing/perform-bulk-action! :bulk/delete user-id table-id rows)
+  (let [user-id api/*current-user-id*
+        scope   (or scope {:table-id table-id})]
+    (data-editing/perform-bulk-action! :bulk/delete user-id scope table-id rows)
     {:success true}))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust
@@ -165,46 +177,52 @@
 
 (api.macros/defendpoint :post "/undo"
   "Undo the last change you made.
-  For now only supports tables, but in future will support editables for sure.
+  For now only supports tables, but in the future will support editables for sure.
   Maybe actions, workflows, etc.
   Could even generalize to things like edits to dashboard definitions themselves."
   [_
    _
-   {:keys [table-id no-op]}] :- [:map
-                                 [:table-id ms/PositiveInt]
-                                 [:no-op {:optional true} ms/BooleanValue]]
+   {:keys [table-id scope no-op]}] :- [:map
+                                       ;; deprecated, this will be replaced by scope
+                                       [:table-id ms/PositiveInt]
+                                       ;; TODO make this non-optional in the future
+                                       [:scope {:optional true} :map]
+                                       [:no-op {:optional true} ms/BooleanValue]]
   (check-permissions)
-  (api/check-404 (t2/select-one-pk :model/Table table-id))
-  (let [user-id api/*current-user-id*]
+  (let [user-id api/*current-user-id*
+        scope  (or scope {:table-id table-id})]
     (if no-op
-      {:batch_num (undo/next-batch-num true user-id table-id)}
+      {:batch_num (undo/next-batch-num :undo user-id scope)}
       ;; IDEA encapsulate this in an action
       ;; IDEA use generic action calling API instead of having this endpoint
       (try
-        {:result (undo/undo! user-id table-id)}
+        {:result (undo/undo! user-id scope)}
         (catch ExceptionInfo e
           (throw (translate-undo-error e)))))))
 
 (api.macros/defendpoint :post "/redo"
   "Redo the last change you made.
-  For now only supports tables, but in future will support editables for sure.
+  For now only supports tables, but in the future will support editables for sure.
   Maybe actions, workflows, etc.
   Could even generalize to things like edits to dashboard definitions themselves."
   [_
    _
-   {:keys [table-id no-op]}] :- [:map
-                                 [:table-id ms/PositiveInt]
-                                 [:no-op {:optional true} ms/BooleanValue]]
+   {:keys [table-id scope no-op]}] :- [:map
+                                         ;; deprecated, this will be replaced by scope
+                                       [:table-id ms/PositiveInt]
+                                       ;; TODO: make this non-optional in the future
+                                       [:scope {:optional true} :map]
+                                       [:no-op {:optional true} ms/BooleanValue]]
   (check-permissions)
-  (api/check-404 (t2/select-one :model/Table table-id))
-  (let [user-id api/*current-user-id*]
+  (let [user-id api/*current-user-id*
+        scope   (or scope {:table-id table-id})]
     (if no-op
-      {:batch_num (undo/next-batch-num false user-id table-id)}
+      {:batch_num (undo/next-batch-num :redo user-id scope)}
       ;; IDEA encapsulate this in an action
       ;; IDEA use generic action calling API instead of having this endpoint
       ;; TODO translate errors to http codes
       (try
-        {:result (undo/redo! user-id table-id)}
+        {:result (undo/redo! user-id scope)}
         (catch ExceptionInfo e
           (throw (translate-undo-error e)))))))
 

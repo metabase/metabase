@@ -239,6 +239,7 @@
   `action` being performed. [[action-arg-map-spec]] returns the specific spec used to validate `arg-map` for a given
   `action`."
   [action
+   scope
    arg-map-or-maps
    & {:keys [policy existing-context]
       :or   {policy :model-action}}]
@@ -272,7 +273,8 @@
         (doseq [arg-map arg-maps]
           (qp.perms/check-query-action-permissions* arg-map)))
       ;; TODO fix tons of tests which execute without user scope
-      (let [result (let [context (or existing-context {:user-id (identity #_api/check-500 api/*current-user-id*)})]
+      (let [result (let [context (or existing-context {:user-id (identity #_api/check-500 api/*current-user-id*)
+                                                       :scope   scope})]
                      (if-not driver
                        (perform-action-internal! action-kw context arg-maps)
                        (driver/with-driver driver
@@ -288,7 +290,8 @@
 (mu/defn perform-action-with-single-input-and-output
   "This is the Old School version of [[perform-action!], before we returned effects and used bulk chaining."
   [action arg-map & {:as opts}]
-  (try (let [{:keys [outputs]} (perform-action! action [arg-map] opts)]
+  (try (let [scope             {:non-undoable-scope :execute-implicit-action}
+             {:keys [outputs]} (perform-action! action scope [arg-map] opts)]
          (assert (= 1 (count outputs)) "The legacy action APIs do not support multiple outputs")
          (first outputs))
        (catch ExceptionInfo e

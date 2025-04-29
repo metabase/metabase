@@ -64,59 +64,59 @@
 
             (is (= [] (table-rows table-id)))
 
-            (is (undo/next-batch-num true user-id table-id))
-            (is (not (undo/next-batch-num false user-id table-id)))
+            (is (undo/next-batch-num :undo user-id test-scope))
+            (is (not (undo/next-batch-num :redo user-id test-scope)))
             (is (= {table-id [[:create {:id 1, :name "Snorkmaiden", :favourite_food "orc"}]]}
-                   (undo/undo! user-id table-id)))
+                   (undo/undo! user-id test-scope table-id)))
             (is (= [[1 "Snorkmaiden" "orc"]] (table-rows table-id)))
 
-            (is (undo/next-batch-num true user-id table-id))
-            (is (undo/next-batch-num false user-id table-id))
+            (is (undo/next-batch-num :undo user-id test-scope))
+            (is (undo/next-batch-num :redo user-id test-scope))
             (is (= {table-id [[:update {:id 1, :name "Snorkmaiden", :favourite_food "pork"}]]}
-                   (undo/undo! user-id table-id)))
+                   (undo/undo! user-id test-scope table-id)))
             (is (= [[1 "Snorkmaiden" "pork"]] (table-rows table-id)))
 
-            (is (undo/next-batch-num true user-id table-id))
-            (is (undo/next-batch-num false user-id table-id))
+            (is (undo/next-batch-num :undo user-id test-scope))
+            (is (undo/next-batch-num :redo user-id test-scope))
             ;; This doesn't tell the FE which rows to hide
             (is (= {table-id [[:delete {:id 1}]]}
-                   (undo/undo! user-id table-id)))
+                   (undo/undo! user-id test-scope table-id)))
             (is (= [] (table-rows table-id)))
 
-            (is (not (undo/next-batch-num true user-id table-id)))
-            (is (undo/next-batch-num false user-id table-id))
+            (is (not (undo/next-batch-num :undo user-id test-scope)))
+            (is (undo/next-batch-num :redo user-id test-scope))
             (is (thrown-with-msg?
                  ExceptionInfo
                  #"No previous versions found"
-                 (undo/undo! user-id table-id)))
+                 (undo/undo! user-id test-scope table-id)))
 
-            (is (not (undo/next-batch-num true user-id table-id)))
-            (is (undo/next-batch-num false user-id table-id))
+            (is (not (undo/next-batch-num :undo user-id test-scope)))
+            (is (undo/next-batch-num :redo user-id test-scope))
             (is (= {table-id [[:create {:id 1, :name "Snorkmaiden", :favourite_food "pork"}]]}
-                   (undo/redo! user-id table-id)))
+                   (undo/redo! user-id test-scope table-id)))
             (is (= [[1 "Snorkmaiden" "pork"]] (table-rows table-id)))
 
-            (is (undo/next-batch-num true user-id table-id))
-            (is (undo/next-batch-num false user-id table-id))
+            (is (undo/next-batch-num :undo user-id test-scope))
+            (is (undo/next-batch-num :redo user-id test-scope))
             (is (= {table-id [[:update {:id 1, :name "Snorkmaiden", :favourite_food "orc"}]]}
-                   (undo/redo! user-id table-id)))
+                   (undo/redo! user-id test-scope table-id)))
             (is (= [[1 "Snorkmaiden" "orc"]] (table-rows table-id)))
 
-            (is (undo/next-batch-num true user-id table-id))
-            (is (undo/next-batch-num false user-id table-id))
+            (is (undo/next-batch-num :undo user-id test-scope))
+            (is (undo/next-batch-num :redo user-id test-scope))
             (is (= {table-id [[:delete {:id 1}]]}
-                   (undo/redo! user-id table-id)))
+                   (undo/redo! user-id test-scope table-id)))
             (is (= [] (table-rows table-id)))
 
-            (is (undo/next-batch-num true user-id table-id))
-            (is (not (undo/next-batch-num false user-id table-id)))
+            (is (undo/next-batch-num :undo user-id test-scope))
+            (is (not (undo/next-batch-num :redo user-id test-scope)))
             (is (thrown-with-msg?
                  ExceptionInfo
                  #"No subsequent versions found"
-                 (undo/redo! user-id table-id)))
+                 (undo/redo! user-id test-scope table-id)))
 
-            (is (undo/next-batch-num true user-id table-id))
-            (is (not (undo/next-batch-num false user-id table-id)))))))))
+            (is (undo/next-batch-num :undo user-id test-scope))
+            (is (not (undo/next-batch-num :redo user-id test-scope)))))))))
 
 ;; I'm OK reducing this scenario's scope once we have e2e tests.
 ;; Until then, I think this is ideal.
@@ -144,93 +144,93 @@
 
             (is (= [] (table-rows table-id)))
 
-            (is (undo/next-batch-num true user-2 table-id))
-            (is (not (undo/next-batch-num false user-2 table-id)))
+            (is (undo/next-batch-num :undo user-2 test-scope))
+            (is (not (undo/next-batch-num :redo user-2 test-scope)))
             (is (thrown-with-msg?
                  ExceptionInfo
                  #"Blocked by other changes"
-                 (undo/undo! user-2 table-id)))
+                 (undo/undo! user-2 test-scope table-id)))
 
-            (is (undo/next-batch-num true user-1 table-id))
-            (is (not (undo/next-batch-num false user-1 table-id)))
+            (is (undo/next-batch-num :undo user-1 test-scope))
+            (is (not (undo/next-batch-num :redo user-1 test-scope)))
             (is (= {table-id [[:create {:id 2, :name "Moominswole", :power 9001}]]}
-                   (undo/undo! user-1 table-id)))
+                   (undo/undo! user-1 test-scope table-id)))
             (is (= [[2 "Moominswole" 9001]] (table-rows table-id)))
 
-            (is (undo/next-batch-num true user-1 table-id))
-            (is (undo/next-batch-num false user-1 table-id))
+            (is (undo/next-batch-num :undo user-1 test-scope))
+            (is (undo/next-batch-num :redo user-1 test-scope))
             (is (thrown-with-msg?
                  ExceptionInfo
                  #"Blocked by other changes"
-                 (undo/undo! user-1 table-id)))
+                 (undo/undo! user-1 test-scope table-id)))
 
-            (is (undo/next-batch-num true user-1 table-id))
-            (is (undo/next-batch-num false user-1 table-id))
-            (is (undo/next-batch-num true user-2 table-id))
-            (is (not (undo/next-batch-num false user-2 table-id)))
+            (is (undo/next-batch-num :undo user-1 test-scope))
+            (is (undo/next-batch-num :redo user-1 test-scope))
+            (is (undo/next-batch-num :undo user-2 test-scope))
+            (is (not (undo/next-batch-num :redo user-2 test-scope)))
             (is (= {table-id [[:update {:id 2, :name "Moomintroll", :power 9001}]]}
-                   (undo/undo! user-2 table-id)))
+                   (undo/undo! user-2 test-scope table-id)))
             (is (= [[2 "Moomintroll" 9001]] (table-rows table-id)))
 
-            (is (undo/next-batch-num true user-1 table-id))
-            (is (undo/next-batch-num false user-1 table-id))
+            (is (undo/next-batch-num :undo user-1 test-scope))
+            (is (undo/next-batch-num :redo user-1 test-scope))
             (is (= {table-id [[:update {:id 2, :name "Moomintroll", :power 3}]]}
-                   (undo/undo! user-1 table-id)))
+                   (undo/undo! user-1 test-scope table-id)))
             (is (= [[2 "Moomintroll" 3]] (table-rows table-id)))
 
-            (is (undo/next-batch-num true user-1 table-id))
-            (is (undo/next-batch-num false user-1 table-id))
+            (is (undo/next-batch-num :undo user-1 test-scope))
+            (is (undo/next-batch-num :redo user-1 test-scope))
             (is (= {table-id [[:delete {:id 2}]]}
-                   (undo/undo! user-1 table-id)))
+                   (undo/undo! user-1 test-scope table-id)))
             (is (= [] (table-rows table-id)))
 
-            (is (not (undo/next-batch-num true user-1 table-id)))
-            (is (undo/next-batch-num false user-1 table-id))
+            (is (not (undo/next-batch-num :undo user-1 test-scope)))
+            (is (undo/next-batch-num :redo user-1 test-scope))
             (is (thrown-with-msg?
                  ExceptionInfo
                  #"No previous versions found"
-                 (undo/undo! user-1 table-id)))
+                 (undo/undo! user-1 test-scope table-id)))
 
-            (is (not (undo/next-batch-num true user-1 table-id)))
-            (is (undo/next-batch-num false user-1 table-id))
+            (is (not (undo/next-batch-num :undo user-1 test-scope)))
+            (is (undo/next-batch-num :redo user-1 test-scope))
             (is (= {table-id [[:create {:id 2, :name "Moomintroll", :power 3}]]}
-                   (undo/redo! user-1 table-id)))
+                   (undo/redo! user-1 test-scope table-id)))
             (is (= [[2 "Moomintroll" 3]] (table-rows table-id)))
 
-            (is (undo/next-batch-num true user-1 table-id))
-            (is (undo/next-batch-num false user-1 table-id))
+            (is (undo/next-batch-num :undo user-1 test-scope))
+            (is (undo/next-batch-num :redo user-1 test-scope))
             (is (= {table-id [[:update {:id 2, :name "Moomintroll", :power 9001}]]}
-                   (undo/redo! user-1 table-id)))
+                   (undo/redo! user-1 test-scope table-id)))
             (is (= [[2 "Moomintroll" 9001]] (table-rows table-id)))
 
-            (is (undo/next-batch-num true user-1 table-id))
-            (is (undo/next-batch-num false user-1 table-id))
+            (is (undo/next-batch-num :undo user-1 test-scope))
+            (is (undo/next-batch-num :redo user-1 test-scope))
             (is (= {table-id [[:update {:id 2, :name "Moominswole", :power 9001}]]}
-                   (undo/redo! user-2 table-id)))
+                   (undo/redo! user-2 test-scope table-id)))
             (is (= [[2 "Moominswole" 9001]] (table-rows table-id)))
 
-            (is (undo/next-batch-num true user-1 table-id))
-            (is (undo/next-batch-num false user-1 table-id))
+            (is (undo/next-batch-num :undo user-1 test-scope))
+            (is (undo/next-batch-num :redo user-1 test-scope))
             (is (= {table-id [[:delete {:id 2}]]}
-                   (undo/redo! user-1 table-id)))
+                   (undo/redo! user-1 test-scope table-id)))
             (is (= [] (table-rows table-id)))
 
-            (is (undo/next-batch-num true user-1 table-id))
-            (is (not (undo/next-batch-num false user-1 table-id)))
+            (is (undo/next-batch-num :undo user-1 test-scope))
+            (is (not (undo/next-batch-num :redo user-1 test-scope)))
             (is (thrown-with-msg?
                  ExceptionInfo
                  #"No subsequent versions found"
-                 (undo/redo! user-1 table-id)))
+                 (undo/redo! user-1 test-scope table-id)))
 
-            (is (undo/next-batch-num true user-2 table-id))
-            (is (not (undo/next-batch-num false user-2 table-id)))
+            (is (undo/next-batch-num :undo user-2 test-scope))
+            (is (not (undo/next-batch-num :redo user-2 test-scope)))
             (is (thrown-with-msg?
                  ExceptionInfo
                  #"No subsequent versions found"
-                 (undo/redo! user-2 table-id)))
+                 (undo/redo! user-2 test-scope table-id)))
 
-            (is (undo/next-batch-num true user-1 table-id))
-            (is (not (undo/next-batch-num false user-1 table-id)))))))))
+            (is (undo/next-batch-num :undo user-1 test-scope))
+            (is (not (undo/next-batch-num :redo user-1 test-scope)))))))))
 
 (deftest undo-orphan-integration-test
   (mt/with-empty-h2-app-db
@@ -256,10 +256,10 @@
                                                [user-id nil]])
 
             ;; Sad trick - use undo to initialize the underlying table state (since we only created the undo history)
-            (undo/undo! user-id table-id)
-            (undo/undo! user-id table-id)
-            (undo/undo! user-id table-id)
-            (undo/undo! user-id table-id)
+            (undo/undo! user-id test-scope table-id)
+            (undo/undo! user-id test-scope table-id)
+            (undo/undo! user-id test-scope table-id)
+            (undo/undo! user-id test-scope table-id)
 
             (is (= [[1 "Too-tickley" "squirming"]] (table-rows table-id)))
 
@@ -268,14 +268,14 @@
             ;; TLDR `write-sequence` should be updated to update the table itself, then these tests can be simpler.
             (undo/track-change! user-id test-scope {table-id {{:id 2} [{:name "Toggle" :status "restored"} nil]}})
 
-            (is (nil? (undo/next-batch-num false user-id table-id)))
-            (is (undo/next-batch-num true user-id table-id))
+            (is (nil? (undo/next-batch-num :redo user-id test-scope)))
+            (is (undo/next-batch-num :undo user-id test-scope))
 
-            (undo/undo! user-id table-id)
+            (undo/undo! user-id test-scope table-id)
             (is (= [[1 "Too-tickley" "squirming"]
                     [2 "Toggle" "restored"]] (table-rows table-id)))
 
-            (undo/redo! user-id table-id)
+            (undo/redo! user-id test-scope table-id)
             (is (= [[1 "Too-tickley" "squirming"]] (table-rows table-id)))))))))
 
 (defn- count-batches [& [where]]
@@ -340,28 +340,30 @@
                 (is (= 5 (count-batches [:= :user_id user-1])))
                 (is (= 5 (count-batches [:= :user_id user-2])))))
 
-            (testing "Table id"
-              (with-redefs [undo/retention-batches-per-table 9]
-                (dotimes [i 25]
+            (testing "Scope"
+              (t2/delete! :model/Undo)
+              (with-redefs [undo/retention-batches-per-scope 9]
+                (dotimes [i 35]
                   ;; just toggle existence
-                  (undo/track-change! user-1
-                                      test-scope
-                                      {(if (zero? (mod i 5)) table-1 table-2)
-                                       {{:id 1} [(if (even? i) {} nil)
-                                                 (if (even? i) nil {})]
-                                        {:id 2} [(if (odd? i) {} nil)
-                                                 (if (odd? i) nil {})]}}))
+                  (let [table-id (if (zero? (mod i 5)) table-1 table-2)]
+                    (undo/track-change! user-1
+                                        {:table-id table-id}
+                                        {table-id
+                                         {{:id 1} [(if (even? i) {} nil)
+                                                   (if (even? i) nil {})]
+                                          {:id 2} [(if (odd? i) {} nil)
+                                                   (if (odd? i) nil {})]}})))
 
-                (is (= 36 (t2/count :model/Undo)))
-                (is (= 18 (count-batches)))
-                (is (= 9 (count-batches [:= :table_id table-1])))
+                (is (= 32 (t2/count :model/Undo)))
+                (is (= 16 (count-batches)))
+                (is (= 7 (count-batches [:= :table_id table-1])))
                 (is (= 9 (count-batches [:= :table_id table-2])))))
 
             (testing "A haphazard mix"
               (with-redefs [undo/retention-total-rows        17
                             undo/retention-total-batches     21
                             undo/retention-batches-per-user  5
-                            undo/retention-batches-per-table 9]
+                            undo/retention-batches-per-scope 9]
 
                 (dotimes [i 25]
                   ;; just toggle existence
