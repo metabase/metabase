@@ -393,4 +393,4 @@ const iframeEmbedConfig = {
   devtool: false,
 }
 
-module.exports = config;
+module.exports = [config, iframeEmbedConfig];
