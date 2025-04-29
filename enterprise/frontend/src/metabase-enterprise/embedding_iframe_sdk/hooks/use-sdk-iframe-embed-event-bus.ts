@@ -11,9 +11,8 @@ import type {
 type Handler = (event: MessageEvent<SdkIframeEmbedPostMessageAction>) => void;
 
 export function useSdkIframeEmbedEventBus() {
-  const [iframeSettings, setSettings] = useState<SdkIframeEmbedSettings | null>(
-    null,
-  );
+  const [embedSettings, setEmbedSettings] =
+    useState<SdkIframeEmbedSettings | null>(null);
 
   useEffect(() => {
     const messageHandler: Handler = (event) => {
@@ -24,7 +23,7 @@ export function useSdkIframeEmbedEventBus() {
       match(event.data).with(
         { type: "metabase.embed.updateSettings" },
         ({ data: nextSettings }) => {
-          setSettings((previousSettings) => ({
+          setEmbedSettings((previousSettings) => ({
             ...previousSettings,
             ...nextSettings,
           }));
@@ -42,5 +41,5 @@ export function useSdkIframeEmbedEventBus() {
     };
   });
 
-  return { iframeSettings };
+  return { embedSettings };
 }
