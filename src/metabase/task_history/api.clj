@@ -1,12 +1,12 @@
-(ns metabase.api.task
+(ns metabase.task-history.api
   "/api/task endpoints"
   (:require
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
-   [metabase.models.task-history :as task-history]
    [metabase.request.core :as request]
    [metabase.task :as task]
+   [metabase.task-history.models.task-history :as task-history]
    [metabase.util.malli.schema :as ms]))
 
 (api.macros/defendpoint :get "/"
@@ -31,6 +31,8 @@
   (validation/check-has-application-permission :monitoring)
   (task/scheduler-info))
 
+;;; TODO -- this is not necessarily a 'task history' thing and maybe belongs in the `task` module's API rather than
+;;; here... maybe a problem for another day.
 (api.macros/defendpoint :get "/unique-tasks"
   "Returns possibly empty vector of unique task names in alphabetical order. It is expected that number of unique
   tasks is small, hence no need for pagination. If that changes this endpoint and function that powers it should

@@ -210,7 +210,7 @@
 
   events
   {:api  #{metabase.events metabase.events.init metabase.events.notification}
-   :uses #{api channel driver models notification premium-features util}}
+   :uses #{api channel driver models notification premium-features task-history util}}
 
   formatter
   {:api  #{metabase.formatter}
@@ -293,7 +293,7 @@
   {:api #{metabase.model-persistence.api
           metabase.model-persistence.core
           metabase.model-persistence.init}
-   :uses #{api db driver events lib models premium-features settings query-processor request task util}}
+   :uses #{api db driver events lib models premium-features settings query-processor request task task-history util}}
 
   models
   {:api #{metabase.models.api-key
@@ -332,7 +332,6 @@
           metabase.models.secret
           metabase.models.serialization
           metabase.models.table
-          metabase.models.task-history
           metabase.models.user
           metabase.models.user-parameter-value
           metabase.models.util.spec-update
@@ -391,6 +390,7 @@
            query-processor
            request
            task
+           task-history
            util}}
 
   permissions
@@ -428,7 +428,7 @@
            metabase.pulse.init
            metabase.pulse.task.send-pulses}
    :uses #{api channel config db driver events integrations models notification permissions plugins premium-features
-           query-processor request task util
+           query-processor request task task-history util
            enterprise/advanced-config enterprise/advanced-permissions enterprise/sandbox}}
 
   query-analysis
@@ -475,7 +475,6 @@
            api
            audit
            config
-           db
            driver
            events
            formatter
@@ -569,7 +568,7 @@
           metabase.sync.schedules
           metabase.sync.task.sync-databases
           metabase.sync.util}
-   :uses #{analyze api audit config db driver events lib models query-processor settings task util}}
+   :uses #{analyze api audit config db driver events lib models query-processor settings task task-history util}}
 
   task
   {:api #{metabase.task
@@ -581,12 +580,24 @@
            db
            driver
            integrations
-           models
            plugins
            premium-features
            settings
+           task-history
            util
            enterprise/task}}
+
+  task-history
+  {:api  #{metabase.task-history.api
+           metabase.task-history.core
+           metabase.task-history.init}
+   :uses #{api
+           models
+           permissions
+           premium-features
+           request
+           task
+           util}}
 
   tiles
   {:api  #{metabase.tiles.api

@@ -1,4 +1,4 @@
-(ns metabase.api.task-test
+(ns metabase.task-history.api-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]

@@ -29,6 +29,7 @@
    [metabase.settings.init]
    [metabase.sso.init]
    [metabase.sync.init]
+   [metabase.task-history.init]
    [metabase.task.init]
    [metabase.tiles.init]
    [metabase.user-key-value.init]))
