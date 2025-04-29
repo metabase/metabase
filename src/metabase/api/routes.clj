@@ -24,7 +24,6 @@
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
    [metabase.api.slack]
    [metabase.api.table]
-   [metabase.api.task]
    [metabase.api.testing]
    [metabase.api.user]
    [metabase.api.util]
@@ -48,6 +47,7 @@
    [metabase.setup.api]
    [metabase.sso.api]
    [metabase.sync.api]
+   [metabase.task-history.api]
    [metabase.tiles.api]
    [metabase.timeline.api]
    [metabase.user-key-value.api]
@@ -71,7 +71,6 @@
          metabase.api.preview-embed/keep-me
          metabase.api.slack/keep-me
          metabase.api.table/keep-me
-         metabase.api.task/keep-me
          metabase.api.testing/keep-me
          metabase.api.user/keep-me
          metabase.api.util/keep-me
@@ -86,6 +85,7 @@
          metabase.segments.api/keep-me
          metabase.settings.api/keep-me
          metabase.setup.api/keep-me
+         metabase.task-history.api/keep-me
          metabase.tiles.api/keep-me
          metabase.user-key-value.api/keep-me)
 
@@ -171,7 +171,7 @@
    "/setup"                'metabase.setup.api
    "/slack"                (+auth 'metabase.api.slack)
    "/table"                (+auth 'metabase.api.table)
-   "/task"                 (+auth 'metabase.api.task)
+   "/task"                 (+auth 'metabase.task-history.api)
    "/testing"              (if enable-testing-routes? 'metabase.api.testing pass-thru-handler)
    "/tiles"                (+auth 'metabase.tiles.api)
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
