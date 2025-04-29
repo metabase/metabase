@@ -56,6 +56,8 @@ export function ParameterFieldWidget({
   const isValid =
     unsavedValue.every((value) => value != null) &&
     (supportsMultipleValues || unsavedValue.length === numFields);
+  const isEmpty = unsavedValue.length === 0;
+  const isRequired = parameter?.required;
 
   const handleValueSubmit = () => {
     setValue(unsavedValue);
@@ -63,7 +65,9 @@ export function ParameterFieldWidget({
 
   const handleFormSubmit = (event: FormEvent) => {
     event.preventDefault();
-    handleValueSubmit();
+    if (isValid && !(isRequired && isEmpty)) {
+      handleValueSubmit();
+    }
   };
 
   return (

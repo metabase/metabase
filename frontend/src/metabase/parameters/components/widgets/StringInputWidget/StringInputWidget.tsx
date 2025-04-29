@@ -35,6 +35,8 @@ export function StringInputWidget({
   const [unsavedInputValue, setUnsavedInputValue] = useState(
     normalizedValue[0] ?? "",
   );
+  const isEmpty = unsavedValue.length === 0;
+  const isRequired = parameter?.required;
 
   const handleFieldChange = (event: ChangeEvent<HTMLInputElement>) => {
     const inputValue = event.target.value;
@@ -49,7 +51,9 @@ export function StringInputWidget({
 
   const handleFormSubmit = (event: FormEvent) => {
     event.preventDefault();
-    handleValueSubmit();
+    if (!(isRequired && isEmpty)) {
+      handleValueSubmit();
+    }
   };
 
   return (

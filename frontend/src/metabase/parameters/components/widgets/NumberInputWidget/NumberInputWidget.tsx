@@ -53,6 +53,8 @@ export function NumberInputWidget({
   const isValid =
     (arity === "n" || unsavedArrayValue.length <= arity) &&
     (allValuesUnset || allValuesSet);
+  const isEmpty = unsavedArrayValue.length === 0 || allValuesUnset;
+  const isRequired = parameter?.required;
 
   const filteredUnsavedArrayValue = useMemo(
     () => unsavedArrayValue.filter((x): x is number => x !== undefined),
@@ -88,7 +90,9 @@ export function NumberInputWidget({
 
   const handleFormSubmit = (event: FormEvent) => {
     event.preventDefault();
-    handleValueSubmit();
+    if (isValid && !(isRequired && isEmpty)) {
+      handleValueSubmit();
+    }
   };
 
   return (

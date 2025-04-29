@@ -185,9 +185,7 @@ function addSimpleNumberFilter(value, buttonLabel = "Add filter") {
  */
 function enterDefaultValue(value, buttonLabel = "Add filter") {
   cy.findByText("Enter a default value…").click();
-  cy.findByPlaceholderText("Enter a default value…")
-    .type(`${value}{enter}`)
-    .blur();
+  cy.findByPlaceholderText("Enter a default value…").type(`${value}`).blur();
   cy.button(buttonLabel).click();
 }
 
