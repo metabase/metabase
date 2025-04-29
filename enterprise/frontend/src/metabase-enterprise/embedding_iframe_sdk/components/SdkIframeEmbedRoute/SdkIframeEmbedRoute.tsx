@@ -1,20 +1,25 @@
 import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 
-// eslint-disable-next-line no-restricted-imports -- to fix after POC
 import {
   InteractiveDashboard,
   InteractiveQuestion,
   defineMetabaseAuthConfig,
-  defineMetabaseTheme,
 } from "embedding-sdk";
+import { MetabaseProviderInternal } from "embedding-sdk/components/public/MetabaseProvider";
+import { useStore } from "metabase/lib/redux";
 import { Box, Center, Loader } from "metabase/ui";
 
 import { useSdkIframeEmbedEventBus } from "../../hooks/use-sdk-interactive-embed-event";
-import type { SdkIframeEmbedSettings } from "../../types/iframe";
-import { SdkIframeEmbedProvider } from "../SdkIframeEmbedProvider";
+import type {
+  SdkIframeEmbedSettings,
+  StoreWithSdkState,
+} from "../../types/iframe";
+
+import S from "./SdkIframeEmbedRoute.module.css";
 
 export const SdkIframeEmbedRoute = () => {
+  const store = useStore();
   const { iframeAuthConfig, iframeSettings } = useSdkIframeEmbedEventBus();
 
   const authConfig = useMemo(() => {
@@ -35,17 +40,6 @@ export const SdkIframeEmbedRoute = () => {
 
   const { theme } = iframeSettings ?? {};
 
-  const derivedTheme = useMemo(() => {
-    return defineMetabaseTheme({
-      ...theme,
-      colors: { ...theme?.colors },
-      components: {
-        question: { toolbar: { backgroundColor: theme?.colors?.background } },
-        ...theme?.components,
-      },
-    });
-  }, [theme]);
-
   // TODO: add support for SSO auth once the new SSO implementation on the SDK is ready
   const isAuthReady = !!authConfig?.apiKey;
 
@@ -58,11 +52,16 @@ export const SdkIframeEmbedRoute = () => {
   }
 
   return (
-    <SdkIframeEmbedProvider authConfig={authConfig} theme={derivedTheme}>
+    <MetabaseProviderInternal
+      authConfig={authConfig}
+      theme={theme}
+      store={store as StoreWithSdkState}
+      classNames={{ portalContainer: S.SdkIframeEmbedPortalContainer }}
+    >
       <Box h="100vh" bg={theme?.colors?.background}>
         <SdkIframeEmbedView settings={iframeSettings} />
       </Box>
-    </SdkIframeEmbedProvider>
+    </MetabaseProviderInternal>
   );
 };
 
@@ -75,7 +74,10 @@ export const SdkIframeEmbedView = ({
 
   return match([embedResourceType, embedResourceId])
     .with(["dashboard", P.nonNullable], ([, id]) => (
-      <InteractiveDashboard dashboardId={id} drillThroughQuestionHeight={800} />
+      <InteractiveDashboard
+        dashboardId={id}
+        drillThroughQuestionHeight="100%"
+      />
     ))
     .with(["question", P.nonNullable], ([, id]) => (
       <InteractiveQuestion questionId={id} height="100%" />
