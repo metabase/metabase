@@ -5,7 +5,7 @@ import { createMockDatabase } from "metabase-types/api/mocks/database";
 
 import { MBQL_CLAUSES } from "./config";
 import { formatExpressionParts } from "./formatter";
-import { getHelpText } from "./helper-text-strings";
+import { getHelpText } from "./help-text";
 
 describe("getHelpText", () => {
   const reportTimezone = "US/Hawaii";

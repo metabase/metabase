@@ -4,11 +4,8 @@ import { t } from "ttag";
 import type * as Lib from "metabase-lib";
 import {
   MBQLClauseCategory as CATEGORY,
-  type HelpText,
-  type HelpTextArg,
   type HelpTextConfig,
 } from "metabase-lib/v1/expressions/types";
-import type Database from "metabase-lib/v1/metadata/Database";
 
 // some of the structure names below are duplicated in src/metabase/lib/expression.cljc
 export const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
@@ -1402,43 +1399,6 @@ We support tz database time zone names.`,
     docsPage: "converttimezone",
   },
 ];
-
-export function getHelpText(
-  name: string,
-  database: Database,
-  reportTimezone?: string,
-): HelpText | undefined {
-  const helperTextConfig = HELPER_TEXT_STRINGS.find((h) => h.name === name);
-
-  if (!helperTextConfig) {
-    return;
-  }
-
-  const { description, docsPage } = helperTextConfig;
-  const args = helperTextConfig.args();
-
-  return {
-    ...helperTextConfig,
-    args,
-    example: getExample(name, args),
-    description: description(database, reportTimezone),
-    docsUrl: docsPage
-      ? `questions/query-builder/expressions/${docsPage}`
-      : "questions/query-builder/expressions",
-  };
-}
-
-/**
- * Build the expression example as a Lib.ExpressionParts manually.
- * This is necessary because we don't have a query to refer to in the examples.
- */
-function getExample(name: string, args: HelpTextArg[]): Lib.ExpressionParts {
-  return {
-    operator: name as Lib.ExpressionOperator,
-    options: {},
-    args: args.flatMap((arg) => arg.example),
-  };
-}
 
 function op(
   operator: Lib.ExpressionOperator,

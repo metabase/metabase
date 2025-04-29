@@ -3,7 +3,7 @@ import Fuse from "fuse.js";
 
 import type Database from "metabase-lib/v1/metadata/Database";
 
-import { getHelpText } from "../helper-text-strings";
+import { getHelpText } from "../help-text";
 import {
   CALL,
   END_OF_INPUT,
