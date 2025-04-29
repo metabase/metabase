@@ -1,4 +1,3 @@
-import cx from "classnames";
 import dayjs from "dayjs";
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
@@ -6,13 +5,20 @@ import { t } from "ttag";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import UserAvatar from "metabase/components/UserAvatar";
 import Link, { ForwardRefLink } from "metabase/core/components/Link";
-import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_ADMIN_USER_MENU_ITEMS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
-import { Icon, Menu, Tooltip, UnstyledButton } from "metabase/ui";
+import {
+  Box,
+  Flex,
+  Icon,
+  Menu,
+  Text,
+  Tooltip,
+  UnstyledButton,
+} from "metabase/ui";
 import type { Group, GroupId, Member, User } from "metabase-types/api";
 
 import { userToColor } from "../colors";
@@ -64,12 +70,10 @@ export const PeopleListRow = ({
 
   return (
     <tr key={user.id}>
-      <td className={cx(CS.flex, CS.alignCenter)}>
-        <span className={cx(CS.textWhite, CS.inlineBlock)}>
-          <UserAvatar bg={userToColor(user)} user={user} />
-        </span>{" "}
-        <span className={cx(CS.ml2, CS.textBold)}>{getName(user)}</span>
-      </td>
+      <Flex component="td" align="center" gap="md" c="text-white">
+        <UserAvatar bg={userToColor(user)} user={user} />
+        <Text fw="700">{getName(user)}</Text>
+      </Flex>
       <td>
         {user.sso_source === "google" ? (
           <Tooltip label={t`Signed up via Google`}>
@@ -115,7 +119,7 @@ export const PeopleListRow = ({
           <td>
             {user.last_login ? dayjs(user.last_login).fromNow() : t`Never`}
           </td>
-          <td className={CS.textRight}>
+          <Box componen="td" ta="right">
             {isAdmin && (
               <Menu shadow="md" position="bottom-end">
                 <Menu.Target>
@@ -156,7 +160,7 @@ export const PeopleListRow = ({
                 </Menu.Dropdown>
               </Menu>
             )}
-          </td>
+          </Box>
         </Fragment>
       )}
     </tr>
