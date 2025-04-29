@@ -637,7 +637,7 @@ export const COMPARISON_OPERATORS = defineClauses(
   },
 );
 
-const EXPRESSION_OPERATORS = {
+export const EXPRESSION_OPERATORS = {
   ...LOGICAL_OPERATORS,
   ...NUMERIC_OPERATORS,
   ...EQUALITY_OPERATORS,
