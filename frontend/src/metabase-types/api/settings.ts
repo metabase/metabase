@@ -255,16 +255,24 @@ export type PasswordComplexity = {
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
 
-export interface SettingDefinition<Key extends SettingKey = SettingKey> {
+export interface SettingDefinition<
+  Key extends EnterpriseSettingKey = EnterpriseSettingKey,
+> {
   key: Key;
   env_name?: string;
   is_env_setting?: boolean;
-  value?: SettingValue<Key>;
-  default?: SettingValue<Key>;
+  value?: EnterpriseSettingValue<Key>;
+  default?: EnterpriseSettingValue<Key>;
   display_name?: string;
   description?: string | ReactNode | null;
   type?: InputSettingType;
 }
+
+export type SettingDefinitionMap<
+  T extends EnterpriseSettingKey = EnterpriseSettingKey,
+> = {
+  [K in T]: SettingDefinition<K>;
+};
 
 export type UpdateChannel = "latest" | "beta" | "nightly";
 
