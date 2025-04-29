@@ -6,6 +6,8 @@ import type {
 
 const EMBEDDING_ROUTE = "embed/sdk/v1";
 
+type EmbedSettingKey = keyof SdkIframeEmbedSettings;
+
 const EMBED_SETTING_KEYS = [
   "apiKey",
   "instanceUrl",
@@ -13,7 +15,7 @@ const EMBED_SETTING_KEYS = [
   "dashboardId",
   "questionId",
   "notebookEditor",
-] as const satisfies (keyof SdkIframeEmbedSettings)[];
+] as const satisfies EmbedSettingKey[];
 
 class MetabaseEmbed {
   static readonly VERSION = "1.0.0";
@@ -47,12 +49,12 @@ class MetabaseEmbed {
 
     const allowedSettings = Object.fromEntries(
       Object.entries(settings).filter(([key]) =>
-        EMBED_SETTING_KEYS.includes(key as (typeof EMBED_SETTING_KEYS)[number]),
+        EMBED_SETTING_KEYS.includes(key as EmbedSettingKey),
       ),
     );
 
     this._settings = { ...this._settings, ...allowedSettings };
-    this._sendMessage("metabase.embed.updateSettings", allowedSettings);
+    this._sendMessage("metabase.embed.updateSettings", this._settings);
   }
 
   public destroy() {
