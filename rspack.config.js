@@ -24,7 +24,7 @@ const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const E2E_PATH = __dirname + "/e2e";
 
-const sdkIframeEmbedConfig = require(`${ENTERPRISE_SRC_PATH}/iframe_embedding_sdk/rspack.embed.config.js`)
+const sdkIframeEmbedConfig = require(`${ENTERPRISE_SRC_PATH}/embedding_iframe_sdk/rspack.embed.config.js`)
 
 const PORT = process.env.PORT || 8080;
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
