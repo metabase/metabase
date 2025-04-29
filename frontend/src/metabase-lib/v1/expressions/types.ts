@@ -53,6 +53,17 @@ export type ExpressionType =
   | "number"
   | "string";
 
+type ClauseArgDefinition = {
+  name: string;
+  type: ExpressionType;
+  description: string;
+  example:
+    | Lib.ExpressionParts
+    | Lib.ExpressionArg
+    | (Lib.ExpressionParts | Lib.ExpressionArg)[];
+  template?: string;
+};
+
 export type MBQLClauseDefinition = {
   name?: never;
   displayName: string;
@@ -74,13 +85,15 @@ export type MBQLClauseFunctionConfig = {
   name: DefinedClauseName;
   displayName: string;
   type: ExpressionType;
-  args: ExpressionType[];
+  args(): ClauseArgDefinition[];
   argType(index: number, args: unknown[], type: ExpressionType): ExpressionType;
   requiresFeature?: DatabaseFeature;
   hasOptions: boolean;
   multiple: boolean;
   category?: MBQLClauseCategory;
   validator?: (...args: any) => string | undefined;
+  description?(database: Database, reportTimezone?: string): string;
+  docsPage?: string;
 };
 
 export type Hooks = {

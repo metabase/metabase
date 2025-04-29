@@ -11,7 +11,7 @@ import {
 import type Database from "metabase-lib/v1/metadata/Database";
 
 // some of the structure names below are duplicated in src/metabase/lib/expression.cljc
-const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
+export const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "count",
     displayName: "Count",

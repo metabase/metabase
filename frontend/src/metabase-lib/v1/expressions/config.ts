@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { HELPER_TEXT_STRINGS } from "./helper-text-strings";
 import {
   MBQLClauseCategory as CATEGORY,
   type MBQLClauseDefinition,
@@ -18,17 +19,27 @@ function defineClauses<const T extends Record<string, MBQLClauseDefinition>>(
       throw new Error(`Duplicate clause name: ${name}`);
     }
     names.add(name);
+    const helpText = HELPER_TEXT_STRINGS.find((dfn) => dfn.name === name);
 
     const defn = clauses[name];
     result[name] = {
       ...options,
+      ...defn,
       name,
+      description: helpText?.description,
+      docsPage: helpText?.docsPage,
       hasOptions: Boolean(defn.hasOptions),
       multiple: Boolean(defn.multiple),
       argType(index) {
         return defn.args[index];
       },
-      ...defn,
+      args() {
+        const args = helpText?.args() ?? [];
+        return defn.args.map((type, index) => ({
+          type,
+          ...args[index],
+        }));
+      },
     };
   }
   return result;
