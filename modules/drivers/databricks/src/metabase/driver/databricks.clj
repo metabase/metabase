@@ -340,3 +340,7 @@
   [driver prepared-statement index object]
   (set-parameter-to-local-date-time driver prepared-statement index
                                     (t/local-date-time (t/local-date 1970 1 1) object)))
+
+(defmethod sql.qp/->integer :databricks
+  [driver value]
+  (sql.qp/->integer-with-round driver value))

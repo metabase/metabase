@@ -14,6 +14,8 @@ title: Driver interface changelog
 
 - Added a feature `:expressions/float` for drivers that support casting text to floats.
 
+- Added the multi-method `integer-dbtype` that allows the driver to control which type integers are cast to.
+
 ## Metabase 0.54.0
 
 - Added the multi-method `allowed-promotions` that allows driver control over which column type promotions are supported for uploads.
