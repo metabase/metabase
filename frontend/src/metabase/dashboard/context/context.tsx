@@ -1,3 +1,4 @@
+import type { Query } from "history";
 import {
   type PropsWithChildren,
   createContext,
@@ -10,7 +11,7 @@ import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
 import { useDispatch } from "metabase/lib/redux";
-import type { DashboardId } from "metabase-types/api";
+import type { Dashboard, DashboardId } from "metabase-types/api";
 
 import { navigateToNewCardFromDashboard } from "../actions";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
@@ -34,9 +35,9 @@ type DashboardLoadingState = {
 
 type OwnProps = {
   dashboardId: DashboardId;
-  parameterQueryParams?: Record<string, string>;
-  onLoad?: (result: SuccessfulFetchDashboardResult) => void;
-  onError?: (result: FailedFetchDashboardResult) => void;
+  parameterQueryParams?: Query;
+  onLoad?: (dashboard: Dashboard) => void;
+  onError?: (error: FailedFetchDashboardResult) => void;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
@@ -138,7 +139,7 @@ const DashboardContextProviderInner = ({
       });
 
       if (isSuccessfulFetchDashboardResult(result)) {
-        onLoad?.(result);
+        onLoad?.(result.payload.dashboard);
       } else if (
         isFailedFetchDashboardResult(result) &&
         !isCancelledFetchDashboardResult(result)

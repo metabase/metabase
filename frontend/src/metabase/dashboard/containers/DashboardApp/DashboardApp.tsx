@@ -17,13 +17,12 @@ import {
   useDashboardUrlQuery,
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
-import type { SuccessfulFetchDashboardResult } from "metabase/dashboard/types";
 import { useFavicon } from "metabase/hooks/use-favicon";
 import { parseHashOptions } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
-import type { DashboardId } from "metabase-types/api";
+import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 
 import { getFavicon } from "../../selectors";
 
@@ -78,8 +77,7 @@ export const DashboardApp = ({
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
 
   useDashboardUrlQuery(router, location);
-  const onLoadDashboard = (result: SuccessfulFetchDashboardResult) => {
-    const dashboard = result.payload.dashboard;
+  const onLoadDashboard = (dashboard: IDashboard) => {
     try {
       if (editingOnLoad) {
         onRefreshPeriodChange(null);
