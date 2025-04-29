@@ -16,7 +16,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { Icon, Tooltip } from "metabase/ui";
 import type { Group, GroupId, Member, User } from "metabase-types/api";
 
-import MembershipSelect from "./MembershipSelect";
+import { MembershipSelect } from "./MembershipSelect";
 import { RefreshLink } from "./PeopleListRow.styled";
 
 const enablePasswordLoginKey = "enable-password-login";
