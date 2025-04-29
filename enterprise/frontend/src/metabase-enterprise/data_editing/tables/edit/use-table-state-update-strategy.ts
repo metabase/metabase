@@ -4,7 +4,7 @@ import type { DatasetColumn, RowValue } from "metabase-types/api";
 
 type DataEditingRow = Record<string, RowValue>;
 
-type PatchCollection = {
+export type PatchCollection = {
   /**
    * An `immer` Patch describing the cache update.
    */
@@ -20,9 +20,9 @@ type PatchCollection = {
 };
 
 export interface TableEditingStateUpdateStrategy {
-  onRowsCreated: (rows?: DataEditingRow[]) => void;
-  onRowsUpdated: (rows?: DataEditingRow[]) => PatchCollection | undefined;
-  onRowsDeleted: (rows?: DataEditingRow[]) => void;
+  onRowsCreated: (rows: DataEditingRow[]) => void;
+  onRowsUpdated: (rows: DataEditingRow[]) => PatchCollection | void;
+  onRowsDeleted: (rows: DataEditingRow[]) => void;
 }
 
 export function mapDataEditingRowObjectsToRowValues(

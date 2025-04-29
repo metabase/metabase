@@ -23,8 +23,8 @@ export function useTableEditingStateDashcardUpdateStrategy(
   );
 
   const onRowsCreated = useCallback(
-    (rows?: Record<string, RowValue>[]) => {
-      if (!cardData || !rows) {
+    (rows: Record<string, RowValue>[]) => {
+      if (!cardData) {
         return;
       }
 
@@ -45,8 +45,8 @@ export function useTableEditingStateDashcardUpdateStrategy(
   );
 
   const onRowsUpdated = useCallback(
-    (rows?: Record<string, RowValue>[]) => {
-      if (!cardData || !rows) {
+    (rows: Record<string, RowValue>[]) => {
+      if (!cardData) {
         return;
       }
 
@@ -87,8 +87,8 @@ export function useTableEditingStateDashcardUpdateStrategy(
   );
 
   const onRowsDeleted = useCallback(
-    (rows?: Record<string, RowValue>[]) => {
-      if (!cardData || !rows) {
+    (rows: Record<string, RowValue>[]) => {
+      if (!cardData) {
         return;
       }
 

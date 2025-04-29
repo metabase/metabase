@@ -3,6 +3,8 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
+import type { DataGridCellId } from "metabase/data-grid";
+import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
@@ -10,7 +12,6 @@ import {
   useInsertTableRowsMutation,
   useUpdateTableRowsMutation,
 } from "metabase-enterprise/api";
-import type { UpdatedRowCellsHandlerParams } from "metabase-enterprise/data_editing/tables/types";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ConcreteTableId,
@@ -19,7 +20,16 @@ import type {
   RowValue,
 } from "metabase-types/api";
 
-import type { TableEditingStateUpdateStrategy } from "./use-table-state-update-strategy";
+import type {
+  UpdateCellValueHandlerParams,
+  UpdatedRowHandlerParams,
+} from "../types";
+
+import type {
+  PatchCollection,
+  TableEditingStateUpdateStrategy,
+} from "./use-table-state-update-strategy";
+import { getRowPkKeyValue } from "./utils";
 
 export const useTableCRUD = ({
   tableId,
@@ -38,6 +48,10 @@ export const useTableCRUD = ({
   const [expandedRowIndex, setExpandedRowIndex] = useState<
     number | undefined
   >();
+
+  const [cellsWithFailedUpdatesMap, setCellsWithFailedUpdatesMap] = useState<
+    Record<DataGridCellId, true>
+  >({}); // TODO: maybe ref or set?
 
   const dispatch = useDispatch();
 
@@ -63,13 +77,13 @@ export const useTableCRUD = ({
   }, [tableMetadata]);
 
   const displayErrorIfExists = useCallback(
-    (error: any) => {
+    (error: unknown) => {
       if (error) {
         dispatch(
           addUndo({
             icon: "warning",
             toastColor: "error",
-            message: error?.data?.errors?.[0].error ?? t`An error occurred`,
+            message: getResponseErrorMessage(error) ?? t`An error occurred`,
           }),
         );
       }
@@ -77,8 +91,44 @@ export const useTableCRUD = ({
     [dispatch],
   );
 
+  const handleCellValueUpdateError = useCallback(
+    (
+      error: unknown,
+      cellUpdateContext: {
+        cellId: DataGridCellId;
+        patchResult: PatchCollection | undefined;
+      },
+    ) => {
+      const { cellId, patchResult } = cellUpdateContext;
+
+      patchResult?.undo();
+
+      dispatch(
+        addUndo({
+          icon: "warning",
+          toastColor: "error",
+          message: getResponseErrorMessage(error) ?? t`An error occurred`,
+          timeout: null, // removes automatic toast hide
+          undo: false,
+          action: () => {
+            // eslint-disable-next-line no-console
+            console.log("Undo action clicked");
+          },
+        }),
+      );
+      // TODO: create a custom component to show the error message and reset failed cells map state
+
+      setCellsWithFailedUpdatesMap({
+        ...cellsWithFailedUpdatesMap,
+        [cellId]: true,
+      });
+    },
+    [cellsWithFailedUpdatesMap, dispatch],
+  );
+
   const handleCellValueUpdate = useCallback(
-    async ({ updatedData, rowIndex }: UpdatedRowCellsHandlerParams) => {
+    async ({ updatedData, rowIndex, cellId }: UpdateCellValueHandlerParams) => {
+      // mostly the same as "handleRowUpdate", but has optimistic update and special error handling
       if (!datasetData) {
         console.warn(
           "Failed to update table data - no data is loaded for a table",
@@ -86,16 +136,10 @@ export const useTableCRUD = ({
         return;
       }
 
-      const columns = datasetData.cols;
-      const rowData = datasetData.rows[rowIndex];
-
-      const pkColumnIndex = columns.findIndex(isPK);
-      const pkColumn = columns[pkColumnIndex];
-      const rowPkValue = rowData[pkColumnIndex];
-
+      const pkRecord = getRowPkKeyValue(datasetData, rowIndex);
       const updatedRowWithPk = {
         ...updatedData,
-        [pkColumn.name]: rowPkValue,
+        ...pkRecord,
       };
 
       const patchResult = stateUpdateStrategy.onRowsUpdated([updatedRowWithPk]);
@@ -106,10 +150,52 @@ export const useTableCRUD = ({
           rows: [updatedRowWithPk],
         });
 
-        displayErrorIfExists(response.error);
+        if (response.error) {
+          handleCellValueUpdateError(response.error, {
+            cellId,
+            patchResult: patchResult || undefined,
+          });
+        }
       } catch (e) {
-        patchResult?.undo();
-        displayErrorIfExists(e);
+        handleCellValueUpdateError(e, {
+          cellId,
+          patchResult: patchResult || undefined,
+        });
+      }
+    },
+    [
+      datasetData,
+      handleCellValueUpdateError,
+      stateUpdateStrategy,
+      tableId,
+      updateTableRows,
+    ],
+  );
+
+  const handleRowUpdate = useCallback(
+    async ({ updatedData, rowIndex }: UpdatedRowHandlerParams) => {
+      if (!datasetData) {
+        console.warn(
+          "Failed to update table data - no data is loaded for a table",
+        );
+        return;
+      }
+
+      const pkRecord = getRowPkKeyValue(datasetData, rowIndex);
+      const updatedRowWithPk = {
+        ...updatedData,
+        ...pkRecord,
+      };
+
+      const response = await updateTableRows({
+        tableId: tableId,
+        rows: [updatedRowWithPk],
+      });
+
+      if (!response.error && response.data) {
+        stateUpdateStrategy.onRowsUpdated(response.data.updated);
+      } else {
+        displayErrorIfExists(response.error);
       }
     },
     [
@@ -128,10 +214,11 @@ export const useTableCRUD = ({
         rows: [data],
       });
 
-      displayErrorIfExists(response.error);
-      if (!response.error) {
+      if (!response.error && response.data) {
         closeCreateRowModal();
-        stateUpdateStrategy.onRowsCreated(response.data?.["created-rows"]);
+        stateUpdateStrategy.onRowsCreated(response.data["created-rows"]);
+      } else {
+        displayErrorIfExists(response.error);
       }
     },
     [
@@ -143,7 +230,7 @@ export const useTableCRUD = ({
     ],
   );
 
-  const handleExpandedRowDelete = useCallback(
+  const handleRowDelete = useCallback(
     async (rowIndex: number) => {
       if (!datasetData) {
         console.warn(
@@ -171,15 +258,17 @@ export const useTableCRUD = ({
         stateUpdateStrategy.onRowsDeleted(rows);
       }
 
-      displayErrorIfExists(response.error);
+      if (response.error) {
+        displayErrorIfExists(response.error);
+      }
     },
     [
       datasetData,
       closeCreateRowModal,
       deleteTableRows,
       tableId,
-      displayErrorIfExists,
       stateUpdateStrategy,
+      displayErrorIfExists,
     ],
   );
 
@@ -197,10 +286,12 @@ export const useTableCRUD = ({
     isInserting,
     closeCreateRowModal,
     tableFieldMetadataMap,
+    cellsWithFailedUpdatesMap,
 
-    handleRowCreate,
     handleCellValueUpdate,
-    handleExpandedRowDelete,
+    handleRowCreate,
+    handleRowUpdate,
+    handleRowDelete,
     handleModalOpenAndExpandedRow,
   };
 };

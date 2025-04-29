@@ -1,3 +1,4 @@
+import type { DataGridCellId } from "metabase/data-grid";
 import type {
   ConcreteTableId,
   DatasetColumn,
@@ -29,8 +30,14 @@ export type TableDeleteRowsRequest = {
 
 export type TableDeleteRowsResponse = { success: boolean };
 
-export type UpdatedRowCellsHandlerParams = {
-  updatedData: Record<DatasetColumn["name"], RowValue>;
+export type UpdateCellValueHandlerParams = {
+  updatedData: RowCellsWithPkValue;
+  rowIndex: number;
+  cellId: DataGridCellId;
+};
+
+export type UpdatedRowHandlerParams = {
+  updatedData: RowCellsWithPkValue;
   rowIndex: number;
 };
 

@@ -5,6 +5,7 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import {
   type ColumnOptions,
   DataGrid,
+  type DataGridCellId,
   type RowIdColumnOptions,
   useDataGridInstance,
 } from "metabase/data-grid";
@@ -20,7 +21,7 @@ import type {
 } from "metabase-types/api";
 
 import { canEditField } from "../../helpers";
-import type { UpdatedRowCellsHandlerParams } from "../types";
+import type { UpdateCellValueHandlerParams } from "../types";
 
 import S from "./EditTableData.module.css";
 import { EditingBodyCellWrapper } from "./EditingBodyCell";
@@ -30,12 +31,13 @@ import { useTableEditing } from "./use-table-editing";
 type EditTableDataGridProps = {
   data: DatasetData;
   fieldMetadataMap: Record<FieldWithMetadata["name"], FieldWithMetadata>;
-  onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
+  onCellValueUpdate: (params: UpdateCellValueHandlerParams) => void;
   onRowExpandClick: (rowIndex: number) => void;
   columnsConfig?: EditableTableColumnConfig;
   getColumnSortDirection?: (
     column: DatasetColumn,
   ) => OrderByDirection | undefined;
+  cellsWithFailedUpdatesMap?: Record<DataGridCellId, true>;
 };
 
 export const EditTableDataGrid = ({
@@ -45,6 +47,7 @@ export const EditTableDataGrid = ({
   onRowExpandClick,
   columnsConfig,
   getColumnSortDirection,
+  cellsWithFailedUpdatesMap,
 }: EditTableDataGridProps) => {
   const { cols, rows } = data;
 
@@ -103,6 +106,10 @@ export const EditTableDataGrid = ({
           />
         ),
         getIsCellEditing: (cellId: string) => editingCellId === cellId,
+        getCellClassNameByCellId: (cellId: string) =>
+          cellsWithFailedUpdatesMap?.[cellId]
+            ? S.cellWithUpdateFail
+            : undefined,
       };
 
       if (!isEditableColumn) {
@@ -113,12 +120,13 @@ export const EditTableDataGrid = ({
     });
   }, [
     cols,
+    columnsConfig,
     getColumnSortDirection,
     fieldMetadataMap,
     onCellValueUpdate,
     onCellEditCancel,
     editingCellId,
-    columnsConfig,
+    cellsWithFailedUpdatesMap,
   ]);
 
   const rowId: RowIdColumnOptions = useMemo(

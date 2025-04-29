@@ -70,10 +70,12 @@ export const EditTableDataContainer = ({
     isInserting,
     closeCreateRowModal,
     tableFieldMetadataMap,
+    cellsWithFailedUpdatesMap,
 
-    handleRowCreate,
     handleCellValueUpdate,
-    handleExpandedRowDelete,
+    handleRowCreate,
+    handleRowUpdate,
+    handleRowDelete,
     handleModalOpenAndExpandedRow,
   } = useTableCRUD({ tableId, datasetData, stateUpdateStrategy });
 
@@ -126,6 +128,7 @@ export const EditTableDataContainer = ({
               <EditTableDataGrid
                 data={datasetData}
                 fieldMetadataMap={tableFieldMetadataMap}
+                cellsWithFailedUpdatesMap={cellsWithFailedUpdatesMap}
                 onCellValueUpdate={handleCellValueUpdate}
                 onRowExpandClick={handleModalOpenAndExpandedRow}
               />
@@ -154,9 +157,9 @@ export const EditTableDataContainer = ({
       <EditingBaseRowModal
         opened={isCreateRowModalOpen}
         onClose={closeCreateRowModal}
-        onEdit={handleCellValueUpdate}
+        onEdit={handleRowUpdate}
         onRowCreate={handleRowCreate}
-        onRowDelete={handleExpandedRowDelete}
+        onRowDelete={handleRowDelete}
         datasetColumns={datasetData.cols}
         currentRowIndex={expandedRowIndex}
         currentRowData={

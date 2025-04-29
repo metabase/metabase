@@ -66,8 +66,8 @@ export const EditTableDashcardVisualization = ({
     tableFieldMetadataMap,
 
     handleRowCreate,
-    handleCellValueUpdate,
-    handleExpandedRowDelete,
+    handleRowUpdate,
+    handleRowDelete,
     handleModalOpenAndExpandedRow,
   } = useTableCRUD({ tableId, datasetData: data, stateUpdateStrategy });
 
@@ -143,7 +143,7 @@ export const EditTableDashcardVisualization = ({
         <EditTableDataGrid
           data={data}
           fieldMetadataMap={tableFieldMetadataMap}
-          onCellValueUpdate={handleCellValueUpdate}
+          onCellValueUpdate={handleRowUpdate}
           onRowExpandClick={handleModalOpenAndExpandedRow}
           columnsConfig={columnsConfig}
           getColumnSortDirection={getColumnSortDirection}
@@ -165,9 +165,9 @@ export const EditTableDashcardVisualization = ({
         opened={isCreateRowModalOpen}
         hasDeleteAction={hasDeleteAction}
         onClose={closeCreateRowModal}
-        onEdit={handleCellValueUpdate}
+        onEdit={handleRowUpdate}
         onRowCreate={handleRowCreate}
-        onRowDelete={handleExpandedRowDelete}
+        onRowDelete={handleRowDelete}
         datasetColumns={data.cols}
         currentRowIndex={expandedRowIndex}
         currentRowData={
