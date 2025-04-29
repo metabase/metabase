@@ -6,9 +6,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
-   [metabase.public-settings :as public-settings]
    [metabase.query-analysis.core :as query-analysis]
    [metabase.query-analysis.init]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

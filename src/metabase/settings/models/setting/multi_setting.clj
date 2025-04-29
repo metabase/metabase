@@ -1,4 +1,4 @@
-(ns metabase.models.setting.multi-setting
+(ns metabase.settings.models.setting.multi-setting
   "Helper macros for defining Settings that can have multiple getter/setter implementations. The implementation that
   gets used is determined at runtime when the getter or setter is invoked by a dispatch function.
 
@@ -8,7 +8,7 @@
 
   See PR #16365 for more context."
   (:require
-   [metabase.models.setting :as setting]
+   [metabase.settings.models.setting :as setting]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)

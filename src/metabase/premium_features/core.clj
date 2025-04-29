@@ -4,9 +4,9 @@
   defenterprise macro."
   (:require
    [metabase.config :as config]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.premium-features.defenterprise]
    [metabase.premium-features.token-check]
+   [metabase.settings.core :refer [defsetting]]
    [potemkin :as p]))
 
 (p/import-vars
@@ -42,7 +42,7 @@
          (has-feature? feature))))
 
 (defmacro define-premium-feature
-  "Convenience for generating a [[metabase.models.setting/defsetting]] form for a premium token feature. (The Settings
+  "Convenience for generating a [[metabase.settings.models.setting/defsetting]] form for a premium token feature. (The Settings
   definitions for Premium token features all look more or less the same, so this prevents a lot of code duplication.)"
   [setting-name docstring feature & {:as options}]
   (let [options (merge {:type       :boolean

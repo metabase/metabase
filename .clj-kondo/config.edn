@@ -417,13 +417,11 @@
     metabase.model-persistence.core                               model-persistence
     metabase.models.dependency                                    dependency
     metabase.models.interface                                     mi
-    metabase.models.setting                                       setting
     metabase.notification.core                                    notification
     metabase.notification.payload.core                            notification.payload
     metabase.notification.test-util                               notification.tu
     metabase.permissions.core                                     perms
     metabase.plugins.initialize                                   plugins.init
-    metabase.public-settings                                      public-settings
     metabase.public-sharing.core                                  public-sharing
     metabase.premium-features.core                                premium-features
     metabase.pulse.core                                           pulse
@@ -466,6 +464,7 @@
     metabase.server.core                                          server
     metabase.server.protocols                                     server.protocols
     metabase.sso.core                                             sso
+    metabase.settings.core                                        setting
     metabase.sync.analyze.fingerprint                             sync.fingerprint
     metabase.sync.field-values                                    sync.field-values
     metabase.sync.interface                                       i
@@ -550,14 +549,10 @@
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                 clojure.core/fn
   metabase.models.collection-test/with-collection-in-location                           clojure.core/let
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
-  metabase.models.setting/defsetting                                                    clj-kondo.lint-as/def-catch-all
-  metabase.models.setting.multi-setting/define-multi-setting                            clojure.core/def
   metabase.models.util.spec-update/define-spec                                          clojure.core/def
   metabase.notification.test-util/with-temp-notification                                clojure.core/let
   metabase.notification.test-util/with-card-notification                                clojure.core/let
   metabase.notification.test-util/with-system-event-notification!                       clojure.core/let
-  metabase.public-settings.premium-features/defenterprise-schema                        clj-kondo.lint-as/def-catch-all
-  metabase.public-settings.premium-features/define-premium-feature                      clojure.core/def
   metabase.premium-features.core/defenterprise-schema                                   clj-kondo.lint-as/def-catch-all
   metabase.premium-features.core/define-premium-feature                                 clojure.core/def
   metabase.premium-features.defenterprise/defenterprise-schema                          clj-kondo.lint-as/def-catch-all
@@ -569,6 +564,10 @@
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution! clojure.core/let
   metabase.query-processor.setup/with-qp-setup                                          clojure.core/let
   metabase.search.api-test/do-test-users                                                clojure.core/let
+  metabase.settings.core/defsetting                                                     clj-kondo.lint-as/def-catch-all
+  metabase.settings.core/define-multi-setting                                           clojure.core/def
+  metabase.settings.models.setting/defsetting                                           clj-kondo.lint-as/def-catch-all
+  metabase.settings.models.setting.multi-setting/define-multi-setting                   clojure.core/def
   metabase.sso.ldap/with-ldap-connection                                                clojure.core/fn
   metabase.sync.util/sum-for                                                            clojure.core/for
   metabase.sync.util/with-emoji-progress-bar                                            clojure.core/let
@@ -664,9 +663,6 @@
    metabase.models.dashboard-test/with-dash-in-collection!                                                                   hooks.common/with-three-bindings
    metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
    metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
-   metabase.models.setting.multi-setting/define-multi-setting                                                                hooks.metabase.models.setting/define-multi-setting
-   metabase.models.setting.multi-setting/define-multi-setting-impl                                                           hooks.metabase.models.setting/define-multi-setting-impl
-   metabase.models.setting/defsetting                                                                                        hooks.metabase.models.setting/defsetting
    metabase.permissions.core/allow-changing-all-users-group-members                                                          hooks.common/do*
    metabase.permissions.core/disable-perms-cache                                                                             hooks.common/do*
    metabase.plugins.classloader/require                                                                                      hooks.clojure.core.require/lint-require
@@ -690,6 +686,12 @@
    metabase.search.api-test/with-search-items-in-collection                                                                  hooks.metabase.search.api-test/with-search-items-in-collection
    metabase.search.api-test/with-search-items-in-root-collection                                                             hooks.common/do*
    metabase.server.streaming-response-test/with-start-execution-chan                                                         hooks.common/with-one-binding
+   metabase.settings.core/define-multi-setting                                                                               hooks.metabase.settings.models.setting/define-multi-setting
+   metabase.settings.core/define-multi-setting-impl                                                                          hooks.metabase.settings.models.setting/define-multi-setting-impl
+   metabase.settings.core/defsetting                                                                                         hooks.metabase.settings.models.setting/defsetting
+   metabase.settings.models.setting.multi-setting/define-multi-setting                                                       hooks.metabase.settings.models.setting/define-multi-setting
+   metabase.settings.models.setting.multi-setting/define-multi-setting-impl                                                  hooks.metabase.settings.models.setting/define-multi-setting-impl
+   metabase.settings.models.setting/defsetting                                                                               hooks.metabase.settings.models.setting/defsetting
    metabase.stale-test/with-stale-items                                                                                      hooks.toucan2.tools.with-temp/with-temp
    metabase.test.data.datasets/test-driver                                                                                   hooks.metabase.test.data.datasets/test-driver
    metabase.test.data.datasets/test-drivers                                                                                  hooks.metabase.test.data.datasets/test-drivers

@@ -19,8 +19,6 @@
    [metabase.config :as config]
    [metabase.models.collection :as collection]
    [metabase.models.moderation-review :as moderation-review]
-   [metabase.models.setting :as setting]
-   [metabase.models.setting.cache :as setting.cache]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -29,6 +27,9 @@
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
+   [metabase.settings.core :as setting]
+   [metabase.settings.models.setting]
+   [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.task :as task]
    [metabase.test-runner.assert-exprs]
    [metabase.test.data :as data]
@@ -452,7 +453,7 @@
                         (catch Exception e
                           (when-not raw-setting?
                             (throw e))))]
-    (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
+    (if (and (not raw-setting?) (setting/env-var-value setting-k))
       (do-with-temp-env-var-value! (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (t2/select-one-fn :value :model/Setting :key setting-k)
@@ -464,7 +465,7 @@
             (if raw-setting?
               (upsert-raw-setting! original-value setting-k value)
               ;; bypass the feature check when setting up mock data
-              (with-redefs [setting/has-feature? (constantly true)]
+              (with-redefs [metabase.settings.models.setting/has-feature? (constantly true)]
                 (setting/set! setting-k value :bypass-read-only? true)))
             (catch Throwable e
               (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
@@ -479,7 +480,7 @@
               (if raw-setting?
                 (restore-raw-setting! original-value setting-k)
                 ;; bypass the feature check when reset settings to the original value
-                (with-redefs [setting/has-feature? (constantly true)]
+                (with-redefs [metabase.settings.models.setting/has-feature? (constantly true)]
                   (setting/set! setting-k original-value :bypass-read-only? true)))
               (catch Throwable e
                 (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
@@ -513,7 +514,7 @@
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temporary-raw-setting-values
   "Like [[with-temporary-setting-values]] but works with raw value and it allows settings that are not defined
-  using [[metabase.models.setting/defsetting]]."
+  using [[metabase.settings.models.setting/defsetting]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)

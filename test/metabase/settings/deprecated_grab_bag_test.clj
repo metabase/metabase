@@ -1,10 +1,10 @@
-(ns metabase.public-settings-test
+(ns metabase.settings.deprecated-grab-bag-test
   (:require
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.models.setting :as setting]
    [metabase.premium-features.core :as premium-features]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.settings.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.i18n :as i18n :refer [tru]]))

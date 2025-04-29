@@ -22,7 +22,6 @@
    [metabase.api.premium-features]
    [metabase.api.preview-embed]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
-   [metabase.api.setting]
    [metabase.api.slack]
    [metabase.api.table]
    [metabase.api.task]
@@ -45,6 +44,7 @@
    [metabase.search.api]
    [metabase.segments.api]
    [metabase.session.api]
+   [metabase.settings.api]
    [metabase.setup.api]
    [metabase.sso.api]
    [metabase.sync.api]
@@ -69,7 +69,6 @@
          metabase.api.geojson/keep-me
          metabase.api.native-query-snippet/keep-me
          metabase.api.preview-embed/keep-me
-         metabase.api.setting/keep-me
          metabase.api.slack/keep-me
          metabase.api.table/keep-me
          metabase.api.task/keep-me
@@ -85,6 +84,7 @@
          metabase.public-sharing.api/keep-me
          metabase.revisions.api/keep-me
          metabase.segments.api/keep-me
+         metabase.settings.api/keep-me
          metabase.setup.api/keep-me
          metabase.tiles.api/keep-me
          metabase.user-key-value.api/keep-me)
@@ -167,7 +167,7 @@
    "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.segments.api)
    "/session"              metabase.session.api/routes
-   "/setting"              (+auth 'metabase.api.setting)
+   "/setting"              (+auth 'metabase.settings.api)
    "/setup"                'metabase.setup.api
    "/slack"                (+auth 'metabase.api.slack)
    "/table"                (+auth 'metabase.api.table)

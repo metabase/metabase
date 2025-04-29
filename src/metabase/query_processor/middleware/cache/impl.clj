@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.cache.impl
   (:require
    [flatland.ordered.map :as ordered-map]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]

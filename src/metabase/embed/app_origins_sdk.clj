@@ -1,7 +1,7 @@
 (ns metabase.embed.app-origins-sdk
   (:require
    [clojure.string :as str]
-   [metabase.models.setting  :as setting :refer [defsetting]]
+   [metabase.settings.core  :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]))
 

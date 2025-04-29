@@ -26,7 +26,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.permissions.core :as perms]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.sync.core :as sync]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.types :as upload-types]

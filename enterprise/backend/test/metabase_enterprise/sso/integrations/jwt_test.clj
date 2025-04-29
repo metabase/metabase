@@ -11,7 +11,7 @@
    [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.premium-features.token-check :as token-check]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]

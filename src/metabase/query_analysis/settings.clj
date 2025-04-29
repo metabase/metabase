@@ -1,6 +1,6 @@
 (ns metabase.query-analysis.settings
   (:require
-   [metabase.models.setting :refer [defsetting]]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :as i18n]))
 
 (defsetting query-analysis-enabled

@@ -1,10 +1,10 @@
-(ns metabase.api.setting
+(ns metabase.settings.api
   "/api/setting endpoints"
   (:require
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
-   [metabase.models.setting :as setting]
+   [metabase.settings.models.setting :as setting]
    [metabase.util :as u]))
 
 (defn- do-with-setting-access-control

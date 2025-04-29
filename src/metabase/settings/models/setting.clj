@@ -1,76 +1,4 @@
-(ns metabase.models.setting
-  "Settings are a fast and simple way to create a setting that can be set from the admin page. They are saved to the
-  application Database, but intelligently cached internally for super-fast lookups.
-
-  Define a new Setting with [[defsetting]] (optionally supplying things like default value, type, or custom getters &
-  setters):
-
-    (defsetting mandrill-api-key \"API key for Mandrill\")
-
-  The newly-defined Setting will automatically be made available to the frontend client depending on its [[Visibility]].
-
-  You can also set the value via the corresponding env var, which looks like `MB_MANDRILL_API_KEY`, where the name of
-  the Setting is converted to uppercase and dashes to underscores.
-
-  The var created with [[defsetting]] can be used as a getter/setter, or you can use [[get]] and [[set!]]:
-
-    (require '[metabase.models.setting :as setting])
-
-    (setting/get :mandrill-api-key) ; only returns values set explicitly from the Admin Panel
-    (mandrill-api-key)              ; returns value set in the Admin Panel, OR value of corresponding env var,
-                                    ; OR the default value, if any (in that order)
-
-    (setting/set! :mandrill-api-key \"NEW_KEY\")
-    (mandrill-api-key! \"NEW_KEY\")
-
-    (setting/set! :mandrill-api-key nil)
-    (mandrill-api-key! nil)
-
-  You can define additional Settings types adding implementations of [[default-tag-for-type]], [[get-value-of-type]],
-  and [[set-value-of-type!]].
-
-  [[writable-settings]] and [[user-readable-values-map]] can be used to fetch *all* Admin-writable and
-  User-readable Settings, respectively. See their docstrings for more information.
-
-  ### User-local and Database-local Settings
-
-  Starting in 0.42.0, some Settings are allowed to have Database-specific values that override the normal site-wide
-  value. Similarly, starting in 0.43.0, some Settings are allowed to have User-specific values. These are similar in
-  concept to buffer-local variables in Emacs Lisp.
-
-  When a Setting is allowed to be User or Database local, any values in [[*user-local-values*]] or
-  [[*database-local-values*]] for that Setting will be returned preferentially to site-wide values of that Setting.
-  [[*user-local-values*]] comes from the `User.settings` column in the application DB, and [[*database-local-values*]]
-  comes from the `Database.settings` column. `nil` values in [[*user-local-values*]] and [[*database-local-values*]]
-  are ignored, i.e. you cannot 'unset' a site-wide value with a User- or Database-local one.
-
-  Whether or not a Setting can be User- or Database-local is controlled by the `:user-local` and `:database-local`
-  options passed to [[defsetting]]. A Setting can only be User-local *or* Database-local, not both; this is enforced
-  when the Setting is defined. There are three valid values of these options:
-
-  * `:only` means this Setting can *only* have a User- or Database-local value and cannot have a 'normal' site-wide
-  value. It cannot be set via env var. Default values are still allowed for User- and Database-local-only Settings.
-  Database-local-only Settings are never returned by [[writable-settings]] or [[user-readable-values-map]] regardless of
-  their [[Visibility]].
-
-  * `:allowed` means this Setting can be User- or Database-local and can also have a normal site-wide value; if both
-  are specified, the User- or Database-specific value will be returned preferentially when we are in the context of a
-  specific User or Database (i.e., [[*user-local-values*]] or [[*database-local-values*]] is bound).
-
-  * `:never` means User- or Database-specific values cannot be set for this Setting. Values in [[*user-local-values*]]
-  and [[*database-local-values*]] will be ignored.
-
-  `:never` is the default value of both `:user-local` and `:database-local`; to allow User- or Database-local values,
-  the Setting definition must explicitly specify `:only` or `:allowed` for the appropriate option.
-
-  If a User-local setting is written in the context of an API request (i.e., when [[metabase.api.common/*current-user*]]
-  is bound), the value will be local to the current user. If it is written outside of an API request, a site-wide
-  value will be written. (At the time of this writing, there is not yet a FE-client-friendly way to set Database-local
-  values. Just set them manually in the application DB until we figure that out.)
-
-  Custom setter functions do not affect User- or Database-local values; they always set the site-wide value.
-
-  See #14055 and #19399 for more information about and motivation behind User- and Database-local Settings."
+(ns metabase.settings.models.setting
   (:refer-clojure :exclude [get])
   (:require
    [clojure.core :as core]
@@ -84,9 +12,9 @@
    [metabase.config :as config]
    [metabase.events :as events]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting.cache :as setting.cache]
    [metabase.plugins.classloader :as classloader]
    [metabase.server.middleware.json]
+   [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -120,9 +48,9 @@
   nil)
 
 (def ^:dynamic *user-local-values*
-  "User-local Settings values (as a map of Setting name -> already-deserialized value). This comes from the value of
-  `User.settings` in the application DB. When bound, any Setting that *can* be User-local will have a value from this
-  map returned preferentially to the site-wide value.
+  "User-local Settings values (as a delay to a atom containing a map of Setting name -> already-deserialized value). This
+  comes from the value of `User.settings` in the application DB. When bound, any Setting that *can* be User-local will
+  have a value from this map returned preferentially to the site-wide value.
 
   This is a delay so that the settings for a user are loaded only if and when they are actually needed during a given
   API request.
@@ -131,8 +59,8 @@
   (delay (atom nil)))
 
 (def ^:private retired-setting-names
-  "A set of setting names which existed in previous versions of Metabase, but are no longer used. New settings may not use
-  these names to avoid unintended side-effects if an application database still stores values for these settings."
+  "A set of setting names which existed in previous versions of Metabase, but are no longer used. New settings may not
+  use these names to avoid unintended side-effects if an application database still stores values for these settings."
   #{"-site-url"
     "enable-advanced-humanization"
     "metabot-enabled"
@@ -228,7 +156,7 @@
 ;; This is called `LocalOption` rather than `DatabaseLocalOption` or something like that because we intend to also add
 ;; User-Local Settings at some point in the future. The will use the same options
 (def ^:private LocalOption
-  "Schema for valid values of `:database-local`. See [[metabase.models.setting]] docstring for description of what these
+  "Schema for valid values of `:database-local`. See [[metabase.settings.models.setting]] docstring for description of what these
   options mean."
   [:enum :only :allowed :never])
 
@@ -279,7 +207,7 @@
    ;; if non-nil, contains the Metabase version in which this setting was deprecated
    [:deprecated [:maybe :string]]
 
-   ;; whether this Setting can be Database-local or User-local. See [[metabase.models.setting]] docstring for more info.
+   ;; whether this Setting can be Database-local or User-local. See [[metabase.settings.models.setting]] docstring for more info.
    [:database-local LocalOption]
    [:user-local     LocalOption]
 
@@ -336,11 +264,11 @@
   [setting-keyword-or-name]
   (contains? @registered-settings (keyword setting-keyword-or-name)))
 
-;; The actual watch that triggers this happens in [[metabase.models.setting.cache/cache*]] because the cache might be
+;; The actual watch that triggers this happens in [[metabase.settings.models.setting.cache/cache*]] because the cache might be
 ;; swapped out depending on which app DB we have in play
 ;;
 ;; this isn't really something that needs to be a multimethod, but I'm using it because the logic can't really live in
-;; [[metabase.models.setting.cache]] but the cache has to live here; this is a good enough way to prevent circular
+;; [[metabase.settings.models.setting.cache]] but the cache has to live here; this is a good enough way to prevent circular
 ;; references for now
 (defmethod setting.cache/call-on-change :default
   [old new]
@@ -567,7 +495,7 @@
             (read-setting setting)
             (when init
               (when-let [init-value (init)]
-                (metabase.models.setting/set! setting init-value :bypass-read-only? true))))
+                (metabase.settings.models.setting/set! setting init-value :bypass-read-only? true))))
           (finally
             (.unlock init-lock)))))))
 
@@ -1123,7 +1051,7 @@
               ;; need to qualify this or otherwise the reader gets this confused with the set! used for things like
               ;; (set! *warn-on-reflection* true)
               ;; :refer-clojure :exclude doesn't seem to work in this case
-              (metabase.models.setting/set! setting new-value))))
+              (metabase.settings.models.setting/set! setting new-value))))
 
 ;; The next few functions are for validating the Setting description (i.e., docstring) at macroexpansion time. They
 ;; check that the docstring is a valid deferred i18n form (e.g. [[metabase.util.i18n/deferred-tru]]) so the Setting
@@ -1255,12 +1183,12 @@
   ###### `:database-local`
 
   The ability of this Setting to be /Database-local/. Valid values are `:only`, `:allowed`, and `:never`. Default:
-  `:never`. See docstring for [[metabase.models.setting]] for more information.
+  `:never`. See docstring for [[metabase.settings.models.setting]] for more information.
 
   ###### `:user-local`
 
   Whether this Setting is /User-local/. Valid values are `:only`, `:allowed`, and `:never`. Default: `:never`. See
-  docstring for [[metabase.models.setting]] for more info.
+  docstring for [[metabase.settings.models.setting]] for more info.
 
   ###### `:deprecated`
 
@@ -1347,7 +1275,7 @@
   (try
     (t2/with-transaction [_conn]
       (doseq [[k v] settings]
-        (metabase.models.setting/set! k v)))
+        (metabase.settings.models.setting/set! k v)))
     settings
     (catch Throwable e
       (setting.cache/restore-cache!)
@@ -1390,7 +1318,9 @@
 (defn- set-via-env-var? [setting]
   (some? (env-var-value setting)))
 
-(defn- export? [setting-name]
+(defn export?
+  "Whether the Setting with `setting-name` should be exported."
+  [setting-name]
   (:export? (core/get @registered-settings (keyword setting-name))))
 
 (defn- user-facing-info

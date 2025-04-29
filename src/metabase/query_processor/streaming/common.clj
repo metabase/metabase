@@ -5,9 +5,9 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date])
   (:import

@@ -1,7 +1,7 @@
 (ns metabase-enterprise.internal-stats
   (:require
-   [metabase.models.setting :as setting]
-   [metabase.premium-features.core :refer [defenterprise]]))
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.settings.core :as setting]))
 
 (defenterprise embedding-settings
   "Boolean values that report on the state of different embedding configurations."

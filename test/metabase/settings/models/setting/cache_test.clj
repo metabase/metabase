@@ -1,10 +1,10 @@
-(ns metabase.models.setting.cache-test
+(ns metabase.settings.models.setting.cache-test
   (:require
    [clojure.test :refer :all]
    [metabase.db :as mdb]
-   [metabase.models.setting-test :as setting-test]
-   [metabase.models.setting.cache :as setting.cache]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.settings.models.setting-test :as setting-test]
+   [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
