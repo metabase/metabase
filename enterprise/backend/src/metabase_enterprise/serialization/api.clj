@@ -13,7 +13,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.logger :as logger]
    [metabase.models.serialization :as serdes]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.date-2 :as u.date]

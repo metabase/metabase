@@ -1,4 +1,4 @@
-(ns metabase.models.setting.cache
+(ns metabase.settings.models.setting.cache
   "Settings cache. Cache is a 1:1 mapping of what's in the DB. Cached lookup time is ~60µs, compared to ~1800µs for DB
   lookup."
   (:require
@@ -20,7 +20,7 @@
 
     (call-on-change old-cache new-cache
 
-  Actual implementation is provided in [[metabase.models.setting]] rather than here (to prevent
+  Actual implementation is provided in [[metabase.settings.models.setting]] rather than here (to prevent
   circular references)."
   {:arglists '([old new])}
   (constantly :default))
