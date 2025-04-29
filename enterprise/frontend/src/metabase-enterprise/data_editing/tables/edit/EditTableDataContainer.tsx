@@ -1,6 +1,6 @@
 import type { Location } from "history";
 import { useCallback, useMemo } from "react";
-import type { InjectedRouter } from "react-router";
+import { push } from "react-router-redux";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -36,13 +36,11 @@ type EditTableDataContainerProps = {
     objectId?: string;
   };
   location: Location<{ filter?: string }>;
-  router: InjectedRouter;
 };
 
 export const EditTableDataContainer = ({
   params: { dbId: dbIdParam, tableId: tableIdParam, objectId: objectIdParam },
   location,
-  router,
 }: EditTableDataContainerProps) => {
   const databaseId = parseInt(dbIdParam, 10);
   const tableId = parseInt(tableIdParam, 10);
@@ -69,12 +67,14 @@ export const EditTableDataContainer = ({
 
   const handleCurrentObjectIdChange = useCallback(
     (objectId?: string) => {
-      router.push({
-        ...location,
-        pathname: getTableEditPathname(databaseId, tableId, objectId),
-      });
+      dispatch(
+        push({
+          ...location,
+          pathname: getTableEditPathname(databaseId, tableId, objectId),
+        }),
+      );
     },
-    [databaseId, tableId, router, location],
+    [databaseId, tableId, location, dispatch],
   );
 
   const {
