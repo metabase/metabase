@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
@@ -28,10 +28,7 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
     useGetAdminSettingsDetailsQuery();
   const [updateSetting, updateSettingResult] = useUpdateSettingMutation();
 
-  const settingDetails = useMemo(
-    () => settingsDetails?.find((setting) => setting.key === settingName),
-    [settingsDetails, settingName],
-  );
+  const settingDetails = settingsDetails?.[settingName];
 
   const [sendToast] = useToast();
 

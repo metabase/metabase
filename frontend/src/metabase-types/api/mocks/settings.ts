@@ -4,10 +4,10 @@ import type {
   Engine,
   EngineField,
   EngineSource,
+  EnterpriseSettingKey,
   EnterpriseSettings,
   FontFile,
   SettingDefinition,
-  SettingKey,
   Settings,
   TokenFeatures,
   TokenStatus,
@@ -129,7 +129,7 @@ export const createMockTokenFeatures = (
 });
 
 export const createMockSettingDefinition = <
-  Key extends SettingKey = SettingKey,
+  Key extends EnterpriseSettingKey = EnterpriseSettingKey,
 >(
   opts: SettingDefinition<Key>,
 ): SettingDefinition<Key> => ({
