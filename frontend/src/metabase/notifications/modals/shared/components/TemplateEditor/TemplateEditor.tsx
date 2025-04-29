@@ -10,7 +10,8 @@ import CodeMirror, {
   type ReactCodeMirrorRef,
 } from "@uiw/react-codemirror";
 import cx from "classnames";
-import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
 import type { CodeLanguage } from "metabase/components/CodeBlock/types";
@@ -106,14 +107,12 @@ export const TemplateEditor = ({
     setInternalValue(defaultValue);
   }, [defaultValue]);
 
-  const handleChange = React.useCallback(
-    (val: string) => {
-      setInternalValue(val);
-      if (onChange) {
-        onChange(val);
-      }
-    },
-    [onChange],
+  // TODO: Consider refactoring into a custom hook
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const onChangeDebounced = useMemo(
+    () => _.debounce((value: string) => onChangeRef.current?.(value), 500),
+    [onChangeRef],
   );
 
   const blurEventHandlerExtension = useMemo(() => {
@@ -180,7 +179,10 @@ export const TemplateEditor = ({
         }}
         ref={ref}
         value={internalValue}
-        onChange={handleChange}
+        onChange={(value) => {
+          setInternalValue(value);
+          onChangeDebounced(value);
+        }}
         extensions={combinedExtensions}
         minHeight={isTextArea && minHeight ? minHeight : undefined}
         placeholder={placeholder}
