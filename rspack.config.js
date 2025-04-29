@@ -122,7 +122,7 @@ const config = {
   output: {
     path: BUILD_PATH + "/app/dist",
     // for production, dev mode is overridden below
-    filename: getOutputFilenameConfig("[name].[contenthash].js"),
+    filename: "[name].[contenthash].js",
     publicPath: "app/dist/",
     hashFunction: "xxhash64",
     clean: !devMode,
@@ -304,7 +304,7 @@ if (shouldEnableHotRefresh) {
   }
 
   // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
-  config.output.filename = getOutputFilenameConfig("[name].hot.bundle.js");
+  config.output.filename = "[name].hot.bundle.js";
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
   config.output.publicPath =
@@ -380,15 +380,17 @@ if (devMode) {
   );
 }
 
-function getOutputFilenameConfig(defaultFilename) {
-  return (data) => {
-    // for the sdk iframe embedding script tag, we want the tag name to always be the same
-    if (data.chunk?.name === "iframe-sdk-embed-v1") {
-      return "../embed.v1.js";
-    }
-
-    return defaultFilename;
-  };
+const iframeEmbedConfig = {
+  name: 'embed',
+  entry: ENTERPRISE_SRC_PATH + "/embedding_iframe_sdk/embed.v1.ts",
+  output: {
+    path: BUILD_PATH + "/app",
+    filename: 'embed.v1.js',
+    globalObject: 'this',
+    library: { name: 'metabase.embed', type: 'umd', export: 'default' },
+  },
+  optimization: { splitChunks: false, runtimeChunk: false },
+  devtool: false,
 }
 
 module.exports = config;
