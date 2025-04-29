@@ -500,6 +500,8 @@ export type SettingValue<Key extends SettingKey = SettingKey> = Settings[Key];
 export type ColorSettings = Record<string, string>;
 
 export type IllustrationSettingValue = "default" | "none" | "custom";
+export type TimeoutValue = { amount: number; unit: string };
+
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
@@ -516,6 +518,7 @@ export interface EnterpriseSettings extends Settings {
   "ee-openai-api-key"?: string;
   "ee-openai-model"?: string;
   "saml-user-provisioning-enabled?"?: boolean;
+  "session-timeout": TimeoutValue | null;
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;

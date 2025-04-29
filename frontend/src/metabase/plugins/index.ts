@@ -209,7 +209,12 @@ export const PLUGIN_ADMIN_SETTINGS_AUTH_TABS: AuthTabs[] = [];
 
 // authentication providers
 
-export const PLUGIN_AUTH_PROVIDERS: GetAuthProviders[] = [];
+export const PLUGIN_AUTH_PROVIDERS = {
+  isEnabled: () => false,
+  AuthSettingsPage: PluginPlaceholder,
+  UserProvisioningSettings: PluginPlaceholder,
+  providers: [] as GetAuthProviders[],
+};
 
 export const PLUGIN_LDAP_FORM_FIELDS = {
   formFieldAttributes: [] as string[],
