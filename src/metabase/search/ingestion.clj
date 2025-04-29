@@ -119,7 +119,10 @@
   [documents-reducible removed-models-reducible]
   (doseq [e (seq (search.engine/active-engines))]
     (u/prog1
-      (search.engine/update! e documents-reducible)
+      ;; We are partitioning the documents into batches at this level and sending each batch to all the engines
+      ;; to avoid having to retain the head of the sequences as we work through all the documents.
+      ;; Individual engines may also partition the documents further if they prefer
+      (search.engine/update! e (eduction (partition-all 150) documents-reducible))
       (doseq [batch (eduction (partition-all 1000) removed-models-reducible)]
         (doseq [[group ids] (u/group-by first second batch)]
           (search.engine/delete! e group ids))))))
@@ -151,6 +154,11 @@
                        query->documents)
         passed-documents (map extract-model-and-id updates)
         indexed-documents (map (juxt :model (comp str :id)) (into [] documents))
+        ;; TODO: The list of documents to delete is not completely accurate.
+        ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the rows that were actually indexed.
+        ;; This will not work for cases like indexed-entries with compound PKs,
+        ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
+        ;; Long-term, we should find a better approach to knowing what to purge.
         to-delete (remove (set indexed-documents) passed-documents)]
 
     (update! documents to-delete)))
