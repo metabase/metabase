@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { dissoc } from "icepick";
 import { Component } from "react";
@@ -22,7 +21,6 @@ import { getIsHeaderVisible, getTabs } from "metabase/dashboard/selectors";
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import title from "metabase/hoc/Title";
-import { color } from "metabase/lib/colors";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
@@ -68,8 +66,7 @@ type ReduxProps = ConnectedProps<typeof connector>;
 
 type AutomaticDashboardAppInnerProps = ReduxProps &
   AutomaticDashboardAppRouterProps &
-  DashboardDataReturnedProps &
-  WithToasterReturned;
+  DashboardDataReturnedProps;
 
 class AutomaticDashboardAppInner extends Component<AutomaticDashboardAppInnerProps> {
   state = {
