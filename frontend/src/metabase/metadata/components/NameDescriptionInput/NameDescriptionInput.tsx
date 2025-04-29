@@ -32,6 +32,10 @@ export const NameDescriptionInput = ({
   const [isDescriptionHovered, setIsDescriptionHovered] = useState(false);
 
   useLayoutEffect(() => {
+    setNameState(name);
+  }, [name]);
+
+  useLayoutEffect(() => {
     setDescriptionState(description);
   }, [description]);
 
