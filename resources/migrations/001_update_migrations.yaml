@@ -11543,6 +11543,7 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+
 # TODO create fk constraints
 # TODO use case indexes
 #        - createIndex:
@@ -11557,38 +11558,6 @@ databaseChangeLog:
 #                  name: user_id
 #              - column:
 #                  name: undone
-
-  - changeSet:
-      id: v55.2025-04-29T10:52:01
-      author: crisptrutski
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: sequences
-      changes:
-        - createTable:
-            tableName: sequences
-            columns:
-              - column:
-                  name: name
-                  type: varchar(50)
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: next_val
-                  type: bigint
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: v55.2025-04-29T10:53:01
-      author: crisptrutski
-      changes:
-        - sql:
-            sql: INSERT INTO sequences (name, next_val) VALUES
-                  ('undo_batch_num', 1 + COALESCE((SELECT MAX(batch_num) FROM data_edit_undo_chain), 0))
 
   - changeSet:
       id: v55.2025-04-17T08:44:39
@@ -11617,6 +11586,47 @@ databaseChangeLog:
             sql: |
               UPDATE permissions_group SET magic_group_type='all-internal-users' WHERE name='All Users';
               UPDATE permissions_group SET magic_group_type='admin' WHERE name='Administrators';
+
+  - changeSet:
+      id: v55.2025-04-29T10:52:01
+      author: crisptrutski
+      comment: A table for generating atomic sequence numbers
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: sequences
+      changes:
+        - createTable:
+            tableName: sequences
+            remarks: A table for generating atomic sequence numbers
+            columns:
+              - column:
+                  name: name
+                  type: varchar(50)
+                  remarks: The name of the sequence
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: next_val
+                  remarks: The next value in this sequence
+                  type: bigint
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v55.2025-04-29T10:53:01
+      author: crisptrutski
+      comment: The sequences numbers for undo snapshots
+      changes:
+        - sql:
+            sql: INSERT INTO sequences (name, next_val) VALUES
+              ('undo_batch_num', 1 + COALESCE((SELECT MAX(batch_num) FROM data_edit_undo_chain), 0))
+      rollback:
+        - sql:
+            sql: DELETE FROM sequences WHERE name = 'undo_batch_num';
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
