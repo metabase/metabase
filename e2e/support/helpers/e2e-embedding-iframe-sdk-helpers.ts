@@ -6,14 +6,16 @@ import {
   setTokenFeatures,
 } from "./e2e-enterprise-helpers";
 import { restore } from "./e2e-setup-helpers";
+
 const EMBED_JS_PATH = "/app/embed.v1.js";
 
 /**
  * Base interface for SDK iframe embedding test page options
  */
 interface BaseEmbedTestPageOptions {
-  // Options for the iframe
+  // Options for the embed route
   apiKey?: string;
+  instanceUrl?: string;
   dashboardId?: number | string;
   questionId?: number | string;
   theme?: MetabaseTheme;
@@ -33,7 +35,11 @@ export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>(
   options: T,
 ) {
   return cy.get("@apiKey").then((apiKey) => {
-    const testPageSource = getSdkIframeEmbedHtml({ apiKey, ...options });
+    const testPageSource = getSdkIframeEmbedHtml({
+      apiKey,
+      instanceUrl: "http://localhost:4000",
+      ...options,
+    });
 
     cy.intercept("GET", "/sdk-iframe-test-page", {
       body: testPageSource,
@@ -101,7 +107,6 @@ function getSdkIframeEmbedHtml({
 
         const embed = new MetabaseEmbed({
           target: "#metabase-embed-container",
-          url: "http://localhost:4000",
           ${Object.entries(embedConfig)
             .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
             .join(",\n          ")}
