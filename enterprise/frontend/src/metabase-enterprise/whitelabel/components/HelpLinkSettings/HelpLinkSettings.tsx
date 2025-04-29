@@ -3,7 +3,10 @@ import { usePrevious } from "react-use";
 import { jt, t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import {
+  BasicAdminSettingInput,
+  SetByEnvVar,
+} from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { Stack, TextInput } from "metabase/ui";
@@ -13,9 +16,13 @@ const supportedPrefixes = ["http://", "https://", "mailto:"];
 
 export const HelpLinkSettings = () => {
   const [urlValue, setUrlValue] = useState("");
-  const { value: helpLinkSetting, updateSetting } =
-    useAdminSetting("help-link");
-  const { value: customUrl } = useAdminSetting("help-link-custom-destination");
+  const {
+    value: helpLinkSetting,
+    updateSetting,
+    settingDetails: helpLinkDetails,
+  } = useAdminSetting("help-link");
+  const { value: customUrl, settingDetails: customLinkDetails } =
+    useAdminSetting("help-link-custom-destination");
   const previousLinkSetting = usePrevious(helpLinkSetting);
 
   const [error, setError] = useState<string | null>(null);
@@ -75,28 +82,37 @@ export const HelpLinkSettings = () => {
           >{t`this page`}</ExternalLink>
         )} by default.`}
       />
-      <BasicAdminSettingInput
-        name="help-link"
-        inputType="radio"
-        value={helpLinkSetting}
-        options={[
-          { label: t`Link to Metabase help`, value: "metabase" },
-          { label: t`Hide it`, value: "hidden" },
-          { label: t`Go to a custom destination...`, value: "custom" },
-        ]}
-        onChange={(newValue) => handleRadioChange(newValue as HelpLinkSetting)}
-      />
-      {isTextInputVisible && (
-        <TextInput
-          value={urlValue}
-          placeholder={t`Enter a URL it should go to`}
-          onChange={(e) => setUrlValue(e.target.value)}
-          onBlur={() => handleUrlChange(urlValue)}
-          // don't autofocus on page load
-          autoFocus={previousLinkSetting && helpLinkSetting === "custom"}
-          error={error}
+      {helpLinkDetails?.is_env_setting && helpLinkDetails?.env_name ? (
+        <SetByEnvVar varName={helpLinkDetails.env_name} />
+      ) : (
+        <BasicAdminSettingInput
+          name="help-link"
+          inputType="radio"
+          value={helpLinkSetting}
+          options={[
+            { label: t`Link to Metabase help`, value: "metabase" },
+            { label: t`Hide it`, value: "hidden" },
+            { label: t`Go to a custom destination...`, value: "custom" },
+          ]}
+          onChange={(newValue) =>
+            handleRadioChange(newValue as HelpLinkSetting)
+          }
         />
       )}
+      {isTextInputVisible &&
+        (customLinkDetails?.is_env_setting && customLinkDetails?.env_name ? (
+          <SetByEnvVar varName={customLinkDetails.env_name} />
+        ) : (
+          <TextInput
+            value={urlValue}
+            placeholder={t`Enter a URL it should go to`}
+            onChange={(e) => setUrlValue(e.target.value)}
+            onBlur={() => handleUrlChange(urlValue)}
+            // don't autofocus on page load
+            autoFocus={previousLinkSetting && helpLinkSetting === "custom"}
+            error={error}
+          />
+        ))}
     </Stack>
   );
 };

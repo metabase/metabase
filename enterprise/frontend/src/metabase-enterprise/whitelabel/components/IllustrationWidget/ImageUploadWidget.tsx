@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { SetByEnvVar } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useAdminSetting } from "metabase/api/utils";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
@@ -90,56 +91,60 @@ export function ImageUploadWidget({
           {errorMessage}
         </Text>
       )}
-      <Paper withBorder shadow="none">
-        <Flex>
-          <Flex
-            align="center"
-            justify="center"
-            w="7.5rem"
-            style={{ borderRight: "1px solid var(--mb-color-border)" }}
-          >
-            {!isDefaultImage && typeof imageSource === "string" && (
-              <PreviewImage src={imageSource} aria-label={t`Image preview`} />
-            )}
-          </Flex>
-          <Flex p="lg" gap="md" direction="column" justify="center" w="100%">
-            <Flex w="100%" align="center">
-              <Button
-                className={CS.flexNoShrink}
-                onClick={() => fileInputRef.current?.click()}
-              >{t`Choose File`}</Button>
-              <input
-                data-testid="file-input"
-                id={name}
-                ref={fileInputRef}
-                hidden
-                onChange={handleFileUpload}
-                type="file"
-                accept="image/jpeg,image/png,image/svg+xml"
-                multiple={false}
-              />
-              <Text ml="lg" truncate="end">
-                {isDefaultImage
-                  ? t`No file chosen`
-                  : fileName
-                    ? fileName
-                    : t`Remove uploaded image`}
-              </Text>
-              {!isDefaultImage && (
-                <Button
-                  leftSection={<Icon name="close" />}
-                  variant="subtle"
-                  c="text-dark"
-                  ml="md"
-                  size="compact-md"
-                  onClick={handleRemove}
-                  aria-label={t`Remove custom illustration`}
-                />
+      {settingDetails?.is_env_setting && settingDetails?.env_name ? (
+        <SetByEnvVar varName={settingDetails.env_name} />
+      ) : (
+        <Paper withBorder shadow="none">
+          <Flex>
+            <Flex
+              align="center"
+              justify="center"
+              w="7.5rem"
+              style={{ borderRight: "1px solid var(--mb-color-border)" }}
+            >
+              {!isDefaultImage && typeof imageSource === "string" && (
+                <PreviewImage src={imageSource} aria-label={t`Image preview`} />
               )}
             </Flex>
+            <Flex p="lg" gap="md" direction="column" justify="center" w="100%">
+              <Flex w="100%" align="center">
+                <Button
+                  className={CS.flexNoShrink}
+                  onClick={() => fileInputRef.current?.click()}
+                >{t`Choose File`}</Button>
+                <input
+                  data-testid="file-input"
+                  id={name}
+                  ref={fileInputRef}
+                  hidden
+                  onChange={handleFileUpload}
+                  type="file"
+                  accept="image/jpeg,image/png,image/svg+xml"
+                  multiple={false}
+                />
+                <Text ml="lg" truncate="end">
+                  {isDefaultImage
+                    ? t`No file chosen`
+                    : fileName
+                      ? fileName
+                      : t`Remove uploaded image`}
+                </Text>
+                {!isDefaultImage && (
+                  <Button
+                    leftSection={<Icon name="close" />}
+                    variant="subtle"
+                    c="text-dark"
+                    ml="md"
+                    size="compact-md"
+                    onClick={handleRemove}
+                    aria-label={t`Remove custom illustration`}
+                  />
+                )}
+              </Flex>
+            </Flex>
           </Flex>
-        </Flex>
-      </Paper>
+        </Paper>
+      )}
     </Box>
   );
 }

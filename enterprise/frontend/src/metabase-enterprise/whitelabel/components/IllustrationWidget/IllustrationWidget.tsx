@@ -4,7 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import {
+  BasicAdminSettingInput,
+  SetByEnvVar,
+} from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useAdminSetting } from "metabase/api/utils";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
@@ -20,7 +23,6 @@ import {
   PreviewImage,
   SailboatImage,
 } from "./IllustrationWidget.styled";
-
 export interface StringSetting {
   value: IllustrationSettingValue | null;
   default: IllustrationSettingValue;
@@ -94,10 +96,15 @@ export function IllustrationWidget({
   const options = SELECT_OPTIONS[type];
   const customIllustrationSettingName =
     `${name}-custom` as EnterpriseSettingKey;
-  const { value: settingValue, updateSetting } = useAdminSetting(name);
-  const { value: customIllustrationSource } = useAdminSetting(
-    customIllustrationSettingName,
-  );
+  const {
+    value: settingValue,
+    updateSetting,
+    settingDetails,
+  } = useAdminSetting(name);
+  const {
+    value: customIllustrationSource,
+    settingDetails: customSourceDetails,
+  } = useAdminSetting(customIllustrationSettingName);
 
   useEffect(() => {
     setLocalValue(settingValue ?? "default");
@@ -184,6 +191,7 @@ export function IllustrationWidget({
           {errorMessage}
         </Text>
       )}
+
       <Paper withBorder shadow="none">
         <Flex>
           <Flex
@@ -199,54 +207,62 @@ export function IllustrationWidget({
             })}
           </Flex>
           <Flex p="lg" gap="md" direction="column" justify="center" w="100%">
-            <BasicAdminSettingInput
-              name={name}
-              inputType="select"
-              value={settingValue}
-              options={options}
-              onChange={(newValue) =>
-                handleChange(newValue as IllustrationSettingValue)
-              }
-            />
-            {localValue === "custom" && (
-              <Flex w="100%" align="center">
-                <Button
-                  className={CS.flexNoShrink}
-                  onClick={() => fileInputRef.current?.click()}
-                >{t`Choose File`}</Button>
-                <Box ml="sm">
-                  <ImageUploadInfoDot type={type} />
-                </Box>
-                <input
-                  data-testid="file-input"
-                  ref={fileInputRef}
-                  hidden
-                  onChange={handleFileUpload}
-                  type="file"
-                  id={name}
-                  accept="image/jpeg,image/png,image/svg+xml"
-                  multiple={false}
-                />
-                <Text ml="lg" truncate="end">
-                  {!customIllustrationSource
-                    ? t`No file chosen`
-                    : fileName
-                      ? fileName
-                      : t`Remove uploaded image`}
-                </Text>
-                {customIllustrationSource && (
-                  <Button
-                    leftSection={<Icon name="close" />}
-                    variant="subtle"
-                    c="text-dark"
-                    ml="md"
-                    size="compact-md"
-                    onClick={handleRemoveCustomIllustration}
-                    aria-label={t`Remove custom illustration`}
-                  />
-                )}
-              </Flex>
+            {settingDetails?.is_env_setting && settingDetails?.env_name ? (
+              <SetByEnvVar varName={settingDetails.env_name} />
+            ) : (
+              <BasicAdminSettingInput
+                name={name}
+                inputType="select"
+                value={settingValue}
+                options={options}
+                onChange={(newValue) =>
+                  handleChange(newValue as IllustrationSettingValue)
+                }
+              />
             )}
+            {localValue === "custom" &&
+              (customSourceDetails?.is_env_setting &&
+              customSourceDetails?.env_name ? (
+                <SetByEnvVar varName={customSourceDetails.env_name} />
+              ) : (
+                <Flex w="100%" align="center">
+                  <Button
+                    className={CS.flexNoShrink}
+                    onClick={() => fileInputRef.current?.click()}
+                  >{t`Choose File`}</Button>
+                  <Box ml="sm">
+                    <ImageUploadInfoDot type={type} />
+                  </Box>
+                  <input
+                    data-testid="file-input"
+                    ref={fileInputRef}
+                    hidden
+                    onChange={handleFileUpload}
+                    type="file"
+                    id={name}
+                    accept="image/jpeg,image/png,image/svg+xml"
+                    multiple={false}
+                  />
+                  <Text ml="lg" truncate="end">
+                    {!customIllustrationSource
+                      ? t`No file chosen`
+                      : fileName
+                        ? fileName
+                        : t`Remove uploaded image`}
+                  </Text>
+                  {customIllustrationSource && (
+                    <Button
+                      leftSection={<Icon name="close" />}
+                      variant="subtle"
+                      c="text-dark"
+                      ml="md"
+                      size="compact-md"
+                      onClick={handleRemoveCustomIllustration}
+                      aria-label={t`Remove custom illustration`}
+                    />
+                  )}
+                </Flex>
+              ))}
           </Flex>
         </Flex>
       </Paper>
