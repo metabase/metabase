@@ -115,7 +115,7 @@
   :embedding-sdk)
 
 (define-premium-feature enable-embedding-iframe-sdk?
-  "Should we enable the iframe SDK embedding feature?"
+  "Should we allow users to embed iframes backed by SDK components?"
   :embedding-iframe-sdk)
 
 (define-premium-feature enable-whitelabeling?
