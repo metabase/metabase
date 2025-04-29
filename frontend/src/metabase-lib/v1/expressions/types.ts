@@ -26,13 +26,14 @@ export type ExpressionType =
 
 export type ClauseArgDefinition = {
   name?: string;
-  type?: ExpressionType;
+  type: ExpressionType;
   description?: string;
   example?:
     | Lib.ExpressionParts
     | Lib.ExpressionArg
     | (Lib.ExpressionParts | Lib.ExpressionArg)[];
   template?: string;
+  optional?: boolean;
 };
 
 export type MBQLClauseDefinition = {
@@ -59,11 +60,7 @@ export type MBQLClauseFunctionConfig = {
   displayName: string;
   type: ExpressionType;
   args: ClauseArgDefinition[];
-  argType(
-    index: number,
-    args: unknown[],
-    type: ExpressionType,
-  ): ExpressionType | undefined;
+  argType(index: number, args: unknown[], type: ExpressionType): ExpressionType;
   requiresFeature?: DatabaseFeature;
   hasOptions: boolean;
   multiple: boolean;

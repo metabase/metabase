@@ -23,7 +23,7 @@ export function checkArgCount({
     }
 
     const { displayName, multiple, hasOptions } = clause;
-    const args = clause.args.filter((arg) => arg.type);
+    const args = clause.args.filter((arg) => !arg.optional);
 
     if (multiple) {
       const argCount = operands.length;
@@ -40,7 +40,7 @@ export function checkArgCount({
         );
       }
     } else {
-      const expectedArgsLength = args.filter((arg) => arg.type).length;
+      const expectedArgsLength = args.length;
       const maxArgCount = hasOptions
         ? expectedArgsLength + 1
         : expectedArgsLength;
