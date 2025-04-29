@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import GroupSummary from "metabase/admin/people/components/GroupSummary";
+import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
 import type {
   GroupIds,
   UserGroupType,

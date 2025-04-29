@@ -12,9 +12,9 @@ import {
 import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { Icon, Popover } from "metabase/ui";
-import type { Group, GroupListQuery, Member } from "metabase-types/api";
+import type { Group, Member } from "metabase-types/api";
 
-import GroupSummary from "../GroupSummary";
+import { GroupSummary } from "../GroupSummary";
 
 import {
   MembershipActionsContainer,
@@ -23,7 +23,7 @@ import {
   MembershipSelectItem,
 } from "./MembershipSelect.styled";
 
-const getGroupSections = (groups: GroupListQuery[]) => {
+const getGroupSections = (groups: Omit<Group, "members">[]) => {
   const defaultGroup = groups.find(isDefaultGroup);
   const adminGroup = groups.find(isAdminGroup);
   const pinnedGroups = [defaultGroup, adminGroup].filter(isNotNull);
@@ -46,7 +46,7 @@ const getGroupSections = (groups: GroupListQuery[]) => {
 type Memberships = Map<Group["id"], Partial<Member>>;
 
 interface MembershipSelectProps {
-  groups: GroupListQuery[];
+  groups: Omit<Group, "members">[];
   memberships: Memberships;
   isCurrentUser?: boolean;
   isUserAdmin: boolean;
@@ -176,6 +176,3 @@ export const MembershipSelect = ({
     </Popover>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default MembershipSelect;

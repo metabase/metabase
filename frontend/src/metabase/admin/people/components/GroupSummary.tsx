@@ -1,12 +1,20 @@
-/* eslint-disable react/prop-types */
 import { msgid, ngettext, t } from "ttag";
 
+import type { UserGroupType } from "metabase/admin/types";
 import CS from "metabase/css/core/index.css";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 
 import { AdminGroupLabel } from "./GroupSummary.styled";
 
-const GroupSummary = ({ groups, selectedGroupIds }) => {
+interface GroupSummaryProps {
+  groups: UserGroupType[];
+  selectedGroupIds: number[];
+}
+
+export const GroupSummary = ({
+  groups,
+  selectedGroupIds,
+}: GroupSummaryProps) => {
   const adminGroup = groups.find(isAdminGroup);
   const otherGroups = groups.filter(
     (g) =>
@@ -40,5 +48,3 @@ const GroupSummary = ({ groups, selectedGroupIds }) => {
     return <span>{t`Default`}</span>;
   }
 };
-
-export default GroupSummary;

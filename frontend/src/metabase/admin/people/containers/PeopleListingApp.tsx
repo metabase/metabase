@@ -6,10 +6,9 @@ import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Group, Radio } from "metabase/ui";
+import { Group, Icon, Input, Radio } from "metabase/ui";
 
 import { PeopleList } from "../components/PeopleList";
-import SearchInput from "../components/SearchInput";
 import { USER_STATUS } from "../constants";
 import { usePeopleQuery } from "../hooks/use-people-query";
 
@@ -34,13 +33,25 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
 
   const headingContent = (
     <div className={cx(CS.mb2, CS.flex, CS.alignCenter)}>
-      <SearchInput
-        className={cx(CS.textSmall, CS.mr2)}
+      <Input
+        miw="18rem"
+        mr="1rem"
+        fz="sm"
         type="text"
         placeholder={t`Find someone`}
         value={searchInputValue}
         onChange={handleSearchChange}
-        onResetClick={() => updateSearchInputValue("")}
+        leftSection={<Icon c="text-secondary" name="search" size={16} />}
+        rightSectionPointerEvents="all"
+        rightSection={
+          searchInputValue === "" ? null : (
+            <Input.ClearButton
+              c={"text-secondary"}
+              onClick={() => updateSearchInputValue("")}
+              style={{ zIndex: 1 }}
+            />
+          )
+        }
       />
       {isAdmin && (
         <Radio.Group value={status} onChange={updateStatus}>

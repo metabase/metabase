@@ -1,7 +1,12 @@
 import AdminS from "metabase/css/admin.module.css";
 
-/* eslint-disable react/prop-types */
-const AdminContentTable = ({ columnTitles, children }) => (
+export const AdminContentTable = ({
+  columnTitles,
+  children,
+}: {
+  columnTitles: string[];
+  children: React.ReactNode;
+}) => (
   <table data-testid="admin-content-table" className={AdminS.ContentTable}>
     <thead>
       <tr>
@@ -12,5 +17,3 @@ const AdminContentTable = ({ columnTitles, children }) => (
     <tbody>{children}</tbody>
   </table>
 );
-
-export default AdminContentTable;
