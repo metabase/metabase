@@ -29,7 +29,7 @@
 
 (def ^:private RemoteCheckedToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
-  #"^[0-9a-f]{64}$")
+  #"^(mb_dev_[0-9a-f]{57}|[0-9a-f]{64})$")
 
 (def ^:private AirgapToken
   "Similar to RemoteCheckedToken, but starts with 'airgap_'."
