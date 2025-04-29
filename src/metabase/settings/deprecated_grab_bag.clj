@@ -218,7 +218,8 @@ x.com")
 
 (defsetting site-uuid-for-version-info-fetching
   "A *different* site-wide UUID that we use for the version info fetching API calls. Do not use this for any other
-  applications. (See [[site-uuid-for-premium-features-token-checks]] for more reasoning.)"
+  applications. (See [[metabase.premium-features.settings/site-uuid-for-premium-features-token-checks]] for more
+  reasoning.)"
   :encryption :when-encryption-key-set
   :visibility :internal
   :base       setting/uuid-nonce-base)
