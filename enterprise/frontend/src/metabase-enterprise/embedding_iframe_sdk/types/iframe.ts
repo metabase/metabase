@@ -1,8 +1,13 @@
+import type { Action, Store } from "@reduxjs/toolkit";
+
 import type { MetabaseTheme } from "embedding-sdk";
+import type { SdkStoreState } from "embedding-sdk/store/types";
 import type {
   EmbedResource,
   EmbedResourceType,
 } from "metabase/public/lib/types";
+
+export type StoreWithSdkState = Store<SdkStoreState, Action>;
 
 export type SdkIframeEmbedPostMessageAction =
   | {
