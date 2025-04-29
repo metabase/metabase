@@ -2,24 +2,29 @@ import type * as Lib from "metabase-lib";
 import type { HelpText, HelpTextArg } from "metabase-lib/v1/expressions/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 
-import { HELPER_TEXT_STRINGS } from "./helper-text-strings";
+import { getClauseDefinition } from "./clause";
 
 export function getHelpText(
   name: string,
   database: Database,
   reportTimezone?: string,
-): HelpText | undefined {
-  const helperTextConfig = HELPER_TEXT_STRINGS.find((h) => h.name === name);
-
-  if (!helperTextConfig) {
-    return;
+): HelpText | null {
+  const clause = getClauseDefinition(name);
+  if (!clause) {
+    return null;
   }
 
-  const { description, docsPage } = helperTextConfig;
-  const args = helperTextConfig.args();
+  const { displayName, description, category, docsPage } = clause;
+  const args = clause.args();
+
+  if (!description || !category) {
+    return null;
+  }
 
   return {
-    ...helperTextConfig,
+    name,
+    displayName,
+    category,
     args,
     example: getExample(name, args),
     description: description(database, reportTimezone),
