@@ -22,7 +22,7 @@ export interface HelpText {
   description: string;
   example: Lib.ExpressionParts;
   structure: string;
-  docsPage?: string;
+  docsUrl: string;
 }
 
 export interface HelpTextConfig {

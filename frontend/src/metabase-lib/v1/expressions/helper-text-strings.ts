@@ -1412,7 +1412,7 @@ export const getHelpText = (
     return;
   }
 
-  const { description } = helperTextConfig;
+  const { description, docsPage } = helperTextConfig;
   const args = helperTextConfig.args?.() ?? [];
 
   return {
@@ -1420,6 +1420,9 @@ export const getHelpText = (
     args,
     example: getHelpExample(name, args),
     description: description(database, reportTimezone),
+    docsUrl: docsPage
+      ? `questions/query-builder/expressions/${docsPage}`
+      : "questions/query-builder/expressions",
   };
 };
 
@@ -1458,12 +1461,6 @@ function op(
 function dimension(name: string) {
   return op("dimension" as Lib.ExpressionOperator, name);
 }
-
-export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
-  return docsPage
-    ? `questions/query-builder/expressions/${docsPage}`
-    : "questions/query-builder/expressions";
-};
 
 export const getFunctionByStructure = (structure: string) =>
   HELPER_TEXT_STRINGS.find(
