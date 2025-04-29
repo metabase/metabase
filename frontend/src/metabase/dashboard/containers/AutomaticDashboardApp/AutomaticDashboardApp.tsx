@@ -202,14 +202,16 @@ class AutomaticDashboardAppInner extends Component<AutomaticDashboardAppInnerPro
               <Dashboard
                 isXray
                 dashboard={this.props.dashboard}
-                slowCards={this.props.slowCards}
                 selectedTabId={this.props.selectedTabId}
-                isEditing={false}
-                isEditingParameter={false}
+                slowCards={this.props.slowCards}
                 clickBehaviorSidebarDashcard={null}
                 downloadsEnabled={false}
+                onEditingChange={_.noop}
                 autoScrollToDashcardId={undefined}
                 reportAutoScrolledToDashcard={_.noop}
+                navigateToNewCardFromDashboard={
+                  this.props.navigateToNewCardFromDashboard ?? undefined
+                }
               />
             )}
           </div>
