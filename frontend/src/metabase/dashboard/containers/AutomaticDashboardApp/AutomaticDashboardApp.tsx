@@ -1,18 +1,21 @@
+import { usePrevious } from "@mantine/hooks";
 import cx from "classnames";
 import { dissoc } from "icepick";
-import { Component } from "react";
+import { useEffect, useState } from "react";
 import type { ConnectedProps } from "react-redux";
 import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ActionButton from "metabase/components/ActionButton";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
+import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
-import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import {
   DashboardData,
   type DashboardDataReturnedProps,
@@ -68,21 +71,38 @@ type AutomaticDashboardAppInnerProps = ReduxProps &
   AutomaticDashboardAppRouterProps &
   DashboardDataReturnedProps;
 
-class AutomaticDashboardAppInner extends Component<AutomaticDashboardAppInnerProps> {
-  state = {
-    savedDashboardId: null,
-  };
+const AutomaticDashboardAppInner = ({
+  dashboard,
+  parameters,
+  parameterValues,
+  setParameterValue,
+  isHeaderVisible,
+  location,
+  router,
+  tabs,
+  invalidateCollections,
+  saveDashboard,
+  selectedTabId,
+  slowCards,
+  navigateToNewCardFromDashboard,
+}: AutomaticDashboardAppInnerProps) => {
+  useDashboardUrlQuery(router, location);
 
-  componentDidUpdate(prevProps: AutomaticDashboardAppInnerProps) {
-    // scroll to the top when the pathname changes
-    if (prevProps.location.pathname !== this.props.location.pathname) {
+  const [savedDashboardId, setSavedDashboardId] = useState(null);
+
+  const prevPathName = usePrevious(location.pathname);
+
+  useEffect(() => {
+    if (prevPathName !== location.pathname) {
+      // scroll to the top when the pathname changes
       window.scrollTo(0, 0);
-    }
-  }
 
-  save = async () => {
-    const { dashboard, addUndo, saveDashboard, invalidateCollections } =
-      this.props;
+      // clear savedDashboardId if changing to a different dashboard
+      setSavedDashboardId(null);
+    }
+  }, [prevPathName, location.pathname]);
+
+  const save = async () => {
     // remove the transient id before trying to save
     const { payload: newDashboard } = await saveDashboard(
       dissoc(dashboard, "id"),
@@ -102,141 +122,130 @@ class AutomaticDashboardAppInner extends Component<AutomaticDashboardAppInnerPro
       ),
       icon: "dashboard",
     });
-
-    this.setState({ savedDashboardId: newDashboard.id });
+    setSavedDashboardId(newDashboard.id);
   };
 
-  UNSAFE_componentWillReceiveProps(nextProps: AutomaticDashboardAppInnerProps) {
-    // clear savedDashboardId if changing to a different dashboard
-    if (this.props.location.pathname !== nextProps.location.pathname) {
-      this.setState({ savedDashboardId: null });
-    }
-  }
+  // pull out "more" related items for displaying as a button at the bottom of the dashboard
+  const more = dashboard && dashboard.more;
+  const related = dashboard && dashboard.related;
 
-  render() {
-    const {
-      dashboard,
-      parameters,
-      parameterValues,
-      setParameterValue,
-      isHeaderVisible,
-    } = this.props;
-    const { savedDashboardId } = this.state;
-    // pull out "more" related items for displaying as a button at the bottom of the dashboard
-    const more = dashboard && dashboard.more;
-    const related = dashboard && dashboard.related;
+  const hasSidebar = related && Object.keys(related).length > 0;
 
-    const hasSidebar = related && Object.keys(related).length > 0;
-
-    return (
-      <div
-        className={cx(CS.relative, "AutomaticDashboard", {
-          "AutomaticDashboard--withSidebar": hasSidebar,
-        })}
-      >
-        <AutomaticDashboardQueryParamsSync
-          router={this.props.router}
-          location={this.props.location}
-        />
-        <div className="" style={{ marginRight: hasSidebar ? 346 : undefined }}>
-          {isHeaderVisible && (
-            <div
-              className={cx(CS.bgWhite, CS.borderBottom)}
-              data-testid="automatic-dashboard-header"
-            >
-              <div className={CS.wrapper}>
-                <FixedWidthContainer
-                  data-testid="fixed-width-dashboard-header"
-                  isFixedWidth={dashboard?.width === "fixed"}
-                >
-                  <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
-                    <XrayIcon />
-                    <div>
-                      <h2 className={cx(CS.textWrap, CS.mr2)}>
-                        {dashboard && <TransientTitle dashboard={dashboard} />}
-                      </h2>
-                    </div>
-                    {savedDashboardId != null ? (
-                      <Button className={CS.mlAuto} disabled>{t`Saved`}</Button>
-                    ) : (
-                      <ActionButton
-                        className={cx(CS.mlAuto, CS.textNoWrap)}
-                        success
-                        borderless
-                        actionFn={this.save}
-                      >
-                        {t`Save this`}
-                      </ActionButton>
-                    )}
-                  </div>
-                  {dashboard && this.props.tabs.length > 1 && (
-                    <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
-                      <DashboardTabs dashboardId={dashboard.id} />
-                    </div>
-                  )}
-                </FixedWidthContainer>
-              </div>
-            </div>
-          )}
-
-          <div className={cx(CS.wrapper, CS.pb4)}>
-            {parameters && parameters.length > 0 && (
-              <div className={cx(CS.px1, CS.pt1)}>
-                <FixedWidthContainer
-                  id={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}
-                  data-testid="fixed-width-filters"
-                  isFixedWidth={dashboard?.width === "fixed"}
-                >
-                  <ParametersList
-                    className={CS.mt1}
-                    parameters={getValuePopulatedParameters({
-                      parameters,
-                      values: parameterValues,
-                    })}
-                    setParameterValue={setParameterValue}
-                  />
-                </FixedWidthContainer>
-              </div>
-            )}
-            {this.props.dashboard && (
-              <Dashboard
-                isXray
-                dashboard={this.props.dashboard}
-                selectedTabId={this.props.selectedTabId}
-                slowCards={this.props.slowCards}
-                clickBehaviorSidebarDashcard={null}
-                downloadsEnabled={false}
-                navigateToNewCardFromDashboard={
-                  this.props.navigateToNewCardFromDashboard ?? undefined
-                }
-              />
-            )}
-          </div>
-          {more && (
-            <div className={cx(CS.flex, CS.justifyEnd, CS.px4, CS.pb4)}>
-              <Link to={more} className={CS.ml2}>
-                <Button iconRight="chevronright">{t`Show more about this`}</Button>
-              </Link>
-            </div>
-          )}
-        </div>
-        {hasSidebar && (
-          <Box
-            className={cx(
-              CS.absolute,
-              CS.top,
-              CS.right,
-              CS.bottom,
-              S.SuggestionsSidebarWrapper,
-            )}
+  return (
+    <div
+      className={cx(CS.relative, "AutomaticDashboard", {
+        "AutomaticDashboard--withSidebar": hasSidebar,
+      })}
+    >
+      <div className="" style={{ marginRight: hasSidebar ? 346 : undefined }}>
+        {isHeaderVisible && (
+          <div
+            className={cx(CS.bgWhite, CS.borderBottom)}
+            data-testid="automatic-dashboard-header"
           >
-            <SuggestionsSidebar related={related} />
-          </Box>
+            <div className={CS.wrapper}>
+              <FixedWidthContainer
+                data-testid="fixed-width-dashboard-header"
+                isFixedWidth={dashboard?.width === "fixed"}
+              >
+                <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
+                  <XrayIcon />
+                  <div>
+                    <h2 className={cx(CS.textWrap, CS.mr2)}>
+                      {dashboard && <TransientTitle dashboard={dashboard} />}
+                    </h2>
+                  </div>
+                  {savedDashboardId != null ? (
+                    <Button className={CS.mlAuto} disabled>{t`Saved`}</Button>
+                  ) : (
+                    <ActionButton
+                      className={cx(CS.mlAuto, CS.textNoWrap)}
+                      success
+                      borderless
+                      actionFn={save}
+                    >
+                      {t`Save this`}
+                    </ActionButton>
+                  )}
+                </div>
+                {dashboard && tabs.length > 1 && (
+                  <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
+                    <DashboardTabs dashboardId={dashboard.id} />
+                  </div>
+                )}
+              </FixedWidthContainer>
+            </div>
+          </div>
+        )}
+
+        <div className={cx(CS.wrapper, CS.pb4)}>
+          {parameters && parameters.length > 0 && (
+            <div className={cx(CS.px1, CS.pt1)}>
+              <FixedWidthContainer
+                id={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}
+                data-testid="fixed-width-filters"
+                isFixedWidth={dashboard?.width === "fixed"}
+              >
+                <ParametersList
+                  className={CS.mt1}
+                  parameters={getValuePopulatedParameters({
+                    parameters,
+                    values: parameterValues,
+                  })}
+                  setParameterValue={setParameterValue}
+                />
+              </FixedWidthContainer>
+            </div>
+          )}
+          <LoadingAndErrorWrapper
+            className={cx(DashboardS.Dashboard, CS.p1, CS.flexFull)}
+            loading={!dashboard}
+            noBackground
+          >
+            {() =>
+              dashboard && (
+                <DashboardGridConnected
+                  isXray
+                  dashboard={dashboard}
+                  selectedTabId={selectedTabId}
+                  slowCards={slowCards}
+                  clickBehaviorSidebarDashcard={null}
+                  downloadsEnabled={false}
+                  onEditingChange={_.noop}
+                  autoScrollToDashcardId={undefined}
+                  reportAutoScrolledToDashcard={_.noop}
+                  navigateToNewCardFromDashboard={
+                    navigateToNewCardFromDashboard ?? undefined
+                  }
+                />
+              )
+            }
+          </LoadingAndErrorWrapper>
+        </div>
+        {more && (
+          <div className={cx(CS.flex, CS.justifyEnd, CS.px4, CS.pb4)}>
+            <Link to={more} className={CS.ml2}>
+              <Button iconRight="chevronright">{t`Show more about this`}</Button>
+            </Link>
+          </div>
         )}
       </div>
-    );
-  }
-}
+      {hasSidebar && (
+        <Box
+          className={cx(
+            CS.absolute,
+            CS.top,
+            CS.right,
+            CS.bottom,
+            S.SuggestionsSidebarWrapper,
+          )}
+        >
+          <SuggestionsSidebar related={related} />
+        </Box>
+      )}
+    </div>
+  );
+};
 
 export const AutomaticDashboardAppConnected = _.compose(
   connector,
@@ -252,13 +261,3 @@ const TransientTitle = ({ dashboard }: { dashboard: IDashboard }) =>
   ) : dashboard.name ? (
     <span>{dashboard.name}</span>
   ) : null;
-
-// Workaround until AutomaticDashboardApp is refactored to be a function component
-// (or even better, merged/generalized with DashboardApp)
-const AutomaticDashboardQueryParamsSync = ({
-  router,
-  location,
-}: Pick<WithRouterProps, "router" | "location">) => {
-  useDashboardUrlQuery(router, location);
-  return null;
-};
