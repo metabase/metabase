@@ -71,7 +71,7 @@ export function applyParameters(
       deriveFieldOperatorFromParameter(parameter)?.optionsDefaults;
 
     const queryParameter = {
-      type,
+      // type,
       value: normalizeParameterValue(type, value),
       id: parameter.id,
     };
@@ -82,11 +82,11 @@ export function applyParameters(
 
     if (mapping) {
       // mapped target, e.x. on a dashboard
-      queryParameter.target = mapping.target;
+      // queryParameter.target = mapping.target;
       datasetQuery.parameters.push(queryParameter);
     } else if (parameter.target) {
       // inline target, e.x. on a card
-      queryParameter.target = parameter.target;
+      // queryParameter.target = parameter.target;
       datasetQuery.parameters.push(queryParameter);
     }
   }
