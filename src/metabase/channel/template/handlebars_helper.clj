@@ -102,7 +102,7 @@
    Example:
    ```
    {{#if (ne status \"cancelled\")}}
-     <p>Order is still active</p>
+     Order is still active
    {{/if}}
    ```
 
@@ -118,9 +118,9 @@
    Example:
    ```
    {{#if (gt price 100)}}
-     <span class=\"expensive\">{{price}}</span>
+     Expensive
    {{else}}
-     <span>{{price}}</span>
+     Cheap
    {{/if}}
    ```
 
@@ -136,9 +136,9 @@
    Example:
    ```
    {{#if (gte stock 10)}}
-     <span class=\"in-stock\">In Stock</span>
+     In Stock
    {{else}}
-     <span class=\"low-stock\">Low Stock</span>
+     Low Stock
    {{/if}}
    ```
 
@@ -154,7 +154,7 @@
    Example:
    ```
    {{#if (lt temperature 0)}}
-     <span class=\"freezing\">{{temperature}}°C</span>
+     Freezing
    {{else}}
      <span>{{temperature}}°C</span>
    {{/if}}
@@ -172,7 +172,7 @@
    Example:
    ```
    {{#if (lte remaining 5)}}
-     <span class=\"warning\">Only {{remaining}} left!</span>
+     Only {{remaining}} left!
    {{/if}}
    ```
 
@@ -188,7 +188,7 @@
    Example:
    ```
    {{#if (empty items)}}
-     <span class=\"empty\">No items</span>
+     No items
    {{/if}}
    ```
 
@@ -198,12 +198,12 @@
   (empty? collection))
 
 (defhelper contains
-  "Checks if a collection contains a value.
+  "Checks if a string contains a sub-string
 
    Example:
    ```
-   {{#if (contains items \"apple\")}}
-     <span class=\"apple\">Apple</span>
+   {{#if (contains text \"foo\")}}
+     Foo
    {{/if}}
    ```
 
@@ -211,7 +211,7 @@
    - string: The string to check for the value
    - substring: The substring to check for in the string"
   [string [substring] _kparams _options]
-  (contains? string substring))
+  (str/includes? string substring))
 
 (defhelper starts-with
   "Checks if a string starts with a substring.
@@ -219,7 +219,7 @@
    Example:
    ```
    {{#if (starts-with \"Hello\" \"He\")}}
-     <span class=\"hello\">Hello</span>
+     Hello
    {{/if}}
    ```
 
@@ -235,7 +235,7 @@
    Example:
    ```
    {{#if (ends-with \"Hello\" \"lo\")}}
-     <span class=\"hello\">Hello</span>
+     Hello
    {{/if}}
    ```
 
@@ -251,7 +251,7 @@
    Example:
    ```
    {{#if (regexp \"Hello\" \"^H.*o$\")}}
-     <span class=\"hello\">Hello</span>
+     Hello
    {{/if}}
    ```
 
@@ -348,9 +348,9 @@
    Example:
    ```
    {{#if author}}
-     <h1>{{firstName}} {{lastName}}</h1>
+     {{firstName}} {{lastName}}
    {{else}}
-     <h1>Unknown Author</h1>
+     Unknown Author
    {{/if}}
    ```
 
@@ -363,7 +363,7 @@
    Example:
    ```
    {{#unless license}}
-     <p>WARNING: This entry has no license!</p>
+     WARNING: This entry has no license!
    {{/unless}}
    ```
 
@@ -375,9 +375,9 @@
    Example:
    ```
    {{#each people}}
-     <li>{{this}}</li>
+     {{this}}
    {{else}}
-     <li>No people to display</li>
+     No people to display
    {{/each}}
    ```
 
