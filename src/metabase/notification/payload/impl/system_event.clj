@@ -131,6 +131,7 @@
 
 (defn- coercion-fn
   [{:keys [coercion_strategy] :as field}]
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (let [f (if-let [f (requiring-resolve 'metabase-enterprise.data-editing.coerce/input-coercion-fn)]
             (get @f coercion_strategy)
             identity)]
