@@ -11559,6 +11559,38 @@ databaseChangeLog:
 #                  name: undone
 
   - changeSet:
+      id: v55.2025-04-29T10:52:01
+      author: crisptrutski
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: sequences
+      changes:
+        - createTable:
+            tableName: sequences
+            columns:
+              - column:
+                  name: name
+                  type: varchar(50)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: next_val
+                  type: bigint
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v55.2025-04-29T10:53:01
+      author: crisptrutski
+      changes:
+        - sql:
+            sql: INSERT INTO sequences (name, next_val) VALUES
+                  ('undo_batch_num', 1 + COALESCE((SELECT MAX(batch_num) FROM data_edit_undo_chain), 0))
+
+  - changeSet:
       id: v55.2025-04-17T08:44:39
       author: johnswanson
       comment: Add permissions_group.magic_group_type
