@@ -1,8 +1,8 @@
-(ns metabase.models.task-history-test
+(ns metabase.task-history.models.task-history-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.models.task-history :as task-history]
+   [metabase.task-history.models.task-history :as task-history]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
