@@ -35,7 +35,6 @@ describe("NameDescriptionInput", () => {
     const { onDescriptionChange } = setup();
 
     const descriptionInput = screen.getByPlaceholderText("Enter description");
-    descriptionInput.focus();
     descriptionInput.blur();
 
     // should not be triggered if value hasn't changed
@@ -52,7 +51,6 @@ describe("NameDescriptionInput", () => {
     const { onNameChange } = setup();
 
     const nameInput = screen.getByPlaceholderText("Enter name");
-    nameInput.focus();
     nameInput.blur();
 
     // should not be triggered if value hasn't changed
@@ -63,5 +61,25 @@ describe("NameDescriptionInput", () => {
 
     expect(onNameChange).toHaveBeenCalledTimes(1);
     expect(onNameChange.mock.calls).toEqual([["test"]]);
+  });
+
+  it("should not allow empty names", async () => {
+    const { onNameChange } = setup({ name: "xyz" });
+
+    const nameInput = screen.getByPlaceholderText("Enter name");
+    await userEvent.type(nameInput, "{backspace}".repeat(3));
+    nameInput.blur();
+
+    expect(onNameChange).toHaveBeenCalledTimes(0);
+  });
+
+  it("should allow empty description", async () => {
+    const { onDescriptionChange } = setup({ description: "xyz" });
+
+    const descriptionInput = screen.getByPlaceholderText("Enter description");
+    await userEvent.type(descriptionInput, "{backspace}".repeat(3));
+    descriptionInput.blur();
+
+    expect(onDescriptionChange.mock.calls).toEqual([[""]]);
   });
 });
