@@ -58,7 +58,7 @@ function getFieldDisplayName(field: Field): string {
   return field.dimensions?.[0]?.name || field.display_name || field.name;
 }
 
-function getFieldIcon(table: Table, field: Field): IconName {
+export function getFieldIcon(table: Table, field: Field): IconName {
   try {
     const column = tableFieldToColumnMetadata(table, field);
     return getColumnIcon(column);

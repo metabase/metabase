@@ -1,11 +1,20 @@
+import { createMockField, createMockTable } from "metabase-types/api/mocks";
 import {
   createOrdersTable,
+  createOrdersUserIdField,
+  createPeopleBirthDateField,
+  createPeopleIdField,
+  createPeopleLatitudeField,
+  createPeopleLongitudeField,
+  createPeopleStateField,
   createPeopleTable,
+  createProductsRatingField,
   createProductsTable,
+  createProductsVendorField,
   createReviewsTable,
 } from "metabase-types/api/mocks/presets";
 
-import { getItems } from "./utils";
+import { getFieldIcon, getItems } from "./utils";
 
 describe("getItems", () => {
   it("orders table", () => {
@@ -71,4 +80,92 @@ describe("getItems", () => {
       { icon: "calendar", label: "Created At" },
     ]);
   });
+});
+
+describe("getFieldIcon", () => {
+  const tableId = 999;
+
+  it.each([
+    {
+      field: createPeopleIdField({
+        display_name: "primary key",
+        table_id: tableId,
+      }),
+      expectedIcon: "label",
+    },
+    {
+      field: createOrdersUserIdField({
+        display_name: "foreign key",
+        table_id: tableId,
+      }),
+      expectedIcon: "connections",
+    },
+    {
+      field: createPeopleStateField({
+        display_name: "location",
+        table_id: tableId,
+      }),
+      expectedIcon: "location",
+    },
+    {
+      field: createPeopleLatitudeField({
+        display_name: "latitude",
+        table_id: tableId,
+      }),
+      expectedIcon: "location",
+    },
+    {
+      field: createPeopleLongitudeField({
+        display_name: "longitude",
+        table_id: tableId,
+      }),
+      expectedIcon: "location",
+    },
+    {
+      field: createPeopleBirthDateField({
+        display_name: "temporal",
+        table_id: tableId,
+      }),
+      expectedIcon: "calendar",
+    },
+    {
+      field: createMockField({
+        display_name: "boolean",
+        table_id: tableId,
+        base_type: "type/Boolean",
+        effective_type: "type/Boolean",
+      }),
+      expectedIcon: "io",
+    },
+    {
+      field: createProductsVendorField({
+        display_name: "string",
+        table_id: tableId,
+      }),
+      expectedIcon: "string",
+    },
+    {
+      field: createProductsRatingField({
+        display_name: "numeric",
+        table_id: tableId,
+      }),
+      expectedIcon: "int",
+    },
+    {
+      field: createMockField({
+        display_name: "other",
+        table_id: tableId,
+        base_type: "type/*",
+        effective_type: "type/*",
+      }),
+      expectedIcon: "list",
+    },
+  ])(
+    "should return correct icon for location columns",
+    ({ expectedIcon, field }) => {
+      const table = createMockTable({ id: tableId, fields: [field] });
+
+      expect(getFieldIcon(table, field)).toBe(expectedIcon);
+    },
+  );
 });
