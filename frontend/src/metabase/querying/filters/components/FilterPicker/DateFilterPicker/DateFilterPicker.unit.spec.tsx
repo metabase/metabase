@@ -113,7 +113,7 @@ describe("DateFilterPicker", () => {
       unit: "day",
     });
     expect(getNextFilterChangeOpts()).toMatchObject({
-      source: "default",
+      run: true,
     });
   });
 
@@ -272,11 +272,11 @@ describe("DateFilterPicker", () => {
   });
 
   it.each([
-    { label: "Apply filter", source: "default" },
-    { label: "Add another filter", source: "add-button" },
+    { label: "Apply filter", run: true },
+    { label: "Add another filter", run: false },
   ])(
     'should add a filter via the "$label" button when the add button is enabled',
-    async ({ label, source }) => {
+    async ({ label, run }) => {
       const {
         getNextFilterColumnName,
         getNextSpecificFilterParts,
@@ -300,9 +300,7 @@ describe("DateFilterPicker", () => {
         column: expect.anything(),
         values: [new Date(2020, 1, 15)],
       });
-      expect(getNextFilterChangeOpts()).toMatchObject({
-        source,
-      });
+      expect(getNextFilterChangeOpts()).toMatchObject({ run });
     },
   );
 });

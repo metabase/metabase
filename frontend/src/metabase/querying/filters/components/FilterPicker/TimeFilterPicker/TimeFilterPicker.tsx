@@ -60,11 +60,11 @@ export function TimeFilterPicker({
 
   const handleFormSubmit = (event: FormEvent) => {
     event.preventDefault();
-    handleFilterChange({ source: "default" });
+    handleFilterChange({ run: true });
   };
 
   const handleAddButtonClick = () => {
-    handleFilterChange({ source: "add-button" });
+    handleFilterChange({ run: false });
   };
 
   return (

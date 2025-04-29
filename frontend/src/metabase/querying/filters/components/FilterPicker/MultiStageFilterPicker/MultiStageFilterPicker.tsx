@@ -10,14 +10,10 @@ import type {
   SegmentListItem,
 } from "../types";
 
-export type QueryChangeOpts = {
-  run: boolean;
-};
-
 export type MultiStageFilterPickerProps = {
   query: Lib.Query;
   canAppendStage: boolean;
-  onChange: (newQuery: Lib.Query, opts: QueryChangeOpts) => void;
+  onChange: (newQuery: Lib.Query, opts: FilterChangeOpts) => void;
   onClose?: () => void;
 };
 
@@ -40,7 +36,7 @@ export function MultiStageFilterPicker({
   const handleChange = (
     filter: Lib.Filterable,
     stageIndex: number,
-    opts: QueryChangeOpts,
+    opts: FilterChangeOpts,
   ) => {
     const newQuery = Lib.filter(query, stageIndex, filter);
     onChange(newQuery, opts);
@@ -54,14 +50,12 @@ export function MultiStageFilterPicker({
       return;
     }
 
-    handleChange(filter, selectedItem.stageIndex, {
-      run: opts.source !== "add-button",
-    });
+    handleChange(filter, selectedItem.stageIndex, opts);
 
-    if (opts.source === "add-button") {
-      setSelectedItem(undefined);
-    } else {
+    if (opts.run) {
       onClose?.();
+    } else {
+      setSelectedItem(undefined);
     }
   };
 

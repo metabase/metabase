@@ -323,17 +323,17 @@ describe("NumberFilterPicker", () => {
     });
 
     it.each([
-      { label: "Apply filter", source: "default" },
-      { label: "Add another filter", source: "add-button" },
+      { label: "Apply filter", run: true },
+      { label: "Add another filter", run: false },
     ])(
       'should add a filter via the "$label" button when the add button is enabled',
-      async ({ label, source }) => {
+      async ({ label, run }) => {
         const { getNextFilterChangeOpts } = setup({ withAddButton: true });
         await setOperator("Greater than");
         const input = screen.getByPlaceholderText("Enter a number");
         await userEvent.type(input, "15");
         await userEvent.click(screen.getByRole("button", { name: label }));
-        expect(getNextFilterChangeOpts()).toMatchObject({ source });
+        expect(getNextFilterChangeOpts()).toMatchObject({ run });
       },
     );
   });

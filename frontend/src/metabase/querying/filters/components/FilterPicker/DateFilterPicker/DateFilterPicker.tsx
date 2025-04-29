@@ -32,11 +32,11 @@ export function DateFilterPicker({
     });
 
   const handleChange = (value: DatePickerValue) => {
-    onChange(getFilterClause(value), { source: "default" });
+    onChange(getFilterClause(value), { run: true });
   };
 
   const handleAddButtonClick = (value: DatePickerValue) => {
-    onChange(getFilterClause(value), { source: "add-button" });
+    onChange(getFilterClause(value), { run: false });
   };
 
   return (

@@ -11,10 +11,8 @@ export type FilterPickerWidgetProps = {
   onBack?: () => void;
 };
 
-export type FilterChangeSource = "default" | "add-button";
-
 export type FilterChangeOpts = {
-  source: FilterChangeSource;
+  run?: boolean;
 };
 
 export type ColumnListItem = {
