@@ -3,7 +3,7 @@
    [clj-http.fake :as http-fake]
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.task.upgrade-checks :as upgrade-checks]))
 
 (deftest query-params-test

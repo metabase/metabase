@@ -1,7 +1,7 @@
 (ns metabase.util.markdown-test
   (:require
    [clojure.test :refer :all]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test.util :as tu]
    [metabase.util.markdown :as markdown]))
 

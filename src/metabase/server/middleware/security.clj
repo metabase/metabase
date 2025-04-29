@@ -6,9 +6,9 @@
    [java-time.api :as t]
    [metabase.config :as config]
    [metabase.embed.app-origins-sdk :as aos]
-   [metabase.models.setting :as setting]
-   [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.settings.core :as setting]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.util.codec :refer [base64-encode]])
