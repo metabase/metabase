@@ -1451,8 +1451,3 @@ function op(
 function dimension(name: string) {
   return op("dimension" as Lib.ExpressionOperator, name);
 }
-
-export const getFunctionByStructure = (structure: string) =>
-  HELPER_TEXT_STRINGS.find(
-    (h) => h.structure.toLowerCase() === structure.toLowerCase(),
-  )?.name;
