@@ -25,7 +25,6 @@
   "Post-processing middleware. Replaces columns in metadata of pivot query with the columns of the base (un-pivoted) query."
   [{:keys [non-pivoted-cols]} rff]
   (fn merge-base-pivot-query-metadata-rff* [metadata]
-    (def metadata metadata)
     (if non-pivoted-cols
       (rff (assoc metadata
                   :cols non-pivoted-cols
