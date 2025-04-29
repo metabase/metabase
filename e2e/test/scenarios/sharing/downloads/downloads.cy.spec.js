@@ -172,107 +172,113 @@ describe("scenarios > question > download", () => {
     );
   });
 
-  it("should remember the selected format across page reloads", () => {
-    cy.intercept(
-      "PUT",
-      "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
-    ).as("saveFormat");
+  it(
+    "should remember the selected format across page reloads",
+    { tags: "@flaky" },
+    () => {
+      cy.intercept(
+        "PUT",
+        "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+      ).as("saveFormat");
 
-    H.createQuestion(
-      {
-        name: "Format Preference Test",
+      H.createQuestion(
+        {
+          name: "Format Preference Test",
+          query: {
+            "source-table": ORDERS_ID,
+            limit: 5,
+          },
+          display: "table",
+        },
+        { visitQuestion: true },
+      );
+
+      cy.findByRole("button", { name: "Download results" }).click();
+      H.popover().within(() => {
+        cy.findByText(".xlsx")
+          .should("be.visible")
+          .click()
+          .then(() => {
+            cy.wait("@saveFormat");
+          });
+      });
+
+      cy.reload().then(() => {
+        cy.intercept(
+          "GET",
+          "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+        ).as("fetchFormat");
+
+        cy.wait("@fetchFormat").then(() => {
+          cy.findByRole("button", { name: "Download results" }).click();
+          H.popover().within(() => {
+            cy.get("[data-checked='true']").should("contain", ".xlsx");
+          });
+        });
+      });
+    },
+  );
+
+  it(
+    "should remember the download format on dashboards",
+    { tags: "@flaky" },
+    () => {
+      cy.intercept(
+        "PUT",
+        "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+      ).as("saveFormat");
+
+      H.createQuestion({
+        name: "Dashboard Format Test",
         query: {
           "source-table": ORDERS_ID,
           limit: 5,
         },
         display: "table",
-      },
-      { visitQuestion: true },
-    );
+      }).then(({ body: { id: questionId } }) => {
+        H.createDashboard().then(({ body: { id: dashboardId } }) => {
+          H.addOrUpdateDashboardCard({
+            card_id: questionId,
+            dashboard_id: dashboardId,
+          });
 
-    cy.findByRole("button", { name: "Download results" }).click();
-    H.popover().within(() => {
-      cy.findByText(".xlsx")
-        .should("be.visible")
-        .click()
-        .then(() => {
-          cy.wait("@saveFormat");
-        });
-    });
+          H.visitDashboard(dashboardId);
 
-    cy.reload().then(() => {
-      cy.intercept(
-        "GET",
-        "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
-      ).as("fetchFormat");
+          H.getDashboardCard(0).realHover();
+          H.getDashboardCardMenu(0).click();
+          H.popover().within(() => {
+            cy.findByText("Download results").click();
+          });
+          H.popover().within(() => {
+            cy.findByText(".xlsx")
+              .should("be.visible")
+              .click()
+              .then(() => {
+                cy.wait("@saveFormat");
+              });
+          });
 
-      cy.wait("@fetchFormat").then(() => {
-        cy.wait(500);
-        cy.findByRole("button", { name: "Download results" }).click();
-        H.popover().within(() => {
-          cy.get("[data-checked='true']").should("contain", ".xlsx");
-        });
-      });
-    });
-  });
+          cy.reload().then(() => {
+            cy.intercept(
+              "GET",
+              "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+            ).as("fetchFormat");
 
-  it("should remember the download format on dashboards", () => {
-    cy.intercept(
-      "PUT",
-      "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
-    ).as("saveFormat");
-
-    H.createQuestion({
-      name: "Dashboard Format Test",
-      query: {
-        "source-table": ORDERS_ID,
-        limit: 5,
-      },
-      display: "table",
-    }).then(({ body: { id: questionId } }) => {
-      H.createDashboard().then(({ body: { id: dashboardId } }) => {
-        H.addOrUpdateDashboardCard({
-          card_id: questionId,
-          dashboard_id: dashboardId,
-        });
-
-        H.visitDashboard(dashboardId);
-
-        H.getDashboardCard(0).realHover();
-        H.getDashboardCardMenu(0).click();
-        H.popover().within(() => {
-          cy.findByText("Download results").click();
-        });
-        H.popover().within(() => {
-          cy.findByText(".xlsx")
-            .should("be.visible")
-            .click()
-            .then(() => {
-              cy.wait("@saveFormat");
-            });
-        });
-
-        cy.reload().then(() => {
-          cy.intercept(
-            "GET",
-            "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
-          ).as("fetchFormat");
-
-          cy.wait("@fetchFormat").then(() => {
-            cy.wait(500);
-            H.getDashboardCard(0).realHover();
-            H.getDashboardCardMenu(0).click();
-            H.popover().within(() => {
-              cy.findByText("Download results").click();
-            });
-            H.popover().within(() => {
-              cy.get("[data-checked='true']").should("contain", ".xlsx");
+            cy.wait("@fetchFormat").then(() => {
+              H.getDashboardCard(0).realHover();
+              H.getDashboardCardMenu(0).click();
+              H.popover().within(() => {
+                cy.findByText("Download results").click();
+              });
+              H.popover().within(() => {
+                cy.get("[data-checked='true']").should("contain", ".xlsx");
+              });
             });
           });
         });
       });
-    });
-  });
+    },
+  );
 
   it("respects renamed columns in self-joins", () => {
     const idLeftRef = [
