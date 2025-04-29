@@ -203,11 +203,27 @@
 
   eid-translation
   {:api  #{metabase.eid-translation.core}
-   :uses #{}}
+   :uses #{settings util}}
 
-  embed
-  {:api  #{metabase.embed.settings metabase.embed.app-origins-sdk}
-   :uses #{analytics premium-features settings util}}
+  embedding
+  {:api  #{metabase.embedding.api
+           metabase.embedding.app-origins-sdk
+           metabase.embedding.init
+           metabase.embedding.settings}
+   :uses #{analytics
+           api
+           config
+           driver
+           eid-translation
+           events
+           models
+           notification
+           premium-features
+           public-sharing
+           query-processor
+           settings
+           tiles
+           util}}
 
   events
   {:api  #{metabase.events metabase.events.init metabase.events.notification}
@@ -525,7 +541,7 @@
           metabase.server.middleware.json
           metabase.server.middleware.session
           metabase.server.streaming-response}
-   :uses #{analytics api config core db driver embed models premium-features settings session request util enterprise/sso}}
+   :uses #{analytics api config core db driver embedding models premium-features settings session request util enterprise/sso}}
 
   session
   {:api  #{metabase.session.core
@@ -534,7 +550,6 @@
            metabase.session.models.session}
    :uses #{api channel config db driver events login-history models settings request sso task util}}
 
-  ;; TODO FIXME
   settings
   {:api  #{metabase.settings.api
            metabase.settings.core
@@ -624,7 +639,7 @@
 
   util
   {:api :any
-   :uses #{config db driver legacy-mbql lib models plugins premium-features settings}}
+   :uses #{config db driver legacy-mbql lib models plugins settings}}
 
   xrays
   {:api  #{metabase.xrays.api
@@ -769,11 +784,11 @@
   {:api #{metabase-enterprise.sso.api.routes
           metabase-enterprise.sso.integrations.sso-settings
           metabase-enterprise.sso.integrations.sso-utils}
-   :uses #{api channel embed events premium-features request session settings sso util enterprise/scim}}
+   :uses #{api channel embedding events premium-features request session settings sso util enterprise/scim}}
 
   enterprise/stale
   {:api  #{metabase-enterprise.stale.routes}
-   :uses #{analytics api embed models premium-features request settings util}}
+   :uses #{analytics api embedding models premium-features request settings util}}
 
   enterprise/stats
   {:api  #{}

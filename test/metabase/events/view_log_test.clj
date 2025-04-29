@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.dashboard-test :as api.dashboard-test]
-   [metabase.api.embed-test :as embed-test]
+   [metabase.embedding.api.embed-test :as embed-test]
    [metabase.events :as events]
    [metabase.events.view-log :as events.view-log]
    [metabase.http-client :as client]

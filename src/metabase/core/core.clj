@@ -14,7 +14,7 @@
    [metabase.driver.h2]
    [metabase.driver.mysql]
    [metabase.driver.postgres]
-   [metabase.embed.settings :as embed.settings]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.events :as events]
    [metabase.logger :as logger]
    [metabase.models.database :as database]

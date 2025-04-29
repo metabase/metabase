@@ -11,6 +11,7 @@
    [metabase.cloud-migration.init]
    [metabase.config :as config]
    [metabase.driver.init]
+   [metabase.embedding.init]
    [metabase.events.init]
    [metabase.indexed-entities.init]
    [metabase.lib-be.init]
