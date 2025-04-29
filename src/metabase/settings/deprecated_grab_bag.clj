@@ -216,21 +216,10 @@ x.com")
   :visibility :public
   :audit      :getter)
 
-(defsetting site-uuid-for-premium-features-token-checks
-  "In the interest of respecting everyone's privacy and keeping things as anonymous as possible we have a *different*
-  site-wide UUID that we use for the EE/premium features token feature check API calls. It works in fundamentally the
-  same way as [[site-uuid]] but should only be used by the token check logic
-  in [[metabase.premium-features.core/fetch-token-status]]. (`site-uuid` is used for anonymous
-  analytics aka stats and if we sent it along with the premium features token check API request it would no longer be
-  anonymous.)"
-  :encryption :when-encryption-key-set
-  :visibility :internal
-  :base       setting/uuid-nonce-base
-  :doc        false)
-
 (defsetting site-uuid-for-version-info-fetching
   "A *different* site-wide UUID that we use for the version info fetching API calls. Do not use this for any other
-  applications. (See [[site-uuid-for-premium-features-token-checks]] for more reasoning.)"
+  applications. (See [[metabase.premium-features.settings/site-uuid-for-premium-features-token-checks]] for more
+  reasoning.)"
   :encryption :when-encryption-key-set
   :visibility :internal
   :base       setting/uuid-nonce-base)
@@ -732,28 +721,10 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :public
   :audit      :getter)
 
-(defsetting enable-xrays
-  (deferred-tru "Allow users to explore data using X-rays")
-  :type       :boolean
-  :default    true
-  :visibility :authenticated
-  :export?    true
-  :audit      :getter)
-
 (defsetting show-homepage-data
   (deferred-tru
    (str "Whether or not to display data on the homepage. "
         "Admins might turn this off in order to direct users to better content than raw data"))
-  :type       :boolean
-  :default    true
-  :visibility :authenticated
-  :export?    true
-  :audit      :getter)
-
-(defsetting show-homepage-xrays
-  (deferred-tru
-   (str "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are "
-        "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated
@@ -1009,25 +980,6 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    false
   :default    true
   :type       :boolean)
-
-;;; TODO -- move the search-related settings into the `:search` module. Only settings used across the entire application
-;;; should live in this namespace.
-
-(defsetting search-engine
-  (deferred-tru "Which engine to use when performing search. Supported values are :in-place and :appdb")
-  :visibility :internal
-  :export?    false
-  :default    :in-place
-  :type       :keyword)
-
-(defsetting experimental-search-weight-overrides
-  (deferred-tru "Used to override weights used for search ranking")
-  :visibility :internal
-  :encryption :no
-  :export?    false
-  :default    nil
-  :type       :json
-  :doc        false)
 
 (defsetting bug-reporting-enabled
   (deferred-tru "Enable bug report submissions.")

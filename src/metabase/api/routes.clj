@@ -19,7 +19,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.native-query-snippet]
    [metabase.api.open-api :as open-api]
-   [metabase.api.premium-features]
    [metabase.api.preview-embed]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
    [metabase.api.slack]
@@ -37,6 +36,7 @@
    [metabase.model-persistence.api]
    [metabase.notification.api]
    [metabase.permissions.api]
+   [metabase.premium-features.api]
    [metabase.public-sharing.api]
    [metabase.pulse.api]
    [metabase.revisions.api]
@@ -67,6 +67,7 @@
          metabase.api.embed/keep-me
          metabase.api.field/keep-me
          metabase.api.geojson/keep-me
+         metabase.api.logger/keep-me
          metabase.api.native-query-snippet/keep-me
          metabase.api.preview-embed/keep-me
          metabase.api.slack/keep-me
@@ -159,7 +160,7 @@
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
    "/permissions"          (+auth 'metabase.permissions.api)
    "/persist"              (+auth 'metabase.model-persistence.api)
-   "/premium-features"     (+auth metabase.api.premium-features/routes)
+   "/premium-features"     (+auth metabase.premium-features.api/routes)
    "/preview_embed"        (+auth 'metabase.api.preview-embed)
    "/public"               (+public-exceptions 'metabase.public-sharing.api)
    "/pulse"                metabase.pulse.api/pulse-routes
