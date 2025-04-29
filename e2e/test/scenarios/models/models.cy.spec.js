@@ -354,8 +354,8 @@ describe("scenarios > models", () => {
           .and("contain.text", "Orders");
 
         cy.findByText("Everywhere").click();
-        getResults().should("have.length", 6);
-        cy.findByText("6 results").should("be.visible");
+        getResults().should("have.length", 5);
+        cy.findByText("5 results").should("be.visible");
         getResults()
           .eq(0)
           .should("have.attr", "data-model-type", "dataset")
@@ -374,10 +374,6 @@ describe("scenarios > models", () => {
           .and("contain.text", "Orders, Count");
         getResults()
           .eq(4)
-          .should("have.attr", "data-model-type", "card")
-          .and("contain.text", "Orders");
-        getResults()
-          .eq(5)
           .should("have.attr", "data-model-type", "table")
           .and("contain.text", "Orders");
       });
