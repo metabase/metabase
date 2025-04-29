@@ -116,11 +116,4 @@
         template   (or template
                        (channel.template/default-template :notification/system-event context channel-type))]
     (assert template (str "No template found for event " event-name))
-    (def template template)
-    (def notification-payload notification-payload)
     [{:body (json/decode (channel.template/render-template template notification-payload))}]))
-
-(json/decode (channel.template/render-template {:channel_type :channel/http,
-                                                :details
-                                                {:type "http/handlebars-text",
-                                                 :body "{\"record\": {{{json-encode record}}} }"}} notification-payload))
