@@ -24,11 +24,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-;; We must enforce the following invariant for the data in the Undo table:
-;;
-;; undone` is monotonic in `batch_num`, for each `scope`.
-;;  i.e., it can only change from `false` to `true` as `batch_num` increases.
-
 (defn- serialize-scope
   "Convert the scope map or string into a stable string we can do example matches on in the database. Idempotent."
   [scope]
