@@ -145,7 +145,7 @@
     [false false] ::no-op))
 
 (defmethod actions/handle-effects!* :effect/row.modified
-  [_ {:keys [user-id invocation-stack]} diffs]
+  [_ {:keys [user-id invocation-stack scope]} diffs]
   (let [table->fields (u/group-by identity select-table-pk-fields concat (distinct (map :table-id diffs)))
         diff->pk      (u/for-map [{:keys [table-id before after] :as diff} diffs
                                   :when (or before after)]
@@ -155,10 +155,12 @@
     (when user-id
       (when-not (some (comp #{"undo"} namespace first) invocation-stack)
         ((requiring-resolve 'metabase-enterprise.data-editing.undo/track-change!)
-         user-id (u/for-map [[table-id diffs] (group-by :table-id diffs)]
-                   [table-id (u/for-map [{:keys [before after] :as diff} diffs
-                                         :when (or before after)]
-                               [(diff->pk diff) [before after]])]))))
+         user-id
+         scope
+         (u/for-map [[table-id diffs] (group-by :table-id diffs)]
+           [table-id (u/for-map [{:keys [before after] :as diff} diffs
+                                 :when (or before after)]
+                       [(diff->pk diff) [before after]])]))))
     ;; table notification system events
     (doseq [[event payloads] (->> diffs
                                   (group-by row-update-event)

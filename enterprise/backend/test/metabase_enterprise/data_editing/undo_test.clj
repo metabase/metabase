@@ -28,13 +28,15 @@
      :type     :query
      :query    {:source-table table-id}})))
 
+(def ^:private test-scope {:test-ns (ns-name *ns*)})
+
 ;; TODO use actual mutations to create the history (TODO subscribe to the relevant events)
 (defn- write-sequence! [table-id pk states]
   (loop [prior  nil
          states states]
     (when (seq states)
       (let [[user-id value] (first states)]
-        (undo/track-change! user-id {table-id {pk [prior value]}})
+        (undo/track-change! user-id test-scope {table-id {pk [prior value]}})
         (recur value (rest states))))))
 
 ;; I'm OK reducing this scenario's scope once we have e2e tests.
@@ -261,10 +263,10 @@
 
             (is (= [[1 "Too-tickley" "squirming"]] (table-rows table-id)))
 
-            (undo/track-change! user-id {table-id {{:id 2} [nil {:name "Toggle" :status "restored"}]}})
+            (undo/track-change! user-id test-scope {table-id {{:id 2} [nil {:name "Toggle" :status "restored"}]}})
             ;; We need to delete it, so we can "undo" that to create it in the first place...
             ;; TLDR `write-sequence` should be updated to update the table itself, then these tests can be simpler.
-            (undo/track-change! user-id {table-id {{:id 2} [{:name "Toggle" :status "restored"} nil]}})
+            (undo/track-change! user-id test-scope {table-id {{:id 2} [{:name "Toggle" :status "restored"} nil]}})
 
             (is (nil? (undo/next-batch-num false user-id table-id)))
             (is (undo/next-batch-num true user-id table-id))
@@ -297,6 +299,7 @@
               (with-redefs [undo/retention-total-rows 17]
                 (dotimes [i 25]
                   (undo/track-change! user-1
+                                      test-scope
                                       {table-1
                                        {{:id 1} [(if (even? i) {} nil)
                                                  (if (even? i) nil {})]
@@ -310,6 +313,7 @@
               (with-redefs [undo/retention-total-batches 15]
                 (dotimes [i 25]
                   (undo/track-change! user-1
+                                      test-scope
                                       {table-1
                                        {{:id 1} [(if (even? i) {} nil)
                                                  (if (even? i) nil {})]
@@ -324,6 +328,7 @@
                 (dotimes [i 25]
                   ;; just toggle existence
                   (undo/track-change! (if (zero? (mod i 3)) user-1 user-2)
+                                      test-scope
                                       {table-1
                                        {{:id 1} [(if (even? i) {} nil)
                                                  (if (even? i) nil {})]
@@ -340,6 +345,7 @@
                 (dotimes [i 25]
                   ;; just toggle existence
                   (undo/track-change! user-1
+                                      test-scope
                                       {(if (zero? (mod i 5)) table-1 table-2)
                                        {{:id 1} [(if (even? i) {} nil)
                                                  (if (even? i) nil {})]
@@ -360,6 +366,7 @@
                 (dotimes [i 25]
                   ;; just toggle existence
                   (undo/track-change! (if (zero? (mod i 3)) user-1 user-2)
+                                      test-scope
                                       {(if (zero? (mod i 5)) table-1 table-2)
                                        {{:id 1} [(if (even? i) {} nil)
                                                  (if (even? i) nil {})]

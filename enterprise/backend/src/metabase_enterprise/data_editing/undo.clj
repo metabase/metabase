@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-editing.undo
   (:require
+   [clojure.walk :as walk]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -81,9 +82,14 @@
 (defn- prune-batches! [batches-to-keep & [where]]
   (prune-from-batch! (batch-to-prune-from batches-to-keep where) where))
 
+(defn- serialize-scope
+  "Convert the scope map into a stable string we can do example matches on in the database."
+  [scope]
+  (->> (or scope "unknown") (walk/postwalk #(if-not (map? %) % (apply sorted-map (apply concat %)))) pr-str))
+
 (defn track-change!
   "Insert some snapshot data based on edits made to the given table."
-  [user-id table-id->row-pk->old-new-values]
+  [user-id scope table-id->row-pk->old-new-values]
   (t2/with-transaction [_conn]
     (let [seq-name       "undo_batch_num"
           next-batch-num (or (t2/select-one-fn :next_val [:sequences :next_val] :name seq-name {:for :update}) 1)]
@@ -96,7 +102,7 @@
           :table_id   table-id
           :user_id    user-id
           :row_pk     row-pk
-          :scope     "{\"pew\": true}"
+          :scope     (serialize-scope scope)
           :raw_before old
           :raw_after  new}))))
   ;; We do this in multiple statements because:
@@ -180,27 +186,30 @@
 
 (defn- update-table-data!
   "Revert the underlying table data."
-  [undo? user-id batch]
-  (doseq [[[table-id category] sub-batch] (u/group-by (juxt :table_id categorize) batch)
-          :let [rows (batch->rows undo? sub-batch)
-                iid  (nano-id/nano-id)
-                opts {:existing-context {:invocation_id iid
-                                         :invocation-stack [[(if undo? :undo/undo :undo/redo) iid]]}}]]
-    (case (if undo? (invert category) category)
-      :create (try (data-editing/perform-bulk-action! :bulk/create user-id table-id rows opts)
-                   (catch Exception e
-                     ;; Sometimes cols don't support a custom value being provided, e.g., GENERATED ALWAYS AS IDENTITY
-                     (throw (ex-info "Failed to un-delete row(s)"
-                                     {:error     :undo/cannot-undelete
-                                      :batch-num (:batch_num (first batch))
-                                      :table-id  table-id
-                                      :pks       (map :row_pk batch)}
-                                     e))))
-      :update (data-editing/perform-bulk-action! :bulk/update user-id table-id rows opts)
-      :delete (data-editing/perform-bulk-action! :bulk/delete user-id table-id rows opts))))
+  [undo-or-redo user-id batch]
+  (let [undo?     (= :undo undo-or-redo)
+        action-kw (keyword "undo" (name undo-or-redo))]
+    (doseq [[[table-id category] sub-batch] (u/group-by (juxt :table_id categorize) batch)
+            :let [rows (batch->rows undo? sub-batch)
+                  iid  (nano-id/nano-id)
+                  opts {:existing-context {:invocation_id    iid
+                                           :invocation-stack [[action-kw iid]]}}]]
+      (case (if undo? (invert category) category)
+        :create (try (data-editing/perform-bulk-action! :bulk/create user-id table-id rows opts)
+                     (catch Exception e
+                       ;; Sometimes cols don't support a custom value being provided, e.g., GENERATED ALWAYS AS IDENTITY
+                       (throw (ex-info "Failed to un-delete row(s)"
+                                       {:error     :undo/cannot-undelete
+                                        :batch-num (:batch_num (first batch))
+                                        :table-id  table-id
+                                        :pks       (map :row_pk batch)}
+                                       e))))
+        :update (data-editing/perform-bulk-action! :bulk/update user-id table-id rows opts)
+        :delete (data-editing/perform-bulk-action! :bulk/delete user-id table-id rows opts)))))
 
-(defn- undo*! [undo? user-id table-id]
-  (let [batch (next-batch undo? user-id table-id)]
+(defn- undo*! [undo-or-redo user-id table-id]
+  (let [undo? (= :undo undo-or-redo)
+        batch (next-batch undo? user-id table-id)]
     (cond
       (not (seq batch)) (throw (ex-info (if undo?
                                           "No previous versions found"
@@ -214,7 +223,7 @@
                                                :user-id  user-id
                                                :table-id table-id}))
       :else
-      (do (update-table-data! undo? user-id batch)
+      (do (update-table-data! undo-or-redo user-id batch)
           (t2/update! :model/Undo
                       {:batch_num (:batch_num (first batch))}
                       {:undone undo?})
@@ -227,9 +236,9 @@
 (defn undo!
   "Rollback the given user's last change to the given table."
   [user-id table-id]
-  (undo*! true user-id table-id))
+  (undo*! :undo user-id table-id))
 
 (defn redo!
   "Rollback the given user's last change to the given table."
   [user-id table-id]
-  (undo*! false user-id table-id))
+  (undo*! :redo user-id table-id))
