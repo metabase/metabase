@@ -11,7 +11,7 @@ import { useStore } from "metabase/lib/redux";
 import { setIsEmbeddingSdk } from "metabase/redux/embed";
 import { Box, Center, Loader } from "metabase/ui";
 
-import { useSdkIframeEmbedEventBus } from "../../hooks/use-sdk-interactive-embed-event";
+import { useSdkIframeEmbedEventBus } from "../../hooks/use-sdk-iframe-embed-event-bus";
 import type {
   SdkIframeEmbedSettings,
   StoreWithSdkState,
@@ -21,7 +21,7 @@ import S from "./SdkIframeEmbedRoute.module.css";
 
 export const SdkIframeEmbedRoute = () => {
   const store = useStore();
-  const { iframeAuthConfig, iframeSettings } = useSdkIframeEmbedEventBus();
+  const { iframeSettings } = useSdkIframeEmbedEventBus();
 
   useEffect(() => {
     // we are not using getSdkStore so `isEmbeddingSdk: true` isn't set automatically
@@ -29,20 +29,19 @@ export const SdkIframeEmbedRoute = () => {
   }, [store]);
 
   const authConfig = useMemo(() => {
-    if (!iframeAuthConfig) {
+    if (!iframeSettings) {
       return;
     }
 
-    // TODO: to be implemented once the new SSO implementation on the SDK is ready
-    if (iframeAuthConfig.type === "sso") {
+    if (!iframeSettings.instanceUrl || !iframeSettings.apiKey) {
       return;
     }
 
     return defineMetabaseAuthConfig({
-      metabaseInstanceUrl: iframeAuthConfig.metabaseInstanceUrl,
-      apiKey: iframeAuthConfig.apiKey,
+      metabaseInstanceUrl: iframeSettings.instanceUrl,
+      apiKey: iframeSettings.apiKey,
     });
-  }, [iframeAuthConfig]);
+  }, [iframeSettings]);
 
   const { theme } = iframeSettings ?? {};
 
@@ -76,17 +75,17 @@ export const SdkIframeEmbedView = ({
 }: {
   settings: SdkIframeEmbedSettings;
 }) => {
-  const { embedResourceType, embedResourceId } = settings;
+  const { dashboardId, questionId } = settings;
 
-  return match([embedResourceType, embedResourceId])
-    .with(["dashboard", P.nonNullable], ([, id]) => (
+  return match({ dashboardId, questionId })
+    .with({ dashboardId: P.nonNullable }, ({ dashboardId }) => (
       <InteractiveDashboard
-        dashboardId={id}
+        dashboardId={dashboardId}
         drillThroughQuestionHeight="100%"
       />
     ))
-    .with(["question", P.nonNullable], ([, id]) => (
-      <InteractiveQuestion questionId={id} height="100%" />
+    .with({ questionId: P.nonNullable }, ({ questionId }) => (
+      <InteractiveQuestion questionId={questionId} height="100%" />
     ))
     .otherwise(() => null);
 };

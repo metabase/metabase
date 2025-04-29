@@ -4,7 +4,6 @@ import { match } from "ts-pattern";
 import { isWithinIframe } from "metabase/lib/dom";
 
 import type {
-  SdkIframeAuthConfig,
   SdkIframeEmbedPostMessageAction,
   SdkIframeEmbedSettings,
 } from "../types/iframe";
@@ -12,9 +11,6 @@ import type {
 type Handler = (event: MessageEvent<SdkIframeEmbedPostMessageAction>) => void;
 
 export function useSdkIframeEmbedEventBus() {
-  const [iframeAuthConfig, setAuthConfig] =
-    useState<SdkIframeAuthConfig | null>(null);
-
   const [iframeSettings, setSettings] = useState<SdkIframeEmbedSettings | null>(
     null,
   );
@@ -25,19 +21,15 @@ export function useSdkIframeEmbedEventBus() {
         return;
       }
 
-      match(event.data)
-        .with({ type: "metabase.embed.authenticate" }, ({ data }) => {
-          setAuthConfig(data);
-        })
-        .with(
-          { type: "metabase.embed.updateSettings" },
-          ({ data: nextSettings }) => {
-            setSettings((previousSettings) => ({
-              ...previousSettings,
-              ...nextSettings,
-            }));
-          },
-        );
+      match(event.data).with(
+        { type: "metabase.embed.updateSettings" },
+        ({ data: nextSettings }) => {
+          setSettings((previousSettings) => ({
+            ...previousSettings,
+            ...nextSettings,
+          }));
+        },
+      );
     };
 
     window.addEventListener("message", messageHandler);
@@ -50,5 +42,5 @@ export function useSdkIframeEmbedEventBus() {
     };
   });
 
-  return { iframeAuthConfig, iframeSettings };
+  return { iframeSettings };
 }

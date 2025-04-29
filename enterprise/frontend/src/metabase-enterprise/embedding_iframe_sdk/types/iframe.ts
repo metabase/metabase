@@ -2,31 +2,23 @@ import type { Action, Store } from "@reduxjs/toolkit";
 
 import type { MetabaseTheme } from "embedding-sdk";
 import type { SdkStoreState } from "embedding-sdk/store/types";
-import type {
-  EmbedResource,
-  EmbedResourceType,
-} from "metabase/public/lib/types";
 
 export type StoreWithSdkState = Store<SdkStoreState, Action>;
 
 export type SdkIframeEmbedPostMessageAction =
   | {
-      type: "metabase.embed.authenticate";
-      data: SdkIframeAuthConfig;
-    }
-  | {
       type: "metabase.embed.updateSettings";
       data: SdkIframeEmbedSettings;
+    }
+  | {
+      type: "metabase.embed.authenticate";
     };
 
-export type SdkIframeAuthConfig = { metabaseInstanceUrl: string } & (
-  | { type: "apiKey"; apiKey: string }
-  | { type: "sso" } // TODO: to be implemented once the new SSO implementation on the SDK is ready
-);
-
 export type SdkIframeEmbedSettings = {
-  embedResourceType: EmbedResourceType;
-  embedResourceId?: EmbedResource["id"];
-
+  dashboardId?: number | string;
+  questionId?: number | string;
+  notebookEditor?: boolean;
   theme?: MetabaseTheme;
+  instanceUrl?: string;
+  apiKey?: string;
 };

@@ -6,8 +6,17 @@
 
   const EMBEDDING_ROUTE = "embed/sdk/v1";
 
+  const EMBED_SETTING_KEYS = [
+    "theme",
+    "dashboardId",
+    "questionId",
+    "notebookEditor",
+    "apiKey",
+    "instanceUrl",
+  ];
+
   /**
-   * @typedef {object} EmbedOptions
+   * @typedef {object} EmbedSettings
    * @property {string} instanceUrl
    * @property {string | HTMLElement} target
    * @property {string} apiKey
@@ -18,26 +27,21 @@
    * @property {object} [theme]
    */
 
-  /**
-   * @typedef {object} InternalEmbedSettings
-   * @property {string} embedResourceType
-   * @property {number | string} embedResourceId
-   * @property {object} [theme]
-   */
-
   class MetabaseEmbed {
     static VERSION = "1.0.0";
 
-    /** @param {EmbedOptions} options */
-    constructor(options) {
-      this._embedOptions = options;
+    /** @param {EmbedSettings} settings */
+    constructor(settings) {
+      this._validateEmbedSettings(settings);
+
+      this._embedSettings = settings;
       this._isEmbedReady = false;
       this._handleMessage = this._handleMessage.bind(this);
       this._setup();
     }
 
     /**
-     * @param {EmbedOptions} settings
+     * @param {EmbedSettings} settings
      * @public
      */
     updateSettings(settings) {
@@ -46,10 +50,15 @@
         return;
       }
 
-      this._sendMessage(
-        "metabase.embed.updateSettings",
-        this._getInternalEmbedSettings(settings),
+      this._validateEmbedSettings(settings);
+
+      const allowedSettings = Object.fromEntries(
+        Object.entries(settings).filter(([key]) =>
+          EMBED_SETTING_KEYS.includes(key),
+        ),
       );
+
+      this._sendMessage("metabase.embed.updateSettings", allowedSettings);
     }
 
     /**
@@ -65,7 +74,7 @@
 
     _setup() {
       const { instanceUrl, target, apiKey, iframeClassName } =
-        this._embedOptions;
+        this._embedSettings;
 
       this.iframe = document.createElement("iframe");
       this.iframe.src = `${instanceUrl}/${EMBEDDING_ROUTE}`;
@@ -102,54 +111,23 @@
     }
 
     /**
-     * @param {EmbedOptions} options
-     * @returns {InternalEmbedSettings}
-     **/
-    _getInternalEmbedSettings(options) {
-      const settings = {
-        theme: options.theme,
-        notebookEditor: options.notebookEditor,
-      };
-
-      if (options.notebookEditor) {
-        if (options.dashboardId || options.questionId) {
-          throw new Error(
-            "[metabase.embed] notebookEditor cannot be used with dashboardId or questionId",
-          );
-        }
-
-        return {
-          ...settings,
-          embedResourceType: "question",
-          embedResourceId: "new",
-        };
+     * @param {EmbedSettings} settings
+     */
+    _validateEmbedSettings(settings) {
+      if (
+        settings.notebookEditor &&
+        (settings.dashboardId || settings.questionId)
+      ) {
+        throw new Error(
+          "[metabase.embed] notebookEditor cannot be used with dashboardId or questionId",
+        );
       }
 
-      if (options.dashboardId && options.questionId) {
+      if (settings.dashboardId && settings.questionId) {
         throw new Error(
           "[metabase.embed] cannot provide both dashboardId and questionId at the same time",
         );
       }
-
-      if (options.dashboardId !== undefined) {
-        return {
-          ...settings,
-          embedResourceType: "dashboard",
-          embedResourceId: options.dashboardId,
-        };
-      }
-
-      if (options.questionId !== undefined) {
-        return {
-          ...settings,
-          embedResourceType: "question",
-          embedResourceId: options.questionId,
-        };
-      }
-
-      throw new Error(
-        "you must provide a dashboardId or questionId as an option",
-      );
     }
 
     _handleMessage(event) {
@@ -163,15 +141,7 @@
         }
 
         this._isEmbedReady = true;
-        this.updateSettings(this._embedOptions);
-
-        const { instanceUrl, apiKey } = this._embedOptions;
-
-        // TODO: implement SSO-based authentication once the new SSO implementation on the SDK is ready
-        this._sendMessage("metabase.embed.authenticate", {
-          apiKey,
-          metabaseInstanceUrl: instanceUrl,
-        });
+        this.updateSettings(this._embedSettings);
       }
     }
 
