@@ -1,6 +1,6 @@
 import { useLayoutEffect, useState } from "react";
 
-import { TextInput } from "metabase/ui";
+import { Flex, Icon, TextInput } from "metabase/ui";
 
 import S from "./NameDescriptionInput.module.css";
 
@@ -26,6 +26,10 @@ export const NameDescriptionInput = ({
 }: Props) => {
   const [nameState, setNameState] = useState(name);
   const [descriptionState, setDescriptionState] = useState(description);
+  const [isNameFocused, setIsNameFocused] = useState(false);
+  const [isNameHovered, setIsNameHovered] = useState(false);
+  const [isDescriptionFocused, setIsDescriptionFocused] = useState(false);
+  const [isDescriptionHovered, setIsDescriptionHovered] = useState(false);
 
   useLayoutEffect(() => {
     setNameState(name);
@@ -40,9 +44,19 @@ export const NameDescriptionInput = ({
         }}
         fw="bold"
         placeholder={namePlaceholder}
+        rightSection={
+          isNameHovered && !isNameFocused ? (
+            <Flex className={S.rightSection}>
+              <Icon name="pencil" size={12} />
+            </Flex>
+          ) : undefined
+        }
+        rightSectionPointerEvents="none"
         size="lg"
         value={nameState}
         onBlur={(event) => {
+          setIsNameFocused(false);
+
           const newValue = event.target.value;
 
           // prevent empty names
@@ -56,6 +70,9 @@ export const NameDescriptionInput = ({
           }
         }}
         onChange={(event) => setNameState(event.target.value)}
+        onFocus={() => setIsNameFocused(true)}
+        onMouseEnter={() => setIsNameHovered(true)}
+        onMouseLeave={() => setIsNameHovered(false)}
       />
 
       <TextInput
@@ -64,8 +81,18 @@ export const NameDescriptionInput = ({
           root: S.description,
         }}
         placeholder={descriptionPlaceholder}
+        rightSection={
+          isDescriptionHovered && !isDescriptionFocused ? (
+            <Flex className={S.rightSection}>
+              <Icon name="pencil" size={12} />
+            </Flex>
+          ) : undefined
+        }
+        rightSectionPointerEvents="none"
         value={descriptionState}
         onBlur={(event) => {
+          setIsDescriptionFocused(false);
+
           const newValue = event.target.value;
 
           if (description !== newValue) {
@@ -73,6 +100,9 @@ export const NameDescriptionInput = ({
           }
         }}
         onChange={(event) => setDescriptionState(event.target.value)}
+        onFocus={() => setIsDescriptionFocused(true)}
+        onMouseEnter={() => setIsDescriptionHovered(true)}
+        onMouseLeave={() => setIsDescriptionHovered(false)}
       />
     </div>
   );

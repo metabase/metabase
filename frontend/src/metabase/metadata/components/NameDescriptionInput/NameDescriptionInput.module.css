@@ -13,9 +13,34 @@
 .nameInput {
   border-end-start-radius: 0;
   border-end-end-radius: 0;
+
+  &:hover:not(:focus) {
+    background-color: var(--mantine-color-accent-gray-light-filled);
+  }
 }
 
 .descriptionInput {
   border-start-start-radius: 0;
   border-start-end-radius: 0;
+
+  &:hover:not(:focus) {
+    background-color: var(--mantine-color-accent-gray-light-filled);
+
+    .rightSection {
+      display: flex;
+    }
+  }
+}
+
+.rightSection {
+  display: none;
+}
+
+.name,
+.description {
+  &:hover {
+    .rightSection {
+      display: flex;
+    }
+  }
 }
