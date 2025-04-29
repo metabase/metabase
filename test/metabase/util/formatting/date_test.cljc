@@ -339,7 +339,12 @@
                 (date/format-datetime-with-unit "2022-04-07T19:08:45.123" {:unit         :asdf
                                                                            :date-style   "asdf"
                                                                            :time-enabled false}))
-        (is (=? [{:level :warn, :message "Unrecognized date style {:date-style asdf, :unit :asdf}"}]
+
+        (is (=? [{:namespace 'metabase.util.formatting.internal.date-formatters,
+                  :level :warn,
+                  :ctx {:date-style "asdf", :unit :asdf},
+                  :e nil,
+                  :message "Unrecognized date style"}]
                 (messages))))
       (is (= "2022-04-07T19:08:45" @result)))))
 

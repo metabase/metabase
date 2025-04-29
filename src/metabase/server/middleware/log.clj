@@ -46,12 +46,17 @@
    (when async-status
      (format " [ASYNC: %s]" async-status))))
 
-(defn- format-performance-info
+(defn- performance-info
   [{:keys [start-time call-count-fn _diag-info-fn]
     :or {start-time    (u/start-timer)
          call-count-fn (constantly -1)}}]
   (let [elapsed-time (u/since-ms start-time)
         db-calls     (call-count-fn)]
+    {:elapsed-time elapsed-time
+     :db-calls db-calls}))
+
+(defn- format-performance-info [info]
+  (let [{:keys [db-calls elapsed-time]} (performance-info info)]
     (format "%.0fms (%s DB calls)" elapsed-time db-calls)))
 
 (defn- stats [diag-info-fn]
