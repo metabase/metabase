@@ -31,55 +31,60 @@ function setup({ description = "", name = "" }: Partial<SetupOpts> = {}) {
 }
 
 describe("NameDescriptionInput", () => {
-  it('should trigger "onDescriptionChange" on description input blur', async () => {
-    const { onDescriptionChange } = setup();
+  describe("name", () => {
+    it('should trigger "onNameChange" on name input blur', async () => {
+      const { onNameChange } = setup();
 
-    const descriptionInput = screen.getByPlaceholderText("Enter description");
-    descriptionInput.blur();
+      const nameInput = screen.getByPlaceholderText("Enter name");
+      nameInput.blur();
 
-    // should not be triggered if value hasn't changed
-    expect(onDescriptionChange).toHaveBeenCalledTimes(0);
+      // should not be triggered if value hasn't changed
+      expect(onNameChange).toHaveBeenCalledTimes(0);
 
-    await userEvent.type(descriptionInput, "test");
-    descriptionInput.blur();
+      await userEvent.type(nameInput, "test");
+      nameInput.blur();
 
-    expect(onDescriptionChange).toHaveBeenCalledTimes(1);
-    expect(onDescriptionChange.mock.calls).toEqual([["test"]]);
+      expect(onNameChange).toHaveBeenCalledTimes(1);
+      expect(onNameChange.mock.calls).toEqual([["test"]]);
+    });
+
+    it("should not allow empty names", async () => {
+      const { onNameChange } = setup({ name: "xyz" });
+
+      const nameInput = screen.getByPlaceholderText("Enter name");
+      await userEvent.type(nameInput, "{backspace}".repeat(3));
+      nameInput.blur();
+
+      expect(onNameChange).toHaveBeenCalledTimes(0);
+    });
   });
 
-  it('should trigger "onNameChange" on name input blur', async () => {
-    const { onNameChange } = setup();
+  describe("description", () => {
+    it('should trigger "onDescriptionChange" on description input blur', async () => {
+      const { onDescriptionChange } = setup();
 
-    const nameInput = screen.getByPlaceholderText("Enter name");
-    nameInput.blur();
+      const descriptionInput = screen.getByPlaceholderText("Enter description");
+      descriptionInput.blur();
 
-    // should not be triggered if value hasn't changed
-    expect(onNameChange).toHaveBeenCalledTimes(0);
+      // should not be triggered if value hasn't changed
+      expect(onDescriptionChange).toHaveBeenCalledTimes(0);
 
-    await userEvent.type(nameInput, "test");
-    nameInput.blur();
+      await userEvent.type(descriptionInput, "test");
+      descriptionInput.blur();
 
-    expect(onNameChange).toHaveBeenCalledTimes(1);
-    expect(onNameChange.mock.calls).toEqual([["test"]]);
-  });
+      expect(onDescriptionChange).toHaveBeenCalledTimes(1);
+      expect(onDescriptionChange.mock.calls).toEqual([["test"]]);
+    });
 
-  it("should not allow empty names", async () => {
-    const { onNameChange } = setup({ name: "xyz" });
+    it("should allow empty description", async () => {
+      const { onDescriptionChange } = setup({ description: "xyz" });
 
-    const nameInput = screen.getByPlaceholderText("Enter name");
-    await userEvent.type(nameInput, "{backspace}".repeat(3));
-    nameInput.blur();
+      const descriptionInput = screen.getByPlaceholderText("Enter description");
+      await userEvent.type(descriptionInput, "{backspace}".repeat(3));
+      descriptionInput.blur();
 
-    expect(onNameChange).toHaveBeenCalledTimes(0);
-  });
-
-  it("should allow empty description", async () => {
-    const { onDescriptionChange } = setup({ description: "xyz" });
-
-    const descriptionInput = screen.getByPlaceholderText("Enter description");
-    await userEvent.type(descriptionInput, "{backspace}".repeat(3));
-    descriptionInput.blur();
-
-    expect(onDescriptionChange.mock.calls).toEqual([[""]]);
+      expect(onDescriptionChange.mock.calls).toEqual([[""]]);
+      expect(descriptionInput).toHaveValue("");
+    });
   });
 });
