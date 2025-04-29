@@ -2,7 +2,7 @@
   (:require
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.eid-translation.core :as eid-translation]
+   [metabase.eid-translation.impl :as eid-translation]
    [metabase.settings.core :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
