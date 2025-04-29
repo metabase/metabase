@@ -198,12 +198,12 @@
    & {:as _opts}]
   (let [invocation-id  (nano-id/nano-id)
         context-before (-> (assoc ctx :invocation-id invocation-id)
-                           (update :invocation-scope u/conjv [action-kw invocation-id]))]
+                           (update :invocation-stack u/conjv [action-kw invocation-id]))]
     (actions.events/publish-action-invocation! action-kw context-before inputs)
     (try
       (u/prog1 (perform-action!* action-kw context-before inputs)
         (let [{context-after :context, :keys [outputs]} <>]
-          (doseq [k [:invocation-id :invocation-scope :user-id]]
+          (doseq [k [:invocation-id :invocation-stack :user-id]]
             (assert (= (k context-before) (k context-after)) (format "Output context must not change %s" k)))
           ;; We might in future want effects to propagate all the up to the root scope ¯\_(ツ)_/¯
           (handle-effects! context-after)
@@ -239,6 +239,7 @@
   `action` being performed. [[action-arg-map-spec]] returns the specific spec used to validate `arg-map` for a given
   `action`."
   [action
+   scope
    arg-map-or-maps
    & {:keys [policy existing-context]
       :or   {policy :model-action}}]
@@ -272,7 +273,8 @@
         (doseq [arg-map arg-maps]
           (qp.perms/check-query-action-permissions* arg-map)))
       ;; TODO fix tons of tests which execute without user scope
-      (let [result (let [context (or existing-context {:user-id (identity #_api/check-500 api/*current-user-id*)})]
+      (let [result (let [context (or existing-context {:user-id (identity #_api/check-500 api/*current-user-id*)
+                                                       :scope   scope})]
                      (if-not driver
                        (perform-action-internal! action-kw context arg-maps)
                        (driver/with-driver driver
@@ -288,7 +290,8 @@
 (mu/defn perform-action-with-single-input-and-output
   "This is the Old School version of [[perform-action!], before we returned effects and used bulk chaining."
   [action arg-map & {:as opts}]
-  (try (let [{:keys [outputs]} (perform-action! action [arg-map] opts)]
+  (try (let [scope             {:non-undoable-scope :execute-implicit-action}
+             {:keys [outputs]} (perform-action! action scope [arg-map] opts)]
          (assert (= 1 (count outputs)) "The legacy action APIs do not support multiple outputs")
          (first outputs))
        (catch ExceptionInfo e

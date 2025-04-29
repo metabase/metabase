@@ -11627,6 +11627,38 @@ databaseChangeLog:
         - sql:
             sql: DELETE FROM sequences WHERE name = 'undo_batch_num';
 
+  - changeSet:
+      id: v55.2025-04-29T12:00:00
+      author: crisptrutski
+      comment: Remove old undo snapshots, which did not have a scope field. They would effectively be orphaned anyway.
+      rollback: # cannot roll back
+      changes:
+        - sql:
+            sql: DELETE FROM data_edit_undo_chain
+
+  - changeSet:
+      id: v55.2025-04-29T12:01:00
+      author: crisptrutski
+      comment: Add scope column, to restrict undo / redo actions to a given scope of interaction.
+      preConditions:
+        - not:
+            - columnExists:
+                tableName: data_edit_undo_chain
+                columnName: scope
+      changes:
+        - addColumn:
+            tableName: data_edit_undo_chain
+            columns:
+              - column:
+                  name: scope
+                  type: ${text.type}
+                  remarks: Identifies where the changes were made from
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: data_edit_undo_chain
+            columnName: scope
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -86,18 +86,18 @@
                                              [{:type "section",
                                                :text
                                                {:type "mrkdwn",
-                                                :text "*Crowberto Corv has updated a row from CATEGORIES*\n*Update:*\n• name : Updated Category\n• id : 1"}}]}]
+                                                :text "*Crowberto Corv has updated a row from CATEGORIES*\n*Update:*\n• ID : 1\n• NAME : Updated Category"}}]}]
                               :channel-id  "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
                      (is (=? {:subject "Table CATEGORIES has been updated"
                               :body [{"Crowberto Corv has updated a row in CATEGORIES" true
-                                      "name: Updated Category"                         true}]}
+                                      "NAME: Updated Category"                         true}]}
                              (mt/summarize-multipart-single-email
                               email
                               #"Crowberto Corv has updated a row in CATEGORIES"
-                              #"name: Updated Category"))))
+                              #"NAME: Updated Category"))))
     :channel/http  (fn [[req :as reqs]]
                      (is (= 1 (count reqs)))
                      (is (=? {:body (mt/malli=? :map)} req)))}))
@@ -118,18 +118,18 @@
                                              [{:type "section",
                                                :text
                                                {:type "mrkdwn",
-                                                :text "*Crowberto Corv has deleted a row from CATEGORIES*\n*Deleted row:*\n• id : 1\n• name : African"}}]}]
+                                                :text "*Crowberto Corv has deleted a row from CATEGORIES*\n*Deleted row:*\n• ID : 1\n• NAME : African"}}]}]
                               :channel-id "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
                      (is (=? {:subject "Table CATEGORIES has a row deleted"
                               :body    [{"Crowberto Corv has deleted a row from CATEGORIES" true
-                                         "name: African" true}]}
+                                         "NAME: African" true}]}
                              (mt/summarize-multipart-single-email
                               email
                               #"Crowberto Corv has deleted a row from CATEGORIES"
-                              #"name: African"))))
+                              #"NAME: African"))))
     :channel/http  (fn [[req :as reqs]]
                      (is (= 1 (count reqs)))
                      (is (=? {:body (mt/malli=? :map)} req)))}))
@@ -211,11 +211,11 @@
 
 (deftest create-row-notification-webhook-test
   (test-row-notification!
-   {:event_name :event/row.updated}
+   {:event_name :event/row.created}
    (fn [_notification]
-     (let [token  (:token (mt/user-http-request :crowberto
-                                                :post "ee/data-editing/webhook"
-                                                {:table-id (mt/id :categories)}))]
+     (let [token (:token (mt/user-http-request :crowberto
+                                               :post "ee/data-editing/webhook"
+                                               {:table-id (mt/id :categories)}))]
        (mt/user-http-request
         :crowberto
         :post
