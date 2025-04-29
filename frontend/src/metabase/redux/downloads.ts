@@ -1,9 +1,10 @@
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import { createSlice } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
 import api, { GET, POST } from "metabase/lib/api";
 import { isWithinIframe, openSaveDialog } from "metabase/lib/dom";
+import { createAsyncThunk } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { getTokenFeature } from "metabase/setup/selectors";
@@ -118,7 +119,7 @@ export const downloadQueryResults = createAsyncThunk(
     });
 
     if (opts.type === Urls.exportFormatPng) {
-      const isWhitelabeled = getTokenFeature(getState() as State, "whitelabel");
+      const isWhitelabeled = getTokenFeature(getState(), "whitelabel");
       const includeBranding = !isWhitelabeled;
       downloadChart({ opts, includeBranding });
     } else {
