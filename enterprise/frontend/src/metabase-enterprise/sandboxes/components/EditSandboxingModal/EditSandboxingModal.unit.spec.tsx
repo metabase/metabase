@@ -183,8 +183,8 @@ describe("EditSandboxingModal", () => {
         ).toBeInTheDocument();
 
         expect(
-          screen.getByText("Filter by a column in the table"),
-        ).toBeInTheDocument();
+          screen.queryByText("Filter by a column in the table"),
+        ).not.toBeInTheDocument();
 
         expect(
           screen.queryByText(
