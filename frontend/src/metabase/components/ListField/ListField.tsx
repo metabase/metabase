@@ -115,6 +115,7 @@ export const ListField = ({
       event.key === "Enter" &&
       !_.find(augmentedOptions, (option) => option[0] === filter)
     ) {
+      event.preventDefault();
       setAddedOptions([...addedOptions, [filter]]);
     }
   };
