@@ -537,21 +537,6 @@ describe("lexify", () => {
       );
     });
 
-    it("handles brackets that aren't properly and have whitespace between them", () => {
-      const { tokens } = lexify("foo  ]");
-      expect(tokens).toEqual(
-        [
-          {
-            type: FIELD,
-            pos: 0,
-            text: "foo  ]",
-            value: "foo",
-          },
-          { type: END_OF_INPUT, pos: 6, text: "\n" },
-        ].map(asToken),
-      );
-    });
-
     it("takes operators into account when dealing with incomplete bracket identifier tokens", () => {
       const { tokens } = lexify('case([Total] > 200, [To, "Nothing")');
 

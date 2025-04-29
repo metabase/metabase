@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { getIcon, queryIcon, screen, within } from "__support__/ui";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
@@ -21,6 +22,10 @@ function setupPremium(opts?: Partial<SetupOpts>) {
 }
 
 describe("PublicOrEmbeddedQuestion", () => {
+  beforeEach(() => {
+    setupLastDownloadFormatEndpoints();
+  });
+
   describe("downloads flag", () => {
     it("should allow downloading the results when downloads are enabled", async () => {
       await setupPremium({ hash: { downloads: "true" } });

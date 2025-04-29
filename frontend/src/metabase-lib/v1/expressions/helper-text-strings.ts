@@ -50,14 +50,14 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "cum-count",
     structure: "CumulativeCount",
-    category: "aggregation",
+    category: "window",
     description: () => t`The additive total of rows across a breakout.`,
     docsPage: "cumulative",
   },
   {
     name: "sum",
     structure: "Sum",
-    category: "window",
+    category: "aggregation",
     description: () => t`Adds up all the values of the column.`,
     args: [
       {
@@ -411,14 +411,15 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     name: "integer",
     structure: "integer",
     category: "conversion",
-    description: () => t`Converts a string to an integer.`,
+    description: () =>
+      t`Converts a string or float value to an integer number.`,
     args: [
       {
         get name() {
           return t`value`;
         },
         get description() {
-          return t`The string column to convert to integers.`;
+          return t`The string or float column to convert to integers. Float values are rounded.`;
         },
         example: ["dimension", "User ID"],
       },
