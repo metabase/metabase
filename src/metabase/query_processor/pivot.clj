@@ -592,26 +592,9 @@
   [query breakout-cols]
   (reduce lib/breakout query breakout-cols))
 
-;; TODO: figure out a more reliable way to nest this
-(defn nest-query
-  "Converts a pivot query into a form that selects the raw data as a subquery (with row limit and ordering) and applies
-  the aggregations and breakout to the outer query."
+(defn- nest-query
   [query]
-  (-> query
-      (assoc-in [:query :source-query]
-                (select-keys (:query query)
-                             [:source-table :source-query :limit :order-by :aggregation :aggregation-idents :breakout
-                              :breakout-idents]))
-      (m/dissoc-in [:query :source-table])
-      (m/dissoc-in [:query :limit])
-      (m/dissoc-in [:query :order-by])
-      (m/dissoc-in [:query :aggregation])
-      (m/dissoc-in [:query :aggregation-idents])
-      (m/dissoc-in [:query :breakout])
-      (m/dissoc-in [:query :breakout-idents])
-      (m/dissoc-in [:query :native])
-      (dissoc :native)
-      (assoc :type :query)))
+  (assoc query :query {:source-query (:query query)}))
 
 (defn- original-cols
   [query]
