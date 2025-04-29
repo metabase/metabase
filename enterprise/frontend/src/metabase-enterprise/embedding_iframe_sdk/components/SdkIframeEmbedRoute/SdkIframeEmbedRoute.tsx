@@ -49,7 +49,7 @@ export const SdkIframeEmbedRoute = () => {
   // TODO: add support for SSO auth once the new SSO implementation on the SDK is ready
   const isAuthReady = !!authConfig?.apiKey;
 
-  if (!isAuthReady || !authConfig || iframeSettings === null) {
+  if (iframeSettings === null || !authConfig || isAuthReady) {
     return (
       <Center h="100%" mih="100vh">
         <Loader />
