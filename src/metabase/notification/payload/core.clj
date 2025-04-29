@@ -1,6 +1,5 @@
 (ns metabase.notification.payload.core
   (:require
-   [metabase.notification.condition :as notification.condition]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as notification.payload.temp-storage]
