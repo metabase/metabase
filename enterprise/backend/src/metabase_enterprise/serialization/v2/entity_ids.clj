@@ -13,13 +13,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- ignored-entity-id-table-names
+(def ^:private ignored-entity-id-table-names
   "Legacy (V1) Metrics are no longer supported, and all their code has been removed. However the Tables are still in the
   app DB (for now)... ignore them."
-  []
-  (case (mdb/db-type)
-    :h2 #{"METRIC" "METRIC_IMPORTANT_FIELD"}
-    (:mysql :postgres) #{"metric" "metric_important_field"}))
+  #{"metric" "METRIC" "metric_important_field" "METRIC_IMPORTANT_FIELD"})
 
 (defn- entity-id-table-names
   "Return a set of lower-cased names of all application database tables that have an `entity_id` column, excluding
@@ -34,7 +31,7 @@
                                                              (:mysql :postgres) "entity_id"))]
             (let [entity-id-tables (into #{} (map (comp u/lower-case-en :table_name)) (resultset-seq rset))]
               (-> (set/intersection non-view-tables entity-id-tables)
-                  (set/difference (ignored-entity-id-table-names))))))))))
+                  (set/difference ignored-entity-id-table-names)))))))))
 
 (defn toucan-models
   "Return a list of all toucan models."
