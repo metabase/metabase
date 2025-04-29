@@ -1,3 +1,6 @@
+/* eslint-disable import/no-commonjs */
+/* eslint-disable no-undef */
+
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";

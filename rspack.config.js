@@ -9,8 +9,6 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
 
-const sdkIframeEmbedConfig = require("./rspack.sdk-iframe-embed.config.js")
-
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
@@ -25,6 +23,8 @@ const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
 const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const E2E_PATH = __dirname + "/e2e";
+
+const sdkIframeEmbedConfig = require(`${ENTERPRISE_SRC_PATH}/iframe_embedding_sdk/rspack.embed.config.js`)
 
 const PORT = process.env.PORT || 8080;
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
