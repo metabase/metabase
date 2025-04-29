@@ -167,15 +167,15 @@
   (if (mariadb-connection? driver conn)
     ;; MariaDB uses information_schema.table_privileges like other drivers
     (let [rows (jdbc/query conn
-                           [(str "SELECT table_schema AS schema, table_name AS table, privilege_type"
+                           [(str "SELECT table_schema, table_name, privilege_type"
                                  " FROM information_schema.table_privileges"
                                  " WHERE grantee = CURRENT_USER()")])
           allowed #{"SELECT" "INSERT" "UPDATE" "DELETE"}]
-      (for [[[schema table] grp] (group-by (juxt :schema :table) rows)
+      (for [[[table_schema table_name] grp] (group-by (juxt :table_schema :table_name) rows)
             :let [privs (->> grp (map :privilege_type) (filter allowed) set)]]
         {:role   nil
-         :schema schema
-         :table  table
+         :schema table_schema
+         :table  table_name
          :select (contains? privs "SELECT")
          :insert (contains? privs "INSERT")
          :update (contains? privs "UPDATE")

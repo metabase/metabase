@@ -253,15 +253,13 @@
   [_driver conn-spec & {:as _options}]
   ;; Fetch table privileges from INFORMATION_SCHEMA.TABLE_PRIVILEGES for current user
   (let [rows (jdbc/query conn-spec
-                         ["SELECT table_schema AS schema, table_name AS table, privilege_type"
-                          "FROM information_schema.table_privileges"
-                          "WHERE grantee = current_user()"])
+                         ["SELECT table_schema, table_name, privilege_type FROM information_schema.table_privileges WHERE grantee = current_user()"])
         allowed #{"SELECT" "INSERT" "UPDATE" "DELETE"}]
-    (for [[[schema table] grp] (group-by (juxt :schema :table) rows)
+    (for [[[table_schema table_name] grp] (group-by (juxt :table_schema :table_name) rows)
           :let [privs (->> grp (map :privilege_type) (filter allowed) set)]]
       {:role   nil
-       :schema schema
-       :table  table
+       :schema table_schema
+       :table  table_name
        :select (contains? privs "SELECT")
        :insert (contains? privs "INSERT")
        :update (contains? privs "UPDATE")
