@@ -291,8 +291,8 @@
   (delay
     (schema-migrations-test.impl/with-temp-empty-app-db [conn :h2]
       ;; since the actual group defs are not dynamic, we need with-redefs to change them here
-      (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-group-name)
-                    perms-group/admin     (#'perms-group/magic-group perms-group/admin-group-name)]
+      (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-magic-group-type)
+                    perms-group/admin     (#'perms-group/magic-group perms-group/admin-magic-group-type)]
         (mdb/setup-db! :create-sample-content? false)
         (let [f (java.io.File/createTempFile "db-export" ".sql")]
           (next.jdbc/execute! conn ["SCRIPT TO ?" (str f)])

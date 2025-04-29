@@ -233,9 +233,10 @@
 
 (lib.common/defop count       [] [x])
 (lib.common/defop cum-count   [] [x])
-(lib.common/defop count-where [x y])
+(lib.common/defop count-where [x])
 (lib.common/defop avg         [x])
 (lib.common/defop distinct    [x])
+(lib.common/defop distinct-where [expr condition])
 (lib.common/defop max         [x])
 (lib.common/defop median      [x])
 (lib.common/defop min         [x])

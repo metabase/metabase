@@ -10,7 +10,13 @@ title: Driver interface changelog
 
 - Added a new abstract driver mix-in `:metabase.driver.sql.query-processor.boolean-is-comparison/boolean-is-comparison` that can be inherited by drivers that require boolean literal constants to be converted to comparison expressions in the top level of WHERE, AND, OR, NOT, and CASE clauses.
 
-- The multimethod `metabase.driver.sql.parameters.substitution/time-grouping->replacement-snippet-info` has been added.  This is effectively `->replacement-snippet-info` for the new native query time grouping feature, but is its own separate multimethod because it needs an extra parameter.
+- Added the multi-method `float-dbtype` which returns the name of the float type we coerce to for coercion strategies and the `float()` custom expression function.
+
+- Added a feature `:expressions/float` for drivers that support casting text to floats.
+
+- Added the multi-method `integer-dbtype` that allows the driver to control which type integers are cast to.
+
+- Added the multi-method `metabase.driver.sql.parameters.substitution/time-grouping->replacement-snippet-info`.  This is effectively `->replacement-snippet-info` for the new native query time grouping feature, but is its own separate multimethod because it needs an extra parameter.
 
 ## Metabase 0.54.0
 
