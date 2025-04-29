@@ -173,6 +173,16 @@ describe("scenarios > question > download", () => {
   });
 
   it("should remember the selected format across page reloads", () => {
+    cy.intercept(
+      "GET",
+      "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+    ).as("fetchFormat");
+
+    cy.intercept(
+      "PUT",
+      "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+    ).as("saveFormat");
+
     H.createQuestion(
       {
         name: "Format Preference Test",
@@ -185,19 +195,10 @@ describe("scenarios > question > download", () => {
       { visitQuestion: true },
     );
 
-    cy.intercept(
-      "GET",
-      "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
-    ).as("fetchFormat");
-
-    cy.intercept(
-      "PUT",
-      "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
-    ).as("saveFormat");
-
     cy.findByRole("button", { name: "Download results" }).click();
     H.popover().within(() => {
       cy.findByText(".xlsx")
+        .should("be.visible")
         .click()
         .then(() => {
           cy.wait("@saveFormat");
@@ -214,6 +215,7 @@ describe("scenarios > question > download", () => {
 
     H.popover().within(() => {
       cy.findByText(".json")
+        .should("be.visible")
         .click()
         .then(() => {
           cy.wait("@saveFormat");
@@ -230,6 +232,16 @@ describe("scenarios > question > download", () => {
   });
 
   it("should remember the download format on dashboards", () => {
+    cy.intercept(
+      "GET",
+      "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+    ).as("fetchFormat");
+
+    cy.intercept(
+      "PUT",
+      "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+    ).as("saveFormat");
+
     H.createQuestion({
       name: "Dashboard Format Test",
       query: {
@@ -246,16 +258,6 @@ describe("scenarios > question > download", () => {
 
         H.visitDashboard(dashboardId);
 
-        cy.intercept(
-          "GET",
-          "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
-        ).as("fetchFormat");
-
-        cy.intercept(
-          "PUT",
-          "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
-        ).as("saveFormat");
-
         H.getDashboardCard(0).realHover();
         H.getDashboardCardMenu(0).click();
         H.popover().within(() => {
@@ -263,6 +265,7 @@ describe("scenarios > question > download", () => {
         });
         H.popover().within(() => {
           cy.findByText(".xlsx")
+            .should("be.visible")
             .click()
             .then(() => {
               cy.wait("@saveFormat");
@@ -283,6 +286,7 @@ describe("scenarios > question > download", () => {
 
         H.popover().within(() => {
           cy.findByText(".csv")
+            .should("be.visible")
             .click()
             .then(() => {
               cy.wait("@saveFormat");
