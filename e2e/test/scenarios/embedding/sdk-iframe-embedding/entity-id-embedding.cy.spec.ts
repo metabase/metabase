@@ -17,7 +17,7 @@ describe("scenarios > embedding > sdk iframe embedding > entity id", () => {
     cy.signOut();
   });
 
-  it("loads dashboard using entity ids", () => {
+  it("loads dashboard using entity id", () => {
     cy.get<string>("@dashboardEntityId").then((dashboardId) => {
       const frame = H.loadSdkIframeEmbedTestPage({ dashboardId });
 
