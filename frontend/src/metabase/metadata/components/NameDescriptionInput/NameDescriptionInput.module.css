@@ -15,7 +15,7 @@
   border-end-end-radius: 0;
 
   &:hover:not(:focus) {
-    background-color: var(--mantine-color-accent-gray-light-filled);
+    background-color: var(--mb-base-color-orion-5);
   }
 }
 
@@ -24,7 +24,7 @@
   border-start-end-radius: 0;
 
   &:hover:not(:focus) {
-    background-color: var(--mantine-color-accent-gray-light-filled);
+    background-color: var(--mb-base-color-orion-5);
 
     .rightSection {
       display: flex;
