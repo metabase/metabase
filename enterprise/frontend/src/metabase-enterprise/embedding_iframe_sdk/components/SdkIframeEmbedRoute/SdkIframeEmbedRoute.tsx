@@ -50,12 +50,13 @@ export const SdkIframeEmbedRoute = () => {
     );
   }
 
-  const { theme } = embedSettings;
+  const { theme, locale } = embedSettings;
 
   return (
     <MetabaseProviderInternal
       authConfig={authConfig}
       theme={theme}
+      locale={locale}
       store={store as StoreWithSdkState}
       classNames={{ portalContainer: S.SdkIframeEmbedPortalContainer }}
     >
