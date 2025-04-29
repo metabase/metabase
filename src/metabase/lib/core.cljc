@@ -96,6 +96,7 @@
   avg
   count-where
   distinct
+  distinct-where
   max
   median
   min

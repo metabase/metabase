@@ -729,7 +729,7 @@
     ;; Does this driver support the :distinct-where function?
     :distinct-where
 
-    ;; Does this driver support casting text to integers? (`integer()` custom expression function)
+    ;; Does this driver support casting text and floats to integers? (`integer()` custom expression function)
     :expressions/integer
 
     ;; Does this driver support casting values to text? (`text()` custom expression function)
@@ -1351,3 +1351,12 @@
 (defmethod dynamic-database-types-lookup ::driver
   [_driver _database _database-types]
   nil)
+
+(defmulti query-canceled?
+  "Test if an exception is due to a query being canceled due to user action. For JDBC drivers this can
+  happen when setting `.setQueryTimeout`."
+  {:added "0.53.12" :arglists '([driver ^Throwable e])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod query-canceled? ::driver [_ _] false)

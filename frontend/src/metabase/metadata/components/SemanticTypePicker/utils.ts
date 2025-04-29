@@ -50,7 +50,7 @@ export function getCompatibleSemanticTypes(
      * Hack: allow "casting" text types to numerical types
      * @see https://metaboat.slack.com/archives/C08E17FN206/p1741960345351799?thread_ts=1741957848.897889&cid=C08E17FN206
      *
-     * If Field’s effective_type is derived from "type/Text" or "type/TextLike",
+     * If Field’s effective_type is derived from "type/Text"
      * additionally show semantic types derived from "type/Number".
      */
     if (isFieldText) {

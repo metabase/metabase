@@ -103,6 +103,7 @@
                      {:search-native-query true})))))))
 
 (deftest joined-with-table?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [expected args]
        (= expected (apply #'search.filter/joined-with-table? args))
 

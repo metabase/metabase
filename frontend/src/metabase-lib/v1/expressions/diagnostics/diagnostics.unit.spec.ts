@@ -55,7 +55,7 @@ describe("diagnostics", () => {
     });
 
     it("should catch invalid characters", () => {
-      expect(err("[Price] / #")).toBe("Invalid character: #");
+      expect(err("[Price] / #")).toBe("Unexpected character: #");
     });
 
     it("should catch unterminated string literals", () => {
@@ -76,10 +76,38 @@ describe("diagnostics", () => {
       );
     });
 
-    it("should catch missing comma in function arguments", () => {
-      expect(err('concat([Tax] "test")')).toBe(
-        'Expecting operator but got "test" instead',
-      );
+    describe("sibling tokens validation", () => {
+      const left = ["[Total]", '"string"', "42", "(10 + 5)", "true"];
+      const right = [
+        ["[Total]", "[Total]"],
+        ['"string"', '"string"'],
+        ["42", "42"],
+        ["(10 + 5)", "("],
+        ["tax", "tax"],
+        ["ceil(10.5)", "ceil"],
+      ];
+
+      for (const leftToken of left) {
+        for (const [rightToken, errToken] of right) {
+          it(`should catch mismatched adjecent tokens in: ${leftToken} ${rightToken}`, () => {
+            expect(err(`${leftToken} ${rightToken}`)).toBe(
+              `Expecting operator but got ${errToken} instead`,
+            );
+          });
+
+          it(`should catch mismatched adjecent tokens in: concat(${leftToken} ${rightToken})`, () => {
+            expect(err(`concat(${leftToken} ${rightToken})`)).toBe(
+              `Expecting operator but got ${errToken} instead`,
+            );
+          });
+
+          it(`should catch mismatched adjecent tokens in: 2 * (${leftToken} ${rightToken})`, () => {
+            expect(err(`2 * (${leftToken} ${rightToken})`)).toBe(
+              `Expecting operator but got ${errToken} instead`,
+            );
+          });
+        }
+      }
     });
 
     it("should catch unknown functions", () => {
@@ -341,12 +369,9 @@ describe("diagnostics", () => {
         expect(err(expression)).toBe("Missing a closing bracket");
       });
 
-      it.each([`foo]`, `foo   ]`])(
-        "reject missing field quotes for %s",
-        (expression) => {
-          expect(err(expression)).toMatch(/^Missing an opening bracket for /);
-        },
-      );
+      it("should reject missing field quotes for foo]", () => {
+        expect(err("foo]")).toMatch(/^Missing an opening bracket for /);
+      });
 
       it.each([`[`, `[]`])("reject missing field name for %s", (expression) => {
         expect(err(expression)).toBe("Expected a field name");
@@ -357,7 +382,7 @@ describe("diagnostics", () => {
       it.each([`.`, `1°`, `@`, `#`, `%`, `@`, `(])`])(
         "should reject bad tokens like %s",
         (expression) => {
-          expect(err(expression)).toMatch(/^Invalid character/);
+          expect(err(expression)).toMatch(/^Unexpected character/);
         },
       );
 
@@ -367,6 +392,20 @@ describe("diagnostics", () => {
           expect(err(expression)).toMatch(/^Invalid expression/);
         },
       );
+    });
+
+    describe("double commas", () => {
+      it("should reject repeated commas", () => {
+        expect(err(`concat("foo",, "bar")`)).toBe(
+          "Expected expression but got: ,",
+        );
+        expect(err(`concat("foo", , "bar")`)).toBe(
+          "Expected expression but got: ,",
+        );
+        expect(err(`concat("foo",,, "bar")`)).toBe(
+          "Expected expression but got: ,",
+        );
+      });
     });
   });
 
