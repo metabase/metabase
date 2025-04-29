@@ -28,13 +28,13 @@ export interface HelpText {
 export interface HelpTextConfig {
   name: DefinedClauseName;
   category: MBQLClauseCategory;
-  args?: HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
+  args?: () => HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
   description: (database: Database, reportTimezone?: string) => string;
   structure: string;
   docsPage?: string;
 }
 
-interface HelpTextArg {
+export interface HelpTextArg {
   name: string;
   description: string;
   example: () =>
