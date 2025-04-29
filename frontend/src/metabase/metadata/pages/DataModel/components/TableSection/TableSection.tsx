@@ -3,7 +3,6 @@ import { t } from "ttag";
 import {
   useDiscardTableFieldValuesMutation,
   useGetTableQueryMetadataQuery,
-  useRescanTableFieldValuesMutation,
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
 } from "metabase/api";
@@ -16,6 +15,8 @@ import {
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Button, Card, Flex, Stack, Switch, Text } from "metabase/ui";
 import type { FieldId, TableId } from "metabase-types/api";
+
+import { RescanFieldsButton } from "./RescanFieldsButton";
 
 interface Props {
   tableId: TableId;
@@ -34,7 +35,6 @@ export const TableSection = ({ tableId }: Props) => {
   const [updateTable] = useUpdateTableMutation();
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
   const [discardTableFieldValues] = useDiscardTableFieldValuesMutation();
-  const [rescanTableFieldValues] = useRescanTableFieldValuesMutation();
 
   if (error || isLoading || !table) {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
@@ -101,12 +101,7 @@ export const TableSection = ({ tableId }: Props) => {
           {t`Metabase can scan the values in this table to enable checkbox filters in dashboards and questions.`}
         </Text>
 
-        <Button
-          variant="default"
-          onClick={() => rescanTableFieldValues(tableId)}
-        >
-          {t`Re-scan table`}
-        </Button>
+        <RescanFieldsButton tableId={tableId} />
 
         <Button
           c="error"
