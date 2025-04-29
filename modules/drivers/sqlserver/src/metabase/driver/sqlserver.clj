@@ -319,6 +319,10 @@
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
   (date-add :minute (h2x// expr 60) (h2x/literal "1970-01-01")))
 
+(defmethod sql.qp/float-dbtype :sqlserver
+  [_]
+  :float)
+
 (defn- sanitize-contents
   "Parsed xml may contain whitespace elements as `\"\n\n\t\t\"` in its contents. Leave only maps in content for
   purposes of [[zone-id->windows-zone]]."
@@ -860,6 +864,14 @@
 (defmethod sql.params.substitution/->replacement-snippet-info [:sqlserver UUID]
   [_driver this]
   {:replacement-snippet (format "'%s'" (str this))})
+
+(defmethod sql.qp/->integer :sqlserver
+  [driver value]
+  ;; value can be either string or float
+  ;; if it's a float, coversion to float does nothing
+  ;; if it's a string, we can't round, so we need to convert to float first
+  (h2x/maybe-cast (sql.qp/integer-dbtype driver)
+                  [:round (sql.qp/->float driver value) 0]))
 
 (defmethod sql-jdbc/impl-query-canceled? :sqlserver [_ e]
   (= (sql-jdbc/get-sql-state e) "HY008"))

@@ -377,26 +377,15 @@ describe("scenarios > visualizations > table", () => {
       .and("contain", "No description");
   });
 
-  it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {
+  it("should close the colum popover on subsequent click (metabase#16789)", () => {
     H.openPeopleTable({ limit: 2 });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("City").click();
-    H.popover().within(() => {
-      cy.icon("arrow_up");
-      cy.icon("arrow_down");
-      cy.icon("gear");
-      cy.findByText("Filter by this column");
-      cy.findByText("Distribution");
-      cy.findByText("Distinct values");
-    });
+    H.tableHeaderColumn("City").click();
+    H.clickActionsPopover().should("be.visible");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("City").click();
-    // Although arbitrary waiting is considered an anti-pattern and a really bad practice, I couldn't find any other way to reproduce this issue.
-    // Cypress is too fast and is doing the assertions in that split second while popover is reloading which results in a false positive result.
-    cy.wait(100);
-    H.popover().should("not.exist");
+    H.tableHeaderColumn("City").click();
+    cy.wait(100); // Ensure popover is closed
+    H.clickActionsPopover({ skipVisibilityCheck: true }).should("not.exist");
   });
 
   it("popover should not be scrollable horizontally (metabase#31339)", () => {
