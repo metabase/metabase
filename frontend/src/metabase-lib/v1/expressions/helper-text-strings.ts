@@ -37,8 +37,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or number to sum.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Subtotal`),
+        example: () => dimension(t`Subtotal`),
       },
     ],
   },
@@ -55,8 +54,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or number to sum.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Subtotal`),
+        example: () => dimension(t`Subtotal`),
       },
     ],
     docsPage: "cumulative",
@@ -74,8 +72,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column whose distinct values to count.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Last Name`),
+        example: () => dimension(t`Last Name`),
       },
     ],
   },
@@ -93,8 +90,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column to count distinct values in.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Customer ID`),
+        example: () => dimension(t`Customer ID`),
       },
       {
         get name() {
@@ -103,8 +99,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Something that evaluates to \`true\` or \`false\`.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: op("=", dimension(t`Order Status`), "Completed"),
+        example: () => op("=", dimension(t`Order Status`), "Completed"),
       },
     ],
   },
@@ -121,8 +116,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The numeric column to get standard deviation of.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Population`),
+        example: () => dimension(t`Population`),
       },
     ],
   },
@@ -140,8 +134,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The value to get from a different row.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: op("sum", dimension(t`Total`)),
+        example: () => op("sum", dimension(t`Total`)),
       },
       {
         get name() {
@@ -150,7 +143,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Row number relative to the current row, for example \`-1\` for the previous row or \`1\` for the next row.`;
         },
-        example: -1,
+        example: () => -1,
       },
     ],
     docsPage: "offset",
@@ -168,8 +161,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The numeric column whose values to average.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Quantity`),
+        example: () => dimension(t`Quantity`),
       },
     ],
   },
@@ -186,8 +178,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The numeric column whose values to average.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Quantity`),
+        example: () => dimension(t`Quantity`),
       },
     ],
   },
@@ -204,8 +195,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The numeric column whose minimum you want to find.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Salary`),
+        example: () => dimension(t`Salary`),
       },
     ],
   },
@@ -222,8 +212,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The numeric column whose maximum you want to find.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Age`),
+        example: () => dimension(t`Age`),
       },
     ],
   },
@@ -241,8 +230,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Something that should evaluate to \`true\` or \`false\`.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: op("=", dimension(t`Source`), "Google"),
+        example: () => op("=", dimension(t`Source`), "Google"),
       },
     ],
   },
@@ -259,8 +247,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Something that should evaluate to \`true\` or \`false\`.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: op(">", dimension(t`Subtotal`), 100),
+        example: () => op(">", dimension(t`Subtotal`), 100),
       },
     ],
     docsPage: "countif",
@@ -279,8 +266,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The numeric column to sum.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Subtotal`),
+        example: () => dimension(t`Subtotal`),
       },
       {
         get name() {
@@ -289,8 +275,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Something that evaluates to \`true\` or \`false\`.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: op("=", dimension(t`Order Status`), "Valid"),
+        example: () => op("=", dimension(t`Order Status`), "Valid"),
       },
     ],
     docsPage: "sumif",
@@ -308,8 +293,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or number to get the variance of.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Temperature`),
+        example: () => dimension(t`Temperature`),
       },
     ],
   },
@@ -326,8 +310,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or number to get the median of.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Age`),
+        example: () => dimension(t`Age`),
       },
     ],
   },
@@ -345,8 +328,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or number to get the percentile of.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Score`),
+        example: () => dimension(t`Score`),
       },
       {
         get name() {
@@ -355,7 +337,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The value of the percentile.`;
         },
-        example: 0.9,
+        example: () => 0.9,
       },
     ],
   },
@@ -373,7 +355,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The number or date to convert to text.`;
         },
-        example: dimension("User ID"),
+        example: () => dimension("User ID"),
       },
     ],
   },
@@ -391,7 +373,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The string or float column to convert to integers. Float values are rounded.`;
         },
-        example: dimension("User ID"),
+        example: () => dimension("User ID"),
       },
     ],
   },
@@ -408,7 +390,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The string column to convert to floats.`;
         },
-        example: dimension("Text Rating"),
+        example: () => dimension("Text Rating"),
       },
     ],
   },
@@ -425,7 +407,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The string to convert to a date.`;
         },
-        example: "2025-03-20",
+        example: () => "2025-03-20",
       },
     ],
   },
@@ -442,8 +424,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column with values to convert to lower case.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Status`),
+        example: () => dimension(t`Status`),
       },
     ],
   },
@@ -460,8 +441,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column with values to convert to upper case.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Status`),
+        example: () => dimension(t`Status`),
       },
     ],
   },
@@ -478,8 +458,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or text to return a portion of.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Title`),
+        example: () => dimension(t`Title`),
       },
       {
         get name() {
@@ -488,7 +467,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The position to start copying characters. Index starts at position \`1\`.`;
         },
-        example: 1,
+        example: () => 1,
       },
       {
         get name() {
@@ -497,7 +476,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The number of characters to return.`;
         },
-        example: 10,
+        example: () => 10,
       },
     ],
     docsPage: "substring",
@@ -516,8 +495,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or text to return a portion of.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Title`),
+        example: () => dimension(t`Title`),
       },
       {
         get name() {
@@ -526,7 +504,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The pattern describing where each split should occur.`;
         },
-        example: ",",
+        example: () => ",",
       },
       {
         get name() {
@@ -535,7 +513,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Which substring to return after the split. Index starts at position \`1\`.`;
         },
-        example: 1,
+        example: () => 1,
       },
     ],
   },
@@ -553,8 +531,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or text to search through.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Address`),
+        example: () => dimension(t`Address`),
       },
       {
         get name() {
@@ -563,7 +540,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The regular expression to match.`;
         },
-        example: "[0-9]+",
+        example: () => "[0-9]+",
       },
     ],
     docsPage: "regexextract",
@@ -581,8 +558,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or text to begin with.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Last Name`),
+        example: () => dimension(t`Last Name`),
       },
       {
         get name() {
@@ -591,15 +567,14 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`This will be added to the end of \`$value1\`.`;
         },
-        example: ", ",
+        example: () => ", ",
       },
       {
         name: "…",
         get description() {
           return t`This will be added to the end of \`$value2\`, and so on.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`First Name`),
+        example: () => dimension(t`First Name`),
       },
     ],
     docsPage: "concat",
@@ -618,8 +593,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`A column containing URLs`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`URL`),
+        example: () => dimension(t`URL`),
       },
     ],
   },
@@ -636,8 +610,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or text to search through.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Title`),
+        example: () => dimension(t`Title`),
       },
       {
         get name() {
@@ -646,8 +619,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The text to find.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: t`Enormous`,
+        example: () => t`Enormous`,
       },
       {
         get name() {
@@ -656,8 +628,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The text to use as the replacement.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: t`Gigantic`,
+        example: () => t`Gigantic`,
       },
     ],
   },
@@ -674,8 +645,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or text you want to get the length of.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Comment`),
+        example: () => dimension(t`Comment`),
       },
     ],
   },
@@ -693,8 +663,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or text you want to trim.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Comment`),
+        example: () => dimension(t`Comment`),
       },
     ],
   },
@@ -711,8 +680,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or text you want to trim.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Comment`),
+        example: () => dimension(t`Comment`),
       },
     ],
   },
@@ -729,8 +697,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or text you want to trim.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Comment`),
+        example: () => dimension(t`Comment`),
       },
     ],
   },
@@ -748,8 +715,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The URL or Email column to extract the host from.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Email`),
+        example: () => dimension(t`Email`),
       },
     ],
   },
@@ -767,8 +733,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The URL or Email column to extract domain names from.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Email`),
+        example: () => dimension(t`Email`),
       },
     ],
   },
@@ -786,8 +751,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The URL column to extract the subdomain from.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`ProfileImage`),
+        example: () => dimension(t`ProfileImage`),
       },
     ],
   },
@@ -805,8 +769,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Column or expression giving the number of a month in the year, \`1\` to \`12\`.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Birthday Month`),
+        example: () => dimension(t`Birthday Month`),
       },
     ],
   },
@@ -824,8 +787,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Column or expression giving the number of a quarter of the year, \`1\` to \`4\`.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Fiscal Quarter`),
+        example: () => dimension(t`Fiscal Quarter`),
       },
     ],
   },
@@ -843,8 +805,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Column or expression giving the number of a day of the week, \`1\` to \`7\`. Which day is \`1\` is defined in your localization setting; default Sunday.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Weekday`),
+        example: () => dimension(t`Weekday`),
       },
     ],
   },
@@ -862,8 +823,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or number to return absolute (positive) value of.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Debt`),
+        example: () => dimension(t`Debt`),
       },
     ],
   },
@@ -880,8 +840,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or number to round down.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Price`),
+        example: () => dimension(t`Price`),
       },
     ],
   },
@@ -898,8 +857,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or number to round up.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Price`),
+        example: () => dimension(t`Price`),
       },
     ],
   },
@@ -917,8 +875,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or number to round to nearest integer.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Temperature`),
+        example: () => dimension(t`Temperature`),
       },
     ],
   },
@@ -935,8 +892,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or number to return square root value of.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Hypotenuse`),
+        example: () => dimension(t`Hypotenuse`),
       },
     ],
   },
@@ -953,8 +909,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or number raised to the exponent.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Length`),
+        example: () => dimension(t`Length`),
       },
       {
         get name() {
@@ -963,7 +918,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The value of the exponent.`;
         },
-        example: 2,
+        example: () => 2,
       },
     ],
   },
@@ -980,8 +935,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or number to return the natural logarithm value of.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Value`),
+        example: () => dimension(t`Value`),
       },
     ],
   },
@@ -999,8 +953,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or expression with your datetime value.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Created At`),
+        example: () => dimension(t`Created At`),
       },
       {
         get name() {
@@ -1009,8 +962,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or expression with your datetime value.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Shipped At`),
+        example: () => dimension(t`Shipped At`),
       },
       {
         get name() {
@@ -1019,7 +971,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, or ${"second"}.`;
         },
-        example: "month",
+        example: () => "month",
       },
     ],
     docsPage: "datetimediff",
@@ -1038,8 +990,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or number to return the exponential value of.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Interest Months`),
+        example: () => dimension(t`Interest Months`),
       },
     ],
   },
@@ -1057,8 +1008,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or text to check.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Title`),
+        example: () => dimension(t`Title`),
       },
       {
         get name() {
@@ -1067,23 +1017,21 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The string of text to look for.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: t`Small`,
+        example: () => t`Small`,
       },
       {
         name: "…",
         get description() {
           return t`You can add more values to look for.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: t`Medium`,
+        example: () => t`Medium`,
       },
       {
         name: "caseSensitivity",
         get description() {
           return t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`;
         },
-        example: "case-insensitive",
+        example: () => "case-insensitive",
         template: '"case-insensitive"',
       },
     ],
@@ -1102,8 +1050,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or text to check.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Title`),
+        example: () => dimension(t`Title`),
       },
       {
         get name() {
@@ -1112,23 +1059,21 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The string of text to look for.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: t`Small`,
+        example: () => t`Small`,
       },
       {
         name: "…",
         get description() {
           return t`You can add more values to look for.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: t`Medium`,
+        example: () => t`Medium`,
       },
       {
         name: "caseSensitivity",
         get description() {
           return t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`;
         },
-        example: "case-insensitive",
+        example: () => "case-insensitive",
         template: '"case-insensitive"',
       },
     ],
@@ -1147,8 +1092,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or text to check.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Title`),
+        example: () => dimension(t`Title`),
       },
       {
         get name() {
@@ -1157,23 +1101,21 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The string of text to look for.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: t`Small`,
+        example: () => t`Small`,
       },
       {
         name: "…",
         get description() {
           return t`You can add more values to look for.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: t`Medium`,
+        example: () => t`Medium`,
       },
       {
         name: "caseSensitivity",
         get description() {
           return t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`;
         },
-        example: "case-insensitive",
+        example: () => "case-insensitive",
         template: '"case-insensitive"',
       },
     ],
@@ -1192,8 +1134,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or text to check.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Title`),
+        example: () => dimension(t`Title`),
       },
       {
         get name() {
@@ -1202,23 +1143,21 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The string of text to look for.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: t`Small`,
+        example: () => t`Small`,
       },
       {
         name: "…",
         get description() {
           return t`You can add more values to look for.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: t`Medium`,
+        example: () => t`Medium`,
       },
       {
         name: "caseSensitivity",
         get description() {
           return t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`;
         },
-        example: "case-insensitive",
+        example: () => "case-insensitive",
         template: '"case-insensitive"',
       },
     ],
@@ -1237,8 +1176,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The date or numeric column that should be within the start and end values.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Created At`),
+        example: () => dimension(t`Created At`),
       },
       {
         get name() {
@@ -1247,7 +1185,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The beginning of the range.`;
         },
-        example: "2019-01-01",
+        example: () => "2019-01-01",
       },
       {
         get name() {
@@ -1256,7 +1194,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The end of the range.`;
         },
-        example: "2022-12-31",
+        example: () => "2022-12-31",
       },
     ],
   },
@@ -1273,7 +1211,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Period of interval, where negative values are back in time.`;
         },
-        example: 7,
+        example: () => 7,
       },
       {
         get name() {
@@ -1282,7 +1220,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`;
         },
-        example: "day",
+        example: () => "day",
       },
     ],
   },
@@ -1300,8 +1238,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The date column to return interval of.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Created At`),
+        example: () => dimension(t`Created At`),
       },
       {
         get name() {
@@ -1310,7 +1247,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Period of interval, where negative values are back in time.`;
         },
-        example: -1,
+        example: () => -1,
       },
       {
         get name() {
@@ -1319,7 +1256,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`;
         },
-        example: "month",
+        example: () => "month",
       },
     ],
   },
@@ -1337,8 +1274,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The date column to check.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Created At`),
+        example: () => dimension(t`Created At`),
       },
       {
         get name() {
@@ -1347,7 +1283,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Period of the interval, where negative numbers go back in time.`;
         },
-        example: -20,
+        example: () => -20,
       },
       {
         get name() {
@@ -1356,7 +1292,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`;
         },
-        example: "month",
+        example: () => "month",
       },
       {
         get name() {
@@ -1365,7 +1301,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The initial interval period to start from, where negative values are back in time.`;
         },
-        example: -10,
+        example: () => -10,
       },
       {
         get name() {
@@ -1374,7 +1310,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`;
         },
-        example: "year",
+        example: () => "year",
       },
     ],
   },
@@ -1391,7 +1327,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Period of interval, where negative values are back in time.`;
         },
-        example: -30,
+        example: () => -30,
       },
       {
         get name() {
@@ -1400,7 +1336,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`;
         },
-        example: "day",
+        example: () => "day",
       },
     ],
   },
@@ -1417,8 +1353,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column to check.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Discount`),
+        example: () => dimension(t`Discount`),
       },
     ],
     docsPage: "isnull",
@@ -1436,8 +1371,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column to check.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Discount`),
+        example: () => dimension(t`Discount`),
       },
     ],
   },
@@ -1454,8 +1388,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column to check.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Name`),
+        example: () => dimension(t`Name`),
       },
     ],
     docsPage: "isempty",
@@ -1473,8 +1406,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column to check.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Name`),
+        example: () => dimension(t`Name`),
       },
     ],
   },
@@ -1492,8 +1424,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or value to return.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Comments`),
+        example: () => dimension(t`Comments`),
       },
       {
         get name() {
@@ -1502,16 +1433,14 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`If \`$value1\` is empty, \`$value2\` gets returned if its not empty.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Notes`),
+        example: () => dimension(t`Notes`),
       },
       {
         name: "…",
         get description() {
           return t`If \`$value1\` is empty, and \`$value2\` is empty, the next non-empty one will be returned.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: t`No comments`,
+        example: () => t`No comments`,
       },
     ],
     docsPage: "coalesce",
@@ -1530,8 +1459,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Something that should evaluate to \`true\` or \`false\`.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: op(">", dimension(t`Weight`), 200),
+        example: () => op(">", dimension(t`Weight`), 200),
       },
       {
         get name() {
@@ -1540,20 +1468,16 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The value that will be returned if the preceding condition is \`true\`.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: t`Large`,
+        example: () => t`Large`,
       },
       {
         name: "…",
         get description() {
           return t`You can add more conditions to test.`;
         },
-        example: [
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        example: () => [
           op(">", dimension(t`Weight`), 150),
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           t`Medium`,
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           t`Small`,
         ],
       },
@@ -1574,8 +1498,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Something that should evaluate to \`true\` or \`false\`.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: op(">", dimension(t`Weight`), 200),
+        example: () => op(">", dimension(t`Weight`), 200),
       },
       {
         get name() {
@@ -1584,20 +1507,16 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The value that will be returned if the preceding condition is \`true\`.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: t`Large`,
+        example: () => t`Large`,
       },
       {
         name: "…",
         get description() {
           return t`You can add more conditions to test.`;
         },
-        example: [
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        example: () => [
           op(">", dimension(t`Weight`), 150),
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           t`Medium`,
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           t`Small`,
         ],
       },
@@ -1617,8 +1536,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or value to check.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Category`),
+        example: () => dimension(t`Category`),
       },
       {
         get name() {
@@ -1627,14 +1545,14 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or value to look for.`;
         },
-        example: "Widget",
+        example: () => "Widget",
       },
       {
         name: "…",
         get description() {
           return t`You can add more values to look for.`;
         },
-        example: "Gadget",
+        example: () => "Gadget",
       },
     ],
     docsPage: "in",
@@ -1653,8 +1571,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or value to check.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Category`),
+        example: () => dimension(t`Category`),
       },
       {
         get name() {
@@ -1663,14 +1580,14 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column or value to look for.`;
         },
-        example: "Widget",
+        example: () => "Widget",
       },
       {
         name: "…",
         get description() {
           return t`You can add more values to look for.`;
         },
-        example: "Gadget",
+        example: () => "Gadget",
       },
     ],
   },
@@ -1688,8 +1605,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The datetime column.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Created At`),
+        example: () => dimension(t`Created At`),
       },
     ],
   },
@@ -1707,8 +1623,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The datetime column.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Created At`),
+        example: () => dimension(t`Created At`),
       },
     ],
   },
@@ -1726,8 +1641,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The datetime column.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Created At`),
+        example: () => dimension(t`Created At`),
       },
     ],
   },
@@ -1744,8 +1658,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The name of the column with your date or datetime value.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Created At`),
+        example: () => dimension(t`Created At`),
       },
       {
         get name() {
@@ -1760,7 +1673,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   - Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
   `;
         },
-        example: "iso",
+        example: () => "iso",
       },
     ],
     docsPage: "week",
@@ -1779,8 +1692,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The datetime column.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Created At`),
+        example: () => dimension(t`Created At`),
       },
     ],
   },
@@ -1798,8 +1710,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The datetime column.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Created At`),
+        example: () => dimension(t`Created At`),
       },
     ],
   },
@@ -1817,8 +1728,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The datetime column.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Created At`),
+        example: () => dimension(t`Created At`),
       },
     ],
   },
@@ -1836,8 +1746,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The datetime column.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Created At`),
+        example: () => dimension(t`Created At`),
       },
     ],
   },
@@ -1855,8 +1764,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The datetime column.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Created At`),
+        example: () => dimension(t`Created At`),
       },
     ],
   },
@@ -1873,8 +1781,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column with your date or timestamp values.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Created At`),
+        example: () => dimension(t`Created At`),
       },
       {
         get name() {
@@ -1883,7 +1790,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The number of units to be added.`;
         },
-        example: 1,
+        example: () => 1,
       },
       {
         get name() {
@@ -1892,7 +1799,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`;
         },
-        example: "month",
+        example: () => "month",
       },
     ],
     docsPage: "datetimeadd",
@@ -1911,8 +1818,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The column with your date or timestamp values.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Created At`),
+        example: () => dimension(t`Created At`),
       },
       {
         get name() {
@@ -1921,7 +1827,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The number of units to be subtracted.`;
         },
-        example: 1,
+        example: () => 1,
       },
       {
         get name() {
@@ -1930,7 +1836,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`;
         },
-        example: "month",
+        example: () => "month",
       },
     ],
     docsPage: "datetimesubtract",
@@ -1976,8 +1882,7 @@ We support tz database time zone names.`,
         get description() {
           return t`The column with your date or timestamp values.`;
         },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        example: dimension(t`Created At`),
+        example: () => dimension(t`Created At`),
       },
       {
         get name() {
@@ -1986,7 +1891,7 @@ We support tz database time zone names.`,
         get description() {
           return t`The timezone you want to assign to your column.`;
         },
-        example: "Asia/Ho_Chi_Minh",
+        example: () => "Asia/Ho_Chi_Minh",
       },
       {
         get name() {
@@ -1995,7 +1900,7 @@ We support tz database time zone names.`,
         get description() {
           return t`The current time zone. Only required for timestamps with no time zone.`;
         },
-        example: "UTC",
+        example: () => "UTC",
       },
     ],
     docsPage: "converttimezone",
@@ -2033,10 +1938,11 @@ const getHelpExample = ({
   const parameters: (Lib.ExpressionArg | Lib.ExpressionParts)[] = [];
 
   for (const arg of args) {
-    if (Array.isArray(arg.example)) {
-      parameters.push(...arg.example);
+    const example = arg.example();
+    if (Array.isArray(example)) {
+      parameters.push(...example);
     } else {
-      parameters.push(arg.example);
+      parameters.push(example);
     }
   }
 

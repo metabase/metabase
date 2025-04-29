@@ -37,7 +37,7 @@ export interface HelpTextConfig {
 interface HelpTextArg {
   name: string;
   description: string;
-  example:
+  example: () =>
     | Lib.ExpressionParts
     | Lib.ExpressionArg
     | (Lib.ExpressionParts | Lib.ExpressionArg)[];
