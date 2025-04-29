@@ -646,9 +646,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The text to find.`;
         },
-        get example() {
-          return t`Enormous`;
-        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        example: t`Enormous`,
       },
       {
         get name() {
@@ -657,9 +656,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The text to use as the replacement.`;
         },
-        get example() {
-          return t`Gigantic`;
-        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        example: t`Gigantic`,
       },
     ],
   },
@@ -1069,18 +1067,16 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The string of text to look for.`;
         },
-        get example() {
-          return t`Small`;
-        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        example: t`Small`,
       },
       {
         name: "…",
         get description() {
           return t`You can add more values to look for.`;
         },
-        get example() {
-          return t`Medium`;
-        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        example: t`Medium`,
       },
       {
         name: "caseSensitivity",
@@ -1116,18 +1112,16 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The string of text to look for.`;
         },
-        get example() {
-          return t`Small`;
-        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        example: t`Small`,
       },
       {
         name: "…",
         get description() {
           return t`You can add more values to look for.`;
         },
-        get example() {
-          return t`Medium`;
-        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        example: t`Medium`,
       },
       {
         name: "caseSensitivity",
@@ -1163,18 +1157,16 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The string of text to look for.`;
         },
-        get example() {
-          return t`Small`;
-        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        example: t`Small`,
       },
       {
         name: "…",
         get description() {
           return t`You can add more values to look for.`;
         },
-        get example() {
-          return t`Medium`;
-        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        example: t`Medium`,
       },
       {
         name: "caseSensitivity",
@@ -1210,18 +1202,16 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The string of text to look for.`;
         },
-        get example() {
-          return t`Small`;
-        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        example: t`Small`,
       },
       {
         name: "…",
         get description() {
           return t`You can add more values to look for.`;
         },
-        get example() {
-          return t`Medium`;
-        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        example: t`Medium`,
       },
       {
         name: "caseSensitivity",
@@ -1520,9 +1510,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`If \`$value1\` is empty, and \`$value2\` is empty, the next non-empty one will be returned.`;
         },
-        get example() {
-          return t`No comments`;
-        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        example: t`No comments`,
       },
     ],
     docsPage: "coalesce",
@@ -1551,9 +1540,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The value that will be returned if the preceding condition is \`true\`.`;
         },
-        get example() {
-          return t`Large`;
-        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        example: t`Large`,
       },
       {
         name: "…",
@@ -1596,9 +1584,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         get description() {
           return t`The value that will be returned if the preceding condition is \`true\`.`;
         },
-        get example() {
-          return t`Large`;
-        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        example: t`Large`,
       },
       {
         name: "…",
