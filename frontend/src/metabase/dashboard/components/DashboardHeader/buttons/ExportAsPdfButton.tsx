@@ -2,6 +2,7 @@ import cx from "classnames";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   type DashboardAccessedVia,
   trackExportDashboardToPDF,
@@ -28,6 +29,8 @@ export const ExportAsPdfButton = ({
   hasVisibleParameters?: boolean;
 }) => {
   const dispatch = useDispatch();
+  const isWhitelabeled = useHasTokenFeature("whitelabel");
+  const includeBranding = !isWhitelabeled;
 
   const saveAsPDF = () => {
     const dashboardAccessedVia = match(dashboard?.id)
@@ -41,10 +44,11 @@ export const ExportAsPdfButton = ({
     });
 
     const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
-    return saveDashboardPdf(
-      cardNodeSelector,
-      dashboard.name ?? t`Exported dashboard`,
-    );
+    return saveDashboardPdf({
+      selector: cardNodeSelector,
+      dashboardName: dashboard.name ?? t`Exported dashboard`,
+      includeBranding,
+    });
   };
 
   const hasDashboardTabs = dashboard?.tabs && dashboard.tabs.length > 1;

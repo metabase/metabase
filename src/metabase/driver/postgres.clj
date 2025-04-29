@@ -17,6 +17,7 @@
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.postgres.ddl :as postgres.ddl]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -82,6 +83,7 @@
                               :expression-literals      true
                               :expressions/text         true
                               :expressions/integer      true
+                              :expressions/float        true
                               :expressions/date         true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
@@ -157,7 +159,8 @@
     driver.common/cloud-ip-address-info
     {:name "schema-filters"
      :type :schema-filters
-     :display-name "Schemas"}
+     :display-name "Schemas"
+     :visible-if {"destination-database" false}}
     driver.common/default-ssl-details
     {:name         "ssl-mode"
      :display-name (trs "SSL Mode")
@@ -640,9 +643,9 @@
   (let [seconds (h2x/- (extract-from-timestamp :epoch y) (extract-from-timestamp :epoch x))]
     (h2x/->integer [:trunc seconds])))
 
-(defmethod sql.qp/->honeysql [:postgres :integer]
-  [driver [_ value]]
-  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
+(defmethod sql.qp/float-dbtype :postgres
+  [_]
+  "DOUBLE PRECISION")
 
 (defn- format-regex-match-first [_fn [identifier pattern]]
   (let [[identifier-sql & identifier-args] (sql/format-expr identifier {:nested true})
@@ -1186,3 +1189,6 @@
 (defmethod driver.sql/default-database-role :postgres
   [_ _]
   "NONE")
+
+(defmethod sql-jdbc/impl-query-canceled? :postgres [_ e]
+  (= (sql-jdbc/get-sql-state e) "57014"))

@@ -143,6 +143,12 @@ export const MBQL_CLAUSES = defineClauses({
     args: ["expression"],
     requiresFeature: "expressions/date",
   },
+  float: {
+    displayName: "float",
+    type: "number",
+    args: ["expression"],
+    requiresFeature: "expressions/float",
+  },
   // string functions
   lower: { displayName: `lower`, type: "string", args: ["string"] },
   upper: { displayName: `upper`, type: "string", args: ["string"] },
@@ -168,7 +174,7 @@ export const MBQL_CLAUSES = defineClauses({
     requiresFeature: "split-part",
   },
   "regex-match-first": {
-    displayName: `regexextract`,
+    displayName: `regexExtract`,
     type: "string",
     args: ["string", "string"],
     requiresFeature: "regex",
@@ -669,6 +675,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   // cast
   "text",
   "integer",
+  "float",
   "date",
   // string
   "lower",

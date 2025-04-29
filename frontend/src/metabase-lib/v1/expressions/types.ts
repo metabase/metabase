@@ -3,6 +3,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseFeature, Expression } from "metabase-types/api";
 
 import type { DefinedClauseName } from "./config";
+import type { Token } from "./pratt";
 
 export type MBQLClauseCategory =
   | "logical"
@@ -39,9 +40,7 @@ interface HelpTextArg {
   template?: string;
 }
 
-export type StartRule = "expression" | "boolean" | "aggregation";
-
-type MBQLClauseFunctionReturnType =
+export type ExpressionType =
   | "aggregation"
   | "any"
   | "boolean"
@@ -50,18 +49,9 @@ type MBQLClauseFunctionReturnType =
   | "number"
   | "string";
 
-export type ExpressionType =
-  | "expression"
-  | "boolean"
-  | "aggregation"
-  | "string"
-  | "number"
-  | "datetime"
-  | "any";
-
 export type MBQLClauseFunctionConfig = {
   displayName: string;
-  type: MBQLClauseFunctionReturnType;
+  type: ExpressionType;
   args: ExpressionType[];
   argType(index: number, args: unknown[], type: ExpressionType): ExpressionType;
   requiresFeature?: DatabaseFeature;
@@ -70,4 +60,13 @@ export type MBQLClauseFunctionConfig = {
   name: DefinedClauseName;
 
   validator?: (...args: any) => string | undefined;
+};
+
+export type Hooks = {
+  error?: (error: Error) => void;
+  lexified?: (evt: { tokens: Token[] }) => void;
+  compiled?: (evt: {
+    expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
+    expressionClause: Lib.ExpressionClause;
+  }) => void;
 };

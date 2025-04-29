@@ -10,7 +10,7 @@ import {
 
 import {
   GOAL_LINE_SERIES_ID,
-  ORIGINAL_INDEX_DATA_KEY,
+  INDEX_KEY,
   TIMELINE_EVENT_DATA_NAME,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
@@ -417,7 +417,7 @@ function getTransformedDatumIndex(
   originalDatumIndex: number,
 ) {
   const transformedDatumIndex = transformedDataset.findIndex(
-    (datum) => datum[ORIGINAL_INDEX_DATA_KEY] === originalDatumIndex,
+    (datum) => datum[INDEX_KEY] === originalDatumIndex,
   );
 
   if (transformedDatumIndex === -1) {

@@ -859,6 +859,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :collection_cleanup             (premium-features/enable-collection-cleanup?)
                       :database_auth_providers        (premium-features/enable-database-auth-providers?)
                       :database_routing               (premium-features/enable-database-routing?)
+                      :development-mode               (premium-features/development-mode?)
                       :config_text_file               (premium-features/enable-config-text-file?)
                       :content_verification           (premium-features/enable-content-verification?)
                       :dashboard_subscription_filters (premium-features/enable-dashboard-subscription-filters?)
@@ -1010,13 +1011,6 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :internal
   :export?    false
   :default    true
-  :type       :boolean)
-
-(defsetting query-analysis-enabled
-  (deferred-tru "Whether or not we analyze any queries at all")
-  :visibility :admin
-  :export?    false
-  :default    false
   :type       :boolean)
 
 ;;; TODO -- move the search-related settings into the `:search` module. Only settings used across the entire application
