@@ -5,7 +5,7 @@
 
   const EMBEDDING_ROUTE = "embed/v2";
 
-  /** @typedef {{embedResourceType: string, embedResourceId: string, theme: object}} EmbedSettings */
+  /** @typedef {{embedResourceType: string, embedResourceId: number | string, theme: object}} EmbedSettings */
 
   class MetabaseEmbed {
     static VERSION = "1.0.0";
