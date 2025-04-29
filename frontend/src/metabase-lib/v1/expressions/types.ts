@@ -1,6 +1,6 @@
 import type * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseFeature, Expression } from "metabase-types/api";
+import type { DatabaseFeature } from "metabase-types/api";
 
 import type { DefinedClauseName } from "./clause";
 import type { Token } from "./pratt";
@@ -37,7 +37,10 @@ export interface HelpTextConfig {
 interface HelpTextArg {
   name: string;
   description: string;
-  example: Expression | ["args", Expression[]];
+  example:
+    | Lib.ExpressionParts
+    | Lib.ExpressionArg
+    | (Lib.ExpressionParts | Lib.ExpressionArg)[];
   template?: string;
 }
 

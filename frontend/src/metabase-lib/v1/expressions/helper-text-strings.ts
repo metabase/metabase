@@ -8,9 +8,6 @@ import {
   type HelpTextConfig,
 } from "metabase-lib/v1/expressions/types";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Expression } from "metabase-types/api";
-
-import { isLiteral } from "./literal";
 
 // some of the structure names below are duplicated in src/metabase/lib/expression.cljc
 const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
@@ -1564,9 +1561,12 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`You can add more conditions to test.`;
         },
         example: [
-          "args",
           // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-          [op(">", dimension(t`Weight`), 150), t`Medium`, t`Small`],
+          op(">", dimension(t`Weight`), 150),
+          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+          t`Medium`,
+          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+          t`Small`,
         ],
       },
     ],
@@ -1606,9 +1606,12 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
           return t`You can add more conditions to test.`;
         },
         example: [
-          "args",
           // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-          [op(">", dimension(t`Weight`), 150), t`Medium`, t`Small`],
+          op(">", dimension(t`Weight`), 150),
+          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+          t`Medium`,
+          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+          t`Small`,
         ],
       },
     ],
@@ -2032,15 +2035,9 @@ export const getHelpText = (
   };
 };
 
-function isArgsExpression(x: unknown): x is ["args", Expression[]] {
-  return Array.isArray(x) && x[0] === "args";
-}
-
 /**
  * Build the expression example as a Lib.ExpressionParts manually.
  * This is necessary because we don't have a query to refer to in the examples.
- *
- * TODO: can we approach this differently?
  */
 const getHelpExample = ({
   name,
@@ -2049,11 +2046,10 @@ const getHelpExample = ({
   const parameters: (Lib.ExpressionArg | Lib.ExpressionParts)[] = [];
 
   for (const arg of args) {
-    if (isArgsExpression(arg.example)) {
-      const [_op, args] = arg.example;
-      parameters.push(...args.map(toExpressionParts));
+    if (Array.isArray(arg.example)) {
+      parameters.push(...arg.example);
     } else {
-      parameters.push(toExpressionParts(arg.example));
+      parameters.push(arg.example);
     }
   }
 
@@ -2064,33 +2060,15 @@ const getHelpExample = ({
   };
 };
 
-function toExpressionParts(
-  value: Expression,
-): Lib.ExpressionParts | Lib.ExpressionArg {
-  if (isLiteral(value)) {
-    return value;
-  }
-
-  if (!Array.isArray(value)) {
-    throw new Error("Expression example: expected array");
-  }
-
-  const [operator, ...args] = value;
-  return {
-    operator: operator as Lib.ExpressionOperator,
-    options: {},
-    // @ts-expect-error: we don't handle all the cases here.
-    args: args.map(toExpressionParts),
-  };
+function op(
+  operator: Lib.ExpressionOperator,
+  ...args: (Lib.ExpressionParts | Lib.ExpressionArg)[]
+): Lib.ExpressionParts {
+  return { operator, options: {}, args };
 }
 
-function op(operator: Lib.ExpressionOperator, ...args: unknown[]): Expression {
-  // @ts-expect-error: temporary until we have a better type for args.
-  return [operator, {}, ...args];
-}
-
-function dimension(name: string): Expression {
-  return ["dimension", name];
+function dimension(name: string) {
+  return op("dimension" as Lib.ExpressionOperator, name);
 }
 
 export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
