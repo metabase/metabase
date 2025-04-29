@@ -23,6 +23,10 @@ class MetabaseEmbed {
   private iframe: HTMLIFrameElement | null = null;
 
   constructor(settings: SdkIframeEmbedTagSettings) {
+    if (!settings.apiKey || !settings.instanceUrl) {
+      raiseError("api key and instance url must be provided");
+    }
+
     this._validateEmbedSettings(settings);
     this._settings = settings;
 
@@ -39,7 +43,7 @@ class MetabaseEmbed {
       return;
     }
 
-    this._validateEmbedSettings({ ...this._settings, ...settings });
+    this._validateEmbedSettings(settings);
 
     const allowedSettings = Object.fromEntries(
       Object.entries(settings).filter(([key]) =>
@@ -61,18 +65,13 @@ class MetabaseEmbed {
   }
 
   private _setup() {
-    const { instanceUrl, target, apiKey, iframeClassName } = this._settings;
+    const { instanceUrl, target, iframeClassName } = this._settings;
 
     this.iframe = document.createElement("iframe");
     this.iframe.src = `${instanceUrl}/${EMBEDDING_ROUTE}`;
     this.iframe.style.width = "100%";
     this.iframe.style.height = "100%";
     this.iframe.style.border = "none";
-
-    if (!apiKey) {
-      raiseError("api key must be provided");
-      return;
-    }
 
     if (iframeClassName) {
       this.iframe.classList.add(iframeClassName);
