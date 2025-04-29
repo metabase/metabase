@@ -1,16 +1,19 @@
 (ns metabase.notification.payload.impl.system-event
   (:require
+   [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
-   [malli.util :as mut]
    [metabase.channel.email.messages :as messages]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.models.table :as table]
    [metabase.models.user :as user]
    [metabase.notification.condition :as notification.condition]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.send :as notification.send]
    [metabase.public-settings :as public-settings]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.urls :as urls]
@@ -108,9 +111,9 @@
                                       :after 24.99}
                              :status {:before "active"
                                       :after "on sale"}}}
-     [:map-of :keyword [:map
-                        [:before :any]
-                        [:after :any]]]]]])
+     [:map-of :string [:map
+                       [:before :any]
+                       [:after :any]]]]]])
 
 (mr/def ::row.deleted
   [:merge
@@ -125,6 +128,56 @@
                             :price  24.99
                             :status "discontinued"}}
      :map]]])
+
+(defn- coercion-fn
+  [{:keys [coercion_strategy] :as field}]
+  (let [f (if-let [f (requiring-resolve 'metabase-enterprise.data-editing.coerce/input-coercion-fn)]
+            (get @f coercion_strategy)
+            identity)]
+    (fn [v]
+      (try
+        (f v)
+        (catch Exception e
+          (log/errorf e "Failed to coercing value of field %d with value %s" (:id field) v)
+          v)))))
+
+(defn- apply-coercion
+  [v field]
+  (if-let [f (coercion-fn field)]
+    (some-> v f)
+    v))
+
+(defn- normalize-record
+  [record ordered-fields changes-record?]
+  (let [col->field (merge (u/for-map [f ordered-fields]
+                            [(u/lower-case-en (:name f)) f])
+                          (u/for-map [f ordered-fields]
+                            [(u/upper-case-en (:name f)) f])
+                          (zipmap (mapv :name ordered-fields) ordered-fields))
+        ;; column name in the original record might not have the correct casing for column name
+        ;; so we're trying to fix it here
+        record     (-> record
+                       (update-keys u/qualified-name)
+                       (update-keys (comp :name col->field)))]
+    ;; make sure we apply proper coercion
+    (u/for-map [[k v] record]
+      [k (if changes-record?
+           (-> v
+               (update :before apply-coercion (get col->field k))
+               (update :after apply-coercion (get col->field k)))
+           (apply-coercion v (get col->field k)))])))
+
+(defn- normalized-record-map
+  "Do several things:
+  - Turn record into a ordered-map that follows table's field_order property.
+  - Transform each value properly."
+  [record ordered-fields changes-record?]
+  (when-let [record (normalize-record record ordered-fields changes-record?)]
+    (apply ordered-map/ordered-map
+           (mapcat (fn [field-name]
+                     (when-let [v (get record field-name)]
+                       [field-name v]))
+                   (mapv :name ordered-fields)))))
 
 (mr/def ::row.mutate.all
   [:multi {:dispatch (comp :event_name :context)}
@@ -144,34 +197,38 @@
          :event_info {:actor       ?actor
                       :args        {:table_id  ?table_id
                                     :db_id     ?db_id
-                                    :table     {:name ?table_name}
+                                    :table     {:name ?table_name
+                                                :field_order ?field_order}
                                     :timestamp ?timestamp}
                       :row_change  {:pk     ?pk
                                     :before ?before
                                     :after  ?after}}}
-        (merge
-         {:context      {:event_name ?event_name
-                         :timestamp  (u.date/format ?timestamp)}
-          :editor       {:first_name  (:first_name ?actor)
-                         :last_name   (:last_name ?actor)
-                         :email       (:email ?actor)
-                         :common_name (:common_name ?actor)}
-          :creator      {:first_name  ?creator_first_name
-                         :last_name   ?creator_last_name
-                         :email       ?creator_email
-                         :common_name ?creator_common_name}
-          :table        {:id   ?table_id
-                         :name ?table_name
-                         :url  (urls/table-url ?db_id ?table_id)}
-          :record       (or ?after ?before) ;; for insert and update we want the after, for delete we want the before
-
-          :settings     (notification.payload/default-settings)}
-         (when (= ?event_name :event/row.updated)
-           {:changes (let [row-columns (into #{} (concat (keys ?before) (keys ?after)))]
-                       (into {}
-                             (for [k row-columns]
-                               [k {:before (get ?before k)
-                                   :after  (get ?after k)}])))})))
+        (let [ordered-fields (table/ordered-fields ?table_id ?field_order)]
+          (merge
+           {:context  {:event_name ?event_name
+                       :timestamp  (u.date/format ?timestamp)}
+            :editor   {:first_name  (:first_name ?actor)
+                       :last_name   (:last_name ?actor)
+                       :email       (:email ?actor)
+                       :common_name (:common_name ?actor)}
+            :creator  {:first_name  ?creator_first_name
+                       :last_name   ?creator_last_name
+                       :email       ?creator_email
+                       :common_name ?creator_common_name}
+            :table    {:id   ?table_id
+                       :name ?table_name
+                       :url  (urls/table-url ?db_id ?table_id)}
+            :record   (normalized-record-map (or ?after ?before) ordered-fields false) ;; for insert and update we want the after, for delete we want the before
+            :settings (notification.payload/default-settings)}
+           (when (= ?event_name :event/row.updated)
+             {:changes (let [row-columns (into #{} (concat (keys ?before) (keys ?after)))]
+                         (normalized-record-map
+                          (into {}
+                                (for [k row-columns]
+                                  [k {:before (get ?before k)
+                                      :after  (get ?after k)}]))
+                          ordered-fields
+                          true))}))))
       (throw (ex-info "Unable to destructure notification-info, check that expected structure matches malli schema."
                       {:notification-info notification-info}))))
 
