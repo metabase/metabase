@@ -19,6 +19,7 @@
      * @param {string | undefined} options.iframeClassName
      * @param {string | number | undefined} options.dashboardId
      * @param {string | number | undefined} options.questionId
+     * @param {boolean | undefined} options.notebookEditor
      */
     constructor(options) {
       /** @type {string} */
@@ -102,6 +103,26 @@
     /** @returns {EmbedSettings} */
     _getEmbedSettings(options) {
       const settings = { theme: options.theme };
+
+      if (options.notebookEditor) {
+        if (options.dashboardId || options.questionId) {
+          throw new Error(
+            "[metabase.embed] notebookEditor cannot be used with dashboardId or questionId",
+          );
+        }
+
+        return {
+          ...settings,
+          embedResourceType: "question",
+          embedResourceId: "new",
+        };
+      }
+
+      if (options.dashboardId && options.questionId) {
+        throw new Error(
+          "[metabase.embed] cannot provide both dashboardId and questionId at the same time",
+        );
+      }
 
       if (options.dashboardId !== undefined) {
         return {
