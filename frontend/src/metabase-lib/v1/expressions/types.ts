@@ -21,7 +21,7 @@ export interface HelpText {
   args?: HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
   description: string;
   example: Lib.ExpressionParts;
-  structure: string;
+  displayName: string;
   docsUrl: string;
 }
 
@@ -30,7 +30,7 @@ export interface HelpTextConfig {
   category: MBQLClauseCategory;
   args?: () => HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
   description: (database: Database, reportTimezone?: string) => string;
-  structure: string;
+  displayName: string;
   docsPage?: string;
 }
 

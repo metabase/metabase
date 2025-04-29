@@ -93,7 +93,7 @@ export function getFilteredClauses({
 }
 
 function byName(a: HelpText, b: HelpText) {
-  return a.structure.localeCompare(b.structure);
+  return a.displayName.localeCompare(b.displayName);
 }
 
 export function getDatabase(query: Lib.Query, metadata: Metadata) {

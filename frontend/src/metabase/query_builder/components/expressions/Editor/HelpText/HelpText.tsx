@@ -110,7 +110,7 @@ export function HelpText({
     return null;
   }
 
-  const { description, structure, args, example } = helpText;
+  const { description, displayName: structure, args, example } = helpText;
   const argIndex = enclosingFunction?.arg?.index ?? -1;
 
   return (

@@ -38,7 +38,7 @@ describe("getFilteredClauses", () => {
     const dateFunctions = results[1];
 
     // The array should be sorted
-    expect(dateFunctions.clauses.map((clause) => clause.structure)).toEqual(
+    expect(dateFunctions.clauses.map((clause) => clause.displayName)).toEqual(
       [
         "convertTimezone",
         "datetimeAdd",

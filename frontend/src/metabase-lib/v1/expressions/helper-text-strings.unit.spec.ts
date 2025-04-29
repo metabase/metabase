@@ -26,7 +26,7 @@ describe("getHelpText", () => {
       const { database } = setup();
       const helpText = getHelpText("count", database, reportTimezone);
 
-      expect(helpText?.structure).toBe("Count");
+      expect(helpText?.displayName).toBe("Count");
       expect(helpText?.example).toEqual({
         operator: "count",
         options: {},
@@ -40,7 +40,7 @@ describe("getHelpText", () => {
       const { database } = setup();
       const helpText = getHelpText("percentile", database, reportTimezone);
 
-      expect(helpText?.structure).toBe("Percentile");
+      expect(helpText?.displayName).toBe("Percentile");
       expect(helpText?.example).toEqual({
         operator: "percentile",
         options: {},
@@ -67,7 +67,7 @@ describe("getHelpText", () => {
         reportTimezone,
       );
 
-      expect(helpText?.structure).toEqual("convertTimezone");
+      expect(helpText?.displayName).toEqual("convertTimezone");
       expect(helpText?.description).toEqual(
         expect.not.stringContaining("https"),
       );
@@ -77,7 +77,7 @@ describe("getHelpText", () => {
       const { database } = setup();
       const helpText = getHelpText("offset", database, reportTimezone);
 
-      expect(helpText?.structure).toBe("Offset");
+      expect(helpText?.displayName).toBe("Offset");
       expect(helpText?.example).toEqual({
         operator: "offset",
         options: {},

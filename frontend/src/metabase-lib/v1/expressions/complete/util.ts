@@ -62,7 +62,7 @@ function getSnippet(helpText: HelpText) {
       ?.map((arg) => "${" + (arg.template ?? arg.name) + "}")
       .join(", ") ?? "";
 
-  return `${helpText.structure}(${args})`;
+  return `${helpText.displayName}(${args})`;
 }
 
 export function fuzzyMatcher(options: Completion[]) {

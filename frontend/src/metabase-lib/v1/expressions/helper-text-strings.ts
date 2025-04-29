@@ -14,20 +14,20 @@ import type Database from "metabase-lib/v1/metadata/Database";
 const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "count",
-    structure: "Count",
+    displayName: "Count",
     category: CATEGORY.Aggregation,
     description: () => t`Returns the count of rows in the selected data.`,
   },
   {
     name: "cum-count",
-    structure: "CumulativeCount",
+    displayName: "CumulativeCount",
     category: CATEGORY.Window,
     description: () => t`The additive total of rows across a breakout.`,
     docsPage: "cumulative",
   },
   {
     name: "sum",
-    structure: "Sum",
+    displayName: "Sum",
     category: CATEGORY.Aggregation,
     description: () => t`Adds up all the values of the column.`,
     args: () => [
@@ -40,7 +40,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "cum-sum",
-    structure: "CumulativeSum",
+    displayName: "CumulativeSum",
     category: CATEGORY.Window,
     description: () => t`The rolling sum of a column across a breakout.`,
     args: () => [
@@ -54,7 +54,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "distinct",
-    structure: "Distinct",
+    displayName: "Distinct",
     category: CATEGORY.Aggregation,
     description: () => t`The number of distinct values in this column.`,
     args: () => [
@@ -67,7 +67,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "distinct-where",
-    structure: "DistinctIf",
+    displayName: "DistinctIf",
     description: () =>
       t`The count of distinct values in this column for rows where the condition is \`true\`.`,
     category: CATEGORY.Aggregation,
@@ -86,7 +86,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "stddev",
-    structure: "StandardDeviation",
+    displayName: "StandardDeviation",
     category: CATEGORY.Aggregation,
     description: () => t`Calculates the standard deviation of the column.`,
     args: () => [
@@ -99,7 +99,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "offset",
-    structure: "Offset",
+    displayName: "Offset",
     category: CATEGORY.Window,
     description: () =>
       t`Returns the value of an aggregation expression in a different row`,
@@ -119,7 +119,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "avg",
-    structure: "Average",
+    displayName: "Average",
     category: CATEGORY.Aggregation,
     description: () => t`Returns the average of the values in the column.`,
     args: () => [
@@ -132,7 +132,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "median",
-    structure: "Median",
+    displayName: "Median",
     category: CATEGORY.Aggregation,
     description: () => t`Returns the median of all the values of a column.`,
     args: () => [
@@ -145,7 +145,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "min",
-    structure: "Min",
+    displayName: "Min",
     category: CATEGORY.Aggregation,
     description: () => t`Returns the smallest value found in the column`,
     args: () => [
@@ -158,7 +158,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "max",
-    structure: "Max",
+    displayName: "Max",
     category: CATEGORY.Aggregation,
     description: () => t`Returns the largest value found in the column.`,
     args: () => [
@@ -171,7 +171,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "share",
-    structure: "Share",
+    displayName: "Share",
     category: CATEGORY.Aggregation,
     description: () =>
       t`Returns the percent of rows in the data that match the condition, as a decimal.`,
@@ -185,7 +185,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "count-where",
-    structure: "CountIf",
+    displayName: "CountIf",
     category: CATEGORY.Aggregation,
     description: () => t`Only counts rows where the condition is \`true\`.`,
     args: () => [
@@ -199,7 +199,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "sum-where",
-    structure: "SumIf",
+    displayName: "SumIf",
     category: CATEGORY.Aggregation,
     description: () =>
       t`Sums up the specified column only for rows where the condition is \`true\`.`,
@@ -219,7 +219,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "var",
-    structure: "Variance",
+    displayName: "Variance",
     category: CATEGORY.Aggregation,
     description: () => t`Returns the numeric variance for a given column.`,
     args: () => [
@@ -232,7 +232,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "median",
-    structure: "Median",
+    displayName: "Median",
     category: CATEGORY.Aggregation,
     description: () => t`Returns the median value of the specified column.`,
     args: () => [
@@ -245,7 +245,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "percentile",
-    structure: "Percentile",
+    displayName: "Percentile",
     category: CATEGORY.Aggregation,
     description: () =>
       t`Returns the value of the column at the percentile value.`,
@@ -264,7 +264,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "text",
-    structure: "text",
+    displayName: "text",
     category: CATEGORY.Conversion,
     description: () =>
       t`Converts a number or date to text. Useful for applying text filters or joining with other columns based on text comparisons.`,
@@ -278,7 +278,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "integer",
-    structure: "integer",
+    displayName: "integer",
     category: CATEGORY.Conversion,
     description: () =>
       t`Converts a string or float value to an integer number.`,
@@ -292,7 +292,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "float",
-    structure: "float",
+    displayName: "float",
     category: CATEGORY.Conversion,
     description: () => t`Converts a string to a floating-point number.`,
     args: () => [
@@ -305,7 +305,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "date",
-    structure: "date",
+    displayName: "date",
     category: CATEGORY.Conversion,
     description: () => t`Converts an ISO 8601 date string to a date.`,
     args: () => [
@@ -318,7 +318,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "lower",
-    structure: "lower",
+    displayName: "lower",
     category: CATEGORY.String,
     description: () => t`Returns the string of text in all lower case.`,
     args: () => [
@@ -331,7 +331,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "upper",
-    structure: "upper",
+    displayName: "upper",
     category: CATEGORY.String,
     description: () => t`Returns the text in all upper case.`,
     args: () => [
@@ -344,7 +344,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "substring",
-    structure: "substring",
+    displayName: "substring",
     category: CATEGORY.String,
     description: () => t`Returns a portion of the supplied text.`,
     args: () => [
@@ -369,7 +369,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "split-part",
     category: CATEGORY.String,
-    structure: "splitPart",
+    displayName: "splitPart",
     description: () =>
       t`Splits a string on a specified delimiter and returns the nth substring.`,
     args: () => [
@@ -392,7 +392,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "regex-match-first",
-    structure: "regexExtract",
+    displayName: "regexExtract",
     category: CATEGORY.String,
     description: () =>
       t`Extracts matching substrings according to a regular expression.`,
@@ -412,7 +412,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "concat",
-    structure: "concat",
+    displayName: "concat",
     category: CATEGORY.String,
     description: () => t`Combine two or more strings of text together.`,
     args: () => [
@@ -437,7 +437,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "path",
     category: CATEGORY.String,
-    structure: "path",
+    displayName: "path",
     description: () =>
       t`Extracts the pathname from a URL. E.g., \`${'path("https://www.example.com/path/to/page.html?key1=value)'}\` would return \`${"/path/to/page.html"}\`.`,
     args: () => [
@@ -450,7 +450,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "replace",
-    structure: "replace",
+    displayName: "replace",
     category: CATEGORY.String,
     description: () => t`Replaces a part of the input text with new text.`,
     args: () => [
@@ -473,7 +473,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "length",
-    structure: "length",
+    displayName: "length",
     category: CATEGORY.String,
     description: () => t`Returns the number of characters in text.`,
     args: () => [
@@ -486,7 +486,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "trim",
-    structure: "trim",
+    displayName: "trim",
     category: CATEGORY.String,
     description: () =>
       t`Removes leading and trailing whitespace from a string of text.`,
@@ -500,7 +500,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "rtrim",
-    structure: "rTrim",
+    displayName: "rTrim",
     category: CATEGORY.String,
     description: () => t`Removes trailing whitespace from a string of text.`,
     args: () => [
@@ -513,7 +513,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "ltrim",
-    structure: "lTrim",
+    displayName: "lTrim",
     category: CATEGORY.String,
     description: () => t`Removes leading whitespace from a string of text.`,
     args: () => [
@@ -526,7 +526,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "host",
-    structure: "host",
+    displayName: "host",
     category: CATEGORY.String,
     description: () =>
       t`Extracts the host (domain name and TLD, eg. \`"metabase.com"\` from \`"status.metabase.com"\`) from a URL or email`,
@@ -540,7 +540,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "domain",
-    structure: "domain",
+    displayName: "domain",
     category: CATEGORY.String,
     description: () =>
       t`Extracts the domain name (eg. \`"metabase"\`) from a URL or email`,
@@ -554,7 +554,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "subdomain",
-    structure: "subdomain",
+    displayName: "subdomain",
     category: CATEGORY.String,
     description: () =>
       t`Extracts the first subdomain (eg. \`"status"\` from \`"status.metabase.com"\`, \`""\` from \`"bbc.co.uk"\`) from a URL. Ignores \`"www"\`.`,
@@ -568,7 +568,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "month-name",
-    structure: "monthName",
+    displayName: "monthName",
     category: CATEGORY.Date,
     description: () =>
       t`Returns the localized short name (eg. \`"Apr"\`) for the given month number (eg. \`4\`)`,
@@ -582,7 +582,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "quarter-name",
-    structure: "quarterName",
+    displayName: "quarterName",
     category: CATEGORY.Date,
     description: () =>
       t`Returns a string like \`"Q1"\`, given the quarter number`,
@@ -596,7 +596,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "day-name",
-    structure: "dayName",
+    displayName: "dayName",
     category: CATEGORY.Date,
     description: () =>
       t`Returns the localized name of a day of the week, given the day's number.`,
@@ -610,7 +610,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "abs",
-    structure: "abs",
+    displayName: "abs",
     category: CATEGORY.Math,
     description: () =>
       t`Returns the absolute (positive) value of the specified column.`,
@@ -624,7 +624,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "floor",
-    structure: "floor",
+    displayName: "floor",
     category: CATEGORY.Math,
     description: () => t`Rounds a decimal number down.`,
     args: () => [
@@ -637,7 +637,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "ceil",
-    structure: "ceil",
+    displayName: "ceil",
     category: CATEGORY.Math,
     description: () => t`Rounds a decimal number up.`,
     args: () => [
@@ -650,7 +650,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "round",
-    structure: "round",
+    displayName: "round",
     category: CATEGORY.Math,
     description: () =>
       t`Rounds a decimal number either up or down to the nearest integer value.`,
@@ -664,7 +664,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "sqrt",
-    structure: "sqrt",
+    displayName: "sqrt",
     category: CATEGORY.Math,
     description: () => t`Returns the square root.`,
     args: () => [
@@ -677,7 +677,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "power",
-    structure: "power",
+    displayName: "power",
     category: CATEGORY.Math,
     description: () => t`Raises a number to the power of the exponent value.`,
     args: () => [
@@ -695,7 +695,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "log",
-    structure: "log",
+    displayName: "log",
     category: CATEGORY.Math,
     description: () => t`Returns the base 10 log of the number.`,
     args: () => [
@@ -708,7 +708,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "datetime-diff",
-    structure: "datetimeDiff",
+    displayName: "datetimeDiff",
     category: CATEGORY.Date,
     description: () =>
       t`Get the difference between two datetime values (\`$datetime2\` minus \`$datetime1\`) using the specified unit of time.`,
@@ -733,7 +733,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "exp",
-    structure: "exp",
+    displayName: "exp",
     category: CATEGORY.Math,
     description: () =>
       t`Returns Euler's number, e, raised to the power of the supplied number.`,
@@ -747,7 +747,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "contains",
-    structure: "contains",
+    displayName: "contains",
     category: CATEGORY.String,
     description: () =>
       t`Returns \`true\` if \`$string1\` contains \`$string2\` within it (or \`$string3\`, etc. if specified).`,
@@ -777,7 +777,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "does-not-contain",
-    structure: "doesNotContain",
+    displayName: "doesNotContain",
     category: CATEGORY.String,
     description: () =>
       t`Returns \`true\` if \`$string1\` does not contain \`$string2\` within it (and \`$string3\`, etc. if specified).`,
@@ -807,7 +807,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "starts-with",
-    structure: "startsWith",
+    displayName: "startsWith",
     category: CATEGORY.String,
     description: () =>
       t`Returns true if the beginning of the \`$string1\` matches the \`$string2\` (or \`$string3\`, etc. if specified).`,
@@ -837,7 +837,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "ends-with",
-    structure: "endsWith",
+    displayName: "endsWith",
     category: CATEGORY.String,
     description: () =>
       t`Returns true if the end of the \`$string1\` matches the \`$string2\` (or \`$string3\`, etc. if specified).`,
@@ -868,7 +868,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "between",
     category: CATEGORY.Logical,
-    structure: "between",
+    displayName: "between",
     description: () =>
       t`Checks a date or number column's values to see if they're within the specified range.`,
     args: () => [
@@ -891,7 +891,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "interval",
-    structure: "timeSpan",
+    displayName: "timeSpan",
     category: CATEGORY.Date,
     description: () => t`Gets a time interval of specified length`,
     args: () => [
@@ -909,7 +909,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "time-interval",
-    structure: "interval",
+    displayName: "interval",
     category: CATEGORY.Date,
     description: () =>
       t`Checks a date column's values to see if they're within the relative range.`,
@@ -933,7 +933,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "relative-time-interval",
-    structure: "intervalStartingFrom",
+    displayName: "intervalStartingFrom",
     category: CATEGORY.Date,
     description: () =>
       t`Returns true if a column's value falls within an interval, starting from an initial, offsetting interval.`,
@@ -967,7 +967,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "relative-datetime",
-    structure: "relativeDateTime",
+    displayName: "relativeDateTime",
     category: CATEGORY.Date,
     description: () => t`Gets a timestamp relative to the current time`,
     args: () => [
@@ -985,7 +985,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "is-null",
-    structure: "isNull",
+    displayName: "isNull",
     category: CATEGORY.Logical,
     description: () => t`Checks if a column is null`,
     args: () => [
@@ -999,7 +999,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "not-null",
-    structure: "notNull",
+    displayName: "notNull",
     category: CATEGORY.Logical,
     description: () => t`Checks if a column is not null`,
     args: () => [
@@ -1012,7 +1012,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "is-empty",
-    structure: "isEmpty",
+    displayName: "isEmpty",
     category: CATEGORY.String,
     description: () => t`Checks if a column is empty`,
     args: () => [
@@ -1026,7 +1026,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "not-empty",
-    structure: "notEmpty",
+    displayName: "notEmpty",
     category: CATEGORY.String,
     description: () => t`Checks if a column is not empty`,
     args: () => [
@@ -1040,7 +1040,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "coalesce",
     category: CATEGORY.Logical,
-    structure: "coalesce",
+    displayName: "coalesce",
     description: () =>
       t`Looks at the values in each argument in order and returns the first non-null value for each row.`,
     args: () => [
@@ -1065,7 +1065,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "case",
     category: CATEGORY.Logical,
-    structure: "case",
+    displayName: "case",
     description: () =>
       t`Alias for \`if()\`. Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
     args: () => [
@@ -1089,7 +1089,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "if",
-    structure: "if",
+    displayName: "if",
     category: CATEGORY.Logical,
     description: () =>
       t`Alias for \`case()\`. Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
@@ -1113,7 +1113,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "in",
-    structure: "in",
+    displayName: "in",
     category: CATEGORY.Logical,
     description: () =>
       t`Returns true if \`value1\` equals \`$value2\` (or \`$value3\`, etc. if specified).`,
@@ -1138,7 +1138,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "not-in",
-    structure: "notIn",
+    displayName: "notIn",
     category: CATEGORY.Logical,
     description: () =>
       t`Returns true if \`$value1\` doesn't equal \`$value2\` (and \`$value3\`, etc. if specified).`,
@@ -1162,7 +1162,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "get-year",
-    structure: "year",
+    displayName: "year",
     category: CATEGORY.Date,
     description: () =>
       t`Takes a datetime and returns an integer with the number of the year.`,
@@ -1176,7 +1176,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "get-quarter",
-    structure: "quarter",
+    displayName: "quarter",
     category: CATEGORY.Date,
     description: () =>
       t`Takes a datetime and returns an integer (\`1\`-\`4\`) with the number of the quarter in the year.`,
@@ -1190,7 +1190,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "get-month",
-    structure: "month",
+    displayName: "month",
     category: CATEGORY.Date,
     description: () =>
       t`Takes a datetime and returns an integer (\`1\`-\`12\`) with the number of the month in the year.`,
@@ -1204,7 +1204,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "get-week",
-    structure: "week",
+    displayName: "week",
     category: CATEGORY.Date,
     description: () => t`Extracts the week of the year as an integer.`,
     args: () => [
@@ -1230,7 +1230,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "get-day",
-    structure: "day",
+    displayName: "day",
     category: CATEGORY.Date,
     description: () =>
       t`Takes a datetime and returns an integer (\`1\`-\`31\`) with the number of the day of the month.`,
@@ -1244,7 +1244,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "get-day-of-week",
-    structure: "weekday",
+    displayName: "weekday",
     category: CATEGORY.Date,
     description: () =>
       t`Takes a datetime and returns an integer (\`1\`-\`7\`) with the number of the day of the week. Which day is \`1\` is defined in your localization settings.`,
@@ -1258,7 +1258,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "get-hour",
-    structure: "hour",
+    displayName: "hour",
     category: CATEGORY.Date,
     description: () =>
       t`Takes a datetime and returns an integer (\`0\`-\`23\`) with the number of the hour. No AM/PM.`,
@@ -1272,7 +1272,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "get-minute",
-    structure: "minute",
+    displayName: "minute",
     category: CATEGORY.Date,
     description: () =>
       t`Takes a datetime and returns an integer (\`0\`-\`59\`) with the number of the minute in the hour.`,
@@ -1286,7 +1286,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "get-second",
-    structure: "second",
+    displayName: "second",
     category: CATEGORY.Date,
     description: () =>
       t`Takes a datetime and returns an integer (\`0\`-\`59\`) with the number of the seconds in the minute.`,
@@ -1300,7 +1300,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "datetime-add",
-    structure: "datetimeAdd",
+    displayName: "datetimeAdd",
     category: CATEGORY.Date,
     description: () => t`Adds some units of time to a date or timestamp value.`,
     args: () => [
@@ -1324,7 +1324,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "datetime-subtract",
-    structure: "datetimeSubtract",
+    displayName: "datetimeSubtract",
     category: CATEGORY.Date,
     description: () =>
       t`Subtracts some units of time to a date or timestamp value.`,
@@ -1349,7 +1349,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "now",
-    structure: "now",
+    displayName: "now",
     category: CATEGORY.Date,
     description(database, reportTimezone) {
       const hasTimezoneFeatureFlag =
@@ -1376,7 +1376,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "convert-timezone",
-    structure: "convertTimezone",
+    displayName: "convertTimezone",
     category: CATEGORY.Date,
     description: () => t`Convert timezone of a date or timestamp column.
 We support tz database time zone names.`,
