@@ -15,7 +15,7 @@ import { useSdkIframeEmbedEventBus } from "../../hooks/use-sdk-iframe-embed-even
 import type {
   SdkIframeEmbedSettings,
   StoreWithSdkState,
-} from "../../types/iframe";
+} from "../../types/store";
 
 import S from "./SdkIframeEmbedRoute.module.css";
 
