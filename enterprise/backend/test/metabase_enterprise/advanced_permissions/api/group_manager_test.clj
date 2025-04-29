@@ -32,17 +32,16 @@
               (delete-group [user status group-manager?]
                 (testing (format ", delete group with %s user" (mt/user-descriptor user))
                   (let [user-id (u/the-id (if (keyword? user) (mt/fetch-user user) user))]
-                    (binding [perms-group-membership/*tests-only-allow-direct-insertion-of-permissions-group-memberships* true]
-                      (mt/with-temp
-                        [:model/PermissionsGroup           {group-id :id} {:name "Test delete group"}
-                         :model/PermissionsGroupMembership _              {:group_id group-id :user_id user-id}]
-                        (when group-manager?
-                          (t2/update! :model/PermissionsGroupMembership {:user_id  user-id
-                                                                         :group_id group-id}
-                                      {:is_group_manager true}))
-                        (mt/user-http-request user
-                                              :delete status
-                                              (format "permissions/group/%d" group-id)))))))]
+                    (mt/with-temp
+                      [:model/PermissionsGroup           {group-id :id} {:name "Test delete group"}
+                       :model/PermissionsGroupMembership _              {:group_id group-id :user_id user-id}]
+                      (when group-manager?
+                        (t2/update! :model/PermissionsGroupMembership {:user_id  user-id
+                                                                       :group_id group-id}
+                                    {:is_group_manager true}))
+                      (mt/user-http-request user
+                                            :delete status
+                                            (format "permissions/group/%d" group-id))))))]
 
         (testing "if `advanced-permissions` is disabled, require admins"
           (mt/with-premium-features #{}
@@ -246,28 +245,27 @@
 (deftest get-users-api-group-id-test
   (testing "GET /api/user?group_id=:group_id"
     (testing "should sort by first name for all users in group"
-      (binding [perms-group-membership/*tests-only-allow-direct-insertion-of-permissions-group-memberships* true]
-        (mt/with-temp [:model/User                       user-a {:first_name "A"
-                                                                 :last_name  "A"}
-                       :model/User                       user-b {:first_name "B"
-                                                                 :last_name  "B"}
-                       :model/User                       user-c {:first_name   "C"
-                                                                 :last_name    "C"
-                                                                 :is_superuser true}
-                       :model/PermissionsGroup           group  {}
-                       :model/PermissionsGroupMembership _      {:user_id          (:id user-a)
-                                                                 :group_id         (:id group)
-                                                                 :is_group_manager false}
-                       :model/PermissionsGroupMembership _      {:user_id          (:id user-b)
-                                                                 :group_id         (:id group)
-                                                                 :is_group_manager true}
-                       :model/PermissionsGroupMembership _      {:user_id          (:id user-c)
-                                                                 :group_id         (:id group)
-                                                                 :is_group_manager false}]
-          (is (=? {:data [{:first_name "A"}
-                          {:first_name "B"}
-                          {:first_name "C"}]}
-                  (mt/user-http-request :crowberto :get 200 (format "/user?limit=25&offset=0&group_id=%d" (:id group))))))))))
+      (mt/with-temp [:model/User                       user-a {:first_name "A"
+                                                               :last_name  "A"}
+                     :model/User                       user-b {:first_name "B"
+                                                               :last_name  "B"}
+                     :model/User                       user-c {:first_name   "C"
+                                                               :last_name    "C"
+                                                               :is_superuser true}
+                     :model/PermissionsGroup           group  {}
+                     :model/PermissionsGroupMembership _      {:user_id          (:id user-a)
+                                                               :group_id         (:id group)
+                                                               :is_group_manager false}
+                     :model/PermissionsGroupMembership _      {:user_id          (:id user-b)
+                                                               :group_id         (:id group)
+                                                               :is_group_manager true}
+                     :model/PermissionsGroupMembership _      {:user_id          (:id user-c)
+                                                               :group_id         (:id group)
+                                                               :is_group_manager false}]
+        (is (=? {:data [{:first_name "A"}
+                        {:first_name "B"}
+                        {:first_name "C"}]}
+                (mt/user-http-request :crowberto :get 200 (format "/user?limit=25&offset=0&group_id=%d" (:id group)))))))))
 
 (deftest get-user-api-test
   (testing "GET /api/user/:id"

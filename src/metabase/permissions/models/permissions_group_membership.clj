@@ -23,11 +23,6 @@
   but enable it when adding or deleting users."
   false)
 
-(def ^:dynamic *tests-only-allow-direct-insertion-of-permissions-group-memberships*
-  "Normally we only allow using `add-user-to-group!` or similar to create a new permissions group membership. This
-  allows bypassing this check for tests."
-  false)
-
 (defmacro allow-changing-all-users-group-members
   "Allow people to be added to or removed from the All Users permissions group? By default, this is disallowed."
   {:style/indent 0}
@@ -85,9 +80,8 @@
 
 (t2/define-before-insert :model/PermissionsGroupMembership
   [membership]
-  (if-not (or *tests-only-allow-direct-insertion-of-permissions-group-memberships*
-              ;; this is set as a `with-temp` default, to allow doing `(mt/with-temp [:model/PermissionsGroupMembership _ {}])`
-              (:__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships membership))
+  ;; this should generally only be set by the `with-temp` defaults for `:model/PermissionsGroupMembership`. Ideally we'll move to only
+  (if-not (:__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships membership)
     (throw (ex-info "Do not use `t2/insert!` with PermissionsGroupMembership directly. Use `add-users-to-groups` or related instead"
                     {}))
     (dissoc membership

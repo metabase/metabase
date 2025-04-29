@@ -1385,9 +1385,8 @@
   ([f user [group-or-id & more]]
    (if group-or-id
      #_{:clj-kondo/ignore [:discouraged-var]}
-     (binding [perms-group-membership/*tests-only-allow-direct-insertion-of-permissions-group-memberships* true]
-       (t2.with-temp/with-temp [:model/PermissionsGroupMembership _ {:group_id (u/the-id group-or-id), :user_id (u/the-id user)}]
-         (do-with-user-in-groups f user more)))
+     (t2.with-temp/with-temp [:model/PermissionsGroupMembership _ {:group_id (u/the-id group-or-id), :user_id (u/the-id user)}]
+       (do-with-user-in-groups f user more))
      (f user))))
 
 (defmacro with-user-in-groups
