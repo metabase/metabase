@@ -18,7 +18,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.native-query-snippet]
    [metabase.api.open-api :as open-api]
-   [metabase.api.premium-features]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
    [metabase.api.slack]
    [metabase.api.table]
