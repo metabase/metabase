@@ -85,10 +85,13 @@
 
 (t2/define-before-insert :model/PermissionsGroupMembership
   [membership]
-  (if-not *tests-only-allow-direct-insertion-of-permissions-group-memberships*
+  (if-not (or *tests-only-allow-direct-insertion-of-permissions-group-memberships*
+              ;; this is set as a `with-temp` default, to allow doing `(mt/with-temp [:model/PermissionsGroupMembership _ {}])`
+              (:__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships membership))
     (throw (ex-info "Do not use `t2/insert!` with PermissionsGroupMembership directly. Use `add-users-to-groups` or related instead"
                     {}))
-    membership))
+    (dissoc membership
+            :__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships)))
 
 (mu/defn add-users-to-groups-sql
   "Generates SQL for adding users to groups"
