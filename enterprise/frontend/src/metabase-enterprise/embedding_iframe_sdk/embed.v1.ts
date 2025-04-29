@@ -1,156 +1,145 @@
-// @ts-check
+import type {
+  SdkIframeEmbedSettings,
+  SdkIframeEmbedTagMessage,
+  SdkIframeEmbedTagSettings,
+} from "./types/embed";
 
-(function () {
-  const error = (...messages) => console.error("[mb:embed:error]", ...messages);
-  const warn = (...messages) => console.warn("[mb:embed:warning]", ...messages);
+const EMBEDDING_ROUTE = "embed/sdk/v1";
 
-  const EMBEDDING_ROUTE = "embed/sdk/v1";
+const EMBED_SETTING_KEYS = [
+  "apiKey",
+  "theme",
+  "dashboardId",
+  "questionId",
+  "notebookEditor",
+] as const satisfies (keyof SdkIframeEmbedSettings)[];
 
-  const EMBED_SETTING_KEYS = [
-    "theme",
-    "dashboardId",
-    "questionId",
-    "notebookEditor",
-    "apiKey",
-    "instanceUrl",
-  ];
+class MetabaseEmbed {
+  static readonly VERSION = "1.0.0";
+
+  private _settings: SdkIframeEmbedTagSettings;
+  private _isEmbedReady: boolean = false;
+  private iframe: HTMLIFrameElement | null = null;
+
+  constructor(settings: SdkIframeEmbedTagSettings) {
+    this._validateEmbedSettings(settings);
+    this._settings = settings;
+
+    this._handleMessage = this._handleMessage.bind(this);
+    this._setup();
+  }
 
   /**
-   * @typedef {object} EmbedSettings
-   * @property {string} instanceUrl
-   * @property {string | HTMLElement} target
-   * @property {string} apiKey
-   * @property {string} [iframeClassName]
-   * @property {string | number} [dashboardId]
-   * @property {string | number} [questionId]
-   * @property {boolean} [notebookEditor]
-   * @property {object} [theme]
+   * Merge these settings with the current settings.
    */
+  public updateSettings(settings: Partial<SdkIframeEmbedSettings>): void {
+    if (!this._isEmbedReady) {
+      warn("embed settings must be ready before updating the settings");
+      return;
+    }
 
-  class MetabaseEmbed {
-    static VERSION = "1.0.0";
+    this._validateEmbedSettings({ ...this._settings, ...settings });
 
-    /** @param {EmbedSettings} settings */
-    constructor(settings) {
-      this._validateEmbedSettings(settings);
+    const allowedSettings = Object.fromEntries(
+      Object.entries(settings).filter(([key]) =>
+        EMBED_SETTING_KEYS.includes(key as (typeof EMBED_SETTING_KEYS)[number]),
+      ),
+    );
 
-      this._embedSettings = settings;
+    this._settings = { ...this._settings, ...allowedSettings };
+    this._sendMessage("metabase.embed.updateSettings", allowedSettings);
+  }
+
+  public destroy(): void {
+    if (this.iframe) {
+      window.removeEventListener("message", this._handleMessage);
+      this.iframe.remove();
       this._isEmbedReady = false;
-      this._handleMessage = this._handleMessage.bind(this);
-      this._setup();
-    }
-
-    /**
-     * @param {EmbedSettings} settings
-     * @public
-     */
-    updateSettings(settings) {
-      if (!this._isEmbedReady) {
-        warn("embed settings must be ready before updating the settings");
-        return;
-      }
-
-      this._validateEmbedSettings(settings);
-
-      const allowedSettings = Object.fromEntries(
-        Object.entries(settings).filter(([key]) =>
-          EMBED_SETTING_KEYS.includes(key),
-        ),
-      );
-
-      this._sendMessage("metabase.embed.updateSettings", allowedSettings);
-    }
-
-    /**
-     * @public
-     */
-    destroy() {
-      if (this.iframe) {
-        window.removeEventListener("message", this._handleMessage);
-        this.iframe.remove();
-        this._isEmbedReady = false;
-      }
-    }
-
-    _setup() {
-      const { instanceUrl, target, apiKey, iframeClassName } =
-        this._embedSettings;
-
-      this.iframe = document.createElement("iframe");
-      this.iframe.src = `${instanceUrl}/${EMBEDDING_ROUTE}`;
-      this.iframe.style.width = "100%";
-      this.iframe.style.height = "100%";
-      this.iframe.style.border = "none";
-
-      if (!apiKey) {
-        error("you must provide an API key");
-        return;
-      }
-
-      if (iframeClassName) {
-        this.iframe.classList.add(iframeClassName);
-      }
-
-      window.addEventListener("message", this._handleMessage);
-
-      let parentContainer = null;
-
-      if (typeof target === "string") {
-        parentContainer = document.querySelector(target);
-      } else if (target instanceof HTMLElement) {
-        parentContainer = target;
-      }
-
-      if (!parentContainer) {
-        error(`cannot find embed container "${target}"`);
-
-        return;
-      }
-
-      parentContainer.appendChild(this.iframe);
-    }
-
-    /**
-     * @param {EmbedSettings} settings
-     */
-    _validateEmbedSettings(settings) {
-      if (
-        settings.notebookEditor &&
-        (settings.dashboardId || settings.questionId)
-      ) {
-        throw new Error(
-          "[metabase.embed] notebookEditor cannot be used with dashboardId or questionId",
-        );
-      }
-
-      if (settings.dashboardId && settings.questionId) {
-        throw new Error(
-          "[metabase.embed] cannot provide both dashboardId and questionId at the same time",
-        );
-      }
-    }
-
-    _handleMessage(event) {
-      if (!event.data) {
-        return;
-      }
-
-      if (event.data.type === "metabase.embed.iframeReady") {
-        if (this._isEmbedReady) {
-          return;
-        }
-
-        this._isEmbedReady = true;
-        this.updateSettings(this._embedSettings);
-      }
-    }
-
-    _sendMessage(type, data) {
-      if (this.iframe?.contentWindow) {
-        this.iframe.contentWindow.postMessage({ type, data }, "*");
-      }
+      this.iframe = null;
     }
   }
 
-  window["metabase.embed"] = { MetabaseEmbed };
-})();
+  private _setup(): void {
+    const { instanceUrl, target, apiKey, iframeClassName } = this._settings;
+
+    this.iframe = document.createElement("iframe");
+    this.iframe.src = `${instanceUrl}/${EMBEDDING_ROUTE}`;
+    this.iframe.style.width = "100%";
+    this.iframe.style.height = "100%";
+    this.iframe.style.border = "none";
+
+    if (!apiKey) {
+      raiseError("api key must be provided");
+      return;
+    }
+
+    if (iframeClassName) {
+      this.iframe.classList.add(iframeClassName);
+    }
+
+    window.addEventListener("message", this._handleMessage);
+
+    let parentContainer: HTMLElement | null = null;
+
+    if (typeof target === "string") {
+      parentContainer = document.querySelector(target);
+    } else if (target instanceof HTMLElement) {
+      parentContainer = target;
+    }
+
+    if (!parentContainer) {
+      raiseError(`cannot find embed container "${target}"`);
+      return;
+    }
+
+    parentContainer.appendChild(this.iframe);
+  }
+
+  private _validateEmbedSettings(
+    settings: Partial<SdkIframeEmbedSettings>,
+  ): void {
+    if (
+      settings.notebookEditor &&
+      (settings.dashboardId || settings.questionId)
+    ) {
+      raiseError("notebookEditor can't be used with dashboardId or questionId");
+    }
+
+    if (settings.dashboardId && settings.questionId) {
+      raiseError("can't use both dashboardId and questionId at the same time");
+    }
+  }
+
+  private _handleMessage = (
+    event: MessageEvent<SdkIframeEmbedTagMessage>,
+  ): void => {
+    if (!event.data) {
+      return;
+    }
+
+    if (event.data.type === "metabase.embed.iframeReady") {
+      if (this._isEmbedReady) {
+        return;
+      }
+
+      this._isEmbedReady = true;
+      this.updateSettings(this._settings);
+    }
+  };
+
+  private _sendMessage(type: string, data: unknown): void {
+    if (this.iframe?.contentWindow) {
+      this.iframe.contentWindow.postMessage({ type, data }, "*");
+    }
+  }
+}
+
+const raiseError = (message: string) => {
+  throw new Error(`[metabase.embed] ${message}`);
+};
+
+const warn = (...messages: unknown[]) =>
+  console.warn("[metabase.embed.warning]", ...messages);
+
+// Initialize the global object
+(window as any)["metabase.embed"] = { MetabaseEmbed };

@@ -4,13 +4,15 @@ import { match } from "ts-pattern";
 import { isWithinIframe } from "metabase/lib/dom";
 
 import type {
-  SdkIframeEmbedPostMessageAction,
+  SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
-} from "../types/iframe";
+} from "../types/embed";
 
-type Handler = (event: MessageEvent<SdkIframeEmbedPostMessageAction>) => void;
+type Handler = (event: MessageEvent<SdkIframeEmbedMessage>) => void;
 
-export function useSdkIframeEmbedEventBus() {
+export function useSdkIframeEmbedEventBus(): {
+  embedSettings: SdkIframeEmbedSettings | null;
+} {
   const [embedSettings, setEmbedSettings] =
     useState<SdkIframeEmbedSettings | null>(null);
 
@@ -22,12 +24,7 @@ export function useSdkIframeEmbedEventBus() {
 
       match(event.data).with(
         { type: "metabase.embed.updateSettings" },
-        ({ data: nextSettings }) => {
-          setEmbedSettings((previousSettings) => ({
-            ...previousSettings,
-            ...nextSettings,
-          }));
-        },
+        ({ data }) => setEmbedSettings(data),
       );
     };
 
