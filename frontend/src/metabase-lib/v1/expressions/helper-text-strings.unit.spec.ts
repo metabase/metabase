@@ -18,7 +18,7 @@ describe("getHelpText", () => {
       reportTimezone,
     );
 
-    expect(helpText).toBeUndefined();
+    expect(helpText).toBeNull();
   });
 
   describe("should return help text if a supported name is passed", () => {
@@ -33,7 +33,7 @@ describe("getHelpText", () => {
         args: [],
       });
       expect(helpText?.description).toMatch(/returns the count of rows/i);
-      expect(helpText?.args).toBe(undefined);
+      expect(helpText?.args).toEqual([]);
     });
 
     it("percentile", () => {
