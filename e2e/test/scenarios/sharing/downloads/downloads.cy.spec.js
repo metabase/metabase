@@ -197,10 +197,12 @@ describe("scenarios > question > download", () => {
 
     cy.findByRole("button", { name: "Download results" }).click();
     H.popover().within(() => {
-      cy.findByText(".xlsx").click();
+      cy.findByText(".xlsx")
+        .click()
+        .then(() => {
+          cy.wait("@saveFormat");
+        });
     });
-
-    cy.wait("@saveFormat");
 
     cy.reload();
 
@@ -211,10 +213,12 @@ describe("scenarios > question > download", () => {
     });
 
     H.popover().within(() => {
-      cy.findByText(".json").click();
+      cy.findByText(".json")
+        .click()
+        .then(() => {
+          cy.wait("@saveFormat");
+        });
     });
-
-    cy.wait("@saveFormat");
 
     cy.reload();
 
@@ -258,10 +262,12 @@ describe("scenarios > question > download", () => {
           cy.findByText("Download results").click();
         });
         H.popover().within(() => {
-          cy.findByText(".xlsx").click();
+          cy.findByText(".xlsx")
+            .click()
+            .then(() => {
+              cy.wait("@saveFormat");
+            });
         });
-
-        cy.wait("@saveFormat");
 
         cy.reload();
 
@@ -276,10 +282,12 @@ describe("scenarios > question > download", () => {
         });
 
         H.popover().within(() => {
-          cy.findByText(".csv").click();
+          cy.findByText(".csv")
+            .click()
+            .then(() => {
+              cy.wait("@saveFormat");
+            });
         });
-
-        cy.wait("@saveFormat");
 
         cy.reload();
 
