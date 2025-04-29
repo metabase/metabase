@@ -68,7 +68,7 @@ export type MBQLClauseDefinition = {
   name?: never;
   displayName: string;
   type: ExpressionType;
-  args: ExpressionType[] | (() => ClauseArgDefinition[]);
+  args(): ClauseArgDefinition[];
   argType?(
     index: number,
     args: unknown[],
@@ -88,7 +88,11 @@ export type MBQLClauseFunctionConfig = {
   displayName: string;
   type: ExpressionType;
   args(): ClauseArgDefinition[];
-  argType(index: number, args: unknown[], type: ExpressionType): ExpressionType;
+  argType(
+    index: number,
+    args: unknown[],
+    type: ExpressionType,
+  ): ExpressionType | undefined;
   requiresFeature?: DatabaseFeature;
   hasOptions: boolean;
   multiple: boolean;

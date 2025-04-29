@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import type * as Lib from "metabase-lib";
 
-import { HELPER_TEXT_STRINGS } from "./helper-text-strings";
 import {
   MBQLClauseCategory as CATEGORY,
   type MBQLClauseDefinition,
@@ -22,36 +21,19 @@ function defineClauses<const T extends Record<string, MBQLClauseDefinition>>(
       throw new Error(`Duplicate clause name: ${name}`);
     }
     names.add(name);
-    const helpText = HELPER_TEXT_STRINGS.find((dfn) => dfn.name === name);
 
     const defn = clauses[name];
     result[name] = {
       ...options,
-      ...defn,
       name,
-      description: defn.description ?? helpText?.description,
-      docsPage: defn.docsPage ?? helpText?.docsPage,
+      type: defn.type,
+      displayName: defn.displayName,
+      description: defn.description,
+      docsPage: defn.docsPage,
       hasOptions: Boolean(defn.hasOptions),
       multiple: Boolean(defn.multiple),
-      argType(index) {
-        if (typeof defn.args === "function") {
-          return defn.args()[index];
-        }
-        return defn.args[index];
-      },
-      args() {
-        if (typeof defn.args === "function") {
-          return defn.args();
-        }
-        if (!helpText?.args) {
-          return defn.args.map((type) => ({ type }));
-        }
-
-        return helpText.args().map((arg, index) => ({
-          type: defn.args[index],
-          ...arg,
-        }));
-      },
+      argType: defn.argType ?? ((index) => defn.args()[index].type),
+      args: defn.args,
     };
   }
   return result;
