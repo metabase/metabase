@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupParameterValuesEndpoints } from "__support__/server-mocks";
-import { getByText, renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import type { Parameter, ParameterValue } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -12,19 +11,9 @@ import {
 
 type SetupOpts = Omit<NumberInputWidgetProps, "setValue"> & {
   parameter?: Parameter;
-  values?: ParameterValue[];
 };
 
-const setup = ({
-  parameter = createMockParameter(),
-  values = [],
-  ...props
-}: SetupOpts) => {
-  setupParameterValuesEndpoints({
-    values,
-    has_more_values: false,
-  });
-
+const setup = ({ parameter = createMockParameter(), ...props }: SetupOpts) => {
   const setValue = jest.fn();
 
   renderWithProviders(
@@ -224,7 +213,6 @@ describe("NumberInputWidget", () => {
         value: [42, 55],
         arity: "n",
         parameter,
-        values,
       });
 
       const input = screen.getByRole("combobox");
@@ -251,7 +239,6 @@ describe("NumberInputWidget", () => {
         value: [],
         arity: "n",
         parameter,
-        values,
       });
 
       const input = screen.getByRole("combobox");
@@ -268,6 +255,5 @@ describe("NumberInputWidget", () => {
 });
 
 function getValue(parent: HTMLElement, value: number | string) {
-  /* eslint-disable-next-line testing-library/prefer-screen-queries */
-  return getByText(parent, value.toString());
+  return within(parent).getByText(value.toString());
 }
