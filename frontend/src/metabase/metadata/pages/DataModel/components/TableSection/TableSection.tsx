@@ -7,16 +7,15 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import {
+  DiscardTableFieldValuesButton,
   FieldOrderPicker,
   NameDescriptionInput,
+  RescanTableFieldsButton,
   SortableFieldList,
 } from "metabase/metadata/components";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Card, Flex, Stack, Switch, Text } from "metabase/ui";
 import type { FieldId, TableId } from "metabase-types/api";
-
-import { DiscardTableFieldValuesButton } from "./DiscardTableFieldValuesButton";
-import { RescanTableFieldsButton } from "./RescanTableFieldsButton";
 
 interface Props {
   tableId: TableId;
