@@ -792,6 +792,14 @@ See [fonts](../configuring-metabase/fonts.md).")
   :default    false
   :export?    false)
 
+(defsetting disable-keyboard-shortcuts
+  (deferred-tru
+   "Indicates whether Metabase should disable keyboard shortcuts.")
+  :type       :boolean
+  :visibility :public
+  :default    false
+  :export?    false)
+
 (defsetting available-fonts
   "Available fonts"
   :visibility :public

@@ -373,7 +373,7 @@ describe("command palette", () => {
   });
 });
 
-H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
+H.describeWithSnowplow.only("shortcuts", { tags: ["@actions"] }, () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();
@@ -572,5 +572,46 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("e");
     cy.findByTestId("step-data-0-0").should("not.exist");
     cy.findByTestId("visualization-root").should("exist");
+  });
+
+  it("should disable when the correct setting is applied", () => {
+    cy.intercept("/api/session/properties", (req) => {
+      req.reply((res) => {
+        res.body["disable-keyboard-shortcuts"] = true;
+      });
+    }).as("sessionProps");
+
+    cy.visit("/");
+    cy.wait("@sessionProps");
+    cy.findByTestId("home-page")
+      .findByTestId("loading-indicator")
+      .should("not.exist");
+
+    H.openShortcutModal();
+
+    H.shortcutModal().should("not.exist");
+
+    cy.realPress("g").realPress("t");
+    cy.location("pathname").should("equal", "/");
+
+    cy.realPress("c").realPress("d");
+
+    cy.findByRole("dialog", { name: "New dashboard" }).should("not.exist");
+
+    // Command palette should still open
+    H.openCommandPalette();
+
+    // Commands that have both shortcuts and palette entries should still appear
+    H.commandPalette()
+      .findByRole("option", { name: "New dashboard" })
+      .should("exist");
+    cy.realPress("Escape");
+
+    // Diagnostic modal shortcut should still work
+
+    cy.realPress(["Meta", "F1"]);
+    cy.findByRole("dialog", { name: "Gather diagnostic information" }).should(
+      "exist",
+    );
   });
 });

@@ -1,4 +1,4 @@
-import { useRegisterActions } from "kbar";
+import { type Action, useRegisterActions } from "kbar";
 import { useCallback, useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
@@ -7,6 +7,7 @@ import { t } from "ttag";
 import {
   useDatabaseListQuery,
   useSearchListQuery,
+  useSetting,
 } from "metabase/common/hooks";
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -62,12 +63,14 @@ export const useCommandPaletteBasicActions = ({
     [dispatch],
   );
 
-  const initialActions = useMemo<RegisterShortcutProps[]>(() => {
-    const actions: RegisterShortcutProps[] = [];
+  const shortcutsDisabled = useSetting("disable-keyboard-shortcuts");
+
+  const initialActions = useMemo<RegisterShortcutProps[] | Action[]>(() => {
+    const actions = [];
 
     if (hasDataAccess) {
       actions.push({
-        id: "create-new-question",
+        id: "create-new-question" as const,
         name: t`New question`,
         section: "basic",
         icon: "insight",
@@ -89,7 +92,7 @@ export const useCommandPaletteBasicActions = ({
 
     if (hasNativeWrite) {
       actions.push({
-        id: "create-new-native-query",
+        id: "create-new-native-query" as const,
         name: t`New SQL query`,
         section: "basic",
         icon: "sql",
@@ -109,7 +112,7 @@ export const useCommandPaletteBasicActions = ({
     }
 
     actions.push({
-      id: "create-new-dashboard",
+      id: "create-new-dashboard" as const,
       name: t`New dashboard`,
       section: "basic",
       icon: "dashboard",
@@ -118,7 +121,7 @@ export const useCommandPaletteBasicActions = ({
       },
     });
     actions.push({
-      id: "create-new-collection",
+      id: "create-new-collection" as const,
       name: t`New collection`,
       section: "basic",
       icon: "collection",
@@ -129,7 +132,7 @@ export const useCommandPaletteBasicActions = ({
 
     if (hasNativeWrite) {
       actions.push({
-        id: "create-new-model",
+        id: "create-new-model" as const,
         name: t`New model`,
         section: "basic",
         icon: "model",
@@ -142,7 +145,7 @@ export const useCommandPaletteBasicActions = ({
 
     if (hasDataAccess) {
       actions.push({
-        id: "create-new-metric",
+        id: "create-new-metric" as const,
         name: t`New metric`,
         section: "basic",
         icon: "metric",
@@ -163,7 +166,7 @@ export const useCommandPaletteBasicActions = ({
     }
 
     actions.push({
-      id: "report-issue",
+      id: "report-issue" as const,
       name: t`Report an issue`,
       section: "basic",
       icon: "bug",
@@ -176,7 +179,7 @@ export const useCommandPaletteBasicActions = ({
 
     const browseActions: RegisterShortcutProps[] = [
       {
-        id: "navigate-browse-model",
+        id: "navigate-browse-model" as const,
         name: t`Browse models`,
         section: "basic",
         icon: "model",
@@ -185,7 +188,7 @@ export const useCommandPaletteBasicActions = ({
         },
       },
       {
-        id: "navigate-browse-database",
+        id: "navigate-browse-database" as const,
         name: t`Browse databases`,
         section: "basic",
         icon: "database",
@@ -194,7 +197,7 @@ export const useCommandPaletteBasicActions = ({
         },
       },
       {
-        id: "navigate-browse-metric",
+        id: "navigate-browse-metric" as const,
         name: t`Browse Metrics`,
         section: "basic",
         icon: "metric",
@@ -204,34 +207,36 @@ export const useCommandPaletteBasicActions = ({
       },
     ];
 
-    if (isAdmin) {
-      actions.push({
-        id: "navigate-admin-settings",
-        perform: () => dispatch(push("/admin/settings")),
-      });
-    }
+    if (!shortcutsDisabled) {
+      if (isAdmin) {
+        actions.push({
+          id: "navigate-admin-settings" as const,
+          perform: () => dispatch(push("/admin/settings")),
+        });
+      }
 
-    if (personalCollectionId) {
-      actions.push({
-        id: "navigate-personal-collection",
-        perform: () => dispatch(push(`/collection/${personalCollectionId}`)),
-      });
-    }
+      if (personalCollectionId) {
+        actions.push({
+          id: "navigate-personal-collection" as const,
+          perform: () => dispatch(push(`/collection/${personalCollectionId}`)),
+        });
+      }
 
-    actions.push(
-      {
-        id: "navigate-user-settings",
-        perform: () => dispatch(push("/account/profile")),
-      },
-      {
-        id: "navigate-trash",
-        perform: () => dispatch(push("/trash")),
-      },
-      {
-        id: "navigate-home",
-        perform: () => dispatch(push("/")),
-      },
-    );
+      actions.push(
+        {
+          id: "navigate-user-settings" as const,
+          perform: () => dispatch(push("/account/profile")),
+        },
+        {
+          id: "navigate-trash" as const,
+          perform: () => dispatch(push("/trash")),
+        },
+        {
+          id: "navigate-home" as const,
+          perform: () => dispatch(push("/")),
+        },
+      );
+    }
 
     return [...actions, ...browseActions];
   }, [
@@ -242,9 +247,17 @@ export const useCommandPaletteBasicActions = ({
     openNewModal,
     isAdmin,
     personalCollectionId,
+    shortcutsDisabled,
   ]);
 
-  useRegisterShortcut(initialActions, [initialActions]);
+  useRegisterShortcut(
+    isShortcutArray(initialActions, shortcutsDisabled) ? [] : initialActions,
+    [initialActions, shortcutsDisabled],
+  );
+  useRegisterActions(
+    isShortcutArray(initialActions, shortcutsDisabled) ? initialActions : [],
+    [initialActions, shortcutsDisabled],
+  );
 
   const openActionModal = [];
 
@@ -265,3 +278,11 @@ export const useCommandPaletteBasicActions = ({
     hasModels,
   ]);
 };
+
+// Dumb function to keep TS happy.
+function isShortcutArray(
+  _: Action[] | RegisterShortcutProps[],
+  shortcutsDisabled: boolean,
+): _ is Action[] {
+  return shortcutsDisabled;
+}

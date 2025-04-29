@@ -425,6 +425,7 @@ interface PublicSettings {
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
+  "disable-keyboard-shortcuts": boolean;
 }
 
 export type UserSettings = {
