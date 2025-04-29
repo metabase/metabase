@@ -153,7 +153,7 @@ describe("getFieldIcon", () => {
     },
     {
       field: createMockField({
-        display_name: "other",
+        display_name: "unknown",
         table_id: tableId,
         base_type: "type/*",
         effective_type: "type/*",
@@ -161,7 +161,7 @@ describe("getFieldIcon", () => {
       expectedIcon: "list",
     },
   ])(
-    "should return correct icon for location columns",
+    "should return correct icon for $field.display_name column",
     ({ expectedIcon, field }) => {
       const table = createMockTable({ id: tableId, fields: [field] });
 
