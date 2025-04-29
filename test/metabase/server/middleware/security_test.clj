@@ -6,8 +6,8 @@
    [metabase.config :as config]
    [metabase.embed.app-origins-sdk :as aos]
    [metabase.embed.settings :as embed.settings]
-   [metabase.public-settings :as public-settings]
    [metabase.server.middleware.security :as mw.security]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [stencil.core :as stencil]))

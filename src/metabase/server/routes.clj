@@ -9,9 +9,9 @@
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.public-settings :as public-settings]
    [metabase.server.auth-wrapper :as auth-wrapper]
    [metabase.server.routes.index :as index]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [ring.util.response :as response]))

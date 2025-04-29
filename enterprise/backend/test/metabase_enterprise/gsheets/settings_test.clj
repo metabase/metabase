@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.gsheets.settings :as gsettings]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [toucan2.core :as t2]))
 
 (defmacro with-sample-db-as-dwh [& body]

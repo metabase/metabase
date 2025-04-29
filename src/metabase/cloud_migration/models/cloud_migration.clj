@@ -10,7 +10,7 @@
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.models.interface :as mi]
-   [metabase.models.setting.cache :as setting.cache]
+   [metabase.settings.core :as setting]
    [metabase.task :as task]
    [metabase.task.bootstrap :as task.bootstrap]
    [metabase.util :as u]
@@ -211,7 +211,7 @@
       (cloud-migration.settings/read-only-mode! true)
       (when (cluster?)
         (log/info "Cluster detected, waiting for read-only mode to propagate")
-        (Thread/sleep (int (* 1.5 setting.cache/cache-update-check-interval-ms))))
+        (Thread/sleep (int (* 1.5 setting/cache-update-check-interval-ms))))
       (log/info "Stopping scheduler")
       (task/stop-scheduler!)
 

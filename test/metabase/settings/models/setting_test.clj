@@ -1,4 +1,4 @@
-(ns metabase.models.setting-test
+(ns metabase.settings.models.setting-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -10,8 +10,8 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.models.setting.cache :as setting.cache]
+   [metabase.settings.models.setting :as setting :refer [defsetting]]
+   [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -1139,7 +1139,7 @@
       (try
         (ns nested-setting-test
           (:require
-           [metabase.models.setting :refer [defsetting]]
+           [metabase.settings.models.setting :refer [defsetting]]
            [metabase.util.i18n :as i18n :refer [deferred-tru]]))
         (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set)
         (catch Exception e
@@ -1569,17 +1569,14 @@
        :timestamp ex "Error of type class java.time.format.DateTimeParseException thrown while parsing a setting"))))
 
 (defn ns-validation-setting-symbol [format]
-  (symbol "metabase.models.setting-test" (name (validation-setting-symbol format))))
+  (symbol "metabase.settings.models.setting-test" (name (validation-setting-symbol format))))
 
 (deftest validation-completeness-test
-  (let [string-formats #{:string :metabase.public-settings/uuid-nonce}
-        formats-to-check (remove string-formats (keys (methods setting/get-value-of-type)))]
-
+  (let [formats-to-check (disj (set (keys (methods setting/get-value-of-type))) :string)]
     (testing "Every settings format has its redaction predicate defined"
       (doseq [format formats-to-check]
         (testing (format "We have defined a redaction multimethod for the %s format" format)
           (is (some? (format (methods setting/may-contain-raw-token?)))))))
-
     (testing "Every settings format has tests for its validation"
       (doseq [format formats-to-check]
         ;; We operate on trust that tests are added along with this var

@@ -1,4 +1,4 @@
-(ns metabase.public-settings
+(ns metabase.settings.deprecated-grab-bag
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -7,8 +7,8 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
-   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.fonts :as u.fonts]
    [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
@@ -17,9 +17,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-;; These modules register settings but are otherwise unused. They still must be imported.
-(comment premium-features/keep-me)
 
 (defsetting application-name
   (deferred-tru "Replace the word “Metabase” wherever it appears.")

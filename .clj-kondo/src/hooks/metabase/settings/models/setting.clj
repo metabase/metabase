@@ -1,4 +1,4 @@
-(ns hooks.metabase.models.setting
+(ns hooks.metabase.settings.models.setting
   (:require
    [clj-kondo.hooks-api :as hooks]
    [hooks.common :as common]))
@@ -207,7 +207,7 @@
                    anon-binding (hooks/map-node options-list)])
                  (hooks/reg-keyword! (-> (hooks/keyword-node (keyword (hooks/sexpr setting-name)))
                                          (with-meta (meta setting-name)))
-                                     'metabase.models.setting/defsetting)
+                                     'metabase.settings.models.setting/defsetting)
                  getter-node
                  setter-node))
                (with-meta (meta node)))}))

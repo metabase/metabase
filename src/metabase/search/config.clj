@@ -1,9 +1,9 @@
 (ns metabase.search.config
   (:require
    [metabase.api.common :as api]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.permissions.core :as perms]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.core :refer [defsetting]]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
