@@ -34,7 +34,9 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
   );
   const dispatch = useDispatch();
 
-  const handleClose = () => dispatch(push("/admin/people"));
+  const handleClose = () => {
+    dispatch(push("/admin/people"));
+  };
 
   useEffect(() => {
     return () => {
@@ -52,6 +54,7 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
       title={t`${user.common_name} has been added`}
       padding="xl"
       onClose={handleClose}
+      onConfirm={handleClose}
       closeButtonText={null}
       confirmButtonProps={{ color: "brand" }}
       confirmButtonText={t`Done`}
