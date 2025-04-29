@@ -85,6 +85,7 @@
   :visibility :admin
   :export? false
   :default false
+  :feature :tenants
   :setter (fn [new-value]
             (when-not new-value
               (turn-off-tenants!))
