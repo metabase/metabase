@@ -15,6 +15,7 @@
    [metabase.api.embed]
    [metabase.api.field]
    [metabase.api.geojson]
+   [metabase.api.logger]
    [metabase.api.macros :as api.macros]
    [metabase.api.native-query-snippet]
    [metabase.api.open-api :as open-api]
@@ -66,6 +67,7 @@
          metabase.api.embed/keep-me
          metabase.api.field/keep-me
          metabase.api.geojson/keep-me
+         metabase.api.logger/keep-me
          metabase.api.native-query-snippet/keep-me
          metabase.api.preview-embed/keep-me
          metabase.api.slack/keep-me
