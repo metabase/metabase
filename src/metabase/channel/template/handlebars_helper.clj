@@ -130,12 +130,12 @@
   [x [y] _kparams _options]
   (> x y))
 
-(defhelper ge
+(defhelper gte
   "Checks if first value is greater than or equal to second value.
 
    Example:
    ```
-   {{#if (ge stock 10)}}
+   {{#if (gte stock 10)}}
      <span class=\"in-stock\">In Stock</span>
    {{else}}
      <span class=\"low-stock\">Low Stock</span>
@@ -166,12 +166,12 @@
   [x [y] _kparams _options]
   (< x y))
 
-(defhelper le
+(defhelper lte
   "Checks if first value is less than or equal to second value.
 
    Example:
    ```
-   {{#if (le remaining 5)}}
+   {{#if (lte remaining 5)}}
      <span class=\"warning\">Only {{remaining}} left!</span>
    {{/if}}
    ```
@@ -339,25 +339,6 @@
   [id [parameters] _kparams _options]
   (urls/dashboard-url id (map #(update-keys % keyword) parameters)))
 
-(def default-helpers
-  "A list of default helpers."
-  {"count"         #'count
-   "eq"            #'eq
-   "ne"            #'ne
-   "gt"            #'gt
-   "ge"            #'ge
-   "lt"            #'lt
-   "le"            #'le
-   "empty"         #'empty
-   "contains"      #'contains
-   "starts-with"   #'starts-with
-   "ends-with"     #'ends-with
-   "regexp"        #'regexp
-   "format-date"   #'format-date
-   "now"           #'now
-   "card-url"      #'card-url
-   "dashboard-url" #'dashboard-url})
-
 (def ^:private built-in-helpers-info
   (map
    #(assoc % :type :built-in)
@@ -452,6 +433,25 @@
      {:name helper-name
       :doc  (-> helper meta :doc)
       :type :custom})))
+
+(def default-helpers
+  "A list of default helpers."
+  {"count"         #'count
+   "eq"            #'eq
+   "ne"            #'ne
+   "gt"            #'gt
+   "gte"           #'gte
+   "lt"            #'lt
+   "lte"           #'lte
+   "empty"         #'empty
+   "contains"      #'contains
+   "starts-with"   #'starts-with
+   "ends-with"     #'ends-with
+   "regexp"        #'regexp
+   "format-date"   #'format-date
+   "now"           #'now
+   "card-url"      #'card-url
+   "dashboard-url" #'dashboard-url})
 
 ;; Exposing this via settings so FE can find it
 ;; TODO: the better way is to follow metabase.lib's steps by writing this as cljc so FE can access it directly.
