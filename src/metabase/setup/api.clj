@@ -9,6 +9,7 @@
    [metabase.events :as events]
    [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
    [metabase.settings.core :as setting]
@@ -134,6 +135,8 @@
                 ;; this because there is `io!` in this block
                 (setting/restore-cache!)
                 (throw e))))]
+    ;; Sometimes the token features are being updated as the setup process is running, so force a fresh check during setup
+    (premium-features/clear-token-check-cache)
     (let [{:keys [user-id session-key session]} (create!)
           superuser (t2/select-one :model/User :id user-id)]
       (events/publish-event! :event/user-login {:user-id user-id})

@@ -166,6 +166,13 @@
 
    :ttl/threshold token-status-cache-ttl))
 
+(defn clear-token-check-cache
+  "Clears the token check cache. This is used when the features in the token may have changed in the store."
+  []
+  (when config/ee-available?
+    (log/info "Clearing token check cache.")
+    (memoize/memo-clear! fetch-token-and-parse-body*)))
+
 (def ^:private store-circuit-breaker-config
   {;; if 10 requests within 10 seconds fail, open the circuit breaker.
    ;; (a lower threshold ratio wouldn't make sense here because successful results are cached, so as soon as we get
