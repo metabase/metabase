@@ -214,7 +214,9 @@ const isLoading = (series: Series | null) => {
 
 const deriveStateFromProps = (props: VisualizationProps) => {
   const transformed = props.rawSeries
-    ? getVisualizationTransformed(extractRemappings(props.rawSeries))
+    ? getVisualizationTransformed(
+        extractRemappings(props.rawSeries as RawSeries),
+      )
     : null;
 
   const series = transformed?.series ?? null;
@@ -251,7 +253,7 @@ class Visualization extends PureComponent<
     width: 0,
     // prefer passing in a function that doesn't cause the application to reload
     onChangeLocation: (location: Location) => {
-      window.location = location;
+      window.location = location as any;
     },
   };
 
@@ -816,7 +818,7 @@ class Visualization extends PureComponent<
                   metadata={metadata}
                   mode={mode}
                   queryBuilderMode={queryBuilderMode}
-                  rawSeries={rawSeries}
+                  rawSeries={rawSeries as RawSeries}
                   visualizerRawSeries={visualizerRawSeries}
                   renderEmptyMessage={renderEmptyMessage}
                   renderTableHeader={renderTableHeader}

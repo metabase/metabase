@@ -25,23 +25,20 @@ import { getVisualizationRaw } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import {
-  createDataSource,
   getInitialStateForCardDataSource,
+  getInitialStateForMultipleSeries,
+  getInitialStateForVisualizerCard,
   isVisualizerDashboardCard,
   isVisualizerSupportedVisualization,
 } from "metabase/visualizer/utils";
-import { getInitialStateForMultipleSeries } from "metabase/visualizer/utils/get-initial-state-for-multiple-series";
-import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
 import type {
   Card,
   CardId,
   DashCardId,
   Dashboard,
   DashboardCard,
-  Dataset,
   VirtualCard,
   VisualizationSettings,
-  VisualizerDataSourceId,
 } from "metabase-types/api";
 import type { StoreDashcard } from "metabase-types/store";
 import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
@@ -332,35 +329,7 @@ function DashCardInner({
       let initialState: VisualizerVizDefinitionWithColumns;
 
       if (isVisualizerDashboardCard(dashcard)) {
-        const visualizationEntity =
-          dashcard.visualization_settings?.visualization;
-
-        const cards = [dashcard.card];
-        if (Array.isArray(dashcard.series)) {
-          cards.push(...dashcard.series);
-        }
-
-        const dataSources = cards.map((card) =>
-          createDataSource("card", card.id, card.name),
-        );
-
-        const dataSourceDatasets: Record<
-          VisualizerDataSourceId,
-          Dataset | null | undefined
-        > = Object.fromEntries(
-          Object.entries(datasets ?? {}).map(([cardId, dataset]) => [
-            `card:${cardId}`,
-            dataset,
-          ]),
-        );
-
-        const columns = getVisualizationColumns(
-          visualizationEntity,
-          dataSourceDatasets,
-          dataSources,
-        );
-
-        initialState = { ...visualizationEntity, columns };
+        initialState = getInitialStateForVisualizerCard(dashcard, datasets);
       } else if (series.length > 1) {
         initialState = getInitialStateForMultipleSeries(series);
       } else {
