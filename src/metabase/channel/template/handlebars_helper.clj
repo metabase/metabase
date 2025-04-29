@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase.models.setting :as setting]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.json :as json]
    [metabase.util.urls :as urls])
   (:import
    (com.github.jknack.handlebars
@@ -294,6 +295,17 @@
   [_context _params _kparams _options]
   (t/instant))
 
+(defhelper json-encode
+  "Encodes a value to a JSON string.
+
+   Example:
+   ```
+   {{json-encode {a 1 b 2}}}
+  ;; => \"{\\\"a\\\":1,\\\"b\\\":2}\"
+  ```"
+  [o _ _ _]
+  (json/encode o))
+
 ;; Metabase specifics
 
 (defhelper card-url
@@ -447,6 +459,7 @@
    "contains"      #'contains
    "starts-with"   #'starts-with
    "ends-with"     #'ends-with
+   "json-encode"   #'json-encode
    "regexp"        #'regexp
    "format-date"   #'format-date
    "now"           #'now

@@ -3,7 +3,10 @@
    [clojure.java.io :as io]
    [medley.core :as m]))
 
-;; email template
+(def ^:private default-http-template
+  {:channel_type :channel/http
+   :details      {:type :http/handlebars-text
+                  :body "{{{json-encode .}}}"}})
 
 (def ^:private template-lookup
   {:channel/email {[:notification/system-event :event/row.created] {:channel_type :channel/email
@@ -44,7 +47,10 @@
                                                                                               "\n\n"
                                                                                               "{{#each record}}\n"
                                                                                               "- {{@key}} : {{@value}}\n"
-                                                                                              "{{/each}}\n")}}}})
+                                                                                              "{{/each}}\n")}}}
+   :channel/http {[:notification/system-event :event/row.created] default-http-template
+                  [:notification/system-event :event/row.updated] default-http-template
+                  [:notification/system-event :event/row.deleted] default-http-template}})
 
 ;; TODO this should be a multimethod
 (defn- resolve-template

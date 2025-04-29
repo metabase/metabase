@@ -133,13 +133,13 @@
   [{:keys [coercion_strategy] :as field}]
   #_{:clj-kondo/ignore [:metabase/modules]}
   (let [f (if-let [f (requiring-resolve 'metabase-enterprise.data-editing.coerce/input-coercion-fn)]
-            (get @f coercion_strategy)
+            (or (get @f coercion_strategy) identity)
             identity)]
     (fn [v]
       (try
         (f v)
         (catch Exception e
-          (log/errorf e "Failed to coercing value of field %d with value %s" (:id field) v)
+          (log/warnf e "Failed to coercing value of field %d with value %s" (:id field) v)
           v)))))
 
 (defn- apply-coercion
