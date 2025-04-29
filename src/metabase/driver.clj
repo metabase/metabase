@@ -1358,8 +1358,8 @@
 (defmulti adjust-schema-qualification
   "Adjust the given schema to either add or remove further schema qualification.
 
-   In general, the database detail property 'multi-level-schema` ought to drive whether a schema gets qualified or not.
-   If it is true, schemas should be fully qualified to `catalog` or other addressable heirarchical concept. If false, they should not be.
+   In general, the database detail property `multi-level-schema` ought to drive whether a schema gets qualified or not.
+   If it is true, schemas should be fully qualified to `catalog` or other addressable hierarchical concept. If false, they should not be.
 
    Returns a string either of the unchanged `schema` or the adjusted value."
   {:added "0.55.0" :arglists '([driver database schema])}

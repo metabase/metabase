@@ -192,7 +192,7 @@
    :visible-if   {"advanced-options" true}})
 
 (def multi-level-schema
-  "Map representing the `multi-level-schema` option for databases. Stores schemas with multiple levels of heirarchy."
+  "Map representing the `multi-level-schema` option for databases. Stores schemas with multiple levels of hierarchy."
   {:name    "multi-level-schema"
    :type    :boolean
    :default false})

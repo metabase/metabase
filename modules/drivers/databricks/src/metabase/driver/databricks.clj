@@ -86,7 +86,7 @@
                            (and (= identifier-type :field)
                                 (>= (count components) 3)))
                      ;; period is an illegal character for identifiers in databricks so if it's present we can split and
-                     ;; quote safely.
+                     ;; quote safely. docs.databricks.com/aws/en/sql/language-manual/sql-ref-names
                      (let [first-split (split-catalog+schema (first components))]
                        (into first-split (rest components)))
                      components)]
