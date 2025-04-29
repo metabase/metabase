@@ -378,7 +378,7 @@ if (devMode) {
 }
 
 const iframeEmbedConfig = {
-  name: 'embed',
+  name: 'iframe_sdk_embed_v1',
   entry: ENTERPRISE_SRC_PATH + "/embedding_iframe_sdk/embed.v1.ts",
   output: {
     path: BUILD_PATH + "/app",
@@ -408,6 +408,7 @@ const iframeEmbedConfig = {
   },
   optimization: { splitChunks: false, runtimeChunk: false },
   devtool: false,
+  devServer: { hot: false }
 }
 
 module.exports = [config, iframeEmbedConfig];
