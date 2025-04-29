@@ -33,7 +33,7 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
     <Flex align="center" mb="xl">
       <Input
         miw="14rem"
-        mr="2rem"
+        mr="xl"
         fz="sm"
         type="text"
         placeholder={t`Find someone`}

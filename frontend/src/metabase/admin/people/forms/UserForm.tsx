@@ -48,14 +48,14 @@ export const UserForm = ({
             title={t`First name`}
             placeholder={t`Johnny`}
             label={t`First name`}
-            mb="1rem"
+            mb="md"
           />
           <FormTextInput
             name="last_name"
             title={t`Last name`}
             placeholder={t`Appleseed`}
             label={t`Last name`}
-            mb="1rem"
+            mb="md"
           />
           <FormTextInput
             name="email"
@@ -64,7 +64,7 @@ export const UserForm = ({
             placeholder="nicetoseeyou@email.com"
             label={t`Email`}
             required
-            mb="1rem"
+            mb="md"
           />
           <FormGroupsWidget name="user_group_memberships" />
           <PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes />

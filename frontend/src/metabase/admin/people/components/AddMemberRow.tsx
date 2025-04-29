@@ -84,7 +84,7 @@ export function AddMemberRow({
                     size="xl"
                     bg="bg-medium"
                     c="text-primary"
-                    ml={index > 0 ? ".5rem" : ""}
+                    ml={index > 0 ? "sm" : ""}
                     withRemoveButton
                     onRemove={() => handleRemoveUser(user)}
                   >
@@ -96,7 +96,7 @@ export function AddMemberRow({
           </Popover.Target>
 
           <Popover.Dropdown>
-            <Flex direction="column" p=".25rem" miw="15rem">
+            <Flex direction="column" p="xs" miw="15rem">
               {suggestedUsers.map((user: User, index: number) => (
                 <Flex
                   key={index}

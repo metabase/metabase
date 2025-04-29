@@ -96,7 +96,7 @@ export const MembershipSelect = ({
           aria-label="group-summary"
         >
           <GroupSummary
-            mr=".5rem"
+            mr="sm"
             groups={groups}
             selectedGroupIds={selectedGroupIds}
           />
@@ -105,7 +105,7 @@ export const MembershipSelect = ({
       </Popover.Target>
       <Popover.Dropdown>
         {groups.length === 0 && (
-          <Box component="span" p="0.5rem">
+          <Box component="span" p="sm">
             {emptyListMessage}
           </Box>
         )}

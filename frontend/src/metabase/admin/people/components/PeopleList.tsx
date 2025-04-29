@@ -250,7 +250,7 @@ const PeopleListInner = ({
   };
 
   return (
-    <Box component="section" pb="2rem">
+    <Box component="section" pb="xl">
       <table
         data-testid="admin-people-list-table"
         className={cx(AdminS.ContentTable, CS.borderBottom)}
@@ -300,7 +300,7 @@ const PeopleListInner = ({
         <Flex
           align="center"
           justify="center"
-          p="1rem"
+          p="md"
           data-testid="people-list-footer"
         >
           <Box fw={700}>
@@ -326,11 +326,11 @@ const PeopleListInner = ({
           align="center"
           justify="center"
           direction="column"
-          p="2rem"
+          p="xl"
           ta="center"
         >
-          <Box my="1.5rem">
-            <Icon name="search" mb="0.5rem" size={32} />
+          <Box my="lg">
+            <Icon name="search" mb="sm" size={32} />
             <Text c="text-light" fz="lg" fw={700}>{t`No results found`}</Text>
           </Box>
         </Flex>

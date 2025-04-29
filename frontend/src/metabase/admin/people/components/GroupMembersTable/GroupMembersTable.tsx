@@ -124,7 +124,7 @@ function GroupMembersTableInner({
         ))}
       </AdminContentTable>
       {hasMembers && (
-        <Flex align="center" justify="flex-end" p="1rem">
+        <Flex align="center" justify="flex-end" p="md">
           <PaginationControls
             page={page}
             pageSize={pageSize}
