@@ -53,17 +53,33 @@ export type ExpressionType =
   | "number"
   | "string";
 
+export type MBQLClauseDefinition = {
+  name?: never;
+  displayName: string;
+  type: ExpressionType;
+  args: ExpressionType[];
+  argType?(
+    index: number,
+    args: unknown[],
+    type: ExpressionType,
+  ): ExpressionType;
+  requiresFeature?: DatabaseFeature;
+  hasOptions?: boolean;
+  multiple?: boolean;
+  category?: MBQLClauseCategory;
+  validator?: (...args: any) => string | undefined;
+};
+
 export type MBQLClauseFunctionConfig = {
+  name: DefinedClauseName;
   displayName: string;
   type: ExpressionType;
   args: ExpressionType[];
   argType(index: number, args: unknown[], type: ExpressionType): ExpressionType;
   requiresFeature?: DatabaseFeature;
-  hasOptions?: boolean;
-  multiple?: boolean;
-  name: DefinedClauseName;
+  hasOptions: boolean;
+  multiple: boolean;
   category?: MBQLClauseCategory;
-
   validator?: (...args: any) => string | undefined;
 };
 

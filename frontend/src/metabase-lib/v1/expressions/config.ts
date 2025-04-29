@@ -2,21 +2,14 @@ import { t } from "ttag";
 
 import {
   MBQLClauseCategory as CATEGORY,
+  type MBQLClauseDefinition,
   type MBQLClauseFunctionConfig,
 } from "./types";
 
-type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
-type Forbidden<T, K extends keyof T> = Omit<T, K> & { [P in K]?: never };
-
-type ConfigInput = Forbidden<
-  Optional<MBQLClauseFunctionConfig, "argType">,
-  "name"
->;
-
 const names = new Set();
 
-function defineClauses<const T extends Record<string, ConfigInput>>(
-  options: Partial<ConfigInput>,
+function defineClauses<const T extends Record<string, MBQLClauseDefinition>>(
+  options: Partial<MBQLClauseDefinition>,
   clauses: T,
 ): Record<keyof T, MBQLClauseFunctionConfig> {
   const result = {} as Record<keyof T, MBQLClauseFunctionConfig>;
@@ -30,6 +23,8 @@ function defineClauses<const T extends Record<string, ConfigInput>>(
     result[name] = {
       ...options,
       name,
+      hasOptions: Boolean(defn.hasOptions),
+      multiple: Boolean(defn.multiple),
       argType(index) {
         return defn.args[index];
       },
