@@ -98,7 +98,11 @@ function getInhertiedSettingsForColumn(column) {
 
 const EXAMPLE_DATE = moment("2018-01-31 17:24");
 
-function getDateStyleOptionsForUnit(unit, abbreviate = false, separator) {
+export function getDateStyleOptionsForUnit(
+  unit,
+  abbreviate = false,
+  separator,
+) {
   // hour-of-day shouldn't have any date style. It's handled as a time instead.
   // Other date parts are handled as dates, but hour-of-day needs to use the
   // time settings for 12/24 hour clock.
@@ -144,6 +148,40 @@ function timeStyleOption(style, description) {
       EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ``),
     value: style,
   };
+}
+
+export function getTimeStyleOptions(unit) {
+  return [
+    timeStyleOption("h:mm A", t`12-hour clock`),
+    ...(unit === "hour-of-day"
+      ? [timeStyleOption("h A", "12-hour clock without minutes")]
+      : []),
+    timeStyleOption("HH:mm", t`24-hour clock`),
+  ];
+}
+
+export function getCurrencyStyleOptions(currency = "USD") {
+  const symbol = getCurrencySymbol(currency);
+  const code = getCurrency(currency, "code");
+  const name = getCurrency(currency, "name");
+  return [
+    ...(symbol !== code
+      ? [
+          {
+            label: t`Symbol` + ` ` + `(${symbol})`,
+            value: "symbol",
+          },
+        ]
+      : []),
+    {
+      label: t`Code` + ` ` + `(${code})`,
+      value: "code",
+    },
+    {
+      label: t`Name` + ` ` + `(${name})`,
+      value: "name",
+    },
+  ];
 }
 
 function getTimeEnabledOptionsForUnit(unit) {

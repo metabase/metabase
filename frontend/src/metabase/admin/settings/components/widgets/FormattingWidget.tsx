@@ -1,14 +1,20 @@
+import type React from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { currency } from "cljs/metabase.util.currency";
 import { useAdminSetting } from "metabase/api/utils";
 import { Radio, Select, Stack, Switch, Text } from "metabase/ui";
+import {
+  getCurrencyStyleOptions,
+  getDateStyleOptionsForUnit,
+  getTimeStyleOptions,
+} from "metabase/visualizations/lib/settings/column";
+import type { FormattingSettings } from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";
 
 import { SetByEnvVar } from "./AdminSettingInput";
-
-const stringValue = (value: boolean): "true" | "false" => `${value}`;
 
 export function FormattingWidget() {
   const {
@@ -18,16 +24,26 @@ export function FormattingWidget() {
     isLoading,
     settingDetails,
   } = useAdminSetting("custom-formatting");
+  const currencyValue = "USD";
+  const [localValue] = useState<FormattingSettings | undefined>(initialValue);
 
   if (isLoading) {
     return null;
   }
 
+  const {
+    date_style: dateStyle,
+    date_abbreviate: dateAbreviate,
+    time_style: timeStyle,
+  } = localValue?.["type/Temporal"] || {};
+
+  const dateStyleOptions = getDateStyleOptionsForUnit("default");
+
   const handleChange = (newValue: any) => {
     if (newValue === initialValue) {
       return;
     }
-    updateSetting({ key: "custom-formatting", value: newValue });
+    updateSetting({ key: "custom-formatting", value: { ...localValue } });
   };
 
   return (
@@ -41,65 +57,86 @@ export function FormattingWidget() {
         <SetByEnvVar varName={settingDetails.env_name} />
       ) : (
         <Stack>
-          <Text
-            component="h3"
-            c="text-medium"
-            fw="bold"
-            tt="uppercase"
-            display="block"
-          >
-            {t`Dates and Times`}
-          </Text>
-
-          <SettingHeader id={"date_style"} title={"title"} />
-
-          <FormattingSettingInput
-            name="date_style"
-            inputType="radio"
-            value={stringValue(Boolean(initialValue))}
-            onChange={(newValue) => handleChange(newValue === "true")}
-            options={[
-              { value: "true", label: t`BCC - Hide recipients` },
-              {
-                value: "false",
-                label: t`CC - Disclose recipients`,
-              },
-            ]}
-          />
-
-          <FormattingSettingInput
-            name="bcc-enabled?"
-            inputType="radio"
-            value={stringValue(Boolean(initialValue))}
-            onChange={(newValue) => handleChange(newValue === "true")}
-            options={[
-              { value: "true", label: t`BCC - Hide recipients` },
-              {
-                value: "false",
-                label: t`CC - Disclose recipients`,
-              },
-            ]}
-          />
+          <FormattingSection title={t`Dates and Times`}>
+            <FormattingInput
+              id="date_style"
+              label={t`Date style`}
+              value={dateStyle}
+              options={dateStyleOptions ?? []}
+            />
+            <FormattingInput
+              id="date_abbreviate"
+              label={t`Abbreviate days and months`}
+              value={dateAbreviate}
+              inputType="boolean"
+              onChange={(checked) => handleChange(checked)}
+            />
+            <FormattingInput
+              id="time_style"
+              label={t`Time style`}
+              value={timeStyle}
+              inputType="radio"
+              options={getTimeStyleOptions("default") ?? []}
+              onChange={handleChange}
+            />
+          </FormattingSection>
+          <FormattingSection title={t`Numbers`}>
+            <FormattingInput
+              id="number_separators"
+              label={t`Separator style`}
+              value={dateStyle}
+              inputType="select"
+              options={[
+                { label: "100,000.00", value: ".," },
+                { label: "100 000,00", value: ", " },
+                { label: "100.000,00", value: ",." },
+                { label: "100000.00", value: "." },
+                { label: "100'000.00", value: ".'" },
+              ]}
+              onChange={handleChange}
+            />
+          </FormattingSection>
+          <FormattingSection title={t`Currency`}>
+            <FormattingInput
+              id="currency"
+              label={t`Unit of currency`}
+              value={dateStyle}
+              inputType="select"
+              options={currency.map(([, currency]) => ({
+                name: currency.name,
+                value: currency.code,
+              }))}
+              onChange={handleChange}
+            />
+            <FormattingInput
+              id="currency_style"
+              label={t`Currency label style`}
+              value={dateStyle}
+              inputType="radio"
+              options={getCurrencyStyleOptions(currencyValue)}
+              onChange={handleChange}
+            />
+          </FormattingSection>
         </Stack>
       )}
     </Stack>
   );
 }
 
-export function FormattingSettingInput({
-  name,
+function FormattingInput({
+  id,
+  label,
   value,
   onChange,
   options,
-  //   placeholder,
   inputType,
 }: {
-  name: string;
+  id: string;
+  label: string;
   value: any;
   onChange: (newValue: string | boolean | number) => void;
   options?: { label: string; value: string }[];
-  placeholder?: string;
-  inputType: "select" | "radio" | "boolean";
+  inputType: "boolean" | "select" | "radio";
 }) {
   const [localValue, setLocalValue] = useState(value);
 
@@ -112,35 +149,65 @@ export function FormattingSettingInput({
     onChange(newValue);
   };
 
-  switch (inputType) {
-    case "select":
-      return (
+  return (
+    <div>
+      <Text
+        htmlFor={id}
+        component="label"
+        c="text-medium"
+        fw="bold"
+        tt="uppercase"
+        display="block"
+      >
+        {label}
+      </Text>
+      {inputType === "select" && (
         <Select
-          id={name}
+          id={id}
           value={localValue}
           onChange={handleChange}
           data={options ?? []}
         />
-      );
-
-    case "boolean":
-      return (
+      )}
+      {inputType === "boolean" && (
         <Switch
-          id={name}
+          id={id}
           checked={localValue}
           onChange={(e) => handleChange(e.target.checked)}
           label={localValue ? t`Enabled` : t`Disabled`}
           w="auto"
         />
-      );
-
-    case "radio":
-      return (
-        <Radio.Group id={name} value={localValue} onChange={handleChange}>
+      )}
+      {inputType === "radio" && (
+        <Radio.Group id={id} value={localValue} onChange={handleChange}>
           {options?.map(({ label, value }) => (
             <Radio key={value} value={value} label={label} />
           ))}
         </Radio.Group>
-      );
-  }
+      )}
+    </div>
+  );
+}
+
+function FormattingSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <Text
+        component="h3"
+        c="text-medium"
+        fw="bold"
+        tt="uppercase"
+        display="block"
+      >
+        {title}
+      </Text>
+      {children}
+    </section>
+  );
 }
