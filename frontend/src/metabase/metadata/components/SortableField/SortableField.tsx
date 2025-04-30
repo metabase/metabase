@@ -1,19 +1,26 @@
-import type { UniqueIdentifier } from "@dnd-kit/core";
 import cx from "classnames";
 
 import { Sortable } from "metabase/core/components/Sortable";
 import { Flex, Group, Icon, type IconName, Text } from "metabase/ui";
+import type { FieldId } from "metabase-types/api";
 
 import S from "./SortableField.module.css";
 
 interface Props {
   disabled?: boolean;
   icon: IconName;
-  id: UniqueIdentifier;
+  id: FieldId;
   label: string;
+  onClick?: (id: FieldId) => void;
 }
 
-export const SortableField = ({ disabled, icon, id, label }: Props) => {
+export const SortableField = ({
+  disabled,
+  icon,
+  id,
+  label,
+  onClick,
+}: Props) => {
   const draggable = !disabled;
 
   return (
@@ -39,6 +46,7 @@ export const SortableField = ({ disabled, icon, id, label }: Props) => {
         py="xs"
         role="listitem"
         w="100%"
+        onClick={() => onClick?.(id)}
       >
         <Group flex="0 0 auto" gap="sm" ml="xs" wrap="nowrap">
           {draggable && <Icon className={S.grabber} name="grabber" />}

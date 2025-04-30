@@ -2,18 +2,12 @@ import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import EmptyState from "metabase/components/EmptyState";
-import * as Urls from "metabase/lib/urls";
 import { Box, Flex, Stack, Title } from "metabase/ui";
 
 import S from "./DataModel.module.css";
 import { FieldSection, PreviewSection, TableSection } from "./components";
-
-interface RouteParams {
-  databaseId?: string;
-  fieldId?: string;
-  schemaId?: string;
-  tableId?: string;
-}
+import type { RouteParams } from "./types";
+import { parseRouteParams } from "./utils";
 
 interface Props {
   params: RouteParams;
@@ -26,10 +20,7 @@ const DATA_MODEL_APP_NAV_BAR_HEIGHT = 53;
 const PREVIEW_NOT_IMPLEMENTED_YET = true;
 
 export const DataModel = ({ params }: Props) => {
-  // const databaseId = Urls.extractEntityId(params.databaseId);
-  // const schemaId = params.schemaId;
-  const tableId = Urls.extractEntityId(params.tableId);
-  const fieldId = Urls.extractEntityId(params.fieldId);
+  const { tableId, fieldId } = parseRouteParams(params);
   const isEmptyStateShown = tableId == null || fieldId == null;
 
   return (
@@ -40,7 +31,7 @@ export const DataModel = ({ params }: Props) => {
         </Title>
 
         <Box className={S.tableSectionContainer} h="100%" pb="lg" px="xl">
-          {tableId && <TableSection tableId={tableId} />}
+          {tableId && <TableSection params={params} tableId={tableId} />}
         </Box>
       </Stack>
 

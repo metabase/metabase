@@ -1,3 +1,4 @@
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -6,6 +7,7 @@ import {
   useUpdateTableMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { useDispatch } from "metabase/lib/redux";
 import {
   DiscardTableFieldValuesButton,
   FieldOrderPicker,
@@ -17,11 +19,16 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Card, Flex, Stack, Switch, Text } from "metabase/ui";
 import type { FieldId, TableId } from "metabase-types/api";
 
+import type { RouteParams } from "../../types";
+import { getUrl, parseRouteParams } from "../../utils";
+
 interface Props {
+  params: RouteParams;
   tableId: TableId;
 }
 
-export const TableSection = ({ tableId }: Props) => {
+export const TableSection = ({ params, tableId }: Props) => {
+  const dispatch = useDispatch();
   const {
     data: table,
     error,
@@ -89,6 +96,9 @@ export const TableSection = ({ tableId }: Props) => {
               // in this context field id will never be a string because it's a raw table field, so it's ok to cast
               field_order: fieldOrder as FieldId[],
             });
+          }}
+          onFieldClick={(fieldId) => {
+            dispatch(push(getUrl({ ...parseRouteParams(params), fieldId })));
           }}
         />
       </Stack>

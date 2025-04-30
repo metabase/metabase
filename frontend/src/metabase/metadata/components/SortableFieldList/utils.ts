@@ -1,15 +1,19 @@
 import _ from "underscore";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
-import type { DragEndEvent } from "metabase/core/components/Sortable";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { type IconName, isValidIconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { DimensionReference, Field, Table } from "metabase-types/api";
+import type {
+  DimensionReference,
+  Field,
+  FieldId,
+  Table,
+} from "metabase-types/api";
 
 interface Item {
-  id: DragEndEvent["id"];
+  id: FieldId;
   icon: IconName;
   label: string;
   position: number;
@@ -46,9 +50,10 @@ export function sortItems(items: Item[], order: Item["id"][]) {
   return items.sort((a, b) => indexMap[a.id] - indexMap[b.id]);
 }
 
-function getFieldId(field: Field): string | number {
-  if (Array.isArray(field.id)) {
-    return field.id[1];
+function getFieldId(field: Field): FieldId {
+  // fieldId should always be a number in this context because it's a raw table field
+  if (typeof field.id !== "number") {
+    throw new Error("Field comes from a query, not a db table");
   }
 
   return field.id;
@@ -83,12 +88,6 @@ function tableFieldToColumnMetadata(
   });
   const columns = Lib.visibleColumns(query, 0);
   const fieldId = getFieldId(field);
-
-  // fieldId should never be a string in this context because it's a raw table field
-  if (typeof fieldId === "string") {
-    throw new Error("Field comes from a query, not a db table");
-  }
-
   const fieldRef: DimensionReference = ["field", fieldId, null];
   const [index] = Lib.findColumnIndexesFromLegacyRefs(query, 0, columns, [
     fieldRef,
