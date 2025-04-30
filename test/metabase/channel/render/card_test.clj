@@ -285,6 +285,7 @@
                                                                                 card
                                                                                 nil
                                                                                 (qp/process-query (:dataset_query card))
-                                                                                {:channel.render/include-title? true}))]
+                                                                                {:channel.render/include-title? true
+                                                                                 :channel.render/include-href? true}))]
           (is (some? (lib.util.match/match-one rendered-card-content
                        [:a (_ :guard #(= (format "https://mb.com/question/%d" (:id card)) (:href %))) "A Card"]))))))))
