@@ -113,6 +113,7 @@ export const ListField = ({
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (
       event.key === "Enter" &&
+      filter.trim().length > 0 &&
       !_.find(augmentedOptions, (option) => option[0] === filter)
     ) {
       event.preventDefault();

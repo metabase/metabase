@@ -62,7 +62,7 @@ describe("StringInputWidget", () => {
       expect(button).toBeEnabled();
     });
 
-    it("should let you update the input with a new value", async () => {
+    it("should allow to update the input with a new value", async () => {
       const { setValue } = setup({ value: ["foo"] });
 
       const input = screen.getByRole("textbox");
@@ -72,7 +72,7 @@ describe("StringInputWidget", () => {
       expect(setValue).toHaveBeenCalledWith(["foobar"]);
     });
 
-    it("should let you update the input with an undefined value", async () => {
+    it("should allow to update the input with an undefined value", async () => {
       const { setValue } = setup({ value: ["a"] });
 
       const input = screen.getByRole("textbox");
@@ -82,13 +82,13 @@ describe("StringInputWidget", () => {
       expect(setValue).toHaveBeenCalledWith(undefined);
     });
 
-    it("should let you submit a value on enter", async () => {
+    it("should allow to submit a value on enter", async () => {
       const { setValue } = setup({ value: [] });
       await userEvent.type(screen.getByRole("textbox"), "foo{enter}");
       expect(setValue).toHaveBeenCalledWith(["foo"]);
     });
 
-    it("should let you submit an empty value on enter if the parameter is not required", async () => {
+    it("should allow to submit an empty value on enter if the parameter is not required", async () => {
       const { setValue } = setup({ value: ["foo"] });
       const input = screen.getByRole("textbox");
       await userEvent.clear(input);
@@ -96,7 +96,7 @@ describe("StringInputWidget", () => {
       expect(setValue).toHaveBeenCalledWith(undefined);
     });
 
-    it("should not let you submit an empty value on enter if the parameter is required", async () => {
+    it("should not allow to submit an empty value on enter if the parameter is required", async () => {
       const { setValue } = setup({
         value: ["foo"],
         parameter: createMockParameter({ required: true }),
@@ -140,7 +140,7 @@ describe("StringInputWidget", () => {
       expect(setValue).toHaveBeenCalledWith(undefined);
     });
 
-    it("should let you submit a value on enter", async () => {
+    it("should allow to submit a value on enter", async () => {
       const { setValue } = setup({ value: [], isMultiSelect: true });
 
       const input = screen.getByRole("combobox");
@@ -152,7 +152,7 @@ describe("StringInputWidget", () => {
       expect(setValue).toHaveBeenCalledWith(["foo"]);
     });
 
-    it("should let you submit multiple values on enter", async () => {
+    it("should allow to submit multiple values on enter", async () => {
       const { setValue } = setup({ value: [], isMultiSelect: true });
 
       const input = screen.getByRole("combobox");
@@ -165,7 +165,7 @@ describe("StringInputWidget", () => {
       expect(setValue).toHaveBeenCalledWith(["foo", "bar"]);
     });
 
-    it("should let you submit an empty value on enter if the parameter is not required", async () => {
+    it("should allow to submit an empty value on enter if the parameter is not required", async () => {
       const { setValue } = setup({ value: ["foo"], isMultiSelect: true });
 
       const input = screen.getByRole("combobox");
@@ -173,7 +173,7 @@ describe("StringInputWidget", () => {
       expect(setValue).toHaveBeenCalledWith(undefined);
     });
 
-    it("should not let you submit an empty value on enter if the parameter is required", async () => {
+    it("should not allow to submit an empty value on enter if the parameter is required", async () => {
       const { setValue } = setup({
         value: ["foo"],
         parameter: createMockParameter({ required: true }),
