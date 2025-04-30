@@ -15,23 +15,21 @@ describe("scenarios > embedding > sdk iframe embedding > iframe validation", () 
       params: {
         target: "#not-existent-target",
       },
-      expectedError:
-        '[metabase.embed] cannot find embed container "#not-existent-target"',
+      expectedError: 'cannot find embed container "#not-existent-target"',
     },
     {
       name: "throws when target element is undefined",
       params: {
         target: undefined,
       },
-      expectedError: '[metabase.embed] cannot find embed container "undefined"',
+      expectedError: 'cannot find embed container "undefined"',
     },
     {
       name: "throws when api key is not provided",
       params: {
         apiKey: undefined,
       },
-      expectedError:
-        "[metabase.embed] api key and instance url must be provided",
+      expectedError: "api key and instance url must be provided",
     },
     {
       name: "throws when instance url is not provided",
@@ -39,8 +37,7 @@ describe("scenarios > embedding > sdk iframe embedding > iframe validation", () 
         apiKey: "foobar",
         instanceUrl: undefined,
       },
-      expectedError:
-        "[metabase.embed] api key and instance url must be provided",
+      expectedError: "api key and instance url must be provided",
     },
     {
       name: "throws when both question id and dashboard id are provided",
@@ -49,7 +46,7 @@ describe("scenarios > embedding > sdk iframe embedding > iframe validation", () 
         dashboardId: 10,
       },
       expectedError:
-        "[metabase.embed] can't use both dashboardId and questionId at the same time",
+        "can't use both dashboardId and questionId at the same time",
     },
     {
       name: "throws when question id is provided in the exploration template",
@@ -58,7 +55,7 @@ describe("scenarios > embedding > sdk iframe embedding > iframe validation", () 
         questionId: 10,
       },
       expectedError:
-        "[metabase.embed] the exploration template can't be used with dashboardId or questionId",
+        "the exploration template can't be used with dashboardId or questionId",
     },
     {
       name: "throws when dashboard id is provided in the exploration template",
@@ -67,7 +64,7 @@ describe("scenarios > embedding > sdk iframe embedding > iframe validation", () 
         dashboardId: 10,
       },
       expectedError:
-        "[metabase.embed] the exploration template can't be used with dashboardId or questionId",
+        "the exploration template can't be used with dashboardId or questionId",
     },
   ];
 
@@ -83,7 +80,10 @@ describe("scenarios > embedding > sdk iframe embedding > iframe validation", () 
         expectErrors: true,
       });
 
-      cy.get("@consoleError").should("be.calledWith", expectedError);
+      cy.get("@consoleError").should(
+        "be.calledWith",
+        `[metabase.embed] ${expectedError}`,
+      );
     });
   });
 });
