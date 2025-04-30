@@ -536,7 +536,7 @@
           metabase.search.ingestion
           metabase.search.init
           metabase.search.spec}
-   :uses #{analytics api audit config db driver models permissions premium-features settings request task util}}
+   :uses #{analytics api audit config db driver models permissions premium-features settings request startup task util}}
 
   segments
   {:api  #{metabase.segments.api}
@@ -583,6 +583,10 @@
            metabase.sso.core
            metabase.sso.init}
    :uses #{api models permissions premium-features settings util}}
+
+  startup
+  {:api  #{metabase.startup.core}
+   :uses #{util}}
 
   sync
   {:api #{metabase.sync.api
