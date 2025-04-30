@@ -30,7 +30,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.upload :as upload]
+   [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -736,21 +736,21 @@
 (defmethod driver/upload-type->database-type :mysql
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar-255              [[:varchar 255]]
-    ::upload/text                     [:text]
-    ::upload/int                      [:bigint]
-    ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
-    ::upload/float                    [:double]
-    ::upload/boolean                  [:boolean]
-    ::upload/date                     [:date]
-    ::upload/datetime                 [:datetime]
-    ::upload/offset-datetime          [:timestamp]))
+    :metabase.upload.types/varchar-255              [[:varchar 255]]
+    :metabase.upload.types/text                     [:text]
+    :metabase.upload.types/int                      [:bigint]
+    :metabase.upload.types/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
+    :metabase.upload.types/float                    [:double]
+    :metabase.upload.types/boolean                  [:boolean]
+    :metabase.upload.types/date                     [:date]
+    :metabase.upload.types/datetime                 [:datetime]
+    :metabase.upload.types/offset-datetime          [:timestamp]))
 
 (defmethod driver/allowed-promotions :mysql
   [_driver]
-  {::upload/int     #{::upload/float}
-   ::upload/boolean #{::upload/int
-                      ::upload/float}})
+  {:metabase.upload.types/int     #{:metabase.upload.types/float}
+   :metabase.upload.types/boolean #{:metabase.upload.types/int
+                                    :metabase.upload.types/float}})
 
 (defmethod driver/create-auto-pk-with-append-csv? :mysql [_driver] true)
 

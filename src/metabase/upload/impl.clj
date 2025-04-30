@@ -1,4 +1,4 @@
-(ns metabase.upload
+(ns metabase.upload.impl
   (:require
    [clj-bom.core :as bom]
    [clojure.data :as data]
@@ -26,9 +26,9 @@
    [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.permissions.core :as perms]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.sync.core :as sync]
    [metabase.upload.parsing :as upload-parsing]
+   [metabase.upload.settings :as upload.settings]
    [metabase.upload.types :as upload-types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -449,7 +449,7 @@
                         [:in [:lower :name] (keys field->display-name)]]})))
 
 (defn- uploads-enabled? []
-  (some? (:db_id (public-settings/uploads-settings))))
+  (some? (:db_id (upload.settings/uploads-settings))))
 
 (defn- can-use-uploads-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database for the subset of reasons common to all uploads
