@@ -36,9 +36,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       </Flex>,
     );
 
-    H.assertSdkNotebookEditorUsable(getSdkRoot());
-
     getSdkRoot().within(() => {
+      H.assertSdkNotebookEditorUsable(getSdkRoot());
+
       // Should be able to save to a new question right away
       cy.findByRole("button", { name: "Save" }).click();
     });
