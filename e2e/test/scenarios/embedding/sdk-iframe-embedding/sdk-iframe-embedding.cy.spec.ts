@@ -86,4 +86,22 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
       cy.findByText("2000 Zeilen").should("exist");
     });
   });
+
+  it("destroys the iframe when embed.destroy is called", () => {
+    const frame = H.loadSdkIframeEmbedTestPage({
+      questionId: ORDERS_QUESTION_ID,
+    });
+
+    cy.wait("@getCardQuery");
+    cy.get("iframe").should("be.visible");
+
+    cy.log("1. we call embed.destroy to remove the iframe");
+    frame.window().then((win) => {
+      // @ts-expect-error -- this is within the iframe
+      win.embed.destroy();
+    });
+
+    cy.log("2. iframe should be removed");
+    cy.get("iframe").should("not.exist");
+  });
 });
