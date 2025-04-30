@@ -11,6 +11,9 @@ export type SdkIframeEmbedMessage = {
   data: SdkIframeEmbedSettings;
 };
 
+/** Template to use for the embedded question or dashboard. Will be expanded in the future. */
+export type SdkIframeEmbedTemplate = "exploration";
+
 /** Settings used by the sdk embed route */
 export interface SdkIframeEmbedSettings {
   apiKey: string;
@@ -18,7 +21,7 @@ export interface SdkIframeEmbedSettings {
 
   dashboardId?: number | string;
   questionId?: number | string;
-  notebookEditor?: boolean;
+  template?: SdkIframeEmbedTemplate;
 
   theme?: MetabaseTheme;
   locale?: string;

@@ -72,10 +72,10 @@ export const SdkIframeEmbedView = ({
 }: {
   settings: SdkIframeEmbedSettings;
 }) => {
-  const { dashboardId, questionId, notebookEditor } = settings;
+  const { dashboardId, questionId, template } = settings;
 
-  return match({ dashboardId, questionId, notebookEditor })
-    .with({ notebookEditor: true }, () => (
+  return match({ dashboardId, questionId, template })
+    .with({ template: "exploration" }, () => (
       <InteractiveQuestion
         questionId="new"
         height="100%"
