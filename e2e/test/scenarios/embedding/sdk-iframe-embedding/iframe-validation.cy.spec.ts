@@ -54,7 +54,7 @@ describe("scenarios > embedding > sdk iframe embedding > iframe validation", () 
     {
       name: "throws when question id is provided in the exploration template",
       params: {
-        template: "exploration" as const,
+        template: "exploration",
         questionId: 10,
       },
       expectedError:
@@ -63,7 +63,7 @@ describe("scenarios > embedding > sdk iframe embedding > iframe validation", () 
     {
       name: "throws when dashboard id is provided in the exploration template",
       params: {
-        template: "exploration" as const,
+        template: "exploration",
         dashboardId: 10,
       },
       expectedError:
