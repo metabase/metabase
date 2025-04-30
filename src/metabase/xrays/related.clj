@@ -111,12 +111,6 @@
                              :type :metric
                              :archived false)))
 
-(defn- legacy-metrics-for-table
-  [table]
-  (filter-visible (t2/select :xrays/Metric
-                             :table_id (:id table)
-                             :archived false)))
-
 (defn- segments-for-table
   [table]
   (filter-visible (t2/select :model/Segment
@@ -248,10 +242,6 @@
   [metric]
   (let [table (t2/select-one :model/Table :id (:table_id metric))]
     {:table    table
-     :metrics  (->> table
-                    legacy-metrics-for-table
-                    (rank-by-similarity metric)
-                    interesting-mix)
      :segments (->> table
                     segments-for-table
                     (rank-by-similarity metric)

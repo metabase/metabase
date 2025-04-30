@@ -204,29 +204,28 @@
 
 (deftest compare-nested-query-test
   (testing "Ad-hoc X-Rays should work for queries have Card source queries (#15655)"
-    (mt/dataset test-data
-      (let [card-query (mt/native-query {:query "select * from people"})]
-        (mt/with-temp [:model/Collection {collection-id :id} {}
-                       :model/Card       {card-id :id} (merge
-                                                        (mt/card-with-source-metadata-for-query card-query)
-                                                        {:name            "15655_Q1"
-                                                         :collection_id   collection-id})]
-          (let [query      {:database (mt/id)
-                            :type     :query
-                            :query    {:source-table (format "card__%d" card-id)
-                                       :breakout     [[:field "SOURCE" {:base-type :type/Text}]]
-                                       :aggregation  [[:count]]}}
-                cell-query [:= [:field "SOURCE" {:base-type :type/Text}] "Affiliate"]]
-            (testing "X-Ray"
-              (is (some? (api-call! "adhoc/%s/cell/%s"
-                                    (map magic.util/encode-base64-json [query cell-query])
-                                    #(revoke-collection-permissions! collection-id)))))
-            (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
-            (testing "Compare"
-              (is (some? (api-call! "adhoc/%s/cell/%s/compare/table/%s"
-                                    (concat (map magic.util/encode-base64-json [query cell-query])
-                                            [(format "card__%d" card-id)])
-                                    #(revoke-collection-permissions! collection-id)))))))))))
+    (let [card-query (mt/native-query {:query "select * from people"})]
+      (mt/with-temp [:model/Collection {collection-id :id} {}
+                     :model/Card       {card-id :id} (merge
+                                                      (mt/card-with-source-metadata-for-query card-query)
+                                                      {:name            "15655_Q1"
+                                                       :collection_id   collection-id})]
+        (let [query      {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table (format "card__%d" card-id)
+                                     :breakout     [[:field "SOURCE" {:base-type :type/Text}]]
+                                     :aggregation  [[:count]]}}
+              cell-query [:= [:field "SOURCE" {:base-type :type/Text}] "Affiliate"]]
+          (testing "X-Ray"
+            (is (some? (api-call! "adhoc/%s/cell/%s"
+                                  (map magic.util/encode-base64-json [query cell-query])
+                                  #(revoke-collection-permissions! collection-id)))))
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+          (testing "Compare"
+            (is (some? (api-call! "adhoc/%s/cell/%s/compare/table/%s"
+                                  (concat (map magic.util/encode-base64-json [query cell-query])
+                                          [(format "card__%d" card-id)])
+                                  #(revoke-collection-permissions! collection-id))))))))))
 
 ;;; ------------------- Transforms -------------------
 

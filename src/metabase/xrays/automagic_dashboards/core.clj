@@ -142,7 +142,6 @@
    In practice, we gather the entity data (including fields), the dashboard templates, attempt to bind dimensions to
    fields specified in the template, then build metrics, filters, and finally cards based on the bound dimensions."
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [kixi.stats.core :as stats]
@@ -155,6 +154,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru trun]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.automagic-dashboards.combination :as combination]
@@ -738,7 +738,8 @@
                  first
                  qp.util/normalize-token
                  (= :metric))
-           (->> aggregation-clause second (t2/select-one :xrays/Metric :id))
+           ;; any [:metric ...] MBQL clauses these days are V2 Metrics and Automagic Dashboards do not handle them.
+           (log/error "X-Rays do not support V2 Metrics.")
            (let [table-id (table-id question)]
              (mi/instance :xrays/Metric {:definition {:aggregation  [aggregation-clause]
                                                       :source-table table-id}
