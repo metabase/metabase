@@ -6,7 +6,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as ingestion]
-   [metabase.startup :as startup]
+   [metabase.startup.core :as startup]
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.cluster-lock :as cluster-lock]
@@ -72,7 +72,7 @@
   SearchIndexReindex [_ctx]
   (reindex!))
 
-(defmethod startup/def-setup-logic! ::SearchIndexInit [_]
+(defmethod startup/def-startup-logic! ::SearchIndexInit [_]
   (quick-task/submit-task! (init!)))
 
 (defmethod task/init! ::SearchIndexReindex [_]

@@ -585,7 +585,7 @@
    :uses #{api models permissions premium-features settings util}}
 
   startup
-  {:api  #{metabase.startup}
+  {:api  #{metabase.startup.core}
    :uses #{util}}
 
   sync

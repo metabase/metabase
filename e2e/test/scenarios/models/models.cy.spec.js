@@ -351,7 +351,7 @@ describe("scenarios > models", () => {
           .and("contain.text", "Orders");
 
         cy.findByText("Everywhere").click();
-        getResults().should("have.length", 6);
+        getResults().should("have.length", 5);
         cy.findByText("5 results").should("be.visible");
         getResults()
           .eq(0)
