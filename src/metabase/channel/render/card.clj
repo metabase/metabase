@@ -155,7 +155,7 @@
    (io/resource "frontend_client/app/assets/img/exports-branding-logo.png")
    io/input-stream
    IOUtils/toByteArray
-          image-bundle/render-img-data-uri)))
+   image-bundle/render-img-data-uri)))
 
 (def branding-content
   "Generates a branding content that we send below charts in dashboard subscriptions and Slack notifications."
