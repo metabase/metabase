@@ -1,7 +1,8 @@
 import { render, screen } from "__support__/ui";
-import ValueComponent from "metabase/components/Value";
 
-import SingleSelectListField from ".";
+import ValueComponent from "../../Value";
+
+import SingleSelectListField from "./index";
 
 const value = [];
 const firstOption = "AK";
