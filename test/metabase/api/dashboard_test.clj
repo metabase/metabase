@@ -1815,6 +1815,8 @@
                       :card_id                int?
                       :visualization_settings {:table_id table-id}}]
                     (:dashcards resp))))
+          (testing "a clear name"
+            (is (= "Venues (editable)" (:name (t2/select-one :model/Card card-id)))))
           (testing "if we save the dashboard again, we keep using the same card, and preserve its settings"
             (t2/update! :model/Card card-id {:visualization_settings {:editable? true, :other_settings 42}})
             (let [new-resp (mt/user-http-request :rasta :put 200 url (assoc-in dash-map [:dashcards 0 :card_id] card-id))]
