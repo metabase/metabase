@@ -349,7 +349,7 @@
 
 (defmethod sql.qp/->honeysql [:mysql :date]
   [driver [_ value]]
-  [:str_to_date (sql.qp/->honeysql driver value) "%Y-%m-%d"])
+  (h2x/maybe-cast :date (sql.qp/->honeysql driver value)))
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
