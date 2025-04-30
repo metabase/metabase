@@ -12,7 +12,13 @@
    [metabase.util.date-2 :as u.date])
   (:import
    (clojure.lang ISeq)
-   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+   (java.time
+    LocalDate
+    LocalDateTime
+    LocalTime
+    OffsetDateTime
+    OffsetTime
+    ZonedDateTime)))
 
 (defn export-filename-timestamp
   "Generates the current timestamp as a string to use in export filenames."
