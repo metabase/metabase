@@ -68,19 +68,6 @@ export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
   });
 }
 
-export function getEntityIdFromResource(
-  resourceType: "dashboard" | "question",
-  resourceId: number,
-) {
-  const apiEntityName = resourceType === "question" ? "card" : resourceType;
-
-  return cy
-    .request("GET", `/api/${apiEntityName}/${resourceId}`)
-    .then(({ body }) => {
-      return body.entity_id;
-    });
-}
-
 /**
  * Base HTML template for embedding test pages
  */
