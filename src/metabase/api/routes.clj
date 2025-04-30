@@ -176,8 +176,8 @@
    "/tiles"                (+auth 'metabase.tiles.api)
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
    "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)
-   "/user"                 (+auth 'metabase.api.user)
    "/upload"               (+auth 'metabase.upload.api)
+   "/user"                 (+auth 'metabase.api.user)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)
    "/util"                 'metabase.api.util})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
