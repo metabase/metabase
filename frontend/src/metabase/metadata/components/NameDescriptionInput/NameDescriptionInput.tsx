@@ -1,8 +1,7 @@
-import { useLayoutEffect, useState } from "react";
-
-import { Flex, Icon, TextInput } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 import S from "./NameDescriptionInput.module.css";
+import { TextInputBlurChange } from "./TextInputBlurChange";
 
 interface Props {
   description: string;
@@ -13,9 +12,6 @@ interface Props {
   onNameChange: (name: string) => void;
 }
 
-/**
- * Controlled component that fires on*Change events on blur
- */
 export const NameDescriptionInput = ({
   description,
   descriptionPlaceholder,
@@ -24,90 +20,30 @@ export const NameDescriptionInput = ({
   onDescriptionChange,
   onNameChange,
 }: Props) => {
-  const [nameState, setNameState] = useState(name);
-  const [descriptionState, setDescriptionState] = useState(description);
-  const [isNameFocused, setIsNameFocused] = useState(false);
-  const [isNameHovered, setIsNameHovered] = useState(false);
-  const [isDescriptionFocused, setIsDescriptionFocused] = useState(false);
-  const [isDescriptionHovered, setIsDescriptionHovered] = useState(false);
-
-  useLayoutEffect(() => {
-    setNameState(name);
-  }, [name]);
-
-  useLayoutEffect(() => {
-    setDescriptionState(description);
-  }, [description]);
-
   return (
-    <div>
-      <TextInput
+    <Box>
+      <TextInputBlurChange
         classNames={{
           input: S.nameInput,
           root: S.name,
         }}
         fw="bold"
         placeholder={namePlaceholder}
-        rightSection={
-          isNameHovered && !isNameFocused ? (
-            <Flex className={S.rightSection}>
-              <Icon name="pencil" size={12} />
-            </Flex>
-          ) : undefined
-        }
-        rightSectionPointerEvents="none"
+        required
         size="lg"
-        value={nameState}
-        onBlur={(event) => {
-          setIsNameFocused(false);
-
-          const newValue = event.target.value;
-
-          // prevent empty names
-          if (!newValue.trim()) {
-            setNameState(name);
-            return;
-          }
-
-          if (name !== newValue) {
-            onNameChange(newValue);
-          }
-        }}
-        onChange={(event) => setNameState(event.target.value)}
-        onFocus={() => setIsNameFocused(true)}
-        onMouseEnter={() => setIsNameHovered(true)}
-        onMouseLeave={() => setIsNameHovered(false)}
+        value={name}
+        onChange={onNameChange}
       />
 
-      <TextInput
+      <TextInputBlurChange
         classNames={{
           input: S.descriptionInput,
           root: S.description,
         }}
         placeholder={descriptionPlaceholder}
-        rightSection={
-          isDescriptionHovered && !isDescriptionFocused ? (
-            <Flex className={S.rightSection}>
-              <Icon name="pencil" size={12} />
-            </Flex>
-          ) : undefined
-        }
-        rightSectionPointerEvents="none"
-        value={descriptionState}
-        onBlur={(event) => {
-          setIsDescriptionFocused(false);
-
-          const newValue = event.target.value;
-
-          if (description !== newValue) {
-            onDescriptionChange(newValue);
-          }
-        }}
-        onChange={(event) => setDescriptionState(event.target.value)}
-        onFocus={() => setIsDescriptionFocused(true)}
-        onMouseEnter={() => setIsDescriptionHovered(true)}
-        onMouseLeave={() => setIsDescriptionHovered(false)}
+        value={description}
+        onChange={onDescriptionChange}
       />
-    </div>
+    </Box>
   );
 };

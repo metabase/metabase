@@ -2,15 +2,9 @@ import _ from "underscore";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { type IconName, isValidIconName } from "metabase/ui";
+import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type {
-  DimensionReference,
-  Field,
-  FieldId,
-  Table,
-} from "metabase-types/api";
+import type { Field, FieldId, Table } from "metabase-types/api";
 
 interface Item {
   id: FieldId;
@@ -29,11 +23,9 @@ export function getItems(table: Table): Item[] {
   }
 
   return table.fields.map((field) => {
-    const icon = getFieldIcon(table, field);
-
     return {
       id: getFieldId(field),
-      icon: isValidIconName(icon) ? icon : "empty",
+      icon: getColumnIcon(Lib.legacyColumnTypeInfo(field)),
       label: getFieldDisplayName(field) || NULL_DISPLAY_VALUE,
       position: field.position,
     };
@@ -61,60 +53,4 @@ function getFieldId(field: Field): FieldId {
 
 function getFieldDisplayName(field: Field): string {
   return field.dimensions?.[0]?.name || field.display_name || field.name;
-}
-
-export function getFieldIcon(table: Table, field: Field): IconName {
-  try {
-    const column = tableFieldToColumnMetadata(table, field);
-    return getColumnIcon(column);
-  } catch {
-    return "list"; // the same fallback as in getColumnIcon
-  }
-}
-
-function tableFieldToColumnMetadata(
-  table: Table,
-  field: Field,
-): Lib.ColumnMetadata {
-  const metadata = createMinimumMetadata(table, field);
-  const databaseId = table.db_id;
-  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
-  const query = Lib.fromLegacyQuery(databaseId, metadataProvider, {
-    type: "query",
-    database: databaseId,
-    query: {
-      "source-table": field.table_id,
-    },
-  });
-  const columns = Lib.visibleColumns(query, 0);
-  const fieldId = getFieldId(field);
-  const fieldRef: DimensionReference = ["field", fieldId, null];
-  const [index] = Lib.findColumnIndexesFromLegacyRefs(query, 0, columns, [
-    fieldRef,
-  ]);
-  const column = columns[index];
-  return column;
-}
-
-/**
- * getColumnIcon requires us to use MLv2, which requires us to construct a query,
- * which requires us to use the Metadata object.
- *
- * We don't want to use useSelector(getMetadata) since that would make this module
- * depend on entity framework. We'd also have to use Tables.actions.fetchMetadataDeprecated
- * to populate the redux store with field data.
- *
- * Luckily we don't need the entire metadata object here - just the Table and the Field.
- * metabase-lib/v1/Metadata is typed to use wrapper classes (metabase-lib/v1/*) but
- * raw API-returned objects work just fine - hence @ts-expect-error.
- */
-function createMinimumMetadata(table: Table, field: Field): Metadata {
-  const metadata: Metadata = {
-    // @ts-expect-error now we know
-    tables: { [table.id]: table },
-    // @ts-expect-error we know now
-    fields: { [field.id]: field },
-  };
-
-  return metadata;
 }
