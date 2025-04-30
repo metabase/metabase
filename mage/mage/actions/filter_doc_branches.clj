@@ -45,13 +45,13 @@
    run it from: https://github.com/metabase/docs.metabase.github.io/actions/workflows/process_docs_changes.yml"
   [& args]
   (let [branchname (or (first args) (usage))
-        _ (c/ice "Checking if branchname " [:green branchname] " should trigger a docs build")
+        _ (println "Checking if branchname " (c/green branchname) " should trigger a docs build")
         [category release-num] (categorize-branchname branchname)]
     (case category
       :master (println "Master branch detected.")
-      :release (println "Release branch detected. Release number: " release-num)
-      :test (println "Test branch detected. Branchname: " branchname)
-      (do (println "Unpublishable branchname: " branchname)
+      :release (println "Release branch detected. Release number:" release-num)
+      :test (println "Test branch detected. Branchname:" branchname)
+      (do (println "Unpublishable branchname:" branchname)
           (System/exit 1)))
     (System/exit 0)))
 
