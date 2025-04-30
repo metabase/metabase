@@ -1,9 +1,11 @@
 import { useMemo } from "react";
 
+// XXX: Create plugins for this
+// eslint-disable-next-line no-restricted-imports
+import { DataSourceSelector } from "embedding-sdk/components/private/data-picker/DataSelector";
 import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { getEmbedOptions } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
