@@ -51,10 +51,11 @@ export function useTableEditingModalControllerWithObjectId({
 
       default:
         if (datasetData) {
-          const currentObjectIdNumber = Number(currentObjectId);
           const pkColumnIndex = datasetData.cols.findIndex(isPK);
           const rowIndex = datasetData.rows.findIndex(
-            (row) => row[pkColumnIndex] === currentObjectIdNumber,
+            (row) =>
+              row[pkColumnIndex] === currentObjectId ||
+              row[pkColumnIndex] === Number(currentObjectId),
           );
 
           if (rowIndex !== -1) {
