@@ -23,7 +23,7 @@ export interface BaseEmbedTestPageOptions {
   theme?: MetabaseTheme;
 
   // Options for the test page
-  expectErrors?: boolean;
+  skipPageVisit?: boolean;
   insertHtml?: {
     head?: string;
     beforeEmbed?: string;
@@ -35,7 +35,7 @@ export interface BaseEmbedTestPageOptions {
  * Creates and loads a test fixture for SDK iframe embedding tests
  */
 export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
-  expectErrors = false,
+  skipPageVisit = false,
   ...options
 }: T) {
   return cy.get("@apiKey").then((apiKey) => {
@@ -51,15 +51,7 @@ export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
       headers: { "content-type": "text/html" },
     }).as("dynamicPage");
 
-    if (expectErrors) {
-      cy.visit("/sdk-iframe-test-page", {
-        onBeforeLoad(win) {
-          cy.stub(win.console, "error").as("consoleError");
-        },
-      });
-
-      cy.get("@consoleError").should("be.called");
-
+    if (skipPageVisit) {
       return;
     }
 
@@ -137,14 +129,21 @@ function getSdkIframeEmbedHtml({
   `;
 }
 
-export function prepareSdkIframeEmbedTest() {
+export function prepareSdkIframeEmbedTest({
+  withTokenFeatures = true,
+}: {
+  withTokenFeatures?: boolean;
+} = {}) {
   // TODO: use a less privileged group that has "Our analytics" view permission
   const ADMIN_GROUP_ID = 2;
 
   restore();
   cy.signInAsAdmin();
-  mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
-  setTokenFeatures("all");
+
+  if (withTokenFeatures) {
+    mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
+    setTokenFeatures("all");
+  }
 
   createApiKey("test iframe sdk embedding", ADMIN_GROUP_ID).then(({ body }) => {
     cy.wrap(body.unmasked_key).as("apiKey");

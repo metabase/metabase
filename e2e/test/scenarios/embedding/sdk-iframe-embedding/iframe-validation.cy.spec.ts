@@ -77,7 +77,13 @@ describe("scenarios > embedding > sdk iframe embedding > iframe validation", () 
     it(name, () => {
       H.loadSdkIframeEmbedTestPage({
         ...params,
-        expectErrors: true,
+        skipPageVisit: true,
+      });
+
+      cy.visit("/sdk-iframe-test-page", {
+        onBeforeLoad(win) {
+          cy.stub(win.console, "error").as("consoleError");
+        },
       });
 
       cy.get("@consoleError").should(
