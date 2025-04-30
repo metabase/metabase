@@ -46,7 +46,9 @@ describe("DiscardTableFieldValuesButton", () => {
         method: "POST",
       }),
     ).toHaveLength(1);
-    expect(button).toHaveTextContent("Discard triggered!");
+    await waitFor(() => {
+      expect(button).toHaveTextContent("Discard triggered!");
+    });
 
     await act(() => {
       jest.advanceTimersByTime(2000);
@@ -66,7 +68,9 @@ describe("DiscardTableFieldValuesButton", () => {
         method: "POST",
       }),
     ).toHaveLength(1);
-    expect(button).toHaveTextContent("Discard triggered!");
+    await waitFor(() => {
+      expect(button).toHaveTextContent("Discard triggered!");
+    });
 
     await act(() => {
       jest.advanceTimersByTime(1000);
@@ -111,7 +115,9 @@ describe("DiscardTableFieldValuesButton", () => {
         method: "POST",
       }),
     ).toHaveLength(1);
-    expect(button).toHaveTextContent("Discard cached field values");
+    await waitFor(() => {
+      expect(button).toHaveTextContent("Discard cached field values");
+    });
 
     await waitFor(() => {
       const undo = screen.getByTestId("undo-list");

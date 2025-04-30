@@ -46,7 +46,9 @@ describe("RescanTableFieldsButton", () => {
         method: "POST",
       }),
     ).toHaveLength(1);
-    expect(button).toHaveTextContent("Scan triggered!");
+    await waitFor(() => {
+      expect(button).toHaveTextContent("Scan triggered!");
+    });
 
     await act(() => {
       jest.advanceTimersByTime(2000);
@@ -66,7 +68,9 @@ describe("RescanTableFieldsButton", () => {
         method: "POST",
       }),
     ).toHaveLength(1);
-    expect(button).toHaveTextContent("Scan triggered!");
+    await waitFor(() => {
+      expect(button).toHaveTextContent("Scan triggered!");
+    });
 
     await act(() => {
       jest.advanceTimersByTime(1000);
@@ -111,7 +115,9 @@ describe("RescanTableFieldsButton", () => {
         method: "POST",
       }),
     ).toHaveLength(1);
-    expect(button).toHaveTextContent("Re-scan table");
+    await waitFor(() => {
+      expect(button).toHaveTextContent("Re-scan table");
+    });
 
     await waitFor(() => {
       const undo = screen.getByTestId("undo-list");
