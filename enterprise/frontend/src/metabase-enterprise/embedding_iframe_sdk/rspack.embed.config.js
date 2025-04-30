@@ -21,9 +21,6 @@ module.exports = {
     globalObject: "this",
   },
   devServer: { hot: false },
-  watchOptions: {
-    ignored: ["**/node_modules", SCRIPT_TAG_PATH],
-  },
   module: {
     rules: [
       {

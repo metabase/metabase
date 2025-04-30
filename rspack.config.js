@@ -23,8 +23,6 @@ const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const E2E_PATH = __dirname + "/e2e";
 
-const sdkIframeEmbedConfig = require(`${ENTERPRISE_SRC_PATH}/embedding_iframe_sdk/rspack.embed.config.js`)
-
 const PORT = process.env.PORT || 8080;
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const devMode = WEBPACK_BUNDLE !== "production";
@@ -68,7 +66,7 @@ const SWC_LOADER = {
 
 const CSS_CONFIG = {
   modules: {
-    auto: filename =>
+    auto: (filename) =>
       !filename.includes("node_modules") && !filename.includes("vendor.css"),
     localIdentName: devMode
       ? "[name]__[local]___[hash:base64:5]"
@@ -79,12 +77,12 @@ const CSS_CONFIG = {
 
 class OnScriptError {
   apply(compiler) {
-    compiler.hooks.compilation.tap("OnScriptError", compilation => {
+    compiler.hooks.compilation.tap("OnScriptError", (compilation) => {
       HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(
         "OnScriptError",
         (data, cb) => {
           // Manipulate the content
-          data.assetTags.scripts.forEach(script => {
+          data.assetTags.scripts.forEach((script) => {
             script.attributes.onerror = `Metabase.AssetErrorLoad(this)`;
           });
           // Tell webpack to move on
@@ -379,4 +377,11 @@ if (devMode) {
   );
 }
 
-module.exports = [config, sdkIframeEmbedConfig];
+const configs = [config];
+
+if (process.env.MB_EDITION === "ee") {
+  const SDK_IFRAME_EMBED_RSPACK_PATH = `${ENTERPRISE_SRC_PATH}/embedding_iframe_sdk/rspack.embed.config.js`;
+  configs.push(require(SDK_IFRAME_EMBED_RSPACK_PATH));
+}
+
+module.exports = configs;
