@@ -18,7 +18,7 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
-   [metabase.internal-stats :as internal-stats]
+   [metabase.internal-stats.core :as internal-stats]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]

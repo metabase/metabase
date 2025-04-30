@@ -223,7 +223,7 @@
    :uses #{api config events models permissions plugins premium-features util enterprise/enhancements}}
 
   internal-stats
-  {:api #{metabase.internal-stats}
+  {:api #{metabase.internal-stats.core}
    :uses #{db models}}
 
   legacy-mbql
