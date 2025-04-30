@@ -415,7 +415,7 @@
   [col->val-source id->new-card]
   (let [update-cvm-item (fn [item]
                           (if-let [source-id (:sourceId item)]
-                            (if-let [[_ card-id] (and (string? source-id) 
+                            (if-let [[_ card-id] (and (string? source-id)
                                                       (re-find #"^card:(\d+)$" source-id))]
                               (if-let [new-card (get id->new-card (Long/parseLong card-id))]
                                 (assoc item :sourceId (str "card:" (:id new-card)))

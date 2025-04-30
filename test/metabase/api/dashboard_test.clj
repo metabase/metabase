@@ -59,20 +59,20 @@
                            :COLUMN_5 [{:sourceId "card:abc" :originalName "invalid" :name "COLUMN_5"}]
                            :COLUMN_6 [{:name "No source ID"}]}
           result (#'api.dashboard/update-colvalmap-setting col->val-source id->new-card)]
-      
+
       (testing "should update valid card IDs that exist in the map"
         (is (= "card:456" (-> result :COLUMN_1 first :sourceId)))
         (is (= "card:987" (-> result :COLUMN_2 first :sourceId))))
-      
+
       (testing "should not modify card IDs that don't exist in the map"
         (is (= "card:999" (-> result :COLUMN_3 first :sourceId))))
-      
+
       (testing "should not modify non-card sourceIds"
         (is (= "not-a-card" (-> result :COLUMN_4 first :sourceId))))
-      
+
       (testing "should not modify invalid card IDs (non-numeric)"
         (is (= "card:abc" (-> result :COLUMN_5 first :sourceId))))
-      
+
       (testing "should handle items without sourceId"
         (is (= {:name "No source ID"} (-> result :COLUMN_6 first)))))))
 
