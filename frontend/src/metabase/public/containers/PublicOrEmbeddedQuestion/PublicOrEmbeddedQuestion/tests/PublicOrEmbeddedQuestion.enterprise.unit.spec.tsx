@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { getIcon, screen, within } from "__support__/ui";
 
 import { type SetupOpts, setup } from "./setup";
@@ -19,6 +20,10 @@ function setupEnterprise(opts?: Partial<SetupOpts>) {
 }
 
 describe("PublicOrEmbeddedQuestion", () => {
+  beforeEach(() => {
+    setupLastDownloadFormatEndpoints();
+  });
+
   describe("downloads flag", () => {
     it("should allow downloading the results when downloads are enabled", async () => {
       await setupEnterprise({ hash: { downloads: "true" } });

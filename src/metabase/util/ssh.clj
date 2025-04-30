@@ -4,7 +4,7 @@
   `metabase.driver.sql-jdbc.connection.ssh-tunnel` or something like that."
   (:require
    [metabase.driver :as driver]
-   [metabase.models.setting :refer [defsetting]]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log])

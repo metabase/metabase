@@ -17,7 +17,7 @@
     :model/ApplicationPermissionsRevision    metabase.models.application-permissions-revision
     :model/AuditLog                          metabase.models.audit-log
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark
-    :model/CacheConfig                       metabase.models.cache-config
+    :model/CacheConfig                       metabase.cache.models.cache-config
     :model/Card                              metabase.models.card
     :model/CardBookmark                      metabase.bookmarks.models.bookmark
     :model/Channel                           metabase.channel.models.channel
@@ -66,8 +66,8 @@
     :model/PulseChannelRecipient             metabase.pulse.models.pulse-channel-recipient
     :model/Query                             metabase.models.query
     :model/QueryAction                       metabase.actions.models
-    :model/QueryAnalysis                     metabase.models.query-analysis
-    :model/QueryCache                        metabase.models.query-cache
+    :model/QueryAnalysis                     metabase.query-analysis.models.query-analysis
+    :model/QueryCache                        metabase.cache.models.query-cache
     :model/QueryExecution                    metabase.models.query-execution
     :model/QueryField                        metabase.models.query-field
     :model/QueryTable                        metabase.models.query-table
@@ -77,10 +77,10 @@
     :model/Secret                            metabase.models.secret
     :model/Segment                           metabase.segments.models.segment
     :model/Session                           metabase.session.models.session
-    :model/Setting                           metabase.models.setting
+    :model/Setting                           metabase.settings.models.setting
     :model/Table                             metabase.models.table
     :model/TablePrivileges                   metabase.models.table-privileges
-    :model/TaskHistory                       metabase.models.task-history
+    :model/TaskHistory                       metabase.task-history.models.task-history
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
     :model/User                              metabase.models.user

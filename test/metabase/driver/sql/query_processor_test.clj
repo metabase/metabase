@@ -12,12 +12,12 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.models.setting :as setting]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.util.date-2 :as u.date]
@@ -1146,3 +1146,45 @@
     (binding [driver/*compile-with-inline-parameters* true]
       (is (= ["SELECT * FROM \"venues\" WHERE \"venues\".\"name\" = [my-string]"]
              (sql.qp/format-honeysql ::inline-value-test honeysql))))))
+
+(deftest ^:parallel literal-float-test
+  (doseq [{:keys [value expected type]} [{:value "1.2" :expected 1.2  :type "TEXT"}
+                                         {:value 10    :expected 10.0 :type "BIGINT"}
+                                         {:value 90.9  :expected 90.9 :type "DOUBLE"}]]
+    (is (= [:inline expected]
+           (h2x/unwrap-typed-honeysql-form
+            (sql.qp/coerce-float :sql value))))
+    (is (= [:inline expected]
+           (h2x/unwrap-typed-honeysql-form
+            (sql.qp/coerce-float :sql
+                                 [:inline value]))))
+    (is (= [:inline expected]
+           (h2x/unwrap-typed-honeysql-form
+            (sql.qp/coerce-float :sql
+                                 (h2x/with-database-type-info [:inline value] type)))))
+    (is (= [:inline expected]
+           (h2x/unwrap-typed-honeysql-form
+            (sql.qp/coerce-float :sql
+                                 (h2x/with-database-type-info value type)))))))
+
+(deftest ^:parallel literal-integer-test
+  (doseq [{:keys [value expected type]} [{:value "1"  :expected 1  :type "TEXT"}
+                                         {:value 10   :expected 10 :type "BIGINT"}
+                                         {:value 10.9 :expected 11 :type "DOUBLE"}
+                                         {:value 10.4 :expected 10 :type "DOUBLE"}]]
+    (testing (str "Coercing " (pr-str value) " to integer.")
+      (is (= [:inline expected]
+             (h2x/unwrap-typed-honeysql-form
+              (sql.qp/coerce-integer :sql value))))
+      (is (= [:inline expected]
+             (h2x/unwrap-typed-honeysql-form
+              (sql.qp/coerce-integer :sql
+                                     [:inline value]))))
+      (is (= [:inline expected]
+             (h2x/unwrap-typed-honeysql-form
+              (sql.qp/coerce-integer :sql
+                                     (h2x/with-database-type-info [:inline value] type)))))
+      (is (= [:inline expected]
+             (h2x/unwrap-typed-honeysql-form
+              (sql.qp/coerce-integer :sql
+                                     (h2x/with-database-type-info value type))))))))
