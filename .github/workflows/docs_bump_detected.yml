@@ -21,7 +21,7 @@ jobs:
       - name: Filter non-dox branches
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref  }}
-        run: bb mage/mage/filter_doc_branches.clj "$BRANCH_NAME"
+        run: bb mage/mage/actions/filter_doc_branches.clj "$BRANCH_NAME"
 
       - name: Trigger repo dispatch
         uses: actions/github-script@v7
