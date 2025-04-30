@@ -29,7 +29,7 @@ export type EmbedDisplayParams = {
   hideParameters: EmbedHideParameters;
   font: EmbedFont;
   theme: DisplayTheme;
-  getClickActionMode?: ClickActionModeGetter | undefined;
+  getClickActionMode: ClickActionModeGetter | undefined;
   downloadsEnabled: EmbedResourceDownloadOptions;
   withFooter: boolean;
 };

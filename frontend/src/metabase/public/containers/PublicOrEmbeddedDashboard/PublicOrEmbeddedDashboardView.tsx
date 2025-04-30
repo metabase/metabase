@@ -238,7 +238,7 @@ export function PublicOrEmbeddedDashboardView({
                 withCardTitle={cardTitled}
                 clickBehaviorSidebarDashcard={null}
                 navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-                downloadsEnabled={downloadsEnabled.results}
+                downloadsEnabled={downloadsEnabled}
                 autoScrollToDashcardId={undefined}
                 reportAutoScrolledToDashcard={_.noop}
               />

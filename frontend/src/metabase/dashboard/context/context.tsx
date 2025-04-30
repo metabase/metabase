@@ -5,7 +5,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useState,
 } from "react";
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
@@ -116,8 +115,6 @@ const DashboardContextProviderInner = ({
 }: PropsWithChildren<ContextProps>) => {
   const dispatch = useDispatch();
 
-  const [isInitialized, setIsInitialized] = useState(false);
-
   const previousDashboard = usePrevious(dashboard);
   const previousDashboardId = usePrevious(dashboardId);
   const previousTabId = usePrevious(selectedTabId);
@@ -160,7 +157,7 @@ const DashboardContextProviderInner = ({
   useEffect(() => {
     const hasDashboardChanged = dashboardId !== previousDashboardId;
     if (hasDashboardChanged) {
-      handleLoadDashboard(dashboardId).then(() => setIsInitialized(true));
+      handleLoadDashboard(dashboardId);
       return;
     }
 
@@ -185,7 +182,6 @@ const DashboardContextProviderInner = ({
     dashboardId,
     fetchDashboardCardData,
     handleLoadDashboard,
-    isInitialized,
     parameterValues,
     previousDashboard,
     previousDashboardId,

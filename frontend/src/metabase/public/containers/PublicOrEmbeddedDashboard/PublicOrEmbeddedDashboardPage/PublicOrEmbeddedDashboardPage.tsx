@@ -71,6 +71,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         cardTitled={true}
         locale={canWhitelabel ? locale : undefined}
         withFooter={true}
+        getClickActionMode={undefined}
       />
     </>
   );

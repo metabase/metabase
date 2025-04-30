@@ -27,6 +27,7 @@ import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 import { getFavicon } from "../../selectors";
 
 import { DashboardTitle } from "./DashboardTitle";
+import { useSlowCardNotification } from "./use-slow-card-notification";
 
 interface DashboardAppProps extends PropsWithChildren {
   dashboardId?: DashboardId;
@@ -42,6 +43,10 @@ export const DashboardApp = ({
   children,
 }: DashboardAppProps & WithRouterProps<{ slug: string }>) => {
   const dispatch = useDispatch();
+
+  const pageFavicon = useSelector(getFavicon);
+  useFavicon({ favicon: pageFavicon });
+  useSlowCardNotification();
 
   const [error, setError] = useState<string>();
 

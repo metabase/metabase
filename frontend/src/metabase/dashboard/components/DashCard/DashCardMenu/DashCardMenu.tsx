@@ -17,6 +17,7 @@ import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
 import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
 import { useStore } from "metabase/lib/redux";
 import { exportFormatPng, exportFormats } from "metabase/lib/urls";
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import {
@@ -47,7 +48,7 @@ interface DashCardMenuProps {
   uuid?: string;
   token?: string;
   visualizationSettings?: VisualizationSettings;
-  downloadsEnabled: boolean;
+  downloadsEnabled: EmbedResourceDownloadOptions;
 }
 
 export type DashCardMenuItem = {
@@ -181,7 +182,7 @@ interface ShouldRenderDashcardMenuProps {
   /** If public sharing or static/public embed */
   isPublicOrEmbedded?: boolean;
   isEditing: boolean;
-  downloadsEnabled: boolean;
+  downloadsEnabled: EmbedResourceDownloadOptions;
 }
 
 DashCardMenu.shouldRender = ({
@@ -199,7 +200,7 @@ DashCardMenu.shouldRender = ({
   );
 
   if (isPublicOrEmbedded) {
-    return downloadsEnabled && !!result?.data && !result?.error;
+    return downloadsEnabled.results && !!result?.data && !result?.error;
   }
   return (
     !isInternalQuery &&

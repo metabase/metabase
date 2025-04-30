@@ -30,6 +30,7 @@ import {
 } from "metabase/lib/dashboard_grid";
 import { connect } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Flex } from "metabase/ui";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
@@ -149,7 +150,7 @@ export type DashboardGridProps = {
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
-  downloadsEnabled: boolean;
+  downloadsEnabled: EmbedResourceDownloadOptions;
   autoScrollToDashcardId?: DashCardId;
   reportAutoScrolledToDashcard?: () => void;
 };
@@ -517,7 +518,7 @@ class DashboardGridInner extends Component<
       isMobile: boolean;
       gridItemWidth: number;
       totalNumGridCols: number;
-      downloadsEnabled: boolean;
+      downloadsEnabled: EmbedResourceDownloadOptions;
       shouldAutoScrollTo: boolean;
       reportAutoScrolledToDashcard?: () => void;
     },
