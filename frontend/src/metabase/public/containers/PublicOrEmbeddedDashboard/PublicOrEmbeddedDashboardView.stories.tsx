@@ -33,9 +33,9 @@ import {
 } from "metabase-types/store/mocks";
 
 import {
-  PublicOrEmbeddedDashboardView,
-  type PublicOrEmbeddedDashboardViewProps,
-} from "./PublicOrEmbeddedDashboardView";
+  PublicOrEmbeddedDashboard,
+  type PublicOrEmbeddedDashboardProps,
+} from "./PublicOrEmbeddedDashboard";
 
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Table);
@@ -43,8 +43,8 @@ registerVisualization(Table);
 registerVisualization(BarChart);
 
 export default {
-  title: "App/Embed/PublicOrEmbeddedDashboardView",
-  component: PublicOrEmbeddedDashboardView,
+  title: "App/Embed/PublicOrEmbeddedDashboard",
+  component: PublicOrEmbeddedDashboard,
   decorators: [
     ReduxDecorator,
     createWaitForResizeToStopDecorator(),
@@ -151,13 +151,11 @@ function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
-  return <PublicOrEmbeddedDashboardView {...args} />;
+const Template: StoryFn<PublicOrEmbeddedDashboardProps> = (args) => {
+  return <PublicOrEmbeddedDashboard {...args} />;
 };
 
-const defaultArgs: Partial<
-  ComponentProps<typeof PublicOrEmbeddedDashboardView>
-> = {
+const defaultArgs: Partial<ComponentProps<typeof PublicOrEmbeddedDashboard>> = {
   dashboard: createDashboard(),
   downloadsEnabled: { pdf: true, results: true },
   titled: true,

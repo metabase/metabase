@@ -8,6 +8,8 @@ import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
+import { Mode } from "metabase/visualizations/click-actions/Mode";
+import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 
 import { PublicOrEmbeddedDashboard } from "../PublicOrEmbeddedDashboard";
 import { usePublicDashboardEndpoints } from "../WithPublicDashboardEndpoints";
@@ -67,7 +69,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
       parameterQueryParams={parameterQueryParams}
       cardTitled={true}
       withFooter={true}
-      getClickActionMode={undefined}
+      getClickActionMode={({ question }) => new Mode(question, PublicMode)}
       navigateToNewCardFromDashboard={null}
       onError={(error) => {
         dispatch(setErrorPage(error.payload));

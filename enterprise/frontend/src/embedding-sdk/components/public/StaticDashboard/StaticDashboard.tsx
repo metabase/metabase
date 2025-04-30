@@ -99,6 +99,7 @@ export const StaticDashboardInner = ({
             queryMode: StaticQuestionSdkMode,
           })
         }
+        navigateToNewCardFromDashboard={null}
       />
     </Box>
   );

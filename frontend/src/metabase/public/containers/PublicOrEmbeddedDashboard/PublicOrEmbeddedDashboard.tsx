@@ -7,7 +7,7 @@ import type { EmbeddingAdditionalHashOptions } from "metabase/public/lib/types";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
-type PublicOrEmbeddedDashboardProps = Pick<
+export type PublicOrEmbeddedDashboardProps = Pick<
   DashboardContextProps,
   | "dashboardId"
   | "hasNightModeToggle"
