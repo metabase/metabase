@@ -1260,5 +1260,3 @@
                :title_link      nil}
               (-> (pulse.test-util/thunk->boolean pulse-results)
                   :attachments second))))}}))
-
-
