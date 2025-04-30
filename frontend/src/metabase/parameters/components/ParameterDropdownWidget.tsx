@@ -1,9 +1,6 @@
 import { t } from "ttag";
 
-import { TextWidget } from "metabase/components/TextWidget";
 import type { ParameterValueWidgetProps } from "metabase/parameters/components/ParameterValueWidget";
-import { NumberInputWidget } from "metabase/parameters/components/widgets/NumberInputWidget";
-import { StringInputWidget } from "metabase/parameters/components/widgets/StringInputWidget";
 import { getParameterWidgetTitle } from "metabase/parameters/utils/ui";
 import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
 import { DateMonthYearWidget } from "metabase/querying/parameters/components/DateMonthYearWidget";
@@ -25,8 +22,11 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-values";
 
+import { NumberInputWidget } from "./widgets/NumberInputWidget";
 import { ParameterFieldWidget } from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
+import { StringInputWidget } from "./widgets/StringInputWidget";
 import { TemporalUnitWidget } from "./widgets/TemporalUnitWidget";
+import { TextWidget } from "./widgets/TextWidget";
 
 type ParameterDropdownWidgetProps = {
   onFocusChanged: (focused: boolean) => void;

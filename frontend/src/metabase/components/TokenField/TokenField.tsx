@@ -124,6 +124,12 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     this.setInputValue("", clearSearchValue);
   }
 
+  clearSelectedOption() {
+    this.setState({
+      selectedOptionValue: null,
+    });
+  }
+
   _id(value: any) {
     const { idKey } = this.props;
 
@@ -304,6 +310,10 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
         this.setState({
           selectedOptionValue: this._value(filteredOptions[index + 1]),
         });
+      } else if (filteredOptions.length > 0) {
+        this.setState({
+          selectedOptionValue: this._value(filteredOptions[0]),
+        });
       }
     } else if (keyCode === KEYCODE_BACKSPACE || key === KEY_BACKSPACE) {
       // backspace
@@ -383,6 +393,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
         // only clear the search if this was the last option
         this.clearInputValue(filteredOptions.length === 1);
       }
+      this.clearSelectedOption();
       return true;
     } else if (this.props.parseFreeformValue) {
       // if we previously updated on input change then we don't need to do it again,

@@ -1,8 +1,9 @@
 /* eslint-disable react/prop-types */
 import { isValidElement } from "react";
 
-import RemappedValue from "metabase/containers/RemappedValue";
 import { formatValue } from "metabase/lib/formatting";
+
+import RemappedValue from "./RemappedValue";
 
 const Value = ({ value, ...options }) => {
   if (options.hide) {
