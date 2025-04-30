@@ -63,7 +63,16 @@ class MetabaseSettings {
   _listeners: Partial<{ [key: string]: SettingListener[] }> = {};
 
   constructor(settings: Partial<Settings> = {}) {
-    this._settings = settings;
+    // TODO: revert this hunk - this is for testing only!
+    this._settings = {
+      ...settings,
+      ...(settings?.["token-features"] && {
+        "token-features": {
+          ...settings?.["token-features"],
+          embedding_iframe_sdk: true,
+        },
+      }),
+    };
   }
 
   /**

@@ -36,24 +36,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       </Flex>,
     );
 
-    // Wait until the entity picker modal is visible
-    getSdkRoot().contains("Pick your starting data");
-
-    popover().within(() => {
-      cy.findByText("Orders").click();
-    });
+    H.assertSdkNotebookEditorUsable(getSdkRoot());
 
     getSdkRoot().within(() => {
-      cy.findByRole("button", { name: "Visualize" }).click();
-
-      // Should not show a loading indicator again as the question has not changed (metabase#47564)
-      cy.findByTestId("loading-indicator").should("not.exist");
-
-      // Should show a visualization after clicking "Visualize"
-      // and should not show an error message (metabase#55398)
-      cy.findByText("Question not found").should("not.exist");
-      cy.findByText("110.93").should("be.visible"); // table data
-
       // Should be able to save to a new question right away
       cy.findByRole("button", { name: "Save" }).click();
     });
