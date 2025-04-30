@@ -27,4 +27,4 @@
     :enabled   (t2/exists? :model/GroupTableAccessPolicy)}
    {:name      :email-allow-list
     :available (premium-features/enable-email-allow-list?)
-    :enabled   (boolean (some? (advanced-config.models.notificationl/subscription-allowed-domains)))}])
+    :enabled   (boolean (some? (advanced-config.models.notification/subscription-allowed-domains)))}])
