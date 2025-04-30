@@ -695,9 +695,6 @@ export const NotificationChannelsPicker = ({
                     onFocus={(initialValue) => {
                       handleTemplateBlur("email", "subject", initialValue);
                     }}
-                    // onBlur={(newValue) => {
-                    //   handleTemplateBlur("email", "subject", newValue);
-                    // }}
                     error={
                       validationErrors.email.subject
                         ? t`Subject cannot be empty`
@@ -727,9 +724,6 @@ export const NotificationChannelsPicker = ({
                         onFocus={(initialValue) => {
                           handleTemplateBlur("email", "body", initialValue);
                         }}
-                        // onBlur={(newValue) => {
-                        //   handleTemplateBlur("email", "body", newValue);
-                        // }}
                         onChange={(value) => {
                           handleTemplateBlur("email", "body", value);
                         }}
@@ -761,8 +755,8 @@ export const NotificationChannelsPicker = ({
                 onClick={(template) => {
                   if (emailHandler.template) {
                     show({
-                      title: t`Apply changes?`,
-                      message: t`This will rewrite your existing template. Are you sure?`,
+                      title: t`Replace Current Template?`,
+                      message: t`Selecting an example will overwrite your current template. Are you sure you want to continue?`,
                       onConfirm: () => {
                         handleTemplateBlur("email", "body", template);
                         setHoveredEmailTemplate(null);
@@ -877,8 +871,8 @@ export const NotificationChannelsPicker = ({
                 onClick={(template) => {
                   if (slackHandler.template) {
                     show({
-                      title: t`Apply changes?`,
-                      message: t`This will rewrite your existing template. Are you sure?`,
+                      title: t`Replace Current Template?`,
+                      message: t`Selecting an example will overwrite your current template. Are you sure you want to continue?`,
                       onConfirm: () => {
                         handleTemplateBlur("slack", "body", template);
                         setHoveredSlackTemplate(null);
