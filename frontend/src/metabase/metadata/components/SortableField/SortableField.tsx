@@ -26,8 +26,6 @@ export const SortableField = ({ disabled, href, icon, id, label }: Props) => {
       id={id}
     >
       <Flex
-        component={href ? Link : undefined}
-        to={href ? href : ""}
         align="center"
         aria-label={label}
         bg="bg-white"
@@ -35,6 +33,7 @@ export const SortableField = ({ disabled, href, icon, id, label }: Props) => {
         className={cx(S.content, {
           [S.draggable]: draggable,
         })}
+        component={href ? Link : undefined}
         draggable={draggable}
         gap="md"
         mih={40}
@@ -42,6 +41,9 @@ export const SortableField = ({ disabled, href, icon, id, label }: Props) => {
         px="sm"
         py="xs"
         role="listitem"
+        // "to" prop should be undefined when Link component is not used.
+        // Types do not account for conditional Link usage, hence cast.
+        to={href ? href : (undefined as unknown as string)}
         w="100%"
       >
         <Group flex="0 0 auto" gap="sm" ml="xs" wrap="nowrap">
