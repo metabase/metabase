@@ -1,8 +1,5 @@
 import { useMemo } from "react";
 
-// XXX: Create plugins for this
-// eslint-disable-next-line no-restricted-imports
-import { DataSourceSelector } from "embedding-sdk/components/private/data-picker/DataSelector";
 import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
@@ -99,7 +96,7 @@ export function EmbeddingDataPicker({
   }
 
   return (
-    <DataSourceSelector
+    <PLUGIN_EMBEDDING.DataSourceSelector
       key={pickerInfo?.tableId}
       isInitiallyOpen={!table}
       databases={databases}

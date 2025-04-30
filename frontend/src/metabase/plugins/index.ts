@@ -539,6 +539,8 @@ export const PLUGIN_EMBEDDING = {
   isEnabled: () => false,
   isInteractiveEmbeddingEnabled: (_state: State) => false,
   SimpleDataPicker: (_props: SimpleDataPickerProps) => null,
+  // XXX: Fix props
+  DataSourceSelector: (_props: any) => null,
 };
 
 export interface SimpleDataPickerProps {

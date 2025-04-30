@@ -1,3 +1,4 @@
+import { DataSourceSelector } from "embedding-sdk/components/private/data-picker/DataSelector";
 import { SimpleDataPicker } from "embedding-sdk/components/private/data-picker/SimpleDataPicker";
 import { PLUGIN_ADMIN_SETTINGS, PLUGIN_EMBEDDING } from "metabase/plugins";
 import { isInteractiveEmbeddingEnabled } from "metabase-enterprise/embedding/selectors";
@@ -19,3 +20,4 @@ if (hasPremiumFeature("embedding")) {
  * use the SDK without a valid license and doesn't contain any feature flags.
  */
 PLUGIN_EMBEDDING.SimpleDataPicker = SimpleDataPicker;
+PLUGIN_EMBEDDING.DataSourceSelector = DataSourceSelector;
