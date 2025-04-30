@@ -24,6 +24,7 @@
    [metabase.db :as mdb]
    [metabase.plugins.classloader :as classloader]
    [metabase.task.bootstrap]
+   [metabase.task.prometheus :as task.prometheus]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -122,6 +123,12 @@
       (when (compare-and-set! *quartz-scheduler* nil new-scheduler)
         (qs/standby new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
+        ;; Register Prometheus listeners
+        (let [listener-manager (.getListenerManager new-scheduler)]
+          (.addJobListener listener-manager
+                           (task.prometheus/create-job-execution-listener))
+          (.addTriggerListener listener-manager
+                               (task.prometheus/create-trigger-listener new-scheduler)))
         (delete-jobs-with-no-class!)
         (reset-errored-triggers! new-scheduler)
         (init-tasks!)))))
