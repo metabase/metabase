@@ -283,10 +283,6 @@ function compileArgList(
     }
 
     const type = defn.argType(index, node.children, ctx.type);
-    if (!type) {
-      return withNode(child, compileNode(child, ctx));
-    }
-
     return withNode(child, compileNode(child, { ...ctx, type }));
   });
 }
