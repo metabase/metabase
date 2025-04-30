@@ -106,9 +106,8 @@ describe("scenarios > question > filter", () => {
     H.popover().within(() => {
       cy.findByText("Product ID").click();
       cy.findByText("Aerodynamic Linen Coat").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
 
     cy.log("Reported failing on v0.36.4 and v0.36.5.1");
     cy.findByTestId("loading-indicator").should("not.exist");
@@ -742,9 +741,8 @@ describe("scenarios > question > filter", () => {
     H.popover().within(() => {
       cy.findByText("Category").click();
       cy.findByText("Gizmo").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     H.openNotebook();
 
     H.verifyNotebookQuery("Products", [

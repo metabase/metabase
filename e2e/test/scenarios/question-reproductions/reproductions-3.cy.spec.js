@@ -573,9 +573,8 @@ describe(
           H.popover().within(() => {
             cy.findAllByText("ID").should("have.length", 2).first().click();
             cy.findByLabelText("Filter value").type(id).click();
-            cy.button("Add filter").click();
+            cy.button("Apply filter").click();
           });
-          H.runButtonOverlay().click();
           H.assertQueryBuilderRowCount(1);
           removeFilter();
 
@@ -2282,7 +2281,7 @@ describe("issue 48829", () => {
     H.modal().should("not.exist");
   });
 
-  it("should not show the unsaved changes warning when switching back to chill mode from the notebook editor after adding a filter via the filter modal (metabase#48829)", () => {
+  it("should not show the unsaved changes warning when switching back to chill mode from the notebook editor after adding a filter via the filter picker (metabase#48829)", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.queryBuilderHeader()
@@ -2291,9 +2290,8 @@ describe("issue 48829", () => {
     H.popover().within(() => {
       cy.findByText("Category").click();
       cy.findByText("Doohickey").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
 
     H.queryBuilderHeader()
       .button(/Editor/)
