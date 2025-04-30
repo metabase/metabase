@@ -388,55 +388,56 @@
 
 (deftest validate-email-domains-test
   (mt/when-ee-evailable
-   (mt/with-premium-features #{:email-allow-list}
-     (mt/with-temporary-setting-values [subscription-allowed-domains "example.com"]
-       (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
-                      :model/Card      {card-id :id} {}]
-         (let [pulse {:name          "Test Pulse"
-                      :dashboard_id  dashboard-id
-                      :cards         [{:id                card-id
-                                       :include_csv       false
-                                       :include_xls       false
-                                       :dashboard_card_id nil}]
-                      :channels      [{:channel_type  "email"
-                                       :schedule_type "daily"
-                                       :schedule_hour 12
-                                       :recipients    []
-                                       :enabled       true}]}
-               failed-recipients [{:email "ngoc@metabase.com"}
-                                  {:email "ngoc@metaba.be"}]
-               success-recipients [{:email "ngoc@example.com"}]]
-           (testing "on creation"
-             (testing "fail if recipients does not match allowed domains"
-               (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
-                      (mt/user-http-request :crowberto :post 403 "pulse"
-                                            (assoc-in pulse [:channels 0 :recipients] failed-recipients)))))
-
-             (testing "success if recipients matches allowed domains"
-               (mt/user-http-request :crowberto :post 200 "pulse"
-                                     (assoc-in pulse [:channels 0 :recipients] success-recipients))))
-
-           (testing "on update"
-             (mt/with-temp [:model/Pulse {pulse-id :id} {:name          "Test Pulse"
-                                                         :dashboard_id  dashboard-id}]
+   (mt/with-model-cleanup [:model/Pulse]
+     (mt/with-premium-features #{:email-allow-list}
+       (mt/with-temporary-setting-values [subscription-allowed-domains "example.com"]
+         (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                        :model/Card      {card-id :id} {}]
+           (let [pulse {:name          "Test Pulse"
+                        :dashboard_id  dashboard-id
+                        :cards         [{:id                card-id
+                                         :include_csv       false
+                                         :include_xls       false
+                                         :dashboard_card_id nil}]
+                        :channels      [{:channel_type  "email"
+                                         :schedule_type "daily"
+                                         :schedule_hour 12
+                                         :recipients    []
+                                         :enabled       true}]}
+                 failed-recipients [{:email "ngoc@metabase.com"}
+                                    {:email "ngoc@metaba.be"}]
+                 success-recipients [{:email "ngoc@example.com"}]]
+             (testing "on creation"
                (testing "fail if recipients does not match allowed domains"
                  (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
-                        (mt/user-http-request :crowberto :put 403 (format "pulse/%d" pulse-id)
+                        (mt/user-http-request :crowberto :post 403 "pulse"
                                               (assoc-in pulse [:channels 0 :recipients] failed-recipients)))))
 
                (testing "success if recipients matches allowed domains"
-                 (mt/user-http-request :crowberto :put 200 (format "pulse/%d" pulse-id)
-                                       (assoc-in pulse [:channels 0 :recipients] success-recipients)))))
+                 (mt/user-http-request :crowberto :post 200 "pulse"
+                                       (assoc-in pulse [:channels 0 :recipients] success-recipients))))
 
-           (testing "on test send"
-             (testing "fail if recipients does not match allowed domains"
-               (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
-                      (mt/user-http-request :crowberto :post 403 "pulse/test"
-                                            (assoc-in pulse [:channels 0 :recipients] failed-recipients)))))
+             (testing "on update"
+               (mt/with-temp [:model/Pulse {pulse-id :id} {:name          "Test Pulse"
+                                                           :dashboard_id  dashboard-id}]
+                 (testing "fail if recipients does not match allowed domains"
+                   (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
+                          (mt/user-http-request :crowberto :put 403 (format "pulse/%d" pulse-id)
+                                                (assoc-in pulse [:channels 0 :recipients] failed-recipients)))))
 
-             (testing "success if recipients matches allowed domains"
-               (mt/user-http-request :crowberto :post 200 "pulse/test"
-                                     (assoc-in pulse [:channels 0 :recipients] success-recipients))))))))))
+                 (testing "success if recipients matches allowed domains"
+                   (mt/user-http-request :crowberto :put 200 (format "pulse/%d" pulse-id)
+                                         (assoc-in pulse [:channels 0 :recipients] success-recipients)))))
+
+             (testing "on test send"
+               (testing "fail if recipients does not match allowed domains"
+                 (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
+                        (mt/user-http-request :crowberto :post 403 "pulse/test"
+                                              (assoc-in pulse [:channels 0 :recipients] failed-recipients)))))
+
+               (testing "success if recipients matches allowed domains"
+                 (mt/user-http-request :crowberto :post 200 "pulse/test"
+                                       (assoc-in pulse [:channels 0 :recipients] success-recipients)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               PUT /api/pulse/:id                                               |
