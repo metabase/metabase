@@ -51,6 +51,18 @@ export function getDashboardParameterSections(): ParameterSection[] {
       options: buildTypedOperatorOptions("number", "number", t`Number`),
     },
     {
+      id: "boolean",
+      name: t`Boolean`,
+      description: t`True, false…`,
+      options: [
+        {
+          name: t`Boolean`,
+          type: "boolean",
+          sectionId: "boolean",
+        },
+      ],
+    },
+    {
       id: "id",
       name: t`ID`,
       description: t`Primary key, User ID…`,
@@ -69,6 +81,7 @@ const defaultSectionToParameter = {
   number: "number/=",
   string: "string/=",
   date: "date/all-options",
+  boolean: "boolean",
 };
 
 export function getDefaultOptionForParameterSectionMap(): Record<

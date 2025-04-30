@@ -70,7 +70,6 @@
    :text    {:type :string,  :allowed-for #{:text :string/= :id :category
                                             :location/city :location/state :location/zip_code :location/country}}
    :date    {:type :date,    :allowed-for #{:date :date/single :date/all-options :id :category}}
-   ;; I don't think `:boolean` is actually used on the FE at all.
    :boolean {:type :boolean, :allowed-for #{:boolean :id :category}}
 
    ;; as far as I can tell this is basically just an alias for `:date`... I'm not sure what the difference is TBH

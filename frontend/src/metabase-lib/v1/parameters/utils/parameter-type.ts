@@ -51,6 +51,11 @@ export function isTemporalUnitParameter(parameter: Parameter | ParameterType) {
   return type === "temporal-unit";
 }
 
+export function isBooleanParameter(parameter: Parameter | ParameterType) {
+  const type = getParameterType(parameter);
+  return type === "boolean";
+}
+
 // TODO this must be wrong because it returns true
 // for parameters without fields
 export function isFieldFilterParameter(parameter: Parameter) {
