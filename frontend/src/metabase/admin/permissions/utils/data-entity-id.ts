@@ -29,10 +29,14 @@ export const getTableEntityId = (tableEntity: Table) => ({
 export const isTableEntityId = (
   entityId: Partial<EntityId>,
 ): entityId is TableEntityId => entityId.tableId != null;
+
 export const isSchemaEntityId = (
   entityId: Partial<EntityId>,
 ): entityId is SchemaEntityId =>
-  entityId.schemaName != null && !isTableEntityId(entityId);
+  entityId.schemaName != null &&
+  entityId.schemaName !== "" &&
+  !isTableEntityId(entityId);
+
 export const isDatabaseEntityId = (
   entityId: Partial<EntityId>,
 ): entityId is DatabaseEntityId =>

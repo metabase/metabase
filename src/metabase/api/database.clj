@@ -530,6 +530,9 @@
         (update :tables (fn [tables]
                           (for [table tables]
                             (update table :segments (partial filter mi/can-read?)))))
+        (update :tables (fn [tables]
+                          (for [table tables]
+                            (update table :schema str))))
         (update :tables (if remove_inactive?
                           (fn [tables]
                             (filter :active tables))

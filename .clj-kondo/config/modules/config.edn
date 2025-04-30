@@ -757,6 +757,7 @@
    :uses #{api
            audit
            db
+           driver
            legacy-mbql
            lib
            models
