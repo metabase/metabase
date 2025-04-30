@@ -1,4 +1,4 @@
-(ns metabase.models.native-query-snippet.permissions
+(ns metabase.native-query-snippets.models.native-query-snippet.permissions
   "NativeQuerySnippets have different permissions implementations. In Metabase CE, anyone can read/edit/create all
   NativeQuerySnippets if they have native query perms for at least one database. EE has a more advanced implementation."
   (:require

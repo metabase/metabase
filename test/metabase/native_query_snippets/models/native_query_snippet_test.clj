@@ -1,4 +1,4 @@
-(ns metabase.models.native-query-snippet-test
+(ns metabase.native-query-snippets.models.native-query-snippet-test
   (:require
    [clojure.test :refer :all]
    [metabase.models.serialization :as serdes]

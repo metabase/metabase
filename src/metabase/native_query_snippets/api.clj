@@ -1,11 +1,11 @@
-(ns metabase.api.native-query-snippet
+(ns metabase.native-query-snippets.api
   "Native query snippet (/api/native-query-snippet) endpoints."
   (:require
    [clojure.data :as data]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
-   [metabase.models.native-query-snippet :as native-query-snippet]
+   [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]

@@ -1,4 +1,4 @@
-(ns metabase.api.native-query-snippet-test
+(ns metabase.native-query-snippets.api-test
   "Tests for /api/native-query-snippet endpoints."
   (:require
    [clojure.string :as str]
