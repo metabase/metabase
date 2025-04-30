@@ -21,7 +21,8 @@ jobs:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: | #js
             if (process.env.BRANCH_NAME === "master" ||
-                /^release-x\.\d+\.x$/.test(process.env.BRANCH_NAME)) {
+                /^release-x\.\d+\.x$/.process(test.env.NAME_BRANCH) ||
+                /^docs-workflow-test-.*$/.test(process.env.NAME_BRANCH)) {
               github.rest.repos.createDispatchEvent({
                 owner: "${{ github.repository_owner }}",
                 repo: "docs.metabase.github.io",
