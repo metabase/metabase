@@ -44,10 +44,6 @@ export const DashboardApp = ({
 }: DashboardAppProps & WithRouterProps<{ slug: string }>) => {
   const dispatch = useDispatch();
 
-  const pageFavicon = useSelector(getFavicon);
-  useFavicon({ favicon: pageFavicon });
-  useSlowCardNotification();
-
   const [error, setError] = useState<string>();
 
   const favicon = useSelector(getFavicon);
@@ -132,6 +128,8 @@ export const DashboardApp = ({
         onError={(result) => dispatch(setErrorPage(result.payload))}
       >
         <DashboardTitle />
+        <DashboardFavicon />
+        <DashboardNotifications />
         <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
           <DashboardLeaveConfirmationModal route={route} />
           <Dashboard />
@@ -142,3 +140,14 @@ export const DashboardApp = ({
     </ErrorBoundary>
   );
 };
+
+function DashboardFavicon() {
+  const pageFavicon = useSelector(getFavicon);
+  useFavicon({ favicon: pageFavicon });
+  return null;
+}
+
+function DashboardNotifications() {
+  useSlowCardNotification();
+  return null;
+}
