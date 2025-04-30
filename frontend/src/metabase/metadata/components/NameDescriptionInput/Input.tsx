@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from "react";
+import { useState } from "react";
 
 import {
   Flex,
@@ -21,15 +21,19 @@ interface Props
   onChange: (value: string) => void;
 }
 
-export const Input = ({ required, value, onChange, ...props }: Props) => {
-  const [internalValue, setInternalValue] = useState(value);
+export const Input = ({
+  normalize,
+  required,
+  value,
+  onChange,
+  ...props
+}: Props) => {
   const [isFocused, setIsFocused] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
-  useLayoutEffect(() => setInternalValue(value), [value]);
-
   return (
     <TextInputBlurChange
+      normalize={normalize}
       required={required}
       rightSection={
         isHovered && !isFocused ? (
@@ -39,17 +43,14 @@ export const Input = ({ required, value, onChange, ...props }: Props) => {
         ) : undefined
       }
       rightSectionPointerEvents="none"
-      value={internalValue}
+      value={value}
       onBlur={() => setIsFocused(false)}
       onBlurChange={(event) => {
         const newValue = event.target.value;
-        const isNewValueEmpty = newValue.trim().length === 0;
+        const normalizedValue = normalize ? normalize(newValue) : newValue;
 
-        if (required && isNewValueEmpty) {
-          setInternalValue(value);
-        } else {
-          setInternalValue(newValue);
-          onChange(newValue);
+        if (normalizedValue !== value) {
+          onChange(event.target.value);
         }
       }}
       onFocus={() => setIsFocused(true)}
