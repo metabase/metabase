@@ -1166,6 +1166,14 @@
                (mt/user-http-request :crowberto :get 200
                                      (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))))))))
 
+(deftest db-metadata-tables-have-non-nil-schemas
+  (mt/test-drivers (mt/normal-drivers)
+    (is (every? some?
+                (->> (mt/user-http-request :crowberto :get 200
+                                           (format "database/%d/metadata" (mt/id)))
+                     :tables
+                     (map :schema))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                CRON SCHEDULES!                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
