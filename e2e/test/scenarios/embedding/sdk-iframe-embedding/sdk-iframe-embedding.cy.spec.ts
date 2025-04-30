@@ -1,4 +1,5 @@
 import {
+  ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ENTITY_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ENTITY_ID,
@@ -103,5 +104,36 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
 
     cy.log("2. iframe should be removed");
     cy.get("iframe").should("not.exist");
+  });
+
+  it("updates the question id with embed.updateSettings", () => {
+    const frame = H.loadSdkIframeEmbedTestPage({
+      questionId: ORDERS_QUESTION_ID,
+    });
+
+    cy.wait("@getCardQuery");
+    frame.findByText("Orders, Count").should("not.exist");
+
+    cy.log("1. call embed.updateSettings to update the question id");
+    frame.window().then((win) => {
+      // @ts-expect-error -- this is within the iframe
+      win.embed.updateSettings({ questionId: ORDERS_COUNT_QUESTION_ID });
+    });
+
+    cy.wait("@getCardQuery");
+
+    cy.get("iframe")
+      .should("be.visible")
+      .its("0.contentDocument")
+      .should("exist")
+      .within(() => {
+        cy.log("2. the question should be updated");
+        cy.findByText("Orders, Count").should("be.visible");
+
+        H.tableInteractive().within(() => {
+          cy.findByText("Count").should("be.visible");
+          cy.findByText("18,760").should("be.visible");
+        });
+      });
   });
 });
