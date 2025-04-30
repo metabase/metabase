@@ -75,6 +75,9 @@ import {
 } from "../selectors";
 
 const mapStateToProps = (state: State) => ({
+  dashboard: getDashboardComplete(state),
+  parameters: getParameters(state),
+  tabs: getTabs(state),
   canManageSubscriptions: canManageSubscriptions(state),
   isAdmin: getUserIsAdmin(state),
   isNavbarOpen: getIsNavbarOpen(state),
@@ -83,12 +86,9 @@ const mapStateToProps = (state: State) => ({
   dashboardBeforeEditing: getDashboardBeforeEditing(state),
   isEditingParameter: getIsEditingParameter(state),
   isDirty: getIsDirty(state),
-  dashboard: getDashboardComplete(state),
   slowCards: getSlowCards(state),
-  parameters: getParameters(state),
   parameterValues: getParameterValues(state),
   draftParameterValues: getDraftParameterValues(state),
-  tabs: getTabs(state),
   loadingStartTime: getLoadingStartTime(state),
   clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
   isAddParameterPopoverOpen: getIsAddParameterPopoverOpen(state),
