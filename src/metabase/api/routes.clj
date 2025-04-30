@@ -15,7 +15,6 @@
    [metabase.api.geojson]
    [metabase.api.logger]
    [metabase.api.macros :as api.macros]
-   [metabase.api.native-query-snippet]
    [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
    [metabase.api.slack]
@@ -33,6 +32,7 @@
    [metabase.indexed-entities.api]
    [metabase.login-history.api]
    [metabase.model-persistence.api]
+   [metabase.native-query-snippets.api]
    [metabase.notification.api]
    [metabase.permissions.api]
    [metabase.premium-features.api]
@@ -66,7 +66,6 @@
          metabase.api.field/keep-me
          metabase.api.geojson/keep-me
          metabase.api.logger/keep-me
-         metabase.api.native-query-snippet/keep-me
          metabase.api.slack/keep-me
          metabase.api.table/keep-me
          metabase.api.testing/keep-me
@@ -78,6 +77,7 @@
          metabase.indexed-entities.api/keep-me
          metabase.login-history.api/keep-me
          metabase.model-persistence.api/keep-me
+         metabase.native-query-snippets.api/keep-me
          metabase.permissions.api/keep-me
          metabase.public-sharing.api/keep-me
          metabase.revisions.api/keep-me
@@ -154,7 +154,7 @@
    "/logger"               (+auth 'metabase.api.logger)
    "/login-history"        (+auth 'metabase.login-history.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
-   "/native-query-snippet" (+auth 'metabase.api.native-query-snippet)
+   "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)
    "/notification"         metabase.notification.api/notification-routes
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
    "/permissions"          (+auth 'metabase.permissions.api)

@@ -48,7 +48,7 @@
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
     :model/ModerationReview                  metabase.models.moderation-review
-    :model/NativeQuerySnippet                metabase.models.native-query-snippet
+    :model/NativeQuerySnippet                metabase.native-query-snippets.models.native-query-snippet
     :model/Notification                      metabase.notification.models
     :model/NotificationCard                  metabase.notification.models
     :model/NotificationHandler               metabase.notification.models
