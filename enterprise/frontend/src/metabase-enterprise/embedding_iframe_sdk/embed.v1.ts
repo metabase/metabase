@@ -13,7 +13,7 @@ const EMBED_SETTING_KEYS = [
   "instanceUrl",
   "dashboardId",
   "questionId",
-  "notebookEditor",
+  "template",
   "theme",
   "locale",
 ] as const satisfies EmbedSettingKey[];
@@ -100,10 +100,12 @@ class MetabaseEmbed {
 
   private _validateEmbedSettings(settings: Partial<SdkIframeEmbedSettings>) {
     if (
-      settings.notebookEditor &&
+      settings.template === "exploration" &&
       (settings.dashboardId || settings.questionId)
     ) {
-      raiseError("notebookEditor can't be used with dashboardId or questionId");
+      raiseError(
+        "the exploration template can't be used with dashboardId or questionId",
+      );
     }
 
     if (settings.dashboardId && settings.questionId) {
