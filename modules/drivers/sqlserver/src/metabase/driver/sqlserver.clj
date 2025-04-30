@@ -19,7 +19,6 @@
    [metabase.driver.sql.parameters.substitution
     :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.query-processor.boolean-is-comparison :as sql.qp.boolean-is-comparison]
    [metabase.driver.sql.util :as sql.u]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
@@ -42,14 +41,12 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :sqlserver, :parent #{:sql-jdbc
-                                        ::sql.qp.boolean-is-comparison/boolean-is-comparison})
+(driver/register! :sqlserver, :parent #{:sql-jdbc})
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :uuid-type                              true
                               :convert-timezone                       true
                               :datetime-diff                          true
-                              :expression-literals                    true
                               :index-info                             true
                               :now                                    true
                               :regex                                  false
