@@ -53,7 +53,7 @@
                 (mt/with-temporary-setting-values [subscription-allowed-domains "example.com"]
                   (testing "should fail when :email-allow-list is enabled"
                     (let [{:keys [response recipients]} (send! 403)]
-                      (is (= "You cannot create new subscriptions for the domain \"metabase.com\". Allowed domains are: example.com"
+                      (is (= "The following email addresses are not allowed: test@metabase.com"
                              (:message response)))
                       (is (not (contains? recipients "test@metabase.com")))))
                   (testing "No :email-allow-list token -- should still pass"

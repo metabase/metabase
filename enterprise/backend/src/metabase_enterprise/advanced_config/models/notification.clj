@@ -37,5 +37,4 @@
         (throw (ex-info
                 (tru "The following email addresses are not allowed: {0}"
                      (str/join ", " disallowed-emails))
-                {:emails      disallowed-emails
-                 :status-code 403}))))))
+                {:status-code 403}))))))
