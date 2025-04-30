@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -12,7 +13,13 @@
    [metabase.util.date-2 :as u.date])
   (:import
    (clojure.lang ISeq)
-   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+   (java.time
+    LocalDate
+    LocalDateTime
+    LocalTime
+    OffsetDateTime
+    OffsetTime
+    ZonedDateTime)))
 
 (defn export-filename-timestamp
   "Generates the current timestamp as a string to use in export filenames."
@@ -231,3 +238,10 @@
      ;; Column settings coming from the user settings in the ui
      ;; (E.g. Click the ⚙️ on the column)
      column-settings)))
+
+(defn get-formatter
+  "Returns a memoized formatter for a column"
+  [timezone settings format-rows?]
+  (memoize
+   (fn [column]
+     (formatter/create-formatter timezone column settings format-rows?))))

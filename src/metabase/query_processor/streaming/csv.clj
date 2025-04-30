@@ -59,16 +59,9 @@
                                 string))
                (when must-quote (.write writer "\"")))))
 
-(defn- get-formatter
-  "Returns a memoized formatter for a column"
-  [timezone settings format-rows?]
-  (memoize
-   (fn [column]
-     (formatter/create-formatter timezone column settings format-rows?))))
-
 (defn- create-formatters
   [columns indexes timezone settings format-rows?]
-  (let [formatter-fn (get-formatter timezone settings format-rows?)]
+  (let [formatter-fn (streaming.common/get-formatter timezone settings format-rows?)]
     (mapv (fn [idx]
             (let [column (nth columns idx)
                   formatter (formatter-fn column)]
