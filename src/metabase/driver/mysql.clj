@@ -736,21 +736,21 @@
 (defmethod driver/upload-type->database-type :mysql
   [_driver upload-type]
   (case upload-type
-    :metabase.upload.types/varchar-255              [[:varchar 255]]
-    :metabase.upload.types/text                     [:text]
-    :metabase.upload.types/int                      [:bigint]
-    :metabase.upload.types/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
-    :metabase.upload.types/float                    [:double]
-    :metabase.upload.types/boolean                  [:boolean]
-    :metabase.upload.types/date                     [:date]
-    :metabase.upload.types/datetime                 [:datetime]
-    :metabase.upload.types/offset-datetime          [:timestamp]))
+    :metabase.upload/varchar-255              [[:varchar 255]]
+    :metabase.upload/text                     [:text]
+    :metabase.upload/int                      [:bigint]
+    :metabase.upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
+    :metabase.upload/float                    [:double]
+    :metabase.upload/boolean                  [:boolean]
+    :metabase.upload/date                     [:date]
+    :metabase.upload/datetime                 [:datetime]
+    :metabase.upload/offset-datetime          [:timestamp]))
 
 (defmethod driver/allowed-promotions :mysql
   [_driver]
-  {:metabase.upload.types/int     #{:metabase.upload.types/float}
-   :metabase.upload.types/boolean #{:metabase.upload.types/int
-                                    :metabase.upload.types/float}})
+  {:metabase.upload/int     #{:metabase.upload/float}
+   :metabase.upload/boolean #{:metabase.upload/int
+                              :metabase.upload/float}})
 
 (defmethod driver/create-auto-pk-with-append-csv? :mysql [_driver] true)
 
