@@ -4,6 +4,8 @@ import { t } from "ttag";
 import { useGetFieldQuery, useUpdateFieldMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { CoercionStrategyPicker } from "metabase/metadata/components";
+import { canCoerceFieldType } from "metabase/metadata/utils/field";
 import { Box, Icon, Stack, Switch, TextInput, Title } from "metabase/ui";
 import type { FieldId } from "metabase-types/api";
 
@@ -72,6 +74,19 @@ export const FieldSection = ({ fieldId }: Props) => {
               }
             }}
           />
+
+          {canCoerceFieldType(field) && isCasting && (
+            <CoercionStrategyPicker
+              baseType={field.base_type}
+              value={field.coercion_strategy ?? undefined}
+              onChange={(coercionStrategy) => {
+                updateField({
+                  id: fieldId,
+                  coercion_strategy: coercionStrategy,
+                });
+              }}
+            />
+          )}
         </Stack>
       </Box>
     </Stack>

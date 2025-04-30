@@ -1,3 +1,4 @@
+export * from "./CoercionStrategyPicker";
 export * from "./CurrencyPicker";
 export * from "./DiscardTableFieldValuesButton";
 export * from "./FieldOrderPicker";
