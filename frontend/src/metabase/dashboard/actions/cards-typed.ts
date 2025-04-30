@@ -254,7 +254,13 @@ export const replaceCard =
   };
 
 export const addCardWithVisualization =
-  ({ visualization }: { visualization: VisualizerVizDefinition }) =>
+  ({
+    visualization,
+    tabId,
+  }: {
+    visualization: VisualizerVizDefinition;
+    tabId: number | null;
+  }) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const cardIds = getCardIdsFromColumnValueMappings(
       visualization.columnValuesMapping,
@@ -275,7 +281,7 @@ export const addCardWithVisualization =
     const dashcard = dispatch(
       addDashCardToDashboard({
         dashId: getState().dashboard.dashboardId!,
-        tabId: getState().dashboard.selectedTabId,
+        tabId,
         dashcardOverrides: {
           id: dashcardId,
           card: mainCard,
