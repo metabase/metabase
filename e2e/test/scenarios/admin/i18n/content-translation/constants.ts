@@ -33,3 +33,10 @@ export const nonAsciiFieldNames: DictionaryArray = [
 ];
 
 export const columnNamesWithTypeText = ["Title", "Category", "Vendor"];
+
+export const stringTranslatedTwice = structuredClone(germanFieldNames);
+stringTranslatedTwice.push({
+  locale: "de",
+  msgid: "Title",
+  msgstr: "Überschrift",
+});
