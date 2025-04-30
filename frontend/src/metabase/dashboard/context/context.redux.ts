@@ -42,8 +42,6 @@ import {
   updateDashboardAndCards,
 } from "metabase/dashboard/actions";
 import { connect } from "metabase/lib/redux";
-import { closeNavbar, setErrorPage } from "metabase/redux/app";
-import { getIsNavbarOpen } from "metabase/selectors/app";
 import {
   canManageSubscriptions,
   getUserIsAdmin,
@@ -80,7 +78,6 @@ const mapStateToProps = (state: State) => ({
   tabs: getTabs(state),
   canManageSubscriptions: canManageSubscriptions(state),
   isAdmin: getUserIsAdmin(state),
-  isNavbarOpen: getIsNavbarOpen(state),
   isEditing: getIsEditing(state),
   isSharing: getIsSharing(state),
   dashboardBeforeEditing: getDashboardBeforeEditing(state),
@@ -113,8 +110,6 @@ const mapDispatchToProps = {
   setSharing,
   toggleSidebar,
   closeSidebar,
-  closeNavbar,
-  setErrorPage,
   setParameterName,
   setParameterType,
   setParameterValue,

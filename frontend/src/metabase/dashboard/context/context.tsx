@@ -36,6 +36,7 @@ type OwnProps = {
   parameterQueryParams?: Query;
   onLoad?: (dashboard: Dashboard) => void;
   onError?: (error: FailedFetchDashboardResult) => void;
+  onLoadWithoutCards?: (dashboard: Dashboard) => void;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
@@ -51,7 +52,9 @@ type DashboardControls = DashboardFullscreenControls &
   EmbedDisplayParams &
   EmbedThemeControls;
 
-type ContextProps = OwnProps & ReduxProps & Partial<DashboardControls>;
+export type DashboardContextProps = OwnProps & Partial<DashboardControls>;
+
+type ContextProps = DashboardContextProps & ReduxProps;
 
 type ContextReturned = OwnResult &
   OwnProps &
@@ -65,6 +68,7 @@ const DashboardContextProviderInner = ({
   dashboardId,
   parameterQueryParams = {},
   onLoad,
+  onLoadWithoutCards,
   onError,
 
   children,
