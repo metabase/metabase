@@ -62,7 +62,6 @@
 
   api
   {:api #{metabase.api.auth
-          metabase.api.cache
           metabase.api.card
           metabase.api.collection
           metabase.api.common
@@ -92,6 +91,12 @@
   bookmarks
   {:api  #{metabase.bookmarks.api}
    :uses #{api db models util}}
+
+  cache
+  {:api  #{metabase.cache.api
+           metabase.cache.core
+           metabase.cache.init}
+   :uses #{api config db events models premium-features settings util}}
 
   channel
   {:api  #{metabase.channel.api
@@ -316,7 +321,6 @@
   {:api #{metabase.models.api-key
           metabase.models.application-permissions-revision
           metabase.models.audit-log
-          metabase.models.cache-config
           metabase.models.card
           metabase.models.card.metadata
           metabase.models.collection
@@ -358,6 +362,7 @@
            analyze
            api
            audit
+           cache
            channel
            config
            db
@@ -492,6 +497,7 @@
            analyze
            api
            audit
+           cache
            config
            driver
            events
@@ -694,8 +700,8 @@
    :uses #{api premium-features util}}
 
   enterprise/cache
-  {:api  #{metabase-enterprise.cache.strategies}
-   :uses #{api models premium-features query-processor util}}
+  {:api  #{metabase-enterprise.cache.init}
+   :uses #{cache premium-features query-processor task util}}
 
   enterprise/content-verification
   {:api  #{metabase-enterprise.content-verification.api.routes}
@@ -703,7 +709,7 @@
 
   enterprise/core
   {:api  #{metabase-enterprise.core.init}
-   :uses #{enterprise/enhancements}}
+   :uses :any}
 
   enterprise/dashboard-subscription-filters
   {:api  #{}
@@ -796,7 +802,7 @@
 
   enterprise/task
   {:api  #{metabase-enterprise.task.truncate-audit-tables}
-   :uses #{premium-features query-processor task util enterprise/cache}}
+   :uses #{premium-features}}
 
   enterprise/upload-management
   {:api  #{metabase-enterprise.upload-management.api}

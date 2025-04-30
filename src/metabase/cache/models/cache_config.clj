@@ -1,4 +1,4 @@
-(ns metabase.models.cache-config
+(ns metabase.cache.models.cache-config
   "A model representing cache configuration."
   (:require
    [java-time.api :as t]
