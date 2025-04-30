@@ -8,7 +8,7 @@
    [metabase.channel.render.js.engine :as js.engine]
    [metabase.channel.render.style :as style]
    [metabase.config :as config]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.delay :as delay]
    [metabase.util.json :as json])
   (:import

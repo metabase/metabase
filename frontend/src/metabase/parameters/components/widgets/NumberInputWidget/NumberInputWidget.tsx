@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -11,14 +11,14 @@ import {
   deserializeNumberParameterValue,
   serializeNumberParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
-import { type ComboboxItem, MultiAutocomplete } from "metabase/ui";
+import { Box, type ComboboxItem, MultiAutocomplete } from "metabase/ui";
 import type {
   Parameter,
   ParameterValue,
   ParameterValueOrArray,
 } from "metabase-types/api";
 
-import { Footer, TokenFieldWrapper, WidgetLabel, WidgetRoot } from "../Widget";
+import { Footer, TokenFieldWrapper, WidgetLabel } from "../Widget";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 
 export type NumberInputWidgetProps = {
@@ -53,16 +53,8 @@ export function NumberInputWidget({
   const isValid =
     (arity === "n" || unsavedArrayValue.length <= arity) &&
     (allValuesUnset || allValuesSet);
-
-  const onClick = () => {
-    if (isValid) {
-      if (allValuesUnset || unsavedArrayValue.length === 0) {
-        setValue(undefined);
-      } else {
-        setValue(serializeNumberParameterValue(unsavedArrayValue));
-      }
-    }
-  };
+  const isEmpty = unsavedArrayValue.length === 0 || allValuesUnset;
+  const isRequired = parameter?.required;
 
   const filteredUnsavedArrayValue = useMemo(
     () => unsavedArrayValue.filter((x): x is number => x !== undefined),
@@ -86,8 +78,26 @@ export function NumberInputWidget({
     );
   };
 
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!isValid || (isRequired && isEmpty)) {
+      return;
+    }
+
+    if (allValuesUnset || unsavedArrayValue.length === 0) {
+      setValue(undefined);
+    } else {
+      setValue(serializeNumberParameterValue(unsavedArrayValue));
+    }
+  };
+
   return (
-    <WidgetRoot className={className} w={WIDTH}>
+    <Box
+      component="form"
+      className={className}
+      w={WIDTH}
+      onSubmit={handleSubmit}
+    >
       {label && <WidgetLabel>{label}</WidgetLabel>}
       {arity === "n" ? (
         <TokenFieldWrapper>
@@ -132,10 +142,9 @@ export function NumberInputWidget({
           defaultValue={parameter?.default}
           isValueRequired={parameter?.required ?? false}
           isValid={isValid}
-          onClick={onClick}
         />
       </Footer>
-    </WidgetRoot>
+    </Box>
   );
 }
 

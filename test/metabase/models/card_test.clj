@@ -515,7 +515,7 @@
       (mt/with-temp [:model/Collection  coll {:name "field-db" :location "/" :created_at now}
                      :model/Card card {:name "the card" :collection_id (:id coll) :created_at now}]
         (is (= "5199edf0"
-               (serdes/raw-hash ["the card" (serdes/identity-hash coll) now])
+               (serdes/raw-hash ["the card" (serdes/identity-hash coll) (:created_at card)])
                (serdes/identity-hash card)))))))
 
 (deftest parameter-card-test

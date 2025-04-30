@@ -15,12 +15,12 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.models.setting :as setting]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.util.date-2 :as u.date]
@@ -506,9 +506,9 @@
                 VENUES.LATITUDE    AS LATITUDE
                 VENUES.LONGITUDE   AS LONGITUDE
                 VENUES.PRICE       AS PRICE
-                CAST (VENUES.PRICE AS float)
+                CAST (VENUES.PRICE AS double)
                 /
-                NULLIF (CategoriesStats.AvgPrice, 0) AS RelativePrice
+                NULLIF (CAST (CategoriesStats.AvgPrice AS double), 0.0) AS RelativePrice
                 CategoriesStats.CATEGORY_ID AS CategoriesStats__CATEGORY_ID
                 CategoriesStats.MaxPrice    AS CategoriesStats__MaxPrice
                 CategoriesStats.AvgPrice    AS CategoriesStats__AvgPrice
@@ -810,9 +810,9 @@
 (deftest ^:parallel floating-point-division-test
   (testing "Make sure FLOATING POINT division is done when dividing by expressions/fields"
     (is (= '{:select   [CAST
-                        (VENUES.PRICE AS float)
+                        (VENUES.PRICE AS double)
                         /
-                        NULLIF (VENUES.PRICE + 2, 0) AS my_cool_new_field]
+                        NULLIF (CAST (VENUES.PRICE + 2 AS double), 0.0) AS my_cool_new_field]
              :from     [VENUES]
              :order-by [VENUES.ID ASC]
              :limit    [3]}
@@ -1163,3 +1163,45 @@
                   (lib/limit $ 1))]
       (is (= 55.98
              (->> (qp/process-query query) (mt/formatted-rows [str 2.0]) first second))))))
+
+(deftest ^:parallel literal-float-test
+  (doseq [{:keys [value expected type]} [{:value "1.2" :expected 1.2  :type "TEXT"}
+                                         {:value 10    :expected 10.0 :type "BIGINT"}
+                                         {:value 90.9  :expected 90.9 :type "DOUBLE"}]]
+    (is (= [:inline expected]
+           (h2x/unwrap-typed-honeysql-form
+            (sql.qp/coerce-float :sql value))))
+    (is (= [:inline expected]
+           (h2x/unwrap-typed-honeysql-form
+            (sql.qp/coerce-float :sql
+                                 [:inline value]))))
+    (is (= [:inline expected]
+           (h2x/unwrap-typed-honeysql-form
+            (sql.qp/coerce-float :sql
+                                 (h2x/with-database-type-info [:inline value] type)))))
+    (is (= [:inline expected]
+           (h2x/unwrap-typed-honeysql-form
+            (sql.qp/coerce-float :sql
+                                 (h2x/with-database-type-info value type)))))))
+
+(deftest ^:parallel literal-integer-test
+  (doseq [{:keys [value expected type]} [{:value "1"  :expected 1  :type "TEXT"}
+                                         {:value 10   :expected 10 :type "BIGINT"}
+                                         {:value 10.9 :expected 11 :type "DOUBLE"}
+                                         {:value 10.4 :expected 10 :type "DOUBLE"}]]
+    (testing (str "Coercing " (pr-str value) " to integer.")
+      (is (= [:inline expected]
+             (h2x/unwrap-typed-honeysql-form
+              (sql.qp/coerce-integer :sql value))))
+      (is (= [:inline expected]
+             (h2x/unwrap-typed-honeysql-form
+              (sql.qp/coerce-integer :sql
+                                     [:inline value]))))
+      (is (= [:inline expected]
+             (h2x/unwrap-typed-honeysql-form
+              (sql.qp/coerce-integer :sql
+                                     (h2x/with-database-type-info [:inline value] type)))))
+      (is (= [:inline expected]
+             (h2x/unwrap-typed-honeysql-form
+              (sql.qp/coerce-integer :sql
+                                     (h2x/with-database-type-info value type))))))))

@@ -197,6 +197,10 @@
   [_driver _unit x y]
   (h2x/->integer [:trunc (h2x/- (extract :epoch y) (extract :epoch x))]))
 
+(defmethod sql.qp/float-dbtype :vertica
+  [_]
+  "DOUBLE PRECISION")
+
 (defmethod sql.qp/->honeysql [:vertica :regex-match-first]
   [driver [_ arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])

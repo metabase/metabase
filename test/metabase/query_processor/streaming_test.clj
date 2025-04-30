@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.api.embed-test :as embed-test]
+   [metabase.embedding.api.embed-test :as embed-test]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -171,8 +171,8 @@
                                    :async-context (reify AsyncContext
                                                     (complete [_]
                                                       (deliver complete-promise true)))})
-        (is (= true
-               (deref complete-promise 1000 ::timed-out)))
+        (is (true?
+             (deref complete-promise 1000 ::timed-out)))
         (let [response-str (String. (.toByteArray os) "UTF-8")]
           (is (= "[{\"num_cans\":\"2\"}]"
                  (str/replace response-str #"\n+" "")))

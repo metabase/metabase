@@ -766,8 +766,8 @@
 
         (testing "Run it again, should be cached"
           (let [result (run-query)]
-            (is (= true
-                   (:cached (:cache/details result))))
+            (is (true?
+                 (:cached (:cache/details result))))
             (is (= [[10]]
                    (mt/rows result)))))
         (testing "Run the query with different User attributes, should not get the cached result"

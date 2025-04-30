@@ -10,4 +10,19 @@
 
 .modalBody {
   overflow-y: auto;
+  padding-bottom: 0;
+
+  :global {
+    .database-form {
+      position: relative;
+    }
+
+    .database-form-footer {
+      padding-bottom: 2rem;
+      padding-top: 1.25rem;
+      background: var(--mb-color-background);
+      position: sticky;
+      bottom: 0;
+    }
+  }
 }
