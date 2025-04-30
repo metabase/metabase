@@ -29,7 +29,6 @@ import {
   getInitialStateForMultipleSeries,
   getInitialStateForVisualizerCard,
   isVisualizerDashboardCard,
-  isVisualizerSupportedVisualization,
 } from "metabase/visualizer/utils";
 import type {
   Card,
@@ -318,13 +317,6 @@ function DashCardInner({
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
   const onEditVisualizationClick = useMemo(() => {
-    if (
-      !isVisualizerDashboardCard(dashcard) &&
-      !isVisualizerSupportedVisualization(dashcard.card.display)
-    ) {
-      return;
-    }
-
     return () => {
       let initialState: VisualizerVizDefinitionWithColumns;
 

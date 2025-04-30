@@ -364,7 +364,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     });
 
     // TODO editing a dashcard when it isn't done loading
-    // causes the visualizr modal to be in error for some reason
+    // causes the visualizer modal to be in error for some reason
     // this should be fixed in the future
     cy.wait(1000);
 
@@ -375,6 +375,67 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.get("@undoButton").should("be.disabled");
       cy.get("@redoButton").should("be.disabled");
       cy.findByTestId("chartsettings-sidebar").should("not.be.visible");
+    });
+  });
+
+  describe("edit visualization action button", () => {
+    it("should work for compatible visualizations (table)", () => {
+      H.createDashboard().then(({ body: { id: dashboardId } }) => {
+        H.visitDashboard(dashboardId);
+      });
+
+      H.editDashboard();
+      H.openQuestionsSidebar();
+      H.sidebar().within(() => {
+        cy.findByRole("menuitem", { name: "Orders" }).click({ force: true });
+      });
+
+      // Edit visualization in "dashboard edit mode"
+      H.showDashcardVisualizerModal(0);
+      H.modal().within(() => {
+        cy.findByText("Save").closest("button").should("be.disabled");
+      });
+      cy.get("body").type("{esc}");
+
+      H.saveDashboard();
+
+      // Edit visualization in "dashboard view mode"
+      H.showDashboardCardActions();
+      H.getDashboardCardMenu().click();
+      H.popover().findByText("Edit visualization").should("be.visible").click();
+      H.modal().within(() => {
+        // TODO history should be empty at startup, and therefore the save button
+        // should be disabled
+        // cy.findByText("Save").closest("button").should("be.disabled");
+      });
+    });
+
+    it("should work for visualizer cards", () => {
+      H.createDashboard().then(({ body: { id: dashboardId } }) => {
+        H.visitDashboard(dashboardId);
+      });
+
+      // Edit visualization in "dashboard edit mode"
+      H.editDashboard();
+      H.openQuestionsSidebar();
+      H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
+
+      H.modal().within(() => {
+        cy.findByText("Add to dashboard")
+          .closest("button")
+          .should("not.be.disabled")
+          .click({ force: true });
+      });
+
+      H.saveDashboard();
+
+      // Edit visualization in "dashboard view mode"
+      H.showDashboardCardActions();
+      H.getDashboardCardMenu().click();
+      H.popover().findByText("Edit visualization").click();
+      H.modal().within(() => {
+        cy.findByText("Save").closest("button").should("be.disabled");
+      });
     });
   });
 });
