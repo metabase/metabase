@@ -118,8 +118,9 @@
 (defn- detect-schema
   "Consumes the header and rows from a CSV file.
 
-   Returns an ordered map of normalized-column-name -> type for the given CSV file. Supported types include `::int`,
-   `::datetime`, etc. A column that is completely blank is assumed to be of type `::text`."
+   Returns an ordered map of normalized-column-name -> type for the given CSV file. Supported types include
+  `:metabase.upload/int`, `:metabase.upload/datetime`, etc. A column that is completely blank is assumed to be of type
+  `:metabase.upload/text`."
   [settings unique-header rows]
   (let [column-count        (count unique-header)
         initial-types       (repeat column-count nil)
@@ -952,7 +953,7 @@
 
 (def update-action-schema
   "The :action values supported by [[update-csv!]]"
-  [:enum ::append ::replace])
+  [:enum :metabase.upload/append :metabase.upload/replace])
 
 (mu/defn update-csv!
   "Main entry point for updating an uploaded table with a CSV file.
@@ -966,7 +967,7 @@
        [:action update-action-schema]]]
   (let [table    (api/check-404 (t2/select-one :model/Table :id table-id))
         database (table/database table)
-        replace? (= ::replace action)]
+        replace? (= :metabase.upload/replace action)]
     (check-can-update database table)
     (check-filetype filename file)
     (update-with-csv! database table filename file :replace-rows? replace?)))
