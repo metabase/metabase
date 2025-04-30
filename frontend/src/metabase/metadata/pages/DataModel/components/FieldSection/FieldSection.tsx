@@ -1,9 +1,10 @@
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useGetFieldQuery } from "metabase/api";
+import { useGetFieldQuery, useUpdateFieldMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { Box, Icon, Stack, TextInput, Title } from "metabase/ui";
+import { Box, Icon, Stack, Switch, TextInput, Title } from "metabase/ui";
 import type { FieldId } from "metabase-types/api";
 
 import { SectionPill } from "../SectionPill";
@@ -16,6 +17,16 @@ interface Props {
 
 export const FieldSection = ({ fieldId }: Props) => {
   const { data: field, error, isLoading } = useGetFieldQuery({ id: fieldId });
+  const [updateField] = useUpdateFieldMutation();
+  const [isCasting, setIsCasting] = useState(
+    field ? field.coercion_strategy != null : false,
+  );
+
+  useEffect(() => {
+    if (field) {
+      setIsCasting(field.coercion_strategy != null);
+    }
+  }, [field]);
 
   if (error || isLoading || !field) {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
@@ -47,6 +58,19 @@ export const FieldSection = ({ fieldId }: Props) => {
             rightSection={<Icon name="lock" />}
             rightSectionPointerEvents="none"
             value={field.database_type}
+          />
+
+          <Switch
+            checked={isCasting}
+            label={t`Cast to a specific data type`}
+            size="xs"
+            onChange={(event) => {
+              setIsCasting(event.target.checked);
+
+              if (!event.target.checked) {
+                updateField({ id: fieldId, coercion_strategy: null });
+              }
+            }}
           />
         </Stack>
       </Box>
