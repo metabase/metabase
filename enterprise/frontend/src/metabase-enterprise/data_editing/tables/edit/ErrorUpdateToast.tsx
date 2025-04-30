@@ -11,7 +11,7 @@ type ErrorUpdateToastProps = {
 export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
   const [showDetails, setShowDetails] = useState(false);
 
-  const errorMessage = getResponseErrorMessage(error) ?? t`Unknown error`;
+  const errorMessage = getResponseErrorMessage(error) || t`Unknown error`;
 
   if (showDetails) {
     return (

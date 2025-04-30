@@ -27,8 +27,8 @@ import type {
 
 import { ErrorUpdateToast } from "./ErrorUpdateToast";
 import type {
-  PatchCollection,
   TableEditingStateUpdateStrategy,
+  UndoObject,
 } from "./use-table-state-update-strategy";
 import { getRowPkKeyValue } from "./utils";
 
@@ -97,7 +97,7 @@ export const useTableCRUD = ({
       error: unknown,
       cellUpdateContext: {
         cellId: DataGridCellId;
-        patchResult: PatchCollection | undefined;
+        patchResult: UndoObject | undefined;
       },
     ) => {
       const { cellId, patchResult } = cellUpdateContext;
@@ -112,6 +112,7 @@ export const useTableCRUD = ({
           timeout: null, // removes automatic toast hide
           undo: false,
           onDismiss: () => {
+            // TODO: handle case when there are 2+ failed updates for a single cell id
             setCellsWithFailedUpdatesMap((prevState) => {
               const newMap = { ...prevState };
               delete newMap[cellId];
