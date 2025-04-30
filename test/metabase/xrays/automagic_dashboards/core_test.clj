@@ -1603,27 +1603,22 @@
                                                                                (lib/breakoutable-columns query))))]
                                       (qp.test-util/card-with-source-metadata-for-query (lib/->legacy-MBQL query)))]
       (let [cell-query ["=" ["field" "SOURCE" {"base-type" "type/Text"}] "Affiliate"]]
-        (is (= #_["Count"
-                  "Null values"
-                  "How the SOURCE is distributed"
-                  "Distinct values"
-                  "A look at the number of 15655"]
-             ["Over time"
-              "Number of 15655 per day of the week"
-              "Number of 15655 per hour of the day"
-              "Number of 15655 per day of the month"
-              "Number of 15655 per month of the year"
-              "Number of 15655 per quarter of the year"
-              "Number of 15655 per NAME, top 5"
-              "Number of 15655 per CITY, top 5"
-              "Number of 15655 per NAME, bottom 5"
-              "Number of 15655 per CITY, bottom 5"
-              "Number of 15655 per SOURCE over time"
-              "Number of 15655 per SOURCE"
-              "Count"
-              "Null values"
-              "How the SOURCE is distributed"
-              "Distinct values"]
+        (is (= ["Over time"
+                "Number of 15655 per day of the week"
+                "Number of 15655 per hour of the day"
+                "Number of 15655 per day of the month"
+                "Number of 15655 per month of the year"
+                "Number of 15655 per quarter of the year"
+                "Number of 15655 per NAME, top 5"
+                "Number of 15655 per CITY, top 5"
+                "Number of 15655 per NAME, bottom 5"
+                "Number of 15655 per CITY, bottom 5"
+                "Number of 15655 per SOURCE over time"
+                "Number of 15655 per SOURCE"
+                "Count"
+                "Null values"
+                "How the SOURCE is distributed"
+                "Distinct values"]
                (into []
                      (keep (comp :name :card))
                      ;; this is the equivalent of hitting `automagic-dashboards/adhoc/%s/cell/%s` with the query
