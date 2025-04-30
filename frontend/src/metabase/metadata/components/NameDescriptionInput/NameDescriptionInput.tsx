@@ -12,9 +12,6 @@ interface Props {
   onNameChange: (name: string) => void;
 }
 
-/**
- * Controlled component that fires on*Change events on blur
- */
 export const NameDescriptionInput = ({
   description,
   descriptionPlaceholder,

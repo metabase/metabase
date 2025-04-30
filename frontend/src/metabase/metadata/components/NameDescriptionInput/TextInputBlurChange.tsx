@@ -8,6 +8,9 @@ interface Props extends Omit<TextInputProps, "onChange"> {
   onChange: (value: string) => void;
 }
 
+/**
+ * Controlled component that fires on*Change events on blur
+ */
 export const TextInputBlurChange = ({
   required,
   value,
