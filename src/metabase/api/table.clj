@@ -22,7 +22,7 @@
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.types :as types]
-   [metabase.upload :as upload]
+   [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru deferred-trun tru]]
    [metabase.util.log :as log]
@@ -688,7 +688,7 @@
   (update-csv! {:table-id id
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
-                :action   ::upload/append}))
+                :action   :metabase.upload/append}))
 
 (api.macros/defendpoint :post "/:id/replace-csv"
   "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have
@@ -708,4 +708,4 @@
   (update-csv! {:table-id id
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
-                :action   ::upload/replace}))
+                :action   :metabase.upload/replace}))

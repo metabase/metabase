@@ -28,7 +28,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
-   [metabase.upload :as upload]
+   [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]

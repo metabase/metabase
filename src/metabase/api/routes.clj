@@ -49,6 +49,7 @@
    [metabase.task-history.api]
    [metabase.tiles.api]
    [metabase.timeline.api]
+   [metabase.upload.api]
    [metabase.user-key-value.api]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.xrays.api]))
@@ -85,6 +86,7 @@
          metabase.setup.api/keep-me
          metabase.task-history.api/keep-me
          metabase.tiles.api/keep-me
+         metabase.upload.api/keep-me
          metabase.user-key-value.api/keep-me)
 
 (def ^:private ^{:arglists '([request respond raise])} pass-thru-handler
@@ -174,6 +176,7 @@
    "/tiles"                (+auth 'metabase.tiles.api)
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
    "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)
+   "/upload"               (+auth 'metabase.upload.api)
    "/user"                 (+auth 'metabase.api.user)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)
    "/util"                 'metabase.api.util})

@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests ^:mb/upload-tests metabase.upload-test
+(ns ^:mb/driver-tests ^:mb/upload-tests metabase.upload.impl-test
   (:require
    [clj-bom.core :as bom]
    [clojure.data.csv :as csv]
@@ -27,7 +27,7 @@
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.upload :as upload]
+   [metabase.upload.impl :as upload]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.types :as upload-types]
    [metabase.util :as u]
@@ -1437,24 +1437,24 @@
 
 (defn- actions-to-test [driver]
   (case driver
-    :h2 [::upload/append ::upload/replace]
+    :h2 [:metabase.upload/append :metabase.upload/replace]
     ;; It's too slow to run all these tests for both for redshift, and adds little value for the other drivers.
     ;; Since ::replace is basically ::append with an extra driver method being called, only test the latter.
-    [::upload/replace]))
+    [:metabase.upload/replace]))
 
 (defn- action-testing-str [action]
   (format "Can %s an existing upload\n"
           (case action
-            ::upload/append "append to"
-            ::upload/replace "replace")))
+            :metabase.upload/append "append to"
+            :metabase.upload/replace "replace")))
 
 (defn- updated-contents [action initial added]
   ;; TODO fix inconsistent mysql semantics
   (case action
-    ::upload/append (rows-with-auto-pk (into initial added))
-    ::upload/replace (if (= driver/*driver* :mysql)
-                       (rows-with-auto-pk added)
-                       (drop (count initial) (rows-with-auto-pk (into initial added))))))
+    :metabase.upload/append (rows-with-auto-pk (into initial added))
+    :metabase.upload/replace (if (= driver/*driver* :mysql)
+                               (rows-with-auto-pk added)
+                               (drop (count initial) (rows-with-auto-pk (into initial added))))))
 
 (defn update-csv-with-defaults!
   "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden."
@@ -1658,7 +1658,7 @@
                       (is (= (set (updated-contents
                                    action
                                    []
-                                   [[(if (driver/upload-type->database-type driver/*driver* ::upload/offset-datetime)
+                                   [[(if (driver/upload-type->database-type driver/*driver* :metabase.upload/offset-datetime)
                                        "2020-02-02T00:02:02Z"
                                        "2020-02-02T02:02:02+02:00")]]))
                              (set (rows-for-table table)))))
@@ -1711,11 +1711,11 @@
                               (t2/select-one :model/Field :table_id (:id table) :name upload/auto-pk-column-name))))
                     (testing "Check the data was uploaded into the table, but the _mb_row_id column values were ignored"
                       (case action
-                        ::upload/append
+                        :metabase.upload/append
                         (is (= [["Obi-Wan Kenobi" 1]
                                 ["Luke Skywalker" 2]]
                                (rows-for-table table)))
-                        ::upload/replace
+                        :metabase.upload/replace
                         (is (= [["Luke Skywalker" 1]]
                                (rows-for-table table))))))
                   (do
@@ -1723,11 +1723,11 @@
                       (is (= ["name"]
                              (column-names-for-table table))))
                     (case action
-                      ::upload/append
+                      :metabase.upload/append
                       (is (= [["Obi-Wan Kenobi"]
                               ["Luke Skywalker"]]
                              (rows-for-table table)))
-                      ::upload/replace
+                      :metabase.upload/replace
                       (is (= [["Luke Skywalker"]]
                              (rows-for-table table))))))
                 (io/delete-file file)))))))))
@@ -1756,9 +1756,9 @@
               (testing "Check the data was not uploaded into the table"
                 ;; TODO in future it would be good to enhance ::replace to be atomic, i.e. to preserve the existing row
                 (case action
-                  ::upload/append
+                  :metabase.upload/append
                   (is (= [[true]] (rows-for-table table)))
-                  ::upload/replace
+                  :metabase.upload/replace
                   (is (= [] (rows-for-table table)))))
               (io/delete-file file))))))))
 
@@ -1792,7 +1792,7 @@
                                                             :name vchar-type))
                                         :rows             parsed-rows})]
           (let [file (csv-file-with csv-rows)]
-            (is (some? (update-csv! ::upload/append {:file file, :table-id (:id table)})))
+            (is (some? (update-csv! :metabase.upload/append {:file file, :table-id (:id table)})))
             (testing "Check the data was uploaded into the table correctly"
               (if (mysql/mariadb? (mt/db))
                 ;; For MariaDB, the auto-incrementing column isn't continuous if the insert is duplicated. So this test
@@ -1854,8 +1854,8 @@
             (let [csv-rows   ["name" "Luke Skywalker"]
                   file       (csv-file-with csv-rows)
                   event-type (case action
-                               ::upload/append  :upload-append
-                               ::upload/replace :upload-replace)]
+                               :metabase.upload/append  :upload-append
+                               :metabase.upload/replace :upload-replace)]
 
               (update-csv! action {:file file, :table-id (:id table)})
 
@@ -2118,7 +2118,7 @@
                                     :valid       #t "2000-01-01T00:00:00"
                                     :invalid     "2023-01-01T00:00:00+01"
                                     :msg         "'2023-01-01T00:00:00+01' is not a recognizable datetime"}]
-                            (driver/upload-type->database-type driver/*driver* ::upload/offset-datetime)
+                            (driver/upload-type->database-type driver/*driver* :metabase.upload/offset-datetime)
                             (conj {:upload-type offset-dt-type
                                    :valid       #t "2000-01-01T00:00:00+01"
                                    :invalid     "2023-01-01T00:00:00[Europe/Helsinki]"
@@ -2140,7 +2140,7 @@
                                    (catch-ex-info (update-csv! action {:file file, :table-id (:id table)})))))
                           ;; TODO in future it would be good to enhance ::replace to be atomic, i.e. to preserve the existing row
                           (testing "\nCheck the data was not uploaded into the table"
-                            (is (= (case action ::upload/append 1 ::upload/replace 0)
+                            (is (= (case action :metabase.upload/append 1 :metabase.upload/replace 0)
                                    (count (rows-for-table table)))))
                           (io/delete-file file))))))))))))))
 
@@ -2178,7 +2178,7 @@
                             (catch-ex-info (update-csv! action {:file file, :table-id (:id table)})))))
                   (testing "\nCheck the data was not uploaded into the table"
                     ;; TODO in future it would be good to enhance ::replace to be atomic, i.e. to preserve the existing row
-                    (is (= (case action ::upload/append 1 ::upload/replace 0)
+                    (is (= (case action :metabase.upload/append 1 :metabase.upload/replace 0)
                            (count (rows-for-table table))))))))))))))
 
 (deftest update-too-long-for-varchar-255-mysql-local-infile-test
@@ -2514,7 +2514,7 @@
             (let [csv-rows [header appended-row]
                   file     (csv-file-with csv-rows (mt/random-name))]
               (is (= {:row-count 1}
-                     (update-csv! ::upload/append {:file file, :table-id (:id table)})))
+                     (update-csv! :metabase.upload/append {:file file, :table-id (:id table)})))
               (testing "Check the data was appended into the table"
                 (is (= (set
                         (rows-with-auto-pk
@@ -2543,7 +2543,7 @@
                      (column-display-names-for-table table))))
             (let [file (csv-file-with data (mt/random-name))]
               (is (= {:row-count 1}
-                     (update-csv! ::upload/append {:file file, :table-id (:id table)})))
+                     (update-csv! :metabase.upload/append {:file file, :table-id (:id table)})))
               (testing "And our configuration is preserved when we append more data"
                 (is (= (header-with-auto-pk [bespoke-name])
                        (column-display-names-for-table table))))
@@ -2567,7 +2567,7 @@
              ;; TODO: we should be able to make this work with smarter truncation
               (is (= {:message "The CSV file contains duplicate column names."
                       :data    {:status-code 422}}
-                     (catch-ex-info (update-csv! ::upload/append {:file file, :table-id (:id table)}))))
+                     (catch-ex-info (update-csv! :metabase.upload/append {:file file, :table-id (:id table)}))))
               (testing "Check the data was not uploaded into the table"
                 (is (= (rows-with-auto-pk (csv/read-csv original-row))
                        (rows-for-table table))))

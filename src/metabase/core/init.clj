@@ -34,6 +34,7 @@
    [metabase.task-history.init]
    [metabase.task.init]
    [metabase.tiles.init]
+   [metabase.upload.init]
    [metabase.user-key-value.init]
    [metabase.xrays.init]))
 

@@ -640,7 +640,9 @@
    :uses #{util}}
 
   upload
-  {:api  #{metabase.upload}
+  {:api  #{metabase.upload.api
+           metabase.upload.core
+           metabase.upload.init}
    :uses #{analytics api driver events legacy-mbql lib model-persistence models permissions settings sync util}}
 
   user-key-value
