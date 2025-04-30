@@ -52,9 +52,8 @@ describe("scenarios > models", () => {
       H.selectFilterOperator("Contains");
       H.popover().within(() => {
         cy.findByLabelText("Filter value").type("Fisher");
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      H.runButtonOverlay().click();
       cy.wait("@dataset");
 
       assertQuestionIsBasedOnModel({
@@ -103,9 +102,8 @@ describe("scenarios > models", () => {
     H.selectFilterOperator("Contains");
     H.popover().within(() => {
       cy.findByLabelText("Filter value").type("Fisher");
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     cy.wait("@dataset");
 
     assertQuestionIsBasedOnModel({
@@ -170,9 +168,8 @@ describe("scenarios > models", () => {
     H.selectFilterOperator("Greater than");
     H.popover().within(() => {
       cy.findByLabelText("Filter value").type("30");
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     cy.wait("@dataset").then(({ response }) => {
       expect(response.body.error).to.not.exist;
     });
@@ -461,8 +458,7 @@ describe("scenarios > models", () => {
       H.filter();
       H.popover().findByText("Discount").click();
       H.selectFilterOperator("Not empty");
-      H.popover().button("Add filter").click();
-      H.runButtonOverlay().click();
+      H.popover().button("Apply filter").click();
       cy.wait("@dataset");
 
       assertQuestionIsBasedOnModel({
