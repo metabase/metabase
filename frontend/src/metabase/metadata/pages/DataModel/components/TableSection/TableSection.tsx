@@ -26,6 +26,7 @@ interface Props {
 }
 
 export const TableSection = ({ params, tableId }: Props) => {
+  const { fieldId } = parseRouteParams(params);
   const {
     data: table,
     error,
@@ -86,6 +87,7 @@ export const TableSection = ({ params, tableId }: Props) => {
         </Flex>
 
         <SortableFieldList
+          activeFieldId={fieldId}
           getFieldHref={(fieldId) => {
             return getUrl({ ...parseRouteParams(params), fieldId });
           }}

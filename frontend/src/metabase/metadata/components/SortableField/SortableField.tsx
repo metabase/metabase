@@ -8,6 +8,7 @@ import { Flex, Group, Icon, type IconName, Text } from "metabase/ui";
 import S from "./SortableField.module.css";
 
 interface Props {
+  active?: boolean;
   disabled?: boolean;
   href?: string;
   icon: IconName;
@@ -15,7 +16,14 @@ interface Props {
   label: string;
 }
 
-export const SortableField = ({ disabled, href, icon, id, label }: Props) => {
+export const SortableField = ({
+  active,
+  disabled,
+  href,
+  icon,
+  id,
+  label,
+}: Props) => {
   const draggable = !disabled;
 
   return (
@@ -28,9 +36,9 @@ export const SortableField = ({ disabled, href, icon, id, label }: Props) => {
       <Flex
         align="center"
         aria-label={label}
-        bg="bg-white"
         c="text-medium"
         className={cx(S.content, {
+          [S.active]: active,
           [S.draggable]: draggable,
         })}
         component={href ? Link : undefined}
