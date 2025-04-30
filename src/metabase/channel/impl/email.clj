@@ -237,7 +237,6 @@
                                             :margin-top      "8px"})}
       (for [row rows]
         [:tr {} row])])))
-(:payload notification-payload)
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
   [_channel-type _payload-type {:keys [payload payload_type] :as notification-payload} template recipients]

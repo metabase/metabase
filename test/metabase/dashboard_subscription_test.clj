@@ -368,49 +368,6 @@
       (mt/with-temp [:model/DashboardCard _ {:dashboard_id dashboard-id
                                              :row 1
                                              :col 1
-                                             :visualization_settings {:text "# header"}}]
-        (mt/with-temporary-setting-values [site-name "Metabase Test"]
-          (thunk))))
-
-    :assert
-    {:email
-     (fn [_ [email]]
-       (testing "Markdown cards are included in email subscriptions"
-         (is (= (rasta-dashsub-message {:body [{"Aviary KPIs" true
-                                                "header"      true}
-                                               pulse.test-util/png-attachment]})
-                (mt/summarize-multipart-single-email email #"Aviary KPIs"
-                                                     #"header")))))
-
-     :slack
-     (fn [{:keys [card-id dashboard-id]} [pulse-results]]
-       (testing "Markdown cards are included in attachments list as :blocks sublists, and markdown is
-                  converted to mrkdwn (Slack markup language)"
-         (is (= {:channel-id "#general"
-                 :attachments
-                 [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
-                            {:type "section", :fields [{:type "mrkdwn", :text (str "<https://testmb.com/dashboard/"
-                                                                                   dashboard-id
-                                                                                   "|*Sent from Metabase Test by Rasta Toucan*>")}]}]}
-                  {:title           pulse.test-util/card-name
-                   :rendered-info   {:attachments false, :content true, :render/text true},
-                   :title_link      (str "https://testmb.com/question/" card-id)
-                   :attachment-name "image.png"
-                   :fallback        pulse.test-util/card-name}
-                  {:blocks [{:type "section" :text {:type "mrkdwn" :text "*header*"}}]}]}
-                (pulse.test-util/thunk->boolean pulse-results)))))}}))
-
-(deftest virtual-card-heading-test
-  (tests!
-   {:pulse {:skip_if_empty false}, :dashcard {:row 0, :col 0}}
-   "Dashboard subscription that includes a virtual card. For heading cards we escape markdown, add a heading markdown, and don't subsitute tags."
-   {:card (pulse.test-util/checkins-query-card {})
-
-    :fixture
-    (fn [{dashboard-id :dashboard-id} thunk]
-      (mt/with-temp [:model/DashboardCard _ {:dashboard_id dashboard-id
-                                             :row 1
-                                             :col 1
                                              :visualization_settings {:text "# header, quote isn't escaped" :virtual_card {:display "heading"}}}]
         (mt/with-temporary-setting-values [site-name "Metabase Test"]
           (thunk))))
@@ -1233,3 +1190,32 @@
                          :attachment-name "image.png",
                          :fallback "Test card"}]}
                       (pulse.test-util/thunk->boolean (first (:channel/slack pulse-results))))))))))))
+
+(deftest table-editable-do-not-include-link-to-question
+  (tests!
+   {}
+   "Table editable shouldn't include href to the question"
+   {:card {:dataset_query (mt/mbql-query orders {:limit 1})
+           :name          "My Card"
+           :display       :table-editable}
+    :assert
+    {:email
+     (fn [_ [email]]
+       (is (= (rasta-dashsub-message
+               {:body [{;; No link to question
+                        "<a href=\\\"https://testmb.com/question/\\d+\\\"" false}
+                       pulse.test-util/png-attachment]})
+              (mt/summarize-multipart-single-email email
+                                                   #"<a href=\"https://testmb.com/question/\d+\""))))
+     :slack
+     (fn [_ [pulse-results]]
+       (is (= {:title           "My Card"
+               :rendered-info   {:attachments false :content true}
+               :attachment-name "image.png"
+               :fallback        "My Card"
+               ;; link is nil
+               :title_link      nil}
+              (-> (pulse.test-util/thunk->boolean pulse-results)
+                  :attachments second))))}}))
+
+
