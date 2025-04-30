@@ -18,6 +18,7 @@ interface BaseEmbedTestPageOptions {
   instanceUrl?: string;
   dashboardId?: number | string;
   questionId?: number | string;
+  template?: "exploration";
   theme?: MetabaseTheme;
 
   // Options for the test page
