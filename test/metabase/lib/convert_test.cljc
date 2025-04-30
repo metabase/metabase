@@ -1158,7 +1158,8 @@
 (deftest ^:parallel cumulative-count-test
   (is (=? (lib.tu.macros/mbql-query
             venues
-            {:aggregation [[:aggregation-options
+            {:source-table $$venues
+             :aggregation [[:aggregation-options
                             [:cum-count [:field %id {:base-type :type/BigInteger}]]
                             {:name "count"}]]})
           (lib.convert/->legacy-MBQL
@@ -1170,7 +1171,8 @@
 (deftest ^:parallel cumulative-aggregations-in-expression-test
   (is (=? (lib.tu.macros/mbql-query
             venues
-            {:aggregation [[:aggregation-options
+            {:source-table $$venues
+             :aggregation [[:aggregation-options
                             [:+
                              [:aggregation-options [:cum-sum [:field %id {:base-type :type/BigInteger}]] {:name "a"}]
                              [:aggregation-options [:cum-count] {:name "b"}]]
