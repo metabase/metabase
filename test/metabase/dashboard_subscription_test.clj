@@ -1233,3 +1233,30 @@
                          :attachment-name "image.png",
                          :fallback "Test card"}]}
                       (pulse.test-util/thunk->boolean (first (:channel/slack pulse-results))))))))))))
+
+(deftest table-editable-do-not-include-link-to-question
+  (tests!
+   {}
+   "Table editable shouldn't include href to the question"
+   {:card {:dataset_query (mt/mbql-query orders {:limit 1})
+           :name          "My Card"
+           :display       :table-editable}
+    :assert
+    {:email
+     (fn [_ [email]]
+       (is (= (rasta-dashsub-message
+               {:body [{;; No link to question
+                        "<a href=\\\"https://testmb.com/question/\\d+\\\"" false}
+                       pulse.test-util/png-attachment]})
+              (mt/summarize-multipart-single-email email
+                                                   #"<a href=\"https://testmb.com/question/\d+\""))))
+     :slack
+     (fn [_ [pulse-results]]
+       (is (= {:title           "My Card"
+               :rendered-info   {:attachments false :content true}
+               :attachment-name "image.png"
+               :fallback        "My Card"
+               ;; link is nil
+               :title_link      nil}
+              (-> (pulse.test-util/thunk->boolean pulse-results)
+                  :attachments second))))}}))
