@@ -216,21 +216,10 @@ x.com")
   :visibility :public
   :audit      :getter)
 
-(defsetting site-uuid-for-premium-features-token-checks
-  "In the interest of respecting everyone's privacy and keeping things as anonymous as possible we have a *different*
-  site-wide UUID that we use for the EE/premium features token feature check API calls. It works in fundamentally the
-  same way as [[site-uuid]] but should only be used by the token check logic
-  in [[metabase.premium-features.core/fetch-token-status]]. (`site-uuid` is used for anonymous
-  analytics aka stats and if we sent it along with the premium features token check API request it would no longer be
-  anonymous.)"
-  :encryption :when-encryption-key-set
-  :visibility :internal
-  :base       setting/uuid-nonce-base
-  :doc        false)
-
 (defsetting site-uuid-for-version-info-fetching
   "A *different* site-wide UUID that we use for the version info fetching API calls. Do not use this for any other
-  applications. (See [[site-uuid-for-premium-features-token-checks]] for more reasoning.)"
+  applications. (See [[metabase.premium-features.settings/site-uuid-for-premium-features-token-checks]] for more
+  reasoning.)"
   :encryption :when-encryption-key-set
   :visibility :internal
   :base       setting/uuid-nonce-base)
@@ -360,47 +349,6 @@ x.com")
                 ;; only false if explicitly set `false` by the environment
                 (not= "false" (u/lower-case-en (env/env :mb-enable-nested-queries))))
   :audit      :getter)
-
-(defsetting enable-query-caching
-  (deferred-tru "Allow caching results of queries that take a long time to run.")
-  :type       :boolean
-  :default    true
-  :visibility :authenticated
-  :audit      :getter)
-
-(def ^:private ^:const global-max-caching-kb
-  "Although depending on the database, we can support much larger cached values (1GB for PG, 2GB for H2 and 4GB for
-  MySQL) we are not curretly setup to deal with data of that size. The datatypes we are using will hold this data in
-  memory and will not truly be streaming. This is a global max in order to prevent our users from setting the caching
-  value so high it becomes a performance issue. The value below represents 200MB"
-  (* 200 1024))
-
-(defsetting query-caching-max-kb
-  (deferred-tru "The maximum size of the cache, per saved question, in kilobytes:")
-  ;; (This size is a measurement of the length of *uncompressed* serialized result *rows*. The actual size of
-  ;; the results as stored will vary somewhat, since this measurement doesn't include metadata returned with the
-  ;; results, and doesn't consider whether the results are compressed, as the `:db` backend does.)
-  :type    :integer
-  :default 2000
-  :audit   :getter
-  :setter  (fn [new-value]
-             (when (and new-value
-                        (> (cond-> new-value
-                             (string? new-value) Integer/parseInt)
-                           global-max-caching-kb))
-               (throw (IllegalArgumentException.
-                       (str
-                        (tru "Failed setting `query-caching-max-kb` to {0}." new-value)
-                        " "
-                        (tru "Values greater than {0} ({1}) are not allowed."
-                             global-max-caching-kb (u/format-bytes (* global-max-caching-kb 1024)))))))
-             (setting/set-value-of-type! :integer :query-caching-max-kb new-value)))
-
-(defsetting query-caching-max-ttl
-  (deferred-tru "The absolute maximum time to keep any cached query results, in seconds.")
-  :type    :double
-  :default (* 60.0 60.0 24.0 35.0) ; 35 days
-  :audit   :getter)
 
 (defsetting notification-link-base-url
   (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
@@ -732,28 +680,10 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :public
   :audit      :getter)
 
-(defsetting enable-xrays
-  (deferred-tru "Allow users to explore data using X-rays")
-  :type       :boolean
-  :default    true
-  :visibility :authenticated
-  :export?    true
-  :audit      :getter)
-
 (defsetting show-homepage-data
   (deferred-tru
    (str "Whether or not to display data on the homepage. "
         "Admins might turn this off in order to direct users to better content than raw data"))
-  :type       :boolean
-  :default    true
-  :visibility :authenticated
-  :export?    true
-  :audit      :getter)
-
-(defsetting show-homepage-xrays
-  (deferred-tru
-   (str "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are "
-        "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated
@@ -1009,25 +939,6 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    false
   :default    true
   :type       :boolean)
-
-;;; TODO -- move the search-related settings into the `:search` module. Only settings used across the entire application
-;;; should live in this namespace.
-
-(defsetting search-engine
-  (deferred-tru "Which engine to use when performing search. Supported values are :in-place and :appdb")
-  :visibility :internal
-  :export?    false
-  :default    :in-place
-  :type       :keyword)
-
-(defsetting experimental-search-weight-overrides
-  (deferred-tru "Used to override weights used for search ranking")
-  :visibility :internal
-  :encryption :no
-  :export?    false
-  :default    nil
-  :type       :json
-  :doc        false)
 
 (defsetting bug-reporting-enabled
   (deferred-tru "Enable bug report submissions.")

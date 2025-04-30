@@ -197,9 +197,8 @@ describe("scenarios > question > native", () => {
       H.selectFilterOperator(operator);
       H.popover().within(() => {
         cy.findByLabelText("Filter value").type("This has a value");
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      H.runButtonOverlay().click();
 
       cy.log(
         `**Mid-point assertion for "${operator}" filter| FAILING in v0.36.6**`,

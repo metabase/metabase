@@ -3,9 +3,9 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.events :as events]
-   [metabase.models.task-history :as task-history]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
+   [metabase.task-history.core :as task-history]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
