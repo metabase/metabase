@@ -74,7 +74,7 @@
         (is (= "card:abc" (-> result :COLUMN_5 first :sourceId))))
       
       (testing "should handle items without sourceId"
-        (is (= {:name "No source ID"} (-> result :COLUMN_6 first))))))))
+        (is (= {:name "No source ID"} (-> result :COLUMN_6 first)))))))
 
 (use-fixtures
   :once
