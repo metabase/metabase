@@ -1,6 +1,10 @@
 import cx from "classnames";
+import { useCallback, useMemo } from "react";
+import { push } from "react-router-redux";
+import { useLocation } from "react-use";
 import { t } from "ttag";
 
+import { useDispatch } from "metabase/lib/redux";
 import {
   ActionIcon,
   Box,
@@ -25,7 +29,7 @@ import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
-import { useTableEditingModalController } from "./modals/use-table-modal";
+import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-modal-with-object-id";
 import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-editable-column-config";
 import { useTableActions } from "./use-table-actions";
 import { useTableCRUD } from "./use-table-crud";
@@ -54,12 +58,53 @@ export const EditTableDashcardVisualization = ({
   visualizationSettings,
   question,
 }: EditTableDashcardVisualizationProps) => {
+  const dispatch = useDispatch();
+
+  const location = useLocation();
+  const objectIdParam = useMemo(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const objectIdParam = searchParams.get("objectId");
+    const dashcardIdParam = searchParams.get("dashcardId");
+
+    if (dashcardIdParam === dashcardId.toString()) {
+      return objectIdParam ?? undefined;
+    }
+
+    return undefined;
+  }, [location.search, dashcardId]);
+
+  const handleCurrentObjectIdChange = useCallback(
+    (objectId?: string) => {
+      const searchParams = new URLSearchParams(location.search);
+
+      if (objectId) {
+        searchParams.set("dashcardId", dashcardId.toString());
+        searchParams.set("objectId", objectId);
+      } else {
+        searchParams.delete("dashcardId");
+        searchParams.delete("objectId");
+      }
+
+      dispatch(
+        push({
+          ...location,
+          search: "?" + searchParams.toString(),
+        }),
+      );
+    },
+    [location, dispatch, dashcardId],
+  );
+
   const {
     state: modalState,
     openCreateRowModal,
     openEditRowModal,
     closeModal,
-  } = useTableEditingModalController();
+  } = useTableEditingModalControllerWithObjectId({
+    currentObjectId: objectIdParam,
+    datasetData: data,
+    onObjectIdChange: handleCurrentObjectIdChange,
+  });
 
   const stateUpdateStrategy = useTableEditingStateDashcardUpdateStrategy(
     dashcardId,
