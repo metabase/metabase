@@ -45,7 +45,7 @@ export const globalTypes: GlobalTypes = {
   locale: {
     name: "Locale",
     description: "Locale to be passed to the MetabaseProvider",
-    defaultValue: "en",
+    defaultValue: undefined,
     toolbar: {
       icon: "globe",
       items: availableLocales,

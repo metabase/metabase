@@ -53,10 +53,7 @@ export const storybookSdkAuthDefaultConfig =
 export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
   const sdkTheme = context.globals.sdkTheme;
   const theme = sdkTheme ? storybookThemes[sdkTheme] : undefined;
-  const localeFromContext = context.globals.locale;
-  const locale =
-    localeFromContext === "default" ? undefined : localeFromContext;
-
+  const locale = context.globals.locale;
   const user = context.globals.user;
 
   const key = `${user}-${locale}`;
