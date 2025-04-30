@@ -197,7 +197,7 @@ class DashboardGridInner extends Component<
       isAnimationPaused: true,
       _lastProps: {
         dashboard: props.dashboard,
-        isEditing: props.isEditing ?? false,
+        isEditing: props.isEditing,
         selectedTabId: props.selectedTabId,
       },
     };
@@ -232,12 +232,7 @@ class DashboardGridInner extends Component<
     nextProps: DashboardGridInnerProps,
     state: DashboardGridInnerState,
   ): Partial<DashboardGridInnerState> {
-    const {
-      dashboard,
-      dashcardData,
-      isEditing = false,
-      selectedTabId,
-    } = nextProps;
+    const { dashboard, dashcardData, isEditing, selectedTabId } = nextProps;
     const lastProps = state._lastProps;
 
     const visibleCardIds = !isEditing
@@ -341,7 +336,7 @@ class DashboardGridInner extends Component<
   getVisibleCards = (
     cards = this.props.dashboard.dashcards,
     visibleCardIds = this.state.visibleCardIds,
-    isEditing = this.props.isEditing ?? false,
+    isEditing = this.props.isEditing,
     selectedTabId = this.props.selectedTabId,
   ) => {
     return getVisibleCards(
@@ -587,11 +582,8 @@ class DashboardGridInner extends Component<
     gridItemWidth: number;
     totalNumGridCols: number;
   }) => {
-    const {
-      isEditing = false,
-      autoScrollToDashcardId,
-      reportAutoScrolledToDashcard,
-    } = this.props;
+    const { isEditing, autoScrollToDashcardId, reportAutoScrolledToDashcard } =
+      this.props;
     const shouldAutoScrollTo = autoScrollToDashcardId === dc.id;
 
     const shouldChangeResizeHandle = isEditingTextOrHeadingCard(
@@ -707,7 +699,7 @@ const DashboardGrid = forwardRef<HTMLDivElement, DashboardGridInnerProps>(
     {
       isEditing = false,
       isEditingParameter = false,
-      withCardTitle = false,
+      withCardTitle = true,
       isNightMode = false,
       width = 0,
       ...restProps
