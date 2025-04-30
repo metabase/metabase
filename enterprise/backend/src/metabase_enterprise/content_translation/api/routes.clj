@@ -9,7 +9,10 @@
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private http-status-ok 200)
+(def ^:private http-status-unprocessable 422)
 
 (api.macros/defendpoint :post
   "/upload-dictionary"
@@ -25,11 +28,24 @@
                                                    [:map
                                                     [:filename :string]
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
-  (dictionary/import-translations! {:filename (get-in multipart-params ["file" :filename])
-                                    :file     (get-in multipart-params ["file" :tempfile])})
-  {:status http-status-ok
-   :headers {"Content-Type" "application/json"}
-   :body (json/encode {:success true})})
+  (try
+    (dictionary/import-translations! {:filename (get-in multipart-params ["file" :filename])
+                                      :file     (get-in multipart-params ["file" :tempfile])})
+    {:status http-status-ok
+     :headers {"Content-Type" "application/json"}
+     :body (json/encode {:success true
+                         :message (tru "Import was successful")})}
+    (catch clojure.lang.ExceptionInfo e
+      ; If the exception contains a list of validation errors, return them properly formatted
+      (if-let [errors (get (ex-data e) :errors)]
+        {:status (or (:status-code (ex-data e)) http-status-unprocessable)
+         :headers {"Content-Type" "application/json"}
+         :body (json/encode {:success false
+                             :message (.getMessage e)
+                             :errors errors})}
+        ; For other types of exceptions, rethrow
+        (throw e)))))
+
 
 (api.macros/defendpoint :get "/dictionary"
   "Provides content translations stored in the content_translations table"
