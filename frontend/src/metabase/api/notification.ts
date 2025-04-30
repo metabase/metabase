@@ -96,7 +96,7 @@ export const notificationApi = Api.injectEndpoints({
       }),
     }),
     getNotificationPayloadExample: builder.query<
-      { payload: GetNotificationPayloadExampleResponse["payload"] },
+      GetNotificationPayloadExampleResponse["payload"],
       GetNotificationPayloadExampleRequest
     >({
       query: (body) => ({
@@ -105,7 +105,7 @@ export const notificationApi = Api.injectEndpoints({
         body,
       }),
       transformResponse(response: GetNotificationPayloadExampleResponse) {
-        return { payload: response.payload };
+        return response.payload;
       },
     }),
     getDefaultNotificationTemplate: builder.query<

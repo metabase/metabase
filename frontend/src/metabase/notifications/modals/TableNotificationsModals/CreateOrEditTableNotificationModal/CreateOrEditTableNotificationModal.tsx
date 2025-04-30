@@ -48,7 +48,7 @@ import { AlertTriggerIcon } from "../../shared/components/AlertTriggerIcon";
 import { NotificationChannelsPicker } from "../../shared/components/NotificationChannels/NotificationChannelsPicker/NotificationChannelsPicker";
 
 import S from "./CreateOrEditTableNotificationModal.module.css";
-import { PreviewMessagePanel } from "./components/PreviewMessagePanel";
+import { PreviewTemplatePanel } from "./components/PreviewTemplatePanel";
 
 type TableNotificationTriggerOption = {
   value: {
@@ -559,7 +559,7 @@ export const CreateOrEditTableNotificationModal = ({
         </Stack>
 
         {previewOpen && (
-          <PreviewMessagePanel
+          <PreviewTemplatePanel
             onClose={handlePreviewClose}
             isLoading={isPreviewLoading}
             error={previewError}
