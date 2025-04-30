@@ -8,10 +8,10 @@ on:
 jobs:
   push_workflow_to_docs_metabase_github_io_job:
     runs-on: ubuntu-latest
-    env:
-      BRANCH_NAME: ${{ github.head_ref || github.ref  }}
     steps:
       - name: Report changed docs files exist
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref }}
         run: |
           echo "A change in the docs directory was detected."
 
