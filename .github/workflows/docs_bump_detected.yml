@@ -13,6 +13,37 @@ jobs:
         run: |
           echo "A change in the docs directory was detected."
 
+      - name: Setup Babashka
+        uses: turtlequeue/setup-babashka@v1.7.0
+        with:
+          babashka-version: 1.3.189
+
+      - name: Filter non-dox branches
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref  }}
+        run: |
+          cat <<EOF > script.bb
+          (def ^:private release-regex #"release-x\.(\d+)\.x")
+          (defn- extract-release-num [release-branchname]
+            (let [[_ num] (re-matches release-regex release-branchname)]
+              (Integer/parseInt num)))
+          (defn- categorize-branchname [branchname]
+            (cond
+              (= branchname "master")                             [:master]
+              (re-matches release-regex branchname)               [:release (extract-release-num branchname)]
+              (str/starts-with? branchname "docs-workflow-test-") [:test branchname]))
+          (let [branchname             (first *command-line-args*)
+                [category release-num] (categorize-branchname branchname)]
+            (case category
+              :master  (println "Master branch detected.")
+              :release (println "Release branch detected. Release number:" release-num)
+              :test    (println "Test branch detected. Branchname:" branchname)
+              (do (println "Unpublishable branchname:" branchname)
+                  (System/exit 1)))
+            (System/exit 0))
+          EOF
+          bb script.bb "$BRANCH_NAME"
+
       - name: Trigger repo dispatch
         uses: actions/github-script@v7
         env:
