@@ -340,8 +340,6 @@
           metabase.models.init
           metabase.models.interface
           metabase.models.moderation-review
-          metabase.models.native-query-snippet
-          metabase.models.native-query-snippet.permissions
           metabase.models.params
           metabase.models.params.chain-filter
           metabase.models.params.custom-values
@@ -390,6 +388,11 @@
   moderation
   {:api  #{metabase.moderation}
    :uses #{models util}}
+
+  native-query-snippets
+  {:api  #{metabase.native-query-snippets.api
+           metabase.native-query-snippets.core}
+   :uses #{api models permissions premium-features util}}
 
   notification
   {:api  #{metabase.notification.api
@@ -791,7 +794,7 @@
 
   enterprise/snippet-collections
   {:api  #{}
-   :uses #{models permissions premium-features util}}
+   :uses #{models native-query-snippets permissions premium-features util}}
 
   enterprise/sso
   {:api #{metabase-enterprise.sso.api.routes

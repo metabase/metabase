@@ -1,9 +1,9 @@
-(ns metabase.models.native-query-snippet
+(ns metabase.native-query-snippets.models.native-query-snippet
   (:require
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.models.serialization :as serdes]
+   [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
