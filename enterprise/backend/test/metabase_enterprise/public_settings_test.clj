@@ -1,8 +1,8 @@
 (ns metabase-enterprise.public-settings-test
   (:require
    [clojure.test :refer :all]
-   [metabase.embed.settings :as embed.settings]
-   [metabase.public-settings :as public-settings]
+   [metabase.embedding.settings :as embed.settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]))

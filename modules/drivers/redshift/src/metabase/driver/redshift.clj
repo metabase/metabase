@@ -16,10 +16,10 @@
    [metabase.driver.sync :as driver.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -296,6 +296,10 @@
 (defmethod sql.qp/->honeysql [:redshift :avg]
   [driver [_ field]]
   [:avg [:cast (sql.qp/->honeysql driver field) :float]])
+
+(defmethod sql.qp/->integer :redshift
+  [driver value]
+  (sql.qp/->integer-with-round driver value))
 
 (defn- extract [unit temporal]
   [::h2x/extract (format "'%s'" (name unit)) temporal])

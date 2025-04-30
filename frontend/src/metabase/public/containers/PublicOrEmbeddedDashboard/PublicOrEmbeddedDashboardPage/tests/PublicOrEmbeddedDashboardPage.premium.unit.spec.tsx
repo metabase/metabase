@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
 
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
@@ -21,6 +22,10 @@ const setupPremium = async (opts?: Partial<SetupOpts>) => {
 };
 
 describe("PublicOrEmbeddedDashboardPage", () => {
+  beforeEach(() => {
+    setupLastDownloadFormatEndpoints();
+  });
+
   it("should not display the header if title is disabled and there is only one tab (metabase#41393) and downloads are disabled", async () => {
     await setupPremium({
       hash: { titled: "false", downloads: "false" },

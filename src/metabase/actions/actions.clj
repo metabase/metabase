@@ -8,9 +8,9 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.actions :as lib.schema.actions]
-   [metabase.models.setting :as setting]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -124,7 +124,7 @@
                               (format "%d %s" db-id (pr-str db-name)))
                     {:status-code 400, :database-id db-id})))
 
-  (binding [setting/*database-local-values* db-settings]
+  (setting/with-database-local-values db-settings
     (when-not (database-enable-actions)
       (throw (ex-info (i18n/tru "Actions are not enabled.")
                       {:status-code 400, :database-id db-id}))))
