@@ -186,6 +186,31 @@ describe("ParameterFieldWidget", () => {
       await userEvent.type(input, "{enter}");
       expect(setValue).toHaveBeenCalledWith(["foo"]);
     });
+
+    it("should allow to submit an empty value on enter when the parameter is not required", async () => {
+      const { setValue } = setup({
+        parameter,
+        parameterSearchValues,
+      });
+
+      const input = screen.getByRole("textbox");
+      await userEvent.type(input, "{enter}");
+      expect(setValue).toHaveBeenCalledWith([]);
+    });
+
+    it("should not allow to submit an empty value on enter when the parameter is required", async () => {
+      const { setValue } = setup({
+        parameter: {
+          ...parameter,
+          required: true,
+        },
+        parameterSearchValues,
+      });
+
+      const input = screen.getByRole("textbox");
+      await userEvent.type(input, "{enter}");
+      expect(setValue).not.toHaveBeenCalled();
+    });
   });
 
   describe("search mode, multiple values", () => {
