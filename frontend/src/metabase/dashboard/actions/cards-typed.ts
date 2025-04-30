@@ -34,6 +34,7 @@ import {
   createDashCard,
   createVirtualCard,
   generateTemporaryDashcardId,
+  isQuestionDashCard,
   isVirtualDashCard,
 } from "../utils";
 
@@ -320,6 +321,11 @@ export const replaceCardWithVisualization =
 
     const [mainCard, ...secondaryCards] = cards;
 
+    const originalDashCard = getDashCardById(getState(), dashcardId);
+    const parameter_mappings = isQuestionDashCard(originalDashCard)
+      ? originalDashCard.parameter_mappings
+      : [];
+
     await dispatch(
       setDashCardAttributes({
         id: dashcardId,
@@ -327,7 +333,7 @@ export const replaceCardWithVisualization =
           card_id: mainCard.id,
           card: mainCard,
           series: secondaryCards,
-          parameter_mappings: [],
+          parameter_mappings,
           visualization_settings: {
             visualization,
           },
