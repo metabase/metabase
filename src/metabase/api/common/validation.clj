@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.config :as config]
-   [metabase.embed.settings :as embed.settings]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]

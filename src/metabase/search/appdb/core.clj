@@ -13,8 +13,8 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.permissions :as search.permissions]
+   [metabase.search.settings :as search.settings]
    [metabase.settings.core :as setting]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -38,7 +38,7 @@
 
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
   (and (or (not config/is-prod?)
-           (= "appdb" (some-> (public-settings/search-engine) name)))
+           (= "appdb" (some-> (search.settings/search-engine) name)))
        (supported-db? (mdb/db-type))))
 
 (defn- parse-datetime [s]
