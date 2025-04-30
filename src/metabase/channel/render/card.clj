@@ -151,19 +151,19 @@
 
 (def branding-logo-base64-src
   "Returns a Base64 data URI of a PNG logo from assets."
-  (->
+  (delay (->
    (io/resource "frontend_client/app/assets/img/exports-branding-logo.png")
    io/input-stream
    IOUtils/toByteArray
-   image-bundle/render-img-data-uri))
+          image-bundle/render-img-data-uri)))
 
 (def branding-content
   "Generates a branding content that we send below charts in dashboard subscriptions and Slack notifications."
-  [:table {:style (style/style {:height :32px :width "100%" :font-size :12px})}
+  (delay [:table {:style (style/style {:height :32px :width "100%" :font-size :12px})}
    [:tr {}
     [:td {:style (style/style {:width "100%" :vertical-align :middle :padding-right :8px :text-align :right})} "Made with"]
     [:td {:style (style/style {:vertical-align :middle})}
-     [:img {:src branding-logo-base64-src :max-width :81px}]]]])
+            [:img {:src @branding-logo-base64-src :max-width :81px}]]]]))
 
 (defn- include-branding?
   "Branding in exports is included only for instances that do not have a whitelabel feature flag."
@@ -213,7 +213,7 @@
                            (if-let [more-results-message (body/attached-results-text render-type card)]
                              (conj more-results-message (list pulse-body))
                              pulse-body)]]
-                         (when (include-branding?) branding-content)]]}
+                         (when (include-branding?) @branding-content)]]}
        text (assoc :render/text text)))))
 
 (mu/defn render-pulse-card-for-display
