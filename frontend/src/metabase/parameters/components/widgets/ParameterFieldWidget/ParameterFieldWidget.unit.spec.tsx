@@ -93,6 +93,45 @@ describe("ParameterFieldWidget", () => {
       await userEvent.type(input, "{enter}");
       expect(setValue).toHaveBeenCalledWith(["bar"]);
     });
+
+    it("should let you submit empty values when the parameter is not required", async () => {
+      const { setValue } = setup({
+        parameter: createMockUiParameter({
+          values_query_type: "list",
+          values_source_type: "static-list",
+          values_source_config: {
+            values: [["foo"]],
+          },
+        }),
+        parameterValues: createMockParameterValues({
+          values: [["foo"]],
+        }),
+      });
+
+      const input = await screen.findByPlaceholderText("Search the list");
+      await userEvent.type(input, "{enter}");
+      expect(setValue).toHaveBeenCalledWith([]);
+    });
+
+    it("should not let you submit empty values when the parameter is required", async () => {
+      const { setValue } = setup({
+        parameter: createMockUiParameter({
+          required: true,
+          values_query_type: "list",
+          values_source_type: "static-list",
+          values_source_config: {
+            values: [["foo"]],
+          },
+        }),
+        parameterValues: createMockParameterValues({
+          values: [["foo"]],
+        }),
+      });
+
+      const input = await screen.findByPlaceholderText("Search the list");
+      await userEvent.type(input, "{enter}");
+      expect(setValue).not.toHaveBeenCalled();
+    });
   });
 
   describe("search mode", () => {
@@ -134,6 +173,34 @@ describe("ParameterFieldWidget", () => {
 
       await userEvent.type(input, "{enter}");
       expect(setValue).toHaveBeenCalledWith(["foo"]);
+    });
+
+    it("should let you submit an empty value on enter if the parameter is not required", async () => {
+      const { setValue } = setup();
+
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "foo{enter}");
+      expect(screen.getByText("foo")).toBeInTheDocument();
+      expect(setValue).not.toHaveBeenCalled();
+
+      await userEvent.type(input, "{backspace}{enter}");
+      expect(setValue).toHaveBeenCalledWith([]);
+    });
+
+    it("should not let you submit an empty value on enter if the parameter is required", async () => {
+      const { setValue } = setup({
+        parameter: createMockUiParameter({
+          required: true,
+        }),
+      });
+
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "foo{enter}");
+      expect(screen.getByText("foo")).toBeInTheDocument();
+      expect(setValue).not.toHaveBeenCalled();
+
+      await userEvent.type(input, "{backspace}{enter}");
+      expect(setValue).not.toHaveBeenCalled();
     });
   });
 });
