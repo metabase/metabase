@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { useGetFieldQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { Box, Stack, Title } from "metabase/ui";
+import { Box, Icon, Stack, TextInput, Title } from "metabase/ui";
 import type { FieldId } from "metabase-types/api";
 
 import { SectionPill } from "../SectionPill";
@@ -28,7 +28,27 @@ export const FieldSection = ({ fieldId }: Props) => {
       </Title>
 
       <Box className={S.container} h="100%" pb="lg" px="xl">
-        <SectionPill icon="database" title={t`Data`} />
+        <Stack gap="md">
+          <Box>
+            <SectionPill icon="database" title={t`Data`} />
+          </Box>
+
+          <TextInput
+            disabled
+            label={t`Field name`}
+            rightSection={<Icon name="lock" />}
+            rightSectionPointerEvents="none"
+            value={field.name}
+          />
+
+          <TextInput
+            disabled
+            label={t`Data type`}
+            rightSection={<Icon name="lock" />}
+            rightSectionPointerEvents="none"
+            value={field.database_type}
+          />
+        </Stack>
       </Box>
     </Stack>
   );
