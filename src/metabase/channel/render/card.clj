@@ -7,6 +7,7 @@
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
    [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -164,6 +165,10 @@
     [:td {:style (style/style {:vertical-align :middle})}
      [:img {:src branding-logo-base64-src :max-width :81px}]]]])
 
+(def include-branding?
+  "Branding in exports is included only for instances that do not have a whitelabel feature flag."
+  (not (:whitelabel (public-settings/token-features))))
+
 (mu/defn render-pulse-card :- ::body/RenderedPartCard
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results. Returns a map with keys
 
@@ -207,7 +212,7 @@
                            (if-let [more-results-message (body/attached-results-text render-type card)]
                              (conj more-results-message (list pulse-body))
                              pulse-body)]]
-                         branding-content]]}
+                         (when include-branding? branding-content)]]}
        text (assoc :render/text text)))))
 
 (mu/defn render-pulse-card-for-display
