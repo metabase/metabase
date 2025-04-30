@@ -220,7 +220,6 @@ const AutomaticDashboardAppInner = ({
                   slowCards={slowCards}
                   clickBehaviorSidebarDashcard={null}
                   downloadsEnabled={false}
-                  onEditingChange={_.noop}
                   autoScrollToDashcardId={undefined}
                   reportAutoScrolledToDashcard={_.noop}
                   navigateToNewCardFromDashboard={
