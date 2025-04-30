@@ -618,11 +618,18 @@
       (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols (or col-settings []) format-rows?)))
     sheet))
 
+(defn get-formatter
+  "Returns a memoized formatter for a column"
+  [timezone settings format-rows?]
+  (memoize
+   (fn [column]
+     (formatter/create-formatter timezone column settings format-rows?))))
+
 (defn- create-formatters
   [cell-styles cols indexes timezone settings format-rows?]
   (let [cell-styles  (vec cell-styles)
         cols         (vec cols)
-        formatter-fn (streaming.common/get-formatter timezone settings format-rows?)]
+        formatter-fn (get-formatter timezone settings format-rows?)]
     (mapv (fn [idx]
             (let [col (nth cols idx)
                   formatter (formatter-fn col)]
