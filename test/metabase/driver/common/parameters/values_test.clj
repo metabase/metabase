@@ -16,10 +16,10 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2])

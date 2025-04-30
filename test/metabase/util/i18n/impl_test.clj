@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.models.setting :as setting]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.settings.models.setting]
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
    [metabase.util.i18n.impl :as i18n.impl]
@@ -130,7 +130,7 @@
       (binding [config/*disable-setting-cache* true]
         (is (= "en" (i18n.impl/site-locale-from-setting)))
         ;; force an infinite loop: `log/error` will access `:site-locale` recursively to log the message
-        (with-redefs [setting/get-raw-value (fn [& _] (log/error "a message to log") "foo")]
+        (with-redefs [metabase.settings.models.setting/get-raw-value (fn [& _] (log/error "a message to log") "foo")]
           (testing "since the encrypted string is an invalid value for a Locale, high-level functions should return nil"
             (is (nil? (i18n/site-locale))
                 `i18n/site-locale)

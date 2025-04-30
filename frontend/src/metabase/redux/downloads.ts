@@ -337,7 +337,7 @@ const getDatasetFileName = (headers: Headers, type: string) => {
   );
 };
 
-const getChartFileName = (question: Question, branded: boolean) => {
+export const getChartFileName = (question: Question, branded: boolean) => {
   const name = question.displayName() ?? t`New question`;
   const date = new Date().toLocaleString();
   const fileName = `${name}-${date}.png`;

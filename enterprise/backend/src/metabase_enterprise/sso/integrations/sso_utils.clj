@@ -6,7 +6,7 @@
    [metabase.channel.email.messages :as messages]
    [metabase.events :as events]
    [metabase.events.notification :as events.notification]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
