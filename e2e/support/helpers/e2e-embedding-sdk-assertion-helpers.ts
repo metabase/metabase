@@ -1,4 +1,4 @@
-import { popover } from "./e2e-ui-elements-helpers";
+import { popover, tableInteractive } from "./e2e-ui-elements-helpers";
 
 export function assertSdkNotebookEditorUsable(root: Cypress.Chainable) {
   cy.findByText("Orders").should("be.visible");
@@ -25,7 +25,7 @@ export function assertSdkInteractiveQuestionOrdersUsable() {
   cy.findByText("Orders").should("be.visible");
 
   cy.log("1. shows a table");
-  H.tableInteractive().within(() => {
+  tableInteractive().within(() => {
     cy.findByText("Total").should("be.visible");
     cy.findByText("37.65").should("be.visible");
   });

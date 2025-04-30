@@ -47,4 +47,15 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
       cy.findByRole("button", { name: "Save" }).should("not.exist");
     });
   });
+
+  it("applies the provided locale", () => {
+    const frame = H.loadSdkIframeEmbedTestPage({
+      locale: "de",
+      dashboardId: ORDERS_DASHBOARD_ID,
+    });
+
+    frame.within(() => {
+      cy.findByText("2000 Zeilen").should("exist");
+    });
+  });
 });
