@@ -536,7 +536,7 @@
           metabase.search.ingestion
           metabase.search.init
           metabase.search.spec}
-   :uses #{analytics api audit config db driver models permissions premium-features settings request task util}}
+   :uses #{analytics api audit config db driver models permissions premium-features settings request startup task util}}
 
   segments
   {:api  #{metabase.segments.api}
@@ -583,6 +583,10 @@
            metabase.sso.core
            metabase.sso.init}
    :uses #{api models permissions premium-features settings util}}
+
+  startup
+  {:api  #{metabase.startup.core}
+   :uses #{util}}
 
   sync
   {:api #{metabase.sync.api
@@ -636,7 +640,9 @@
    :uses #{util}}
 
   upload
-  {:api  #{metabase.upload}
+  {:api  #{metabase.upload.api
+           metabase.upload.core
+           metabase.upload.init}
    :uses #{analytics api driver events legacy-mbql lib model-persistence models permissions settings sync util}}
 
   user-key-value
@@ -757,6 +763,7 @@
    :uses #{api
            audit
            db
+           driver
            legacy-mbql
            lib
            models
