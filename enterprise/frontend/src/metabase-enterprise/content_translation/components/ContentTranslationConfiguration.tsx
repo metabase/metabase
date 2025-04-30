@@ -103,7 +103,7 @@ const UploadForm = () => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <Form>
+    <Form data-testid="content-localization-setting">
       <Stack gap="md">
         <FormSubmitButton
           disabled={status === "pending"}

@@ -197,6 +197,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
     name: t`Localization`,
     order: 80,
     component: LocalizationSettingsPage,
+    settings: [],
   },
   uploads: {
     name: t`Uploads`,
