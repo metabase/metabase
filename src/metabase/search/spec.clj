@@ -344,12 +344,12 @@
 
 (defn search-models-to-update
   "Given an updated or created instance, return a description of which search-models to (re)index."
-  [instance & [always?]]
+  [instance instance-created?]
   (let [raw-values (delay (instance->db-values instance))]
     (into #{}
           (keep
            (fn [{:keys [search-model fields where]}]
-             (when (or always? (and fields (some fields (keys (or (t2/changes instance) instance)))))
+             (when (or instance-created? (and fields (some fields (keys (t2/changes instance)))))
                [search-model (insert-values where :updated @raw-values)])))
           (get (model-hooks) (t2/model instance)))))
 
@@ -359,7 +359,7 @@
   (doseq [d (keys (model-hooks))]
     (derive d :hook/search-index))
 
-  (search-models-to-update (t2/select-one :model/Card))
+  (search-models-to-update (t2/select-one :model/Card) false)
   (methods spec)
   (model-hooks)
 
