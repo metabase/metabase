@@ -72,6 +72,7 @@
 (defn init-index!
   "Ensure there is an index ready to be populated."
   [& {:as opts}]
+  (log/info "Initializing search indexes")
   ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
   (reduce (partial merge-with max)
           nil
