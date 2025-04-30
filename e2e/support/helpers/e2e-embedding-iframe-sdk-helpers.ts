@@ -21,6 +21,7 @@ export interface BaseEmbedTestPageOptions {
   questionId?: number | string;
   template?: "exploration";
   theme?: MetabaseTheme;
+  locale?: string;
 
   // Options for the test page
   skipPageVisit?: boolean;
@@ -141,8 +142,8 @@ export function prepareSdkIframeEmbedTest({
   cy.signInAsAdmin();
 
   if (withTokenFeatures) {
-    mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
     setTokenFeatures("all");
+    mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
   }
 
   createApiKey("test iframe sdk embedding", ADMIN_GROUP_ID).then(({ body }) => {

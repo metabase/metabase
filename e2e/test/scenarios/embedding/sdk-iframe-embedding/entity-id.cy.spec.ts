@@ -38,12 +38,7 @@ describe("scenarios > embedding > sdk iframe embedding > entity id", () => {
       cy.wait("@getCardQuery");
 
       frame.within(() => {
-        cy.findByText("Orders").should("be.visible");
-
-        H.tableInteractive().within(() => {
-          cy.findByText("Total").should("be.visible");
-          cy.findByText("37.65").should("be.visible");
-        });
+        H.assertSdkInteractiveQuestionOrdersUsable();
       });
     });
   });
