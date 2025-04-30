@@ -64,7 +64,9 @@ export const EditTableDashcardVisualization = ({
     isInserting,
     closeCreateRowModal,
     tableFieldMetadataMap,
+    cellsWithFailedUpdatesMap,
 
+    handleCellValueUpdate,
     handleRowCreate,
     handleRowUpdate,
     handleRowDelete,
@@ -143,7 +145,8 @@ export const EditTableDashcardVisualization = ({
         <EditTableDataGrid
           data={data}
           fieldMetadataMap={tableFieldMetadataMap}
-          onCellValueUpdate={handleRowUpdate}
+          cellsWithFailedUpdatesMap={cellsWithFailedUpdatesMap}
+          onCellValueUpdate={handleCellValueUpdate}
           onRowExpandClick={handleModalOpenAndExpandedRow}
           columnsConfig={columnsConfig}
           getColumnSortDirection={getColumnSortDirection}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { getResponseErrorMessage } from "metabase/lib/errors";
+import type { GenericErrorResponse } from "metabase/lib/errors";
 import { Button, Group, Icon, Text } from "metabase/ui";
 
 type ErrorUpdateToastProps = {
@@ -11,7 +11,12 @@ type ErrorUpdateToastProps = {
 export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
   const [showDetails, setShowDetails] = useState(false);
 
-  const errorMessage = getResponseErrorMessage(error) || t`Unknown error`;
+  const errorMessage =
+    // @ts-expect-error - generic errors are not fully typed
+    (error as GenericErrorResponse).data.errors?.[0]?.error ??
+    // @ts-expect-error - generic errors are not fully typed
+    (error as GenericErrorResponse).errors?.[0]?.error ??
+    t`Unknown error`;
 
   if (showDetails) {
     return (

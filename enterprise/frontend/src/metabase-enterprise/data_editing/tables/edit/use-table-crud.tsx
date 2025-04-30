@@ -119,6 +119,8 @@ export const useTableCRUD = ({
               return newMap;
             });
           },
+
+          // TODO: add list of open failed updates toast ids, clean them in case of filters update
         }),
       );
 
