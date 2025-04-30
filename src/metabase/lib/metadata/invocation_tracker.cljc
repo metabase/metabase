@@ -30,8 +30,8 @@
   (lib.metadata.protocols/metadatas-for-table metadata-provider metadata-type table-id))
 
 (defn- metadatas-for-card [tracker metadata-provider metadata-type card-id]
-  (let [tracking-type (when (= metadata-type :metadata/metric)
-                        ::card-metrics)]
+  (let [tracking-type (case metadata-type
+                        :metadata/metric ::card-metrics)]
     (track-ids! tracker tracking-type [card-id]))
   (lib.metadata.protocols/metadatas-for-card metadata-provider metadata-type card-id))
 

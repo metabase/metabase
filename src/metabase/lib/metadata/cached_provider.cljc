@@ -99,8 +99,8 @@
     (get-in-cache-or-fetch cache [k table-id] thunk)))
 
 (defn- metadatas-for-card [metadata-provider cache metadata-type card-id]
-  (let [k     (when (= metadata-type :metadata/metric)
-                ::table-metrics)
+  (let [k     (case metadata-type
+                :metadata/metric ::table-metrics)
         thunk (fn []
                 (let [objects (lib.metadata.protocols/metadatas-for-card metadata-provider metadata-type card-id)]
                   (doseq [metadata objects]
