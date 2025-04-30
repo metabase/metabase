@@ -1,7 +1,7 @@
 import * as ML from "cljs/metabase.lib.js";
 import * as TYPES from "cljs/metabase.lib.types.isa";
 import type Field from "metabase-lib/v1/metadata/Field";
-import type { type Field as ApiField, DatasetColumn } from "metabase-types/api";
+import type { Field as ApiField, DatasetColumn } from "metabase-types/api";
 
 import type { ColumnMetadata, ColumnTypeInfo } from "./types";
 
