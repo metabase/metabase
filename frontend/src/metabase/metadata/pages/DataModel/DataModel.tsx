@@ -57,7 +57,7 @@ export const DataModel = ({ params }: Props) => {
 
       {!isEmptyStateShown && (
         <Flex bg="accent-gray-light" flex="1">
-          <Box flex="0 0 400px" px="xl" py="lg">
+          <Box flex="0 0 400px">
             <FieldSection fieldId={fieldId} />
           </Box>
 

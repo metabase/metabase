@@ -1,8 +1,10 @@
 import { useGetFieldQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { Box, Title } from "metabase/ui";
+import { Box, Stack, Title } from "metabase/ui";
 import type { FieldId } from "metabase-types/api";
+
+import S from "./FieldSection.module.css";
 
 interface Props {
   fieldId: FieldId;
@@ -16,10 +18,14 @@ export const FieldSection = ({ fieldId }: Props) => {
   }
 
   return (
-    <Box>
-      <Title mb="md" order={2}>
+    <Stack gap={0} h="100%">
+      <Title order={2} px="xl" py="lg" pb="md">
         {field.display_name || field.name || NULL_DISPLAY_VALUE}
       </Title>
-    </Box>
+
+      <Box className={S.container} h="100%" pb="lg" px="xl">
+        adasdasd
+      </Box>
+    </Stack>
   );
 };
