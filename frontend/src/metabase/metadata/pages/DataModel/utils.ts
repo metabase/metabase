@@ -14,15 +14,20 @@ export function parseRouteParams(params: RouteParams): ParsedRouteParams {
 export function getUrl(params: ParsedRouteParams): string {
   const { databaseId, schemaId, tableId, fieldId } = params;
 
-  if (fieldId != null) {
+  if (
+    databaseId != null &&
+    schemaId != null &&
+    tableId != null &&
+    fieldId != null
+  ) {
     return `/admin/datamodel-v2/database/${databaseId}/schema/${schemaId}/table/${tableId}/field/${fieldId}`;
   }
 
-  if (tableId != null) {
+  if (databaseId != null && schemaId != null && tableId != null) {
     return `/admin/datamodel-v2/database/${databaseId}/schema/${schemaId}/table/${tableId}`;
   }
 
-  if (schemaId != null) {
+  if (databaseId != null && schemaId != null) {
     return `/admin/datamodel-v2/database/${databaseId}/schema/${schemaId}`;
   }
 
