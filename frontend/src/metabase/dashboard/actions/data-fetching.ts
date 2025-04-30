@@ -371,6 +371,7 @@ export const fetchCardDataAction = createAsyncThunk<
       const shouldUseCardQueryEndpoint =
         isNewDashcard(dashcard) ||
         (isQuestionDashCard(dashcard) &&
+          !isVisualizerDashboardCard(dashcard) &&
           isNewAdditionalSeriesCard(card, dashcard, dashcardBeforeEditing)) ||
         hasReplacedCard;
 

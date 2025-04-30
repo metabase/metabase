@@ -41,6 +41,7 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
     }
 
     try {
+      setError(null);
       const widgets = getSettingsWidgetsForSeries(
         transformedSeries,
         handleChangeSettings,

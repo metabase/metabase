@@ -28,6 +28,7 @@ import {
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
 } from "metabase/visualizer/utils";
+import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -40,6 +41,7 @@ import type {
   Series,
   VirtualCardDisplay,
   VisualizationSettings,
+  VisualizerDataSourceId,
 } from "metabase-types/api";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
@@ -158,8 +160,8 @@ export function DashCardVisualization({
       return rawSeries;
     }
 
-    const { display, columns, columnValuesMapping, settings } =
-      dashcard.visualization_settings.visualization;
+    const visualizerEntity = dashcard.visualization_settings.visualization;
+    const { display, columnValuesMapping, settings } = visualizerEntity;
 
     const cards = [dashcard.card];
     if (Array.isArray(dashcard.series)) {
@@ -170,13 +172,37 @@ export function DashCardVisualization({
       createDataSource("card", card.id, card.name),
     );
 
-    const dataSourceDatasets = Object.fromEntries(
+    const dataSourceDatasets: Record<
+      VisualizerDataSourceId,
+      Dataset | null | undefined
+    > = Object.fromEntries(
       Object.entries(datasets ?? {}).map(([cardId, dataset]) => [
         `card:${cardId}`,
         dataset,
       ]),
     );
 
+    const didEveryDatasetLoad = dataSources.every(
+      (dataSource) => dataSourceDatasets[dataSource.id] != null,
+    );
+
+    const columns = getVisualizationColumns(
+      visualizerEntity,
+      dataSourceDatasets,
+      dataSources,
+    );
+    const card = extendCardWithDashcardSettings(
+      {
+        display,
+        name: settings["card.title"],
+        visualization_settings: settings,
+      } as Card,
+      _.omit(dashcard.visualization_settings, "visualization"),
+    ) as Card;
+
+    if (!didEveryDatasetLoad) {
+      return [{ card }];
+    }
     const series: RawSeries = [
       {
         card: extendCardWithDashcardSettings(

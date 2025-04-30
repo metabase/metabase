@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import {
   act,
   getIcon,
@@ -125,6 +126,7 @@ describe("DashCard", () => {
 
   beforeEach(() => {
     jest.useFakeTimers();
+    setupLastDownloadFormatEndpoints();
   });
 
   afterEach(() => {

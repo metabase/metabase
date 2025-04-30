@@ -19,4 +19,4 @@ jobs:
         with:
           m2-cache-key: lint-migrations
       - name: Verify Liquibase Migrations
-        run: ./bin/lint-migrations-file.sh
+        run: ./bin/mage lint-migrations

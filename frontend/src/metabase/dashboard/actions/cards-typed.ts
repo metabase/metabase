@@ -34,6 +34,7 @@ import {
   createDashCard,
   createVirtualCard,
   generateTemporaryDashcardId,
+  isQuestionDashCard,
   isVirtualDashCard,
 } from "../utils";
 
@@ -254,7 +255,13 @@ export const replaceCard =
   };
 
 export const addCardWithVisualization =
-  ({ visualization }: { visualization: VisualizerVizDefinition }) =>
+  ({
+    visualization,
+    tabId,
+  }: {
+    visualization: VisualizerVizDefinition;
+    tabId: number | null;
+  }) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const cardIds = getCardIdsFromColumnValueMappings(
       visualization.columnValuesMapping,
@@ -275,7 +282,7 @@ export const addCardWithVisualization =
     const dashcard = dispatch(
       addDashCardToDashboard({
         dashId: getState().dashboard.dashboardId!,
-        tabId: getState().dashboard.selectedTabId,
+        tabId,
         dashcardOverrides: {
           id: dashcardId,
           card: mainCard,
@@ -320,6 +327,11 @@ export const replaceCardWithVisualization =
 
     const [mainCard, ...secondaryCards] = cards;
 
+    const originalDashCard = getDashCardById(getState(), dashcardId);
+    const parameter_mappings = isQuestionDashCard(originalDashCard)
+      ? originalDashCard.parameter_mappings
+      : [];
+
     await dispatch(
       setDashCardAttributes({
         id: dashcardId,
@@ -327,7 +339,7 @@ export const replaceCardWithVisualization =
           card_id: mainCard.id,
           card: mainCard,
           series: secondaryCards,
-          parameter_mappings: [],
+          parameter_mappings,
           visualization_settings: {
             visualization,
           },

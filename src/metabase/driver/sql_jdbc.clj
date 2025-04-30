@@ -17,7 +17,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu])
   (:import
-   (java.sql Connection)))
+   (java.sql Connection SQLException SQLTimeoutException)))
 
 (set! *warn-on-reflection* true)
 
@@ -251,3 +251,39 @@
 (defmethod driver/query-result-metadata :sql-jdbc
   [driver query]
   (sql-jdbc.metadata/query-result-metadata driver query))
+
+(defn get-sql-state
+  "Extract the first non-nil SQLState from a chain of sql exceptions. Return nil if SQLState is not set."
+  [^SQLException e]
+  (loop [exception e]
+    (if-let [sql-state (.getSQLState exception)]
+      sql-state
+      (when-let [next-ex (.getNextException exception)]
+        (recur next-ex)))))
+
+(defn- extract-sql-exception
+  "Examines the chain of exceptions to find the first SQLException error. Returns nil if no SQLException is found"
+  ^SQLException [e]
+  (loop [exception e]
+    (if (instance? SQLException exception)
+      exception
+      (when-let [cause (ex-cause exception)]
+        (recur cause)))))
+
+(defmulti impl-query-canceled?
+  "Implmenting multimethod for is query canceled. Notes when a query is canceled due to user action,
+  which can include using the `.setQueryTimeout` on a `PreparedStatement.` Use this instead of implementing
+  driver/query-canceled so extracting the SQLException from an exception chain can happen once for jdbc-
+  based drivers."
+  {:added "0.53.12" :arglists '([driver ^SQLException e])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+;; For Dialects that do return a SQLTimeoutException
+(defmethod impl-query-canceled? :sql-jdbc [_ e]
+  (instance? SQLTimeoutException e))
+
+(defmethod driver/query-canceled? :sql-jdbc [driver e]
+  (if-let [sql-exception (extract-sql-exception e)]
+    (impl-query-canceled? driver sql-exception)
+    false))

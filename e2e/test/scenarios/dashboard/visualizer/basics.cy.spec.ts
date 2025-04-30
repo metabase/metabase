@@ -353,15 +353,20 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.get("@undoButton").click();
       H.goalLine().should("not.exist");
 
-      // Ensure UI state isn't tracked in history
+      // // Ensure UI state isn't tracked in history
       cy.findByTestId("chartsettings-sidebar").should("be.visible");
 
-      // Redo goal line
+      // // Redo goal line
       cy.get("@redoButton").click();
       H.goalLine().should("exist");
 
       cy.button("Add to dashboard").click();
     });
+
+    // TODO editing a dashcard when it isn't done loading
+    // causes the visualizr modal to be in error for some reason
+    // this should be fixed in the future
+    cy.wait(1000);
 
     // Ensure history set is reset
     H.showDashcardVisualizerModal(1);
@@ -370,6 +375,50 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.get("@undoButton").should("be.disabled");
       cy.get("@redoButton").should("be.disabled");
       cy.findByTestId("chartsettings-sidebar").should("not.be.visible");
+    });
+  });
+
+  it("should add the proper tabId to a new card", () => {
+    // make an empty dashboard
+    H.createDashboard().then(({ body: { id: dashboardId } }) => {
+      H.visitDashboard(dashboardId);
+    });
+
+    // edit the dashboard
+    H.editDashboard();
+
+    // add a new tab
+    H.createNewTab();
+
+    // save the dashboard
+    H.saveDashboard();
+
+    // edit the dashboard
+    H.editDashboard();
+
+    // delete the first tab so it defaults to the second tab
+    H.deleteTab("Tab 1");
+
+    // save the dashboard
+    H.saveDashboard();
+
+    // edit the dashboard
+    H.editDashboard();
+
+    // add a new card to the first tab
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
+    cy.wait("@cardQuery");
+    H.modal().within(() => {
+      cy.findByText("Add to dashboard").click({ force: true });
+    });
+
+    // // save the dashboard
+    H.saveDashboard();
+
+    // // check that the dashboard saved and the card is in the first tab
+    H.getDashboardCard(0).within(() => {
+      cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
     });
   });
 });

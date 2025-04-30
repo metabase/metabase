@@ -26,10 +26,11 @@ import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/sett
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import {
   getInitialStateForCardDataSource,
+  getInitialStateForMultipleSeries,
+  getInitialStateForVisualizerCard,
   isVisualizerDashboardCard,
   isVisualizerSupportedVisualization,
 } from "metabase/visualizer/utils";
-import { getInitialStateForMultipleSeries } from "metabase/visualizer/utils/get-initial-state-for-multiple-series";
 import type {
   Card,
   CardId,
@@ -38,9 +39,9 @@ import type {
   DashboardCard,
   VirtualCard,
   VisualizationSettings,
-  VisualizerVizDefinition,
 } from "metabase-types/api";
 import type { StoreDashcard } from "metabase-types/store";
+import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
 import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
@@ -105,7 +106,7 @@ export interface DashCardProps {
 
   onEditVisualization?: (
     dashcard: StoreDashcard,
-    initialState: VisualizerVizDefinition,
+    initialState: VisualizerVizDefinitionWithColumns,
   ) => void;
 }
 
@@ -315,6 +316,7 @@ function DashCardInner({
       [dashcard, navigateToNewCardFromDashboard],
     );
 
+  const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
   const onEditVisualizationClick = useMemo(() => {
     if (
       !isVisualizerDashboardCard(dashcard) &&
@@ -324,11 +326,10 @@ function DashCardInner({
     }
 
     return () => {
-      let initialState: VisualizerVizDefinition;
+      let initialState: VisualizerVizDefinitionWithColumns;
 
       if (isVisualizerDashboardCard(dashcard)) {
-        initialState = dashcard.visualization_settings
-          ?.visualization as VisualizerVizDefinition;
+        initialState = getInitialStateForVisualizerCard(dashcard, datasets);
       } else if (series.length > 1) {
         initialState = getInitialStateForMultipleSeries(series);
       } else {
@@ -340,7 +341,7 @@ function DashCardInner({
 
       onEditVisualization?.(dashcard, initialState);
     };
-  }, [dashcard, series, onEditVisualization]);
+  }, [dashcard, series, onEditVisualization, datasets]);
 
   return (
     <ErrorBoundary>

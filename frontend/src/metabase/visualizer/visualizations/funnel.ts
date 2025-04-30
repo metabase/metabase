@@ -21,13 +21,13 @@ import type {
   DatasetColumn,
   VisualizerColumnReference,
   VisualizerDataSource,
-  VisualizerVizDefinition,
 } from "metabase-types/api";
+import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
 import { removeColumnFromStateUnlessUsedElseWhere } from "./utils";
 
 export const funnelDropHandler = (
-  state: VisualizerVizDefinition,
+  state: VisualizerVizDefinitionWithColumns,
   { active, over }: DragEndEvent,
 ) => {
   if (!over || !isDraggedColumnItem(active)) {
@@ -112,7 +112,7 @@ export function canCombineCardWithFunnel({ data }: Dataset) {
 }
 
 export function addScalarToFunnel(
-  state: VisualizerVizDefinition,
+  state: VisualizerVizDefinitionWithColumns,
   dataSource: VisualizerDataSource,
   column: DatasetColumn,
 ) {
@@ -147,7 +147,9 @@ export function addScalarToFunnel(
 }
 
 export function addColumnToFunnel(
-  state: Draft<VisualizerVizDefinition> | VisualizerVizDefinition,
+  state:
+    | Draft<VisualizerVizDefinitionWithColumns>
+    | VisualizerVizDefinitionWithColumns,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataset: Dataset,
@@ -177,7 +179,7 @@ export function addColumnToFunnel(
 }
 
 export function removeColumnFromFunnel(
-  state: VisualizerVizDefinition,
+  state: VisualizerVizDefinitionWithColumns,
   columnName: string,
 ) {
   if (isScalarFunnel(state)) {
@@ -209,7 +211,7 @@ export function removeColumnFromFunnel(
   ]);
 }
 
-function createMetricColumn(
+export function createMetricColumn(
   name: string,
   type = "type/Integer",
 ): DatasetColumn {
@@ -223,7 +225,7 @@ function createMetricColumn(
   };
 }
 
-function createDimensionColumn(name: string): DatasetColumn {
+export function createDimensionColumn(name: string): DatasetColumn {
   return {
     name,
     display_name: name,
@@ -235,7 +237,7 @@ function createDimensionColumn(name: string): DatasetColumn {
 }
 
 export function isScalarFunnel(
-  state: Pick<VisualizerVizDefinition, "display" | "settings">,
+  state: Pick<VisualizerVizDefinitionWithColumns, "display" | "settings">,
 ) {
   return (
     state.display === "funnel" &&
@@ -245,7 +247,7 @@ export function isScalarFunnel(
 }
 
 export function combineWithFunnel(
-  state: VisualizerVizDefinition,
+  state: VisualizerVizDefinitionWithColumns,
   dataset: Dataset,
   dataSource: VisualizerDataSource,
 ) {

@@ -17,6 +17,7 @@ export * from "./field";
 export * from "./gdrive";
 export * from "./group";
 export * from "./impersonation";
+export * from "./logger";
 export * from "./model-indexes";
 export * from "./native-query-snippet";
 export * from "./performance";

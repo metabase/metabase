@@ -11,8 +11,8 @@ import type {
   Dataset,
   DatasetColumn,
   VisualizationDisplay,
-  VisualizerVizDefinition,
 } from "metabase-types/api";
+import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
 import {
   copyColumn,
@@ -77,12 +77,12 @@ function pickColumns(
 export function getInitialStateForCardDataSource(
   card: Card,
   dataset: Dataset,
-): VisualizerVizDefinition {
+): VisualizerVizDefinitionWithColumns {
   const {
     data: { cols: originalColumns },
   } = dataset;
 
-  const state: VisualizerVizDefinition = {
+  const state: VisualizerVizDefinitionWithColumns = {
     display: isVisualizerSupportedVisualization(card.display)
       ? card.display
       : card.display === "scalar"

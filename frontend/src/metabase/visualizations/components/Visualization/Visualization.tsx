@@ -68,8 +68,10 @@ import type {
   CardId,
   Dashboard,
   DashboardCard,
+  DatasetQuery,
   RawSeries,
   Series,
+  SingleSeries,
   TimelineEvent,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -141,7 +143,12 @@ type VisualizationOwnProps = {
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
   onEditSummary?: () => void;
   query?: NativeQuery;
-  rawSeries?: RawSeries;
+  rawSeries?: (
+    | SingleSeries
+    | {
+        card: Card<DatasetQuery>;
+      }
+  )[];
   visualizerRawSeries?: RawSeries;
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
@@ -207,7 +214,9 @@ const isLoading = (series: Series | null) => {
 
 const deriveStateFromProps = (props: VisualizationProps) => {
   const transformed = props.rawSeries
-    ? getVisualizationTransformed(extractRemappings(props.rawSeries))
+    ? getVisualizationTransformed(
+        extractRemappings(props.rawSeries as RawSeries),
+      )
     : null;
 
   const series = transformed?.series ?? null;
@@ -244,7 +253,7 @@ class Visualization extends PureComponent<
     width: 0,
     // prefer passing in a function that doesn't cause the application to reload
     onChangeLocation: (location: Location) => {
-      window.location = location;
+      window.location = location as any;
     },
   };
 
@@ -329,7 +338,10 @@ class Visualization extends PureComponent<
     if (state.series && state.series[0].card.display !== "table") {
       warnings = warnings.concat(
         rawSeries
-          .filter((s) => s.data && s.data.rows_truncated != null)
+          .filter(
+            (s): s is SingleSeries =>
+              "data" in s && s.data && s.data.rows_truncated != null,
+          )
           .map(
             (s) =>
               t`Data truncated to ${formatNumber(s.data.rows_truncated)} rows.`,
@@ -806,7 +818,7 @@ class Visualization extends PureComponent<
                   metadata={metadata}
                   mode={mode}
                   queryBuilderMode={queryBuilderMode}
-                  rawSeries={rawSeries}
+                  rawSeries={rawSeries as RawSeries}
                   visualizerRawSeries={visualizerRawSeries}
                   renderEmptyMessage={renderEmptyMessage}
                   renderTableHeader={renderTableHeader}

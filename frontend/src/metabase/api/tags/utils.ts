@@ -23,6 +23,7 @@ import type {
   GetUserKeyValueRequest,
   Group,
   GroupListQuery,
+  LoggerPreset,
   ModelCacheRefreshStatus,
   ModelIndex,
   NativeQuerySnippet,
@@ -219,6 +220,21 @@ export function provideCollectionTags(
   collection: Collection,
 ): TagDescription<TagType>[] {
   return [idTag("collection", collection.id)];
+}
+
+export function provideLoggerPresetListTags(
+  presets: LoggerPreset[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("logger-preset"),
+    ...presets.flatMap(provideLoggerPresetTags),
+  ];
+}
+
+export function provideLoggerPresetTags(
+  preset: LoggerPreset,
+): TagDescription<TagType>[] {
+  return [idTag("logger-preset", preset.id)];
 }
 
 export function provideModelIndexTags(

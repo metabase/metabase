@@ -116,6 +116,20 @@ export const PRODUCTS_COUNT_BY_CATEGORY: StructuredQuestionDetailsWithName = {
   },
 };
 
+export const PRODUCTS_AVERAGE_BY_CATEGORY: StructuredQuestionDetailsWithName = {
+  display: "bar",
+  name: "Products average by Category",
+  query: {
+    "source-table": PRODUCTS_ID,
+    aggregation: [["avg", ["field", PRODUCTS.PRICE, null]]],
+    breakout: [["field", PRODUCTS.CATEGORY, null]],
+  },
+  visualization_settings: {
+    "graph.dimensions": ["CATEGORY"],
+    "graph.metrics": ["avg"],
+  },
+};
+
 export const PRODUCTS_COUNT_BY_CATEGORY_PIE: StructuredQuestionDetailsWithName =
   {
     ...PRODUCTS_COUNT_BY_CATEGORY,
