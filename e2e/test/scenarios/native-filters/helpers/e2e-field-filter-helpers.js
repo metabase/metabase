@@ -32,12 +32,7 @@ export function addWidgetStringFilter(
 }
 
 export function setWidgetStringFilter(value) {
-  popover()
-    .first()
-    .find("input")
-    .not("[type=hidden]")
-    .first()
-    .type(`${value}{enter}`);
+  popover().first().find("input").not("[type=hidden]").first().type(`${value}`);
 }
 
 /**
@@ -166,10 +161,10 @@ export function closeEntryForm() {
  */
 function addBetweenFilter([low, high] = [], buttonLabel = "Add filter") {
   popover().within(() => {
-    cy.get("input").first().type(`${low}{enter}`);
+    cy.get("input").first().type(`${low}`);
 
     // eslint-disable-next-line no-unsafe-element-filtering
-    cy.get("input").last().type(`${high}{enter}`);
+    cy.get("input").last().type(`${high}`);
   });
 
   cy.button(buttonLabel).click();
@@ -180,7 +175,7 @@ function addBetweenFilter([low, high] = [], buttonLabel = "Add filter") {
  * @param {string} value
  */
 function addSimpleNumberFilter(value, buttonLabel = "Add filter") {
-  cy.findByPlaceholderText("Enter a number").type(`${value}{enter}`);
+  cy.findByPlaceholderText("Enter a number").type(`${value}`);
   cy.button(buttonLabel).click();
 }
 
@@ -190,9 +185,7 @@ function addSimpleNumberFilter(value, buttonLabel = "Add filter") {
  */
 function enterDefaultValue(value, buttonLabel = "Add filter") {
   cy.findByText("Enter a default value…").click();
-  cy.findByPlaceholderText("Enter a default value…")
-    .type(`${value}{enter}`)
-    .blur();
+  cy.findByPlaceholderText("Enter a default value…").type(`${value}`).blur();
   cy.button(buttonLabel).click();
 }
 
