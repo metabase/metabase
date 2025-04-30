@@ -17,7 +17,7 @@
 (defn select-table-pk-fields
   "Given a table-id, return the :model/Field instances corresponding to its PK columns. Do not assume any ordering."
   [table-id]
-  (u/prog1 (api/check-404 (t2/select :model/Field :table_id table-id :semantic_type :type/PK))
+  (u/prog1 (api/check-404 (t2/select :model/Field :table_id table-id :semantic_type :type/PK :active true))
     (api/check-500 (pos? (count <>)))))
 
 (defn get-row-pks
