@@ -23,7 +23,6 @@ import type {
   EmbedThemeControls,
   FailedFetchDashboardResult,
   FetchDashboardResult,
-  SuccessfulFetchDashboardResult,
 } from "../types";
 
 import { type ReduxProps, connector } from "./context.redux";
@@ -150,9 +149,8 @@ const DashboardContextProviderInner = ({
     if (hasDashboardChanged) {
       handleLoadDashboard(dashboardId)
         .then((result) => {
-          if (isSuccessfulFetchDashboardResult(result)) {
-            onLoad?.(result.payload.dashboard);
-          } else if (isFailedFetchDashboardResult(result)) {
+          // TODO: Add onLoadWithoutCards here
+          if (isFailedFetchDashboardResult(result)) {
             onError?.(result);
           }
         })
@@ -289,17 +287,12 @@ export function useDashboardContext() {
   return context;
 }
 
-function isSuccessfulFetchDashboardResult(
-  result: FetchDashboardResult,
-): result is SuccessfulFetchDashboardResult {
-  const hasError = "error" in result;
-  return !hasError;
-}
-
 export function isFailedFetchDashboardResult(
   result: FetchDashboardResult,
 ): result is FailedFetchDashboardResult {
-  return isObject(result.payload) && "error" in result;
+  return (
+    isObject(result.payload) && !result.payload.isCancelled && "error" in result
+  );
 }
 
 export function isCancelledFetchDashboardResult(
