@@ -35,6 +35,7 @@ import type {
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/core/components/Link";
 import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
+import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
@@ -620,6 +621,13 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
 export const PLUGIN_CONTENT_TRANSLATION = {
   isEnabled: false,
   ContentTranslationConfiguration: PluginPlaceholder,
+  useTranslateContent: () => {
+    // In OSS, the input is not translated
+    const contentTranslationFunction: ContentTranslationFunction = <T>(
+      arg: T,
+    ) => arg;
+    return contentTranslationFunction;
+  },
 };
 
 export const PLUGIN_DB_ROUTING = {
