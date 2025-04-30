@@ -154,7 +154,7 @@ export type DashboardGridProps = {
   reportAutoScrolledToDashcard?: () => void;
 };
 
-type DashboardGridInnerProps = DashboardGridProps &
+type DashboardGridInnerProps = Required<DashboardGridProps> &
   DashboardGridReduxProps &
   ExplicitSizeProps & {
     forwardedRef?: ForwardedRef<HTMLDivElement>;
@@ -202,13 +202,6 @@ class DashboardGridInner extends Component<
       },
     };
   }
-
-  static defaultProps = {
-    width: 0,
-    isEditing: false,
-    isEditingParameter: false,
-    withCardTitle: true,
-  };
 
   componentDidMount() {
     // In order to skip the initial cards animation we must let the grid layout calculate
@@ -710,8 +703,28 @@ const getUndoReplaceCardMessage = ({ type }: Card) => {
 };
 
 const DashboardGrid = forwardRef<HTMLDivElement, DashboardGridInnerProps>(
-  function _DashboardGrid(props, ref) {
-    return <DashboardGridInner {...props} forwardedRef={ref} />;
+  function _DashboardGrid(
+    {
+      isEditing = false,
+      isEditingParameter = false,
+      withCardTitle = false,
+      isNightMode = false,
+      width = 0,
+      ...restProps
+    },
+    ref,
+  ) {
+    return (
+      <DashboardGridInner
+        width={width}
+        isEditing={isEditing}
+        isEditingParameter={isEditingParameter}
+        withCardTitle={withCardTitle}
+        isNightMode={isNightMode}
+        {...restProps}
+        forwardedRef={ref}
+      />
+    );
   },
 );
 
