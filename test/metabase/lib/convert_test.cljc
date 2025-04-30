@@ -1156,37 +1156,41 @@
       {:lib/uuid "d5149080-5e1c-4643-9264-bf4a82116abd", :name "my_offset"})))
 
 (deftest ^:parallel cumulative-count-test
-  (is (=? (lib.tu.macros/mbql-query
-            venues
-            {:source-table $$venues
-             :aggregation [[:aggregation-options
-                            [:cum-count [:field %id {:base-type :type/BigInteger}]]
-                            {:name "count"}]]})
-          (lib.convert/->legacy-MBQL
-           (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
-               (lib/aggregate (lib.options/update-options
-                               (lib/cum-count (meta/field-metadata :venues :id))
-                               assoc :name "count")))))))
+  (is (=? (dissoc (lib.tu.macros/mbql-query
+                    venues
+                    {:source-table $$venues
+                     :aggregation [[:aggregation-options
+                                    [:cum-count [:field %id {:base-type :type/BigInteger}]]
+                                    {:name "count"}]]})
+                  :aggregation-idents)
+          (dissoc (lib.convert/->legacy-MBQL
+                   (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                       (lib/aggregate (lib.options/update-options
+                                       (lib/cum-count (meta/field-metadata :venues :id))
+                                       assoc :name "count"))))
+                  :aggregation-idents))))
 
 (deftest ^:parallel cumulative-aggregations-in-expression-test
-  (is (=? (lib.tu.macros/mbql-query
-            venues
-            {:source-table $$venues
-             :aggregation [[:aggregation-options
-                            [:+
-                             [:aggregation-options [:cum-sum [:field %id {:base-type :type/BigInteger}]] {:name "a"}]
-                             [:aggregation-options [:cum-count] {:name "b"}]]
-                            {:name "xixix"}]]})
-          (lib.convert/->legacy-MBQL
-           (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
-               (lib/aggregate (lib.options/update-options
-                               (lib/+ (lib.options/update-options
-                                       (lib/cum-sum (meta/field-metadata :venues :id))
-                                       assoc :name "a")
-                                      (lib.options/update-options
-                                       (lib/cum-count)
-                                       assoc :name "b"))
-                               assoc :name "xixix")))))))
+  (is (=? (dissoc (lib.tu.macros/mbql-query
+                    venues
+                    {:source-table $$venues
+                     :aggregation [[:aggregation-options
+                                    [:+
+                                     [:aggregation-options [:cum-sum [:field %id {:base-type :type/BigInteger}]] {:name "a"}]
+                                     [:aggregation-options [:cum-count] {:name "b"}]]
+                                    {:name "xixix"}]]})
+                  :aggregation-idents)
+          (dissoc (lib.convert/->legacy-MBQL
+                   (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                       (lib/aggregate (lib.options/update-options
+                                       (lib/+ (lib.options/update-options
+                                               (lib/cum-sum (meta/field-metadata :venues :id))
+                                               assoc :name "a")
+                                              (lib.options/update-options
+                                               (lib/cum-count)
+                                               assoc :name "b"))
+                                       assoc :name "xixix"))))
+                  :aggregation-idents))))
 
 (deftest ^:parallel blank-queries-test
   (testing "minimal legacy"
