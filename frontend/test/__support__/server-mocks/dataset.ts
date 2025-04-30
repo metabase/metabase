@@ -8,14 +8,25 @@ export function setupAdhocQueryMetadataEndpoint(metadata: CardQueryMetadata) {
   fetchMock.post(`path:/api/dataset/query_metadata`, metadata);
 }
 
-export function setupParameterValuesEndpoints(
-  parameterValues: ParameterValues,
-) {
-  fetchMock.post("path:/api/dataset/parameter/values", parameterValues);
+export function setupParameterValuesEndpoints(response: ParameterValues) {
+  fetchMock.post("path:/api/dataset/parameter/values", response);
 }
 
 export function setupErrorParameterValuesEndpoints() {
   fetchMock.post("path:/api/dataset/parameter/values", 500);
+}
+
+export function setupParameterSearchValuesEndpoint(
+  query: string,
+  response: ParameterValues,
+) {
+  fetchMock.post(
+    {
+      url: `path:/api/dataset/parameter/search/${encodeURIComponent(query)}`,
+    },
+    response,
+    { overwriteRoutes: false },
+  );
 }
 
 export function setupCardDataset(
