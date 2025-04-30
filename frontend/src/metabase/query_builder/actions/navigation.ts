@@ -177,7 +177,7 @@ export const updateUrl = createThunkAction(
       }
 
       const newState = {
-        card: question._doNotCallSerializableCard(),
+        card: getCard(getState()),
         cardId: question.id(),
         objectId,
       };
