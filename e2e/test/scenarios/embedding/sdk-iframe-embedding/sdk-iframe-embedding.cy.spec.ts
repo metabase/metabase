@@ -1,5 +1,7 @@
 import {
+  ORDERS_DASHBOARD_ENTITY_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ENTITY_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
@@ -28,6 +30,32 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
   it("displays a question", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       questionId: ORDERS_QUESTION_ID,
+    });
+
+    cy.wait("@getCardQuery");
+
+    frame.within(() => {
+      H.assertSdkInteractiveQuestionOrdersUsable();
+    });
+  });
+
+  it("displays a dashboard using entity id", () => {
+    const frame = H.loadSdkIframeEmbedTestPage({
+      dashboardId: ORDERS_DASHBOARD_ENTITY_ID,
+    });
+
+    cy.wait("@getDashCardQuery");
+
+    frame.within(() => {
+      cy.findByText("Orders in a dashboard").should("be.visible");
+      cy.findByText("Orders").should("be.visible");
+      H.assertTableRowsCount(2000);
+    });
+  });
+
+  it("displays a question using entity id", () => {
+    const frame = H.loadSdkIframeEmbedTestPage({
+      questionId: ORDERS_QUESTION_ENTITY_ID,
     });
 
     cy.wait("@getCardQuery");
