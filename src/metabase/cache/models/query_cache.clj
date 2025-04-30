@@ -1,4 +1,4 @@
-(ns metabase.models.query-cache
+(ns metabase.cache.models.query-cache
   "A model used to cache query results in the database."
   (:require
    [methodical.core :as methodical]

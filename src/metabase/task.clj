@@ -54,7 +54,7 @@
 
 (defmulti init!
   "Initialize (i.e., schedule) Job(s) with a given name. All implementations of this method are called once and only
-  once when the Quartz task scheduler is initialized. Task namespaces (`metabase.task.*`) should add new
+  once when the Quartz task scheduler is initialized. Task namespaces (`metabase.<module>.task.*`) should add new
   implementations of this method to schedule the jobs they define (i.e., with a call to `schedule-task!`.)
 
   The dispatch value for this function can be any unique keyword, but by convention is a namespaced keyword version of

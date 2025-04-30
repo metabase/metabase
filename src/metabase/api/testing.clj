@@ -196,7 +196,7 @@
 
 (defenterprise refresh-cache-configs!
   "Manually triggers the preemptive caching refresh job on EE. No-op on OSS."
-  metabase-enterprise.task.cache
+  metabase-enterprise.cache.task.refresh-cache-configs
   [])
 
 (api.macros/defendpoint :post "/refresh-caches"
