@@ -213,7 +213,7 @@
                            (if-let [more-results-message (body/attached-results-text render-type card)]
                              (conj more-results-message (list pulse-body))
                              pulse-body)]]
-                         (when include-branding? branding-content)]]}
+                         (when (include-branding?) branding-content)]]}
        text (assoc :render/text text)))))
 
 (mu/defn render-pulse-card-for-display
