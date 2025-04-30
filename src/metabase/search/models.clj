@@ -15,7 +15,7 @@
 
 (t2/define-after-update :hook/search-index
   [instance]
-  (search/update! instance false)
+  (when (t2/changes instance) (search/update! instance))
   nil)
 
 ;; Too much of a performance risk.

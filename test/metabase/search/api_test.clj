@@ -1714,7 +1714,7 @@
         ;; This is not necessary in the real app because of how the index updates are batched.
         ;; Another solution would be to explicitly mark this data dependency, which we explicitly chose not to do for
         ;; now (see note of the Card spec).
-        (search/update! (t2/instance :model/Card {:id card-id}) false)
+        (search/update! (t2/instance :model/Card {:id card-id}))
 
         (testing "The card data also include `dashboard` info"
           (is (= {:id dash-id

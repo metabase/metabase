@@ -94,9 +94,9 @@
 
 (defn update!
   "Given a new or updated instance, put all the corresponding search entries if needed in the queue."
-  [instance instance-created?]
+  [instance & [always?]]
   (when (supports-index?)
-    (when-let [updates (->> (search.spec/search-models-to-update instance instance-created?)
+    (when-let [updates (->> (search.spec/search-models-to-update instance always?)
                             (remove (comp search.util/impossible-condition? second))
                             seq)]
       ;; We need to delay execution to handle deletes, which alert us *before* updating the database.

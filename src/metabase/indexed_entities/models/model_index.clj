@@ -151,7 +151,7 @@
                        :state      (if (> (count values-to-index) max-indexed-values)
                                      "overflow"
                                      "indexed")}))
-        (run! (partial search/update! false) (t2/reducible-select :model/ModelIndexValue :model_index_id (:id model-index)))
+        (run! search/update! (t2/reducible-select :model/ModelIndexValue :model_index_id (:id model-index)))
         (catch Exception e
           (log/errorf e "Error saving model-index values for model-index: %d, model: %d"
                       (:id model-index) (:model_id model-index))
