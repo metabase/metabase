@@ -26,15 +26,11 @@ import {
 } from "../components/EmbeddingSettings";
 import SettingsLicense from "../components/SettingsLicense";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
+import { PublicSharingSettingsPage } from "../components/SettingsPages/PublicSharingSettingsPage";
 import { UpdatesSettingsPage } from "../components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "../components/SettingsPages/UploadSettingsPage";
 import CustomGeoJSONWidget from "../components/widgets/CustomGeoJSONWidget";
 import FormattingWidget from "../components/widgets/FormattingWidget";
-import {
-  PublicLinksActionListing,
-  PublicLinksDashboardListing,
-  PublicLinksQuestionListing,
-} from "../components/widgets/PublicLinksListing";
 import SettingCommaDelimitedInput from "../components/widgets/SettingCommaDelimitedInput";
 import { NotificationSettings } from "../notifications/NotificationSettings";
 import SlackSettings from "../slack/containers/SlackSettings";
@@ -293,39 +289,11 @@ export const ADMIN_SETTINGS_SECTIONS = {
     component: UploadSettingsPage,
     settings: [],
   },
-
   "public-sharing": {
     name: t`Public Sharing`,
     order: 90,
-    settings: [
-      {
-        key: "enable-public-sharing",
-        display_name: t`Enable Public Sharing`,
-        description: t`Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards.`,
-        type: "boolean",
-      },
-      {
-        key: "-public-sharing-dashboards",
-        display_name: t`Shared Dashboards`,
-        widget: PublicLinksDashboardListing,
-        getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-public-sharing"],
-      },
-      {
-        key: "-public-sharing-questions",
-        display_name: t`Shared Questions`,
-        widget: PublicLinksQuestionListing,
-        getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-public-sharing"],
-      },
-      {
-        key: "-public-sharing-actions",
-        display_name: t`Shared Action Forms`,
-        widget: PublicLinksActionListing,
-        getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-public-sharing"],
-      },
-    ],
+    component: PublicSharingSettingsPage,
+    settings: [],
   },
   "embedding-in-other-applications": {
     key: "enable-embedding",
