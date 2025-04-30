@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -7,7 +6,6 @@ import {
   useUpdateTableMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
 import {
   DiscardTableFieldValuesButton,
   FieldOrderPicker,
@@ -28,7 +26,6 @@ interface Props {
 }
 
 export const TableSection = ({ params, tableId }: Props) => {
-  const dispatch = useDispatch();
   const {
     data: table,
     error,
@@ -89,6 +86,9 @@ export const TableSection = ({ params, tableId }: Props) => {
         </Flex>
 
         <SortableFieldList
+          getFieldHref={(fieldId) => {
+            return getUrl({ ...parseRouteParams(params), fieldId });
+          }}
           table={table}
           onChange={(fieldOrder) => {
             updateTableFieldsOrder({
@@ -96,9 +96,6 @@ export const TableSection = ({ params, tableId }: Props) => {
               // in this context field id will never be a string because it's a raw table field, so it's ok to cast
               field_order: fieldOrder as FieldId[],
             });
-          }}
-          onFieldClick={(fieldId) => {
-            dispatch(push(getUrl({ ...parseRouteParams(params), fieldId })));
           }}
         />
       </Stack>

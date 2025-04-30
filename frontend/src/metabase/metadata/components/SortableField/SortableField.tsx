@@ -1,26 +1,21 @@
+import type { UniqueIdentifier } from "@dnd-kit/core";
 import cx from "classnames";
+import { Link } from "react-router";
 
 import { Sortable } from "metabase/core/components/Sortable";
 import { Flex, Group, Icon, type IconName, Text } from "metabase/ui";
-import type { FieldId } from "metabase-types/api";
 
 import S from "./SortableField.module.css";
 
 interface Props {
   disabled?: boolean;
+  href?: string;
   icon: IconName;
-  id: FieldId;
+  id: UniqueIdentifier;
   label: string;
-  onClick?: (id: FieldId) => void;
 }
 
-export const SortableField = ({
-  disabled,
-  icon,
-  id,
-  label,
-  onClick,
-}: Props) => {
+export const SortableField = ({ disabled, href, icon, id, label }: Props) => {
   const draggable = !disabled;
 
   return (
@@ -31,6 +26,8 @@ export const SortableField = ({
       id={id}
     >
       <Flex
+        component={href ? Link : undefined}
+        to={href ? href : ""}
         align="center"
         aria-label={label}
         bg="bg-white"
@@ -46,7 +43,6 @@ export const SortableField = ({
         py="xs"
         role="listitem"
         w="100%"
-        onClick={() => onClick?.(id)}
       >
         <Group flex="0 0 auto" gap="sm" ml="xs" wrap="nowrap">
           {draggable && <Icon className={S.grabber} name="grabber" />}

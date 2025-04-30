@@ -13,12 +13,12 @@ import { SortableField } from "../SortableField";
 import { getId, getItems, getItemsOrder, sortItems } from "./utils";
 
 interface Props {
+  getFieldHref?: (fieldId: FieldId) => string;
   table: Table;
   onChange: (fieldOrder: DragEndEvent["itemIds"]) => void;
-  onFieldClick?: (fieldId: FieldId) => void;
 }
 
-export const SortableFieldList = ({ table, onChange, onFieldClick }: Props) => {
+export const SortableFieldList = ({ getFieldHref, table, onChange }: Props) => {
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
   });
@@ -39,11 +39,11 @@ export const SortableFieldList = ({ table, onChange, onFieldClick }: Props) => {
         renderItem={({ item, id }) => (
           <SortableField
             disabled={isDragDisabled}
+            href={getFieldHref?.(item.id)}
             icon={item.icon}
             id={id}
             key={id}
             label={item.label}
-            onClick={onFieldClick}
           />
         )}
         sensors={[pointerSensor]}
