@@ -37,7 +37,7 @@ export const useValidatedEntityId = <
   const {
     data: entity_ids,
     isError,
-    isFetching,
+    isLoading,
   } = useTranslateEntityIdQuery(
     id && isEntityId
       ? {
@@ -56,7 +56,7 @@ export const useValidatedEntityId = <
       } as const;
     }
 
-    if (isFetching) {
+    if (isLoading) {
       return {
         id: null,
         isLoading: true,
@@ -82,5 +82,5 @@ export const useValidatedEntityId = <
 
     // something went wrong, either entity_ids is empty or the translation failed
     return { id: null, isLoading: false, isError: true } as const;
-  }, [isEntityId, isFetching, isError, entity_ids, id]);
+  }, [isEntityId, isLoading, isError, entity_ids, id]);
 };
