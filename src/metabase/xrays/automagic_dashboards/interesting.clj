@@ -76,7 +76,7 @@
     @fields))
 
 (defn semantic-groups
-  "From a metric, construct a mapping of semantic types of linked fields to
+  "From a :xrays/Metric, construct a mapping of semantic types of linked fields to
    sets of fields that can satisfy that type. A linked field is one that is in the
    source table for the metric contribute to the metric itself, is not a PK, and
    has a semantic_type (we assume nil semantic_type fields are boring)."
@@ -95,7 +95,7 @@
   "Get a reference for a given model to be injected into a template (either MBQL, native query, or string)."
   {:arglists '([template-type model])}
   (fn [template-type model]
-    [template-type ((some-fn mi/model type) model)]))
+    [template-type (mi/model model)]))
 
 (defn- optimal-temporal-resolution
   [field]
@@ -152,13 +152,15 @@
   [_ {:keys [display_name full-name]}]
   (or full-name display_name))
 
-(mu/defmethod ->reference [:string :xrays/MetricInfo]
-  [_template-type {:keys [name full-name]} :- :xrays/MetricInfo]
+(defmethod ->reference [:string :xrays/Metric]
+  [_ {:keys [name full-name]}]
   (or full-name name))
 
-(mu/defmethod ->reference [:mbql :xrays/MetricInfo]
-  [_template-type {:keys [definition]} :- :xrays/MetricInfo]
-  (-> definition :aggregation first))
+(defmethod ->reference [:mbql :xrays/Metric]
+  [_ {:keys [id definition]}]
+  (if id
+    [:metric id]
+    (-> definition :aggregation first)))
 
 (defmethod ->reference [:native :model/Field]
   [_ field]
@@ -187,7 +189,7 @@
        v))
    m))
 
-(mu/defn- ground-metric :- [:sequential ads/grounded-metric]
+(mu/defn ground-metric :- [:sequential ads/grounded-metric]
   "Generate \"grounded\" metrics from the mapped dimensions (dimension name -> field matches).
    Since there may be multiple matches to a dimension, this will produce a sequence of potential matches."
   [{metric-name       :metric-name
@@ -443,9 +445,10 @@
                         (assoc v :filter f :filter-name fname))))))
        flatten))
 
-(mu/defn identify :- [:map
-                      [:dimensions ads/dim-name->matching-fields]
-                      [:metrics [:sequential ads/grounded-metric]]]
+(mu/defn identify
+  :- [:map
+      [:dimensions ads/dim-name->matching-fields]
+      [:metrics [:sequential ads/grounded-metric]]]
   "Identify interesting metrics and dimensions of a `thing`. First identifies interesting dimensions, and then
   interesting metrics which are satisfied.
   Metrics from the template are assigned a score of 50; user defined metrics a score of 95"
@@ -466,7 +469,7 @@
      :metrics    (concat (set-score 50 metrics)
                          (let [entity (-> context :root :entity)]
                            ;; metric x-rays talk about "this" in the template
-                           (when (= (type entity) :xrays/MetricInfo)
+                           (when (mi/instance-of? :xrays/Metric entity)
                              [{:metric-name       "this"
                                :metric-title      (:name entity)
                                :metric-definition {:aggregation [(->reference :mbql entity)]}

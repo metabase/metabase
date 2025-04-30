@@ -142,6 +142,7 @@
    In practice, we gather the entity data (including fields), the dashboard templates, attempt to bind dimensions to
    fields specified in the template, then build metrics, filters, and finally cards based on the bound dimensions."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [kixi.stats.core :as stats]
@@ -154,9 +155,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru trun]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.automagic-dashboards.combination :as combination]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
@@ -173,35 +172,12 @@
 (def ^:private ^{:arglists '([field])} id-or-name
   (some-fn :id :name))
 
-(mr/def :xrays/MetricInfo
-  "The automagic dashboard code creates fake (i.e., not a real Toucan instance) Metrics based on aggregation
-  clauses (see [[collect-metrics]]). This is the shape of these fake Metrics. We tag them with
-
-    ^{:type :xrays/Metric}
-
-  metadata so we can dispatch on them. Multimethods that know about them have a dispatch function like
-
-    (some-fn mi/model type)"
-  [:and
-   [:map
-    ;; this matches the legacy V1 Metric definition shape -- maybe at some point we should update all this code so our
-    ;; fake Metrics look like modern V2 Metrics instead of a shape no longer used elsewhere in the codebase.
-    [:definition [:map
-                  [:aggregation  any?]
-                  [:source-table pos-int?]]]
-    [:name       :string]
-    [:table_id   pos-int?]
-    [:full-name {:optional true} [:maybe :string]]]
-   [:fn
-    {:error/message "Should have ^{:type :xrays/MetricInfo} metadata."}
-    #(= (type %) :xrays/MetricInfo)]])
-
 (defmulti ->root
   "root is a datatype that is an entity augmented with metadata for the purposes of creating an automatic dashboard with
   respect to that entity. It is called a root because the automated dashboard uses productions to recursively create a
   tree of dashboard cards to fill the dashboards. This multimethod is for turning a given entity into a root."
   {:arglists '([entity])}
-  (some-fn mi/model type))
+  mi/model)
 
 (defmethod ->root :model/Table
   [table]
@@ -226,7 +202,7 @@
      :url                        (format "%ssegment/%s" public-endpoint (u/the-id segment))
      :dashboard-templates-prefix ["table"]}))
 
-(defmethod ->root :xrays/MetricInfo
+(defmethod ->root :xrays/Metric
   [metric]
   (let [table (->> metric :table_id (t2/select-one :model/Table :id))]
     {:entity                     metric
@@ -638,14 +614,14 @@
                      :zoom-out [up]
                      :related  [sideways sideways]
                      :compare  [compare compare]})
-   :xrays/MetricInfo   (let [down     [[:drilldown-fields]]
-                             sideways [[:metrics :segments]]
-                             up       [[:table]]
-                             compare  [[:compare]]]
-                         {:zoom-in  [down down]
-                          :zoom-out [up]
-                          :related  [sideways sideways sideways]
-                          :compare  [compare compare]})
+   :xrays/Metric  (let [down     [[:drilldown-fields]]
+                        sideways [[:metrics :segments]]
+                        up       [[:table]]
+                        compare  [[:compare]]]
+                    {:zoom-in  [down down]
+                     :zoom-out [up]
+                     :related  [sideways sideways sideways]
+                     :compare  [compare compare]})
    :model/Field   (let [sideways [[:fields]]
                         up       [[:table] [:metrics :segments]]
                         compare  [[:compare]]]
@@ -679,7 +655,7 @@
               (drilldown-fields root available-dimensions)
               (related-entities root)
               (comparisons root))
-       (fill-related max-related (get related-selectors (-> root :entity ((some-fn mi/model type)))))))
+       (fill-related max-related (get related-selectors (-> root :entity mi/model)))))
 
 (defn- filter-referenced-fields
   "Return a map of fields referenced in filter clause."
@@ -740,8 +716,8 @@
     source, what dashboard template categories to apply, etc.
   - Additional options such as how many cards to show, a cell query (a drill through), etc."
   {:arglists '([entity opts])}
-  (fn [entity _opts]
-    ((some-fn mi/model type) entity)))
+  (fn [entity _]
+    (mi/model entity)))
 
 (defmethod automagic-analysis :model/Table
   [table opts]
@@ -751,27 +727,24 @@
   [segment opts]
   (automagic-dashboard (merge (->root segment) opts)))
 
-(defmethod automagic-analysis :xrays/MetricInfo
+(defmethod automagic-analysis :xrays/Metric
   [metric opts]
   (automagic-dashboard (merge (->root metric) opts)))
 
-(mu/defn- collect-metrics :- [:maybe [:sequential :xrays/MetricInfo]]
+(mu/defn- collect-metrics :- [:maybe [:sequential (ms/InstanceOf :xrays/Metric)]]
   [root question]
-  (keep (fn [aggregation-clause]
-          (if (-> aggregation-clause
-                  first
-                  qp.util/normalize-token
-                  (= :metric))
-            ;; any [:metric ...] MBQL clauses these days are V2 Metrics and Automagic Dashboards do not handle them.
-            (log/error "X-Rays do not support V2 Metrics.")
-            ;; construct a 'virtual' metric
-            (when-let [table-id (table-id question)]
-              ^{:type :xrays/MetricInfo}
-              {:definition {:aggregation  [aggregation-clause]
-                            :source-table table-id}
-               :name       (names/metric->description root aggregation-clause)
-               :table_id   table-id})))
-        (get-in question [:dataset_query :query :aggregation])))
+  (map (fn [aggregation-clause]
+         (if (-> aggregation-clause
+                 first
+                 qp.util/normalize-token
+                 (= :metric))
+           (->> aggregation-clause second (t2/select-one :xrays/Metric :id))
+           (let [table-id (table-id question)]
+             (mi/instance :xrays/Metric {:definition {:aggregation  [aggregation-clause]
+                                                      :source-table table-id}
+                                         :name       (names/metric->description root aggregation-clause)
+                                         :table_id   table-id}))))
+       (get-in question [:dataset_query :query :aggregation])))
 
 (mu/defn- collect-breakout-fields :- [:maybe [:sequential (ms/InstanceOf :model/Field)]]
   [root question]
