@@ -12,7 +12,7 @@ const EMBED_JS_PATH = "/app/embed.v1.js";
 /**
  * Base interface for SDK iframe embedding test page options
  */
-interface BaseEmbedTestPageOptions {
+export interface BaseEmbedTestPageOptions {
   // Options for the embed route
   target?: string;
   apiKey?: string;
