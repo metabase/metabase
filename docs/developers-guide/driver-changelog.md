@@ -6,6 +6,8 @@ title: Driver interface changelog
 
 ## Metabase 0.55.0
 
+- Extend `date()` to accept a DateTime (or DB equivalent) in addition to an ISO string. When given a DateTime, it will truncate it to a date.
+
 - Added a feature `:expression-literals` for drivers that support expressions consisting of a single string, number, or boolean literal value.
 
 - Added a feature `:multi-level-schema` for drivers that support hierarchical levels between database and schema. Such as databricks' catalog. Defaults to false.
