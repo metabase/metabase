@@ -1,4 +1,5 @@
 import { type ChangeEvent, type ReactNode, useCallback, useRef } from "react";
+import { useState, Dispatch, SetStateAction } from "react";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
@@ -11,7 +12,7 @@ import {
   FormSubmitButton,
   useFormContext,
 } from "metabase/forms";
-import { Group, Icon, Loader, Stack, Text } from "metabase/ui";
+import { List, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
 
 export const ContentTranslationConfiguration = () => {
@@ -20,6 +21,8 @@ export const ContentTranslationConfiguration = () => {
     "configuring-metabase/localization",
     { anchor: "supported-languages" },
   ).url;
+
+  const [errorMessages, setErrorMessages] = useState<string[]>([]);
 
   return (
     <Stack gap="sm" maw="38rem">
@@ -44,13 +47,33 @@ export const ContentTranslationConfiguration = () => {
         initialValues={{}}
         onSubmit={() => {}}
       >
-        <UploadForm />
+        <UploadForm setErrorMessages={setErrorMessages} />
       </FormProvider>
+      {!!errorMessages.length && (
+        <Stack gap="xs">
+          <Text role="alert" c="error">
+            {errorMessages.length === 1
+              ? t`We couldn't upload the file due to this error:`
+              : t`We couldn't upload the file due to these errors:`}
+          </Text>
+          <List withPadding>
+            {errorMessages.map((errorMessage) => (
+              <List.Item key={errorMessage} role="alert" c="danger">
+                {errorMessage}
+              </List.Item>
+            ))}
+          </List>
+        </Stack>
+      )}
     </Stack>
   );
 };
 
-const UploadForm = () => {
+const UploadForm = ({
+  setErrorMessages,
+}: {
+  setErrorMessages: Dispatch<SetStateAction<string[]>>;
+}) => {
   const [uploadContentTranslationDictionary] =
     useUploadContentTranslationDictionaryMutation();
 
@@ -77,17 +100,19 @@ const UploadForm = () => {
         console.error("No file selected");
         return;
       }
+      setErrorMessages([]);
       setStatus("pending");
       await uploadContentTranslationDictionary({ file })
         .unwrap()
         .then(() => {
           setStatus("fulfilled");
         })
-        .catch(() => {
+        .catch((e) => {
+          setErrorMessages(e.data.errors ?? [t`Unknown error encountered`]);
           setStatus("rejected");
         });
     },
-    [uploadContentTranslationDictionary, setStatus],
+    [uploadContentTranslationDictionary, setErrorMessages, setStatus],
   );
 
   const triggerUpload = () => {
