@@ -135,21 +135,12 @@ const DashboardContextProviderInner = ({
         },
       });
 
-      if (isSuccessfulFetchDashboardResult(result)) {
-        onLoad?.(result.payload.dashboard);
-      } else if (
-        isFailedFetchDashboardResult(result) &&
-        !isCancelledFetchDashboardResult(result)
-      ) {
-        onError?.(result);
-      }
+      return result;
     },
     [
       fetchDashboard,
       initialize,
       isNavigatingBackToDashboard,
-      onError,
-      onLoad,
       parameterQueryParams,
     ],
   );
@@ -157,7 +148,17 @@ const DashboardContextProviderInner = ({
   useEffect(() => {
     const hasDashboardChanged = dashboardId !== previousDashboardId;
     if (hasDashboardChanged) {
-      handleLoadDashboard(dashboardId);
+      handleLoadDashboard(dashboardId)
+        .then((result) => {
+          if (isSuccessfulFetchDashboardResult(result)) {
+            onLoad?.(result.payload.dashboard);
+          } else if (isFailedFetchDashboardResult(result)) {
+            onError?.(result);
+          }
+        })
+        .catch((err) => {
+          onError?.(err);
+        });
       return;
     }
 
@@ -172,16 +173,28 @@ const DashboardContextProviderInner = ({
       previousParameterValues,
     );
 
+    let cardResult: Promise<void> | undefined;
     if (hasDashboardLoaded) {
-      fetchDashboardCardData({ reload: false, clearCache: true });
+      cardResult = fetchDashboardCardData({ reload: false, clearCache: true });
     } else if (hasTabChanged || hasParameterValueChanged) {
-      fetchDashboardCardData();
+      cardResult = fetchDashboardCardData();
+    }
+    if (cardResult) {
+      cardResult
+        .then(() => {
+          onLoad?.(dashboard);
+        })
+        .catch((err) => {
+          onError?.(err);
+        });
     }
   }, [
     dashboard,
     dashboardId,
     fetchDashboardCardData,
     handleLoadDashboard,
+    onError,
+    onLoad,
     parameterValues,
     previousDashboard,
     previousDashboardId,
