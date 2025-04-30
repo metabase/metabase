@@ -25,6 +25,7 @@ import type {
   UpdatedRowHandlerParams,
 } from "../types";
 
+import { ErrorUpdateToast } from "./ErrorUpdateToast";
 import type {
   PatchCollection,
   TableEditingStateUpdateStrategy,
@@ -105,18 +106,20 @@ export const useTableCRUD = ({
 
       dispatch(
         addUndo({
-          icon: "warning",
-          toastColor: "error",
-          message: getResponseErrorMessage(error) ?? t`An error occurred`,
+          toastColor: "bg-black",
+          icon: null,
+          renderChildren: () => <ErrorUpdateToast error={error} />,
           timeout: null, // removes automatic toast hide
           undo: false,
-          action: () => {
-            // eslint-disable-next-line no-console
-            console.log("Undo action clicked");
+          onDismiss: () => {
+            setCellsWithFailedUpdatesMap((prevState) => {
+              const newMap = { ...prevState };
+              delete newMap[cellId];
+              return newMap;
+            });
           },
         }),
       );
-      // TODO: create a custom component to show the error message and reset failed cells map state
 
       setCellsWithFailedUpdatesMap({
         ...cellsWithFailedUpdatesMap,
