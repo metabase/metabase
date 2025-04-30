@@ -36,6 +36,7 @@ import type { LinkProps } from "metabase/core/components/Link";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
+import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
 import { SearchButton } from "metabase/nav/components/search/SearchButton";
@@ -741,6 +742,13 @@ export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
 export const PLUGIN_CONTENT_TRANSLATION = {
   isEnabled: false,
   ContentTranslationConfiguration: PluginPlaceholder,
+  useTranslateContent: () => {
+    // In OSS, the input is not translated
+    const contentTranslationFunction: ContentTranslationFunction = <T>(
+      arg: T,
+    ) => arg;
+    return contentTranslationFunction;
+  },
 };
 
 export const PLUGIN_DB_ROUTING = {
