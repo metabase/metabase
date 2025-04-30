@@ -14,6 +14,7 @@ const EMBED_JS_PATH = "/app/embed.v1.js";
  */
 interface BaseEmbedTestPageOptions {
   // Options for the embed route
+  target?: string;
   apiKey?: string;
   instanceUrl?: string;
   dashboardId?: number | string;
@@ -22,6 +23,7 @@ interface BaseEmbedTestPageOptions {
   theme?: MetabaseTheme;
 
   // Options for the test page
+  expectErrors?: boolean;
   insertHtml?: {
     head?: string;
     beforeEmbed?: string;
@@ -32,11 +34,13 @@ interface BaseEmbedTestPageOptions {
 /**
  * Creates and loads a test fixture for SDK iframe embedding tests
  */
-export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>(
-  options: T,
-) {
+export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
+  expectErrors = false,
+  ...options
+}: T) {
   return cy.get("@apiKey").then((apiKey) => {
     const testPageSource = getSdkIframeEmbedHtml({
+      target: "#metabase-embed-container",
       apiKey,
       instanceUrl: "http://localhost:4000",
       ...options,
@@ -46,6 +50,18 @@ export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>(
       body: testPageSource,
       headers: { "content-type": "text/html" },
     }).as("dynamicPage");
+
+    if (expectErrors) {
+      cy.visit("/sdk-iframe-test-page", {
+        onBeforeLoad(win) {
+          cy.stub(win.console, "error").as("consoleError");
+        },
+      });
+
+      cy.get("@consoleError").should("be.called");
+
+      return;
+    }
 
     cy.visit("/sdk-iframe-test-page");
 
@@ -106,12 +122,15 @@ function getSdkIframeEmbedHtml({
       <script>
         const { MetabaseEmbed } = window["metabase.embed"];
 
-        const embed = new MetabaseEmbed({
-          target: "#metabase-embed-container",
-          ${Object.entries(embedConfig)
-            .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
-            .join(",\n          ")}
-        });
+        try {
+          window.embed = new MetabaseEmbed({
+            ${Object.entries(embedConfig)
+              .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+              .join(",\n          ")}
+          });
+        } catch (error) {
+          console.error(error.message)
+        }
       </script>
     </body>
     </html>
