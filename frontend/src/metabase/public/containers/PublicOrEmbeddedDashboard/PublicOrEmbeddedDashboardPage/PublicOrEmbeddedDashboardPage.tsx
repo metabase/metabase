@@ -5,8 +5,6 @@ import {
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
-import { getDashboardComplete } from "metabase/dashboard/selectors";
-import { SetTitle } from "metabase/hoc/Title";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
@@ -49,37 +47,32 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
 
   const canWhitelabel = useSelector(getCanWhitelabel);
 
-  const dashboard = useSelector(getDashboardComplete);
-
   return (
-    <>
-      <SetTitle title={dashboard?.name} />
-      <PublicOrEmbeddedDashboard
-        dashboardId={dashboardId}
-        isFullscreen={isFullscreen}
-        refreshPeriod={refreshPeriod}
-        hideParameters={hideParameters}
-        isNightMode={isNightMode}
-        hasNightModeToggle={hasNightModeToggle}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        onNightModeChange={onNightModeChange}
-        onFullscreenChange={onFullscreenChange}
-        onRefreshPeriodChange={onRefreshPeriodChange}
-        background={background}
-        bordered={bordered}
-        downloadsEnabled={downloadsEnabled}
-        theme={theme}
-        titled={titled}
-        parameterQueryParams={parameterQueryParams}
-        cardTitled={true}
-        locale={canWhitelabel ? locale : undefined}
-        withFooter={true}
-        getClickActionMode={undefined}
-        navigateToNewCardFromDashboard={null}
-        onError={(error) => {
-          dispatch(setErrorPage(error.payload));
-        }}
-      />
-    </>
+    <PublicOrEmbeddedDashboard
+      dashboardId={dashboardId}
+      isFullscreen={isFullscreen}
+      refreshPeriod={refreshPeriod}
+      hideParameters={hideParameters}
+      isNightMode={isNightMode}
+      hasNightModeToggle={hasNightModeToggle}
+      setRefreshElapsedHook={setRefreshElapsedHook}
+      onNightModeChange={onNightModeChange}
+      onFullscreenChange={onFullscreenChange}
+      onRefreshPeriodChange={onRefreshPeriodChange}
+      background={background}
+      bordered={bordered}
+      downloadsEnabled={downloadsEnabled}
+      theme={theme}
+      titled={titled}
+      parameterQueryParams={parameterQueryParams}
+      cardTitled={true}
+      withFooter={true}
+      getClickActionMode={undefined}
+      navigateToNewCardFromDashboard={null}
+      onError={(error) => {
+        dispatch(setErrorPage(error.payload));
+      }}
+      locale={canWhitelabel ? locale : undefined}
+    />
   );
 };

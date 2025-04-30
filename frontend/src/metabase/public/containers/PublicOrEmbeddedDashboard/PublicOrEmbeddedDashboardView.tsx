@@ -22,6 +22,7 @@ import type {
   EmbedHideParameters,
 } from "metabase/dashboard/types";
 import { isActionDashCard } from "metabase/dashboard/utils";
+import { SetTitle } from "metabase/hoc/Title";
 import { isWithinIframe } from "metabase/lib/dom";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import type {
@@ -72,36 +73,36 @@ export type PublicOrEmbeddedDashboardViewProps =
     DashboardFullscreenControls &
     DashboardFooterControls;
 
-export function PublicOrEmbeddedDashboardView({
-  dashboard,
-  hasNightModeToggle,
-  isFullscreen,
-  isNightMode,
-  onFullscreenChange,
-  onNightModeChange,
-  onRefreshPeriodChange,
-  refreshPeriod,
-  setRefreshElapsedHook,
-  selectedTabId,
-  parameters,
-  parameterValues,
-  draftParameterValues,
-  dashboardId,
-  background,
-  bordered,
-  titled,
-  theme,
-  getClickActionMode: externalGetClickActionMode,
-  hideParameters,
-  withFooter,
-  navigateToNewCardFromDashboard,
-  slowCards,
-  cardTitled,
-  downloadsEnabled,
-}: PublicOrEmbeddedDashboardViewProps) {
-  // TODO: Add the rest of the available data in the context. These two are causing type errors when passing through props.
-  const { setParameterValue, setParameterValueToDefault } =
-    useDashboardContext();
+export function PublicOrEmbeddedDashboardView() {
+  const {
+    setParameterValue,
+    setParameterValueToDefault,
+    dashboard,
+    hasNightModeToggle,
+    isFullscreen,
+    isNightMode,
+    onFullscreenChange,
+    onNightModeChange,
+    onRefreshPeriodChange,
+    refreshPeriod,
+    setRefreshElapsedHook,
+    selectedTabId,
+    parameters,
+    parameterValues,
+    draftParameterValues,
+    dashboardId,
+    background,
+    bordered,
+    titled,
+    theme,
+    getClickActionMode: externalGetClickActionMode,
+    hideParameters,
+    withFooter,
+    navigateToNewCardFromDashboard,
+    slowCards,
+    cardTitled,
+    downloadsEnabled,
+  } = useDashboardContext();
 
   const buttons = !isWithinIframe() ? (
     <DashboardHeaderButtonRow
@@ -159,86 +160,93 @@ export function PublicOrEmbeddedDashboardView({
   const isCompactHeader = !titled && !hasVisibleParameters && !dashboardHasTabs;
 
   return (
-    <EmbedFrame
-      name={dashboard && dashboard.name}
-      description={dashboard && dashboard.description}
-      dashboard={dashboard}
-      parameters={parameters}
-      parameterValues={parameterValues}
-      draftParameterValues={draftParameterValues}
-      hiddenParameterSlugs={hiddenParameterSlugs}
-      setParameterValue={setParameterValue}
-      setParameterValueToDefault={setParameterValueToDefault}
-      enableParameterRequiredBehavior
-      actionButtons={buttons ? <div className={CS.flex}>{buttons}</div> : null}
-      dashboardTabs={
-        dashboardHasTabs && <DashboardTabs dashboardId={dashboardId} />
-      }
-      background={background}
-      bordered={bordered}
-      titled={titled}
-      theme={normalizedTheme}
-      hide_parameters={hideParameters}
-      pdfDownloadsEnabled={downloadsEnabled.pdf}
-      withFooter={withFooter}
-    >
-      <LoadingAndErrorWrapper
-        className={cx({
-          [DashboardS.DashboardFullscreen]: isFullscreen,
-          [DashboardS.DashboardNight]: isNightMode,
-          [ParametersS.DashboardNight]: isNightMode,
-          [ColorS.DashboardNight]: isNightMode,
-        })}
-        loading={!dashboard}
+    <>
+      {dashboard && <SetTitle title={dashboard.name} />}
+      <EmbedFrame
+        name={dashboard && dashboard.name}
+        description={dashboard && dashboard.description}
+        dashboard={dashboard}
+        parameters={parameters}
+        parameterValues={parameterValues}
+        draftParameterValues={draftParameterValues}
+        hiddenParameterSlugs={hiddenParameterSlugs}
+        setParameterValue={setParameterValue}
+        setParameterValueToDefault={setParameterValueToDefault}
+        enableParameterRequiredBehavior
+        actionButtons={
+          buttons ? <div className={CS.flex}>{buttons}</div> : null
+        }
+        dashboardTabs={
+          dashboardHasTabs && <DashboardTabs dashboardId={dashboardId} />
+        }
+        background={background}
+        bordered={bordered}
+        titled={titled}
+        theme={normalizedTheme}
+        hide_parameters={hideParameters}
+        pdfDownloadsEnabled={downloadsEnabled.pdf}
+        withFooter={withFooter}
       >
-        {() => {
-          if (!dashboard) {
-            return null;
-          }
+        <LoadingAndErrorWrapper
+          className={cx({
+            [DashboardS.DashboardFullscreen]: isFullscreen,
+            [DashboardS.DashboardNight]: isNightMode,
+            [ParametersS.DashboardNight]: isNightMode,
+            [ColorS.DashboardNight]: isNightMode,
+          })}
+          loading={!dashboard}
+        >
+          {() => {
+            if (!dashboard) {
+              return null;
+            }
 
-          if (!dashboardHasCards) {
+            if (!dashboardHasCards) {
+              return (
+                <DashboardEmptyStateWithoutAddPrompt
+                  isNightMode={isNightMode}
+                  isDashboardEmpty={true}
+                />
+              );
+            }
+
+            if (dashboardHasCards && !tabHasCards) {
+              return (
+                <DashboardEmptyStateWithoutAddPrompt
+                  isNightMode={isNightMode}
+                  isDashboardEmpty={false}
+                />
+              );
+            }
+
             return (
-              <DashboardEmptyStateWithoutAddPrompt
-                isNightMode={isNightMode}
-                isDashboardEmpty={true}
-              />
+              <FullWidthContainer mt={isCompactHeader ? "xs" : "sm"}>
+                <DashboardGridConnected
+                  dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
+                  isPublicOrEmbedded
+                  getClickActionMode={getClickActionMode}
+                  selectedTabId={selectedTabId}
+                  slowCards={slowCards}
+                  isEditing={false}
+                  isEditingParameter={false}
+                  isXray={false}
+                  isFullscreen={isFullscreen}
+                  isNightMode={isNightMode}
+                  withCardTitle={cardTitled}
+                  clickBehaviorSidebarDashcard={null}
+                  navigateToNewCardFromDashboard={
+                    navigateToNewCardFromDashboard
+                  }
+                  downloadsEnabled={downloadsEnabled}
+                  autoScrollToDashcardId={undefined}
+                  reportAutoScrolledToDashcard={_.noop}
+                />
+              </FullWidthContainer>
             );
-          }
-
-          if (dashboardHasCards && !tabHasCards) {
-            return (
-              <DashboardEmptyStateWithoutAddPrompt
-                isNightMode={isNightMode}
-                isDashboardEmpty={false}
-              />
-            );
-          }
-
-          return (
-            <FullWidthContainer mt={isCompactHeader ? "xs" : "sm"}>
-              <DashboardGridConnected
-                dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
-                isPublicOrEmbedded
-                getClickActionMode={getClickActionMode}
-                selectedTabId={selectedTabId}
-                slowCards={slowCards}
-                isEditing={false}
-                isEditingParameter={false}
-                isXray={false}
-                isFullscreen={isFullscreen}
-                isNightMode={isNightMode}
-                withCardTitle={cardTitled}
-                clickBehaviorSidebarDashcard={null}
-                navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-                downloadsEnabled={downloadsEnabled}
-                autoScrollToDashcardId={undefined}
-                reportAutoScrolledToDashcard={_.noop}
-              />
-            </FullWidthContainer>
-          );
-        }}
-      </LoadingAndErrorWrapper>
-    </EmbedFrame>
+          }}
+        </LoadingAndErrorWrapper>
+      </EmbedFrame>
+    </>
   );
 }
 

@@ -21,6 +21,9 @@ import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEm
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { Box } from "metabase/ui";
+import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+
+import { StaticQuestionSdkMode } from "../StaticQuestion/mode";
 
 /**
  * @interface
@@ -90,7 +93,12 @@ export const StaticDashboardInner = ({
         onNightModeChange={_.noop}
         hasNightModeToggle={false}
         withFooter={displayOptions.withFooter}
-        getClickActionMode={undefined}
+        getClickActionMode={({ question }) =>
+          getEmbeddingMode({
+            question,
+            queryMode: StaticQuestionSdkMode,
+          })
+        }
       />
     </Box>
   );

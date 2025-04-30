@@ -42,6 +42,7 @@ export const ExportAsPdfButton = ({
     trackExportDashboardToPDF({
       dashboardAccessedVia,
     });
+
     const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
     return saveDashboardPdf({
       selector: cardNodeSelector,
