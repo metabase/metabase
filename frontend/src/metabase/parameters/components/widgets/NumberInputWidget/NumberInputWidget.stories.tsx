@@ -13,7 +13,7 @@ export default {
 const Template: StoryFn<typeof NumberInputWidget> = (args) => {
   const [{ value }, updateArgs] = useArgs();
 
-  const handleSetValue = (v: ParameterValueOrArray | undefined) => {
+  const handleSetValue = (v: ParameterValueOrArray | null | undefined) => {
     updateArgs({ value: v });
   };
 
