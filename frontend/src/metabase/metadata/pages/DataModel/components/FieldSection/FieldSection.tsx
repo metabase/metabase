@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useGetFieldQuery, useUpdateFieldMutation } from "metabase/api";
@@ -23,6 +24,15 @@ export const FieldSection = ({ fieldId }: Props) => {
   const [isCasting, setIsCasting] = useState(
     field ? field.coercion_strategy != null : false,
   );
+  const previousField = usePrevious(field);
+  const hasFieldIdChanged =
+    previousField && field && previousField.id !== field.id;
+
+  useEffect(() => {
+    if (hasFieldIdChanged) {
+      setIsCasting(false);
+    }
+  }, [hasFieldIdChanged]);
 
   useEffect(() => {
     if (field) {
@@ -62,18 +72,20 @@ export const FieldSection = ({ fieldId }: Props) => {
             value={field.database_type}
           />
 
-          <Switch
-            checked={isCasting}
-            label={t`Cast to a specific data type`}
-            size="xs"
-            onChange={(event) => {
-              setIsCasting(event.target.checked);
+          {canCoerceFieldType(field) && (
+            <Switch
+              checked={isCasting}
+              label={t`Cast to a specific data type`}
+              size="xs"
+              onChange={(event) => {
+                setIsCasting(event.target.checked);
 
-              if (!event.target.checked) {
-                updateField({ id: fieldId, coercion_strategy: null });
-              }
-            }}
-          />
+                if (!event.target.checked) {
+                  updateField({ id: fieldId, coercion_strategy: null });
+                }
+              }}
+            />
+          )}
 
           {canCoerceFieldType(field) && isCasting && (
             <CoercionStrategyPicker
