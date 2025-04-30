@@ -75,10 +75,18 @@
           (try (bt/run task)
                (catch Exception e
                  (let [message (ex-message e)
-                       data (ex-data e)]
-                   (when message (println (c/red    (c/reverse-color "Error     :")) message))
-                   (when data    (println (c/yellow (c/reverse-color "Error data:")) data))
-                   (when e       (println (c/yellow "\nException:\n") e))
+                       data (ex-data e)
+                       error-report (:mage/error-report data)]
+                   (cond error-report
+                         (do (println (c/red (c/reverse-color "Error Report:"))) (println error-report))
+
+                         (or message data)
+                         (do
+                           (when message (println (c/red (c/reverse-color "ex-message:"))) (println message))
+                           (when data (println (c/yellow (c/reverse-color "ex-data:"))) (prn data)))
+
+                         :else
+                         (do (println (c/yellow "Exception:")) (println e)))
                    (System/exit (:mage/exit-code data 1))))))))))
 
 (when (= *file* (System/getProperty "babashka.file"))

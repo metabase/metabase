@@ -45,4 +45,9 @@
   [{{force-check? :force-check} :options}]
   (let [mode (->mode force-check?)]
     (println (str mode "ing all clojure files, sit tight: this could take a minute..."))
-    (u/sh (str "clojure -T:cljfmt " mode))))
+    (try
+      (u/sh (str "clojure -T:cljfmt " mode))
+      (catch Exception e
+        (throw (ex-info (ex-message e)
+                        {:mage/exit-code 1
+                         :mage/error-report (:out (:proc (ex-data e)))}))))))

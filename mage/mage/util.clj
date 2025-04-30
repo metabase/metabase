@@ -100,10 +100,11 @@
                "--" "*.clj" "*.cljc" "*.cljs" ":!/.clj-kondo" ":!/dev")
         :out
         (str/split-lines)
-        ;; filter out any files that have been deleted/moved
         (remove #{""})
+        ;; filter out any files that have been deleted/moved:
         (filter (fn [filename]
-                  (fs/exists? (str project-root-directory "/" filename)))))))
+                  (fs/exists? (str project-root-directory "/" filename))))
+        sort)))
 
 (comment
   (count (updated-files "master"))
