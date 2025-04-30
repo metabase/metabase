@@ -40,7 +40,7 @@
                 (testing "should fail"
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
-                       #"You cannot create new subscriptions for the domain \"[\w@\.-]+\". Allowed domains are: .+"
+                       #"The following email addresses are not allowed: .*"
                        (thunk))))
                 (testing "should succeed"
                   (is (thunk)))))))))))
