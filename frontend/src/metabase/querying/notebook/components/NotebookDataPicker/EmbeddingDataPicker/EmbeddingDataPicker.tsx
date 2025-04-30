@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { DataSourceSelector } from "embedding-sdk/components/private/data-picker/DataSelector";
 import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
+import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getEmbedOptions } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
@@ -75,7 +75,7 @@ export function EmbeddingDataPicker({
     dataSourceCountData != null && dataSourceCountData.total < 100;
   if (shouldUseSimpleDataPicker) {
     return (
-      <PLUGIN_EMBEDDING_SDK.SimpleDataPicker
+      <PLUGIN_EMBEDDING.SimpleDataPicker
         filterByDatabaseId={canChangeDatabase ? null : databaseId}
         selectedEntity={pickerInfo?.tableId}
         isInitiallyOpen={!table}

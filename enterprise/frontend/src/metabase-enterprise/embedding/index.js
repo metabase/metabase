@@ -1,3 +1,4 @@
+import { SimpleDataPicker } from "embedding-sdk/components/private/data-picker/SimpleDataPicker";
 import { PLUGIN_ADMIN_SETTINGS, PLUGIN_EMBEDDING } from "metabase/plugins";
 import { isInteractiveEmbeddingEnabled } from "metabase-enterprise/embedding/selectors";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -12,3 +13,9 @@ if (hasPremiumFeature("embedding")) {
   PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettings =
     InteractiveEmbeddingSettings;
 }
+
+/**
+ * We can't gate this component behind a feature flag, because SDK users could
+ * use the SDK without a valid license and doesn't contain any feature flags.
+ */
+PLUGIN_EMBEDDING.SimpleDataPicker = SimpleDataPicker;
