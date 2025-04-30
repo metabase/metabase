@@ -5,7 +5,7 @@
    [metabase.api.geojson :as api.geojson]
    [metabase.config :as config]
    [metabase.http-client :as client]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]

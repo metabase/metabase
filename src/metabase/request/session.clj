@@ -3,9 +3,9 @@
    [metabase.api.common
     :as api
     :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?*]]
-   [metabase.models.setting :refer [*user-local-values*]]
    [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
+   [metabase.settings.core :as setting]
    [metabase.util.i18n :as i18n]
    [toucan2.core :as t2]))
 
@@ -19,7 +19,7 @@
 (def ^:private ^:dynamic *user-local-values-user-id*
   "User ID that we've previous bound [[*user-local-values*]] for. This exists so we can avoid rebinding it in recursive
   calls to [[with-current-user]] if it is already bound, as this can mess things up since things
-  like [[metabase.models.setting/set-user-local-value!]] will only update the values for the top-level binding."
+  like [[metabase.settings.models.setting/set-user-local-value!]] will only update the values for the top-level binding."
   ;; placeholder value so we will end up rebinding [[*user-local-values*]] it if you call
   ;;
   ;;    (with-current-user nil
@@ -35,16 +35,20 @@
             *is-group-manager?*            (boolean is-group-manager?)
             *is-superuser?*                (boolean is-superuser?)
             *current-user*                 (delay (find-user metabase-user-id))
-            *current-user-permissions-set* (delay (or permissions-set (some-> metabase-user-id user/permissions-set)))
-            ;; as mentioned above, do not rebind this to something new, because changes to its value will not be
-            ;; propagated to frames further up the stack
-            *user-local-values*            (if (= *user-local-values-user-id* metabase-user-id)
-                                             *user-local-values*
-                                             (delay (atom (or settings
-                                                              (user/user-local-settings metabase-user-id)))))
-            *user-local-values-user-id*    metabase-user-id]
-    (perms/with-relevant-permissions-for-user metabase-user-id
-      (thunk))))
+            *current-user-permissions-set* (delay (or permissions-set (some-> metabase-user-id user/permissions-set)))]
+    ;; As mentioned above, do not rebind user-local values to something new, because changes to its value will not be
+    ;; propagated to frames further up the stack.
+    (letfn [(do-with-user-local-values [thunk]
+              (if (= *user-local-values-user-id* metabase-user-id)
+                (thunk)
+                (setting/with-user-local-values (delay (atom (or settings
+                                                                 (user/user-local-settings metabase-user-id))))
+                  (binding [*user-local-values-user-id* metabase-user-id]
+                    (thunk)))))]
+      (do-with-user-local-values
+       (fn []
+         (perms/with-relevant-permissions-for-user metabase-user-id
+           (thunk)))))))
 
 (defn with-current-user-fetch-user-for-id
   "Part of the impl for `with-current-user` -- don't use this directly."

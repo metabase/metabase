@@ -11,6 +11,7 @@
    [metabase.cloud-migration.init]
    [metabase.config :as config]
    [metabase.driver.init]
+   [metabase.embedding.init]
    [metabase.events.init]
    [metabase.indexed-entities.init]
    [metabase.lib-be.init]
@@ -19,17 +20,21 @@
    [metabase.model-persistence.init]
    [metabase.models.init]
    [metabase.notification.init]
+   [metabase.premium-features.init]
    [metabase.public-sharing.init]
    [metabase.pulse.init]
    [metabase.query-analysis.init]
    [metabase.revisions.init]
    [metabase.search.init]
    [metabase.session.init]
+   [metabase.settings.init]
    [metabase.sso.init]
    [metabase.sync.init]
+   [metabase.task-history.init]
    [metabase.task.init]
    [metabase.tiles.init]
-   [metabase.user-key-value.init]))
+   [metabase.user-key-value.init]
+   [metabase.xrays.init]))
 
 ;; load EE init code on system launch if it exists.
 (when (and (not *compile-files*)

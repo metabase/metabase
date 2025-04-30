@@ -12,9 +12,9 @@
    [java-time.api :as t]
    [metabase.auth-provider :as auth-provider]
    [metabase.driver.impl :as driver.impl]
-   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -655,6 +655,9 @@
     ;; Does the driver support schemas (aka namespaces) for tables
     ;; DEFAULTS TO TRUE
     :schemas
+
+    ;; Does the driver support multi-level-schema for e.g. multicatalog support in databricks
+    :multi-level-schema
 
     ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
@@ -1351,6 +1354,17 @@
 (defmethod dynamic-database-types-lookup ::driver
   [_driver _database _database-types]
   nil)
+
+(defmulti adjust-schema-qualification
+  "Adjust the given schema to either add or remove further schema qualification.
+
+   In general, the database detail property `multi-level-schema` ought to drive whether a schema gets qualified or not.
+   If it is true, schemas should be fully qualified to `catalog` or other addressable hierarchical concept. If false, they should not be.
+
+   Returns a string either of the unchanged `schema` or the adjusted value."
+  {:added "0.55.0" :arglists '([driver database schema])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
 
 (defmulti query-canceled?
   "Test if an exception is due to a query being canceled due to user action. For JDBC drivers this can

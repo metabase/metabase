@@ -4,8 +4,8 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.streaming.common :as streaming.common]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.date-2 :as u.date]
    [metabase.util.formatting.constants :as constants]
    [metabase.util.log :as log])

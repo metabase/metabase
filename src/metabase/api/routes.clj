@@ -12,20 +12,15 @@
    [metabase.api.database]
    [metabase.api.dataset]
    [metabase.api.docs]
-   [metabase.api.embed]
    [metabase.api.field]
    [metabase.api.geojson]
    [metabase.api.logger]
    [metabase.api.macros :as api.macros]
    [metabase.api.native-query-snippet]
    [metabase.api.open-api :as open-api]
-   [metabase.api.premium-features]
-   [metabase.api.preview-embed]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
-   [metabase.api.setting]
    [metabase.api.slack]
    [metabase.api.table]
-   [metabase.api.task]
    [metabase.api.testing]
    [metabase.api.user]
    [metabase.api.util]
@@ -34,20 +29,24 @@
    [metabase.channel.api]
    [metabase.cloud-migration.api]
    [metabase.config :as config]
+   [metabase.embedding.api]
    [metabase.indexed-entities.api]
    [metabase.login-history.api]
    [metabase.model-persistence.api]
    [metabase.notification.api]
    [metabase.permissions.api]
+   [metabase.premium-features.api]
    [metabase.public-sharing.api]
    [metabase.pulse.api]
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.api]
    [metabase.session.api]
+   [metabase.settings.api]
    [metabase.setup.api]
    [metabase.sso.api]
    [metabase.sync.api]
+   [metabase.task-history.api]
    [metabase.tiles.api]
    [metabase.timeline.api]
    [metabase.user-key-value.api]
@@ -64,15 +63,12 @@
          metabase.api.dashboard/keep-me
          metabase.api.database/keep-me
          metabase.api.dataset/keep-me
-         metabase.api.embed/keep-me
          metabase.api.field/keep-me
          metabase.api.geojson/keep-me
+         metabase.api.logger/keep-me
          metabase.api.native-query-snippet/keep-me
-         metabase.api.preview-embed/keep-me
-         metabase.api.setting/keep-me
          metabase.api.slack/keep-me
          metabase.api.table/keep-me
-         metabase.api.task/keep-me
          metabase.api.testing/keep-me
          metabase.api.user/keep-me
          metabase.api.util/keep-me
@@ -85,7 +81,9 @@
          metabase.public-sharing.api/keep-me
          metabase.revisions.api/keep-me
          metabase.segments.api/keep-me
+         metabase.settings.api/keep-me
          metabase.setup.api/keep-me
+         metabase.task-history.api/keep-me
          metabase.tiles.api/keep-me
          metabase.user-key-value.api/keep-me)
 
@@ -146,7 +144,7 @@
    "/dataset"              'metabase.api.dataset
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/email"                metabase.channel.api/email-routes
-   "/embed"                (+message-only-exceptions 'metabase.api.embed)
+   "/embed"                (+message-only-exceptions metabase.embedding.api/embedding-routes)
    "/field"                (+auth 'metabase.api.field)
    "/geojson"              'metabase.api.geojson
    "/google"               (+auth metabase.sso.api/google-auth-routes)
@@ -159,19 +157,19 @@
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
    "/permissions"          (+auth 'metabase.permissions.api)
    "/persist"              (+auth 'metabase.model-persistence.api)
-   "/premium-features"     (+auth metabase.api.premium-features/routes)
-   "/preview_embed"        (+auth 'metabase.api.preview-embed)
+   "/premium-features"     (+auth metabase.premium-features.api/routes)
+   "/preview_embed"        (+auth metabase.embedding.api/preview-embedding-routes)
    "/public"               (+public-exceptions 'metabase.public-sharing.api)
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.segments.api)
    "/session"              metabase.session.api/routes
-   "/setting"              (+auth 'metabase.api.setting)
+   "/setting"              (+auth 'metabase.settings.api)
    "/setup"                'metabase.setup.api
    "/slack"                (+auth 'metabase.api.slack)
    "/table"                (+auth 'metabase.api.table)
-   "/task"                 (+auth 'metabase.api.task)
+   "/task"                 (+auth 'metabase.task-history.api)
    "/testing"              (if enable-testing-routes? 'metabase.api.testing pass-thru-handler)
    "/tiles"                (+auth 'metabase.tiles.api)
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)

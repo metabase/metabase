@@ -11,7 +11,7 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
    [metabase.util.yaml :as yaml]
@@ -358,7 +358,7 @@
 
               (testing "for settings"
                 (let [settings (get @entities "Setting")]
-                  (is (every? @#'setting/export?
+                  (is (every? setting/export?
                               (set (map (comp symbol :key) settings))))
                   (is (= (into {} (for [{:keys [key value]} settings]
                                     [key value]))
