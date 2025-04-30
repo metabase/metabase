@@ -1,15 +1,16 @@
 import type React from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
-import { currency } from "cljs/metabase.util.currency";
 import { useAdminSetting } from "metabase/api/utils";
-import { Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import {
+  getCurrencyOptions,
   getCurrencyStyleOptions,
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
-} from "metabase/visualizations/lib/settings/column";
+} from "metabase/lib/formatting";
+import { Divider, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import type { FormattingSettings } from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";
@@ -24,8 +25,9 @@ export function FormattingWidget() {
     isLoading,
     settingDetails,
   } = useAdminSetting("custom-formatting");
-  const currencyValue = "USD";
-  const [localValue] = useState<FormattingSettings | undefined>(initialValue);
+  const [localValue, setLocalValue] = useState<FormattingSettings | undefined>(
+    initialValue,
+  );
 
   if (isLoading) {
     return null;
@@ -37,13 +39,20 @@ export function FormattingWidget() {
     time_style: timeStyle,
   } = localValue?.["type/Temporal"] || {};
 
-  const dateStyleOptions = getDateStyleOptionsForUnit("default");
+  const { number_separators: numberSeparators } =
+    localValue?.["type/Number"] || {};
 
-  const handleChange = (newValue: any) => {
-    if (newValue === initialValue) {
+  const { currency, currency_style: currencyStyle } =
+    localValue?.["type/Currency"] || {};
+
+  const dateStyleOptions = getDateStyleOptionsForUnit("default", dateAbreviate);
+
+  const handleChange = (newValue: FormattingSettings) => {
+    if (_.isEqual(newValue, localValue)) {
       return;
     }
-    updateSetting({ key: "custom-formatting", value: { ...localValue } });
+    setLocalValue(newValue);
+    updateSetting({ key: "custom-formatting", value: newValue });
   };
 
   return (
@@ -62,29 +71,66 @@ export function FormattingWidget() {
               id="date_style"
               label={t`Date style`}
               value={dateStyle}
-              options={dateStyleOptions ?? []}
+              onChange={(newValue) =>
+                handleChange({
+                  ...localValue,
+                  "type/Temporal": {
+                    ...localValue?.["type/Temporal"],
+                    date_style: newValue as string,
+                  },
+                })
+              }
+              inputType="select"
+              options={
+                dateStyleOptions.map(({ name, value }) => ({
+                  label: name,
+                  value,
+                })) ?? []
+              }
             />
             <FormattingInput
               id="date_abbreviate"
               label={t`Abbreviate days and months`}
               value={dateAbreviate}
               inputType="boolean"
-              onChange={(checked) => handleChange(checked)}
+              onChange={(checked) =>
+                handleChange({
+                  ...localValue,
+                  "type/Temporal": {
+                    ...localValue?.["type/Temporal"],
+                    date_abbreviate: checked as boolean,
+                  },
+                })
+              }
             />
             <FormattingInput
               id="time_style"
               label={t`Time style`}
               value={timeStyle}
               inputType="radio"
-              options={getTimeStyleOptions("default") ?? []}
-              onChange={handleChange}
+              options={
+                getTimeStyleOptions("default").map(({ name, value }) => ({
+                  label: name,
+                  value,
+                })) ?? []
+              }
+              onChange={(newValue) =>
+                handleChange({
+                  ...localValue,
+                  "type/Temporal": {
+                    ...localValue?.["type/Temporal"],
+                    time_style: newValue as string,
+                  },
+                })
+              }
             />
           </FormattingSection>
+          <Divider mt="md" mb="md" />
           <FormattingSection title={t`Numbers`}>
             <FormattingInput
               id="number_separators"
               label={t`Separator style`}
-              value={dateStyle}
+              value={numberSeparators}
               inputType="select"
               options={[
                 { label: "100,000.00", value: ".," },
@@ -93,28 +139,50 @@ export function FormattingWidget() {
                 { label: "100000.00", value: "." },
                 { label: "100'000.00", value: ".'" },
               ]}
-              onChange={handleChange}
+              onChange={(newValue) =>
+                handleChange({
+                  ...localValue,
+                  "type/Number": {
+                    ...localValue?.["type/Number"],
+                    number_separators: newValue as string,
+                  },
+                })
+              }
             />
           </FormattingSection>
+          <Divider mt="md" mb="md" />
           <FormattingSection title={t`Currency`}>
             <FormattingInput
               id="currency"
               label={t`Unit of currency`}
-              value={dateStyle}
+              value={currency}
               inputType="select"
-              options={currency.map(([, currency]) => ({
-                name: currency.name,
-                value: currency.code,
-              }))}
-              onChange={handleChange}
+              options={getCurrencyOptions()}
+              onChange={(newValue) =>
+                handleChange({
+                  ...localValue,
+                  "type/Currency": {
+                    ...localValue?.["type/Currency"],
+                    currency: newValue as string,
+                  },
+                })
+              }
             />
             <FormattingInput
               id="currency_style"
               label={t`Currency label style`}
-              value={dateStyle}
+              value={currencyStyle}
               inputType="radio"
-              options={getCurrencyStyleOptions(currencyValue)}
-              onChange={handleChange}
+              options={getCurrencyStyleOptions(currency)}
+              onChange={(newValue) =>
+                handleChange({
+                  ...localValue,
+                  "type/Currency": {
+                    ...localValue?.["type/Currency"],
+                    currency_style: newValue as string,
+                  },
+                })
+              }
             />
           </FormattingSection>
         </Stack>
@@ -150,15 +218,8 @@ function FormattingInput({
   };
 
   return (
-    <div>
-      <Text
-        htmlFor={id}
-        component="label"
-        c="text-medium"
-        fw="bold"
-        tt="uppercase"
-        display="block"
-      >
+    <Stack gap="sm">
+      <Text htmlFor={id} component="label" fw="bold" display="block">
         {label}
       </Text>
       {inputType === "select" && (
@@ -180,12 +241,14 @@ function FormattingInput({
       )}
       {inputType === "radio" && (
         <Radio.Group id={id} value={localValue} onChange={handleChange}>
-          {options?.map(({ label, value }) => (
-            <Radio key={value} value={value} label={label} />
-          ))}
+          <Stack gap="sm">
+            {options?.map(({ label, value }) => (
+              <Radio key={value} value={value} label={label} />
+            ))}
+          </Stack>
         </Radio.Group>
       )}
-    </div>
+    </Stack>
   );
 }
 
@@ -197,17 +260,11 @@ function FormattingSection({
   children: React.ReactNode;
 }) {
   return (
-    <section>
-      <Text
-        component="h3"
-        c="text-medium"
-        fw="bold"
-        tt="uppercase"
-        display="block"
-      >
+    <Stack gap="sm">
+      <Text component="h3" fz="lg" fw="bold" display="block">
         {title}
       </Text>
-      {children}
-    </section>
+      <Stack>{children}</Stack>
+    </Stack>
   );
 }
