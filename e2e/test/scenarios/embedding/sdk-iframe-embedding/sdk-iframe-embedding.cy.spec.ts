@@ -67,20 +67,18 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
         cy.findByText("Orders").click();
       });
 
-      frame.within(() => {
-        cy.findByRole("button", { name: "Visualize" }).click();
+      cy.findByRole("button", { name: "Visualize" }).click();
 
-        // Should not show a loading indicator again as the question has not changed (metabase#47564)
-        cy.findByTestId("loading-indicator").should("not.exist");
+      // Should not show a loading indicator again as the question has not changed (metabase#47564)
+      cy.findByTestId("loading-indicator").should("not.exist");
 
-        // Should show a visualization after clicking "Visualize"
-        // and should not show an error message (metabase#55398)
-        cy.findByText("Question not found").should("not.exist");
-        cy.findByText("110.93").should("be.visible"); // table data
+      // Should show a visualization after clicking "Visualize"
+      // and should not show an error message (metabase#55398)
+      cy.findByText("Question not found").should("not.exist");
+      cy.findByText("110.93").should("be.visible"); // table data
 
-        // We hide the "Save" button for now. This will definitely be changed in the future.
-        cy.findByRole("button", { name: "Save" }).should("not.be.visible");
-      });
+      // We hide the "Save" button for now. This will definitely be changed in the future.
+      cy.findByRole("button", { name: "Save" }).should("not.exist");
     });
   });
 });
