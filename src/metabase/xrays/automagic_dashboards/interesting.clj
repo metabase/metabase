@@ -187,7 +187,7 @@
        v))
    m))
 
-(mu/defn ground-metric :- [:sequential ads/grounded-metric]
+(mu/defn- ground-metric :- [:sequential ads/grounded-metric]
   "Generate \"grounded\" metrics from the mapped dimensions (dimension name -> field matches).
    Since there may be multiple matches to a dimension, this will produce a sequence of potential matches."
   [{metric-name       :metric-name
@@ -443,14 +443,13 @@
                         (assoc v :filter f :filter-name fname))))))
        flatten))
 
-(mu/defn identify
-  :- [:map
-      [:dimensions ads/dim-name->matching-fields]
-      [:metrics [:sequential ads/grounded-metric]]]
+(mu/defn identify :- [:map
+                      [:dimensions ads/dim-name->matching-fields]
+                      [:metrics [:sequential ads/grounded-metric]]]
   "Identify interesting metrics and dimensions of a `thing`. First identifies interesting dimensions, and then
   interesting metrics which are satisfied.
   Metrics from the template are assigned a score of 50; user defined metrics a score of 95"
-  [{{:keys [linked-metrics]} :root :as context}
+  [context
    {:keys [dimension-specs
            metric-specs
            filter-specs]} :- [:map
@@ -464,7 +463,7 @@
         set-score (fn [score metrics]
                     (map #(assoc % :metric-score score) metrics))]
     {:dimensions dims
-     :metrics    (concat (set-score 50 metrics) (set-score 95 linked-metrics)
+     :metrics    (concat (set-score 50 metrics)
                          (let [entity (-> context :root :entity)]
                            ;; metric x-rays talk about "this" in the template
                            (when (= (type entity) :xrays/MetricInfo)
@@ -473,29 +472,3 @@
                                :metric-definition {:aggregation [(->reference :mbql entity)]}
                                :metric-score      dashboard-templates/max-score}])))
      :filters (grounded-filters filter-specs dims)}))
-
-(defn card->dashcard
-  "Convert a card to a dashboard card."
-  [{:keys [width height] :as card}]
-  {:id                     (gensym)
-   :size_x                 width
-   :size_y                 height
-   :dashboard_tab_id       nil
-   :card                   (dissoc card :width :height)
-   :visualization_settings {}})
-
-(defn make-layout
-  "Assign `:row` and `:col` values to the provied seq of dashcards."
-  [dashcards]
-  (loop [[{:keys [size_x size_y] :as dashcard} & dashcards] dashcards
-         [xmin ymin xmax ymax] [0 0 0 0]
-         final-cards []]
-    (if dashcard
-      (let [dashcard (assoc dashcard :row ymin :col xmax)
-            bounds   (if (> xmax 20)
-                       [xmin ymax 0 (+ ymax size_y)]
-                       [xmin ymin (+ xmax size_x) (max ymax (+ ymin size_y))])]
-        (recur dashcards
-               bounds
-               (conj final-cards dashcard)))
-      final-cards)))

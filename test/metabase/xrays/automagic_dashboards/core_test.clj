@@ -3,6 +3,9 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.query :as query]
@@ -10,6 +13,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -17,9 +21,11 @@
    [metabase.util.malli :as mu]
    [metabase.xrays.automagic-dashboards.comparison :as comparison]
    [metabase.xrays.automagic-dashboards.core :as magic]
-   [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
+   [metabase.xrays.automagic-dashboards.dashboard-templates
+    :as dashboard-templates]
    [metabase.xrays.automagic-dashboards.interesting :as interesting]
-   [metabase.xrays.test-util.automagic-dashboards :as automagic-dashboards.test]
+   [metabase.xrays.test-util.automagic-dashboards
+    :as automagic-dashboards.test]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
@@ -1518,69 +1524,95 @@
             (mapv (comp :expressions :query :dataset_query :card)))))))
 
 (deftest compare-to-the-rest-15655-test
-  (testing "Questions based on native questions should produce a valid dashboard."
-    (mt/dataset test-data
-      (mt/with-test-user :crowberto
-        (let [native-query {:native   {:query "select * from people limit 1"}
-                            :type     :native
-                            :database (mt/id)}]
-          (mt/with-temp
-            [:model/Card {native-card-id :id :as native-card} (merge (mt/card-with-source-metadata-for-query native-query)
-                                                                     {:table_id        nil
-                                                                      :name            "15655"})
-             :model/Card card {:table_id      (mt/id :orders)
-                               :dataset_query {:query    {:source-table (format "card__%s" native-card-id)
-                                                          :aggregation  [[:count]]
-                                                          :breakout     [[:field "SOURCE" {:base-type :type/Text}]]}
-                                               :type     :query
-                                               :database (mt/id)}}]
-            (let [{:keys [description dashcards] :as dashboard} (magic/automagic-analysis card {})]
-              (testing "Questions based on native queries produce a dashboard"
-                (is (= "A closer look at the metrics and dimensions used in this saved question."
-                       description))
-                (is (set/subset?
-                     #{{:group-name "## The number of 15655 over time", :card-name nil}
-                       {:group-name nil, :card-name "Over time"}
-                       {:group-name nil, :card-name "Number of 15655 per day of the week"}
-                       {:group-name "## How this metric is distributed across different categories", :card-name nil}
-                       {:group-name nil, :card-name "Number of 15655 per NAME over time"}
-                       {:group-name nil, :card-name "Number of 15655 per CITY over time"}}
-                     (set (map (fn [dashcard]
+  (testing "Questions based on native questions should produce a valid dashboard. (#15655)"
+    (let [native-query {:native   {:query "select * from people limit 1"}
+                        :type     :native
+                        :database (mt/id)}]
+      (mt/with-temp
+        [:model/Card {native-card-id :id :as native-card} (merge (mt/card-with-source-metadata-for-query native-query)
+                                                                 {:table_id        nil
+                                                                  :name            "15655"})
+         :model/Card card {:table_id      (mt/id :orders) ; this is wrong (!)
+                           :dataset_query {:query    {:source-table (format "card__%s" native-card-id)
+                                                      :aggregation  [[:count]]
+                                                      :breakout     [[:field "SOURCE" {:base-type :type/Text}]]}
+                                           :type     :query
+                                           :database (mt/id)}}]
+        (let [{:keys [description dashcards] :as dashboard} (magic/automagic-analysis card {})]
+          (testing "Questions based on native queries produce a dashboard"
+            (is (= "A closer look at the metrics and dimensions used in this saved question."
+                   description))
+            (is (set/subset?
+                 #{{:group-name "## The number of 15655 over time", :card-name nil}
+                   {:group-name nil, :card-name "Over time"}
+                   {:group-name nil, :card-name "Number of 15655 per day of the week"}
+                   {:group-name "## How this metric is distributed across different categories", :card-name nil}
+                   {:group-name nil, :card-name "Number of 15655 per NAME over time"}
+                   {:group-name nil, :card-name "Number of 15655 per CITY over time"}}
+                 (set (map (fn [dashcard]
+                             {:group-name (get-in dashcard [:visualization_settings :text])
+                              :card-name  (get-in dashcard [:card :name])})
+                           dashcards)))))
+          (let [cell-query ["=" ["field" "SOURCE" {:base-type "type/Text"}] "Affiliate"]
+                {comparison-description :description
+                 comparison-dashcards   :dashcards
+                 transient_name         :transient_name} (comparison/comparison-dashboard
+                 dashboard
+                 card
+                 native-card
+                 {:left {:cell-query cell-query}})]
+            (testing "Questions based on native queries produce a comparable dashboard"
+              (is (= "Comparison of Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
+                     transient_name))
+              (is (= "Automatically generated comparison dashboard comparing Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
+                     comparison-description))
+              (is (= [{:group-name nil, :card-name "Number of 15655 per SOURCE"}
+                      {:group-name nil, :card-name "Number of 15655 per SOURCE"}
+                      {:group-name nil, :card-name "Number of 15655 per CITY"}
+                      {:group-name nil, :card-name "Number of 15655 per CITY"}
+                      {:group-name nil, :card-name "Number of 15655 per NAME"}
+                      {:group-name nil, :card-name "Number of 15655 per NAME"}
+                      {:group-name nil, :card-name "Number of 15655 per SOURCE over time"}
+                      {:group-name nil, :card-name "Number of 15655 per SOURCE over time"}
+                      {:group-name nil, :card-name "Number of 15655 per CITY over time"}
+                      {:group-name nil, :card-name "Number of 15655 per CITY over time"}]
+                     (->> comparison-dashcards
+                          (take 10)
+                          (map (fn [dashcard]
                                  {:group-name (get-in dashcard [:visualization_settings :text])
-                                  :card-name  (get-in dashcard [:card :name])})
-                               dashcards)))))
-              (let [cell-query ["=" ["field" "SOURCE" {:base-type "type/Text"}] "Affiliate"]
-                    {comparison-description :description
-                     comparison-dashcards   :dashcards
-                     transient_name         :transient_name} (comparison/comparison-dashboard
-                                                              dashboard
-                                                              card
-                                                              native-card
-                                                              {:left {:cell-query cell-query}})]
-                (testing "Questions based on native queries produce a comparable dashboard"
-                  (is (= "Comparison of Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
-                         transient_name))
-                  (is (= "Automatically generated comparison dashboard comparing Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
-                         comparison-description))
-                  (is (= [{:group-name nil, :card-name "Number of 15655 per SOURCE"}
-                          {:group-name nil, :card-name "Number of 15655 per SOURCE"}
-                          {:group-name nil, :card-name "Number of 15655 per CITY"}
-                          {:group-name nil, :card-name "Number of 15655 per CITY"}
-                          {:group-name nil, :card-name "Number of 15655 per NAME"}
-                          {:group-name nil, :card-name "Number of 15655 per NAME"}
-                          {:group-name nil, :card-name "Number of 15655 per SOURCE over time"}
-                          {:group-name nil, :card-name "Number of 15655 per SOURCE over time"}
-                          {:group-name nil, :card-name "Number of 15655 per CITY over time"}
-                          {:group-name nil, :card-name "Number of 15655 per CITY over time"}]
-                         (->> comparison-dashcards
-                              (take 10)
-                              (map (fn [dashcard]
-                                     {:group-name (get-in dashcard [:visualization_settings :text])
-                                      :card-name  (get-in dashcard [:card :name])})))))
-                  (mapv (fn [dashcard]
-                          {:group-name (get-in dashcard [:visualization_settings :text])
-                           :card-name  (get-in dashcard [:card :name])})
-                        comparison-dashcards))))))))))
+                                  :card-name  (get-in dashcard [:card :name])})))))
+              (mapv (fn [dashcard]
+                      {:group-name (get-in dashcard [:visualization_settings :text])
+                       :card-name  (get-in dashcard [:card :name])})
+                    comparison-dashcards))))))))
+
+;;; this is a fixed version of the test above that correctly generates the second card so that it matches the equivalent
+;;; Cypress test spec.
+(deftest ^:parallel compare-to-the-rest-15655-fixed-test
+  (testing "Questions based on native questions should produce a valid dashboard. (#15655)"
+    (mt/with-temp [:model/Card {native-card-id :id} (merge (mt/card-with-source-metadata-for-query
+                                                            (lib/->legacy-MBQL (lib/native-query (mt/metadata-provider) "select * from people LIMIT 100;")))
+                                                           {:name "15655"})
+                   :model/Card card (let [metadata-provider (mt/metadata-provider)
+                                          query             (lib/query metadata-provider
+                                                                       (lib.metadata/card metadata-provider native-card-id))
+                                          query             (-> query
+                                                                (lib/aggregate (lib/count))
+                                                                (lib/breakout
+                                                                 (m/find-first #(= (:name %) "SOURCE")
+                                                                               (lib/breakoutable-columns query))))]
+                                      (qp.test-util/card-with-source-metadata-for-query (lib/->legacy-MBQL query)))]
+      (let [cell-query ["=" ["field" "SOURCE" {"base-type" "type/Text"}] "Affiliate"]]
+        (is (= ["Count"
+                "Null values"
+                "How the SOURCE is distributed"
+                "Distinct values"
+                "A look at the number of 15655"]
+               (into []
+                     (keep (comp :name :card))
+                     ;; this is the equivalent of hitting `automagic-dashboards/adhoc/%s/cell/%s` with the query
+                     ;; and "cell-query" base-64 encoded
+                     (:dashcards (magic/automagic-analysis card {:cell-query cell-query})))))))))
 
 (deftest source-fields-are-populated-for-aggregations-38618-test
   (testing "X-ray aggregates (metrics) with source fields in external tables should properly fill in `:source-field` (#38618)"

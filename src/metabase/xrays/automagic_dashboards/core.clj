@@ -473,7 +473,7 @@
                                                (assoc group :title (or comparison_title title))))))
        (instantiate-metadata context available-metrics {}))))
 
-(defn generate-base-dashboard
+(defn- generate-base-dashboard
   "Produce the \"base\" dashboard from the base context for an item and a dashboard template.
   This includes dashcards and global filters, but does not include related items and is not yet populated.
   Repeated calls of this might be generated (e.g. the main dashboard and related) then combined once using
@@ -691,7 +691,7 @@
        (remove (comp nil? second))
        (into {})))
 
-(defn generate-dashboard
+(defn- generate-dashboard
   "Produce a fully-populated dashboard from the base context for an item and a dashboard template."
   [{{:keys [show url query-filter] :as root} :root :as base-context}
    {:as dashboard-template}
