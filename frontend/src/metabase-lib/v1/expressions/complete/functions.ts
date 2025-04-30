@@ -43,7 +43,7 @@ export function suggestFunctions({
 
   const database = getDatabase(query, metadata);
   const functions = Object.keys(EXPRESSION_FUNCTIONS)
-    .map((name) => getClauseDefinition(name))
+    .map(getClauseDefinition)
     .filter(isNotNull)
     .filter((clause) => database?.hasFeature(clause.requiresFeature))
     .filter(function disableOffsetInFilterExpressions(clause) {
