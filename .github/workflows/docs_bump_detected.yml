@@ -21,7 +21,33 @@ jobs:
       - name: Filter non-dox branches
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref  }}
-        run: bb mage/mage/actions/filter_doc_branches.clj "$BRANCH_NAME"
+        run: |
+          bb -e '
+          (do
+          (require '[clojure.string :as str] '[mage.color :as c])
+          (def ^:private release-regex #"release-x\.(\d+)\.x")
+
+          (defn- extract-release-num [release-branchname]
+            (let [[_ num] (re-matches release-regex release-branchname)]
+              (Integer/parseInt num)))
+
+          (defn- categorize-branchname [branchname]
+            (cond
+              (= branchname "master") [:master]
+              (re-matches release-regex branchname) [:release (extract-release-num branchname)]
+              (or
+               (= branchname "doc-update-detection")
+               (str/starts-with? branchname "docs-workflow-test-")) [:test branchname]))
+          (let [branchname (first *command-line-args*)
+                [category release-num] (categorize-branchname branchname)]
+              (case category
+                :master (println "Master branch detected.")
+                :release (println "Release branch detected. Release number: " release-num)
+                :test (println "Test branch detected. Branchname: " branchname)
+                (do (println "Unpublishable branchname: " branchname)
+                    (System/exit 1)))
+              (System/exit 0))
+          )' $BRANCH_NAME
 
       - name: Trigger repo dispatch
         uses: actions/github-script@v7
