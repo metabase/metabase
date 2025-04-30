@@ -474,7 +474,7 @@
 
 (defmethod sql.qp/->honeysql [:snowflake :date]
   [driver [_ value]]
-  [:to_date (sql.qp/->honeysql driver value) "YYYY-MM-DD"])
+  (h2x/maybe-cast :date (sql.qp/->honeysql driver value)))
 
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but
