@@ -33,6 +33,8 @@ import {
   setParameterSourceType,
   setParameterTemporalUnits,
   setParameterType,
+  setParameterValue,
+  setParameterValueToDefault,
   setSharing,
   setSidebar,
   showAddParameterPopover,
