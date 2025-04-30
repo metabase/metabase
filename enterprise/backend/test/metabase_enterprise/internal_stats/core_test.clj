@@ -1,7 +1,7 @@
-(ns metabase-enterprise.internal-stats-test
+(ns metabase-enterprise.internal-stats.core-test
   (:require
    [clojure.test :refer [deftest testing is]]
-   [metabase-enterprise.internal-stats :as sut]
+   [metabase-enterprise.internal-stats.core :as sut]
    [metabase.test :as mt]))
 
 (deftest enabled-embedding-static-test

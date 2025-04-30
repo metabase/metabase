@@ -4,7 +4,6 @@
    [metabase.actions.api]
    [metabase.activity-feed.api]
    [metabase.api.api-key]
-   [metabase.api.cache]
    [metabase.api.card]
    [metabase.api.cards]
    [metabase.api.collection]
@@ -26,6 +25,7 @@
    [metabase.api.util]
    [metabase.api.util.handlers :as handlers]
    [metabase.bookmarks.api]
+   [metabase.cache.api]
    [metabase.channel.api]
    [metabase.cloud-migration.api]
    [metabase.config :as config]
@@ -56,7 +56,6 @@
 (comment metabase.actions.api/keep-me
          metabase.activity-feed.api/keep-me
          metabase.api.api-key/keep-me
-         metabase.api.cache/keep-me
          metabase.api.card/keep-me
          metabase.api.cards/keep-me
          metabase.api.collection/keep-me
@@ -73,6 +72,7 @@
          metabase.api.user/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
+         metabase.cache.api/keep-me
          metabase.cloud-migration.api/keep-me
          metabase.indexed-entities.api/keep-me
          metabase.login-history.api/keep-me
@@ -133,7 +133,7 @@
    "/api-key"              (+auth 'metabase.api.api-key)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
-   "/cache"                (+auth 'metabase.api.cache)
+   "/cache"                (+auth 'metabase.cache.api)
    "/card"                 (+auth 'metabase.api.card)
    "/cards"                (+auth 'metabase.api.cards)
    "/channel"              (+auth metabase.channel.api/channel-routes)

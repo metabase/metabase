@@ -1,9 +1,9 @@
-(ns metabase-enterprise.task.cache-test
+(ns metabase-enterprise.cache.task.refresh-cache-configs-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase-enterprise.task.cache :as task.cache]
+   [metabase-enterprise.cache.task.refresh-cache-configs :as task.cache]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]

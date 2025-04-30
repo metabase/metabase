@@ -1,4 +1,4 @@
-(ns metabase.api.cache-test
+(ns metabase.cache.api-test
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]))
