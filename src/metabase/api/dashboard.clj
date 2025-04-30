@@ -852,7 +852,7 @@
   A quick solution, and a very extensible one, but perhaps overloading a core primitive too much, and could be leaky."
   [dashboard-id dashcard table-id]
   (let [tab-id  (:dashboard_tab_id dashcard)
-        table   (t2/select-one [:model/Table :db_id :name] table-id)
+        table   (t2/select-one [:model/Table :db_id :display_name] table-id)
         card    (some->> dashcard :card_id (t2/select-one [:model/Card :id :dataset_query :display :card_schema]))
         ;; If the currently attached card is not editing the expected the table, then create a new one.
         keep?    (and (= :table-editable (:display card))
@@ -880,7 +880,7 @@
                                            :type     :query}
                   :description            nil
                   :display                "table-editable"
-                  :name                   (:name table)
+                  :name                   (str (:display_name table) " (editable)")
                   :result_metadata        nil
                   :type                   "model"
                   ;; Redundant with :display, but just in case it's useful. Revisit once FE is built.
