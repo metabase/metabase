@@ -17,7 +17,7 @@
    [metabase.driver :as driver]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.integrations.slack :as slack]
-   [metabase.internal-stats :as internal-stats]
+   [metabase.internal-stats.core :as internal-stats]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
