@@ -9,7 +9,7 @@ import { PublicOrEmbeddedDashboardPage } from "./public/containers/PublicOrEmbed
 
 export const getRoutes = (store) => (
   <Route>
-    {PLUGIN_EMBEDDING_IFRAME_SDK.SdkIframeEmbedRoute && (
+    {PLUGIN_EMBEDDING_IFRAME_SDK.isEnabled() && (
       <Route
         path="embed/sdk/v1"
         component={PLUGIN_EMBEDDING_IFRAME_SDK.SdkIframeEmbedRoute}
