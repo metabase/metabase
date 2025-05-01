@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
@@ -79,10 +80,14 @@ export function DashCardCardParameterMapper({
   const isDisabled = mappingOptions.length === 0 || isAction;
   const isNative = isQuestion && isNativeDashCard(dashcard);
 
-  const translatedMappingOptions = mappingOptions.map((opt) => ({
-    ...opt,
-    name: tc(opt.name),
-  }));
+  const translatedMappingOptions = useMemo(
+    () =>
+      mappingOptions.map((opt) => ({
+        ...opt,
+        name: tc(opt.name),
+      })),
+    [mappingOptions, tc],
+  );
 
   const selectedMappingOption = getMappingOptionByTarget(
     translatedMappingOptions,
