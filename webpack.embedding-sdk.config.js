@@ -59,6 +59,8 @@ module.exports = (env) => {
   const config = {
     ...mainConfig,
 
+    devtool: false,
+
     context: SDK_SRC_PATH,
 
     entry: "./index.ts",
