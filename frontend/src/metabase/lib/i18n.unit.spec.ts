@@ -1,33 +1,101 @@
+import fetchMock from "fetch-mock";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { t } from "ttag";
 
-import { setLocalization } from "./i18n";
+import { loadLazyLocalization, setLocalization } from "./i18n";
 
-function setup(language: string) {
+function setupSetLocalization(language: string) {
   setLocalization({
     headers: { language, "plural-forms": "nplurals=2; plural=(n != 1);" },
     translations: { "": {} },
   });
 }
 
-describe("setLocalization", () => {
-  it("should preserve latin numbers when formatting dates in 'ar' locale", () => {
-    setup("ar");
-    const m = moment.utc("2023-10-12T21:07:33.476Z");
+async function setupLoadLazyLocalization(locale: string) {
+  const lazyLoadDateLocales = async (dateLocale: string) => {
+    if (dateLocale === "en") {
+      moment.locale("en");
+      return;
+    }
 
-    expect(m.format("MMMM D, YYYY, h:mm A")).toBe("أكتوبر 12، 2023، 9:07 م");
+    await Promise.all([
+      import(`moment/locale/${dateLocale}.js`),
+      import(`dayjs/locale/${dateLocale}.js`),
+    ]);
+  };
+
+  const translationObject = {
+    headers: {
+      language: locale,
+      "plural-forms": "nplurals=2; plural=(n != 1);",
+    },
+    translations: {
+      "": {
+        Table: {
+          msgstr: ["Tabla"],
+        },
+      },
+    },
+  };
+
+  fetchMock.get(`path:/app/locales/${locale}.json`, translationObject);
+  await loadLazyLocalization(locale, lazyLoadDateLocales);
+}
+
+describe("i18n", () => {
+  describe("setLocalization", () => {
+    it("should preserve latin numbers when formatting dates in 'ar' locale", () => {
+      setupSetLocalization("ar");
+      const m = moment.utc("2023-10-12T21:07:33.476Z");
+
+      expect(m.format("MMMM D, YYYY, h:mm A")).toBe("أكتوبر 12، 2023، 9:07 م");
+    });
+
+    it("should preserve latin numbers when formatting dates in 'ar-sa' locale", () => {
+      setupSetLocalization("ar-sa");
+      const m = moment.utc("2023-10-12T21:07:33.476Z");
+
+      expect(m.format("MMMM D, YYYY, h:mm A")).toBe("أكتوبر 12، 2023، 9:07 م");
+    });
+
+    it("should preserve latin numbers in the 'en' locale", () => {
+      setupSetLocalization("en");
+      const m = moment.utc("2023-10-12T21:07:33.476Z");
+
+      expect(m.format("MMMM D, YYYY, h:mm A")).toBe(
+        "October 12, 2023, 9:07 PM",
+      );
+    });
   });
 
-  it("should preserve latin numbers when formatting dates in 'ar-sa' locale", () => {
-    setup("ar-sa");
-    const m = moment.utc("2023-10-12T21:07:33.476Z");
+  describe("loadLazyLocalization", () => {
+    it("should set metabase locale", async () => {
+      await setupLoadLazyLocalization("es");
 
-    expect(m.format("MMMM D, YYYY, h:mm A")).toBe("أكتوبر 12، 2023، 9:07 م");
-  });
+      expect(t`Table`).toBe("Tabla");
+    });
 
-  it("should preserve latin numbers in the 'en' locale", () => {
-    setup("en");
-    const m = moment.utc("2023-10-12T21:07:33.476Z");
+    it("should preserve latin numbers when formatting dates in 'ar' locale", async () => {
+      await setupLoadLazyLocalization("ar");
+      const m = moment.utc("2023-10-12T21:07:33.476Z");
 
-    expect(m.format("MMMM D, YYYY, h:mm A")).toBe("October 12, 2023, 9:07 PM");
+      expect(m.format("MMMM D, YYYY, h:mm A")).toBe("أكتوبر 12، 2023، 9:07 م");
+    });
+
+    it("should preserve latin numbers when formatting dates in 'ar-sa' locale", async () => {
+      await setupLoadLazyLocalization("ar-sa");
+      const m = moment.utc("2023-10-12T21:07:33.476Z");
+
+      expect(m.format("MMMM D, YYYY, h:mm A")).toBe("أكتوبر 12، 2023، 9:07 م");
+    });
+
+    it("should preserve latin numbers in the 'en' locale", async () => {
+      await setupLoadLazyLocalization("en");
+      const m = moment.utc("2023-10-12T21:07:33.476Z");
+
+      expect(m.format("MMMM D, YYYY, h:mm A")).toBe(
+        "October 12, 2023, 9:07 PM",
+      );
+    });
   });
 });

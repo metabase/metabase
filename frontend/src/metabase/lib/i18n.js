@@ -7,32 +7,52 @@ import api from "metabase/lib/api";
 import { DAY_OF_WEEK_OPTIONS } from "metabase/lib/date-time";
 import MetabaseSettings from "metabase/lib/settings";
 
+// we need to be sure to set the initial localization before loading any files
+// so load metabase/services only when we need it
+// load and parse the locale
+const loadMetabaseLocalization = async (locale) => {
+  if (locale === "en") {
+    // We don't serve en.json. Instead, use this object to fall back to theliterals.
+    return {
+      headers: {
+        language: "en",
+        "plural-forms": "nplurals=2; plural=(n != 1);",
+      },
+      translations: {
+        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+        "": { Metabase: { msgid: "Metabase", msgstr: ["Metabase"] } },
+      },
+    };
+  }
+
+  // We don't use I18NApi.locale/the GET helper because those helpers adds custom headers,
+  // which will make the browser do the pre-flight request on the SDK.
+  // The backend doesn't seem to support pre-flight request on the static assets, but even
+  // if it supported them it's more performant to skip the pre-flight request
+  return fetch(`${api.basename}/app/locales/${locale}.json`).then((response) =>
+    response.json(),
+  );
+};
+
 // note this won't refresh strings that are evaluated at load time
 export async function loadLocalization(locale) {
-  // we need to be sure to set the initial localization before loading any files
-  // so load metabase/services only when we need it
-  // load and parse the locale
-  const translationsObject =
-    locale !== "en"
-      ? // We don't use I18NApi.locale/the GET helper because those helpers adds custom headers,
-        // which will make the browser do the pre-flight request on the SDK.
-        // The backend doesn't seem to support pre-flight request on the static assets, but even
-        // if it supported them it's more performant to skip the pre-flight request
-        await fetch(`${api.basename}/app/locales/${locale}.json`).then(
-          (response) => response.json(),
-        )
-      : // We don't serve en.json. Instead, use this object to fall back to theliterals.
-        {
-          headers: {
-            language: "en",
-            "plural-forms": "nplurals=2; plural=(n != 1);",
-          },
-          translations: {
-            // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-            "": { Metabase: { msgid: "Metabase", msgstr: ["Metabase"] } },
-          },
-        };
+  const translationsObject = await loadMetabaseLocalization(locale);
+
   setLocalization(translationsObject);
+
+  return translationsObject;
+}
+
+export async function loadLazyLocalization(locale, lazyLoadDateLocales) {
+  const dateLocale = getLocale(locale);
+
+  const [translationsObject] = await Promise.all([
+    loadMetabaseLocalization(locale),
+    lazyLoadDateLocales(dateLocale),
+  ]);
+
+  setLanguage(translationsObject);
+  fixDateLocales(locale);
 
   return translationsObject;
 }
@@ -65,8 +85,14 @@ const ARABIC_LOCALES = ["ar", "ar-sa"];
 export function setLocalization(translationsObject) {
   const language = translationsObject.headers.language;
   setLanguage(translationsObject);
+
   updateMomentLocale(language);
   updateDayjsLocale(language);
+
+  fixDateLocales(language);
+}
+
+function fixDateLocales(language) {
   updateStartOfWeek(MetabaseSettings.get("start-of-week"));
 
   if (ARABIC_LOCALES.includes(language)) {
@@ -77,14 +103,20 @@ export function setLocalization(translationsObject) {
 function updateMomentLocale(language) {
   const locale = getLocale(language);
 
-  try {
-    if (locale !== "en") {
-      require(`moment/locale/${locale}.js`);
+  // To avoid adding all locales to the bundle by SDK's host app bundlers
+  // SDK uses setLazyLocalization
+  // The bundler removes unreachable code
+  // eslint-disable-next-line no-undef
+  if (!process.env.IS_EMBEDDING_SDK) {
+    try {
+      if (locale !== "en") {
+        require(`moment/locale/${locale}.js`);
+      }
+      moment.locale(locale);
+    } catch {
+      console.warn(`Could not set moment.js locale to ${locale}`);
+      moment.locale("en");
     }
-    moment.locale(locale);
-  } catch (e) {
-    console.warn(`Could not set moment.js locale to ${locale}`);
-    moment.locale("en");
   }
 }
 
@@ -104,14 +136,20 @@ function preverseLatinNumbersInMomentLocale(locale) {
 function updateDayjsLocale(language) {
   const locale = getLocale(language);
 
-  try {
-    if (locale !== "en") {
-      require(`dayjs/locale/${locale}.js`);
+  // To avoid adding all locales to the bundle by SDK's host app bundlers
+  // SDK uses setLazyLocalization
+  // The bundler removes unreachable code
+  // eslint-disable-next-line no-undef
+  if (!process.env.IS_EMBEDDING_SDK) {
+    try {
+      if (locale !== "en") {
+        require(`dayjs/locale/${locale}.js`);
+      }
+      dayjs.locale(locale);
+    } catch (e) {
+      console.warn(`Could not set day.js locale to ${locale}`);
+      dayjs.locale("en");
     }
-    dayjs.locale(locale);
-  } catch (e) {
-    console.warn(`Could not set day.js locale to ${locale}`);
-    dayjs.locale("en");
   }
 }
 
