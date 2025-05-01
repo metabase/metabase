@@ -4,20 +4,21 @@ import {
   getBreakoutListItem,
 } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList";
 import { useBreakoutQueryHandlers } from "metabase/query_builder/hooks";
-import * as Lib from "metabase-lib";
+import { breakouts as ML_breakouts } from "metabase-lib/breakout";
+import type { ColumnMetadata, Query } from "metabase-lib/types";
 
 export interface SDKBreakoutItem extends BreakoutListItem {
   breakoutIndex: number;
   removeBreakout: () => void;
-  updateBreakout: (column: Lib.ColumnMetadata) => void;
-  replaceBreakoutColumn: (column: Lib.ColumnMetadata) => void;
+  updateBreakout: (column: ColumnMetadata) => void;
+  replaceBreakoutColumn: (column: ColumnMetadata) => void;
 }
 
 export const useBreakoutData = ({
   question,
   updateQuestion,
 }: QuestionStateParams): SDKBreakoutItem[] => {
-  const onQueryChange = (query: Lib.Query) => {
+  const onQueryChange = (query: Query) => {
     if (question) {
       updateQuestion(question.setQuery(query), { run: true });
     }
@@ -29,7 +30,7 @@ export const useBreakoutData = ({
   const { onUpdateBreakout, onRemoveBreakout, onReplaceBreakouts } =
     useBreakoutQueryHandlers({ query, onQueryChange, stageIndex });
 
-  const breakouts = query ? Lib.breakouts(query, stageIndex) : [];
+  const breakouts = query ? ML_breakouts(query, stageIndex) : [];
 
   const items: BreakoutListItem[] = query
     ? breakouts.map((breakout) =>
@@ -44,13 +45,13 @@ export const useBreakoutData = ({
       }
     };
 
-    const updateBreakout = (column: Lib.ColumnMetadata) => {
+    const updateBreakout = (column: ColumnMetadata) => {
       if (item.breakout) {
         return onUpdateBreakout(item.breakout, column);
       }
     };
 
-    const replaceBreakoutColumn = (column: Lib.ColumnMetadata) => {
+    const replaceBreakoutColumn = (column: ColumnMetadata) => {
       return onReplaceBreakouts(column);
     };
 
