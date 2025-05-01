@@ -73,8 +73,8 @@ describe("useBooleanOptionFilter", () => {
       );
 
       act(() => {
-        const { setOptionType } = result.current;
-        setOptionType(optionType);
+        const { setValue } = result.current;
+        setValue(optionType);
       });
 
       const { getFilterClause } = result.current;
@@ -122,8 +122,8 @@ describe("useBooleanOptionFilter", () => {
       );
 
       act(() => {
-        const { setOptionType } = result.current;
-        setOptionType(optionType);
+        const { setValue } = result.current;
+        setValue(optionType);
       });
 
       const { getFilterClause } = result.current;

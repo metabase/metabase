@@ -28,6 +28,7 @@ export function BooleanPicker({
   const visibleOptions = options.filter(
     (option) => !option.isEmpty || isExpanded,
   );
+  const hasExpandButton = withEmptyOptions && !isExpanded;
 
   const handleChange = (value: string) => {
     onChange(value as BooleanFilterValue);
@@ -36,19 +37,18 @@ export function BooleanPicker({
   return (
     <div>
       <Radio.Group value={value} onChange={handleChange}>
-        <Stack p="md" pb={isExpanded ? "md" : 0} gap="sm">
+        <Stack p="md" pb={hasExpandButton ? 0 : "md"} gap="sm">
           {visibleOptions.map((option) => (
             <Radio
               key={option.value}
               value={option.value}
               label={option.label}
-              pb={6}
               size="xs"
             />
           ))}
         </Stack>
       </Radio.Group>
-      {withEmptyOptions && !isExpanded && (
+      {hasExpandButton && (
         <Button
           c="text-medium"
           variant="subtle"
