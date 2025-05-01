@@ -12,6 +12,7 @@ import {
   Text,
   rem,
 } from "metabase/ui";
+import NoResultsView from "metabase/visualizations/components/Visualization/NoResultsView";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import { formatRowCount } from "metabase-lib/v1/queries/utils/row-count";
@@ -142,32 +143,40 @@ export const EditTableDashcardVisualization = ({
           )}
         </Group>
       </Flex>
-      <Box pos="relative" className={S.gridWrapper}>
-        <EditTableDataOverlay
-          show={shouldDisableActions}
-          message={currentActionLabel ?? ""}
-        />
-        <EditTableDataGrid
-          data={data}
-          fieldMetadataMap={tableFieldMetadataMap}
-          onCellValueUpdate={handleCellValueUpdate}
-          onRowExpandClick={openEditRowModal}
-          columnsConfig={columnsConfig}
-          getColumnSortDirection={getColumnSortDirection}
-        />
-      </Box>
+      {data.rows.length === 0 ? (
+        <Stack h="100%" justify="center">
+          <NoResultsView />
+        </Stack>
+      ) : (
+        <>
+          <Box pos="relative" className={S.gridWrapper}>
+            <EditTableDataOverlay
+              show={shouldDisableActions}
+              message={currentActionLabel ?? ""}
+            />
+            <EditTableDataGrid
+              data={data}
+              fieldMetadataMap={tableFieldMetadataMap}
+              onCellValueUpdate={handleCellValueUpdate}
+              onRowExpandClick={openEditRowModal}
+              columnsConfig={columnsConfig}
+              getColumnSortDirection={getColumnSortDirection}
+            />
+          </Box>
 
-      <Flex
-        p="xs"
-        px="1rem"
-        justify="flex-end"
-        align="center"
-        className={S.gridFooterDashcardVisualization}
-      >
-        <Text fz="sm" fw="bold">
-          {getEditTableRowCountMessage(data)}
-        </Text>
-      </Flex>
+          <Flex
+            p="xs"
+            px="1rem"
+            justify="flex-end"
+            align="center"
+            className={S.gridFooterDashcardVisualization}
+          >
+            <Text fz="sm" fw="bold">
+              {getEditTableRowCountMessage(data)}
+            </Text>
+          </Flex>
+        </>
+      )}
       <EditingBaseRowModal
         modalState={modalState}
         onClose={closeModal}
