@@ -507,7 +507,6 @@ function Dashboard(props: DashboardProps) {
                         props.navigateToNewCardFromDashboard
                       }
                       selectedTabId={selectedTabId}
-                      onEditingChange={handleSetEditing}
                       downloadsEnabled={downloadsEnabled}
                       autoScrollToDashcardId={autoScrollToDashcardId}
                       reportAutoScrolledToDashcard={
