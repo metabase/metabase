@@ -1,4 +1,4 @@
-(ns metabase.api.routes-test
+(ns metabase.api-routes.routes-test
   (:require
    [clojure.test :refer :all]
    [rewrite-clj.parser]
@@ -30,7 +30,7 @@
       (z/find-next #(= (z/tag %) :map))))
 
 (defn- check-routes-map []
-  (with-open [r (clojure.lang.LineNumberingPushbackReader. (java.io.FileReader. "src/metabase/api/routes.clj"))]
+  (with-open [r (clojure.lang.LineNumberingPushbackReader. (java.io.FileReader. "src/metabase/api_routes/routes.clj"))]
     (let [zloc        (z/of-node (rewrite-clj.parser/parse-all r))
           route-map   (find-route-map zloc)
           actual-keys (find-map-keys route-map)]
