@@ -8,22 +8,22 @@ import { deserializeBooleanParameterValue } from "metabase/querying/parameters/u
 import { Box, Button, Flex } from "metabase/ui";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
-type BooleanWidgetProps = {
+type BooleanParameterWidgetProps = {
   value: ParameterValueOrArray | null | undefined;
   submitButtonLabel?: string;
   onChange: (value: boolean[]) => void;
 };
 
-export function BooleanWidget({
+export function BooleanParameterWidget({
   value,
   submitButtonLabel = t`Apply`,
   onChange,
-}: BooleanWidgetProps) {
+}: BooleanParameterWidgetProps) {
   const [pickerValue, setPickerValue] = useState(() => getPickerValue(value));
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    onChange(getFilterValue(pickerValue));
+    onChange(getParameterValue(pickerValue));
   };
 
   return (
@@ -48,7 +48,7 @@ function getPickerValue(
     .otherwise(() => "true");
 }
 
-function getFilterValue(value: BooleanFilterValue) {
+function getParameterValue(value: BooleanFilterValue) {
   return match(value)
     .with("true", () => [true])
     .with("false", () => [false])

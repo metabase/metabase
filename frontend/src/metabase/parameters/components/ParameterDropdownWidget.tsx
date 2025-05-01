@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import type { ParameterValueWidgetProps } from "metabase/parameters/components/ParameterValueWidget";
 import { getParameterWidgetTitle } from "metabase/parameters/utils/ui";
-import { BooleanWidget } from "metabase/querying/parameters/components/BooleanWidget";
 import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
 import { DateMonthYearWidget } from "metabase/querying/parameters/components/DateMonthYearWidget";
 import { DateQuarterYearWidget } from "metabase/querying/parameters/components/DateQuarterYearWidget";
@@ -23,6 +22,8 @@ import {
   isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-values";
+
+import { BooleanParameterWidget } from "../../querying/parameters/components/BooleanParameterWidget";
 
 import { NumberInputWidget } from "./widgets/NumberInputWidget";
 import { ParameterFieldWidget } from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
@@ -104,7 +105,7 @@ export const ParameterDropdownWidget = ({
 
   if (isBooleanParameter(parameter)) {
     return (
-      <BooleanWidget
+      <BooleanParameterWidget
         value={value}
         submitButtonLabel={value ? t`Update filter` : t`Add filter`}
         onChange={(value) => {
