@@ -1,12 +1,13 @@
-(ns metabase.api.slack-test
+(ns metabase.channel.api.slack-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [java-time.api :as t]
-   [metabase.api.slack :as api.slack]
+   [metabase.channel.api.slack :as api.slack]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.channel.slack :as slack]
    [metabase.config :as config]
-   [metabase.integrations.slack :as slack]
    [metabase.test :as mt]))
 
 (deftest update-slack-settings-test
@@ -20,9 +21,11 @@
         (mt/with-temporary-setting-values [slack-app-token nil
                                            slack-token     "fake-token"]
           (mt/user-http-request :crowberto :put 200 "slack/settings" {:slack-app-token "fake-token"})
-          (is (= "fake-token" (#'slack/unobfuscated-slack-app-token)))
-          (is (= nil (slack/slack-token))))))
+          (is (= "fake-token" (channel.settings/unobfuscated-slack-app-token)))
+          (is (= nil (channel.settings/slack-token))))))))
 
+(deftest update-slack-settings-test-2
+  (testing "PUT /api/slack/settings"
     (testing "A 400 error is returned if the Slack app token is invalid"
       (mt/with-temporary-setting-values [slack-app-token nil]
         (with-redefs [slack/valid-token?                                (constantly false)
@@ -33,32 +36,39 @@
                       slack/refresh-channels-and-usernames-when-needed! (constantly nil)]
           (let [response (mt/user-http-request :crowberto :put 400 "slack/settings" {:slack-app-token "fake-token"})]
             (is (= {:slack-app-token "invalid token"} (:errors response)))
-            (is (= nil (slack/slack-app-token)))
+            (is (= nil (channel.settings/slack-app-token)))
             (is (= {:channels []}
-                   (slack/slack-cached-channels-and-usernames)))))))
+                   (channel.settings/slack-cached-channels-and-usernames)))))))))
 
+(deftest update-slack-settings-test-3
+  (testing "PUT /api/slack/settings"
     (testing "The Slack app token and channel settings are cleared if no value is sent in the request"
-      (mt/with-temporary-setting-values [slack-app-token                                 "fake-token"
-                                         slack/slack-cached-channels-and-usernames       ["fake_channel"]
-                                         slack/slack-channels-and-usernames-last-updated (t/zoned-date-time)]
+      (mt/with-temporary-setting-values [slack-app-token                                            "fake-token"
+                                         channel.settings/slack-cached-channels-and-usernames       ["fake_channel"]
+                                         channel.settings/slack-channels-and-usernames-last-updated (t/zoned-date-time)]
         (mt/user-http-request :crowberto :put 200 "slack/settings" {})
-        (is (= nil (slack/slack-app-token)))
+        (is (= nil (channel.settings/slack-app-token)))
         ;; The cache is empty, and its last-updated value is reset to its default value
         (is (= {:channels []}
-               (slack/slack-cached-channels-and-usernames)))
-        (is (= @#'slack/zoned-time-epoch (slack/slack-channels-and-usernames-last-updated)))))
+               (channel.settings/slack-cached-channels-and-usernames)))
+        (is (= channel.settings/zoned-time-epoch
+               (channel.settings/slack-channels-and-usernames-last-updated)))))))
 
+(deftest update-slack-settings-test-4
+  (testing "PUT /api/slack/settings"
     (testing "A non-admin cannot modify the Slack app token"
       (mt/user-http-request :rasta :put 403 "slack/settings"
                             {:slack-app-token "fake-token"}))))
 
-(deftest manifest-test
+(deftest ^:parallel manifest-test
   (testing "GET /api/slack/manifest"
     (testing "The Slack manifest can be fetched via an API call"
       (is (str/starts-with?
            (mt/user-http-request :crowberto :get 200 "slack/manifest")
-           "_metadata:\n")))
+           "_metadata:\n")))))
 
+(deftest ^:parallel manifest-test-2
+  (testing "GET /api/slack/manifest"
     (testing "A non-admin cannot fetch the Slack manifest"
       (mt/user-http-request :rasta :get 403 "slack/manifest"))))
 
