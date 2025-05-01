@@ -70,18 +70,16 @@ export function BrowseMetrics() {
             justify="space-between"
             align="center"
           >
-            <Tooltip label="foo">
-              <Title order={1} c="text-dark" id={titleId}>
-                <Group gap="sm">
-                  <Icon
-                    size={24}
-                    color="var(--mb-color-icon-primary)"
-                    name="metric"
-                  />
-                  {t`Metrics`}
-                </Group>
-              </Title>
-            </Tooltip>
+            <Title order={1} c="text-dark" id={titleId}>
+              <Group gap="sm">
+                <Icon
+                  size={24}
+                  color="var(--mb-color-icon-primary)"
+                  name="metric"
+                />
+                {t`Metrics`}
+              </Group>
+            </Title>
             {hasVerifiedMetrics && (
               <MetricFilterControls
                 metricFilters={metricFilters}
