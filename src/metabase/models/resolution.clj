@@ -27,7 +27,7 @@
     :model/CollectionBookmark                metabase.bookmarks.models.bookmark
     :model/CollectionPermissionGraphRevision metabase.models.collection-permission-graph-revision
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.model
-    :model/ContentTranslation                metabase.models.content-translation
+    :model/ContentTranslation                metabase-enterprise.content-translation.models
     :model/Dashboard                         metabase.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
     :model/DashboardCard                     metabase.models.dashboard-card
