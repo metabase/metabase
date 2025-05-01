@@ -26,7 +26,6 @@ import { SnippetRow } from "../SnippetRow";
 import S from "./SnippetSidebar.module.css";
 import { SnippetSidebarEmptyState } from "./SnippetSidebarEmptyState";
 
-const ICON_SIZE = 16;
 const MIN_SNIPPETS_FOR_SEARCH = 1;
 
 class SnippetSidebarInner extends React.Component {
@@ -56,7 +55,7 @@ class SnippetSidebarInner extends React.Component {
       className={S.SidebarFooter}
       onClick={() => this.setState({ showArchived: true })}
     >
-      <Icon className={S.SidebarIcon} name="view_archive" size={ICON_SIZE} />
+      <Icon className={S.SidebarIcon} name="view_archive" />
       {t`Archived snippets`}
     </Flex>
   );
@@ -194,13 +193,7 @@ class SnippetSidebarInner extends React.Component {
                         <Menu.Item
                           key={name}
                           onClick={onClick}
-                          leftSection={
-                            <Icon
-                              name={icon}
-                              size={ICON_SIZE}
-                              className={CS.mr2}
-                            />
-                          }
+                          leftSection={<Icon name={icon} className={CS.mr2} />}
                         >
                           {name}
                         </Menu.Item>
