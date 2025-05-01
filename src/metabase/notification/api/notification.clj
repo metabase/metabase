@@ -173,8 +173,7 @@
   [notification]
   (case (:payload_type notification)
     :notification/system-event
-    (binding [metabase.notification.payload.impl.system-event/*sample-table-id* (get-in notification [:payload :table_id])]
-      (mu/generate-example (notification/notification-payload-schema notification)))
+    (notification/sample-payload notification)
 
     ;; else
     (notification/notification-payload notification)))

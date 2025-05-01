@@ -118,9 +118,6 @@
                                 :status "active"}))}
      :map]]])
 
-(binding [*sample-table-id* 1]
-  (metabase.util.malli/generate-example ::row.updated))
-
 (mr/def ::row.updated
   [:merge
    ::row.mutate
@@ -157,10 +154,13 @@
                [:event_name [:enum :event/row.deleted "event/row.deleted"]]
                timestamp-schema]]
     [:record {:description "The row that was deleted, showing all field values before deletion"
-              :gen/return  {:id     1
-                            :name   "Product A"
-                            :price  24.99
-                            :status "discontinued"}}
+              :gen/fmap    (fn [_]
+                             (if *sample-table-id*
+                               (sample-for-table *sample-table-id* false)
+                               {:id     1
+                                :name   "Product A"
+                                :price  24.99
+                                :status "on sale"}))}
      :map]]])
 
 (defn- coercion-fn
@@ -314,3 +314,9 @@
   (if-let [condition (not-empty (:condition notification-info))]
     (notification.condition/evaluate-expression condition (:event_info notification-info))
     true))
+
+(defn sample-payload
+  "Generate sample payload for a system event notification"
+  [notification]
+  (binding [*sample-table-id* (get-in notification [:payload :table_id])]
+    (mu/generate-example (notification.payload/notification-payload-schema notification))))

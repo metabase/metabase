@@ -265,9 +265,11 @@
   (is (=? {:context {:event_name "event/row.created"}
            :creator {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :editor {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
-           :table {:id 1 :name "orders"}
+           :table {:id (mt/id :orders) :name "ORDERS"}
            :settings {}
-           :record {:id 1 :name "Product A" :price 29.99 :status "active"}}
+           :record (mt/malli=? [:fn #(= #{:ID :PRODUCT_ID :QUANTITY :SUBTOTAL :DISCOUNT :TOTAL
+                                          :USER_ID :TAX :CREATED_AT}
+                                        (set (keys %)))])}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
                                            :payload      {:event_name :event/row.created
@@ -278,25 +280,33 @@
   (is (=? {:context {:event_name "event/row.updated"}
            :creator {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :editor {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
-           :table {:id 1 :name "orders"}
+           :table {:id (mt/id :orders) :name "ORDERS"}
            :settings {}
-           :record {:id 1 :name "Product A" :price 24.99 :status "on sale"}
-           :changes {:price {:before 29.99 :after 24.99} :status {:before "active" :after "on sale"}}}
+           :record (mt/malli=? [:fn #(= #{:ID :PRODUCT_ID :QUANTITY :SUBTOTAL :DISCOUNT :TOTAL
+                                          :USER_ID :TAX :CREATED_AT}
+                                        (set (keys %)))])
+           :changes (mt/malli=? [:fn #(= #{:ID :PRODUCT_ID :QUANTITY :SUBTOTAL :DISCOUNT :TOTAL
+                                           :USER_ID :TAX :CREATED_AT}
+                                         (set (keys %)))])}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
-                                           :payload      {:event_name :event/row.updated}
+                                           :payload      {:event_name :event/row.updated
+                                                          :table_id   (mt/id :orders)}
                                            :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest example-payload-row-delete-test
   (is (=? {:context {:event_name "event/row.deleted"}
            :creator {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
            :editor {:first_name "Meta" :last_name "Bot" :common_name "Meta Bot" :email "bot@metabase.com"}
-           :table {:id 1 :name "orders"}
+           :table {:id (mt/id :orders) :name "ORDERS"}
            :settings {}
-           :record {:id 1 :name "Product A" :price 24.99 :status "discontinued"}}
+           :record (mt/malli=? [:fn #(= #{:ID :PRODUCT_ID :QUANTITY :SUBTOTAL :DISCOUNT :TOTAL
+                                          :USER_ID :TAX :CREATED_AT}
+                                        (set (keys %)))])}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
-                                           :payload      {:event_name :event/row.deleted}
+                                           :payload      {:event_name :event/row.deleted
+                                                          :table_id   (mt/id :orders)}
                                            :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest preview-notification-test
