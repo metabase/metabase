@@ -23,6 +23,7 @@ import type {
   EmbedThemeControls,
   FailedFetchDashboardResult,
   FetchDashboardResult,
+  SuccessfulFetchDashboardResult,
 } from "../types";
 
 import { type ReduxProps, connector } from "./context.redux";
@@ -181,6 +182,7 @@ const DashboardContextProviderInner = ({
     } else if (hasTabChanged || hasParameterValueChanged) {
       cardResult = fetchDashboardCardData();
     }
+
     if (cardResult) {
       cardResult
         .then(() => {
@@ -189,6 +191,8 @@ const DashboardContextProviderInner = ({
         .catch((err) => {
           onError?.(err);
         });
+    } else if (hasDashboardLoaded) {
+      onLoad?.(dashboard);
     }
   }, [
     dashboard,
@@ -289,6 +293,13 @@ export function useDashboardContext() {
     );
   }
   return context;
+}
+
+export function isSuccessfulFetchDashboardResult(
+  result: FetchDashboardResult,
+): result is SuccessfulFetchDashboardResult {
+  const hasError = "error" in result;
+  return !hasError;
 }
 
 export function isFailedFetchDashboardResult(
