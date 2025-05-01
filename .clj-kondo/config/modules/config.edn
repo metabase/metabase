@@ -62,7 +62,6 @@
 
   api
   {:api #{metabase.api.auth
-          metabase.api.cache
           metabase.api.card
           metabase.api.collection
           metabase.api.common
@@ -92,6 +91,12 @@
   bookmarks
   {:api  #{metabase.bookmarks.api}
    :uses #{api db models util}}
+
+  cache
+  {:api  #{metabase.cache.api
+           metabase.cache.core
+           metabase.cache.init}
+   :uses #{api config db events models premium-features settings util}}
 
   channel
   {:api  #{metabase.channel.api
@@ -242,7 +247,7 @@
    :uses #{events settings util}}
 
   internal-stats
-  {:api #{metabase.internal-stats}
+  {:api #{metabase.internal-stats.core}
    :uses #{db models}}
 
   legacy-mbql
@@ -316,7 +321,6 @@
   {:api #{metabase.models.api-key
           metabase.models.application-permissions-revision
           metabase.models.audit-log
-          metabase.models.cache-config
           metabase.models.card
           metabase.models.card.metadata
           metabase.models.collection
@@ -336,8 +340,6 @@
           metabase.models.init
           metabase.models.interface
           metabase.models.moderation-review
-          metabase.models.native-query-snippet
-          metabase.models.native-query-snippet.permissions
           metabase.models.params
           metabase.models.params.chain-filter
           metabase.models.params.custom-values
@@ -358,6 +360,7 @@
            analyze
            api
            audit
+           cache
            channel
            config
            db
@@ -385,6 +388,11 @@
   moderation
   {:api  #{metabase.moderation}
    :uses #{models util}}
+
+  native-query-snippets
+  {:api  #{metabase.native-query-snippets.api
+           metabase.native-query-snippets.core}
+   :uses #{api models permissions premium-features util}}
 
   notification
   {:api  #{metabase.notification.api
@@ -492,6 +500,7 @@
            analyze
            api
            audit
+           cache
            config
            driver
            events
@@ -530,7 +539,7 @@
           metabase.search.ingestion
           metabase.search.init
           metabase.search.spec}
-   :uses #{analytics api audit config db driver models permissions premium-features settings request task util}}
+   :uses #{analytics api audit config db driver models permissions premium-features settings request startup task util}}
 
   segments
   {:api  #{metabase.segments.api}
@@ -577,6 +586,10 @@
            metabase.sso.core
            metabase.sso.init}
    :uses #{api models permissions premium-features settings util}}
+
+  startup
+  {:api  #{metabase.startup.core}
+   :uses #{util}}
 
   sync
   {:api #{metabase.sync.api
@@ -630,7 +643,9 @@
    :uses #{util}}
 
   upload
-  {:api  #{metabase.upload}
+  {:api  #{metabase.upload.api
+           metabase.upload.core
+           metabase.upload.init}
    :uses #{analytics api driver events legacy-mbql lib model-persistence models permissions settings sync util}}
 
   user-key-value
@@ -694,8 +709,8 @@
    :uses #{api premium-features util}}
 
   enterprise/cache
-  {:api  #{metabase-enterprise.cache.strategies}
-   :uses #{api models premium-features query-processor util}}
+  {:api  #{metabase-enterprise.cache.init}
+   :uses #{cache premium-features query-processor task util}}
 
   enterprise/content-verification
   {:api  #{metabase-enterprise.content-verification.api.routes}
@@ -703,7 +718,7 @@
 
   enterprise/core
   {:api  #{metabase-enterprise.core.init}
-   :uses #{enterprise/enhancements}}
+   :uses :any}
 
   enterprise/dashboard-subscription-filters
   {:api  #{}
@@ -751,6 +766,7 @@
    :uses #{api
            audit
            db
+           driver
            legacy-mbql
            lib
            models
@@ -778,7 +794,7 @@
 
   enterprise/snippet-collections
   {:api  #{}
-   :uses #{models permissions premium-features util}}
+   :uses #{models native-query-snippets permissions premium-features util}}
 
   enterprise/sso
   {:api #{metabase-enterprise.sso.api.routes
@@ -796,7 +812,7 @@
 
   enterprise/task
   {:api  #{metabase-enterprise.task.truncate-audit-tables}
-   :uses #{premium-features query-processor task util enterprise/cache}}
+   :uses #{premium-features}}
 
   enterprise/upload-management
   {:api  #{metabase-enterprise.upload-management.api}

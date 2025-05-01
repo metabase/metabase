@@ -1692,7 +1692,7 @@
 
 (deftest identity-hash-test
   (testing "Collection hashes are composed of the name, namespace, and parent collection's hash"
-    (let [now #t "2022-09-01T12:34:56"]
+    (let [now #t "2022-09-01T12:34:56Z"]
       (mt/with-temp [:model/Collection c1 {:name       "top level"
                                            :created_at now
                                            :namespace  "yolocorp"

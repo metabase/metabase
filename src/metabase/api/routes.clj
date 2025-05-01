@@ -4,7 +4,6 @@
    [metabase.actions.api]
    [metabase.activity-feed.api]
    [metabase.api.api-key]
-   [metabase.api.cache]
    [metabase.api.card]
    [metabase.api.cards]
    [metabase.api.collection]
@@ -16,7 +15,6 @@
    [metabase.api.geojson]
    [metabase.api.logger]
    [metabase.api.macros :as api.macros]
-   [metabase.api.native-query-snippet]
    [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
    [metabase.api.slack]
@@ -26,6 +24,7 @@
    [metabase.api.util]
    [metabase.api.util.handlers :as handlers]
    [metabase.bookmarks.api]
+   [metabase.cache.api]
    [metabase.channel.api]
    [metabase.cloud-migration.api]
    [metabase.config :as config]
@@ -33,6 +32,7 @@
    [metabase.indexed-entities.api]
    [metabase.login-history.api]
    [metabase.model-persistence.api]
+   [metabase.native-query-snippets.api]
    [metabase.notification.api]
    [metabase.permissions.api]
    [metabase.premium-features.api]
@@ -49,6 +49,7 @@
    [metabase.task-history.api]
    [metabase.tiles.api]
    [metabase.timeline.api]
+   [metabase.upload.api]
    [metabase.user-key-value.api]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.xrays.api]))
@@ -56,7 +57,6 @@
 (comment metabase.actions.api/keep-me
          metabase.activity-feed.api/keep-me
          metabase.api.api-key/keep-me
-         metabase.api.cache/keep-me
          metabase.api.card/keep-me
          metabase.api.cards/keep-me
          metabase.api.collection/keep-me
@@ -66,17 +66,18 @@
          metabase.api.field/keep-me
          metabase.api.geojson/keep-me
          metabase.api.logger/keep-me
-         metabase.api.native-query-snippet/keep-me
          metabase.api.slack/keep-me
          metabase.api.table/keep-me
          metabase.api.testing/keep-me
          metabase.api.user/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
+         metabase.cache.api/keep-me
          metabase.cloud-migration.api/keep-me
          metabase.indexed-entities.api/keep-me
          metabase.login-history.api/keep-me
          metabase.model-persistence.api/keep-me
+         metabase.native-query-snippets.api/keep-me
          metabase.permissions.api/keep-me
          metabase.public-sharing.api/keep-me
          metabase.revisions.api/keep-me
@@ -85,6 +86,7 @@
          metabase.setup.api/keep-me
          metabase.task-history.api/keep-me
          metabase.tiles.api/keep-me
+         metabase.upload.api/keep-me
          metabase.user-key-value.api/keep-me)
 
 (def ^:private ^{:arglists '([request respond raise])} pass-thru-handler
@@ -133,7 +135,7 @@
    "/api-key"              (+auth 'metabase.api.api-key)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
-   "/cache"                (+auth 'metabase.api.cache)
+   "/cache"                (+auth 'metabase.cache.api)
    "/card"                 (+auth 'metabase.api.card)
    "/cards"                (+auth 'metabase.api.cards)
    "/channel"              (+auth metabase.channel.api/channel-routes)
@@ -152,7 +154,7 @@
    "/logger"               (+auth 'metabase.api.logger)
    "/login-history"        (+auth 'metabase.login-history.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
-   "/native-query-snippet" (+auth 'metabase.api.native-query-snippet)
+   "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)
    "/notification"         metabase.notification.api/notification-routes
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
    "/permissions"          (+auth 'metabase.permissions.api)
@@ -174,6 +176,7 @@
    "/tiles"                (+auth 'metabase.tiles.api)
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
    "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)
+   "/upload"               (+auth 'metabase.upload.api)
    "/user"                 (+auth 'metabase.api.user)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)
    "/util"                 'metabase.api.util})
