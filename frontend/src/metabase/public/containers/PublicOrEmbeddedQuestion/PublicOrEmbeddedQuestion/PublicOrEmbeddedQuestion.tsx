@@ -142,7 +142,13 @@ export const PublicOrEmbeddedQuestion = ({
         });
       } else if (uuid) {
         // public links currently apply parameters client-side
-        const datasetQuery = applyParameters(card, parameters, parameterValues);
+        const datasetQuery = applyParameters(
+          card,
+          parameters,
+          parameterValues,
+          [],
+          { sparse: true },
+        );
         newResult = await maybeUsePivotEndpoint(
           PublicApi.cardQuery,
           card,
