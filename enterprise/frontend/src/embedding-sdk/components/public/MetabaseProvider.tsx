@@ -1,9 +1,18 @@
 import { Global } from "@emotion/react";
 import type { Action, Store } from "@reduxjs/toolkit";
-import { type JSX, type ReactNode, memo, useEffect, useRef } from "react";
+import {
+  type FC,
+  type JSX,
+  type PropsWithChildren,
+  type ReactNode,
+  memo,
+  useEffect,
+  useRef,
+} from "react";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { useInitData } from "embedding-sdk/hooks";
+import { lazyLoadDateLocales } from "embedding-sdk/lib/i18n/lazy-load-date-locales";
 import { getSdkStore } from "embedding-sdk/store";
 import {
   setErrorComponent,
@@ -148,7 +157,11 @@ export const MetabaseProviderInternal = ({
         <SdkThemeProvider theme={theme}>
           <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
           <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
-            <LocaleProvider locale={locale || instanceLocale}>
+            <LocaleProvider
+              locale={locale || instanceLocale}
+              shouldWaitForLocale
+              lazyLoadDateLocales={lazyLoadDateLocales}
+            >
               {children}
             </LocaleProvider>
             <SdkUsageProblemDisplay
@@ -170,21 +183,22 @@ export const MetabaseProviderInternal = ({
  * @function
  * @category MetabaseProvider
  */
-export const MetabaseProvider = memo(function MetabaseProvider(
-  props: MetabaseProviderProps,
-) {
-  // This makes the store stable across re-renders, but still not a singleton:
-  // we need a different store for each test or each storybook story
-  const storeRef = useRef<Store<SdkStoreState, Action> | undefined>(undefined);
-  if (!storeRef.current) {
-    storeRef.current = getSdkStore();
-  }
+export const MetabaseProvider: FC<PropsWithChildren<MetabaseProviderProps>> =
+  memo(function MetabaseProvider(props: MetabaseProviderProps) {
+    // This makes the store stable across re-renders, but still not a singleton:
+    // we need a different store for each test or each storybook story
+    const storeRef = useRef<Store<SdkStoreState, Action> | undefined>(
+      undefined,
+    );
+    if (!storeRef.current) {
+      storeRef.current = getSdkStore();
+    }
 
-  return (
-    <MetabaseReduxProvider store={storeRef.current}>
-      <MetabotProvider>
-        <MetabaseProviderInternal store={storeRef.current} {...props} />
-      </MetabotProvider>
-    </MetabaseReduxProvider>
-  );
-});
+    return (
+      <MetabaseReduxProvider store={storeRef.current}>
+        <MetabotProvider>
+          <MetabaseProviderInternal store={storeRef.current} {...props} />
+        </MetabotProvider>
+      </MetabaseReduxProvider>
+    );
+  });
