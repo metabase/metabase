@@ -859,6 +859,7 @@
    {:main-without-gen-class {:level :off}
     :discouraged-var        {clojure.pprint/pprint     {:level :off}
                              clojure.core/print        {:level :off}
+                             clojure.core/prn          {:level :off}
                              clojure.core/printf       {:level :off}
                              clojure.core/println      {:level :off}
                              clojure.string/lower-case {:level :off}

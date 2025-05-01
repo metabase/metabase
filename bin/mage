@@ -231,7 +231,7 @@ main() {
   dbg_info "Running mage_core with args: '$*'"
   # log_info $MAGE_CORE_PATH
   # log_info "${BB_EXEC} ${MAGE_CORE_PATH}"
-  (cd "${MB}" && exec "${BB_EXEC}" "${MAGE_CORE_PATH}" "$@")
+  (export MAGE_DEBUG && cd "${MB}" && exec "${BB_EXEC}" "${MAGE_CORE_PATH}" "$@")
 }
 
 # Run the main function with all arguments
