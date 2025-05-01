@@ -10,6 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.http-client :as client]
+   [metabase.lib.core :as lib]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -17,7 +18,7 @@
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
-   [metabase.upload-test :as upload-test]
+   [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -255,7 +256,7 @@
     (testing "Sensitive fields are included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count]
+              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count :id]
                              :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
@@ -339,7 +340,7 @@
     (testing "Sensitive fields should not be included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count]
+              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count :id]
                              :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
@@ -596,7 +597,7 @@
   (testing "GET /api/table/:id/query_metadata"
     (is (= (merge
             (query-metadata-defaults)
-            (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :entity_id] :id (mt/id :categories))
+            (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :entity_id :id] :id (mt/id :categories))
             {:schema       "PUBLIC"
              :name         "CATEGORIES"
              :display_name "Categories"
@@ -663,6 +664,14 @@
       (is (=? {:metrics [(assoc metric :type "metric" :display "table")]}
               (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories))))))))
 
+(deftest ^:parallel table-metadata-has-entity-ids-test
+  (testing "GET /api/table/:id/query_metadata returns an entity id"
+    (is (=? {:entity_id some?
+             :db {:entity_id some?}
+             ;:fields api.test-util/all-have-entity-ids?
+             }
+            (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))))))
+
 (defn- with-field-literal-id [{field-name :name, base-type :base_type :as field}]
   (assoc field :id ["field" field-name {:base-type base-type}]))
 
@@ -716,6 +725,7 @@
                                               :database_type  "CHARACTER VARYING"
                                               :semantic_type  "type/Name"
                                               :fingerprint    (name->fingerprint :name)
+                                              :ident          (lib/native-ident "NAME" (:entity_id card))
                                               :field_ref      ["field" "NAME" {:base-type "type/Text"}]}
                                              {:name           "ID"
                                               :display_name   "ID"
@@ -724,6 +734,7 @@
                                               :database_type  "BIGINT"
                                               :semantic_type  nil
                                               :fingerprint    (name->fingerprint :id)
+                                              :ident          (lib/native-ident "ID" (:entity_id card))
                                               :field_ref      ["field" "ID" {:base-type "type/BigInteger"}]}
                                              (with-numeric-dimension-options
                                                {:name           "PRICE"
@@ -733,6 +744,7 @@
                                                 :database_type  "INTEGER"
                                                 :semantic_type  nil
                                                 :fingerprint    (name->fingerprint :price)
+                                                :ident          (lib/native-ident "PRICE" (:entity_id card))
                                                 :field_ref      ["field" "PRICE" {:base-type "type/Integer"}]})
                                              (with-coordinate-dimension-options
                                                {:name           "LATITUDE"
@@ -742,6 +754,7 @@
                                                 :database_type  "DOUBLE PRECISION"
                                                 :semantic_type  "type/Latitude"
                                                 :fingerprint    (name->fingerprint :latitude)
+                                                :ident          (lib/native-ident "LATITUDE" (:entity_id card))
                                                 :field_ref      ["field" "LATITUDE" {:base-type "type/Float"}]})]))})
                (->> card
                     u/the-id
@@ -799,6 +812,7 @@
                                          :database_type            "CHARACTER VARYING"
                                          :table_id                 card-virtual-table-id
                                          :id                       ["field" "NAME" {:base-type "type/Text"}]
+                                         :ident                    (lib/native-ident "NAME" (:entity_id card))
                                          :semantic_type            "type/Name"
                                          :default_dimension_option nil
                                          :dimension_options        []
@@ -811,6 +825,7 @@
                                          :database_type            "TIMESTAMP"
                                          :table_id                 card-virtual-table-id
                                          :id                       ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]
+                                         :ident                    (lib/native-ident "LAST_LOGIN" (:entity_id card))
                                          :semantic_type            nil
                                          :default_dimension_option (var-get #'api.table/datetime-default-index)
                                          :dimension_options        (var-get #'api.table/datetime-dimension-indexes)

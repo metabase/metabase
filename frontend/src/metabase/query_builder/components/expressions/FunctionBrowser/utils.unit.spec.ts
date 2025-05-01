@@ -1,15 +1,15 @@
 import { createMockMetadata } from "__support__/metadata";
-import type { StartRule } from "metabase-lib/v1/expressions";
+import type * as Lib from "metabase-lib";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { getFilteredClauses } from "./utils";
 
 function setup({
   filter = "",
-  startRule = "expression",
+  expressionMode = "expression",
 }: {
   filter?: string;
-  startRule?: StartRule;
+  expressionMode?: Lib.ExpressionMode;
 } = {}) {
   const sampleDatabase = createSampleDatabase();
   const metadata = createMockMetadata({ databases: [sampleDatabase] });
@@ -21,7 +21,7 @@ function setup({
 
   return getFilteredClauses({
     filter,
-    startRule,
+    expressionMode,
     database,
   });
 }
@@ -141,18 +141,33 @@ describe("getFilteredClauses", () => {
       description:
         "Alias for `if()`. Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.",
       docsPage: "case",
-      example: [
-        "case",
-        [
-          [[">", ["dimension", "Weight"], 200], "Large"],
-          [[">", ["dimension", "Weight"], 150], "Medium"],
-        ],
-        {
-          default: "Small",
-        },
-      ],
       name: "case",
       structure: "case",
+      example: {
+        operator: "case",
+        options: {},
+        args: [
+          {
+            operator: ">",
+            options: {},
+            args: [
+              { operator: "dimension", options: {}, args: ["Weight"] },
+              200,
+            ],
+          },
+          "Large",
+          {
+            operator: ">",
+            options: {},
+            args: [
+              { operator: "dimension", options: {}, args: ["Weight"] },
+              150,
+            ],
+          },
+          "Medium",
+          "Small",
+        ],
+      },
     });
   });
 });

@@ -21,8 +21,8 @@
    (java.nio.channels ClosedChannelException SocketChannel)
    (java.nio.charset StandardCharsets)
    (java.util.zip GZIPOutputStream)
-   (org.eclipse.jetty.io EofException SocketChannelEndPoint)
-   (org.eclipse.jetty.server Request)))
+   (org.eclipse.jetty.ee9.nested Request)
+   (org.eclipse.jetty.io EofException SocketChannelEndPoint)))
 
 (set! *warn-on-reflection* true)
 

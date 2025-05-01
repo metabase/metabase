@@ -1,5 +1,3 @@
-const { H } = cy;
-const { IS_ENTERPRISE } = Cypress.env();
 import {
   QA_MONGO_PORT,
   QA_MYSQL_PORT,
@@ -13,6 +11,8 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { visitDatabase } from "./helpers/e2e-database-helpers";
 
+const { H } = cy;
+const { IS_ENTERPRISE } = Cypress.env();
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe(
@@ -34,11 +34,7 @@ describe(
           expect(body.settings["database-enable-actions"]).to.eq(true);
         });
 
-        cy.get("#model-actions-toggle").should(
-          "have.attr",
-          "aria-checked",
-          "true",
-        );
+        cy.findByLabelText("Model actions").should("be.checked");
       });
     });
   },
@@ -163,12 +159,12 @@ describe("admin > database > add", () => {
             });
 
           // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
-          H.typeAndBlurUsingLabel("Display name", "QA Postgres12");
-          H.typeAndBlurUsingLabel("Host", "localhost");
-          H.typeAndBlurUsingLabel("Port", QA_POSTGRES_PORT);
-          H.typeAndBlurUsingLabel("Database name", "sample");
-          H.typeAndBlurUsingLabel("Username", "metabase");
-          H.typeAndBlurUsingLabel("Password", "metasample123");
+          H.typeAndBlurUsingLabel(/Display name/, "QA Postgres12");
+          H.typeAndBlurUsingLabel(/Host/, "localhost");
+          H.typeAndBlurUsingLabel(/Port/, QA_POSTGRES_PORT);
+          H.typeAndBlurUsingLabel(/Database name/, "sample");
+          H.typeAndBlurUsingLabel(/Username/, "metabase");
+          H.typeAndBlurUsingLabel(/Password/, "metasample123");
         });
 
         const confirmSSLFields = (visible, hidden) => {
@@ -684,6 +680,43 @@ describe("scenarios > admin > databases > sample database", () => {
       editDatabase();
       expect(body.is_full_sync).to.equal(false);
       expect(body.is_on_demand).to.equal(false);
+    });
+  });
+
+  it("allows to save the default schedule (metabase#57198)", () => {
+    visitDatabase(SAMPLE_DB_ID);
+    editDatabase();
+    H.modal().findByText("Show advanced options").click();
+    cy.findByLabelText("Choose when syncs and scans happen").click();
+    cy.button("Save changes").click();
+    cy.wait("@databaseUpdate").then(({ request: { body }, response }) => {
+      expect(body.is_full_sync).to.equal(false);
+      expect(body.is_on_demand).to.equal(false);
+      // frontend sends wrong value but backend automatically corrects it for us:
+      expect(response.body.schedules.cache_field_values).to.equal(null);
+    });
+
+    editDatabase();
+    cy.findByLabelText("Regularly, on a schedule").click();
+    cy.button("Save changes").click();
+    cy.wait("@databaseUpdate").then(({ request: { body } }) => {
+      expect(body.is_full_sync).to.equal(true);
+      expect(body.is_on_demand).to.equal(false);
+      expect(body.schedules.cache_field_values).to.deep.eq({
+        schedule_day: "mon",
+        schedule_frame: null,
+        schedule_hour: 0,
+        schedule_type: "daily",
+      });
+    });
+
+    editDatabase();
+    cy.findByLabelText("Only when adding a new filter widget").click();
+    cy.button("Save changes").click();
+    cy.wait("@databaseUpdate").then(({ request: { body } }) => {
+      expect(body.is_full_sync).to.equal(false);
+      expect(body.is_on_demand).to.equal(true);
+      expect(body.schedules.cache_field_values).to.equal(null);
     });
   });
 

@@ -1,23 +1,12 @@
 (ns metabase.search.config
   (:require
    [metabase.api.common :as api]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.permissions.core :as perms]
-   [metabase.public-settings :as public-settings]
+   [metabase.search.settings :as search.settings]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
-
-(defsetting search-typeahead-enabled
-  (deferred-tru "Enable typeahead search in the {0} navbar?"
-                (public-settings/application-name-for-setting-descriptions))
-  :type       :boolean
-  :default    true
-  :visibility :authenticated
-  :export?    true
-  :audit      :getter)
 
 (def ^:dynamic *db-max-results*
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
@@ -182,7 +171,7 @@
   "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
   [context]
   (let [context   (or context :default)
-        overrides (public-settings/experimental-search-weight-overrides)]
+        overrides (search.settings/experimental-search-weight-overrides)]
     (if (= :all context)
       (merge-with merge static-weights overrides)
       (merge (get static-weights :default)
@@ -256,7 +245,8 @@
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
    [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
-   [:include-dashboard-questions?        {:optional true} :boolean]])
+   [:include-dashboard-questions?        {:optional true} :boolean]
+   [:include-metadata?                   {:optional true} :boolean]])
 
 (defmulti column->string
   "Turn a complex column into a string"

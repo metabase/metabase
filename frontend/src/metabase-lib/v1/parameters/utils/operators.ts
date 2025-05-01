@@ -102,13 +102,3 @@ export function getNumberParameterArity(parameter: Parameter) {
       return 1;
   }
 }
-
-export function getStringParameterArity(parameter: Parameter) {
-  switch (parameter.type) {
-    case "string/=":
-    case "string/!=":
-      return "n";
-    default:
-      return 1;
-  }
-}

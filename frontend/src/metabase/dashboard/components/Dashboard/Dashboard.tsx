@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
 
+import { useListDatabasesQuery } from "metabase/api";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import {
@@ -24,6 +25,7 @@ import type {
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
+import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
 import type {
@@ -229,6 +231,18 @@ function Dashboard(props: DashboardProps) {
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
 
+  const { data: databasesResponse } = useListDatabasesQuery();
+  const databases = useMemo(
+    () => databasesResponse?.data ?? [],
+    [databasesResponse],
+  );
+  const hasDataAccess = useMemo(() => getHasDataAccess(databases), [databases]);
+  const hasNativeWrite = useMemo(
+    () => getHasNativeWrite(databases),
+    [databases],
+  );
+  const canCreateQuestions = hasDataAccess || hasNativeWrite;
+
   const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
   const handleSetEditing = useCallback(
@@ -352,6 +366,7 @@ function Dashboard(props: DashboardProps) {
     if (!dashboardHasCards) {
       return canWrite ? (
         <DashboardEmptyState
+          canCreateQuestions={canCreateQuestions}
           addQuestion={handleAddQuestion}
           isDashboardEmpty={true}
           isEditing={isEditing}
@@ -368,6 +383,7 @@ function Dashboard(props: DashboardProps) {
     if (dashboardHasCards && !tabHasCards) {
       return canWrite ? (
         <DashboardEmptyState
+          canCreateQuestions={canCreateQuestions}
           addQuestion={handleAddQuestion}
           isDashboardEmpty={false}
           isEditing={isEditing}
@@ -491,7 +507,6 @@ function Dashboard(props: DashboardProps) {
                         props.navigateToNewCardFromDashboard
                       }
                       selectedTabId={selectedTabId}
-                      onEditingChange={handleSetEditing}
                       downloadsEnabled={downloadsEnabled}
                       autoScrollToDashcardId={autoScrollToDashcardId}
                       reportAutoScrolledToDashcard={

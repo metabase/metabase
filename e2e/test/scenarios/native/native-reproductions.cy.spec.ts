@@ -413,9 +413,13 @@ describe("issue 52806", () => {
     "should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)",
     { tags: "@flaky" },
     () => {
+      cy.intercept("/api/automagic-dashboards/database/*/candidates").as(
+        "candidates",
+      );
       H.visitQuestionAdhoc(questionDetails);
       cy.findByTestId("main-logo-link").click();
       H.modal().button("Discard changes").click();
+      cy.wait("@candidates");
       cy.location().should((location) => expect(location.search).to.eq(""));
     },
   );
@@ -521,5 +525,39 @@ describe("issue 54799", () => {
     cy.get("[data-testid=cell-data]")
       .contains(/foobar/)
       .should("be.visible");
+  });
+});
+
+describe("issue 56570", () => {
+  const questionDetails = {
+    native: {
+      query: `select '${"ab".repeat(200)}'`,
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+  });
+
+  it("should not push the toolbar off-screen (metabase#56570)", () => {
+    cy.findByTestId("visibility-toggler").click();
+    cy.findByTestId("native-query-editor-sidebar").should("be.visible");
+  });
+});
+
+describe("issue 53649", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not get caught in an infinite loop when opening the native editor (metabase#53649)", () => {
+    H.startNewNativeModel();
+
+    // If the app freezes, this won't work
+    H.NativeEditor.type("select 1");
+    H.NativeEditor.get().should("contain", "select 1");
   });
 });

@@ -4,7 +4,7 @@ import { Route } from "react-router";
 
 import {
   setupDatabasesEndpoints,
-  setupFieldValuesEndpoints,
+  setupFieldValuesEndpoint,
   setupSearchEndpoints,
   setupUnauthorizedFieldEndpoint,
   setupUnauthorizedFieldValuesEndpoints,
@@ -134,7 +134,7 @@ const setup = async ({
     setupUnauthorizedFieldEndpoint(unauthorizedField);
   }
   if (hasFieldValuesAccess) {
-    setupFieldValuesEndpoints(fieldValues);
+    setupFieldValuesEndpoint(fieldValues);
   } else {
     setupUnauthorizedFieldValuesEndpoints(fieldValues);
   }
@@ -245,11 +245,15 @@ describe("MetadataFieldSettings", () => {
       ).toBeInTheDocument();
     });
 
-    it("should not display type casting settings for non-supported fields", async () => {
+    it("should display type casting settings for float fields", async () => {
       await setup({ field: ORDERS_DISCOUNT_FIELD });
       expect(
-        screen.queryByText("Cast to a specific data type"),
-      ).not.toBeInTheDocument();
+        screen.getByText("Cast to a specific data type"),
+      ).toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Don't cast"));
+      await userEvent.type(screen.getByPlaceholderText("Find..."), "Float");
+      expect(screen.getByText("Float → Integer")).toBeInTheDocument();
     });
 
     it("should show an access denied error if the foreign key field has an inaccessible target", async () => {

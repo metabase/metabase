@@ -1,14 +1,136 @@
 (ns metabase.query-processor.middleware.metrics
   (:require
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
+
+(defn- filters->condition
+  [filters]
+  (when (seq filters)
+    (lib.util/fresh-uuids
+     (if (next filters)
+       (apply lib/and filters)
+       (first filters)))))
+
+(def ^:private aggregations-pred-arg
+  #{:count-where
+    :sum-where
+    :distinct-where})
+
+(def ^:private nullary-aggregations
+  {:count lib/sum
+   :cum-count lib/cum-sum})
+
+(def ^:private aggregations-expr-1st-arg
+  #{:avg
+    :cum-sum
+    :distinct
+    :max
+    :median
+    :min
+    :percentile
+    :stddev
+    :sum
+    :var})
+
+(defn- and-join-conditions
+  [c1 c2]
+  (let [c2-operator (first c2)
+        c2-maybe-unwrapped (cond-> c2
+                             (= :and c2-operator) (subvec 2))
+        c1-operator (first c1)]
+    (lib.util/fresh-uuids
+     (if (= :and c1-operator)
+       (if (= :and c2-operator)
+         (into c1 c2-maybe-unwrapped)
+         (conj c1 c2-maybe-unwrapped))
+       (if (= :and c2-operator)
+         (apply lib/and c1 c2-maybe-unwrapped)
+         (lib/and c1 c2-maybe-unwrapped))))))
+
+(defn- transform-aggregation-with-predicate
+  "For `aggregation` with predicate arg, merge the predicate with the `condition` from filter. Return aggregation with
+  merged condition."
+  [condition aggregation]
+  (assert (vector? aggregation))
+  (if (empty? condition)
+    aggregation
+    (let [predicate-arg-index (dec (count aggregation))
+          original-predicate (aggregation predicate-arg-index)
+          adjusted-predicate (and-join-conditions original-predicate condition)]
+      (assoc aggregation predicate-arg-index adjusted-predicate))))
+
+(defn- transform-0-arity-aggregation
+  [condition aggregation]
+  (if (or (not (vector? aggregation))
+          (not (contains? nullary-aggregations (first aggregation)))
+          (empty? condition))
+    aggregation
+    (let [operator (first aggregation)
+          opts (lib.options/options aggregation)
+          aggregating-fn (nullary-aggregations operator)]
+      (-> (aggregating-fn (lib/case [[condition 1]] 0))
+          ;; explicit overwrite of new options with options of original clause
+          (lib.options/with-options opts)
+          (with-meta (meta aggregation))))))
+
+(defn- transform-share-aggregation
+  [condition aggregation]
+  (let [opts (lib.options/options aggregation)
+        predicate (nth aggregation 2)]
+    (-> (lib// (lib/count-where (and-join-conditions predicate condition))
+               (lib/count-where condition))
+        (lib.options/with-options opts)
+        (with-meta (meta aggregation)))))
+
+(defn- case-wrap-metric-aggregation
+  [aggregation condition]
+  (cond->> aggregation
+    (seq condition)
+    (walk/postwalk
+     (fn [form]
+       (if-not (and (vector? form)
+                    (not (map-entry? form)))
+         form
+         (let [operator (first form)]
+           (cond
+
+             (= :share operator)
+             (transform-share-aggregation condition form)
+
+             (contains? aggregations-pred-arg operator)
+             (transform-aggregation-with-predicate condition form)
+
+             (contains? nullary-aggregations operator)
+             (transform-0-arity-aggregation condition form)
+
+             (contains? aggregations-expr-1st-arg operator)
+             (assoc form 2 (lib/case [[condition (nth form 2)]]))
+
+             :else
+             form)))))))
+
+(defn- metric-query-filters->aggregation
+  "Entrypoint into transformation of metric aggregation into one that has case wrapped column arg."
+  [metric-query]
+  (if-some [filters (not-empty (lib/filters metric-query))]
+    (let [aggregation-names (select-keys (last (lib/returned-columns metric-query))
+                                         [:name :display-name])]
+      (-> metric-query
+          (lib.util/update-query-stage -1 update-in [:aggregation 0]
+                                       #(-> %
+                                            (case-wrap-metric-aggregation (filters->condition filters))
+                                            (lib.options/update-options merge aggregation-names)))
+          (lib.util/update-query-stage -1 dissoc :filters)))
+    metric-query))
 
 (defn- replace-metric-aggregation-refs [query stage-number lookup]
   (if-let [aggregations (lib/aggregations query stage-number)]
@@ -41,27 +163,35 @@
     [:metric _ (id :guard pos-int?)]
     id))
 
+(defn- find-first-metric-id
+  [x]
+  (first (find-metric-ids x)))
+
+(defn- fetch-metrics
+  [query metric-ids]
+  (->> metric-ids
+       (lib.metadata/bulk-metadata-or-throw query :metadata/card)
+       (into {}
+             (map (fn [card-metadata]
+                    (let [metric-query (->> (:dataset-query card-metadata)
+                                            (lib/query query)
+                                            ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
+                                            (lib/query query)
+                                            metric-query-filters->aggregation)
+                          metric-name (:name card-metadata)]
+                      (if-let [aggregation (first (lib/aggregations metric-query))]
+                        [(:id card-metadata)
+                         {:query metric-query
+                              ;; Aggregation inherits `:name` of original aggregation used in a metric query. The original
+                              ;; name is added in `preprocess` above if metric is defined using unnamed aggregation.
+                          :aggregation aggregation
+                          :name metric-name}]
+                        (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))))
+       not-empty))
+
 (defn- fetch-referenced-metrics
   [query stage]
-  (let [metric-ids (find-metric-ids stage)]
-    (->> metric-ids
-         (lib.metadata/bulk-metadata-or-throw query :metadata/card)
-         (into {}
-               (map (fn [card-metadata]
-                      (let [metric-query (->> (:dataset-query card-metadata)
-                                              (lib/query query)
-                                              ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
-                                              (lib/query query))
-                            metric-name (:name card-metadata)]
-                        (if-let [aggregation (first (lib/aggregations metric-query))]
-                          [(:id card-metadata)
-                           {:query metric-query
-                            ;; Aggregation inherits `:name` of original aggregation used in a metric query. The original
-                            ;; name is added in `preprocess` above if metric is defined using unnamed aggregation.
-                            :aggregation aggregation
-                            :name metric-name}]
-                          (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))))
-         not-empty)))
+  (fetch-metrics query (find-metric-ids stage)))
 
 (defn- expression-with-name-from-source
   [query agg-stage-index [_ {:lib/keys [expression-name]} :as expression]]
@@ -129,17 +259,19 @@
                              (comp :lib/expression-name second)
                              (lib/expressions temp-query)))
             new-query (reduce
-                       (fn [query [_metric-id {metric-query :query}]]
+                       (fn [query [metric-id {metric-query :query}]]
                          (if (and (= (lib.util/source-table-id query) (lib.util/source-table-id metric-query))
                                   (or (= (lib/stage-count metric-query) 1)
                                       (= (:qp/stage-had-source-card (last (:stages metric-query)))
                                          (:qp/stage-had-source-card (lib.util/query-stage query agg-stage-index)))))
-                           (let [metric-query (update-metric-query-expression-names metric-query unique-name-fn)]
+                           (let [metric-query (update-metric-query-expression-names metric-query unique-name-fn)
+                                 lookup (-> lookup
+                                            (assoc-in [metric-id :query] metric-query)
+                                            (assoc-in [metric-id :aggregation] (first (lib/aggregations metric-query))))]
                              (as-> query $q
                                (reduce #(expression-with-name-from-source %1 agg-stage-index %2)
                                        $q (lib/expressions metric-query -1))
                                (include-implicit-joins $q agg-stage-index metric-query)
-                               (reduce #(lib/filter %1 agg-stage-index %2) $q (lib/filters metric-query -1))
                                (replace-metric-aggregation-refs $q agg-stage-index lookup)))
                            (throw (ex-info "Incompatible metric" {:query query
                                                                   :metric metric-query}))))
@@ -181,7 +313,8 @@
    replaced with the actual aggregation of the metric."
   [query stage-path expanded-stages last-metric-stage-number metric-metadata]
   (mu/disable-enforcement
-    (let [[pre-transition-stages [last-metric-stage _following-stage & following-stages]] (split-at last-metric-stage-number expanded-stages)
+    (let [[pre-transition-stages [last-metric-stage _following-stage & following-stages]]
+          (split-at last-metric-stage-number expanded-stages)
           metric-name (:name metric-metadata)
           metric-aggregation (-> last-metric-stage :aggregation first)
           stage-query (temp-query-at-stage-path query stage-path)
@@ -230,11 +363,6 @@
       :else
       expanded-stages)))
 
-(defn- find-first-metric
-  [query]
-  (lib.util.match/match-one query
-    [:metric _ _] &match))
-
 (defn adjust
   "Looks for `[:metric {} id]` clause references and adjusts the query accordingly.
 
@@ -250,7 +378,7 @@
    2. Metric source cards can reference themselves.
       A query built from a `:source-card` of `:type :metric` can reference itself."
   [query]
-  (if-not (find-first-metric (:stages query))
+  (if-not (find-first-metric-id (:stages query))
     query
     (do
       (analytics/inc! :metabase-query-processor/metrics-adjust)
@@ -262,8 +390,13 @@
                          (update stage-or-join :stages #(adjust-metric-stages query path %)))))]
           (u/prog1
             (update query :stages #(adjust-metric-stages query nil %))
-            (when-let [metric (find-first-metric (:stages <>))]
-              (throw (ex-info "Failed to replace metric" {:metric metric})))))
+            (when-let [metric-id (find-first-metric-id (:stages <>))]
+              (let [metric-data (-> (fetch-metrics query [metric-id])
+                                    (get metric-id)
+                                    u/ignore-exceptions)]
+                (throw (ex-info "Failed to replace metric"
+                                {:metric-id   metric-id
+                                 :metric-data metric-data}))))))
         (catch Throwable e
           (analytics/inc! :metabase-query-processor/metrics-adjust-errors)
           (throw e))))))

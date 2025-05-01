@@ -2,9 +2,13 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { Flex } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseData, DatabaseId } from "metabase-types/api";
+import type { Database, DatabaseData, DatabaseId } from "metabase-types/api";
 
+import {
+  hasActionsEnabled,
+  hasDbRoutingEnabled,
+  hasFeature,
+} from "../../utils";
 import { DatabaseInfoSection } from "../DatabaseInfoSection";
 
 import { ModelActionsSection } from "./ModelActionsSection";
@@ -24,9 +28,9 @@ export const DatabaseModelFeaturesSection = ({
   const isEditingDatabase = !!database.id;
 
   const contentVisibility = {
-    showModelActions: isEditingDatabase && database.supportsActions(),
+    showModelActions: isEditingDatabase && hasFeature(database, "actions"),
     showModelCachingSection:
-      isModelPersistenceEnabled && database.supportsPersistence(),
+      isModelPersistenceEnabled && hasFeature(database, "persist-models"),
   };
   const hasNoContent = Object.values(contentVisibility).every(
     (x) => x === false,
@@ -54,13 +58,17 @@ export const DatabaseModelFeaturesSection = ({
       <Flex direction="column" gap="md">
         {contentVisibility.showModelActions && (
           <ModelActionsSection
-            hasModelActionsEnabled={database.hasActionsEnabled()}
+            hasModelActionsEnabled={hasActionsEnabled(database)}
             onToggleModelActionsEnabled={handleToggleModelActionsEnabled}
+            disabled={hasDbRoutingEnabled(database)}
           />
         )}
 
         {contentVisibility.showModelCachingSection && (
-          <ModelCachingControl database={database} />
+          <ModelCachingControl
+            database={database}
+            disabled={hasDbRoutingEnabled(database)}
+          />
         )}
       </Flex>
     </DatabaseInfoSection>

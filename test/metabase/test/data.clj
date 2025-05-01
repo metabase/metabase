@@ -41,6 +41,7 @@
    [metabase.db.schema-migrations-test.impl
     :as schema-migrations-test.impl]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -48,6 +49,7 @@
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [next.jdbc]))
 
@@ -196,7 +198,8 @@
   "Like `mbql-query`, but runs the query as well."
   {:style/indent :defn}
   [table-name & [query]]
-  `(run-mbql-query* (mbql-query ~table-name ~(or query {}))))
+  `(run-mbql-query* (-> (mbql-query ~table-name ~(or query {}))
+                        (assoc-in [:info :card-entity-id] (u/generate-nano-id)))))
 
 (def ^:private FormattableName
   [:or
@@ -233,6 +236,11 @@
   "Get a metadata-provider for the current database."
   []
   (lib.metadata.jvm/application-database-metadata-provider (id)))
+
+(defn ident
+  "Get the ident for a field. Arguments are the same as for `(mt/id :table :field)`."
+  [table-key field-key]
+  (:ident (lib.metadata/field (metadata-provider) (id table-key field-key))))
 
 (defmacro dataset
   "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the
@@ -283,8 +291,8 @@
   (delay
     (schema-migrations-test.impl/with-temp-empty-app-db [conn :h2]
       ;; since the actual group defs are not dynamic, we need with-redefs to change them here
-      (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-group-name)
-                    perms-group/admin     (#'perms-group/magic-group perms-group/admin-group-name)]
+      (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-magic-group-type)
+                    perms-group/admin     (#'perms-group/magic-group perms-group/admin-magic-group-type)]
         (mdb/setup-db! :create-sample-content? false)
         (let [f (java.io.File/createTempFile "db-export" ".sql")]
           (next.jdbc/execute! conn ["SCRIPT TO ?" (str f)])

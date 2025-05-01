@@ -11,6 +11,7 @@ import {
   deserializeDateParameterValue,
   serializeDateParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
+import { Button } from "metabase/ui";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DateSingleWidgetProps = {
@@ -35,8 +36,12 @@ export function DateSingleWidget({
   return (
     <SingleDatePicker
       value={pickerValue}
-      submitButtonLabel={submitButtonLabel}
       hasTimeToggle
+      renderSubmitButton={() => (
+        <Button type="submit" variant="filled">
+          {submitButtonLabel}
+        </Button>
+      )}
       onChange={setPickerValue}
       onSubmit={handleSubmit}
     />

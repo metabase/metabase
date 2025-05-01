@@ -42,13 +42,12 @@
     :model/CollectionBookmark
     :model/DashboardBookmark
     :model/DataPermissions
+    :model/DatabaseRouter
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
     :model/FieldUsage
     :model/FieldValues
-    :model/LegacyMetric
-    :model/LegacyMetricImportantField
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview

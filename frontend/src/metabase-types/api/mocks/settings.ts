@@ -4,10 +4,10 @@ import type {
   Engine,
   EngineField,
   EngineSource,
+  EnterpriseSettingKey,
   EnterpriseSettings,
   FontFile,
   SettingDefinition,
-  SettingKey,
   Settings,
   TokenFeatures,
   TokenStatus,
@@ -124,11 +124,12 @@ export const createMockTokenFeatures = (
   query_reference_validation: false,
   serialization: false,
   cache_preemptive: false,
+  database_routing: false,
   ...opts,
 });
 
 export const createMockSettingDefinition = <
-  Key extends SettingKey = SettingKey,
+  Key extends EnterpriseSettingKey = EnterpriseSettingKey,
 >(
   opts: SettingDefinition<Key>,
 ): SettingDefinition<Key> => ({
@@ -173,6 +174,7 @@ export const createMockSettings = (
   "help-link": "metabase",
   "help-link-custom-destination": "",
   "deprecation-notice-version": undefined,
+  "development-mode?": false,
   "ee-ai-features-enabled": false,
   "ee-openai-model": "",
   "ee-openai-api-key": "",
@@ -201,7 +203,7 @@ export const createMockSettings = (
   "enable-xrays": false,
   engines: createMockEngines(),
   "example-dashboard-id": 1,
-  gsheets: { status: "not-connected", folder_url: null },
+  gsheets: {},
   "humanization-strategy": "simple",
   "has-user-setup": true,
   "hide-embed-branding?": true,

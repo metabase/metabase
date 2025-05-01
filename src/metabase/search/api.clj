@@ -8,10 +8,11 @@
    [metabase.api.open-api :as open-api]
    [metabase.config :as config]
    [metabase.permissions.core :as perms]
-   [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
+   [metabase.search.ingestion :as ingestion]
+   [metabase.search.settings :as search.settings]
    [metabase.search.task.search-index :as task.search-index]
    [metabase.task :as task]
    [metabase.util :as u]
@@ -61,9 +62,9 @@
   "This will trigger an immediate reindexing, if we are using search index."
   []
   (api/check-superuser)
-  (if  (search/supports-index?)
+  (if (search/supports-index?)
     ;; The job appears to wait on the main thread when run from tests, so, unfortunately, testing this branch is hard.
-    (if (and (task/job-exists? task.search-index/reindex-job-key) (not config/is-test?))
+    (if (and (task/job-exists? task.search-index/reindex-job-key) (or (not ingestion/*force-sync*) (config/is-test?)))
       (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
       (do (task.search-index/reindex!) {:message "done"}))
 
@@ -87,8 +88,8 @@
     (when unknown-rankers
       (throw (ex-info (str "Unknown rankers: " (str/join ", " (map name (sort unknown-rankers))))
                       {:status-code 400})))
-    (public-settings/experimental-search-weight-overrides!
-     (merge-with merge (public-settings/experimental-search-weight-overrides) {context (update-keys overrides u/qualified-name)}))))
+    (search.settings/experimental-search-weight-overrides!
+     (merge-with merge (search.settings/experimental-search-weight-overrides) {context (update-keys overrides u/qualified-name)}))))
 
 (api.macros/defendpoint :get "/weights"
   "Return the current weights being used to rank the search results"
@@ -133,7 +134,7 @@
 
   A search query that has both filters applied will only return models and cards."
   [_route-params
-   {:keys [q context archived models verified ids]
+   {:keys                               [q context archived models verified ids]
     calculate-available-models          :calculate_available_models
     created-at                          :created_at
     created-by                          :created_by
@@ -144,7 +145,8 @@
     model-ancestors                     :model_ancestors
     search-engine                       :search_engine
     search-native-query                 :search_native_query
-    table-db-id                         :table_db_id}
+    table-db-id                         :table_db_id
+    include-metadata                    :include_metadata}
    :- [:map
        [:q                                   {:optional true} [:maybe ms/NonBlankString]]
        [:context                             {:optional true} [:maybe :keyword]]
@@ -162,7 +164,8 @@
        [:verified                            {:optional true} [:maybe true?]]
        [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:calculate_available_models          {:optional true} [:maybe true?]]
-       [:include_dashboard_questions         {:default false} [:maybe :boolean]]]]
+       [:include_dashboard_questions         {:default false} [:maybe :boolean]]
+       [:include_metadata                    {:default false} [:maybe :boolean]]]]
   (api/check-valid-page-params (request/limit) (request/offset))
   (try
     (u/prog1 (search/search
@@ -190,7 +193,8 @@
                 :verified                            verified
                 :ids                                 (set ids)
                 :calculate-available-models?         calculate-available-models
-                :include-dashboard-questions?        include-dashboard-questions}))
+                :include-dashboard-questions?        include-dashboard-questions
+                :include-metadata?                   include-metadata}))
       (analytics/inc! :metabase-search/response-ok))
     (catch Exception e
       (let [status-code (:status-code (ex-data e))]

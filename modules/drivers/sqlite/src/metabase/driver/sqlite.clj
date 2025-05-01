@@ -36,6 +36,7 @@
                               :standard-deviation-aggregations        false
                               :schemas                                false
                               :datetime-diff                          true
+                              :expression-literals                    true
                               :now                                    true
                               :identifiers-with-spaces                true
                               ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
@@ -474,3 +475,7 @@
   [_ ^ResultSet rs _ ^Integer i]
   (fn []
     (sqlite-handle-timestamp rs i)))
+
+(defmethod sql.qp/->integer :sqlite
+  [driver value]
+  (sql.qp/->integer-with-round driver value))

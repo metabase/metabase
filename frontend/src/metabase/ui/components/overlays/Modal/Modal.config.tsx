@@ -44,6 +44,7 @@ export const modalOverrides = {
 
   ModalCloseButton: Modal.CloseButton.extend({
     defaultProps: {
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       "aria-label": t`Close`,
     },
   }),

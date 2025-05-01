@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.i18n :refer [tru]])
   (:import
    (java.text NumberFormat ParsePosition)

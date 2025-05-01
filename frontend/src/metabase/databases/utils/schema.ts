@@ -84,6 +84,7 @@ const getFieldSchema = (field: EngineField) => {
         .nullable()
         .default(null)
         .test((value, context) => isFieldValid(field, value, context));
+    case "hidden":
     case "boolean":
     case "section":
       return Yup.boolean()

@@ -12,10 +12,10 @@
    [metabase.lib.core :as lib]
    [metabase.models.field-usage :as field-usage]
    [metabase.models.query :as query]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.util.grouper :as grouper]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
@@ -164,6 +164,7 @@
     database-id                    :database
     query-type                     :type
     parameters                     :parameters
+    mirror-database-id             :mirror-database/id
     :as                            query}]
   {:pre [(bytes? query-hash)]}
   (let [json-query (if original-query
@@ -172,7 +173,7 @@
                          (assoc :was-pivot true))
                      (cond-> (dissoc query :info)
                        (empty? (:parameters query)) (dissoc :parameters)))]
-    {:database_id       database-id
+    {:database_id       (or mirror-database-id database-id)
      :executor_id       executed-by
      :action_id         action-id
      :card_id           card-id

@@ -23,6 +23,7 @@ import type {
   GetUserKeyValueRequest,
   Group,
   GroupListQuery,
+  LoggerPreset,
   ModelCacheRefreshStatus,
   ModelIndex,
   NativeQuerySnippet,
@@ -221,6 +222,21 @@ export function provideCollectionTags(
   return [idTag("collection", collection.id)];
 }
 
+export function provideLoggerPresetListTags(
+  presets: LoggerPreset[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("logger-preset"),
+    ...presets.flatMap(provideLoggerPresetTags),
+  ];
+}
+
+export function provideLoggerPresetTags(
+  preset: LoggerPreset,
+): TagDescription<TagType>[] {
+  return [idTag("logger-preset", preset.id)];
+}
+
 export function provideModelIndexTags(
   modelIndex: ModelIndex,
 ): TagDescription<TagType>[] {
@@ -284,6 +300,9 @@ export function provideDatabaseTags(
 ): TagDescription<TagType>[] {
   return [
     idTag("database", database.id),
+    ...(database.router_database_id
+      ? [idTag("database", database.router_database_id)]
+      : []),
     ...(database.tables ? provideTableListTags(database.tables) : []),
   ];
 }
@@ -376,6 +395,16 @@ export function provideFieldDimensionTags(
 
 export function provideFieldValuesTags(id: FieldId): TagDescription<TagType>[] {
   return [idTag("field-values", id)];
+}
+
+export function provideRemappedFieldValuesTags(
+  id: FieldId,
+  searchFieldId: FieldId,
+): TagDescription<TagType>[] {
+  return [
+    ...provideFieldValuesTags(id),
+    ...provideFieldValuesTags(searchFieldId),
+  ];
 }
 
 export function provideNotificationListTags(
@@ -542,6 +571,10 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
 
 export function provideTaskListTags(tasks: Task[]): TagDescription<TagType>[] {
   return [listTag("task"), ...tasks.flatMap(provideTaskTags)];
+}
+
+export function provideUniqueTasksListTags(): TagDescription<TagType>[] {
+  return [listTag("unique-tasks")];
 }
 
 export function provideTaskTags(task: Task): TagDescription<TagType>[] {

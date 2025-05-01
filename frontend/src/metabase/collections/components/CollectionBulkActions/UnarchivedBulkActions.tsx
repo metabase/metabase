@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { archiveAndTrack } from "metabase/archive/analytics";
 import { canArchiveItem, canMoveItem } from "metabase/collections/utils";
 import { BulkActionButton } from "metabase/components/BulkActionBar";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 type UnarchivedBulkActionsProps = {
@@ -51,6 +52,18 @@ export const UnarchivedBulkActions = ({
     setSelectedItems(selected);
     setSelectedAction("move");
   };
+
+  useRegisterShortcut(
+    [
+      {
+        id: "collection-send-items-to-trash",
+        perform: () => {
+          handleBulkArchive();
+        },
+      },
+    ],
+    [selected],
+  );
 
   return (
     <>

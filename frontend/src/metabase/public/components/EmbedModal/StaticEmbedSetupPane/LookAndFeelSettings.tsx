@@ -22,12 +22,26 @@ import {
   Text,
 } from "metabase/ui";
 
+import {
+  DashboardDownloadSettings,
+  QuestionDownloadSettings,
+} from "./DownloadSettings";
 import { DisplayOptionSection } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 
 const THEME_OPTIONS = [
-  { label: t`Light`, value: "light" as DisplayTheme },
-  { label: t`Dark`, value: "night" as DisplayTheme },
+  {
+    get label() {
+      return t`Light`;
+    },
+    value: "light" as DisplayTheme,
+  },
+  {
+    get label() {
+      return t`Dark`;
+    },
+    value: "night" as DisplayTheme,
+  },
 ] as const;
 type ThemeOptions = (typeof THEME_OPTIONS)[number]["value"];
 
@@ -62,6 +76,7 @@ export const LookAndFeelSettings = ({
   const availableFonts = useSelector((state) =>
     getSetting(state, "available-fonts"),
   );
+  const isDashboard = resourceType === "dashboard";
 
   return (
     <>
@@ -113,7 +128,6 @@ export const LookAndFeelSettings = ({
           <DisplayOptionSection title={t`Theme`}>
             <SegmentedControl
               value={displayOptions.theme ?? undefined}
-              // `data` type is required to be mutable, but THEME_OPTIONS is const.
               data={[...THEME_OPTIONS]}
               fullWidth
               bg={color("bg-light")}
@@ -175,21 +189,18 @@ export const LookAndFeelSettings = ({
             }
           />
 
-          {canWhitelabel && (
-            <Switch
-              label={t`Download buttons`}
-              labelPosition="left"
-              size="sm"
-              variant="stretch"
-              checked={displayOptions.downloads ?? true}
-              onChange={(e) =>
-                onChangeDisplayOptions({
-                  ...displayOptions,
-                  downloads: e.target.checked,
-                })
-              }
-            />
-          )}
+          {canWhitelabel &&
+            (isDashboard ? (
+              <DashboardDownloadSettings
+                displayOptions={displayOptions}
+                onChangeDisplayOptions={onChangeDisplayOptions}
+              />
+            ) : (
+              <QuestionDownloadSettings
+                displayOptions={displayOptions}
+                onChangeDisplayOptions={onChangeDisplayOptions}
+              />
+            ))}
         </Stack>
       </StaticEmbedSetupPaneSettingsContentSection>
 

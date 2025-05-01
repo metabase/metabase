@@ -14,12 +14,10 @@ describe("pratt/parser", () => {
     };
   }
 
-  function parseExpression(source: string, throwOnError: boolean = true) {
-    return cleanupAST(
-      parse(lexify(source).tokens, {
-        throwOnError,
-      }).root,
-    );
+  function parseExpression(source: string) {
+    const { tokens } = lexify(source);
+    const { root } = parse(tokens);
+    return cleanupAST(root);
   }
 
   const parseAggregation = parseExpression;
@@ -103,7 +101,7 @@ describe("pratt/parser", () => {
 
     /// ---- Other weird negations ----
     it("should accept a double negation with syntax error", () => {
-      expect(() => parseExpression("NOT NOT Or", false)).not.toThrow();
+      expect(() => parseExpression("NOT NOT [X]")).not.toThrow();
     });
   });
 
@@ -150,18 +148,6 @@ describe("pratt/parser", () => {
 
     it("should accept the function CASE with multiple cases", () => {
       expect(() => parseExpression("Case([X]>5,5,[X]>3,3,0)")).not.toThrow();
-    });
-
-    it("should reject an unclosed single-quoted string", () => {
-      expect(() => parseExpression('"Answer')).toThrow();
-    });
-
-    it("should reject an unclosed double-quoted string", () => {
-      expect(() => parseExpression('"Answer')).toThrow();
-    });
-
-    it("should reject a mismatched quoted string", () => {
-      expect(() => parseExpression("\"Answer'")).toThrow();
     });
 
     it("should handle a conditional with ISEMPTY", () => {
