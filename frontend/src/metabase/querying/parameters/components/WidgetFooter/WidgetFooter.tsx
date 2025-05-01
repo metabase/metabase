@@ -1,14 +1,12 @@
 import { Button, Flex } from "metabase/ui";
 
-import S from "./ParameterWidgetFooter.module.css";
+import S from "./WidgetFooter.module.css";
 
-type ParameterWidgetFooterProps = {
+type WidgetFooterProps = {
   submitButtonLabel?: string;
 };
 
-export function ParameterWidgetFooter({
-  submitButtonLabel,
-}: ParameterWidgetFooterProps) {
+export function WidgetFooter({ submitButtonLabel }: WidgetFooterProps) {
   return (
     <Flex className={S.footer} p="md" justify="flex-end">
       <Button type="submit" variant="filled">

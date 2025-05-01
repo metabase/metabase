@@ -9,7 +9,7 @@ import { Box } from "metabase/ui";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
 import { MIN_WIDTH } from "../../constants";
-import { ParameterWidgetFooter } from "../ParameterWidgetFooter";
+import { WidgetFooter } from "../WidgetFooter";
 
 type BooleanParameterWidgetProps = {
   value: ParameterValueOrArray | null | undefined;
@@ -17,7 +17,7 @@ type BooleanParameterWidgetProps = {
   onChange: (value: boolean[]) => void;
 };
 
-export function BooleanParameterWidget({
+export function BooleanWidget({
   value,
   submitButtonLabel = t`Apply`,
   onChange,
@@ -32,7 +32,7 @@ export function BooleanParameterWidget({
   return (
     <Box miw={MIN_WIDTH} component="form" onSubmit={handleSubmit}>
       <BooleanPicker value={pickerValue} onChange={setPickerValue} />
-      <ParameterWidgetFooter submitButtonLabel={submitButtonLabel} />
+      <WidgetFooter submitButtonLabel={submitButtonLabel} />
     </Box>
   );
 }
