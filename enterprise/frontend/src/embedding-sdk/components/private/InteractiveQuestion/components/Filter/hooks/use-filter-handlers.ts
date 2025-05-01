@@ -1,31 +1,33 @@
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks";
-import * as Lib from "metabase-lib";
+import { filter as ML_filter } from "metabase-lib/filter";
+import { removeClause, replaceClause } from "metabase-lib/query";
+import type { FilterClause, Filterable } from "metabase-lib/types";
 
 export const useFilterHandlers = ({
   query,
   stageIndex = -1,
   onQueryChange,
 }: Partial<UpdateQueryHookProps>) => {
-  const onAddFilter = (filter: Lib.Filterable) => {
+  const onAddFilter = (filter: Filterable) => {
     if (query) {
-      const nextQuery = Lib.filter(query, stageIndex, filter);
+      const nextQuery = ML_filter(query, stageIndex, filter);
       onQueryChange?.(nextQuery);
     }
   };
 
-  const onRemoveFilter = (filterClause: Lib.FilterClause) => {
+  const onRemoveFilter = (filterClause: FilterClause) => {
     if (query) {
-      const nextQuery = Lib.removeClause(query, stageIndex, filterClause);
+      const nextQuery = removeClause(query, stageIndex, filterClause);
       onQueryChange?.(nextQuery);
     }
   };
 
   const onUpdateFilter = (
-    currentFilterClause: Lib.FilterClause,
-    nextFilterClause: Lib.Filterable,
+    currentFilterClause: FilterClause,
+    nextFilterClause: Filterable,
   ) => {
     if (query) {
-      const nextQuery = Lib.replaceClause(
+      const nextQuery = replaceClause(
         query,
         stageIndex,
         currentFilterClause,

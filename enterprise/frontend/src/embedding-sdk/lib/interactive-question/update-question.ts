@@ -7,7 +7,7 @@ import { getAdHocQuestionWithVizSettings } from "metabase/query_builder/actions/
 import { createRawSeries } from "metabase/query_builder/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
-import * as Lib from "metabase-lib";
+import { dependentMetadata } from "metabase-lib/metadata";
 import Question from "metabase-lib/v1/Question";
 import type { Dispatch, GetState } from "metabase-types/store";
 
@@ -78,14 +78,14 @@ export const updateQuestionSdk =
     onQuestionChange(nextQuestion);
 
     const currentDependencies = previousQuestion
-      ? Lib.dependentMetadata(
+      ? dependentMetadata(
           previousQuestion.query(),
           previousQuestion.id(),
           previousQuestion.type(),
         )
       : [];
 
-    const nextDependencies = Lib.dependentMetadata(
+    const nextDependencies = dependentMetadata(
       nextQuestion.query(),
       nextQuestion.id(),
       nextQuestion.type(),

@@ -2,7 +2,7 @@ import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
 import type { ButtonProps } from "embedding-sdk/types/ui";
-import * as Lib from "metabase-lib";
+import { canSave as ML_canSave } from "metabase-lib/query";
 import type Question from "metabase-lib/v1/Question";
 
 import { useInteractiveQuestionContext } from "../context";
@@ -27,7 +27,7 @@ export const shouldShowSaveButton = ({
   question?: Question;
   originalQuestion?: Question;
 }) => {
-  const canSave = question && Lib.canSave(question.query(), question.type());
+  const canSave = question && ML_canSave(question.query(), question.type());
   const isQuestionChanged = originalQuestion
     ? question && question.isQueryDirtyComparedTo(originalQuestion)
     : true;
