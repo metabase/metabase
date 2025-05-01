@@ -6,6 +6,21 @@ import React, {
   type SetStateAction,
   useCallback,
   useMemo,
+import type React from "react";
+import type {
+  ComponentType,
+  Dispatch,
+  HTMLAttributes,
+  ReactNode,
+  SetStateAction,
+import type React from "react";
+import {
+  type ComponentType,
+  type Dispatch,
+  type HTMLAttributes,
+  type ReactNode,
+  type SetStateAction,
+  useCallback,
 } from "react";
 import { t } from "ttag";
 import type { AnySchema } from "yup";
@@ -747,7 +762,6 @@ export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
 export const PLUGIN_CONTENT_TRANSLATION = {
   isEnabled: false,
   ContentTranslationConfiguration: PluginPlaceholder,
-<<<<<<< HEAD
   useTranslateContent: (): ContentTranslationFunction => {
     // In OSS, the input is not translated
     return useCallback(
@@ -761,16 +775,6 @@ export const PLUGIN_CONTENT_TRANSLATION = {
   ) => ({
     ...obj,
   }),
-||||||| parent of 0383a2c560e (Introduce useTranslateContent hook and translateContentString utility function)
-=======
-  useTranslateContent: () => {
-    // In OSS, the input is not translated
-    const contentTranslationFunction: ContentTranslationFunction = <T>(
-      arg: T,
-    ) => arg;
-    return contentTranslationFunction;
-  },
->>>>>>> 0383a2c560e (Introduce useTranslateContent hook and translateContentString utility function)
 };
 
 export const PLUGIN_DB_ROUTING = {
