@@ -18,7 +18,6 @@
    [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
    [metabase.api.table]
-   [metabase.api.testing]
    [metabase.api.user]
    [metabase.api.util]
    [metabase.api.util.handlers :as handlers]
@@ -46,6 +45,8 @@
    [metabase.sso.api]
    [metabase.sync.api]
    [metabase.task-history.api]
+   [metabase.testing-api.api]
+   [metabase.testing-api.core]
    [metabase.tiles.api]
    [metabase.timeline.api]
    [metabase.upload.api]
@@ -66,7 +67,6 @@
          metabase.api.geojson/keep-me
          metabase.api.logger/keep-me
          metabase.api.table/keep-me
-         metabase.api.testing/keep-me
          metabase.api.user/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
@@ -83,6 +83,7 @@
          metabase.settings.api/keep-me
          metabase.setup.api/keep-me
          metabase.task-history.api/keep-me
+         metabase.testing-api.api/keep-me
          metabase.tiles.api/keep-me
          metabase.upload.api/keep-me
          metabase.user-key-value.api/keep-me)
@@ -103,10 +104,6 @@
    ;; no OpenAPI spec for this handler.
    (fn [_prefix]
      nil)))
-
-(def ^:private enable-testing-routes?
-  (or (not config/is-prod?)
-      (config/config-bool :mb-enable-test-endpoints)))
 
 (defn- ->handler [x]
   (cond-> x
@@ -170,7 +167,7 @@
    "/slack"                (+auth metabase.channel.api/slack-routes)
    "/table"                (+auth 'metabase.api.table)
    "/task"                 (+auth 'metabase.task-history.api)
-   "/testing"              (if enable-testing-routes? 'metabase.api.testing pass-thru-handler)
+   "/testing"              (if metabase.testing-api.core/enable-testing-routes? 'metabase.testing-api.api pass-thru-handler)
    "/tiles"                (+auth 'metabase.tiles.api)
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
    "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)

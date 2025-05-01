@@ -1,4 +1,4 @@
-(ns metabase.api.testing
+(ns metabase.testing-api.api
   "Endpoints for testing."
   (:require
    [clojure.java.jdbc :as jdbc]

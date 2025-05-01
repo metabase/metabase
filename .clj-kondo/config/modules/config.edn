@@ -79,7 +79,6 @@
           metabase.api.query-metadata
           metabase.api.routes.common
           metabase.api.table
-          metabase.api.testing
           metabase.api.user
           metabase.api.util
           metabase.api.util.handlers}
@@ -677,6 +676,12 @@
            request
            task
            util}}
+
+  testing-api
+  {:api  #{metabase.testing-api.api
+           metabase.testing-api.core
+           metabase.testing-api.init}
+   :uses #{analytics api config db premium-features search util}}
 
   tiles
   {:api  #{metabase.tiles.api
