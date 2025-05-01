@@ -114,7 +114,7 @@ function resolveEmbeddingSdkPackage() {
 
   const sdkLocalPackagePath = path.resolve(
     __dirname,
-    "../../resources/embedding-sdk/dist/main.bundle.js",
+    "../../resources/embedding-sdk",
   );
 
   if (fs.existsSync(sdkLocalPackagePath)) {

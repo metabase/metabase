@@ -1,4 +1,4 @@
-import { act, waitForElementToBeRemoved, within } from "@testing-library/react";
+import { act, within } from "@testing-library/react";
 
 import {
   setupAlertsEndpoints,
@@ -47,7 +47,7 @@ function getMockDataset(row: string) {
   });
 }
 
-const setup = ({
+const setup = async ({
   mocks = [
     {
       card: createMockCard(),
@@ -113,15 +113,11 @@ describe("InteractiveQuestion - multiple interactive questions", () => {
       dataset: getMockDataset(row),
     }));
 
-    setup({ mocks });
+    await setup({ mocks });
+
     act(() => {
       jest.runAllTimers();
     });
-
-    // Both loading indicators should be removed
-    await waitForElementToBeRemoved(() =>
-      screen.queryAllByTestId("loading-indicator"),
-    );
 
     const tables = screen.getAllByTestId("table-root");
     const gridcells = screen.getAllByRole("gridcell");

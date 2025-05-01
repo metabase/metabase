@@ -43,8 +43,8 @@ const PERSONAL_COLLECTION = createMockCollection({
 const COLLECTIONS = [ROOT_COLLECTION, PERSONAL_COLLECTION];
 
 describe("CreateDashboardModal", () => {
-  it("should render", () => {
-    setup();
+  it("should render", async () => {
+    await setup();
 
     expect(screen.getByText("New dashboard")).toBeInTheDocument();
 
@@ -63,7 +63,7 @@ describe("CreateDashboardModal", () => {
 
     const onCreate = jest.fn();
 
-    setup({
+    await setup({
       props: {
         onCreate,
       },
@@ -105,8 +105,8 @@ describe("CreateDashboardModal", () => {
     expect(onCreate).toHaveBeenLastCalledWith(mockResponseDashboard);
   });
 
-  it('should support "isOpen" prop', () => {
-    const { rerender } = setup({
+  it('should support "isOpen" prop', async () => {
+    const { rerender } = await setup({
       props: {
         isOpen: false,
       },
@@ -120,7 +120,9 @@ describe("CreateDashboardModal", () => {
   });
 });
 
-function setup({ props }: { props?: Partial<CreateDashboardModalProps> } = {}) {
+async function setup({
+  props,
+}: { props?: Partial<CreateDashboardModalProps> } = {}) {
   setupCollectionByIdEndpoint({ collections: COLLECTIONS });
 
   return renderWithSDKProviders(

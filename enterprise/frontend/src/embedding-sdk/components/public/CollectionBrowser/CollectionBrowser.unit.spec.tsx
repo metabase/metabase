@@ -91,7 +91,7 @@ async function setup({
 
   const state = setupSdkState();
 
-  renderWithSDKProviders(
+  await renderWithSDKProviders(
     <CollectionBrowserInner collectionId="root" {...props} />,
     {
       sdkProviderProps: {

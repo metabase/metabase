@@ -19,7 +19,7 @@ const TEST_PERSONAL_COLLECTION_ID = 42;
 
 describe("useCreateDashboardApi", () => {
   it('should create a new dashboard after "createDashboard" is called', async () => {
-    setup();
+    await setup();
 
     await userEvent.click(screen.getByText("Create dashboard"));
 
@@ -29,7 +29,7 @@ describe("useCreateDashboardApi", () => {
   });
 
   it("should return dashboard api call response", async () => {
-    const { onDashboardCreateSpy } = setup();
+    const { onDashboardCreateSpy } = await setup();
 
     await userEvent.click(screen.getByText("Create dashboard"));
 
@@ -43,7 +43,7 @@ describe("useCreateDashboardApi", () => {
   });
 
   it("should create a dashboard in the personal collection when collectionId is 'personal'", async () => {
-    setup({ collectionId: "personal" });
+    await setup({ collectionId: "personal" });
 
     await userEvent.click(screen.getByText("Create dashboard"));
 
@@ -86,7 +86,7 @@ type SetupProps = Partial<{
   collectionId: number | "personal";
 }>;
 
-function setup(overrides: SetupProps = {}) {
+async function setup(overrides: SetupProps = {}) {
   const mockProps = {
     name: TEST_DASHBOARD_NAME,
     description: null,
@@ -109,7 +109,7 @@ function setup(overrides: SetupProps = {}) {
     }),
   });
 
-  renderWithSDKProviders(
+  await renderWithSDKProviders(
     <TestComponent {...mockProps} onDashboardCreate={onDashboardCreateSpy} />,
     {
       storeInitialState: state,

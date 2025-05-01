@@ -1,3 +1,5 @@
+import type { FC } from "react";
+
 import type { FlexibleSizeProps } from "embedding-sdk/components/private/FlexibleSizeComponent";
 import {
   InteractiveQuestionProvider,
@@ -48,4 +50,5 @@ const StaticQuestionInner = ({
  * @function
  * @category StaticQuestion
  */
-export const StaticQuestion = withPublicComponentWrapper(StaticQuestionInner);
+export const StaticQuestion: FC<StaticQuestionProps> =
+  withPublicComponentWrapper(StaticQuestionInner);

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect } from "react";
+import { type FC, useEffect } from "react";
 import _ from "underscore";
 
 import {
@@ -99,31 +99,34 @@ export const StaticDashboardInner = ({
  * @function
  * @category StaticDashboard
  */
-const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
-  ({ dashboardId: initialDashboardId, ...rest }) => {
-    const { isLoading, id: resolvedDashboardId } = useValidatedEntityId({
-      type: "dashboard",
-      id: initialDashboardId,
-    });
+const StaticDashboard: FC<StaticDashboardProps> =
+  withPublicComponentWrapper<StaticDashboardProps>(
+    ({ dashboardId: initialDashboardId, ...rest }) => {
+      const { isLoading, id: resolvedDashboardId } = useValidatedEntityId({
+        type: "dashboard",
+        id: initialDashboardId,
+      });
 
-    const errorPage = useSdkSelector(getErrorPage);
-    const dispatch = useSdkDispatch();
-    useEffect(() => {
-      if (resolvedDashboardId) {
-        dispatch(setErrorPage(null));
+      const errorPage = useSdkSelector(getErrorPage);
+      const dispatch = useSdkDispatch();
+      useEffect(() => {
+        if (resolvedDashboardId) {
+          dispatch(setErrorPage(null));
+        }
+      }, [dispatch, resolvedDashboardId]);
+
+      if (isLoading) {
+        return <SdkLoader />;
       }
-    }, [dispatch, resolvedDashboardId]);
 
-    if (isLoading) {
-      return <SdkLoader />;
-    }
+      if (!resolvedDashboardId || errorPage?.status === 404) {
+        return <DashboardNotFoundError id={initialDashboardId} />;
+      }
 
-    if (!resolvedDashboardId || errorPage?.status === 404) {
-      return <DashboardNotFoundError id={initialDashboardId} />;
-    }
-
-    return <StaticDashboardInner dashboardId={resolvedDashboardId} {...rest} />;
-  },
-);
+      return (
+        <StaticDashboardInner dashboardId={resolvedDashboardId} {...rest} />
+      );
+    },
+  );
 
 export { EmbedDisplayParams, StaticDashboard };

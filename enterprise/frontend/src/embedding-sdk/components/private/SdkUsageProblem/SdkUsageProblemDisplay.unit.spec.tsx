@@ -32,7 +32,7 @@ interface Options {
   isDevelopmentMode?: boolean;
 }
 
-const setup = (options: Options) => {
+const setup = async (options: Options) => {
   const tokenFeatures = createMockTokenFeatures({
     embedding_sdk: options.hasEmbeddingFeature ?? true,
     "development-mode": options.isDevelopmentMode ?? false,
@@ -62,8 +62,8 @@ const PROBLEM_CARD_TEST_ID = "sdk-usage-problem-card";
 const PROBLEM_INDICATOR_TEST_ID = "sdk-usage-problem-indicator";
 
 describe("SdkUsageProblemDisplay", () => {
-  it("does not show an error when JWT is provided with a license", () => {
-    setup({
+  it("does not show an error when JWT is provided with a license", async () => {
+    await setup({
       authConfig: createMockSdkConfig(),
       hasEmbeddingFeature: true,
     });
@@ -74,7 +74,7 @@ describe("SdkUsageProblemDisplay", () => {
   });
 
   it("shows an error when JWT is used without a license", async () => {
-    setup({
+    await setup({
       authConfig: createMockSdkConfig(),
       hasEmbeddingFeature: false,
     });
@@ -103,7 +103,10 @@ describe("SdkUsageProblemDisplay", () => {
   it("shows a warning when API keys are used in localhost", async () => {
     expect(window.location.origin).toBe("http://localhost");
 
-    setup({ authConfig: createMockApiKeyConfig(), hasEmbeddingFeature: true });
+    await setup({
+      authConfig: createMockApiKeyConfig(),
+      hasEmbeddingFeature: true,
+    });
 
     await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
 
@@ -134,7 +137,7 @@ describe("SdkUsageProblemDisplay", () => {
       .spyOn(IsLocalhostModule, "getIsLocalhost")
       .mockImplementation(() => false);
 
-    setup({
+    await setup({
       authConfig: createMockApiKeyConfig(),
       hasEmbeddingFeature: true,
     });
@@ -156,7 +159,7 @@ describe("SdkUsageProblemDisplay", () => {
   // Caveat: we cannot detect this on non-localhost environments, as
   // CORS is disabled on /api/session/properties.
   it("shows an error when Embedding SDK is disabled on localhost", async () => {
-    setup({
+    await setup({
       authConfig: createMockSdkConfig(),
       hasEmbeddingFeature: true,
       isEmbeddingSdkEnabled: false,
@@ -183,7 +186,7 @@ describe("SdkUsageProblemDisplay", () => {
   });
 
   it("shows a warning when development mode is enabled", async () => {
-    setup({
+    await setup({
       authConfig: createMockSdkConfig(),
       isEmbeddingSdkEnabled: true,
       isDevelopmentMode: true,
