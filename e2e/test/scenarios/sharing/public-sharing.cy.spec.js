@@ -63,7 +63,7 @@ describe("scenarios > admin > settings > public sharing", () => {
     cy.visit("/admin/settings/public-sharing");
     cy.findByLabelText("Enable Public Sharing")
       .should("be.checked")
-      .click()
+      .click({ force: true })
       .should("not.be.checked");
   });
 
