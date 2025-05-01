@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
+import { object, ref, string } from "yup";
 
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
@@ -10,15 +10,15 @@ import type { InviteInfo, UserInfo } from "metabase-types/store";
 
 import { UserFieldGroup } from "./InviteUserForm.styled";
 
-const INVITE_USER_SCHEMA = Yup.object({
-  first_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
-  last_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
-  email: Yup.string()
+const INVITE_USER_SCHEMA = object({
+  first_name: string().nullable().default(null).max(100, Errors.maxLength),
+  last_name: string().nullable().default(null).max(100, Errors.maxLength),
+  email: string()
     .default("")
     .required(Errors.required)
     .email(Errors.email)
     .notOneOf(
-      [Yup.ref("$email")],
+      [ref("$email")],
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       t`must be different from the email address you used in setup`,
     ),

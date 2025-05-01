@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import type { AnySchema } from "yup";
-import * as Yup from "yup";
+import { object, string } from "yup";
 
 import { render, screen, waitFor } from "__support__/ui";
 import {
@@ -75,8 +75,8 @@ describe("FormRadioGroup", () => {
     // This is test used to test setting and unsetting the radio value, but userEvents 14
     // cause this to not work (we weren't able to unselect the radio). To simulate, we have
     // repaced the logic with a nonsense validation object to error after setting the value
-    const validationSchema = Yup.object({
-      column: Yup.string().email("This should error"),
+    const validationSchema = object({
+      column: string().email("This should error"),
     });
     setup({
       initialValues: validationSchema.getDefault(),

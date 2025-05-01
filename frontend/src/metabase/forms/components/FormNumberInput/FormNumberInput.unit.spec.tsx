@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import type { AnySchema } from "yup";
-import * as Yup from "yup";
+import { number, object } from "yup";
 
 import { render, screen, waitFor } from "__support__/ui";
 import {
@@ -95,8 +95,8 @@ describe("FormNumberInput", () => {
   });
 
   it("should show validation errors", async () => {
-    const validationSchema = Yup.object({
-      goal: Yup.number().default(undefined).required(requiredErrorMessage),
+    const validationSchema = object({
+      goal: number().default(undefined).required(requiredErrorMessage),
     });
     setup({ initialValues: validationSchema.getDefault(), validationSchema });
     expect(screen.queryByText("Required")).not.toBeInTheDocument();
@@ -111,11 +111,8 @@ describe("FormNumberInput", () => {
   });
 
   it("should show validation errors with nullable values", async () => {
-    const validationSchema = Yup.object({
-      goal: Yup.number()
-        .nullable()
-        .default(null)
-        .required(requiredErrorMessage),
+    const validationSchema = object({
+      goal: number().nullable().default(null).required(requiredErrorMessage),
     });
     setup({
       initialValues: validationSchema.getDefault(),

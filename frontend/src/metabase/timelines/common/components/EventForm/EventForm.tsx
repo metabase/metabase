@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
+import { boolean, number, object, string } from "yup";
 
 import Button from "metabase/core/components/Button/Button";
 import FormDateInput from "metabase/core/components/FormDateInput";
@@ -22,13 +22,13 @@ import FormArchiveButton from "../FormArchiveButton";
 
 import { EventFormFooter } from "./EventForm.styled";
 
-const EVENT_SCHEMA = Yup.object({
-  name: Yup.string().required(Errors.required).max(255, Errors.maxLength),
-  description: Yup.string().nullable().max(255, Errors.maxLength),
-  timestamp: Yup.string().required(Errors.required),
-  time_matters: Yup.boolean(),
-  icon: Yup.string().required(Errors.required),
-  timeline_id: Yup.number(),
+const EVENT_SCHEMA = object({
+  name: string().required(Errors.required).max(255, Errors.maxLength),
+  description: string().nullable().max(255, Errors.maxLength),
+  timestamp: string().required(Errors.required),
+  time_matters: boolean(),
+  icon: string().required(Errors.required),
+  timeline_id: number(),
 });
 
 export interface EventFormOwnProps {
