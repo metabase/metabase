@@ -57,7 +57,7 @@ export function getDashboardParameterSections(): ParameterSection[] {
       options: [
         {
           name: t`Boolean`,
-          type: "boolean",
+          type: "boolean/=",
           sectionId: "boolean",
         },
       ],
@@ -81,7 +81,7 @@ const defaultSectionToParameter = {
   number: "number/=",
   string: "string/=",
   date: "date/all-options",
-  boolean: "boolean",
+  boolean: "boolean/=",
 };
 
 export function getDefaultOptionForParameterSectionMap(): Record<

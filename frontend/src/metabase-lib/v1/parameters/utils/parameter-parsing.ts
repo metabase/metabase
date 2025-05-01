@@ -60,6 +60,10 @@ export function parseParameterValue(value: any, parameter: Parameter) {
     return parseParameterValueForNumber(coercedValue);
   }
 
+  if (type === "boolean") {
+    return deserializeBooleanParameterValue(coercedValue);
+  }
+
   return coercedValue;
 }
 

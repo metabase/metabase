@@ -25,7 +25,7 @@ export type DateParameterType =
   | "date/quarter-year"
   | "date/all-options";
 
-export type BooleanParameterType = "boolean";
+export type BooleanParameterType = "boolean/=";
 
 export type ParameterType =
   | StringParameterType
