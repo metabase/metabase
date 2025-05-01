@@ -57,14 +57,14 @@ export function getStaticPlaceholder(column: Lib.ColumnMetadata) {
 
 export function getSearchPlaceholder(
   column: Lib.ColumnMetadata,
-  searchColumName: string,
+  searchColumnName: string,
 ) {
   const isID = Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
 
   if (isID) {
-    return t`Search by ${searchColumName} or enter an ID`;
+    return t`Search by ${searchColumnName} or enter an ID`;
   } else {
-    return t`Search by ${searchColumName}`;
+    return t`Search by ${searchColumnName}`;
   }
 }
 

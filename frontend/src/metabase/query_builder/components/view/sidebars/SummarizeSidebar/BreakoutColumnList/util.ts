@@ -1,3 +1,4 @@
+import type { ContentTranslationFunction } from "metabase/i18n/types";
 import * as Lib from "metabase-lib";
 
 import type { ListItem, ListSection } from "./types";
@@ -6,9 +7,10 @@ export function getBreakoutListItem(
   query: Lib.Query,
   stageIndex: number,
   breakout: Lib.BreakoutClause,
+  tc?: ContentTranslationFunction,
 ): ListItem {
   const column = Lib.breakoutColumn(query, stageIndex, breakout);
-  const columnInfo = Lib.displayInfo(query, stageIndex, column);
+  const columnInfo = Lib.displayInfo(query, stageIndex, column, tc);
   return { ...columnInfo, column, breakout };
 }
 
@@ -17,8 +19,10 @@ function getColumnListItems(
   stageIndex: number,
   breakouts: Lib.BreakoutClause[],
   column: Lib.ColumnMetadata,
+  tc?: ContentTranslationFunction,
 ): ListItem[] {
-  const columnInfo = Lib.displayInfo(query, stageIndex, column);
+  const columnInfo = Lib.displayInfo(query, stageIndex, column, tc);
+
   const { breakoutPositions = [] } = columnInfo;
   if (breakoutPositions.length === 0) {
     return [{ ...columnInfo, column }];
@@ -39,6 +43,7 @@ export function getColumnSections(
   stageIndex: number,
   columns: Lib.ColumnMetadata[],
   searchQuery: string,
+  tc: ContentTranslationFunction,
 ): ListSection[] {
   const breakouts = Lib.breakouts(query, stageIndex);
   const formattedSearchQuery = searchQuery.trim().toLowerCase();
@@ -46,7 +51,12 @@ export function getColumnSections(
   const filteredColumns =
     formattedSearchQuery.length > 0
       ? columns.filter((column) => {
-          const { displayName } = Lib.displayInfo(query, stageIndex, column);
+          const { displayName } = Lib.displayInfo(
+            query,
+            stageIndex,
+            column,
+            tc,
+          );
           return displayName.toLowerCase().includes(formattedSearchQuery);
         })
       : columns;
@@ -55,7 +65,7 @@ export function getColumnSections(
     const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
     const items = Lib.getColumnsFromColumnGroup(group).flatMap((column) =>
-      getColumnListItems(query, stageIndex, breakouts, column),
+      getColumnListItems(query, stageIndex, breakouts, column, tc),
     );
 
     return {

@@ -8,6 +8,7 @@ import {
   QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import AccordionList from "metabase/core/components/AccordionList";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
@@ -72,6 +73,7 @@ export function FilterColumnPicker({
   withColumnGroupIcon = true,
   withColumnItemIcon = true,
 }: FilterColumnPickerProps) {
+  const tc = useTranslateContent();
   const sections = useMemo(
     () =>
       getSections(
@@ -79,8 +81,9 @@ export function FilterColumnPicker({
         stageIndexes,
         withColumnGroupIcon,
         withCustomExpression,
+        tc,
       ),
-    [query, stageIndexes, withColumnGroupIcon, withCustomExpression],
+    [query, stageIndexes, withColumnGroupIcon, withCustomExpression, tc],
   );
 
   const handleSectionChange = (section: Section) => {
@@ -129,6 +132,7 @@ function getSections(
   stageIndexes: number[],
   withColumnGroupIcon: boolean,
   withCustomExpression: boolean,
+  tc: (msgid: string) => string,
 ) {
   const withMultipleStages = stageIndexes.length > 1;
   const columnSections = stageIndexes.flatMap((stageIndex) => {
@@ -141,13 +145,14 @@ function getSections(
         const columnInfo = Lib.displayInfo(query, stageIndex, column);
         return {
           name: columnInfo.name,
-          displayName: columnInfo.displayName,
+          displayName: tc(columnInfo.displayName),
           filterPositions: columnInfo.filterPositions,
           column,
           query,
           stageIndex,
         };
       });
+
       const segments = groupInfo.isSourceTable
         ? Lib.availableSegments(query, stageIndex)
         : [];
@@ -155,7 +160,7 @@ function getSections(
         const segmentInfo = Lib.displayInfo(query, stageIndex, segment);
         return {
           name: segmentInfo.name,
-          displayName: segmentInfo.displayName,
+          displayName: tc(segmentInfo.displayName),
           filterPositions: segmentInfo.filterPositions,
           segment,
           stageIndex,
