@@ -22,6 +22,7 @@ import { setupMockJwtEndpoints } from "./mocks/sso";
 const defaultAuthConfig = createMockSdkConfig();
 
 jest.mock("../config", () => ({
+  ...jest.requireActual("../config"),
   getEmbeddingSdkVersion: jest.fn(),
 }));
 

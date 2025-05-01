@@ -8,12 +8,17 @@ import {
 
 import { useSetting } from "metabase/common/hooks";
 import { setLocaleHeader } from "metabase/lib/api";
-import { loadLocalization, setUserLocale } from "metabase/lib/i18n";
+import {
+  loadLazyLocalization,
+  loadLocalization,
+  setUserLocale,
+} from "metabase/lib/i18n";
 import { DatesProvider } from "metabase/ui/components/theme/DatesProvider/DatesProvider";
 
 interface LocaleProviderProps {
   locale?: string | null;
   shouldWaitForLocale?: boolean;
+  lazyLoadDateLocales?: (locale: string) => Promise<void>;
 }
 
 /** context for the locale used in the sdk and in public/static from the #locale parameter  */
@@ -26,6 +31,7 @@ export const LocaleProvider = ({
   children,
   locale,
   shouldWaitForLocale,
+  lazyLoadDateLocales,
 }: PropsWithChildren<LocaleProviderProps>) => {
   const shouldLoadLocale = Boolean(locale);
   const [isLocaleLoading, setIsLocaleLoading] = useState(shouldLoadLocale);
@@ -41,7 +47,12 @@ export const LocaleProvider = ({
       );
 
       setLocaleHeader(localeToLoad);
-      loadLocalization(localeToLoad)
+
+      const loadLocalizationPromise = lazyLoadDateLocales
+        ? loadLazyLocalization(localeToLoad, lazyLoadDateLocales)
+        : loadLocalization(localeToLoad);
+
+      loadLocalizationPromise
         .then((translatedObject) => {
           setIsLocaleLoading(false);
           setUserLocale(translatedObject);
@@ -51,7 +62,7 @@ export const LocaleProvider = ({
           setIsLocaleLoading(false);
         });
     }
-  }, [locale, shouldLoadLocale, availableLocalesData]);
+  }, [locale, shouldLoadLocale, availableLocalesData, lazyLoadDateLocales]);
 
   if (shouldWaitForLocale && isLocaleLoading) {
     return null;
