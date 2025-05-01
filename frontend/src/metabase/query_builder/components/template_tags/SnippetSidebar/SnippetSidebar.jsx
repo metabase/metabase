@@ -26,7 +26,7 @@ import { SnippetRow } from "../SnippetRow";
 import S from "./SnippetSidebar.module.css";
 import { SnippetSidebarEmptyState } from "./SnippetSidebarEmptyState";
 
-const MIN_SNIPPETS_FOR_SEARCH = 1;
+const MIN_SNIPPETS_FOR_SEARCH = 15;
 
 class SnippetSidebarInner extends React.Component {
   state = {
