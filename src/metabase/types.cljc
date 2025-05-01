@@ -245,8 +245,6 @@
 (derive :type/DeletionDate :type/DeletionTemporal)
 (derive :type/DeletionDate :type/Date)
 
-(descendants :Semantic/*)
-
 (derive :type/UpdatedTemporal :Semantic/*)
 (derive :type/UpdatedTimestamp :type/UpdatedTemporal)
 (derive :type/UpdatedTimestamp :type/DateTime)
