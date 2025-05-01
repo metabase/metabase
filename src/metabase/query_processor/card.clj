@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.cache.core :as cache]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -11,7 +12,6 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.cache-config :as cache-config]
    [metabase.models.query :as query]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor :as qp]
@@ -39,7 +39,7 @@
   into consideration."
   metabase-enterprise.cache.strategies
   [card _dashboard-id]
-  (cache-config/card-strategy (cache-config/root-strategy) card))
+  (cache/card-strategy (cache/root-strategy) card))
 
 (defn- enrich-strategy [strategy query]
   (case (:type strategy)
@@ -301,6 +301,7 @@
         info       (cond-> {:executed-by            api/*current-user-id*
                             :context                context
                             :card-id                card-id
+                            :card-entity-id         (:entity_id card)
                             :card-name              (:name card)
                             :dashboard-id           dashboard-id
                             :visualization-settings merged-viz}

@@ -1,7 +1,7 @@
 (ns metabase.sso.ldap
   (:require
    [clj-ldap.client :as ldap]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [metabase.sso.ldap.default-implementation :as default-impl]
    [metabase.sso.settings :as sso.settings]
    [metabase.util :as u]

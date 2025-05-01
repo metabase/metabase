@@ -482,9 +482,8 @@ describe("scenarios > question > nested", () => {
     H.selectFilterOperator("Equal to");
     H.popover().within(() => {
       cy.findByLabelText("Filter value").type("4");
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
 
     cy.findAllByTestId("cell-data")
       .should("contain", "Murray, Watsica and Wunsch")
@@ -524,9 +523,8 @@ describe("scenarios > question > nested", () => {
     H.selectFilterOperator("Equal to");
     H.popover().within(() => {
       cy.findByLabelText("Filter value").type("5");
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     cy.wait("@dataset");
 
     H.queryBuilderFiltersPanel().findByText("Count is equal to 5");

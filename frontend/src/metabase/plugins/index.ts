@@ -179,7 +179,9 @@ export const PLUGIN_ADMIN_USER_FORM_FIELDS = {
 };
 
 // menu items in people management tab
-export const PLUGIN_ADMIN_USER_MENU_ITEMS = [];
+export const PLUGIN_ADMIN_USER_MENU_ITEMS = [] as Array<
+  (user: User) => { title: string; link: string }
+>;
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 
 // auth settings
@@ -290,7 +292,9 @@ export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
 
 const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
   type: null,
-  name: t`Regular`,
+  get name() {
+    return t`Regular`;
+  },
   icon: "folder",
 };
 

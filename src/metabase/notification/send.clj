@@ -4,10 +4,10 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
    [metabase.config :as config]
-   [metabase.models.setting :as setting]
-   [metabase.models.task-history :as task-history]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.settings.core :as setting]
+   [metabase.task-history.core :as task-history]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -179,7 +179,7 @@
                             (channel-send-retrying! id payload_type handler message)))
                         (catch Exception e
                           (log/warnf e "Error sending to channel %s" (handler->channel-name handler))))))))
-              (do-after-notification-sent notification-info notification-payload)
+              (do-after-notification-sent hydrated-notification notification-payload)
               (log/info "Sent successfully")
               (prometheus/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
         (catch Exception e

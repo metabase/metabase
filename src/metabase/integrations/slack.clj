@@ -6,7 +6,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.events :as events]
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru tru]]

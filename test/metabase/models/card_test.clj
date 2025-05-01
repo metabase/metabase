@@ -114,20 +114,25 @@
   (mt/with-actions-enabled
     (testing "when updating a model to include any clauses will disable implicit actions if they exist\n"
       (testing "happy paths\n"
-        (let [query (mt/mbql-query users)]
-          (doseq [query-change [{:limit       1}
-                                {:expressions {"id + 1" [:+ (mt/$ids $users.id) 1]}}
-                                {:filter      [:> (mt/$ids $users.id) 2]}
-                                {:breakout    [(mt/$ids !month.users.last_login)]}
-                                {:aggregation [[:count]]}
-                                {:joins       [{:fields       :all
-                                                :source-table (mt/id :checkins)
-                                                :condition    [:= (mt/$ids $users.id) (mt/$ids $checkins.user_id)]
-                                                :alias        "People"}]}
-                                {:order-by    [[(mt/$ids $users.id) :asc]]}
-                                {:fields      [(mt/$ids $users.id)]}]]
+        (let [base (mt/mbql-query users)]
+          (doseq [query-change [{:limit              1}
+                                {:expressions        {"id + 1" [:+ (mt/$ids $users.id) 1]}
+                                 :expression-idents  {"id + 1" (lib/random-ident)}}
+                                {:filter             [:> (mt/$ids $users.id) 2]}
+                                {:breakout           [(mt/$ids !month.users.last_login)]
+                                 :breakout-idents    {0 (lib/random-ident)}}
+                                {:aggregation        [[:count]]
+                                 :aggregation-idents {0 (lib/random-ident)}}
+                                {:joins              [{:fields       :all
+                                                       :source-table (mt/id :checkins)
+                                                       :condition    [:= (mt/$ids $users.id) (mt/$ids $checkins.user_id)]
+                                                       :ident        (lib/random-ident)
+                                                       :alias        "People"}]}
+                                {:order-by           [[(mt/$ids $users.id) :asc]]}
+                                {:fields             [(mt/$ids $users.id)]}]]
             (testing (format "when adding %s to the query" (first (keys query-change)))
-              (mt/with-actions [{model-id :id}           {:type :model, :dataset_query query}
+              (mt/with-actions [{model-id :id
+                                 query :dataset_query}   {:type :model, :dataset_query base}
                                 {action-id-1 :action-id} {:type :implicit
                                                           :kind "row/create"}
                                 {action-id-2 :action-id} {:type :implicit
@@ -280,9 +285,13 @@
              (is (= nil
                     metadata)))))
       (testing "Shouldn't remove verified result metadata from native queries (#37009)"
-        (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query checkins))]
-          (f (cond-> {:dataset_query (mt/native-query {:native "SELECT * FROM CHECKINS"})
-                      :result_metadata metadata}
+        (let [card-eid (u/generate-nano-id)
+              metadata (-> (mt/mbql-query checkins)
+                           qp.preprocess/query->expected-cols
+                           (mt/metadata->native-form card-eid))]
+          (f (cond-> {:dataset_query   (mt/native-query {:native "SELECT * FROM CHECKINS"})
+                      :result_metadata metadata
+                      :entity_id       card-eid}
                (= creating-or-updating "updating")
                (assoc :verified-result-metadata? true))
              (fn [new-metadata]
@@ -502,11 +511,11 @@
 
 (deftest identity-hash-test
   (testing "Card hashes are composed of the name and the collection's hash"
-    (let [now #t "2022-09-01T12:34:56"]
+    (let [now #t "2022-09-01T12:34:56Z"]
       (mt/with-temp [:model/Collection  coll {:name "field-db" :location "/" :created_at now}
                      :model/Card card {:name "the card" :collection_id (:id coll) :created_at now}]
         (is (= "5199edf0"
-               (serdes/raw-hash ["the card" (serdes/identity-hash coll) now])
+               (serdes/raw-hash ["the card" (serdes/identity-hash coll) (:created_at card)])
                (serdes/identity-hash card)))))))
 
 (deftest parameter-card-test
@@ -1069,6 +1078,16 @@
                     {:alias "another_join"
                      :ident (str "join_" eid "@1__another_join")}]}))
 
+(defn- store-bare-query!
+  "`:idents` on the query are populated on initial insert.
+
+  This does a **raw** `t2/update!` to remove them again for testing."
+  ([card-id query]
+   (store-bare-query! card-id query nil))
+  ([card-id query changes]
+   (t2/update! :report_card card-id (merge {:dataset_query ((:in mi/transform-metabase-query) query)}
+                                           changes))))
+
 (deftest ^:sequential idents-populated-on-insert
   (mt/with-temp [:model/Card {eid   :entity_id
                               query :dataset_query} {:name          "A card"
@@ -1087,8 +1106,7 @@
 (deftest ^:sequential entity-id-used-for-idents-if-missing-test
   (mt/with-temp [:model/Card {id :id} {:name          "A card"
                                        :dataset_query (bare-query)}]
-    ;; :idents are populated on initial insert; update to remove them. (Update does not populate them like insert.)
-    (t2/update! :model/Card id {:dataset_query (bare-query)})
+    (store-bare-query! id (bare-query))
     ;; Can't use the one from `with-temp` since it came before the above edit.
     (let [{eid   :entity_id
            query :dataset_query} (t2/select-one :model/Card :id id)]
@@ -1101,10 +1119,7 @@
 (deftest ^:sequential fall-back-to-hashing-entity-id-test
   (mt/with-temp [:model/Card {id :id} {:name          "A card"
                                        :dataset_query (bare-query)}]
-    ;; :idents are populated on initial insert; update to remove them. (Update does not populate them like insert.)
-    ;; Also remove the generated :entity_id.
-    (t2/update! :model/Card id {:dataset_query (bare-query)
-                                :entity_id     nil})
+    (store-bare-query! id (bare-query) {:entity_id nil})
     ;; Can't use the one from `with-temp` since it came before the above edit.
     (let [{eid   :entity_id
            query :dataset_query} (t2/select-one :model/Card :id id)]
@@ -1118,10 +1133,7 @@
 (deftest ^:sequential e2e-entity-id-and-idents-test
   (mt/with-temp [:model/Card {id :id} {:name          "A card"
                                        :dataset_query (bare-query)}]
-    ;; :idents are populated on initial insert; update to remove them. (Update does not populate them like insert.)
-    ;; Also remove the generated :entity_id.
-    (t2/update! :model/Card id {:dataset_query (bare-query)
-                                :entity_id     nil})
+    (store-bare-query! id (bare-query) {:entity_id nil})
     ;; Can't use the one from `with-temp` since it came before the above edit.
     (let [{eid   :entity_id
            query :dataset_query} (t2/select-one :model/Card :id id)]
@@ -1225,7 +1237,7 @@
 
       (testing "with :idents removed from one card"
         ;; Strip the idents off `id1`. update! does not populate idents like insert! does.
-        (t2/update! :model/Card id1 {:dataset_query (bare-query)})
+        (store-bare-query! id1 (bare-query))
         (let [{q1 :dataset_query} (t2/select-one :model/Card :id id1)
               {q2 :dataset_query} (t2/select-one :model/Card :id id2)]
           (is (=? idents-backfilled q1))
@@ -1233,7 +1245,7 @@
 
       (testing "with :idents removed from both cards"
         ;; Strip the idents off `id2` as well.
-        (t2/update! :model/Card id2 {:dataset_query (bare-query)})
+        (store-bare-query! id2 (bare-query))
         (let [{q1 :dataset_query} (t2/select-one :model/Card :id id1)
               {q2 :dataset_query} (t2/select-one :model/Card :id id2)]
           ;; Using diff again: implies that they're different, and that both match `idents-backfilled`.
@@ -1259,7 +1271,7 @@
 
         (testing "with :idents backfilled"
           ;; Strip the idents off `id`. update! does not populate idents like insert! does.
-          (t2/update! :model/Card id {:dataset_query query})
+          (store-bare-query! id query)
           (let [query (->> (t2/select-one :model/Card :id id) :dataset_query :query)]
             (is (=? #"aggregation_[A-Za-z0-9_-]{21}@1__0" (get-in query [:aggregation-idents 0])))
             (is (=? #"aggregation_[A-Za-z0-9_-]{21}@0__0" (get-in query [:source-query :aggregation-idents 0])))
@@ -1284,7 +1296,7 @@
 
         (testing "with :idents backfilled"
           ;; Strip the idents off `id`. update! does not populate idents like insert! does.
-          (t2/update! :model/Card id {:dataset_query query})
+          (store-bare-query! id query)
           (let [{ident0 0
                  ident1 1} (->> (t2/select-one :model/Card :id id) :dataset_query :query :aggregation-idents)]
             (is (=? #"aggregation_[A-Za-z0-9_-]{21}@0__0" ident0))
@@ -1312,7 +1324,7 @@
 
         (testing "with :idents backfilled"
           ;; Strip the idents off `id`. update! does not populate idents like insert! does.
-          (t2/update! :model/Card id {:dataset_query query})
+          (store-bare-query! id query)
           (let [{{agg0 0} :aggregation-idents
                  {brk0 0
                   brk1 1} :breakout-idents} (->> (t2/select-one :model/Card :id id) :dataset_query :query)]
@@ -1350,8 +1362,7 @@
                     (data/diff original modified)))))
 
         (testing "with :idents backfilled"
-          ;; Strip the idents off `id`. update! does not populate idents like insert! does.
-          (t2/update! :model/Card id {:dataset_query base})
+          (store-bare-query! id base)
           (let [original  (:dataset_query (t2/select-one :model/Card :id id))
                 modified  (touch original)
                 new-ident (get-in modified [:query :aggregation-idents 1])
@@ -1403,7 +1414,7 @@
 
         (testing "with :idents backfilled"
           ;; Strip the idents off `id`. update! does not populate idents like insert! does.
-          (t2/update! :model/Card id {:dataset_query base})
+          (store-bare-query! id base)
           (let [original   (:dataset_query (t2/select-one :model/Card :id id))
                 modified   (touch original)
                 _          (t2/update! :model/Card id {:dataset_query modified})
@@ -1456,7 +1467,7 @@
 
         (testing "with :idents backfilled"
           ;; Strip the idents off `id`. update! does not populate idents like insert! does.
-          (t2/update! :model/Card id {:dataset_query base})
+          (store-bare-query! id base)
           (let [original (:dataset_query (t2/select-one :model/Card :id id))
                 modified (touch original)
                 _        (t2/update! :model/Card id {:dataset_query modified})

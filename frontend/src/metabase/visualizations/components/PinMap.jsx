@@ -254,7 +254,7 @@ export default class PinMap extends Component {
               )}
               onClick={this.updateSettings}
             >
-              {t`Save as default view`}
+              {t`Set as default view`}
             </div>
           ) : null}
           {!isDashboard &&

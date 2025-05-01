@@ -16,22 +16,40 @@ export function useIsParameterPanelSticky({
       return;
     }
 
+    // Create a sentinel element to place right before our sticky element
+    const sentinel = document.createElement("div");
+    sentinel.style.height = "1px";
+    sentinel.style.width = "100%";
+    sentinel.style.position = "absolute";
+    sentinel.style.top = "0";
+    sentinel.style.visibility = "hidden";
+
+    // Insert sentinel before the parent of our sticky element
+    const parent = parameterPanelRef.current.parentElement;
+    if (parent) {
+      parent.insertBefore(sentinel, parameterPanelRef.current);
+    }
+
     const settings: IntersectionObserverInit = {
-      threshold: 1,
+      threshold: 0, // We only need to know when sentinel is out of view
     };
+
     const observer = new IntersectionObserver(([entry]) => {
       setIsStickyStateChanging(true);
 
-      setIsSticky(entry.intersectionRatio < 1);
+      // If sentinel is not intersecting viewport, sticky element is stuck
+      setIsSticky(!entry.isIntersecting);
 
       requestAnimationFrame(() => {
         setIsStickyStateChanging(false);
       });
     }, settings);
-    observer.observe(parameterPanelRef.current);
+
+    observer.observe(sentinel);
 
     return () => {
       observer.disconnect();
+      sentinel.remove();
     };
   }, [parameterPanelRef]);
 

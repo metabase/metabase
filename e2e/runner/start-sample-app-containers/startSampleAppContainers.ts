@@ -6,7 +6,9 @@ import {
   copyExampleEnvFile,
   copyLocalEmbeddingSdkPackage,
   copyLocalMetabaseJar,
+  copyShoppyMetabaseAppDBDump,
 } from "../sample-apps-shared/helpers/prepare-app";
+import { setupAppCleanup } from "../sample-apps-shared/helpers/setup-app-cleanup";
 import { startContainers } from "../sample-apps-shared/helpers/start-containers";
 import type {
   EmbeddingSdkVersion,
@@ -48,12 +50,18 @@ export async function startSampleAppContainers(
       branch,
     });
 
+    setupAppCleanup({ rootPath, env, dockerDownCommand });
+
     copyExampleEnvFile({ rootPath, dockerEnvExamplePath, dockerEnvPath });
 
     copyLocalMetabaseJar(rootPath);
 
     if (embeddingSdkVersion === "local") {
       copyLocalEmbeddingSdkPackage(rootPath);
+    }
+
+    if (testSuite === "shoppy-e2e") {
+      copyShoppyMetabaseAppDBDump(rootPath);
     }
 
     await startContainers({

@@ -476,3 +476,7 @@
   [_ ^ResultSet rs _ ^Integer i]
   (fn []
     (sqlite-handle-timestamp rs i)))
+
+(defmethod sql.qp/->integer :sqlite
+  [driver value]
+  (sql.qp/->integer-with-round driver value))

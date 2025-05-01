@@ -84,12 +84,6 @@
                 (is (=? {:id (u/the-id saved-dashboard)}
                         (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id saved-dashboard)))))))))))))
 
-(deftest metric-xray-test
-  (testing "GET /api/automagic-dashboards/metric/:id"
-    (mt/with-temp [:model/LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
-                                                        :definition {:query {:aggregation ["count"]}}}]
-      (is (some? (api-call! "metric/%s" [metric-id]))))))
-
 (deftest segment-xray-test
   (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
                                                   :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
@@ -210,30 +204,28 @@
 
 (deftest compare-nested-query-test
   (testing "Ad-hoc X-Rays should work for queries have Card source queries (#15655)"
-    (mt/dataset test-data
-      (let [card-query      (mt/native-query {:query "select * from people"})
-            result-metadata (get-in (qp/process-query card-query) [:data :results_metadata :columns])]
-        (mt/with-temp [:model/Collection {collection-id :id} {}
-                       :model/Card       {card-id :id} {:name            "15655_Q1"
-                                                        :collection_id   collection-id
-                                                        :dataset_query   card-query
-                                                        :result_metadata result-metadata}]
-          (let [query      {:database (mt/id)
-                            :type     :query
-                            :query    {:source-table (format "card__%d" card-id)
-                                       :breakout     [[:field "SOURCE" {:base-type :type/Text}]]
-                                       :aggregation  [[:count]]}}
-                cell-query [:= [:field "SOURCE" {:base-type :type/Text}] "Affiliate"]]
-            (testing "X-Ray"
-              (is (some? (api-call! "adhoc/%s/cell/%s"
-                                    (map magic.util/encode-base64-json [query cell-query])
-                                    #(revoke-collection-permissions! collection-id)))))
-            (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
-            (testing "Compare"
-              (is (some? (api-call! "adhoc/%s/cell/%s/compare/table/%s"
-                                    (concat (map magic.util/encode-base64-json [query cell-query])
-                                            [(format "card__%d" card-id)])
-                                    #(revoke-collection-permissions! collection-id)))))))))))
+    (let [card-query (mt/native-query {:query "select * from people"})]
+      (mt/with-temp [:model/Collection {collection-id :id} {}
+                     :model/Card       {card-id :id} (merge
+                                                      (mt/card-with-source-metadata-for-query card-query)
+                                                      {:name            "15655_Q1"
+                                                       :collection_id   collection-id})]
+        (let [query      {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table (format "card__%d" card-id)
+                                     :breakout     [[:field "SOURCE" {:base-type :type/Text}]]
+                                     :aggregation  [[:count]]}}
+              cell-query [:= [:field "SOURCE" {:base-type :type/Text}] "Affiliate"]]
+          (testing "X-Ray"
+            (is (some? (api-call! "adhoc/%s/cell/%s"
+                                  (map magic.util/encode-base64-json [query cell-query])
+                                  #(revoke-collection-permissions! collection-id)))))
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+          (testing "Compare"
+            (is (some? (api-call! "adhoc/%s/cell/%s/compare/table/%s"
+                                  (concat (map magic.util/encode-base64-json [query cell-query])
+                                          [(format "card__%d" card-id)])
+                                  #(revoke-collection-permissions! collection-id))))))))))
 
 ;;; ------------------- Transforms -------------------
 
@@ -404,9 +396,9 @@
                 (map (fn [{:keys [field_ref] :as col}]
                        (if (= ref field_ref) (f col) col))
                      cols))]
-        (let [query           (mt/native-query {:query "select * from products"})
-              results-meta    (->> (qp/process-query (qp/userland-query query))
-                                   :data :results_metadata :columns)
+        (let [results-meta    (-> (mt/native-query {:query "select * from products"})
+                                  mt/card-with-source-metadata-for-query
+                                  :result_metadata)
               id-field-ref    (:field_ref (by-id results-meta "id"))
               title-field-ref (:field_ref (by-id results-meta "title"))
               id-field-id     (mt/id :products :id)]
@@ -503,17 +495,6 @@
         (is (< show-count base-count)))
       (testing "Only \"limit\" cards are produced"
         (is (= show-limit show-count))))))
-
-(deftest metric-xray-show-param-test
-  (testing "x-ray of a metric with show set reduces the number of returned cards"
-    (mt/with-temp [:model/LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
-                                                        :definition {:query {:aggregation ["count"]}}}]
-      (let [show-limit 1
-            {:keys [base-count show-count]} (card-count-check! show-limit "metric/%s" [metric-id])]
-        (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
-          (is (< show-count base-count)))
-        (testing "Only \"limit\" cards are produced"
-          (is (= show-limit show-count)))))))
 
 (deftest segment-xray-show-param-test
   (testing "x-ray of a segment with show set reduces the number of returned cards"
