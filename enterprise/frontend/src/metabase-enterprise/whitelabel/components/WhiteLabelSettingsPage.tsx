@@ -1,5 +1,4 @@
 import { push } from "react-router-redux";
-import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
@@ -17,25 +16,18 @@ import { MetabaseLinksToggleDescription } from "./MetabaseLinksToggleDescription
 import { MetabotToggleWidget } from "./MetabotToggleWidget";
 
 export function WhiteLabelSettingsPage({
-  tabName,
+  tab,
 }: {
-  tabName?: "branding" | "conceal-metabase";
+  tab?: "branding" | "conceal-metabase";
 }) {
-  const location = useLocation();
   const dispatch = useDispatch();
-
-  const tab =
-    tabName ??
-    (location?.pathname?.split("/").pop() === "conceal-metabase"
-      ? "conceal-metabase"
-      : "branding");
 
   const handleTabChange = (newTab: "branding" | "conceal-metabase") => {
     dispatch(push(`/admin/settings/whitelabel/${newTab}`));
   };
 
   return (
-    <Tabs mx="md" value={tab} maw="80rem">
+    <Tabs mx="md" value={tab ?? "branding"} maw="80rem">
       <Tabs.List>
         <Tabs.Tab value="branding" onClick={() => handleTabChange("branding")}>
           {t`Branding`}

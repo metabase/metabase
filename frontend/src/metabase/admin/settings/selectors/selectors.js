@@ -355,17 +355,17 @@ export const ADMIN_SETTINGS_SECTIONS = {
     name: t`Appearance`,
     getHidden: (settings) => !settings["token-features"]?.whitelabel,
     order: 134,
-    component: () => <AppearanceSettingsPage />,
+    component: () => <AppearanceSettingsPage tab="branding" />,
     settings: [],
   },
   "whitelabel/branding": {
     name: t`Appearance`,
-    component: () => <AppearanceSettingsPage />,
+    component: () => <AppearanceSettingsPage tab="branding" />,
     settings: [],
   },
   "whitelabel/conceal-metabase": {
     name: t`Appearance`,
-    component: () => <AppearanceSettingsPage />,
+    component: () => <AppearanceSettingsPage tab="conceal-metabase" />,
     settings: [],
   },
   cloud: {

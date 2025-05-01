@@ -26,7 +26,7 @@ const setup = async ({
 
   renderWithProviders(
     <>
-      <WhiteLabelSettingsPage tabName={tab} />
+      <WhiteLabelSettingsPage tab={tab} />
       <UndoListing />
     </>,
   );
