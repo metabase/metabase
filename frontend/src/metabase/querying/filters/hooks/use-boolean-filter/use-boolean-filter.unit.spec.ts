@@ -12,7 +12,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import type { OptionType } from "./types";
-import { useBooleanOptionFilter } from "./use-boolean-option-filter";
+import { useBooleanFilter } from "./use-boolean-filter";
 
 interface CreateFilterCase {
   optionType: OptionType;
@@ -65,7 +65,7 @@ describe("useBooleanOptionFilter", () => {
     'should allow to create a filter for "$optionType"',
     ({ optionType, expectedDisplayName }) => {
       const { result } = renderHook(() =>
-        useBooleanOptionFilter({
+        useBooleanFilter({
           query: defaultQuery,
           stageIndex,
           column,
@@ -113,7 +113,7 @@ describe("useBooleanOptionFilter", () => {
       const [filter] = Lib.filters(query, stageIndex);
 
       const { result } = renderHook(() =>
-        useBooleanOptionFilter({
+        useBooleanFilter({
           query: defaultQuery,
           stageIndex,
           column,
