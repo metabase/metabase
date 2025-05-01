@@ -150,6 +150,24 @@ describe("scenarios > question > snippets", () => {
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.get("@results").contains(/christ/i);
   });
+
+  it("should be possible to search snippets", () => {
+    for (let i = 0; i < 16; i++) {
+      H.createSnippet({ name: `snippet ${i}`, content: `select ${i}` });
+    }
+
+    H.startNewNativeQuestion();
+    cy.icon("snippet").click();
+
+    H.rightSidebar().icon("search").click();
+    H.rightSidebar().findByRole("textbox").type("snippet 14");
+
+    H.rightSidebar().findByText("snippet 14").should("be.visible");
+    H.rightSidebar().findByText("snippet 2").should("not.exist");
+
+    H.rightSidebar().icon("close").click();
+    H.rightSidebar().findByText("snippet 2").should("be.visible");
+  });
 });
 
 describe("scenarios > question > snippets (OSS)", { tags: "@OSS" }, () => {
