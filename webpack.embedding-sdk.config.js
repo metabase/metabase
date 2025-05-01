@@ -5,6 +5,7 @@ const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const webpack = require("webpack");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
+const { RsdoctorWebpackPlugin } = require("@rsdoctor/webpack-plugin");
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 
 const mainConfig = require("./webpack.config");
@@ -38,7 +39,7 @@ const BABEL_CONFIG = {
 
 const CSS_CONFIG = {
   modules: {
-    auto: filename =>
+    auto: (filename) =>
       !filename.includes("node_modules") && !filename.includes("vendor.css"),
     localIdentName: isDevMode
       ? "[name]__[local]___[hash:base64:5]"
@@ -49,7 +50,7 @@ const CSS_CONFIG = {
 
 const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
 
-module.exports = env => {
+module.exports = (env) => {
   const config = {
     ...mainConfig,
 
@@ -177,11 +178,7 @@ module.exports = env => {
         }),
       // we don't want to fail the build on type errors, we have a dedicated type check step for that
       new TypescriptConvertErrorsToWarnings(),
-      shouldAnalyzeBundles &&
-        new BundleAnalyzerPlugin({
-          analyzerMode: "static",
-          reportFilename: BUILD_PATH + "/dist/report.html",
-        }),
+      shouldAnalyzeBundles && new RsdoctorWebpackPlugin(),
     ].filter(Boolean),
   };
 
@@ -207,8 +204,8 @@ class TypescriptConvertErrorsToWarnings {
   apply(compiler) {
     const hooks = ForkTsCheckerWebpackPlugin.getCompilerHooks(compiler);
 
-    hooks.issues.tap("TypeScriptWarnOnlyWebpackPlugin", issues =>
-      issues.map(issue => ({ ...issue, severity: "warning" })),
+    hooks.issues.tap("TypeScriptWarnOnlyWebpackPlugin", (issues) =>
+      issues.map((issue) => ({ ...issue, severity: "warning" })),
     );
   }
 }
