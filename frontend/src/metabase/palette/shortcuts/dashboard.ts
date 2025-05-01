@@ -21,11 +21,21 @@ export const dashboardShortcuts = {
       return t`When editing`;
     },
   },
+  "dashboard-toggle-add-question-sidepanel": {
+    get name() {
+      return t`Open Add Question Side Sheet`;
+    },
+    shortcut: ["a"],
+    shortcutGroup: "dashboard",
+    get shortcutContext() {
+      return t`When editing`;
+    },
+  },
   "dashboard-add-notebook-question": {
     get name() {
       return t`Add Notebook Question`;
     },
-    shortcut: ["a q"],
+    shortcut: ["q"],
     shortcutGroup: "dashboard",
     get shortcutContext() {
       return t`When editing`;
@@ -35,7 +45,7 @@ export const dashboardShortcuts = {
     get name() {
       return t`Add Native Question`;
     },
-    shortcut: ["a n"],
+    shortcut: ["n"],
     shortcutGroup: "dashboard",
     get shortcutContext() {
       return t`When editing`;

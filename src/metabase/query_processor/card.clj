@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.cache.core :as cache]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -40,7 +41,7 @@
   into consideration."
   metabase-enterprise.cache.strategies
   [card _dashboard-id]
-  (cache-config/card-strategy (cache-config/root-strategy) card))
+  (cache/card-strategy (cache/root-strategy) card))
 
 (defn- enrich-strategy [strategy query]
   (case (:type strategy)

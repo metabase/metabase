@@ -4,7 +4,7 @@ import { goBack } from "react-router-redux";
 import { t } from "ttag";
 
 import { useGetTaskQuery } from "metabase/api";
-import { CodeBlock } from "metabase/components/CodeBlock";
+import { CodeEditor } from "metabase/components/CodeEditor";
 import { CopyButton } from "metabase/components/CopyButton";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
@@ -46,8 +46,7 @@ export const TaskModal = ({ params }: Props) => {
         p={linesCount > 1 ? 0 : "xs"}
         pos="relative"
       >
-        <CodeBlock
-          code={code}
+        <CodeEditor
           language="json"
           /**
            * Hide line numbers when there's only one line:
@@ -55,6 +54,8 @@ export const TaskModal = ({ params }: Props) => {
            * - Prevents confusion about whether it's part of the log output
            */
           lineNumbers={linesCount > 1}
+          readOnly
+          value={code}
         />
 
         <Box p="sm" pos="absolute" right={0} top={0}>

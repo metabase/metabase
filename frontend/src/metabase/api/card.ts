@@ -99,7 +99,7 @@ export const cardApi = Api.injectEndpoints({
 
           return {
             method: "POST",
-            url: "/api/card/from-csv",
+            url: "/api/upload/csv",
             body: { formData },
             formData: true,
             fetch: true,

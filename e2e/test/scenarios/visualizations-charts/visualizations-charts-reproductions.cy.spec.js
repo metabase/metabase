@@ -185,9 +185,8 @@ describe("issue 17524", () => {
       H.selectFilterOperator("Greater than");
       H.popover().within(() => {
         cy.findByLabelText("Filter value").type("1");
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      H.runButtonOverlay().click();
       cy.get("polygon");
     });
   });

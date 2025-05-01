@@ -3,7 +3,10 @@
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require
    [clojure.set :as set]
+   [malli.error :as me]
    [metabase.api.common :as api]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -22,6 +25,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -30,8 +34,34 @@
 (methodical/defmethod t2/table-name :model/Segment [_model] :segment)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
 
+(mr/def ::segment-definition
+  [:map
+   [:filter      {:optional true} [:maybe mbql.s/Filter]]
+   [:aggregation {:optional true} [:maybe [:sequential ::mbql.s/Aggregation]]]])
+
+(defn- validate-segment-definition
+  [definition]
+  (if-let [error (mr/explain ::segment-definition definition)]
+    (let [humanized (me/humanize error)]
+      (throw (ex-info (tru "Invalid Metric or Segment: {0}" (pr-str humanized))
+                      {:error     error
+                       :humanized humanized})))
+    definition))
+
+(defn- normalize-segment-definition
+  "Segment `definition`s are just the inner MBQL query."
+  [definition]
+  (when (seq definition)
+    (u/prog1 (mbql.normalize/normalize-fragment [:query] definition)
+      (validate-segment-definition <>))))
+
+(def ^:private transform-segment-definition
+  "Transform for inner queries like those in Metric definitions."
+  {:in  (comp mi/json-in normalize-segment-definition)
+   :out (comp (mi/catch-normalization-exceptions normalize-segment-definition) mi/json-out-with-keywordization)})
+
 (t2/deftransforms :model/Segment
-  {:definition mi/transform-legacy-metric-segment-definition})
+  {:definition transform-segment-definition})
 
 (doto :model/Segment
   (derive :metabase/model)
