@@ -1,13 +1,17 @@
 (ns metabase-enterprise.data-editing.coerce
+  (:require
+   [metabase.util.date-2 :as u.date])
   (:import
    (clojure.lang BigInt)
-   (java.time ZonedDateTime)
+   (java.time LocalDateTime ZonedDateTime ZoneId)
    (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
 
 (defn- json-zdt->unix-millis ^long [s]
-  (-> s ZonedDateTime/parse .toInstant .toEpochMilli))
+  (let [zdt->milli (fn [^ZonedDateTime zdt]
+                     (-> zdt .toInstant .toEpochMilli))]
+    (-> s u.date/parse zdt->milli)))
 
 (defn- json-zdt->unix-seconds [s]
   (-> s json-zdt->unix-millis (quot 1000)))
@@ -18,9 +22,17 @@
 (defn- json-zdt->unix-nanos [s]
   (-> s json-zdt->unix-millis ^BigInt (* 1000000N) .toBigInteger))
 
-(let [formatter (DateTimeFormatter/ofPattern "yyyyMMddHHmmSS")]
+(let [^DateTimeFormatter formatter (DateTimeFormatter/ofPattern "yyyyMMddHHmmss")
+      format                       (fn [t]
+                                     (.format ^DateTimeFormatter formatter t))]
   (defn- json-zdt->yyyymmddhhmmss [s]
-    (-> s ZonedDateTime/parse (.format formatter))))
+    (-> s u.date/parse format))
+
+  (defn- yyyymmddhhmmss->json-zdt
+    [yyyymmddhhmmss]
+    (-> (LocalDateTime/parse yyyymmddhhmmss formatter)
+        (.atZone (ZoneId/of "UTC"))
+        str)))
 
 ;; the date/time coercions are highly ambigious
 ;; in one direction one can make a decision (take the local date, or clock time)
@@ -36,15 +48,64 @@
 (defn- json-zdt->time [s]
   (-> s ZonedDateTime/parse .toLocalTime str))
 
-(def input-coercion-fn
-  "Maps a coercion strategy to a function from input JSON object to the action representation (to be supplied to JDBC).
+(defn- millis->json-zdt
+  [millis]
+  (-> millis
+      java.time.Instant/ofEpochMilli
+      (java.time.ZonedDateTime/ofInstant (java.time.ZoneId/systemDefault))
+      str))
 
-  Assumes the input JSON object is valid for the coercion strategy, and can fit within the bounds of the target column."
-  {:Coercion/UNIXSeconds->DateTime          #'json-zdt->unix-seconds
-   :Coercion/UNIXMilliSeconds->DateTime     #'json-zdt->unix-millis
-   :Coercion/UNIXMicroSeconds->DateTime     #'json-zdt->unix-micros
-   :Coercion/UNIXNanoSeconds->DateTime      #'json-zdt->unix-nanos
-   :Coercion/YYYYMMDDHHMMSSString->Temporal #'json-zdt->yyyymmddhhmmss
-   :Coercion/ISO8601->DateTime              identity
-   :Coercion/ISO8601->Date                  #'json-zdt->date
-   :Coercion/ISO8601->Time                  #'json-zdt->time})
+(defn- unix-seconds->json-zdt
+  [unix-seconds]
+  (millis->json-zdt (* unix-seconds 1000)))
+
+(defn- unix-millis->json-zdt
+  [unix-millis]
+  (millis->json-zdt unix-millis))
+
+(defn- unix-micros->json-zdt
+  [unix-micros]
+  (millis->json-zdt (quot unix-micros 1000)))
+
+(defn- unix-nanos->json-zdt
+  [unix-nanos]
+  (millis->json-zdt (quot unix-nanos 1000000)))
+
+(defn- date->json-zdt
+  [date]
+  (-> date
+      java.time.LocalDate/parse
+      (.atStartOfDay (java.time.ZoneId/systemDefault))
+      str))
+
+(defn- time->json-zdt
+  [time]
+  (-> time
+      java.time.LocalTime/parse
+      (.atDate (java.time.LocalDate/now))
+      (.atZone (java.time.ZoneId/systemDefault))
+      str))
+
+(def coercion-fns
+  "Maps a coercion strategy to a map containing both input and output conversion functions.
+
+   :input  - Function to convert from input JSON to database format
+   :output - Function to convert from database format to JSON output
+
+   Assumes the input/output values are valid for the coercion strategy and can fit within bounds."
+  {:Coercion/UNIXSeconds->DateTime          {:in  #'json-zdt->unix-seconds
+                                             :out #'unix-seconds->json-zdt}
+   :Coercion/UNIXMilliSeconds->DateTime     {:in  #'json-zdt->unix-millis
+                                             :out #'unix-millis->json-zdt}
+   :Coercion/UNIXMicroSeconds->DateTime     {:in  #'json-zdt->unix-micros
+                                             :out #'unix-micros->json-zdt}
+   :Coercion/UNIXNanoSeconds->DateTime      {:in  #'json-zdt->unix-nanos
+                                             :out #'unix-nanos->json-zdt}
+   :Coercion/YYYYMMDDHHMMSSString->Temporal {:in  #'json-zdt->yyyymmddhhmmss
+                                             :out #'yyyymmddhhmmss->json-zdt}
+   :Coercion/ISO8601->DateTime              {:in  identity
+                                             :out identity}
+   :Coercion/ISO8601->Date                  {:in  #'json-zdt->date
+                                             :out #'date->json-zdt}
+   :Coercion/ISO8601->Time                  {:in  #'json-zdt->time
+                                             :out #'time->json-zdt}})
