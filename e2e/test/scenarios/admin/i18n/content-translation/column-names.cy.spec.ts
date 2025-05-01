@@ -9,7 +9,6 @@ import {
 import { type CardDisplayType, cardDisplayTypes } from "metabase-types/api";
 import { P, match } from "ts-pattern";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SANKEY_QUERY } from "e2e/test/scenarios/visualizations-charts/sankey.cy.spec";
 
 const { PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
