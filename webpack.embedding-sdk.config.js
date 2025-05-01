@@ -80,6 +80,8 @@ module.exports = (env) => {
           test: /\.(tsx?|jsx?)$/,
           exclude: /node_modules|cljs/,
           use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
+          type: "javascript/esm",
+          sideEffects: false,
         },
         {
           test: /\.(svg|png)$/,
@@ -95,6 +97,14 @@ module.exports = (env) => {
             { loader: "css-loader", options: CSS_CONFIG },
             { loader: "postcss-loader" },
           ],
+        },
+
+        {
+          // only .mjs (the true ESM bundles some packages publish)
+          test: /\.mjs$/,
+          include: /node_modules/,
+          type: "javascript/esm",
+          sideEffects: false,
         },
 
         {
@@ -144,6 +154,10 @@ module.exports = (env) => {
 
       minimize: !isDevMode,
       minimizer: mainConfig.optimization.minimizer,
+
+      usedExports: true,
+      sideEffects: true,
+      concatenateModules: true,
     },
 
     plugins: [
@@ -199,6 +213,9 @@ module.exports = (env) => {
     // prevent raw JSON timezone data from being bundled
     "moment-timezone/data/packed/latest.json$": false,
   };
+
+  config.resolve.extensions = [...mainConfig.resolve.extensions, ".mjs"];
+  config.resolve.mainFields = ["browser", "module", "main"];
 
   if (config.cache) {
     config.cache.cacheDirectory = resolve(
