@@ -361,9 +361,9 @@
             multicatalog (tx/db-test-env-var :databricks :multicatalog-catalog "metabase_ci_multicatalog")
             multicatalog-schema (tx/db-test-env-var :databricks :multicatalog-schema "test_schema")]
         (mt/with-temp [:model/Database {db-id :id :as _db} {:engine :databricks :details (-> details
-                                                                                            (assoc :multi-level-schema true)
-                                                                                            (dissoc :schema-filters-type
-                                                                                                    :schema-filters-patterns))}]
+                                                                                             (assoc :multi-level-schema true)
+                                                                                             (dissoc :schema-filters-type
+                                                                                                     :schema-filters-patterns))}]
           (mt/with-db
             (t2/select-one :model/Database db-id)
             (sync/sync-database! (mt/db) {:scan :schema})
