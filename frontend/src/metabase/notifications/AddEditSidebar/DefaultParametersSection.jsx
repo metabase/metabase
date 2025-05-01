@@ -33,7 +33,10 @@ function formatDefaultParamValues(parameters) {
         formattedValue = conjunct([].concat(defaultValue), t`and`);
       }
 
-      return formattedValue && `${name} -> ${formattedValue}`;
+      if (formattedValue) {
+        return `${name} -> ${formattedValue}`;
+      }
+      return null;
     })
     .filter(Boolean);
 }
