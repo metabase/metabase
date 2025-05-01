@@ -38,7 +38,7 @@
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows?]
                    :or   {format-rows? true}} :data} viz-settings]
-        (let [cols           (streaming.common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
+        (let [cols           (streaming.common/column-titles ordered-cols viz-settings format-rows?)
               pivot-grouping (qp.pivot.postprocess/pivot-grouping-index cols)]
           (when pivot-grouping (vreset! pivot-grouping-idx pivot-grouping))
           (let [names (cond->> cols
