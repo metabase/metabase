@@ -1,9 +1,5 @@
 import { CompileError } from "../errors";
 
-type VariableKind = "dimension" | "segment" | "aggregation" | "expression";
-type Type = VariableKind | "string" | "number" | "boolean";
-type VariableId = number;
-
 export class Token {
   type: NodeType;
   text: string;
@@ -32,7 +28,9 @@ export class Token {
     this.text = text;
     this.value = value;
   }
-
+  get len(): number {
+    return this.length;
+  }
   get start(): number {
     return this.pos;
   }
@@ -51,17 +49,12 @@ export interface Node {
   type: NodeType;
   children: Node[];
   complete: boolean;
-  resolvedType: Type | VariableId;
   parent: Node | null;
   token: Token | null;
-  isRoot?: boolean;
 }
 
 export interface NodeType {
   name?: string;
-
-  // Should the parser ignore this sort of token entirely (whitespace)
-  skip: boolean;
 
   // Number of operands to expect for this node on the left side
   leftOperands: number;
@@ -87,22 +80,6 @@ export interface NodeType {
 
   // The precedence to use for operator parsing conflicts. Higher wins.
   precedence: number;
-
-  // The type this node resolves to, if it can be deduced early on. If null, the
-  // parser assigns an integer value for substitutions instead
-  resolvesAs: Type | null;
-
-  // The expectedType of the child nodes
-  expectedTypes: Type[] | null;
-}
-
-class AssertionError extends Error {
-  data?: any;
-
-  constructor(message: string, data?: any) {
-    super(`Assertion failed: ${message}`);
-    this.data = data;
-  }
 }
 
 /**
@@ -115,7 +92,7 @@ export function assert(
   data?: any,
 ): asserts condition {
   if (!condition) {
-    throw new AssertionError(msg, data || {});
+    throw new Error(msg, data || {});
   }
 }
 

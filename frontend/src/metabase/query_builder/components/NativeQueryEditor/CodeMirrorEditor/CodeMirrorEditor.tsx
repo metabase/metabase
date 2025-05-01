@@ -9,6 +9,7 @@ import {
   useImperativeHandle,
   useRef,
 } from "react";
+import _ from "underscore";
 
 import { isEventOverElement } from "metabase/lib/dom";
 import * as Lib from "metabase-lib";
@@ -34,7 +35,6 @@ export interface CodeMirrorEditorRef {
 import S from "./CodeMirrorEditor.module.css";
 import { useExtensions } from "./extensions";
 import {
-  areAllRangesEqual,
   getPlaceholderText,
   getSelectedRanges,
   matchCardIdAtCursor,
@@ -78,7 +78,7 @@ export const CodeMirrorEditor = forwardRef<
         const beforeRanges = getSelectedRanges(update.startState);
         const afterRanges = getSelectedRanges(update.state);
 
-        if (!areAllRangesEqual(beforeRanges, afterRanges)) {
+        if (!_.isEqual(beforeRanges, afterRanges)) {
           onSelectionChange(afterRanges);
         }
       }

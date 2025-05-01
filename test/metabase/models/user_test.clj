@@ -10,7 +10,6 @@
    [metabase.models.collection :as collection]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting]
    [metabase.models.user :as user]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
@@ -18,6 +17,7 @@
    [metabase.permissions.models.permissions-test :as perms-test]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
+   [metabase.settings.core :as setting]
    [metabase.sso.init]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
@@ -213,8 +213,8 @@
   (testing (str "when you create a new user with `is_superuser` set to `true`, it should create a "
                 "PermissionsGroupMembership object")
     (mt/with-temp [:model/User user {:is_superuser true}]
-      (is (= true
-             (t2/exists? :model/PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))))))))
+      (is (true?
+           (t2/exists? :model/PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))))))))
 
 (deftest ldap-sequential-login-attributes-test
   (testing "You should be able to create a new LDAP user if some `login_attributes` are vectors (#10291)"
@@ -359,8 +359,8 @@
                (user-group-names user)))
 
         (testing "their is_superuser flag should be set to true"
-          (is (= true
-                 (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
+          (is (true?
+               (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
 
     (testing "should be able to remove someone from the Admin group"
       (mt/with-temp [:model/User user {:is_superuser true}]
@@ -380,8 +380,8 @@
           (mt/with-temp [:model/User user {:is_superuser true}]
             (u/ignore-exceptions
               (user/set-permissions-groups! user #{(perms-group/all-users) Integer/MAX_VALUE}))
-            (is (= true
-                   (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
+            (is (true?
+                 (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
 
       (testing "Invalid REMOVE operation"
         ;; Attempt to remove someone from All Users + add to a valid group at the same time -- neither should persist

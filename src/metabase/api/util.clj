@@ -8,11 +8,12 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.api.embed.common :as api.embed.common]
    [metabase.api.macros :as api.macros]
+   [metabase.api.open-api :as open-api]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.logger :as logger]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.json :as json]
@@ -132,4 +133,13 @@
    _query-params
    {:keys [entity_ids]} :- [:map
                             [:entity_ids :map]]]
-  {:entity_ids (api.embed.common/model->entity-ids->ids entity_ids)})
+  {:entity_ids (eid-translation/model->entity-ids->ids entity_ids)})
+
+(api.macros/defendpoint :get "/openapi"
+  "Return the OpenAPI specification for the Metabase API."
+  []
+  (api/check-superuser)
+  {:status 200
+   :body (merge
+          (open-api/root-open-api-object @(requiring-resolve 'metabase.api-routes.core/routes))
+          {:servers [{:url "" :description "Metabase API"}]})})

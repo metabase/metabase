@@ -101,10 +101,10 @@
          (m/distinct-by (juxt :id :model))
          (map ->document)))))
 
-(defn populate-index!
-  "Go over all searchable items and populate the index with them."
-  [engine]
-  (search.engine/consume! engine (query->documents (search-items-reducible))))
+(defn searchable-documents
+  "Return all existing searchable documents from the database."
+  []
+  (query->documents (search-items-reducible)))
 
 (def ^:dynamic *force-sync*
   "Force ingestion to happen immediately, on the same thread."
@@ -114,26 +114,54 @@
   "Used by tests to disable updates, for example when testing migrations, where the schema is wrong."
   false)
 
-(defn consume!
-  "Update all active engines' indexes with the given documents"
-  [documents-reducible]
-  (when-let [engines (seq (search.engine/active-engines))]
-    (if (= 1 (count engines))
-      (search.engine/consume! (first engines) documents-reducible)
-      ;; TODO um, multiplexing over the reducible awkwardly feels strange. We at least use a magic number for now.
-      (doseq [batch (eduction (partition-all 150) documents-reducible)
-              e     engines]
-        (search.engine/consume! e batch)))))
+(defn update!
+  "Update all active engines' existing indexes with the given documents. Passed remove-documents will be deleted from the index."
+  [documents-reducible removed-models-reducible]
+  (doseq [e (seq (search.engine/active-engines))]
+    ;; We are partitioning the documents into batches at this level and sending each batch to all the engines
+    ;; to avoid having to retain the head of the sequences as we work through all the documents.
+    ;; Individual engines may also partition the documents further if they prefer
+    (reduce (fn [_ batch] (search.engine/update! e batch)) nil
+            (eduction (partition-all 150) documents-reducible))
+    (reduce (fn [_ batch] (doseq [[group ids] (u/group-by first second batch)]
+                            (search.engine/delete! e group ids))) nil
+            (eduction (partition-all 1000) removed-models-reducible))))
+
+(defn- extract-model-and-id
+  ([update]
+   (when-let [[model update-def] update]
+     (extract-model-and-id model update-def)))
+
+  ([model update-def]
+   (let [operation (first update-def)
+         values (rest update-def)]
+     (case operation
+       := (let [column-def (first (filter keyword? values))
+                id (str (first (filter integer? values)))]
+            (if (= :this.id column-def)
+              [model id]
+              nil))
+
+       :and (first (keep (partial extract-model-and-id model) values))))))
 
 (defn bulk-ingest!
   "Process the given search model updates. Returns the number of search index entries that get updated as a result."
   [updates]
-  (->> (for [[search-model where-clauses] (u/group-by first second updates)]
-         (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
-       ;; init collection is only for clj-kondo, as we know that the list is non-empty
-       (reduce u/rconcat [])
-       query->documents
-       consume!))
+  (let [documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
+                         (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
+                       ;; init collection is only for clj-kondo, as we know that the list is non-empty
+                       (reduce u/rconcat [])
+                       query->documents)
+        passed-documents (map extract-model-and-id updates)
+        indexed-documents (map (juxt :model (comp str :id)) (into [] documents))
+        ;; TODO: The list of documents to delete is not completely accurate.
+        ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the rows that were actually indexed.
+        ;; This will not work for cases like indexed-entries with compound PKs,
+        ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
+        ;; Long-term, we should find a better approach to knowing what to purge.
+        to-delete (remove (set indexed-documents) passed-documents)]
+
+    (update! documents to-delete)))
 
 (defn- track-queue-size! []
   (analytics/set! :metabase-search/queue-size (.size queue)))

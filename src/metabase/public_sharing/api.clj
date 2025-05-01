@@ -1,6 +1,7 @@
 (ns metabase.public-sharing.api
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require
+   [hiccup.core :as hiccup]
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.core :as analytics]
@@ -30,7 +31,6 @@
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
-   [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -388,6 +388,14 @@
             ;; Undo middleware string->keyword coercion
             (actions/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
 
+(defn- iframe
+  "Return an `<iframe>` HTML fragment to embed a public page."
+  ^String [^String url width height]
+  (hiccup/html [:iframe {:src         url
+                         :width       width
+                         :height      height
+                         :frameborder 0}]))
+
 (api.macros/defendpoint :get "/oembed"
   "oEmbed endpoint used to retrieve embed code and metadata for a (public) Metabase URL."
   [_route-params
@@ -406,7 +414,7 @@
    :type    "rich"
    :width   maxwidth
    :height  maxheight
-   :html    (embed/iframe url maxwidth maxheight)})
+   :html    (iframe url maxwidth maxheight)})
 
 ;;; ----------------------------------------------- Public Action ------------------------------------------------
 

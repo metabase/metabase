@@ -159,6 +159,7 @@
     (walk/prewalk walker query)
     (seq ids)))
 
+;;; TODO -- only used in X-Rays code; move there
 (mu/defn adhoc-query :- (ms/InstanceOf :model/Query)
   "Wrap query map into a Query object (mostly to facilitate type dispatch)."
   [query :- :map]

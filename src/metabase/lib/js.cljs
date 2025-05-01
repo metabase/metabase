@@ -2116,6 +2116,15 @@
                        (legacy-ref->pMBQL a-ref))]
       (fix-column-with-ref column-ref (js.metadata/parse-column js-column)))))
 
+(defn ^:export legacy-column->type-info
+  "Parses a `legacy-column` into an object compatible with type checking functions. Unlike [[legacy-column->metadata]],
+  does not require a `query`. MLv2 columns remain unchanged.
+
+  > **Code health:** Legacy."
+  [column]
+  (cond-> column
+    (object? column) js.metadata/parse-column))
+
 (defn- js-cells-by
   "Given a `col-fn`, returns a function that will extract a JS object like
   `{col: {name: \"ID\", ...}, value: 12}` into a CLJS map like
@@ -2365,34 +2374,6 @@
   [a-query stage-number a-filter-clause]
   (lib.core/filter-args-display-name a-query stage-number a-filter-clause))
 
-(defn ^:export expression-clause-for-legacy-expression
-  "Convert `legacy-expression` into a modern expression clause.
-
-  > **Code health:** Legacy, Single use. We should refactor away the round trip through legacy expressions and make the
-  expression parser understand MLv2 expressions."
-  [a-query stage-number legacy-expression]
-  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [expr (js->clj legacy-expression :keywordize-keys true)
-          expr (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))]
-      (lib.core/normalize (lib.convert/->pMBQL expr)))))
-
-(defn ^:export legacy-expression-for-expression-clause
-  "Convert `an-expression-clause` into a legacy expression.
-
-  When processing aggregation clauses with custom expressions, any `aggregation-options` wrapper is thrown away. (The
-  options specify extras like the name of the aggregation expression.)
-
-  > **Code health:** Legacy, Single use. We should refactor away the round trip through legacy expressions and make the
-  expression parser understand MLv2 expressions."
-  [a-query stage-number an-expression-clause]
-  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [legacy-expr (-> an-expression-clause lib.convert/->legacy-MBQL)]
-      (clj->js (cond-> legacy-expr
-                 (and (vector? legacy-expr)
-                      (#{:aggregation-options} (first legacy-expr)))
-                 (get 1))
-               :keyword-fn u/qualified-name))))
-
 (defn ^:export diagnose-expression
   "Checks `legacy-expression` for type errors and possibly for cyclic references to other expressions.
 
@@ -2451,14 +2432,10 @@
   west > east, this indicates that the bounds cross the antimerdian, and so we must add two filter clauses, which are
   ORed together. In such cases, the first clause covers the range [west, 180.0] and the second covers [-180.0, east].
 
-  > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
-  However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
-  ideally refactored away."
+  > **Code health:** Single use. This is highly specialized in the UI, but should probably continue to exist."
   [a-query stage-number latitude-column longitude-column card-id  bounds]
   ;; (.log js/console "update-lat-lon-filter")
-  (let [bounds           (js->clj bounds :keywordize-keys true)
-        latitude-column  (legacy-column->metadata a-query stage-number latitude-column)
-        longitude-column (legacy-column->metadata a-query stage-number longitude-column)]
+  (let [bounds           (js->clj bounds :keywordize-keys true)]
     (lib.core/with-wrapped-native-query a-query stage-number card-id
       lib.core/update-lat-lon-filter latitude-column longitude-column bounds)))
 
@@ -2466,13 +2443,10 @@
   "Add or update a filter against `numeric-column`, based on the provided start and end values. **Removes** any existing
   filters for `numeric-column`.
 
-  > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
-  However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
-  ideally refactored away."
+  > **Code health:** Single use. This is highly specialized in the UI, but should probably continue to exist."
   [a-query stage-number numeric-column card-id start end]
-  (let [numeric-column (legacy-column->metadata a-query stage-number numeric-column)]
-    (lib.core/with-wrapped-native-query a-query stage-number card-id
-      lib.core/update-numeric-filter numeric-column start end)))
+  (lib.core/with-wrapped-native-query a-query stage-number card-id
+    lib.core/update-numeric-filter numeric-column start end))
 
 (defn ^:export update-temporal-filter
   "Add or update a filter against `temporal-column`, based on the provided start and end values.
@@ -2481,13 +2455,10 @@
   Modifies the temporal unit for any breakouts to on `temporal-column` to still be useful: If there are fewer than 4
   points (see [[metabase.lib.filter.update/temporal-filter-min-num-points]]), move to the next-smaller unit.
 
-  > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
-  However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
-  ideally refactored away."
+  > **Code health:** Single use. This is highly specialized in the UI, but should probably continue to exist."
   [a-query stage-number temporal-column card-id start end]
-  (let [temporal-column (legacy-column->metadata a-query stage-number temporal-column)]
-    (lib.core/with-wrapped-native-query a-query stage-number card-id
-      lib.core/update-temporal-filter temporal-column start end)))
+  (lib.core/with-wrapped-native-query a-query stage-number card-id
+    lib.core/update-temporal-filter temporal-column start end))
 
 (defn ^:export valid-filter-for?
   "Given two columns, returns true if `src-column` is a valid source to use for filtering `dst-column`.

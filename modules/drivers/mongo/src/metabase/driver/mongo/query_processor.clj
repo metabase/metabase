@@ -23,7 +23,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.annotate :as annotate]
@@ -31,6 +30,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -246,6 +246,12 @@
 
       (isa? coercion :Coercion/String->Float)
       {"$toDouble" field-name}
+
+      (isa? coercion :Coercion/String->Integer)
+      {"$toLong" field-name}
+
+      (isa? coercion :Coercion/Float->Integer)
+      {"$toLong" {"$round" {"$toDouble" field-name}}}
 
       :else field-name)))
 

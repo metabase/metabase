@@ -998,7 +998,7 @@
 
 (deftest update-groups-test-4
   (testing "PUT /api/user/:id"
-    (testing (str "We should be able to put someone in the Admin group when we update them them (is_superuser = TRUE "
+    (testing (str "We should be able to put someone in the Admin group when we update them them (is_superuser TRUE? "
                   "and user_group_memberships including admin group ID)")
       (mt/with-premium-features #{}
         (mt/with-temp [:model/User {:keys [email id]}]
@@ -1129,8 +1129,8 @@
                               {:first_name (:first_name user)
                                :last_name  "whatever"
                                :email      (:email user)})
-        (is (= true
-               (t2/select-one-fn :is_active :model/User :id (:id user)))
+        (is (true?
+             (t2/select-one-fn :is_active :model/User :id (:id user)))
             "the user should now be active")))
 
     (testing "error conditions"
@@ -1172,11 +1172,11 @@
   (testing "PUT /api/user/:id/password"
     (testing "Test that we can reset our own password. If user is a"
       (testing "superuser"
-        (is (= true
-               (user-can-reset-password? :superuser))))
+        (is (true?
+             (user-can-reset-password? :superuser))))
       (testing "non-superuser"
-        (is (= true
-               (user-can-reset-password? (not :superuser))))))))
+        (is (true?
+             (user-can-reset-password? (not :superuser))))))))
 
 (deftest reset-password-permissions-test
   (testing "PUT /api/user/:id/password"

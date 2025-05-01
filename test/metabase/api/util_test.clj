@@ -3,8 +3,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.api.embed.common :as api.embed.common]
    [metabase.api.util :as api.util]
+   [metabase.eid-translation.util :as eid-translation.util]
    [metabase.test :as mt]
    [metabase.util.log :as log]))
 
@@ -101,5 +101,26 @@
                (update-keys name))))
 
     (testing "error message contains allowed models"
-      (is (= (set (map name (keys @#'api.embed.common/api-name->model)))
+      (is (= (set (map name (keys @#'eid-translation.util/api-name->model)))
              (set (:allowed-models (mt/user-http-request :crowberto :post 400 "util/entity_id" {:entity_ids {"Card" [card-eid]}}))))))))
+
+(deftest ^:parallel openapi-test
+  (testing "GET /api/util/openapi"
+    (testing "Requires superuser"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "util/openapi"))))
+
+    (testing "Call successful for superusers"
+      (let [response (mt/user-http-request :crowberto :get 200 "util/openapi")]
+        (is (map? response))
+        (is (= "3.1.0" (:openapi response)))
+        (is (= "Metabase API" (get-in response [:info :title])))
+        (is (map? (:paths response)))
+        (is (map? (:components response))))
+
+      (testing "Response contains key components of API spec"
+        (let [response (mt/user-http-request :crowberto :get 200 "util/openapi")
+              path-keys (set (map pr-str (keys (:paths response))))]
+          (is (contains? path-keys ":/api/card/"))
+          (is (contains? path-keys ":/api/user/"))
+          (is (contains? path-keys ":/api/dashboard/")))))))

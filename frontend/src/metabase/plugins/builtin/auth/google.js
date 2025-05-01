@@ -44,4 +44,4 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push((sections) => ({
   },
 }));
 
-PLUGIN_IS_PASSWORD_USER.push((user) => !user.google_auth);
+PLUGIN_IS_PASSWORD_USER.push((user) => user.sso_source !== "google");

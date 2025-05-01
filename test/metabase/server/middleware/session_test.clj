@@ -231,8 +231,8 @@
           ;; a trick to run this test in OSS because even if advanced-permisison is enabled but EE ns is not evailable
           ;; `enable-advanced-permissions?` will still return false
           (with-redefs [premium-features/enable-advanced-permissions? (fn [& _args] true)]
-            (is (= true
-                   (:is-group-manager? (#'mw.session/current-user-info-for-session test-session-key nil)))))))
+            (is (true?
+                 (:is-group-manager? (#'mw.session/current-user-info-for-session test-session-key nil)))))))
       (finally
         (t2/delete! :model/Session :id test-session-id)))))
 

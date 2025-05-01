@@ -20,6 +20,7 @@
    [metabase.lib.drill-thru.zoom-in-bins :as lib.drill-thru.zoom-in-bins]
    [metabase.lib.drill-thru.zoom-in-geographic :as lib.drill-thru.zoom-in-geographic]
    [metabase.lib.drill-thru.zoom-in-timeseries :as lib.drill-thru.zoom-in-timeseries]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.native :as lib.native]
@@ -102,14 +103,24 @@
   ([query context]
    (available-drill-thrus query -1 context))
 
-  ([query        :- ::lib.schema/query
-    stage-number :- :int
-    context      :- ::lib.schema.drill-thru/context]
+  ([query                                   :- ::lib.schema/query
+    stage-number                            :- :int
+    {:keys [column column-ref] :as context} :- ::lib.schema.drill-thru/context]
    (try
      (into []
            (when (and (lib.metadata/editable? query)
                       (not (lib.native/has-template-tag-variables? query)))
-             (let [{:keys [query stage-number]} (lib.query/wrap-native-query-with-mbql
+             (let [;; when querying against a model, the column metadata returned by the query processor uses the
+                   ;; underlying table id instead of "card__blah", and that can cause issues with drills in certain
+                   ;; scenarios.  Changing the returned column metadata would be a large and scary change, so we just
+                   ;; grab the equivalent column from returned-columns here instead
+                   new-column (and column-ref
+                                   (->> (lib.metadata.calculation/returned-columns query stage-number)
+                                        (lib.equality/find-matching-column query stage-number column-ref)))
+                   old-types (select-keys column [:base-type :effective-type :semantic-type])
+                   context (cond-> context
+                             (and column column-ref new-column) (assoc :column (merge new-column old-types)))
+                   {:keys [query stage-number]} (lib.query/wrap-native-query-with-mbql
                                                  query stage-number (:card-id context))
                    context                      (context-with-dimensions-or-row-dimensions query context)
                    dim-contexts                 (dimension-contexts context)]
