@@ -5,8 +5,11 @@ import { t } from "ttag";
 import { BooleanPicker } from "metabase/querying/filters/components/BooleanPicker";
 import type { BooleanFilterValue } from "metabase/querying/filters/types";
 import { deserializeBooleanParameterValue } from "metabase/querying/parameters/utils/parsing";
-import { Box, Button, Flex } from "metabase/ui";
+import { Box } from "metabase/ui";
 import type { ParameterValueOrArray } from "metabase-types/api";
+
+import { MIN_WIDTH } from "../../constants";
+import { ParameterWidgetFooter } from "../ParameterWidgetFooter";
 
 type BooleanParameterWidgetProps = {
   value: ParameterValueOrArray | null | undefined;
@@ -27,13 +30,9 @@ export function BooleanParameterWidget({
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit}>
+    <Box miw={MIN_WIDTH} component="form" onSubmit={handleSubmit}>
       <BooleanPicker value={pickerValue} onChange={setPickerValue} />
-      <Flex p="md" justify="flex-end">
-        <Button type="submit" variant="filled">
-          {submitButtonLabel}
-        </Button>
-      </Flex>
+      <ParameterWidgetFooter submitButtonLabel={submitButtonLabel} />
     </Box>
   );
 }

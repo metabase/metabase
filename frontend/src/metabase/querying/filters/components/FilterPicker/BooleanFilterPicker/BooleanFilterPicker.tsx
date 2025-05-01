@@ -59,7 +59,7 @@ export function BooleanFilterPicker({
           onBack={onBack}
         />
       )}
-      <BooleanPicker value={value} onChange={setValue} />
+      <BooleanPicker value={value} withEmptyOptions onChange={setValue} />
       <FilterPickerFooter
         isNew={isNew}
         isValid
