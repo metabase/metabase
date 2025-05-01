@@ -5,7 +5,7 @@
    [metabase.api.common :as api]
    [metabase.channel.email.messages :as messages]
    [metabase.events :as events]
-   [metabase.events.notification :as events.notification]
+   [metabase.notification.events.notification :as events.notification]
    [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.sso.core :as sso]
    [metabase.util :as u]

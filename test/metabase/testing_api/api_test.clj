@@ -1,13 +1,13 @@
-(ns metabase.api.testing-test
+(ns metabase.testing-api.api-test
   (:require
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [java-time.clock]
-   [metabase.api.testing :as testing]
    [metabase.db :as mdb]
    [metabase.test :as mt]
+   [metabase.testing-api.api :as testing]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]))
 
