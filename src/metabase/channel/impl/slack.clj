@@ -149,6 +149,10 @@
    (format "*%s*\n%s" (:name filter) (shared.params/value-string filter (public-settings/site-locale)))
    attachment-text-length-limit))
 
+(def metabase-branding-link
+  "Metabase link with UTM params related to the branding exports campaign"
+  "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=slack")
+
 (defn- slack-dashboard-header
   "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
   Slack dashboard subscription"
@@ -163,7 +167,11 @@
                                           (urls/dashboard-url (:id dashboard) parameters)
                                           (format "*Sent from %s by %s*"
                                                   (public-settings/site-name)
-                                                  creator-name))}]}
+                                                  creator-name))}
+                                  {:type "mrkdwn"
+                                   :text (mkdwn-link-text
+                                          metabase-branding-link
+                                          "Made with Metabase :heart:")}]}
         filter-fields   (for [filter parameters]
                           {:type "mrkdwn"
                            :text (filter-text filter)})
