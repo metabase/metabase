@@ -41,7 +41,7 @@ export const DashboardBookmark = (): JSX.Element | null => {
   useRegisterShortcut(
     [
       {
-        id: "bookmark-dashboard",
+        id: "dashboard-bookmark",
         perform: () =>
           isBookmarked ? handleDeleteBookmark() : handleCreateBookmark(),
       },

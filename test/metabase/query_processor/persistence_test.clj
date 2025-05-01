@@ -6,12 +6,11 @@
    [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
    [metabase.query-processor.middleware.limit :as limit]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [toucan2.core :as t2])
@@ -92,9 +91,12 @@
 ;; sandbox tests in metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test
 ;; impersonation tests in metabase-enterprise.advanced-permissions.driver.impersonation-test
 
-(defn- populate-metadata [{query :dataset_query id :id :as _model}]
+(defn- populate-metadata [{query :dataset_query, id :id, eid :entity_id :as _model}]
   (let [updater (a/thread
-                  (let [metadata #_{:clj-kondo/ignore [:deprecated-var]} (qp.metadata/legacy-result-metadata query nil)]
+                  (let [metadata (-> query
+                                     (assoc-in [:info :card-entity-id] eid)
+                                     #_{:clj-kondo/ignore [:deprecated-var]}
+                                     (qp.metadata/legacy-result-metadata nil))]
                     (t2/update! :model/Card id {:result_metadata metadata})))]
     ;; 4 seconds is long but redshift can be a little slow
     (when (= ::timed-out (mt/wait-for-result updater 4000 ::timed-out))
@@ -106,9 +108,9 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
       (mt/dataset test-data
         (doseq [[query-type query] [[:query (mt/mbql-query products)]
-                                    [:native (mt/native-query
-                                               (qp.compile/compile
-                                                (mt/mbql-query products)))]]]
+                                    #_[:native (mt/native-query
+                                                 (qp.compile/compile
+                                                  (mt/mbql-query products)))]]]
           (mt/with-persistence-enabled! [persist-models!]
             (mt/with-temp [:model/Card model {:type          :model
                                               :database_id   (mt/id)

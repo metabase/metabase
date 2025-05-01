@@ -15,6 +15,7 @@ export const TAG_TYPES = [
   "field",
   "field-values",
   "indexed-entity",
+  "logger-preset",
   "model-index",
   "notification",
   "parameter-values",
@@ -38,6 +39,7 @@ export const TAG_TYPES = [
   "public-card",
   "embed-card",
   "public-action",
+  "unique-tasks",
   "user-key-value",
 ] as const;
 

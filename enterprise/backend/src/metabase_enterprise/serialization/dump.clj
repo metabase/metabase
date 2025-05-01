@@ -7,7 +7,7 @@
    [metabase-enterprise.serialization.serialize :as serialize]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
@@ -37,13 +37,13 @@
    (let [model (-> (:serdes/meta m) last :model)]
      (serialization-deep-sort m [(keyword model)])))
   ([m path]
-   (into (serialization-sorted-map path)
-         (for [[k v] m]
-           [k (cond
-                (map? v)               (serialization-deep-sort v (conj path k))
-                (and (sequential? v)
-                     (map? (first v))) (mapv #(serialization-deep-sort % (conj path k)) v)
-                :else                  v)]))))
+   (cond
+     (map? m)  (into (serialization-sorted-map path)
+                     (for [[k v] m]
+                       [k (serialization-deep-sort v (conj path k))]))
+     (and (sequential? m)
+          (map? (first m))) (mapv #(serialization-deep-sort % path) m)
+     :else                  m)))
 
 (defn spit-yaml!
   "Writes obj to filename and creates parent directories if necessary.
@@ -100,7 +100,8 @@
   "Combine all dimensions into a vector and dump it into YAML at in the directory for the
    corresponding schema starting at `path`."
   [path]
-  (doseq [[table-id dimensions] (group-by (comp :table_id :model/Field :field_id) (t2/select :model/Dimension))
+  (doseq [[table-id dimensions] (group-by (comp :table_id #(t2/select-one :model/Field :id %) :field_id)
+                                          (t2/select :model/Dimension))
           :let [table (t2/select-one :model/Table :id table-id)]]
     (spit-yaml! (if (:schema table)
                   (format "%s%s/schemas/%s/dimensions.yaml"
@@ -110,4 +111,4 @@
                   (format "%s%s/dimensions.yaml"
                           path
                           (->> table :db_id (fully-qualified-name :model/Database))))
-                (map serialize/serialize dimensions))))
+                (mapv serialize/serialize dimensions))))

@@ -1,30 +1,26 @@
 import fetchMock from "fetch-mock";
 
-import type { Settings } from "metabase-types/api";
+import type { GdrivePayload } from "metabase-types/api";
 
-type Props =
-  | {
-      status?: never;
-      errorCode: number;
-    }
-  | {
-      status: Settings["gsheets"]["status"];
-      errorCode?: never;
-    };
-
-export function setupGdriveGetFolderEndpoint({ status, errorCode }: Props) {
-  if (status) {
-    fetchMock.get("path:/api/ee/gsheets/folder", () => {
-      return {
-        status,
-        db_id: 1,
-      };
-    });
-  }
-
+export function setupGdriveGetFolderEndpoint({
+  errorCode,
+  ...gdrivePayload
+}: Partial<GdrivePayload> & { errorCode?: number }) {
   if (errorCode) {
-    fetchMock.get("path:/api/ee/gsheets/folder", errorCode);
+    fetchMock.get("path:/api/ee/gsheets/connection", errorCode, {
+      overwriteRoutes: true,
+    });
+    return;
   }
+
+  fetchMock.get(
+    "path:/api/ee/gsheets/connection",
+    () => {
+      // fetchmock gets confused if you try to return only a 'status' property
+      return { ...gdrivePayload, _test: "" };
+    },
+    { overwriteRoutes: true },
+  );
 }
 
 export function setupGdriveServiceAccountEndpoint(
@@ -36,5 +32,11 @@ export function setupGdriveServiceAccountEndpoint(
 }
 
 export function setupGdrivePostFolderEndpoint() {
-  fetchMock.post("path:/api/ee/gsheets/folder", { status: 202 });
+  fetchMock.post("path:/api/ee/gsheets/connection", { status: 202 });
+}
+
+export function setupGdriveSyncEndpoint() {
+  fetchMock.post("path:/api/ee/gsheets/connection/sync", () => {
+    return { db_id: 1 };
+  });
 }

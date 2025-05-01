@@ -21,7 +21,7 @@ const setup = ({ value = null }: SetupProps = {}) => {
 describe("SearchFilterDatePicker", () => {
   it("should render SearchFilterDatePicker component", () => {
     setup();
-    expect(screen.getByText("Specific dates…")).toBeInTheDocument();
+    expect(screen.getByText("Fixed date range…")).toBeInTheDocument();
   });
 
   it("should not display Exclude… in the date picker shortcut options", () => {
@@ -35,12 +35,12 @@ describe("SearchFilterDatePicker", () => {
     expect(onChangeMock).toHaveBeenCalled();
   });
 
-  it("should populate the `Specific dates…` date picker with the value passed in", () => {
+  it("should populate the `Fixed date range…` date picker with the value passed in", () => {
     setup({ value: "2023-09-20" });
     expect(screen.getByLabelText("Date")).toHaveValue("September 20, 2023");
   });
 
-  it("should populate the `Relative dates…` date picker with the value passed in", () => {
+  it("should populate the `Relative date range…` date picker with the value passed in", () => {
     setup({ value: "past30days" });
     expect(screen.getByLabelText("Interval")).toHaveValue("30");
     expect(screen.getByRole("textbox", { name: "Unit" })).toHaveValue("days");

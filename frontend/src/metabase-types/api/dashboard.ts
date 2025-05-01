@@ -79,7 +79,25 @@ export interface Dashboard {
 
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;
+
+  /* For x-ray dashboards */
+  transient_name?: string;
+  related?: RelatedDashboardXRays;
+  more?: string | null;
 }
+
+export type RelatedDashboardXRays = {
+  related?: RelatedDashboardXRayItem[];
+  "zoom-in"?: RelatedDashboardXRayItem[];
+  "zoom-out"?: RelatedDashboardXRayItem[];
+  compare?: RelatedDashboardXRayItem[];
+};
+
+export type RelatedDashboardXRayItem = {
+  description: string;
+  title: string;
+  url: string;
+};
 
 /** Dashboards with string ids, like x-rays, cannot have cache configurations */
 export type CacheableDashboard = Omit<Dashboard, "id"> & { id: number };

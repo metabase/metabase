@@ -75,6 +75,27 @@ const INTEGER_TEST_CASES: CastTestCase[] = [
     filterValue: "29",
     expectedRowCount: 1,
   },
+  {
+    name: "FloatLiteral",
+    expression: "integer(10.4)",
+    filterOperator: "Equal to",
+    filterValue: "10",
+    expectedRowCount: 200,
+  },
+  {
+    name: "FloatColumn",
+    expression: "integer([Price])",
+    filterOperator: "Equal to",
+    filterValue: "29",
+    expectedRowCount: 4,
+  },
+  {
+    name: "FloatExpression",
+    expression: "integer(42.333 + 0.56)",
+    filterOperator: "Equal to",
+    filterValue: "43",
+    expectedRowCount: 200,
+  },
 ];
 
 const DATE_TEST_CASES: CastTestCase[] = [
@@ -94,6 +115,23 @@ const DATE_TEST_CASES: CastTestCase[] = [
   },
 ];
 
+const FLOAT_TEST_CASES: CastTestCase[] = [
+  {
+    name: "Float",
+    expression: 'float("12.5")',
+    filterOperator: "Equal to",
+    filterValue: "12.5",
+    expectedRowCount: 200,
+  },
+  {
+    name: "FloatExpression",
+    expression: 'float(concat([ID], ".3333"))',
+    filterOperator: "Less than",
+    filterValue: "2",
+    expectedRowCount: 1,
+  },
+];
+
 describe(
   "scenarios > custom column > cast functions",
   { tags: "@external" },
@@ -109,6 +147,10 @@ describe(
 
     it("should support integer function", () => {
       testFilterWithExpressions(INTEGER_TEST_CASES, addOperatorFilter);
+    });
+
+    it("should support float function", () => {
+      testFilterWithExpressions(FLOAT_TEST_CASES, addOperatorFilter);
     });
 
     it("should support date function", () => {
@@ -152,7 +194,7 @@ function addOperatorFilter({ filterOperator, filterValue }: CastTestCase) {
 
 function addDateFilter({ filterOperator, filterValue }: CastTestCase) {
   H.popover().within(() => {
-    cy.findByText("Specific dates…").click();
+    cy.findByText("Fixed date range…").click();
     cy.findByText(filterOperator).click();
     cy.findByLabelText("Date").clear().type(filterValue);
     cy.button("Add filter").click();

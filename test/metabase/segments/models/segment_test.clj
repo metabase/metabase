@@ -2,12 +2,33 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.serialization :as serdes]
+   [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
    (java.time LocalDateTime)))
 
 (set! *warn-on-reflection* true)
+
+(deftest ^:parallel normalize-metric-segment-definition-test
+  (testing "Legacy Segment definitions should get normalized"
+    (is (= {:filter [:= [:field 1 nil] [:field 2 {:temporal-unit :month}]]}
+           ((:out @#'segment/transform-segment-definition)
+            (json/encode
+             {:filter [:= [:field-id 1] [:datetime-field [:field-id 2] :month]]}))))))
+
+(deftest ^:parallel dont-explode-on-way-out-from-db-test
+  (testing "`segment-definition`s should avoid explosions coming out of the DB..."
+    (is (= nil
+           ((:out @#'segment/transform-segment-definition)
+            (json/encode
+             {:filter 1000}))))
+    (testing "...but should still throw them coming in"
+      (is (thrown?
+           Exception
+           ((:in @#'segment/transform-segment-definition)
+            {:filter 1000}))))))
 
 (deftest update-test
   (testing "Updating"
@@ -35,7 +56,7 @@
                      :model/Table    table   {:schema "PUBLIC" :name "widget" :db_id (:id db)}
                      :model/Segment  segment {:name "big customers" :table_id (:id table) :created_at now}]
         (is (= "be199b7c"
-               (serdes/raw-hash ["big customers" (serdes/identity-hash table) now])
+               (serdes/raw-hash ["big customers" (serdes/identity-hash table) (:created_at segment)])
                (serdes/identity-hash segment)))))))
 
 (deftest definition-description-missing-definition-test

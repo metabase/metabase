@@ -1,8 +1,8 @@
 (ns metabase-enterprise.stale
   (:require
    [malli.experimental.time]
-   [metabase.embed.settings :as embed.settings]
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.embedding.settings :as embed.settings]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]

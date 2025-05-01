@@ -2,6 +2,7 @@
   (:require
    [java-time.api :as t]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :as i18n]
    [metabase.util.time.impl-common :as common])
   (:import
    (java.time.format DateTimeFormatter)
@@ -59,7 +60,7 @@
   "The first day of the week varies by locale, but Metabase has a setting that overrides it.
   In JVM, we can just read the setting directly."
   []
-  ((requiring-resolve 'metabase.public-settings/start-of-week)))
+  ((requiring-resolve 'metabase.settings.deprecated-grab-bag/start-of-week)))
 
 (def default-options
   "The default map of options."
@@ -327,15 +328,18 @@
     :always (localize)))
 
 (def ^:private unit-formats
-  {:day-of-week     "EEEE"
-   :day-of-week-iso "EEEE"
-   :month-of-year   "MMM"
-   :minute-of-hour  "m"
-   :hour-of-day     "h a"
-   :day-of-month    "d"
-   :day-of-year     "D"
-   :week-of-year    "w"
-   :quarter-of-year "'Q'Q"})
+  {:day-of-week        "EEEE"
+   :day-of-week-abbrev "EEE"
+   :day-of-week-iso    "EEEE"
+   :month-of-year      "MMM"
+   :month-of-year-full "MMMM"
+   :minute-of-hour     "m"
+   :hour-of-day        "h a"
+   :hour-of-day-24     "H"
+   :day-of-month       "d"
+   :day-of-year        "D"
+   :week-of-year       "w"
+   :quarter-of-year    "'Q'Q"})
 
 (defn ^:private format-extraction-unit
   "Formats a date-time value given the temporal extraction unit.
@@ -344,7 +348,7 @@
   (when-let [^DateTimeFormatter formatter (some-> unit
                                                   unit-formats
                                                   t/formatter
-                                                  (cond-> #_formatter locale (.withLocale locale)))]
+                                                  (cond-> #_formatter locale (.withLocale (i18n/locale locale))))]
     (.format formatter t)))
 
 (defn format-unit
@@ -352,7 +356,8 @@
    If unit is nil, formats the full date/time"
   ([input unit] (format-unit input unit nil))
   ([input unit locale]
-   (if (string? input)
+   (cond
+     (string? input)
      (let [time? (common/matches-time? input)
            date? (common/matches-date? input)
            date-time? (common/matches-date-time? input)
@@ -368,11 +373,41 @@
             date? (t/format "MMM d, yyyy" t)
             :else (t/format "MMM d, yyyy, h:mm a" t)))
          input))
+
+     (number? input)
      (if (= unit :hour-of-day)
        (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
        (or
         (format-extraction-unit (common/number->timestamp input {:unit unit}) unit locale)
-        (str input))))))
+        (str input)))
+
+     (instance? java.time.temporal.TemporalAccessor input)
+     (let [input ^java.time.temporal.TemporalAccessor input]
+       (or (format-extraction-unit input unit locale)
+           (cond
+             ;; no hour, must be date
+             (not (.isSupported input (t/field :hour-of-day)))
+             (t/format "MMM d, yyyy" input)
+
+             ;; no day, must be time
+             (not (.isSupported input (t/field :day-of-month)))
+             (t/format "h:mm a" input)
+
+             :else ;; otherwise both date and time
+             (t/format "MMM d, yyyy, h:mm a" input))
+           (str input))))))
+
+(defn parse-unit
+  "Parse a unit of time/date, e.g., 'Wed' or 'August' or '14'."
+  ([str unit]
+   (parse-unit str unit nil))
+  ([str unit locale]
+   (some-> unit
+           unit-formats
+           t/formatter
+           (cond-> #_formatter
+            locale (.withLocale (i18n/locale locale)))
+           (.parse str))))
 
 (defn format-diff
   "Formats a time difference between two temporal values.

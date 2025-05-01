@@ -7,10 +7,10 @@
    [medley.core :as m]
    [metabase.analytics.stats :as stats :refer [legacy-anonymous-usage-stats]]
    [metabase.channel.email :as email]
+   [metabase.channel.slack :as slack]
    [metabase.config :as config]
    [metabase.core.core :as mbc]
    [metabase.db :as mdb]
-   [metabase.integrations.slack :as slack]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -540,6 +540,7 @@
   or to this set, so that [[every-feature-is-accounted-for-test]] passes."
   #{:audit-app ;; tracked under :mb-analytics
     :collection-cleanup
+    :development-mode
     :embedding
     :embedding-sdk
     :enhancements

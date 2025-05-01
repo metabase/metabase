@@ -3,6 +3,7 @@ import fs from "fs";
 import * as path from "path";
 
 const ROOT_FOLDER_PATH = path.resolve(__dirname, "../../../..");
+import { E2E_TMP_FOLDER_PATH } from "../constants/e2e-tmp-folder-path";
 
 const METABASE_JAR_DIST_PATH = path.join(ROOT_FOLDER_PATH, "target/uberjar");
 
@@ -29,17 +30,31 @@ export function copyExampleEnvFile({
 }
 
 export function copyLocalMetabaseJar(rootPath: string) {
-  const metabaseJarToPath = path.join(rootPath, LOCAL_DIST_PATH);
+  const destinationPath = path.join(rootPath, LOCAL_DIST_PATH);
 
-  fs.cpSync(METABASE_JAR_DIST_PATH, metabaseJarToPath, { recursive: true });
+  fs.cpSync(METABASE_JAR_DIST_PATH, destinationPath, { recursive: true });
 }
 
 export function copyLocalEmbeddingSdkPackage(rootPath: string) {
-  const embeddingSdkToPath = path.join(
-    rootPath,
-    LOCAL_DIST_PATH,
-    "embedding-sdk",
+  const destinationPath = path.join(rootPath, LOCAL_DIST_PATH, "embedding-sdk");
+
+  fs.cpSync(EMBEDDING_SDK_DIST_PATH, destinationPath, { recursive: true });
+}
+
+// See `docs/developers-guide/e2e-tests.md` for more info
+export function copyShoppyMetabaseAppDBDump(rootPath: string) {
+  const sourcePath = path.join(
+    E2E_TMP_FOLDER_PATH,
+    "db_dumps/shoppy_metabase_app_db_dump.sql",
   );
 
-  fs.cpSync(EMBEDDING_SDK_DIST_PATH, embeddingSdkToPath, { recursive: true });
+  // The dump must be copied to the Shoppy's `local-dist` directory.
+  // After that it will be used by the Shoppy's Docker container when it is built and started.
+  const destinationPath = path.join(
+    rootPath,
+    LOCAL_DIST_PATH,
+    "metabase_dump.sql",
+  );
+
+  fs.cpSync(sourcePath, destinationPath);
 }

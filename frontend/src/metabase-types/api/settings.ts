@@ -68,7 +68,7 @@ export interface EngineFieldOption {
 }
 
 export interface EngineSource {
-  type: "official" | "community" | "partner";
+  type: "official" | "community";
   contact: EngineSourceContact | null;
 }
 
@@ -141,6 +141,20 @@ export type LoadingMessage =
   | "loading-results";
 
 export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
+
+export type GdrivePayload = {
+  status: "not-connected" | "syncing" | "active" | "error";
+  url?: string;
+  message?: string; // only for errors
+  created_at?: number;
+  created_by_id?: UserId;
+  sync_started_at?: number;
+  last_sync_at?: number;
+  next_sync_at?: number;
+  error_message?: string;
+  db_id?: number;
+  error?: string;
+};
 
 const tokenStatusFeatures = [
   "advanced-config",
@@ -241,16 +255,24 @@ export type PasswordComplexity = {
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
 
-export interface SettingDefinition<Key extends SettingKey = SettingKey> {
+export interface SettingDefinition<
+  Key extends EnterpriseSettingKey = EnterpriseSettingKey,
+> {
   key: Key;
   env_name?: string;
   is_env_setting?: boolean;
-  value?: SettingValue<Key>;
-  default?: SettingValue<Key>;
+  value?: EnterpriseSettingValue<Key>;
+  default?: EnterpriseSettingValue<Key>;
   display_name?: string;
   description?: string | ReactNode | null;
   type?: InputSettingType;
 }
+
+export type SettingDefinitionMap<
+  T extends EnterpriseSettingKey = EnterpriseSettingKey,
+> = {
+  [K in T]: SettingDefinition<K>;
+};
 
 export type UpdateChannel = "latest" | "beta" | "nightly";
 
@@ -332,6 +354,7 @@ interface AdminSettings {
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
   "store-url": string;
+  gsheets: Partial<GdrivePayload>;
 }
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
@@ -364,6 +387,7 @@ interface PublicSettings {
   "custom-formatting": FormattingSettings;
   "custom-homepage": boolean;
   "custom-homepage-dashboard": DashboardId | null;
+  "development-mode?": boolean;
   "ee-ai-features-enabled"?: boolean;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
@@ -375,12 +399,6 @@ interface PublicSettings {
   engines: Record<string, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
-  gsheets: {
-    status: "not-connected" | "loading" | "complete" | "error";
-    folder_url: string | null;
-    error?: string;
-    "created-by-id"?: UserId;
-  };
   "has-user-setup": boolean;
   "help-link": HelpLinkSetting;
   "help-link-custom-destination": string;

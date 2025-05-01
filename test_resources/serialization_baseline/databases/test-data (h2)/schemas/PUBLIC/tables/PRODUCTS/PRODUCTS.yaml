@@ -1,6 +1,7 @@
 name: PRODUCTS
 display_name: Products
 description: null
+entity_id: rKyV6tg0Gg8YKC-Rq24__
 created_at: '2024-08-28T14:38:42.774331Z'
 db_id: test-data (h2)
 schema: PUBLIC
@@ -21,4 +22,3 @@ serdes/meta:
 - id: PRODUCTS
   model: Table
 database_require_filter: null
-entity_id: rKyV6tg0Gg8YKC-Rq24__

@@ -1,1 +1,2 @@
-export type ExportFormat = "csv" | "xlsx" | "json" | "png";
+export type TableExportFormat = "csv" | "xlsx" | "json";
+export type ExportFormat = TableExportFormat | "png";

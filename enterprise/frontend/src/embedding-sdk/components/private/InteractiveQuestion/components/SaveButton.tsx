@@ -1,6 +1,6 @@
 import type { MouseEventHandler } from "react";
 
-import type { ButtonProps } from "metabase/ui";
+import type { ButtonProps } from "embedding-sdk/types/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -10,6 +10,7 @@ import { ToolbarButton } from "./util/ToolbarButton";
 
 /**
  * @category InteractiveQuestion
+ * @expand
  */
 export type InteractiveQuestionSaveButtonProps = {
   /**

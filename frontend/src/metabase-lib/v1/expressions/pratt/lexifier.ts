@@ -1,7 +1,6 @@
 import type { SyntaxNodeRef } from "@lezer/common";
-import { t } from "ttag";
 
-import { ParseError } from "../errors";
+import { unquoteString } from "../string";
 import { OPERATOR, tokenize } from "../tokenizer";
 
 import {
@@ -27,20 +26,8 @@ import {
 } from "./syntax";
 import { type NodeType, Token } from "./types";
 
-const escapes = {
-  '"': '"',
-  "'": "'",
-  b: "\b",
-  f: "\f",
-  n: "\n",
-  r: "\r",
-  t: "\t",
-  v: "\x0b",
-};
-
 export function lexify(source: string) {
   const lexs: Token[] = [];
-  const errors: ParseError[] = [];
 
   function token(
     node: SyntaxNodeRef,
@@ -60,146 +47,55 @@ export function lexify(source: string) {
     return false;
   }
 
-  function error(node: SyntaxNodeRef, message: string) {
-    errors.push(
-      new ParseError(message, {
-        pos: node.from,
-        len: node.to - node.from,
-      }),
-    );
-
-    return token(node, { type: BAD_TOKEN });
-  }
-
   tokenize(source).iterate(function (node) {
     if (node.type.name === "Identifier") {
       return token(node, {
         type: IDENTIFIER,
+        value: source.slice(node.from, node.to),
       });
     }
 
-    if (node.type.name === "Reference") {
-      const value = source.slice(node.from, node.to);
-      let start = node.from + 1;
-      let end = node.to - 1;
-      if (value.at(0) !== "[") {
-        start = node.from;
-        error(node, t`Missing opening bracket`);
-      } else if (value.at(-1) !== "]") {
-        end = node.to;
-        error(node, t`Missing a closing bracket`);
-      }
-
+    if (node.type.name === "Field") {
+      const text = source.slice(node.from, node.to);
       return token(node, {
         type: FIELD,
-        value: source.slice(start, end),
+        value: unquoteString(text, "["),
       });
     }
 
     if (node.type.name === "Number") {
-      const value = source.slice(node.from, node.to).toLowerCase();
-      const [, exponent, ...rest] = value.split("e");
-      if (typeof exponent === "string" && !exponent.match(/[0-9]$/)) {
-        error(node, t`Missing exponent`);
-      } else if (rest.length > 0) {
-        error(node, t`Malformed exponent`);
-      }
-
       return token(node, { type: NUMBER });
     }
 
     if (node.type.name === "String") {
-      const openQuote = source[node.from];
-      const closeQuote = source[node.to - 1];
-      const penultimate = source[node.to - 2];
-      if (openQuote === "'" || openQuote === '"') {
-        let end = node.to - 1;
-        if (closeQuote !== openQuote || penultimate === "\\") {
-          end = node.to;
-          error(node, t`Missing closing quotes`);
-        }
-
-        return token(node, {
-          type: STRING,
-          value: source
-            // remove quotes
-            .slice(node.from + 1, end)
-            // expand escape sequences
-            .replace(/\\./g, (match) => {
-              const ch = match[1];
-              return escapes[ch as keyof typeof escapes] ?? ch;
-            }),
-        });
-      }
+      const text = source.slice(node.from, node.to);
+      return token(node, {
+        type: STRING,
+        value: unquoteString(text),
+      });
     }
 
-    if (node.type.name === "Boolean") {
-      const op = source.slice(node.from, node.to);
-      if (isValidBoolean(op)) {
-        return token(node, {
-          type: BOOLEAN,
-        });
+    if (node.type.name === OPERATOR.OpenParenthesis) {
+      const prev = lexs.at(-1);
+      if (prev?.type === IDENTIFIER) {
+        prev.type = CALL;
+        delete prev.value;
       }
+      return token(node, { type: GROUP });
     }
 
-    switch (parseOperator(node.type.name)) {
-      case null:
-        break;
-      case OPERATOR.Comma:
-        return token(node, { type: COMMA });
-      case OPERATOR.OpenParenthesis: {
-        const prev = lexs.at(-1);
-        if (prev?.type === IDENTIFIER) {
-          prev.type = CALL;
-        }
-        return token(node, { type: GROUP });
-      }
-      case OPERATOR.CloseParenthesis:
-        return token(node, { type: GROUP_CLOSE });
-      case OPERATOR.Plus:
-        return token(node, { type: ADD });
-      case OPERATOR.Minus:
-        return token(node, { type: SUB });
-      case OPERATOR.Star:
-      case OPERATOR.Slash:
-        return token(node, { type: MULDIV_OP });
-      case OPERATOR.Equal:
-      case OPERATOR.NotEqual:
-        return token(node, { type: EQUALITY });
-      case OPERATOR.LessThan:
-      case OPERATOR.GreaterThan:
-      case OPERATOR.LessThanEqual:
-      case OPERATOR.GreaterThanEqual:
-        return token(node, { type: COMPARISON });
-      case OPERATOR.Not:
-        return token(node, { type: LOGICAL_NOT });
-      case OPERATOR.And:
-        return token(node, { type: LOGICAL_AND });
-      case OPERATOR.Or:
-        return token(node, { type: LOGICAL_OR });
+    const type = parseOperatorType(node.type.name);
+    if (type) {
+      return token(node, { type });
     }
 
     // Handle parse errors
-    if (node.type.name === "⚠") {
-      if (node.node.toTree().positions.length === 0 && node.to !== node.from) {
-        const text = source.slice(node.from, node.to);
-
-        if (text === "]") {
-          // This bracket is closing the previous identifier, but it
-          // does not have a matching opening bracket.
-          const prev = lexs.at(-1);
-          if (prev && prev.type === IDENTIFIER) {
-            const name = source.slice(prev.pos, prev.pos + prev.length);
-            error(node, `Missing an opening bracket for ${name}`);
-          }
-          return false;
-        }
-
-        if (text.length === 1) {
-          error(node, `Invalid character: ${text}`);
-          return false;
-        }
-      }
+    if (
+      node.type.name === "⚠" &&
+      node.node.toTree().positions.length === 0 &&
+      node.to !== node.from
+    ) {
+      return token(node, { type: BAD_TOKEN });
     }
   });
 
@@ -215,25 +111,34 @@ export function lexify(source: string) {
 
   return {
     tokens: lexs.sort((a, b) => a.pos - b.pos),
-    errors,
   };
 }
 
-function isValidBoolean(op: string): op is "true" | "false" {
+const OPERATOR_TO_TYPE: Record<OPERATOR, NodeType> = {
+  [OPERATOR.Comma]: COMMA,
+  [OPERATOR.OpenParenthesis]: GROUP,
+  [OPERATOR.CloseParenthesis]: GROUP_CLOSE,
+  [OPERATOR.Plus]: ADD,
+  [OPERATOR.Minus]: SUB,
+  [OPERATOR.Star]: MULDIV_OP,
+  [OPERATOR.Slash]: MULDIV_OP,
+  [OPERATOR.Equal]: EQUALITY,
+  [OPERATOR.NotEqual]: EQUALITY,
+  [OPERATOR.LessThan]: COMPARISON,
+  [OPERATOR.GreaterThan]: COMPARISON,
+  [OPERATOR.GreaterThanEqual]: COMPARISON,
+  [OPERATOR.LessThanEqual]: COMPARISON,
+  [OPERATOR.Not]: LOGICAL_NOT,
+  [OPERATOR.And]: LOGICAL_AND,
+  [OPERATOR.Or]: LOGICAL_OR,
+  [OPERATOR.True]: BOOLEAN,
+  [OPERATOR.False]: BOOLEAN,
+};
+
+function parseOperatorType(op: string): NodeType | null {
   const lower = op.toLowerCase();
-  return lower === "true" || lower === "false";
-}
-
-const VALID_OPERATORS = new Set(Object.values(OPERATOR));
-
-function isValidOperator(op: string): op is OPERATOR {
-  return VALID_OPERATORS.has(op as OPERATOR);
-}
-
-function parseOperator(op: string): OPERATOR | null {
-  const lower = op.toLowerCase();
-  if (isValidOperator(lower)) {
-    return lower;
+  if (lower in OPERATOR_TO_TYPE) {
+    return OPERATOR_TO_TYPE[lower as keyof typeof OPERATOR_TO_TYPE];
   }
   return null;
 }

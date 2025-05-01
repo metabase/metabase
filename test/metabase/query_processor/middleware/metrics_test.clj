@@ -1,11 +1,14 @@
-(ns metabase.query-processor.middleware.metrics-test
+(ns ^:mb/driver-tests metabase.query-processor.middleware.metrics-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -13,6 +16,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.lib.util :as lib.util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.metrics :as metrics]
@@ -46,11 +50,12 @@
   ([metadata-provider query]
    (mock-metric metadata-provider query nil))
   ([metadata-provider query card-details]
-   (let [metric (merge {:lib/type :metadata/card
-                        :id (fresh-card-id metadata-provider)
-                        :database-id (meta/id)
-                        :name "Mock Metric"
-                        :type :metric
+   (let [metric (merge {:lib/type      :metadata/card
+                        :id            (fresh-card-id metadata-provider)
+                        :entity-id     (u/generate-nano-id)
+                        :database-id   (meta/id)
+                        :name          "Mock Metric"
+                        :type          :metric
                         :dataset-query query}
                        card-details)]
      [metric (lib/composed-metadata-provider
@@ -105,10 +110,16 @@
      :metabase-query-processor/metrics-adjust-errors 1
      :check-fn (fn [query]
                  (with-redefs [metrics/adjust-metric-stages (fn [_ _ stages] stages)]
-                   (is (thrown-with-msg?
-                        clojure.lang.ExceptionInfo
-                        #"Failed to replace metric"
-                        (adjust query)))))))
+                   (try
+                     (adjust query)
+                     (is false "Failed to throw expected Exception")
+                     (catch clojure.lang.ExceptionInfo e
+                       (is (= "Failed to replace metric" (ex-message e)))
+                       (is (=? {:metric-id   pos-int?
+                                :metric-data {:name "Mock Metric"
+                                              :aggregation vector?
+                                              :query map?}}
+                               (ex-data e)))))))))
   (testing "exceptions from other libs also increment error counter"
     (check-prometheus-metrics!
      :metabase-query-processor/metrics-adjust 1
@@ -173,17 +184,25 @@
       (is (=?
            {:stages [{:source-table (meta/id :orders)
                       :joins [{:stages [{:source-table (meta/id :products)}]}]
-                      :filters [[:= {} [:field {} (meta/id :products :category)] [:value {} "Gadget"]]]
-                      :aggregation [[:count {}]]}]}
+                      :aggregation [[:sum {} [:case {}
+                                              [[[:= {}
+                                                 [:field {} (meta/id :products :category)]
+                                                 [:value {} "Gadget"]]
+                                                1]]
+                                              0]]]}]}
            (adjust query)))
       (testing "With an explicit product join in consumer query"
         (is (=?
              {:stages [{:source-table (meta/id :orders)
                         :joins [{:stages [{:source-table (meta/id :products)}]}
                                 {:stages [{:source-table (meta/id :products)}]}]
-                        :filters [[:= {} [:field {} (meta/id :products :title)] "foobar"]
-                                  [:= {} [:field {} (meta/id :products :category)] [:value {} "Gadget"]]]
-                        :aggregation [[:count {}]]}]}
+                        :filters [[:= {} [:field {} (meta/id :products :title)] "foobar"]]
+                        :aggregation [[:sum {} [:case {}
+                                                [[[:= {}
+                                                   [:field {} (meta/id :products :category)]
+                                                   [:value {} "Gadget"]]
+                                                  1]]
+                                                0]]]}]}
              (adjust (as-> (lib/query mp (meta/table-metadata :orders)) $q
                        (lib/join $q (meta/table-metadata :products))
                        (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :title)} :id) (lib/filterable-columns $q))
@@ -193,9 +212,13 @@
         (is (=?
              {:stages [{:source-table (meta/id :orders)
                         :joins [{:stages [{:source-table (meta/id :products)}]}]
-                        :filters [[:= {} [:field {} (meta/id :products :title)] "foobar"]
-                                  [:= {} [:field {} (meta/id :products :category)] [:value {} "Gadget"]]]
-                        :aggregation [[:count {}]]}]}
+                        :filters [[:= {} [:field {} (meta/id :products :title)] "foobar"]]
+                        :aggregation [[:sum {} [:case {}
+                                                [[[:= {}
+                                                   [:field {} (meta/id :products :category)]
+                                                   [:value {} "Gadget"]]
+                                                  1]]
+                                                0]]]}]}
              (adjust (as-> (lib/query mp (meta/table-metadata :orders)) $q
                        (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :title)} :id) (lib/filterable-columns $q))
                                              "foobar"))
@@ -217,10 +240,14 @@
                   (lib/aggregate (lib.options/ensure-uuid [:metric {} (:id second-metric)])))]
     (is (=? {:stages [{:source-table (meta/id :orders)
                        :joins [{:stages [{:source-table (meta/id :products)}]}]
-                       :filters [[:= {} [:field {} (meta/id :products :category)] [:value {} "Gadget"]]
-                                 [:= {} [:field {} (meta/id :products :title)] [:value {} "Title"]]]
-                       :aggregation [[:count {}]
-                                     [:count {}]]}]}
+                       :aggregation [[:sum {} [:case {}
+                                               [[[:= {} [:field {} (meta/id :products :category)] [:value {} "Gadget"]]
+                                                 1]]
+                                               0]]
+                                     [:sum {} [:case {}
+                                               [[[:= {} [:field {} (meta/id :products :title)] [:value {} "Title"]]
+                                                 1]]
+                                               0]]]}]}
             (adjust query)))))
 
 (deftest ^:parallel adjust-aggregation-metric-ordering-test
@@ -284,9 +311,11 @@
                                   [:- {:lib/expression-name "qux"} [:expression {} "foobar"] 2]
                                   [:+ {:lib/expression-name "foobar_2"} 1 1]
                                   [:+ {:lib/expression-name "qux_2"} [:expression {} "foobar_2"] 1]]
-                    :filters [[:= {} [:expression {} "foobar"] [:expression {} "qux"]]
-                              [:= {} [:expression {} "qux_2"] [:expression {} "foobar_2"]]]
-                    :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+                    :filters [[:= {} [:expression {} "foobar"] [:expression {} "qux"]]]
+                    :aggregation [[:avg {}
+                                   [:case {}
+                                    [[#_some? [:= {} [:expression {} "qux_2"] [:expression {} "foobar_2"]]
+                                      [:field {} (meta/id :products :rating)]]]]]]}]}
          (adjust query)))))
 
 (deftest ^:parallel adjust-filter-test
@@ -295,8 +324,11 @@
                   (lib/filter (lib/= (meta/field-metadata :products :category) "Widget")))]
     (is (=?
          {:stages [{:source-table (meta/id :products)
-                    :filters [[:= {} [:field {} (meta/id :products :category)] "Widget"]
-                              [:> {} [:field {} (meta/id :products :price)] [:value {} 1]]]}]}
+                    :aggregation [[:avg {} [:case {} [[[:> {}
+                                                        [:field {} (meta/id :products :price)]
+                                                        [:value {} 1]]
+                                                       [:field {} (meta/id :products :rating)]]]]]]
+                    :filters [[:= {} [:field {} (meta/id :products :category)] "Widget"]]}]}
          (adjust query)))))
 
 (deftest ^:parallel adjust-mixed-multi-source-test
@@ -310,10 +342,13 @@
         query (-> (lib/query mp second-metric)
                   (lib/filter (lib/= (meta/field-metadata :products :category) "Widget")))]
     (is (=? {:stages [{:source-table (meta/id :products)}
-                      {:filters [[:= {} [:field {} (meta/id :products :category)] "Widget"]
-                                 [:< {} [:field {} (meta/id :products :price)] [:value {} 100]]
-                                 [:> {} [:field {} (meta/id :products :price)] [:value {} 1]]]
-                       :aggregation some?}]}
+                      {:filters [[:= {} [:field {} (meta/id :products :category)] "Widget"]]
+                       :aggregation [[:avg {}
+                                      [:case {}
+                                       [[[:< {} [:field {} "PRICE"] [:value {} 100]]
+                                         [:case {}
+                                          [[[:> {} [:field {} "PRICE"] [:value {} 1]]
+                                            [:field {} "RATING"]]]]]]]]]}]}
             (adjust query)))))
 
 (deftest ^:parallel question-based-on-metric-based-on-metric-based-on-metric-test
@@ -332,16 +367,20 @@
                   (lib/join (lib/join-clause question [(lib/= 1 1)])))]
     (is (=? {:stages [{:joins [{:stages [{:aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}
                                          ;; Empty stage added by resolved-source-cards to nest join
-                                         #(= #{:lib/type :qp/stage-had-source-card :source-query/model?} (set (keys %)))]}]}]}
+                                         (=?/exactly {:lib/type                 :mbql.stage/mbql
+                                                      :qp/stage-had-source-card (:id question)
+                                                      :source-query/model?      false
+                                                      :source-query/entity-id   (:entity-id question)})]}]}]}
             (adjust query)))))
 
 (defn- model-based-metric-question
   [mp model-query agg-col-fn]
-  (let [model {:lib/type :metadata/card
-               :id (fresh-card-id mp)
-               :database-id (meta/id)
-               :name "Mock Model"
-               :type :model
+  (let [model {:lib/type      :metadata/card
+               :id            (fresh-card-id mp)
+               :entity-id     (u/generate-nano-id)
+               :database-id   (meta/id)
+               :name          "Mock Model"
+               :type          :model
                :dataset-query model-query}
         model-mp (lib/composed-metadata-provider
                   mp
@@ -392,11 +431,12 @@
   (let [mp meta/metadata-provider
         model-query (-> (lib/query mp (meta/table-metadata :orders))
                         (lib/filter (lib/> (meta/field-metadata :orders :discount) 3)))
-        model {:lib/type :metadata/card
-               :id (fresh-card-id mp)
-               :database-id (meta/id)
-               :name "Base Mock Model"
-               :type :model
+        model {:lib/type      :metadata/card
+               :id            (fresh-card-id mp)
+               :entity-id     (u/generate-nano-id)
+               :database-id   (meta/id)
+               :name          "Base Mock Model"
+               :type          :model
                :dataset-query model-query}
         model-mp (lib/composed-metadata-provider
                   mp
@@ -595,12 +635,17 @@
     (is (=?
          {:stages
           [{:source-table (meta/id :products)
-            :aggregation [[:avg {:name "avg"} [:field {} (meta/id :products :rating)]]]
-            :filters [[:= {} [:field {} (meta/id :venues :name)] some?]]}]}
+            :aggregation [[:avg {:name "avg"}
+                           [:case {}
+                            [[[:= {} [:field {} (meta/id :venues :name)] some?]
+                              [:field {} (meta/id :products :rating)]]]]]]}]}
          (adjust (lib/query mp source-metric))))
     ;; Segments will be expanded in this case as the metric query that is spliced in needs to be processed
     (is (=?
-         {:stages [{:filters [[:= {} [:field {} (meta/id :venues :name)] some?]]}]}
+         {:stages [{:aggregation [[:avg {}
+                                   [:case {}
+                                    [[[:= {} [:field {} (meta/id :venues :name)] [:value {} "abc"]]
+                                      [:field {} (meta/id :products :rating)]]]]]]}]}
          (adjust
           (-> (lib/query mp (meta/table-metadata :products))
               (lib/aggregate (lib.metadata/metric mp (:id source-metric)))))))))
@@ -614,9 +659,10 @@
           before {:source-table (meta/id :venues)
                   :aggregation  [[:metric (:id source-metric)]]}
           after {:source-table (meta/id :venues)
-                 :aggregation  [[:aggregation-options [:sum [:field (meta/id :venues :price) {}]]
-                                 {:display-name "My Cool Aggregation"}]]
-                 :filter       [:= [:field (meta/id :venues :name) {}] [:value "abc" {}]]}
+                 :aggregation  [[:aggregation-options
+                                 [:sum [:case [[[:= [:field (meta/id :venues :name) {}] [:value "abc" {}]]
+                                                [:field (meta/id :venues :price) {}]]]]]
+                                 {:display-name "My Cool Aggregation"}]]}
           expand-macros (fn [mbql-query]
                           (lib.convert/->legacy-MBQL (adjust (lib/query mp (lib.convert/->pMBQL mbql-query)))))]
       (comment
@@ -660,6 +706,7 @@
 (deftest ^:parallel model-based-metric-use-test
   (let [model {:lib/type :metadata/card
                :id (fresh-card-id meta/metadata-provider)
+               :entity-id (u/generate-nano-id)
                :database-id (meta/id)
                :name "Mock Model"
                :type :model
@@ -699,10 +746,15 @@
     (testing "model based metrics can be used in question based on that model"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :filters [[:> {} [:field {} (meta/id :products :rating)] 2]]}
-                        {:aggregation [[:avg {:name "avg"} [:field {} "RATING"]]
-                                       [:count {:name "count"}]]
-                         :filters [[:< {} [:field {} "RATING"] [:value {} 5]]
-                                   [:> {} [:field {} "RATING"] [:value {} 3]]]}]}
+                        {:aggregation [[:avg {:name "avg"}
+                                        [:case {}
+                                         [[[:< {} [:field {} "RATING"] [:value {} 5]]
+                                           [:field {} "RATING"]]]]]
+                                       [:sum {:name "count"}
+                                        [:case {}
+                                         [[[:> {} [:field {} "RATING"] [:value {} 3]]
+                                           1]]
+                                         0]]]}]}
               (adjust query))))))
 
 (deftest ^:parallel model-based-metric-with-implicit-join-test
@@ -832,3 +884,210 @@
           (is (=  "sum"
                   (get-in (#'metrics/fetch-referenced-metrics query stage)
                           [(:id metric) :aggregation 1 :name]))))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                            ;;
+;; Tests for transformation of metric filter into case expression             ;;
+;;                                                                            ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- aggregate-col-1st-arg-fn
+  [f]
+  (fn [query]
+    (lib/aggregate query (f (m/find-first (comp #{"Total"} :display-name)
+                                          (lib/visible-columns query))))))
+
+(def tested-aggregations
+  "Sequence of maps containing :mbql-fn keyword :feature-flag (optional) and :aggregate for testing."
+  [;; NO FEATURE FLAG
+   ;; nullary
+   {:operator :count
+    :aggregate (fn [query] (lib/aggregate query (lib/count)))}
+   ;; standard 1st arg col
+   {:operator :avg
+    :aggregate (aggregate-col-1st-arg-fn lib/avg)}
+   {:operator :distinct
+    :aggregate (aggregate-col-1st-arg-fn lib/distinct)}
+   {:operator :max
+    :aggregate (aggregate-col-1st-arg-fn lib/max)}
+   {:operator :min
+    :aggregate (aggregate-col-1st-arg-fn lib/min)}
+   {:operator :sum
+    :aggregate (aggregate-col-1st-arg-fn lib/sum)}
+   ;; special
+   {:operator :count-where
+    :aggregate (fn [query]
+                 (lib/aggregate query (lib/count-where (lib/< (lib/ref (m/find-first (comp #{"Product ID"} :display-name)
+                                                                                     (lib/filterable-columns query)))
+                                                              30))))}
+   {:operator :sum-where
+    :aggregate (fn [query]
+                 (lib/aggregate query (lib/sum-where (m/find-first (comp #{"Total"} :display-name)
+                                                                   (lib/visible-columns query))
+                                                     (lib/< (m/find-first (comp #{"Product ID"} :display-name)
+                                                                          (lib/filterable-columns query))
+                                                            30))))}
+   {:operator :distinct-where
+    :feature  :distinct-where
+    :aggregate (fn [query]
+                 (lib/aggregate query (lib/distinct-where (m/find-first (comp #{"Total"} :display-name)
+                                                                        (lib/visible-columns query))
+                                                          (lib/< (m/find-first (comp #{"Product ID"} :display-name)
+                                                                               (lib/filterable-columns query))
+                                                                 30))))}
+   {:operator :share
+    :aggregate (fn [query]
+                 (lib/aggregate query (lib/share (lib/< (m/find-first (comp #{"Product ID"} :display-name)
+                                                                      (lib/filterable-columns query))
+                                                        30))))}
+   ;; WITH FEATURE FLAG
+   ;; Computing cumulative aggregations with use of post processing middlewareware is not compatible with metrics.
+   ;; For details see the https://github.com/metabase/metabase/issues/56390
+   {:operator :cum-count
+    :feature :window-functions/cumulative
+    :aggregate (fn [query] (lib/aggregate query (lib/cum-count)))}
+   {:operator :cum-sum
+    :feature :window-functions/cumulative
+    :aggregate (aggregate-col-1st-arg-fn lib/cum-sum)}
+   {:operator :percentile
+    :feature :percentile-aggregations
+    :aggregate (fn [query]
+                 (lib/aggregate query (lib/percentile (m/find-first (comp #{"Total"} :display-name)
+                                                                    (lib/visible-columns query))
+                                                      0.7)))}
+   {:operator :median
+    :feature :percentile-aggregations
+    :aggregate (fn [query]
+                 (lib/aggregate query (lib/median (m/find-first (comp #{"Total"} :display-name)
+                                                                (lib/visible-columns query)))))}
+   {:operator :stddev
+    :feature :standard-deviation-aggregations
+    :aggregate (aggregate-col-1st-arg-fn lib/stddev)}
+   {:operator :var
+    :feature :standard-deviation-aggregations
+    :aggregate (aggregate-col-1st-arg-fn lib/var)}])
+
+(defmethod driver/database-supports? [:starburst :test/inaccurate-approx-percentile] [_ _ _] true)
+
+(deftest metric-comparison-test
+  (doseq [{:keys [feature operator aggregate]} tested-aggregations]
+    (mt/test-drivers
+      (if (some? feature)
+        (mt/normal-drivers-with-feature feature)
+        (mt/normal-drivers))
+      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+        (testing (format "Result of aggregation with filter is same as of metric with filter for %s" operator)
+          (let [base-query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                             (lib/filter $ (lib/between (m/find-first (comp #{"Created At"} :display-name)
+                                                                      (lib/filterable-columns $))
+                                                        "2017-04-01"
+                                                        "2018-03-31"))
+                             (lib/breakout $ (lib/with-temporal-bucket
+                                               (m/find-first (comp #{"Created At"} :display-name)
+                                                             (lib/breakoutable-columns $))
+                                               :month)))
+                metric-query (-> base-query
+                                 aggregate
+                                 (lib.util/update-query-stage -1 update-in [:aggregation 0] lib.options/update-options
+                                                              merge {:name "metric_aggregation"
+                                                                     :display-name "Metric Aggregation"}))]
+            (mt/with-temp
+              [:model/Card
+               metric-card
+               {:type :metric
+                :dataset_query (lib.convert/->legacy-MBQL metric-query)}]
+              (let [query (-> base-query
+                              aggregate)
+                    result (qp/process-query query)
+                    metric-query (-> base-query
+                                     (lib/aggregate (lib.metadata/metric mp (:id metric-card))))
+                    metric-result (qp/process-query metric-query)
+                    breakout-val->ag-val (into {} (mt/rows metric-result))
+                    results-combined (mapv (fn [[breakout-val _ag-val :as row]]
+                                             (conj row (get breakout-val->ag-val breakout-val)))
+                                           (mt/rows result))]
+                (is (every? (fn [[_ aggregation-value metric-value]]
+                              (< (abs (- aggregation-value metric-value))
+                                 (if (and (#{:percentile :median} operator)
+                                          (driver/database-supports? driver/*driver* :test/inaccurate-approx-percentile nil))
+                                   1
+                                   0.01)))
+                            results-combined))))))))))
+
+(deftest next-stage-reference-test
+  (doseq [{:keys [feature operator aggregate]} tested-aggregations]
+    (mt/test-drivers
+      (if (some? feature)
+        (mt/normal-drivers-with-feature feature)
+        (mt/normal-drivers))
+      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+        (testing (format "Next stage reference works for %s" operator)
+          (mt/with-temp
+            [:model/Card
+             metric-card
+             {:type :metric
+              :dataset_query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                               (lib/filter $ (lib/between (m/find-first (comp #{"Created At"} :display-name)
+                                                                        (lib/filterable-columns $))
+                                                          "2017-04-01"
+                                                          "2018-03-31"))
+                               (aggregate $))}]
+            (let [query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                          (lib/aggregate $ (lib.metadata/metric mp (:id metric-card)))
+                          (lib/breakout $ (lib/with-temporal-bucket
+                                            (m/find-first (comp #{"Created At"} :display-name)
+                                                          (lib/breakoutable-columns $))
+                                            :month))
+                          (lib/append-stage $)
+                          (lib/filter $ (lib/> (let [aggregation-uuids (set (map (comp :lib/uuid lib.options/options)
+                                                                                 (lib/aggregations $ 0)))]
+                                                 (m/find-first (comp aggregation-uuids :lib/source-uuid)
+                                                               (lib/filterable-columns $)))
+                                               0)))]
+              (is (=? {:status :completed}
+                      (qp/process-query query))))))))))
+
+(deftest metrics-with-conflicting-filters-produce-meaningful-result-test
+  (doseq [{:keys [_ operator aggregate]} tested-aggregations]
+    (testing operator
+      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            filter #(lib/filter %1 (%2 (m/find-first (comp #{"Created At"} :display-name)
+                                                     (lib/filterable-columns %1))
+                                       "2018-04-01"))
+            breakout #(lib/breakout % (lib/with-temporal-bucket
+                                        (m/find-first (comp #{"Created At"} :display-name)
+                                                      (lib/breakoutable-columns %))
+                                        :month))]
+        (mt/with-temp
+          [:model/Card
+           first-metric-card
+           {:type :metric
+            :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                               (filter lib/<)
+                               (aggregate))}
+           :model/Card
+           second-metric-card
+           {:type :metric
+            :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                               (filter lib/>=)
+                               (aggregate))}]
+          (let [metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                 breakout
+                                 (lib/aggregate (lib.metadata/metric mp (:id first-metric-card)))
+                                 (lib/aggregate (lib.metadata/metric mp (:id second-metric-card))))
+                plain-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                breakout
+                                aggregate)
+                metric-rows  (mt/formatted-rows [str 3.0 3.0] (qp/process-query metric-query))
+                plain-rows (mt/formatted-rows [str 3.0] (qp/process-query plain-query))]
+            (is (every? (fn [[[_ metric-col-1 metric-col-2] [_ plain-ag-col]]]
+                          (let [d (- plain-ag-col (or metric-col-1 0) (or metric-col-2 0))]
+                            (< d 0.01)))
+                        (map vector metric-rows plain-rows)))))))))
+
+(deftest ^:parallel all-available-aggregations-covered-test
+  (testing "All available aggregations are tested for filter expansion in metric"
+    (is (empty? (set/difference
+                 (disj (descendants @lib.hierarchy/hierarchy :metabase.lib.schema.aggregation/aggregation-clause-tag)
+                       :metric :offset)
+                 (set (map :operator tested-aggregations)))))))

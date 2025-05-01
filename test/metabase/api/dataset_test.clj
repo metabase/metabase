@@ -15,7 +15,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -250,17 +249,15 @@
                                     :limit        5})
                                  qp.compile/compile
                                  :query))
-
           native-query (mt/native-query {:query native-sub-query})
 
           ;; Let metadata-provider-with-cards-with-metadata-for-queries calculate the result-metadata.
-          metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])]
+          metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])
+          metadata-card     (lib.metadata/card metadata-provider 1)]
       (mt/with-temp
-        [:model/Card card (assoc {:dataset_query native-query}
-                                 :result_metadata
-                                 (-> (lib.metadata.protocols/metadatas metadata-provider :metadata/card [1])
-                                     first
-                                     :result-metadata))]
+        [:model/Card card {:dataset_query native-query
+                           :entity_id       (:entity-id metadata-card)
+                           :result_metadata (:result-metadata metadata-card)}]
         (let [card-query {:database (mt/id)
                           :type     "query"
                           :query    {:source-table (str "card__" (u/the-id card))}}]

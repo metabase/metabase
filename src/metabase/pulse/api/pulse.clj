@@ -3,7 +3,6 @@
   see [[metabase.pulse.api.unsubscribe]].
 
   Deprecated: will soon be migrated to notification APIs."
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.set :refer [difference]]
    [hiccup.core :refer [html]]
@@ -15,9 +14,10 @@
    [metabase.api.routes.common]
    [metabase.channel.email :as email]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.channel.slack :as channel.slack]
    [metabase.config :as config]
    [metabase.events :as events]
-   [metabase.integrations.slack :as slack]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.notification.send :as notification.send]
@@ -247,7 +247,7 @@
   []
   (validation/check-has-application-permission :subscription false)
   (let [chan-types (-> pulse-channel/channel-types
-                       (assoc-in [:slack :configured] (slack/slack-configured?))
+                       (assoc-in [:slack :configured] (channel.slack/slack-configured?))
                        (assoc-in [:email :configured] (email/email-configured?))
                        (assoc-in [:http :configured] (t2/exists? :model/Channel :type :channel/http :active true)))]
     {:channels (cond
@@ -261,10 +261,10 @@
                  ;; if we have Slack enabled return cached channels and users
                  :else
                  (try
-                   (future (slack/refresh-channels-and-usernames-when-needed!))
+                   (future (channel.slack/refresh-channels-and-usernames-when-needed!))
                    (assoc-in chan-types
                              [:slack :fields 0 :options]
-                             (->> (slack/slack-cached-channels-and-usernames)
+                             (->> (channel.settings/slack-cached-channels-and-usernames)
                                   :channels
                                   (map :display-name)))
                    (catch Throwable e
