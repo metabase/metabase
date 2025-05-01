@@ -6,7 +6,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import CS from "metabase/css/core/index.css";
 import Search from "metabase/entities/search";
 import SnippetCollections from "metabase/entities/snippet-collections";
@@ -20,7 +19,7 @@ import {
 } from "metabase/plugins";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
-import { Flex, Icon } from "metabase/ui";
+import { Button, Flex, Icon, Menu } from "metabase/ui";
 
 import { SnippetRow } from "../SnippetRow";
 
@@ -29,7 +28,7 @@ import { SnippetSidebarEmptyState } from "./SnippetSidebarEmptyState";
 
 const ICON_SIZE = 16;
 const HEADER_ICON_SIZE = 16;
-const MIN_SNIPPETS_FOR_SEARCH = 15;
+const MIN_SNIPPETS_FOR_SEARCH = 1;
 
 class SnippetSidebarInner extends React.Component {
   state = {
@@ -175,51 +174,42 @@ class SnippetSidebarInner extends React.Component {
                   />
                 )}
 
-                {snippetCollection.can_write && (
-                  <TippyPopoverWithTrigger
-                    triggerClasses="flex"
-                    triggerContent={
-                      <Icon
-                        className={cx(S.AddSnippetIcon, {
-                          [S.isHidden]: showSearch,
-                        })}
-                        name="add"
-                        size={HEADER_ICON_SIZE}
-                      />
-                    }
-                    placement="bottom-end"
-                    popoverContent={({ closePopover }) => (
-                      <div className={cx(CS.flex, CS.flexColumn)}>
-                        {[
-                          {
-                            icon: "snippet",
-                            name: t`New snippet`,
-                            onClick: openSnippetModalWithSelectedText,
-                          },
-                          ...PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.map((f) =>
-                            f(this),
-                          ),
-                        ].map(({ icon, name, onClick }) => (
-                          <Flex
-                            className={S.MenuIconContainer}
-                            key={name}
-                            onClick={() => {
-                              onClick();
-                              closePopover();
-                            }}
-                          >
+                {snippetCollection.can_write && !showSearch && (
+                  <Menu position="bottom-end">
+                    <Menu.Target>
+                      <Button variant="subtle">
+                        <Icon name="add" />
+                      </Button>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      {[
+                        {
+                          icon: "snippet",
+                          name: t`New snippet`,
+                          onClick: openSnippetModalWithSelectedText,
+                        },
+                        ...PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.map((f) =>
+                          f(this),
+                        ),
+                      ].map(({ icon, name, onClick }) => (
+                        <Menu.Item
+                          key={name}
+                          onClick={onClick}
+                          leftSection={
                             <Icon
                               name={icon}
                               size={ICON_SIZE}
                               className={CS.mr2}
                             />
-                            <h4>{name}</h4>
-                          </Flex>
-                        ))}
-                      </div>
-                    )}
-                  />
+                          }
+                        >
+                          {name}
+                        </Menu.Item>
+                      ))}
+                    </Menu.Dropdown>
+                  </Menu>
                 )}
+
                 <Icon
                   className={cx(S.HideSearchIcon, {
                     [S.isHidden]: !showSearch,

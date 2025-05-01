@@ -16,19 +16,8 @@
   }
 }
 
-.AddSnippetIcon {
-  color: var(--mb-color-brand);
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-
-  &:hover {
-    background-color: var(--mb-color-bg-light);
-  }
-
-  &.isHidden {
-    display: none;
-  }
+.isHidden {
+  display: none;
 }
 
 .SearchSnippetIcon {
