@@ -31,3 +31,5 @@ export const nonAsciiFieldNames: DictionaryArray = [
   { locale: "zh-TW", msgid: "Title", msgstr: "标题" },
   { locale: "en", msgid: "Butterfly", msgstr: "🦋" },
 ];
+
+export const columnNamesWithTypeText = ["Title", "Category", "Vendor"];
