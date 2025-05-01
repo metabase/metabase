@@ -916,7 +916,9 @@
     (assert spec (str "No serialization spec defined for model " model-name))
     (-> (select-keys ingested (:copy spec))
         (into (for [[k transform] (:transform spec)
-                    :when (not (::nested transform))
+                    :when (and (not (::nested transform))
+                               ;; handling circuit-breaking
+                               (not (contains? (::strip ingested) k)))
                     :let [_         (assert-one-defined transform :import :import-with-context)
                           import-k  (:as transform k)
                           input     (get ingested import-k)
@@ -932,7 +934,9 @@
 (defn- spec-nested! [model-name ingested instance]
   (let [spec (make-spec model-name nil)]
     (doseq [[k transform] (:transform spec)
-            :when (::nested transform)
+            :when (and (::nested transform)
+                       ;; handling circuit-breaking
+                       (not (contains? (::strip ingested) k)))
             :let [_         (assert-one-defined transform :import :import-with-context)
                   input     (get ingested k)
                   f         (:import transform)
