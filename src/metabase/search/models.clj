@@ -1,6 +1,7 @@
 (ns metabase.search.models
   (:require
    [metabase.search.core :as search]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 ;; Models must derive from :hook/search-index if their state can influence the contents of the Search Index.
@@ -15,7 +16,7 @@
 
 (t2/define-after-update :hook/search-index
   [instance]
-  (when (t2/changes instance) (search/update! instance))
+  (when (and (t2/instance? instance) (t2/changes instance)) (search/update! instance))
   nil)
 
 ;; Too much of a performance risk.
