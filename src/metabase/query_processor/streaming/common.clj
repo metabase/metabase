@@ -111,6 +111,9 @@
       "name"
       (get-in currency/currency [(keyword currency-code) :name_plural]))))
 
+;; Forward declaration for viz-settings-for-col since we need to use it before its definition
+(declare viz-settings-for-col)
+
 (defn column-titles
   "Generates the column titles that should be used in the export, taking into account viz settings."
   [ordered-cols viz-settings format-rows?]
