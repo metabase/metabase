@@ -9,7 +9,7 @@ import { useDatabaseListQuery, useDocsUrl } from "metabase/common/hooks";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import EmptyState from "metabase/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import Link from "metabase/core/components/Link";
+import Link, { ForwardRefLink } from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
@@ -90,22 +90,17 @@ export function BrowseMetrics() {
               />
             )}
             {hasDataAccess && (
-              <ActionIcon
-                aria-label={t`Create a new metric`}
-                size={32}
-                variant="viewHeader"
-                component={Link}
-                to={newMetricLink}
-              >
-                {/* Wrapping an outer component (Link) does not show the tooltip */}
-                <Tooltip
-                  label={t`Create a new metric`}
-                  position="bottom"
-                  offset={16}
+              <Tooltip label={t`Create a new metric`} position="bottom">
+                <ActionIcon
+                  aria-label={t`Create a new metric`}
+                  size={32}
+                  variant="viewHeader"
+                  component={ForwardRefLink}
+                  to={newMetricLink}
                 >
                   <Icon name="add" />
-                </Tooltip>
-              </ActionIcon>
+                </ActionIcon>
+              </Tooltip>
             )}
           </Flex>
         </BrowseSection>
