@@ -7,7 +7,6 @@ import type {
   EnterpriseSettingValue,
 } from "metabase-types/api";
 
-import { useGetSettingsQuery } from "../session";
 import {
   useGetAdminSettingsDetailsQuery,
   useUpdateSettingMutation,
@@ -20,12 +19,10 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
   settingName: SettingName,
 ) => {
   const {
-    data: settings,
-    isLoading: settingsLoading,
+    data: settingsDetails,
+    isLoading: detailsLoading,
     ...apiProps
-  } = useGetSettingsQuery();
-  const { data: settingsDetails, isLoading: detailsLoading } =
-    useGetAdminSettingsDetailsQuery();
+  } = useGetAdminSettingsDetailsQuery();
   const [updateSetting, updateSettingResult] = useUpdateSettingMutation();
 
   const settingDetails = settingsDetails?.[settingName];
@@ -62,7 +59,7 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
     [updateSetting, sendToast],
   );
 
-  const settingValue = settings?.[settingName];
+  const settingValue = settingDetails?.value || settingDetails?.default;
 
   return {
     value: settingValue,
@@ -70,7 +67,7 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
     description: settingDetails?.description,
     updateSetting: handleUpdateSetting,
     updateSettingResult,
-    isLoading: settingsLoading || detailsLoading,
+    isLoading: detailsLoading,
     ...apiProps,
   };
 };
