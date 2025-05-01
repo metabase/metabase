@@ -31,7 +31,7 @@ const MetabaseProvider = ({
 }) => {
   const Provider = dynamic(
     () =>
-      import("@metabase/embedding-sdk-react").then((m) => {
+      import("./index.mjs").then((m) => {
         return { default: m.MetabaseProvider };
       }),
     {
@@ -83,7 +83,7 @@ const generateCodeFor = ({
 
 const ${mainComponent} = dynamic(
   () =>
-    import("./main.bundle.js").then((m) => {
+    import("./index.mjs").then((m) => {
       return { default: m.${mainComponent} };
     }),
   { ssr: false, loading: () => "Loading..." }
@@ -93,7 +93,7 @@ ${subComponents
   .map(
     (subComponent) => `${mainComponent}.${subComponent} = dynamic(
 () =>
-  import("./main.bundle.js").then((m) => {
+  import("./index.mjs").then((m) => {
     return { default: m.${mainComponent}.${subComponent} };
     }),
   { ssr: false, loading: () => "Loading..." }
