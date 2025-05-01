@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import type { AnySchema } from "yup";
-import * as Yup from "yup";
+import { object, string } from "yup";
 
 import { render, screen, waitFor } from "__support__/ui";
 import {
@@ -117,8 +117,8 @@ describe("FormSelect", () => {
   });
 
   it("should show validation errors", async () => {
-    const validationSchema = Yup.object({
-      display: Yup.string().required(requiredErrorMessage),
+    const validationSchema = object({
+      display: string().required(requiredErrorMessage),
     });
 
     setup({ initialValues: validationSchema.getDefault(), validationSchema });
@@ -135,11 +135,8 @@ describe("FormSelect", () => {
   });
 
   it("should show validation errors with nullable values", async () => {
-    const validationSchema = Yup.object({
-      display: Yup.string()
-        .nullable()
-        .default(null)
-        .required(requiredErrorMessage),
+    const validationSchema = object({
+      display: string().nullable().default(null).required(requiredErrorMessage),
     });
     setup({
       initialValues: validationSchema.getDefault(),

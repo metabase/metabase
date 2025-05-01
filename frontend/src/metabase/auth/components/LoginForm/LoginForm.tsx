@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
+import { boolean, object, string } from "yup";
 
 import FormCheckBox from "metabase/core/components/FormCheckBox";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
@@ -11,15 +11,15 @@ import * as Errors from "metabase/lib/errors";
 
 import type { LoginData } from "../../types";
 
-const LOGIN_SCHEMA = Yup.object().shape({
-  username: Yup.string()
+const LOGIN_SCHEMA = object().shape({
+  username: string()
     .required(Errors.required)
     .when("$isLdapEnabled", {
       is: false,
       then: (schema) => schema.email(Errors.email),
     }),
-  password: Yup.string().required(Errors.required),
-  remember: Yup.boolean(),
+  password: string().required(Errors.required),
+  remember: boolean(),
 });
 
 interface LoginFormProps {

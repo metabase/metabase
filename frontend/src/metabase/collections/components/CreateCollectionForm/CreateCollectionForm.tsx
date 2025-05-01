@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
-import * as Yup from "yup";
+import { mixed, number, object, string } from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
@@ -24,17 +24,17 @@ import type { State } from "metabase-types/store";
 
 import { FormAuthorityLevelField } from "../../containers/FormAuthorityLevelFieldContainer";
 
-const COLLECTION_SCHEMA = Yup.object({
-  name: Yup.string()
+const COLLECTION_SCHEMA = object({
+  name: string()
     .required(Errors.required)
     .max(100, Errors.maxLength)
     .default(""),
-  description: Yup.string().nullable().max(255, Errors.maxLength).default(null),
-  color: Yup.string()
+  description: string().nullable().max(255, Errors.maxLength).default(null),
+  color: string()
     .nullable()
     .default(() => color(DEFAULT_COLLECTION_COLOR_ALIAS)),
-  authority_level: Yup.mixed().oneOf(["official", null]).default(null),
-  parent_id: Yup.number().nullable(),
+  authority_level: mixed().oneOf(["official", null]).default(null),
+  parent_id: number().nullable(),
 });
 
 interface CreateCollectionProperties {

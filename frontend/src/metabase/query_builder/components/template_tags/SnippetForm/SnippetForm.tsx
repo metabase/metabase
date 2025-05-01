@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import * as Yup from "yup";
+import { number, object, string } from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { canonicalCollectionId } from "metabase/collections/utils";
@@ -24,17 +24,17 @@ import type {
 
 import S from "./SnippetForm.module.css";
 
-const SNIPPET_SCHEMA = Yup.object({
-  name: Yup.string()
+const SNIPPET_SCHEMA = object({
+  name: string()
     .required(Errors.required)
     .max(100, Errors.maxLength)
     .default(""),
-  description: Yup.string().nullable().max(500, Errors.maxLength).default(null),
-  content: Yup.string()
+  description: string().nullable().max(500, Errors.maxLength).default(null),
+  content: string()
     .required(Errors.required)
     .max(10000, Errors.maxLength)
     .default(""),
-  collection_id: Yup.number().nullable().default(null),
+  collection_id: number().nullable().default(null),
 });
 
 type SnippetFormValues = Pick<

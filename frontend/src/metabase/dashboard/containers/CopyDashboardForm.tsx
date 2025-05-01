@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { withRouter } from "react-router";
 import { t } from "ttag";
-import * as Yup from "yup";
+import { boolean, number, object, string } from "yup";
 
 import { useGetDashboardQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
@@ -26,17 +26,17 @@ import { DashboardCopyModalShallowCheckboxLabel } from "../components/DashboardC
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "../constants";
 import { isVirtualDashCard } from "../utils";
 
-const DASHBOARD_SCHEMA = Yup.object({
-  name: Yup.string()
+const DASHBOARD_SCHEMA = object({
+  name: string()
     .required(Errors.required)
     .max(100, Errors.maxLength)
     .default(""),
-  description: Yup.string()
+  description: string()
     .nullable()
     .max(DASHBOARD_DESCRIPTION_MAX_LENGTH, Errors.maxLength)
     .default(null),
-  collection_id: Yup.number().nullable().default(null),
-  is_shallow_copy: Yup.boolean().default(false),
+  collection_id: number().nullable().default(null),
+  is_shallow_copy: boolean().default(false),
 });
 
 export interface CopyDashboardFormProperties {

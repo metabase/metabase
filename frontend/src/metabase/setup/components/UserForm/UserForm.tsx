@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import * as Yup from "yup";
+import { object, ref, string } from "yup";
 
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
@@ -12,23 +12,23 @@ import type { UserInfo } from "metabase-types/store";
 
 import { UserFieldGroup, UserFormRoot } from "./UserForm.styled";
 
-const USER_SCHEMA = Yup.object({
-  first_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
-  last_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
-  email: Yup.string().default("").required(Errors.required).email(Errors.email),
-  site_name: Yup.string().default("").required(Errors.required),
-  password: Yup.string()
+const USER_SCHEMA = object({
+  first_name: string().nullable().default(null).max(100, Errors.maxLength),
+  last_name: string().nullable().default(null).max(100, Errors.maxLength),
+  email: string().default("").required(Errors.required).email(Errors.email),
+  site_name: string().default("").required(Errors.required),
+  password: string()
     .default("")
     .required(Errors.required)
     .test(async (value = "", context) => {
       const error = await context.options.context?.onValidatePassword(value);
       return error ? context.createError({ message: error }) : true;
     }),
-  password_confirm: Yup.string()
+  password_confirm: string()
     .default("")
     .required(Errors.required)
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    .oneOf([Yup.ref("password")], t`passwords do not match`),
+    .oneOf([ref("password")], t`passwords do not match`),
 });
 
 interface UserFormProps {

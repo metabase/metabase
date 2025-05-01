@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import type { AnySchema } from "yup";
-import * as Yup from "yup";
+import { array, object, string } from "yup";
 
 import { render, screen, waitFor } from "__support__/ui";
 import {
@@ -71,8 +71,8 @@ describe("FormCheckboxGroup", () => {
   });
 
   it("should show validation errors", async () => {
-    const validationSchema = Yup.object({
-      columns: Yup.array(Yup.string().default(""))
+    const validationSchema = object({
+      columns: array(string().default(""))
         .default([])
         .min(1, requiredErrorMessage),
     });

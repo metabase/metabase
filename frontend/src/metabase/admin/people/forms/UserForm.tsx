@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import * as Yup from "yup";
+import { object, string } from "yup";
 
 import { FormFooter } from "metabase/core/components/FormFooter";
 import {
@@ -15,10 +15,10 @@ import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
 import { Button } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
-const localUserSchema = Yup.object({
-  first_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
-  last_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
-  email: Yup.string().email().required(Errors.required),
+const localUserSchema = object({
+  first_name: string().nullable().max(100, Errors.maxLength).default(null),
+  last_name: string().nullable().max(100, Errors.maxLength).default(null),
+  email: string().email().required(Errors.required),
 });
 
 interface UserFormProps {

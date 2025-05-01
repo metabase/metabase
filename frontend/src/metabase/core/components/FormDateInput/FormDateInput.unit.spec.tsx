@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import { Form, Formik } from "formik";
-import * as Yup from "yup";
+import { object, string } from "yup";
 
 import { render, screen, waitFor } from "__support__/ui";
 
 import FormDateInput from "./FormDateInput";
 
-const TEST_SCHEMA = Yup.object({
-  value: Yup.string().required("error"),
+const TEST_SCHEMA = object({
+  value: string().required("error"),
 });
 
 interface TestFormDateInputProps {
