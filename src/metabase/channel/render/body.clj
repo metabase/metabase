@@ -612,7 +612,7 @@
                          (get-in dashcard [:visualization_settings :visualization])
                          (get card :visualization_settings))
         funnel-type    (if visualizer?
-                         (get-in viz-settings [:settings :funnel.type])
+                         (get-in viz-settings [:settings :funnel.type] "funnel")
                          (get viz-settings :funnel.type))
         processed-data (if (and visualizer? (= "funnel" funnel-type))
                          (render.util/merge-visualizer-data (series-cards-with-data dashcard card data) viz-settings)

@@ -17,6 +17,7 @@ import { extractRemappings, isCartesianChart } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import {
   createDataSource,
+  getVisualizationColumns,
   mergeVisualizerData,
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
@@ -53,7 +54,7 @@ function getRawSeriesWithDashcardSettings(rawSeries, dashcardSettings) {
 }
 
 function getVisualizerRawSeries(rawSeries, dashcardSettings) {
-  const { columns, columnValuesMapping } = dashcardSettings.visualization;
+  const { columnValuesMapping } = dashcardSettings.visualization;
   const datasets = rawSeries.reduce((acc, series) => {
     if (series.card.id) {
       acc[`card:${series.card.id}`] = series;
@@ -63,6 +64,12 @@ function getVisualizerRawSeries(rawSeries, dashcardSettings) {
 
   const dataSources = rawSeries.map((series) =>
     createDataSource("card", series.card.id, series.card.name),
+  );
+
+  const columns = getVisualizationColumns(
+    dashcardSettings.visualization,
+    datasets,
+    dataSources,
   );
 
   const mergedData = mergeVisualizerData({
