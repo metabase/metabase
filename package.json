@@ -32,6 +32,7 @@
     "@mantine/hooks": "^7.17.0",
     "@react-oauth/google": "^0.11.1",
     "@reduxjs/toolkit": "^2.5.0",
+    "@rsdoctor/webpack-plugin": "^1.0.2",
     "@snowplow/browser-tracker": "^3.1.6",
     "@tanstack/react-table": "^8.21.2",
     "@tanstack/react-virtual": "^3.13.2",
