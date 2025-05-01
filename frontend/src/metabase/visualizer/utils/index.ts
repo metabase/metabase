@@ -10,3 +10,4 @@ export * from "./get-initial-state-for-multiple-series";
 export * from "./is-visualizer-dashboard-card";
 export * from "./merge-data";
 export * from "./split-series";
+export * from "./get-visualization-columns";
