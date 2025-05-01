@@ -46,7 +46,13 @@ export const ContentTranslationConfiguration = () => {
         </Markdown>
       </Text>
 
-      <FormProvider initialValues={{}} onSubmit={() => {}}>
+      <FormProvider
+        // We're only using Formik to make the appearance of the submit button
+        // depend on the form's status. We're not using Formik's other features
+        // here.
+        initialValues={{}}
+        onSubmit={() => {}}
+      >
         <UploadForm />
       </FormProvider>
     </Stack>
