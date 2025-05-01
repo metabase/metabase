@@ -5,6 +5,7 @@ const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const webpack = require("webpack");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
+const { RsdoctorWebpackPlugin } = require("@rsdoctor/webpack-plugin");
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 
 const mainConfig = require("./webpack.config");
@@ -182,11 +183,7 @@ module.exports = (env) => {
         }),
       // we don't want to fail the build on type errors, we have a dedicated type check step for that
       new TypescriptConvertErrorsToWarnings(),
-      shouldAnalyzeBundles &&
-        new BundleAnalyzerPlugin({
-          analyzerMode: "static",
-          reportFilename: BUILD_PATH + "/dist/report.html",
-        }),
+      shouldAnalyzeBundles && new RsdoctorWebpackPlugin(),
     ].filter(Boolean),
   };
 
