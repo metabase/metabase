@@ -10,7 +10,6 @@
    [metabase.util.malli.schema :as ms]))
 
 (def ^:private http-status-ok 200)
-(def ^:private http-status-unprocessable 422)
 
 (api.macros/defendpoint :post
   "/upload-dictionary"
@@ -26,18 +25,16 @@
                                                    [:map
                                                     [:filename :string]
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
-  (try
-    (dictionary/import-translations! {:filename (get-in multipart-params ["file" :filename])
-                                      :file     (get-in multipart-params ["file" :tempfile])})
-    {:status http-status-ok
-     :headers {"Content-Type" "application/json"}
-     :body (json/encode {:success true
-                         :message (tru "Import was successful")})}
-    (catch Exception e
-      {:status 500
-       :headers {"Content-Type" "application/json"}
-       :body (json/encode {:success false
-                           :message (tru "An unexpected error occurred: {0}" (.getMessage e))})})))
+  (dictionary/import-translations! {:filename (get-in multipart-params ["file" :filename])
+                                    :file     (get-in multipart-params ["file" :tempfile])})
+  {:status http-status-ok
+   :headers {"Content-Type" "application/json"}
+   :body (json/encode {:success true
+                       :message (tru "Import was successful")})})
+
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/content-translation` routes."
+  (api.macros/ns-handler *ns* +auth))
 
 (api.macros/defendpoint :get "/dictionary"
   "Provides content translations stored in the content_translations table"
@@ -46,9 +43,3 @@
     (if locale
       {:data (ct/get-translations locale)}
       {:data (ct/get-translations)})))
-
-(def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/content-translation` routes."
-  (api.macros/ns-handler *ns* +auth))
-
-(set! *warn-on-reflection* true)

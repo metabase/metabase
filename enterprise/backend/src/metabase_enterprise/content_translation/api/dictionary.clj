@@ -4,8 +4,7 @@
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.content-translation.models :as ct]
-   [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -32,16 +31,17 @@
 
 (defn import-translations!
   "Import translations from CSV and insert or update rows in the content_translation table."
-  [{:keys [_filename file]}]
+  [{:keys [file]}]
   (with-open [reader (io/reader file)]
-    (let [csv-data (read-csv-file reader)]
+    (let [csv-data (read-csv-file reader)
+          usable-rows (for [[locale msgid msgstr] csv-data
+                            :let [trimmed-msgid (str/trim msgid)
+                                  trimmed-msgstr (str/trim msgstr)]
+                            :when (is-msgstr-usable trimmed-msgstr)]
+                        {:locale locale :msgid trimmed-msgid :msgstr trimmed-msgstr})]
       (t2/with-transaction [_tx]
+        ;; Replace all existing entries
         (t2/delete! :model/ContentTranslation)
-        (doseq [[locale msgid msgstr] csv-data]
-          (let [trimmed-msgstr (str/trim msgstr)
-                trimmed-msgid (str/trim msgid)]
-            (when (is-msgstr-usable trimmed-msgstr)
-              (t2/insert! :model/ContentTranslation
-                          {:locale locale
-                           :msgid trimmed-msgid
-                           :msgstr trimmed-msgstr}))))))))
+        ;; Insert all usable rows at once
+        (when-not (empty? usable-rows)
+          (t2/insert! :model/ContentTranslation usable-rows))))))
