@@ -4,6 +4,7 @@ import { type JSX, type ReactNode, memo, useEffect, useRef } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { useInitData } from "embedding-sdk/hooks";
+import { lazyLoadDateLocales } from "embedding-sdk/lib/i18n/lazy-load-date-locales";
 import { getSdkStore } from "embedding-sdk/store";
 import {
   setErrorComponent,
@@ -148,7 +149,10 @@ export const MetabaseProviderInternal = ({
         <SdkThemeProvider theme={theme}>
           <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
           <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
-            <LocaleProvider locale={locale || instanceLocale}>
+            <LocaleProvider
+              locale={locale || instanceLocale}
+              lazyLoadDateLocales={lazyLoadDateLocales}
+            >
               {children}
             </LocaleProvider>
             <SdkUsageProblemDisplay

@@ -41,19 +41,59 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
+      - uses: ./.github/actions/build-embedding-sdk
         with:
-          m2-cache-key: "cljs"
-      - name: Build Embedding SDK package
-        run: yarn build-embedding-sdk
-      - name: Prepare Embedding SDK artifact
-        uses: actions/upload-artifact@v4
+          m2-cache-key: "embedding-sdk-build"
+          artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+
+  # Builds the target branch for a PR (base ref)
+  build-base-ref:
+    needs: [files-changed]
+    if: |
+      github.event_name == 'pull_request' &&
+      !cancelled() &&
+      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/build-embedding-sdk
         with:
-          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
-          path: resources/embedding-sdk
+          ref: ${{ github.base_ref }}
+          m2-cache-key: "embedding-sdk-build-base-ref"
+          artifact-name: embedding-sdk-${{ github.base_ref }}-${{ github.event.pull_request.head.sha || github.sha }}
+
+  embedding-sdk-bundle-size-check:
+    needs: [files-changed, build, build-base-ref]
+    if: |
+      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
+      needs.build.result == 'success' &&
+      needs.build-base-ref.result == 'success'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    env:
+      MAX_BUNDLE_SIZE_DIFF_PERCENT: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/sdk-bundle-size-check
+        id: compare
+        with:
+          current-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          current-dist-path: temp/embedding-sdk-current
+          base-ref-artifact-name: embedding-sdk-${{ github.base_ref }}-${{ github.event.pull_request.head.sha || github.sha }}
+          base-ref-dist-path: temp/embedding-sdk-base-ref
+          max-bundle-size-diff-percent: ${{ env.MAX_BUNDLE_SIZE_DIFF_PERCENT }}
+
+      - name: Comment on PR if bundle size has increased
+        uses: ./.github/actions/notify-pull-request
+        if: |
+          success() &&
+          steps.compare.outputs.size_increased == 'true'
+        with:
+          remove-previous-comment: true
+          add-new-comment: true
+          message: "⚠️ Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_increase_percent }}% (limit: ${{ env.MAX_BUNDLE_SIZE_DIFF_PERCENT }}%)."
+          include-log: false
 
   embedding-sdk-cli-snippets-type-check:
     needs: [files-changed, build]
@@ -168,6 +208,7 @@ jobs:
 
   embedding-sdk-tests-result:
     needs:
+      - embedding-sdk-bundle-size-check
       - embedding-sdk-cli-snippets-type-check
       - embedding-sdk-docs-snippets-type-check
       - embedding-sdk-api-documentation-generation-validation

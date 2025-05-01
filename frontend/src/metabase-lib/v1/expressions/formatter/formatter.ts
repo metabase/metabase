@@ -1,6 +1,6 @@
 import type { AstPath, Doc, ParserOptions, Plugin } from "prettier";
 import { builders } from "prettier/doc";
-import { format as pformat } from "prettier/standalone";
+import type { format as staticPrettierFormat } from "prettier/standalone";
 
 import { parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
@@ -39,6 +39,7 @@ export async function format(
   // the root option.
   const { query, stageIndex } = options;
   const parts = Lib.expressionParts(query, stageIndex, expression);
+
   return formatExpressionParts(parts, options);
 }
 
@@ -54,10 +55,22 @@ export async function formatExpressionParts(
   root: Lib.ExpressionParts | Lib.ExpressionArg,
   options: FormatOptions = {},
 ) {
+  let prettierFormat: typeof staticPrettierFormat;
+
+  if (!process.env.IS_EMBEDDING_SDK) {
+    // If we use a top-level import here, it's still added to the SDK bundle
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    prettierFormat = require("prettier/standalone").format;
+  } else {
+    prettierFormat = await import("prettier/standalone").then(
+      ({ format }) => format,
+    );
+  }
+
   // prettier expects us to pass a string, but we have the AST already
   // so we pass a bogus string and ignore it. The actual ast is passed via
   // the root option.
-  return pformat("__not_used__", {
+  return prettierFormat("__not_used__", {
     parser: PRETTIER_PLUGIN_NAME,
     plugins: [plugin({ ...options, root })],
     printWidth: options.printWidth ?? 80,
