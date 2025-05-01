@@ -644,10 +644,13 @@ class Visualization extends PureComponent<
     }
 
     if (!error && !genericError && series) {
-      noResults = _.every(
-        series,
-        (s) => s && s.data && datasetContainsNoResults(s.data),
-      );
+      const isNoResultsDisabled = !!visualization?.noResults;
+      noResults = isNoResultsDisabled
+        ? false
+        : _.every(
+            series,
+            (s) => s && s.data && datasetContainsNoResults(s.data),
+          );
     }
 
     const extra = (
@@ -682,7 +685,7 @@ class Visualization extends PureComponent<
 
     const title = settings["card.title"];
     const hasHeaderContent = title || extra;
-    const isHeaderEnabled = !(visualization && visualization.noHeader);
+    const isHeaderEnabled = !visualization?.noHeader;
 
     const hasHeader =
       (showTitle &&

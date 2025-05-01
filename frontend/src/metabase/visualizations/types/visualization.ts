@@ -310,6 +310,7 @@ export type VisualizationDefinition = {
   disableClickBehavior?: boolean;
   canSavePng?: boolean;
   noHeader?: boolean;
+  noResults?: boolean;
   hidden?: boolean;
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;
