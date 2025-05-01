@@ -193,6 +193,11 @@ module.exports = (env) => {
     ...mainConfig.resolve.alias,
     "sdk-ee-plugins": ENTERPRISE_SRC_PATH + "/sdk-plugins",
     "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
+    // alias moment-timezone to trimmed 10-year-range build
+    "moment-timezone$":
+      "moment-timezone/builds/moment-timezone-with-data-10-year-range.js",
+    // prevent raw JSON timezone data from being bundled
+    "moment-timezone/data/packed/latest.json$": false,
   };
 
   if (config.cache) {
