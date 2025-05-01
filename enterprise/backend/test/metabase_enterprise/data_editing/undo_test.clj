@@ -30,13 +30,25 @@
 
 (def ^:private test-scope {:test-ns (ns-name *ns*)})
 
-;; TODO use actual mutations to create the history (TODO subscribe to the relevant events)
+(defn- create-row! [user-id table-id row]
+  (mt/user-http-request user-id :post 200 (data-editing.tu/table-url table-id) {:rows [row]}))
+
+(defn- update-row! [user-id table-id row]
+  (mt/user-http-request user-id :put 200 (data-editing.tu/table-url table-id) {:rows [row]}))
+
+(defn- delete-row! [user-id table-id pk]
+  (mt/user-http-request user-id :post 200 (str (data-editing.tu/table-url table-id) "/delete") {:rows [pk]}))
+
 (defn- write-sequence! [table-id pk states]
   (loop [prior  nil
          states states]
     (when (seq states)
       (let [[user-id value] (first states)]
-        (undo/track-change! user-id test-scope {table-id {pk [prior value]}})
+        (case [(nil? prior) (nil? value)]
+          [true   true] nil
+          [true  false] (create-row! user-id table-id (merge pk value))
+          [false  true] (delete-row! user-id table-id pk)
+          [false false] (update-row! user-id table-id (merge pk value)))
         (recur value (rest states))))))
 
 ;; I'm OK reducing this scenario's scope once we have e2e tests.
@@ -232,7 +244,7 @@
             (is (undo/next-batch-num :undo user-1 test-scope))
             (is (not (undo/next-batch-num :redo user-1 test-scope)))))))))
 
-(deftest undo-orphan-integration-test
+(deftest undo-reverted-changes-integration-test
   (mt/with-empty-h2-app-db
     (mt/with-premium-features #{:table-data-editing}
       (testing "Reverted changes have their snapshots deleted when there are further changes"
@@ -255,18 +267,15 @@
                                                [user-id {:name "Toffle" :status "comforted"}]
                                                [user-id nil]])
 
-            ;; Sad trick - use undo to initialize the underlying table state (since we only created the undo history)
-            (undo/undo! user-id test-scope)
-            (undo/undo! user-id test-scope)
-            (undo/undo! user-id test-scope)
-            (undo/undo! user-id test-scope)
+            ;; Create row 1 with Too-tickley directly using CRUD API
+            (create-row! user-id table-id {:id 1, :name "Too-tickley", :status "squirming"})
 
             (is (= [[1 "Too-tickley" "squirming"]] (table-rows table-id)))
 
-            (undo/track-change! user-id test-scope {table-id {{:id 2} [nil {:name "Toggle" :status "restored"}]}})
-            ;; We need to delete it, so we can "undo" that to create it in the first place...
-            ;; TLDR `write-sequence` should be updated to update the table itself, then these tests can be simpler.
-            (undo/track-change! user-id test-scope {table-id {{:id 2} [{:name "Toggle" :status "restored"} nil]}})
+            ;; Create row 2 with Toggle using CRUD API
+            (create-row! user-id table-id {:id 2, :name "Toggle", :status "restored"})
+            ;; Delete it to create an undo history
+            (delete-row! user-id table-id {:id 2})
 
             (is (nil? (undo/next-batch-num :redo user-id test-scope)))
             (is (undo/next-batch-num :undo user-id test-scope))
@@ -283,7 +292,7 @@
                           :from     [(t2/table-name :model/Undo)]
                           :where    (or where true)}))))
 
-(deftest undo-orphan-integration-test
+(deftest prune-snapshots-test
   (mt/with-empty-h2-app-db
     (mt/with-premium-features #{:table-data-editing}
       (testing "We delete older batches when they exceed our retention limits"
