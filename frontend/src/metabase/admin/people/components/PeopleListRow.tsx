@@ -19,7 +19,13 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import type { Group, GroupId, Member, User } from "metabase-types/api";
+import type {
+  Group,
+  GroupId,
+  Member,
+  Membership,
+  User,
+} from "metabase-types/api";
 
 import { userToColor } from "../colors";
 
@@ -32,7 +38,7 @@ interface PeopleListRowProps {
   user: User;
   showDeactivated: boolean;
   groups: Group[];
-  userMemberships: Member[];
+  userMemberships: Membership[];
   isCurrentUser: boolean;
   isAdmin: boolean;
   onAdd: (groupId: GroupId) => void;

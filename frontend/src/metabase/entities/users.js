@@ -20,11 +20,6 @@ export const PASSWORD_RESET_EMAIL =
 export const PASSWORD_RESET_MANUAL =
   "metabase/entities/users/RESET_PASSWORD_MANUAL";
 
-// TODO: It'd be nice to import loadMemberships, but we need to resolve a circular dependency
-function loadMemberships() {
-  return require("metabase/admin/people/people").loadMemberships();
-}
-
 const getUserList = (query = {}, dispatch) =>
   entityCompatibleQuery(query, dispatch, userApi.endpoints.listUsers);
 const getRecipientsList = (query = {}, dispatch) =>
@@ -96,7 +91,7 @@ const Users = createEntity({
       }
       const result = await thunkCreator(user)(dispatch, getState);
 
-      dispatch(loadMemberships());
+      // dispatch(loadMemberships());
       return {
         // HACK: include user ID and password for temporaryPasswords reducer
         id: result.result,
@@ -106,10 +101,10 @@ const Users = createEntity({
     },
     update: (thunkCreator) => (user) => async (dispatch, getState) => {
       const result = await thunkCreator(user)(dispatch, getState);
-      if (user.user_group_memberships) {
-        // group ids were just updated
-        dispatch(loadMemberships());
-      }
+      // if (user.user_group_memberships) {
+      //   // group ids were just updated
+      //   dispatch(loadMemberships());
+      // }
       return result;
     },
   },

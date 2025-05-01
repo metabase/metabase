@@ -4,6 +4,7 @@ import { usePrevious } from "react-use";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import { useListUserMembershipsQuery } from "metabase/api";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
@@ -18,6 +19,7 @@ import type {
   GroupId,
   Group as IGroup,
   Member,
+  Membership,
   User,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -26,10 +28,8 @@ import { USER_STATUS } from "../constants";
 import {
   createMembership,
   deleteMembership,
-  loadMemberships,
   updateMembership,
 } from "../people";
-import { getMembershipsByUser } from "../selectors";
 
 import { PeopleListRow } from "./PeopleListRow";
 
@@ -37,14 +37,12 @@ const mapStateToProps = (state: State) => ({
   currentUser: getUser(state),
   isAdmin: getUserIsAdmin(state),
   groups: Group.selectors.getList(state),
-  membershipsByUser: getMembershipsByUser(state),
 });
 
 const mapDispatchToProps = {
   createMembership,
   deleteMembership,
   updateMembership,
-  loadMemberships,
   confirmDeleteMembershipAction: async (
     membershipId: number,
     userMemberships: Member[],
@@ -82,21 +80,20 @@ interface PeopleListProps extends PeopleListQueryProps {
   users: User[];
   groups: IGroup[];
   isAdmin: boolean;
-  loadMemberships: () => void;
   createMembership: (membership: {
     groupId: GroupId;
     userId: User["id"];
   }) => void | Promise<void>;
   deleteMembership: (membershipId: number) => void | Promise<void>;
-  updateMembership: (membership: Member) => void | Promise<void>;
+  updateMembership: (membership: Membership) => void | Promise<void>;
   confirmDeleteMembershipAction: (
     membershipId: number,
-    userMemberships: Member[],
+    userMemberships: Membership[],
     view: string,
   ) => Promise<void>;
   confirmUpdateMembershipAction: (
-    membership: Member,
-    userMemberships: Member[],
+    membership: Membership,
+    userMemberships: Membership[],
     view: string,
   ) => Promise<void>;
   onNextPage?: () => void;
@@ -114,9 +111,7 @@ const PeopleListInner = ({
   groups,
   query,
   metadata,
-  membershipsByUser,
   isAdmin,
-  loadMemberships,
   createMembership,
   deleteMembership,
   updateMembership,
@@ -130,9 +125,7 @@ const PeopleListInner = ({
   const { modalContent, show } = useConfirmation();
   const prevUsers = usePrevious(users);
 
-  useEffect(() => {
-    loadMemberships();
-  }, [loadMemberships]);
+  const { data: membershipsByUser = {} } = useListUserMembershipsQuery();
 
   useEffect(() => {
     if (!prevUsers) {
@@ -172,7 +165,7 @@ const PeopleListInner = ({
     userId: User["id"],
   ) => {
     const membership = membershipsByUser[userId].find(
-      (membership: Member) => membership.group_id === groupId,
+      (membership) => membership.group_id === groupId,
     );
     if (!membership) {
       console.error("Tried to update a membership that does not exist");

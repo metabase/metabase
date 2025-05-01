@@ -1,17 +1,18 @@
-import _ from "underscore";
-
-import Group from "metabase/entities/groups";
-import Users from "metabase/entities/users";
-import type { GroupId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import { useGetPermissionsGroupQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 
 import { GroupDetail } from "../components/GroupDetail";
 
-export const GroupDetailApp = _.compose(
-  Users.loadList(),
-  Group.load({
-    id: (_state: State, props: { params: { groupId: GroupId } }) =>
-      props.params.groupId,
-    reload: true,
-  }),
-)(GroupDetail);
+export const GroupDetailApp = (props: any) => {
+  const {
+    data: group,
+    isLoading,
+    error,
+  } = useGetPermissionsGroupQuery(props.params.groupId);
+
+  return (
+    <LoadingAndErrorWrapper error={error} loading={isLoading}>
+      <GroupDetail {...props} group={group} />
+    </LoadingAndErrorWrapper>
+  );
+};

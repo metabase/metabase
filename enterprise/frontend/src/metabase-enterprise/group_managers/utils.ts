@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import type { ConfirmationState } from "metabase/hooks/use-confirmation";
-import type { Member } from "metabase-types/api";
+import type { Member, Membership } from "metabase-types/api";
 import type { User } from "metabase-types/api/user";
 import type { AdminPath, AdminPathKey } from "metabase-types/store";
 
@@ -59,7 +59,7 @@ export const getRevokeManagerGroupsRedirect = (
 
 export const getRemoveMembershipConfirmation = (
   currentUser: User,
-  currentUserMemberships: Member[],
+  currentUserMemberships: Membership[],
   deletedMembershipId: number,
 ): Partial<ConfirmationState> | null => {
   const isRemovingSelf =
@@ -74,7 +74,7 @@ export const getRemoveMembershipConfirmation = (
 
 export const getChangeMembershipConfirmation = (
   currentUser: User,
-  updatedMembership: Member,
+  updatedMembership: Membership,
 ): Partial<ConfirmationState> | null => {
   const isRevokingFromSelf =
     updatedMembership.user_id === currentUser.id &&

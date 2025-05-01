@@ -14,22 +14,12 @@ import {
   CLEAR_TEMPORARY_PASSWORD,
   CREATE_MEMBERSHIP,
   DELETE_MEMBERSHIP,
-  LOAD_MEMBERSHIPS,
   UPDATE_MEMBERSHIP,
 } from "./events";
 import { getMemberships } from "./selectors";
 
 // ACTION CREATORS
 
-export const loadMemberships = createAction(LOAD_MEMBERSHIPS, async () =>
-  // flatten the map of user id => memberships
-  _.chain(await PermissionsApi.memberships())
-    .values()
-    .flatten()
-    .map((m) => [m.membership_id, m])
-    .object()
-    .value(),
-);
 export const createMembership = createAction(
   CREATE_MEMBERSHIP,
   async ({ userId, groupId }) => {
@@ -75,9 +65,6 @@ export const clearTemporaryPassword = createAction(CLEAR_TEMPORARY_PASSWORD);
 
 const memberships = handleActions(
   {
-    [LOAD_MEMBERSHIPS]: {
-      next: (state, { payload: memberships }) => memberships,
-    },
     [CREATE_MEMBERSHIP]: {
       next: (state, { payload: { group_id, user_id, membership } }) =>
         assoc(state, membership.membership_id, {
