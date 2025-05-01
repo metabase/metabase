@@ -243,6 +243,7 @@ export const tokenFeatures = [
   "query_reference_validation",
   "cache_preemptive",
   "database_routing",
+  "development-mode",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
