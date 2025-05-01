@@ -90,17 +90,22 @@ export function BrowseMetrics() {
               />
             )}
             {hasDataAccess && (
-              <Tooltip label={t`Create a metric`}>
-                <ActionIcon
-                  aria-label={t`Create a metric`}
-                  size={32}
-                  variant="viewHeader"
-                  component={Link}
-                  to={newMetricLink}
+              <ActionIcon
+                aria-label={t`Create a metric`}
+                size={32}
+                variant="viewHeader"
+                component={Link}
+                to={newMetricLink}
+              >
+                {/* Wrapping an outer component (Link) does not show the tooltip */}
+                <Tooltip
+                  label={t`Create a metric`}
+                  position="bottom"
+                  offset={16}
                 >
                   <Icon name="add" />
-                </ActionIcon>
-              </Tooltip>
+                </Tooltip>
+              </ActionIcon>
             )}
           </Flex>
         </BrowseSection>
