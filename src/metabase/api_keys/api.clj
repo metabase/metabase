@@ -1,10 +1,10 @@
-(ns metabase.api.api-key
+(ns metabase.api-keys.api
   "/api/api-key endpoints for CRUD management of API Keys"
   (:require
+   [metabase.api-keys.models.api-key :as api-key]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events :as events]
-   [metabase.models.api-key :as api-key]
    [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]

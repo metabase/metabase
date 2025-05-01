@@ -34,6 +34,7 @@
    [metabase.sync.init]
    [metabase.task-history.init]
    [metabase.task.init]
+   [metabase.testing-api.init]
    [metabase.tiles.init]
    [metabase.upload.init]
    [metabase.user-key-value.init]

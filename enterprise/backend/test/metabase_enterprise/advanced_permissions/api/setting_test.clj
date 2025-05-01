@@ -3,8 +3,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.email :as email]
+   [metabase.channel.slack :as slack]
    [metabase.geojson.api-test :as geojson-test]
-   [metabase.integrations.slack :as slack]
    [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))

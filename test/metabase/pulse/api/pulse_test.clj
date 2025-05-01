@@ -8,9 +8,10 @@
    [metabase.channel.api.channel-test :as api.channel-test]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.style :as style]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.channel.slack :as slack]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
-   [metabase.integrations.slack :as slack]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -1186,7 +1187,7 @@
 (deftest form-input-test
   (testing "GET /api/pulse/form_input"
     (mt/with-temporary-setting-values
-      [slack/slack-app-token "test-token"]
+      [channel.settings/slack-app-token "test-token"]
       (mt/with-temp [:model/Channel _ {:type :channel/http :details {:url "https://metabasetest.com" :auth-method "none"}}]
         (is (= {:channels {:email {:allows_recipients true
                                    :configured        false
@@ -1214,12 +1215,12 @@
 (deftest form-input-slack-test
   (testing "GET /api/pulse/form_input"
     (testing "Check that Slack channels come back when configured"
-      (mt/with-temporary-setting-values [slack/slack-channels-and-usernames-last-updated
+      (mt/with-temporary-setting-values [channel.settings/slack-channels-and-usernames-last-updated
                                          (t/zoned-date-time)
 
-                                         slack/slack-app-token "test-token"
+                                         channel.settings/slack-app-token "test-token"
 
-                                         slack/slack-cached-channels-and-usernames
+                                         channel.settings/slack-cached-channels-and-usernames
                                          {:channels [{:type "channel"
                                                       :name "foo"
                                                       :display-name "#foo"
