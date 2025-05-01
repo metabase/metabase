@@ -20,6 +20,8 @@
   (:import
    (org.apache.commons.io IOUtils)))
 
+(set! *warn-on-reflection* true)
+
 ;;; I gave these keys below namespaces to make them easier to find usages for but didn't use `metabase.channel.render` so
 ;;; we can keep this as an internal namespace you don't need to know about outside of the module.
 (mr/def ::options
