@@ -3,15 +3,16 @@ import { useCallback, useMemo } from "react";
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import type { FilterItem } from "metabase/querying/filters/components/FilterPanel/types";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
-import * as Lib from "metabase-lib";
+import { displayInfo } from "metabase-lib/metadata";
+import type { ClauseDisplayInfo, Filterable, Query } from "metabase-lib/types";
 
 import { useFilterHandlers } from "./use-filter-handlers";
 
-type FilterItemWithDisplay = FilterItem & Lib.ClauseDisplayInfo;
+type FilterItemWithDisplay = FilterItem & ClauseDisplayInfo;
 
 export interface SDKFilterItem extends FilterItemWithDisplay {
   onRemoveFilter: () => void;
-  onUpdateFilter: (nextFilterClause: Lib.Filterable) => void;
+  onUpdateFilter: (nextFilterClause: Filterable) => void;
   filterIndex: number;
 }
 
@@ -21,7 +22,7 @@ export const useFilterData = (): SDKFilterItem[] => {
   const query = question?.query();
   const stageIndex = -1;
   const onQueryChange = useCallback(
-    (newQuery: Lib.Query) => {
+    (newQuery: Query) => {
       if (question) {
         updateQuestion(question.setQuery(newQuery), { run: true });
       }
@@ -43,7 +44,7 @@ export const useFilterData = (): SDKFilterItem[] => {
       query
         ? getFilterItems(query).map((filterItem) => ({
             ...filterItem,
-            ...Lib.displayInfo(query, filterItem.stageIndex, filterItem.filter),
+            ...displayInfo(query, filterItem.stageIndex, filterItem.filter),
           }))
         : [],
 
@@ -53,7 +54,7 @@ export const useFilterData = (): SDKFilterItem[] => {
   return filters.map((filterItem, filterIndex) => {
     const onRemoveFilter = () => handleRemoveFilter(filterItem.filter);
 
-    const onUpdateFilter = (nextFilterClause: Lib.Filterable) =>
+    const onUpdateFilter = (nextFilterClause: Filterable) =>
       handleUpdateFilter(filterItem.filter, nextFilterClause);
 
     return {
