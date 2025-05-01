@@ -28,8 +28,6 @@
      :type     :query
      :query    {:source-table table-id}})))
 
-(def ^:private test-scope {:test-ns (ns-name *ns*)})
-
 (defn- create-row! [user-id table-id row]
   (mt/user-http-request user-id :post 200 (data-editing.tu/table-url table-id) {:rows [row]}))
 
@@ -44,11 +42,11 @@
          states states]
     (when (seq states)
       (let [[user-id value] (first states)]
-        (case [(nil? prior) (nil? value)]
-          [true   true] nil
-          [true  false] (create-row! user-id table-id (merge pk value))
-          [false  true] (delete-row! user-id table-id pk)
-          [false false] (update-row! user-id table-id (merge pk value)))
+        (case [(some? prior) (some? value)]
+          [false false] nil
+          [false  true] (create-row! user-id table-id (merge pk value))
+          [true  false] (delete-row! user-id table-id pk)
+          [true   true] (update-row! user-id table-id (merge pk value)))
         (recur value (rest states))))))
 
 ;; I'm OK reducing this scenario's scope once we have e2e tests.
@@ -66,8 +64,9 @@
                                                                  :name           [:text]
                                                                  :favourite_food [:text]}
                                                                 {:primary-key [:id]})]
-          (let [table-id @table-ref
-                user-id  (mt/user->id :crowberto)]
+          (let [table-id   @table-ref
+                user-id    (mt/user->id :crowberto)
+                test-scope {:table-id table-id}]
             (data-editing.tu/toggle-data-editing-enabled! true)
 
             (write-sequence! table-id {:id 1} [[user-id {:name "Snorkmaiden" :favourite_food "pork"}]
@@ -141,9 +140,10 @@
                                                                  :name  [:text]
                                                                  :power [:int]}
                                                                 {:primary-key [:id]})]
-          (let [table-id @table-ref
-                user-1   (mt/user->id :crowberto)
-                user-2   (mt/user->id :rasta)]
+          (let [table-id   @table-ref
+                user-1     (mt/user->id :crowberto)
+                user-2     (mt/user->id :rasta)
+                test-scope {:table-id table-id}]
             (data-editing.tu/toggle-data-editing-enabled! true)
 
             ;; NOTE: this test relies on the "conflicts even when different columns changed" semantics
@@ -252,8 +252,9 @@
                                                                  :name   [:text]
                                                                  :status [:text]}
                                                                 {:primary-key [:id]})]
-          (let [table-id @table-ref
-                user-id   (mt/user->id :crowberto)]
+          (let [table-id   @table-ref
+                user-id    (mt/user->id :crowberto)
+                test-scope {:table-id table-id}]
             (data-editing.tu/toggle-data-editing-enabled! true)
 
             ;; NOTE: this test relies on the "conflicts even when different columns changed" semantics
@@ -298,10 +299,11 @@
       (testing "We delete older batches when they exceed our retention limits"
         (with-open [table-ref-1 (data-editing.tu/open-test-table! {:id [:int]} {:primary-key [:id]})
                     table-ref-2 (data-editing.tu/open-test-table! {:id [:int]} {:primary-key [:id]})]
-          (let [table-1 @table-ref-1
-                table-2 @table-ref-2
-                user-1   (mt/user->id :crowberto)
-                user-2   (mt/user->id :rasta)]
+          (let [table-1    @table-ref-1
+                table-2    @table-ref-2
+                user-1     (mt/user->id :crowberto)
+                user-2     (mt/user->id :rasta)
+                test-scope {:shared true}]
             (data-editing.tu/toggle-data-editing-enabled! true)
 
             (testing "Total rows"
