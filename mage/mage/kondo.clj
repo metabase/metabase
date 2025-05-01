@@ -1,5 +1,6 @@
 (ns mage.kondo
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.shell :as shell]
    [mage.util :as u]))
@@ -61,7 +62,6 @@
         _ (u/debug "command: " command)]
     (println "Running Kondo on:" args)
     (apply shell/sh* "clojure" command)
-    (println "wutup")
     (System/exit 0)))
 
 (defn kondo
