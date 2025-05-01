@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { type FC, useEffect } from "react";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
@@ -57,7 +57,7 @@ export type EditableDashboardProps = {
  * @category InteractiveDashboard
  * @param props
  */
-export const EditableDashboard = ({
+export const EditableDashboard: FC<EditableDashboardProps> = ({
   dashboardId: initialDashboardId,
   initialParameters = {},
   withDownloads = false,

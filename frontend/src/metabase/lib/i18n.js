@@ -8,7 +8,7 @@ import { DAY_OF_WEEK_OPTIONS } from "metabase/lib/date-time";
 import MetabaseSettings from "metabase/lib/settings";
 
 // note this won't refresh strings that are evaluated at load time
-export async function loadLocalization(locale) {
+export async function loadLocalization(locale, { lazyLoadDateLocales } = {}) {
   // we need to be sure to set the initial localization before loading any files
   // so load metabase/services only when we need it
   // load and parse the locale
@@ -32,7 +32,12 @@ export async function loadLocalization(locale) {
             "": { Metabase: { msgid: "Metabase", msgstr: ["Metabase"] } },
           },
         };
-  setLocalization(translationsObject);
+
+  if (lazyLoadDateLocales) {
+    await setLazyLocalization({ translationsObject, lazyLoadDateLocales });
+  } else {
+    setLocalization(translationsObject);
+  }
 
   return translationsObject;
 }
@@ -65,8 +70,28 @@ const ARABIC_LOCALES = ["ar", "ar-sa"];
 export function setLocalization(translationsObject) {
   const language = translationsObject.headers.language;
   setLanguage(translationsObject);
+
   updateMomentLocale(language);
   updateDayjsLocale(language);
+
+  fixDateLocales(language);
+}
+
+export async function setLazyLocalization({
+  translationsObject,
+  lazyLoadDateLocales,
+}) {
+  const language = translationsObject.headers.language;
+  const locale = getLocale(language);
+
+  setLanguage(translationsObject);
+
+  await lazyLoadDateLocales(locale);
+
+  fixDateLocales(language);
+}
+
+function fixDateLocales(language) {
   updateStartOfWeek(MetabaseSettings.get("start-of-week"));
 
   if (ARABIC_LOCALES.includes(language)) {
@@ -77,12 +102,20 @@ export function setLocalization(translationsObject) {
 function updateMomentLocale(language) {
   const locale = getLocale(language);
 
+  // To avoid adding all locales to the bundle by SDK's host app bundlers
+  // SDK uses setLazyLocalization
+  // The bundler removes unreachable code
+  // eslint-disable-next-line no-undef
+  if (process.env.IS_EMBEDDING_SDK) {
+    return;
+  }
+
   try {
     if (locale !== "en") {
       require(`moment/locale/${locale}.js`);
     }
     moment.locale(locale);
-  } catch (e) {
+  } catch {
     console.warn(`Could not set moment.js locale to ${locale}`);
     moment.locale("en");
   }
@@ -103,6 +136,14 @@ function preverseLatinNumbersInMomentLocale(locale) {
 
 function updateDayjsLocale(language) {
   const locale = getLocale(language);
+
+  // To avoid adding all locales to the bundle by SDK's host app bundlers
+  // SDK uses setLazyLocalization
+  // The bundler removes unreachable code
+  // eslint-disable-next-line no-undef
+  if (process.env.IS_EMBEDDING_SDK) {
+    return;
+  }
 
   try {
     if (locale !== "en") {

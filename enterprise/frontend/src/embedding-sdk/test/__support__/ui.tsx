@@ -1,5 +1,5 @@
 import type { Store } from "@reduxjs/toolkit";
-import { render } from "@testing-library/react";
+import { act, render } from "@testing-library/react";
 import type * as React from "react";
 import _ from "underscore";
 
@@ -21,14 +21,16 @@ export interface RenderWithSDKProvidersOptions {
   storeInitialState?: Partial<State>;
   sdkProviderProps?: Partial<MetabaseProviderProps> | null;
   theme?: MantineThemeOverride;
+  wrapRenderInAct?: boolean;
 }
 
-export function renderWithSDKProviders(
+export async function renderWithSDKProviders(
   ui: React.ReactElement,
   {
     storeInitialState = {},
     sdkProviderProps = null,
     theme,
+    wrapRenderInAct = true,
     ...options
   }: RenderWithSDKProvidersOptions = {},
 ) {
@@ -73,10 +75,20 @@ export function renderWithSDKProviders(
     );
   };
 
-  const utils = render(ui, {
-    wrapper,
-    ...options,
-  });
+  const renderFn = () =>
+    render(ui, {
+      wrapper,
+      ...options,
+    });
+  let utils: any;
+
+  if (wrapRenderInAct) {
+    await act(async () => {
+      utils = renderFn();
+    });
+  } else {
+    utils = renderFn();
+  }
 
   return {
     ...utils,

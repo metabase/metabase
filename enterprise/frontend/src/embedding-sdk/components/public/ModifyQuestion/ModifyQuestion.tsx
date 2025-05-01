@@ -1,3 +1,5 @@
+import type { FC } from "react";
+
 import { QuestionEditor } from "embedding-sdk/components/private/QuestionEditor";
 
 import type { BaseInteractiveQuestionProps } from "../InteractiveQuestion";
@@ -9,7 +11,7 @@ import type { BaseInteractiveQuestionProps } from "../InteractiveQuestion";
  * @category ModifyQuestion
  * @param props
  **/
-export const ModifyQuestion = ({
+export const ModifyQuestion: FC<BaseInteractiveQuestionProps> = ({
   questionId,
   plugins,
   onSave,

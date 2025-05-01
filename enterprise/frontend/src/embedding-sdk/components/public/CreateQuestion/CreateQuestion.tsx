@@ -1,3 +1,5 @@
+import type { FC } from "react";
+
 import {
   type BaseInteractiveQuestionProps,
   InteractiveQuestion,
@@ -18,6 +20,6 @@ export type CreateQuestionProps = Omit<
  * @category CreateQuestion
  * @deprecated Use `<InteractiveQuestion questionId="new" />` instead.
  * */
-export const CreateQuestion = (props: CreateQuestionProps = {}) => (
-  <InteractiveQuestion {...props} questionId="new" />
-);
+export const CreateQuestion: FC<CreateQuestionProps> = (
+  props: CreateQuestionProps = {},
+) => <InteractiveQuestion {...props} questionId="new" />;

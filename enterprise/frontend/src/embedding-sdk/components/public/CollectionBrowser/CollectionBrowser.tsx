@@ -1,4 +1,4 @@
-import { type ComponentType, useEffect, useState } from "react";
+import { type ComponentType, type FC, useEffect, useState } from "react";
 
 import {
   CollectionNotFoundError,
@@ -177,6 +177,5 @@ const CollectionBrowserWrapper = ({
  * @function
  * @category CollectionBrowser
  */
-export const CollectionBrowser = withPublicComponentWrapper(
-  CollectionBrowserWrapper,
-);
+export const CollectionBrowser: FC<CollectionBrowserProps> =
+  withPublicComponentWrapper(CollectionBrowserWrapper);
