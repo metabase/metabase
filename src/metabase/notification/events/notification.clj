@@ -1,4 +1,4 @@
-(ns metabase.events.notification
+(ns metabase.notification.events.notification
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
