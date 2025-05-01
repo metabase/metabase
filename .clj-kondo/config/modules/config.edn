@@ -523,7 +523,8 @@
   lib-be
   {:api #{metabase.lib-be.core
           metabase.lib-be.init}
-   :uses #{models
+   :uses #{lib
+           models
            settings
            task
            util}}

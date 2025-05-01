@@ -853,13 +853,25 @@
   cards-for-priority-analysis
   (atom #{}))
 
+(def ^:dynamic *upstream-cards-without-idents*
+  "Set of card IDs which were read during analysis of another card and which did not have valid idents
+  already. In other words, this is the set of cards which are blocking a :blocked card."
+  nil)
+
 (defn- mark-card-used-for-priority-analysis
   "If we selected `:metadata_analysis_state` and it's `:not-started` then add this card's ID to the set of cards
   we want to prioritize for analysis."
-  [card]
-  (when (and (contains? card :metadata_analysis_state)
-             (= (:metadata_analysis_state card) :not-started))
+  [{state :metadata_analysis_state :as card}]
+  ;; Mark :not-started cards as eligible for :priority analysis.
+  (when (= state :not-started)
     (swap! cards-for-priority-analysis conj (:id card)))
+  ;; When backfilling a card (indicated by `*upstream-cards-without-idents*`), if we see a card which is not :executed
+  ;; or :analyzed it's a potential blocker - put it in the list of blockers.
+  (when (and *upstream-cards-without-idents*
+             (not (#{:executed :analyzed} (:metadata_analysis_state card))))
+    (swap! *upstream-cards-without-idents* conj (:id card)))
+
+  ;; Always returning the card unchanged.
   card)
 
 (t2/define-after-select :model/Card
