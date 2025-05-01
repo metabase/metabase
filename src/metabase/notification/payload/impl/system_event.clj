@@ -8,6 +8,7 @@
    [metabase.models.user :as user]
    [metabase.notification.condition :as notification.condition]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.notification.payload.sample :as payload.sample]
    [metabase.notification.send :as notification.send]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
@@ -43,8 +44,24 @@
   {:arglists '([notification-info])}
   dispatch-on-event-info)
 
+(defn- sample-for-table
+  [table-id changes?]
+  (let [order-field    (t2/select-one-fn :field_order :model/Table table-id)
+        ordered-fields (table/ordered-fields table-id order-field)]
+    (apply ordered-map/ordered-map
+           (mapcat (fn [field]
+                     [(:name field) (if changes?
+                                      {:before (payload.sample/sample-field field)
+                                       :after  (payload.sample/sample-field field)}
+                                      (payload.sample/sample-field field))])
+                   ordered-fields))))
+
 (def ^:private timestamp-schema
   [:timestamp  {:gen/fmap (fn [_x] (u.date/format (t/zoned-date-time)))} :any])
+
+(def ^{:dynamic true
+       :doc "Dynamic variable used to control the value of sampling example for row schema"}
+  *sample-table-id* nil)
 
 (mr/def ::row.mutate
   [:map {:closed true}
@@ -65,14 +82,19 @@
              [:last_name :string]
              [:email :string]
              [:common_name :string]]]
-   [:table [:map {:closed true
-                  :gen/return {:id    1
-                               :name "orders"
-                               :url  "https://metabase.com/databases/1337/table/1"}}
+   [:table [:map {:closed   true
+                  :gen/fmap (fn [_x]
+                              (if *sample-table-id*
+                                (let [{:keys [name db_id]} (t2/select-one [:model/Table :name :db_id] *sample-table-id*)]
+                                  {:id  *sample-table-id*
+                                   :name name
+                                   :url  (urls/table-url db_id *sample-table-id*)})
+                                {:id    1
+                                 :name "orders"
+                                 :url  "https://metabase.com/databases/1337/table/1"}))}
             [:id :int]
             [:name :string]
             [:url :string]]]
-
    [:settings [:map]]])
 
 ;; TODO: all 3 schemas are actually the same, we should be able to use a multi schema for this.
@@ -87,11 +109,17 @@
                [:event_name [:enum :event/row.created "event/row.created"]]
                timestamp-schema]]
     [:record {:description "The newly created row with all its field values"
-              :gen/return  {:id     1
-                            :name   "Product A"
-                            :price  29.99
-                            :status "active"}}
+              :gen/fmap    (fn [_]
+                             (if *sample-table-id*
+                               (sample-for-table *sample-table-id* false)
+                               {:id     1
+                                :name   "Product A"
+                                :price  29.99
+                                :status "active"}))}
      :map]]])
+
+(binding [*sample-table-id* 1]
+  (metabase.util.malli/generate-example ::row.updated))
 
 (mr/def ::row.updated
   [:merge
@@ -101,16 +129,22 @@
                [:event_name [:enum :event/row.updated "event/row.updated"]]
                timestamp-schema]]
     [:record {:description "The row after updates were applied, containing all fields"
-              :gen/return  {:id     1
-                            :name   "Product A"
-                            :price  24.99
-                            :status "on sale"}}
+              :gen/fmap    (fn [_]
+                             (if *sample-table-id*
+                               (sample-for-table *sample-table-id* false)
+                               {:id     1
+                                :name   "Product A"
+                                :price  24.99
+                                :status "on sale"}))}
      :map]
     [:changes {:description "Only the fields that were modified, showing previous and new values"
-               :gen/return  {:price  {:before 29.99
-                                      :after 24.99}
-                             :status {:before "active"
-                                      :after "on sale"}}}
+               :gen/fmap    (fn [_]
+                              (if *sample-table-id*
+                                (sample-for-table *sample-table-id* true)
+                                {:price  {:before 29.99
+                                          :after 24.99}
+                                 :status {:before "active"
+                                          :after "on sale"}}))}
      [:map-of :string [:map
                        [:before :any]
                        [:after :any]]]]]])

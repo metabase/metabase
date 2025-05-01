@@ -270,7 +270,8 @@
            :record {:id 1 :name "Product A" :price 29.99 :status "active"}}
           (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
                                           {:payload_type :notification/system-event
-                                           :payload      {:event_name :event/row.created}
+                                           :payload      {:event_name :event/row.created
+                                                          :table_id   (mt/id :orders)}
                                            :creator_id   (mt/user->id :crowberto)})))))
 
 (deftest example-payload-row-update-test
