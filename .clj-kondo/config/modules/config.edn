@@ -61,8 +61,7 @@
    :uses #{config driver legacy-mbql lib models sync util}}
 
   api
-  {:api #{metabase.api.api-key
-          metabase.api.auth
+  {:api #{metabase.api.auth
           metabase.api.card
           metabase.api.cards
           metabase.api.collection
@@ -122,6 +121,11 @@
            util
            xrays
            enterprise/advanced-permissions}}
+
+  api-keys
+  {:api  #{metabase.api-keys.api
+           metabase.api-keys.core}
+   :uses #{api db events models permissions util}}
 
   api-routes
   {:api  #{metabase.api-routes.core}
@@ -365,8 +369,7 @@
    :uses #{api db driver events lib models premium-features settings query-processor request task task-history util}}
 
   models
-  {:api #{metabase.models.api-key
-          metabase.models.application-permissions-revision
+  {:api #{metabase.models.application-permissions-revision
           metabase.models.audit-log
           metabase.models.card
           metabase.models.card.metadata
@@ -406,6 +409,7 @@
    :uses #{analytics
            analyze
            api
+           api-keys
            audit
            cache
            channel
@@ -597,7 +601,7 @@
           metabase.server.middleware.json
           metabase.server.middleware.session
           metabase.server.streaming-response}
-   :uses #{analytics api api-routes config core db driver embedding models premium-features settings session request util enterprise/sso}}
+   :uses #{analytics api api-keys api-routes config core db driver embedding models premium-features settings session request util enterprise/sso}}
 
   session
   {:api  #{metabase.session.core
@@ -713,7 +717,7 @@
   {:api  #{metabase-enterprise.advanced-config.api.logs
            metabase-enterprise.advanced-config.models.pulse-channel
            metabase-enterprise.advanced-config.file}
-   :uses #{api db driver models permissions premium-features setup settings sync util}}
+   :uses #{api api-keys db driver models permissions premium-features setup settings sync util}}
 
   enterprise/advanced-permissions
   {:api  #{metabase-enterprise.advanced-permissions.api.routes
@@ -827,7 +831,7 @@
 
   enterprise/scim
   {:api  #{metabase-enterprise.scim.api metabase-enterprise.scim.routes}
-   :uses #{analytics api models permissions settings server util enterprise/serialization}}
+   :uses #{analytics api api-keys models permissions settings server util enterprise/serialization}}
 
   enterprise/search
   {:api  #{}

@@ -1,4 +1,4 @@
-(ns metabase.models.api-key
+(ns metabase.api-keys.models.api-key
   (:require
    [clojure.core.memoize :as memoize]
    [crypto.random :as crypto-random]

@@ -3,7 +3,7 @@
    [compojure.route :as route]
    [metabase.actions.api]
    [metabase.activity-feed.api]
-   [metabase.api.api-key]
+   [metabase.api-keys.api]
    [metabase.api.card]
    [metabase.api.cards]
    [metabase.api.collection]
@@ -56,7 +56,7 @@
 
 (comment metabase.actions.api/keep-me
          metabase.activity-feed.api/keep-me
-         metabase.api.api-key/keep-me
+         metabase.api-keys.api/keep-me
          metabase.api.card/keep-me
          metabase.api.cards/keep-me
          metabase.api.collection/keep-me
@@ -132,7 +132,7 @@
   {"/action"               (+auth 'metabase.actions.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
    "/alert"                (+auth metabase.pulse.api/alert-routes)
-   "/api-key"              (+auth 'metabase.api.api-key)
+   "/api-key"              (+auth 'metabase.api-keys.api)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
    "/cache"                (+auth 'metabase.cache.api)

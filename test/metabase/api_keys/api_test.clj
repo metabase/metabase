@@ -1,9 +1,9 @@
-(ns metabase.api.api-key-test
+(ns metabase.api-keys.api-test
   "Tests for /api/api-key endpoints"
   (:require
    [clojure.test :refer [deftest testing is]]
+   [metabase.api-keys.models.api-key :as api-key]
    [metabase.http-client :as client]
-   [metabase.models.api-key :as api-key]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
