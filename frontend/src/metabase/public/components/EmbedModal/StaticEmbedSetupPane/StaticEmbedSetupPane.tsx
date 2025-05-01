@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -135,25 +135,37 @@ export const StaticEmbedSetupPane = ({
     embeddingParams,
   });
 
-  const iframeUrlWithoutHash = useMemo(
-    () =>
-      getSignedPreviewUrlWithoutHash(
+  const [iframeUrlWithoutHash, setIframeUrlWithoutHash] = useState<string>("");
+  useEffect(() => {
+    let cancelled = false;
+
+    async function signUrl() {
+      const url = await getSignedPreviewUrlWithoutHash(
         siteUrl,
         resourceType,
         resource.id,
         previewParametersBySlug,
         secretKey,
         embeddingParams,
-      ),
-    [
-      embeddingParams,
-      previewParametersBySlug,
-      resource.id,
-      resourceType,
-      secretKey,
-      siteUrl,
-    ],
-  );
+      );
+
+      if (!cancelled) {
+        setIframeUrlWithoutHash(url);
+      }
+    }
+    signUrl();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    siteUrl,
+    resourceType,
+    resource.id,
+    previewParametersBySlug,
+    secretKey,
+    embeddingParams,
+  ]);
 
   const iframeUrl =
     iframeUrlWithoutHash + getIframeQueryWithoutDefaults(displayOptions);
