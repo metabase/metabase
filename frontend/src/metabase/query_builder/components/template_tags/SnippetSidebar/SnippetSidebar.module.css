@@ -3,36 +3,6 @@
   margin-right: 0.5rem;
 }
 
-.HideSearchIcon {
-  cursor: pointer;
-  padding: 0.5rem;
-
-  &:hover {
-    color: var(--mb-color-brand);
-  }
-
-  &.isHidden {
-    display: none;
-  }
-}
-
-.isHidden {
-  display: none;
-}
-
-.SearchSnippetIcon {
-  cursor: pointer;
-  margin-right: 0.5rem;
-
-  &:hover {
-    color: var(--mb-color-brand);
-  }
-
-  &.isHidden {
-    display: none;
-  }
-}
-
 .SnippetTitle {
   cursor: pointer;
 

@@ -27,7 +27,6 @@ import S from "./SnippetSidebar.module.css";
 import { SnippetSidebarEmptyState } from "./SnippetSidebarEmptyState";
 
 const ICON_SIZE = 16;
-const HEADER_ICON_SIZE = 16;
 const MIN_SNIPPETS_FOR_SEARCH = 1;
 
 class SnippetSidebarInner extends React.Component {
@@ -163,21 +162,21 @@ class SnippetSidebarInner extends React.Component {
                     f(this, { className: CS.mr2 }),
                   ),
                 ]}
-                {snippets.length >= MIN_SNIPPETS_FOR_SEARCH && (
-                  <Icon
-                    className={cx(S.SearchSnippetIcon, {
-                      [S.isHidden]: showSearch,
-                    })}
-                    name="search"
-                    size={HEADER_ICON_SIZE}
-                    onClick={this.showSearch}
-                  />
-                )}
+                {snippets.length >= MIN_SNIPPETS_FOR_SEARCH &&
+                  (showSearch ? (
+                    <Button variant="subtle" onClick={this.hideSearch} p="sm">
+                      <Icon name="close" />
+                    </Button>
+                  ) : (
+                    <Button variant="subtle" onClick={this.showSearch} p="sm">
+                      <Icon name="search" />
+                    </Button>
+                  ))}
 
                 {snippetCollection.can_write && !showSearch && (
                   <Menu position="bottom-end">
                     <Menu.Target>
-                      <Button variant="subtle">
+                      <Button variant="subtle" px="sm">
                         <Icon name="add" />
                       </Button>
                     </Menu.Target>
@@ -209,15 +208,6 @@ class SnippetSidebarInner extends React.Component {
                     </Menu.Dropdown>
                   </Menu>
                 )}
-
-                <Icon
-                  className={cx(S.HideSearchIcon, {
-                    [S.isHidden]: !showSearch,
-                  })}
-                  name="close"
-                  size={HEADER_ICON_SIZE}
-                  onClick={this.hideSearch}
-                />
               </div>
             </div>
             <div className={CS.flexFull}>
