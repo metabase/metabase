@@ -1,4 +1,4 @@
-(ns metabase.api.routes
+(ns metabase.api-routes.routes
   (:require
    [compojure.route :as route]
    [metabase.actions.api]

@@ -1,4 +1,4 @@
-(ns metabase.api.routes-test
+(ns metabase.api-routes.routes-test
   (:require
    [clojure.test :refer :all]
    [rewrite-clj.parser]
