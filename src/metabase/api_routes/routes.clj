@@ -17,7 +17,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
-   [metabase.api.slack]
    [metabase.api.table]
    [metabase.api.testing]
    [metabase.api.user]
@@ -66,7 +65,6 @@
          metabase.api.field/keep-me
          metabase.api.geojson/keep-me
          metabase.api.logger/keep-me
-         metabase.api.slack/keep-me
          metabase.api.table/keep-me
          metabase.api.testing/keep-me
          metabase.api.user/keep-me
@@ -169,7 +167,7 @@
    "/session"              metabase.session.api/routes
    "/setting"              (+auth 'metabase.settings.api)
    "/setup"                'metabase.setup.api
-   "/slack"                (+auth 'metabase.api.slack)
+   "/slack"                (+auth metabase.channel.api/slack-routes)
    "/table"                (+auth 'metabase.api.table)
    "/task"                 (+auth 'metabase.task-history.api)
    "/testing"              (if enable-testing-routes? 'metabase.api.testing pass-thru-handler)

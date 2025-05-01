@@ -1,14 +1,14 @@
-(ns metabase.integrations.slack-test
+(ns metabase.channel.slack-test
   (:require
    [clj-http.fake :as http-fake]
    [clojure.set :as s]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.integrations.slack :as slack]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.channel.slack :as slack]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.util :as tu]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
@@ -54,7 +54,7 @@
   (http-fake/with-fake-routes {endpoint (fn [_]
                                           (throw (Exception. "Failure, route should not have been invoked")))}
     (testing "should return nil if no Slack token has been configured"
-      (tu/with-temporary-setting-values [slack-app-token nil
+      (mt/with-temporary-setting-values [slack-app-token nil
                                          slack-token nil]
         (is (= nil
                (not-empty (thunk))))))))
@@ -66,7 +66,7 @@
     (http-fake/with-fake-routes {endpoint (constantly
                                            (mock-200-response {:ok    false
                                                                :error "invalid_auth"}))}
-      (tu/with-temporary-setting-values [slack-app-token "test-token"]
+      (mt/with-temporary-setting-values [slack-app-token "test-token"]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Slack API error: invalid_auth"
@@ -83,12 +83,6 @@
   (doseq [f [test-no-auth-token! test-invalid-auth-token!]]
     (f endpoint thunk)))
 
-(deftest slack-app-token-truncation-test
-  (testing "slack-app-token is truncated when fetched by the setting's custom getter"
-    (tu/with-temporary-setting-values [slack-app-token "xoxb-781236542736-2364535789652-GkwFDQoHqzXDVsC6GzqYUypD"]
-      (is (= "xoxb-7812...UypD"
-             (slack/slack-app-token))))))
-
 (deftest conversations-list-test
   (testing "conversations-list"
     (test-auth! conversations-endpoint slack/conversations-list)
@@ -101,7 +95,7 @@
                 (fn [req]
                   (reset! request req)
                   (mock-200-response (mock-conversations-response-body req)))}
-               (tu/with-temporary-setting-values [slack-token "test-token"
+               (mt/with-temporary-setting-values [slack-token "test-token"
                                                   slack-app-token nil]
                  (slack/conversations-list opts)))
              (let [{:keys [query-string]} @request
@@ -115,11 +109,11 @@
       (http-fake/with-fake-routes {conversations-endpoint (comp mock-200-response mock-conversations-response-body)}
         (let [expected-result (map slack/channel-transform
                                    (concat (mock-conversations) (mock-conversations)))]
-          (tu/with-temporary-setting-values [slack-token "test-token"
+          (mt/with-temporary-setting-values [slack-token "test-token"
                                              slack-app-token nil]
             (is (= expected-result
                    (slack/conversations-list))))
-          (tu/with-temporary-setting-values [slack-app-token "test-token"
+          (mt/with-temporary-setting-values [slack-app-token "test-token"
                                              slack-token nil]
             (is (= expected-result
                    (slack/conversations-list)))))))))
@@ -128,7 +122,7 @@
   (testing "valid-token?"
     ;; should ignore the values of `slack-token` and `slack-app-token` settings
     (doseq [setting-value ["test-token" nil]]
-      (tu/with-temporary-setting-values [slack-token setting-value
+      (mt/with-temporary-setting-values [slack-token setting-value
                                          slack-app-token setting-value]
         (http-fake/with-fake-routes {conversations-endpoint (fn [{:keys [headers], :as request}]
                                                               (is (= "Bearer\nabc"
@@ -167,11 +161,11 @@
       (http-fake/with-fake-routes {users-endpoint (comp mock-200-response mock-users-response-body)}
         (let [expected-result (map slack/user-transform
                                    (concat (mock-users) (mock-users)))]
-          (tu/with-temporary-setting-values [slack-token     nil
+          (mt/with-temporary-setting-values [slack-token     nil
                                              slack-app-token "test-token"]
             (is (= expected-result
                    (slack/users-list)))
-            (tu/with-temporary-setting-values [slack-app-token nil
+            (mt/with-temporary-setting-values [slack-app-token nil
                                                slack-token     "test-token"]
               (is (= expected-result
                      (slack/users-list))))))))))
@@ -192,7 +186,7 @@
                               #"^https://slack.com/api/files\.completeUploadExternal.*"
                               (fn [_] (mock-200-response (slurp "./test_resources/slack_upload_file_response.json")))}]
       (http-fake/with-fake-routes fake-upload-routes
-        (tu/with-temporary-setting-values [slack-token "test-token"
+        (mt/with-temporary-setting-values [slack-token "test-token"
                                            slack-app-token nil]
           (is (= {:url "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
                   :id "DDDDDDDDD-EEEEEEEEE"}
@@ -202,7 +196,7 @@
         (assoc fake-upload-routes
                #"^https://slack.com/api/conversations\.join.*"
                (fn [_] (mock-200-response (slurp "./test_resources/slack_conversations_join_response.json"))))
-        (tu/with-temporary-setting-values [slack-token nil
+        (mt/with-temporary-setting-values [slack-token nil
                                            slack-app-token "test-token"]
           (is (= {:url "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
                   :id "DDDDDDDDD-EEEEEEEEE"}
@@ -216,18 +210,18 @@
                       :message {:type    "message"
                                 :subtype "bot_message"
                                 :text    ":wow:"}}]
-        (tu/with-temporary-setting-values [slack-token "test-token"
+        (mt/with-temporary-setting-values [slack-token "test-token"
                                            slack-app-token nil]
           (is (=? expected
                   (slack/post-chat-message! "C94712B6X" ":wow:"))))
-        (tu/with-temporary-setting-values [slack-app-token "test-token"
+        (mt/with-temporary-setting-values [slack-app-token "test-token"
                                            slack-token nil]
           (is (=? expected
                   (slack/post-chat-message! "C94712B6X" ":wow:"))))))))
 
 (deftest slack-token-error-test
   (notification.tu/with-send-notification-sync
-    (tu/with-temporary-setting-values [slack-app-token    "test-token"
+    (mt/with-temporary-setting-values [slack-app-token    "test-token"
                                        admin-email         nil
                                        #_:clj-kondo/ignore slack-token-valid? true]
       (mt/with-fake-inbox
@@ -246,7 +240,7 @@
                           (-> recipient->emails (get "crowberto@metabase.com") first)))
                   (is (= (t2/select-fn-set :email :model/User :is_superuser true)
                          (set (keys recipient->emails)))))
-                (is (false? (slack/slack-token-valid?))))))
+                (is (false? (channel.settings/slack-token-valid?))))))
 
           (testing "If `slack-token-valid?` is already false, no email should be sent"
             (mt/reset-inbox!)
@@ -257,16 +251,12 @@
                 (is (= {} (mt/summarize-multipart-email #"Your Slack connection stopped working.")))))))
 
         (testing "No email is sent during token validation checks, even if `slack-token-valid?` is currently true"
-          (tu/with-temporary-setting-values [slack-token-valid? true]
+          (mt/with-temporary-setting-values [slack-token-valid? true]
             (http-fake/with-fake-routes {conversations-endpoint (fn [_] (mock-200-response {:ok false, :error "account_inactive"}))}
               (mt/reset-inbox!)
               (is (= false (slack/valid-token? "abc")))
               (is (= {} (mt/summarize-multipart-email #"Your Slack connection stopped working.")))
-              (is (slack/slack-token-valid?)))))))))
-
-(deftest slack-cache-updated-at-nil
-  (tu/with-temporary-setting-values [slack-channels-and-usernames-last-updated nil]
-    (is (= (var-get #'slack/zoned-time-epoch) (slack/slack-channels-and-usernames-last-updated)))))
+              (is (channel.settings/slack-token-valid?)))))))))
 
 (def auth-endpoint #"^https://slack\.com/api/auth\.test.*")
 
@@ -274,7 +264,7 @@
   (testing "Chooses correct value for :private-channels if groups:read scope is available"
     (are [oauth-scopes conversation-types]
          (let [request (atom nil)]
-           (tu/with-temporary-setting-values [slack-app-token "test"
+           (mt/with-temporary-setting-values [slack-app-token "test"
                                               slack-token nil]
              (http-fake/with-fake-routes
                {auth-endpoint

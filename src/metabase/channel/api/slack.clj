@@ -1,12 +1,13 @@
-(ns metabase.api.slack
+(ns metabase.channel.api.slack
   "/api/slack endpoints"
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.channel.slack :as slack]
    [metabase.config :as config]
-   [metabase.integrations.slack :as slack]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]))
@@ -91,7 +92,7 @@
   (try
     ;; Clear settings if no values are provided
     (when (nil? slack-app-token)
-      (slack/slack-app-token! nil)
+      (channel.settings/slack-app-token! nil)
       (slack/clear-channel-cache!))
 
     (when (and slack-app-token
@@ -100,22 +101,22 @@
       (slack/clear-channel-cache!)
       (throw (ex-info (tru "Invalid Slack token.")
                       {:errors {:slack-app-token (tru "invalid token")}})))
-    (slack/slack-app-token! slack-app-token)
+    (channel.settings/slack-app-token! slack-app-token)
     (if slack-app-token
-      (do (slack/slack-token-valid?! true)
+      (do (channel.settings/slack-token-valid?! true)
           ;; Clear the deprecated `slack-token` when setting a new `slack-app-token`
-          (slack/slack-token! nil)
+          (channel.settings/slack-token! nil)
           ;; refresh user/conversation cache when token is newly valid
           (slack/refresh-channels-and-usernames-when-needed!))
       ;; clear user/conversation cache when token is newly empty
       (slack/clear-channel-cache!))
 
     (when slack-bug-report-channel
-      (let [processed-bug-channel (slack/process-files-channel-name slack-bug-report-channel)]
+      (let [processed-bug-channel (channel.settings/process-files-channel-name slack-bug-report-channel)]
         (when (not (slack/channel-exists? processed-bug-channel))
           (throw (ex-info (tru "Slack channel not found.")
                           {:errors {:slack-bug-report-channel (tru "channel not found")}})))
-        (slack/slack-bug-report-channel! processed-bug-channel)))
+        (channel.settings/slack-bug-report-channel! processed-bug-channel)))
 
     {:ok true}
     (catch clojure.lang.ExceptionInfo info
