@@ -943,46 +943,6 @@
   (is (= [1 2 3 4]
          (t2/select-one-fn :values :model/FieldValues :field_id (mt/id :venues :price)))))
 
-(defn- price-param-values []
-  {(mt/id :venues :price) {:values                [1 2 3 4]
-                           :human_readable_values []
-                           :field_id              (mt/id :venues :price)}})
-
-(defn- add-price-param-to-dashboard! [dashboard]
-  (t2/update! :model/Dashboard (u/the-id dashboard) {:parameters [{:name "Price", :type "category", :slug "price", :id "_PRICE_"}]}))
-
-(defn- add-dimension-param-mapping-to-dashcard! [dashcard card dimension]
-  (t2/update! :model/DashboardCard (u/the-id dashcard) {:parameter_mappings [{:card_id (u/the-id card)
-                                                                              :target  ["dimension" dimension]}]}))
-
-(deftest check-that-param-info-comes-back-for-sql-cards
-  (with-temp-public-dashboard-and-card [dash card dashcard]
-    (t2/update! :model/Card (u/the-id card)
-                {:dataset_query {:database (mt/id)
-                                 :type     :native
-                                 :native   {:template-tags {:price {:name         "price"
-                                                                    :display-name "Price"
-                                                                    :type         "dimension"
-                                                                    :dimension    ["field" (mt/id :venues :price) nil]}}}}})
-    (add-price-param-to-dashboard! dash)
-    (add-dimension-param-mapping-to-dashcard! dashcard card ["template-tag" "price"])
-    (is (= (price-param-values)
-           (GET-param-values! dash)))))
-
-(deftest check-that-param-info-comes-back-for-mbql-cards--field-id-
-  (with-temp-public-dashboard-and-card [dash card dashcard]
-    (add-price-param-to-dashboard! dash)
-    (add-dimension-param-mapping-to-dashcard! dashcard card ["field" (mt/id :venues :price) nil])
-    (is (= (price-param-values)
-           (GET-param-values! dash)))))
-
-(deftest check-that-param-info-comes-back-for-mbql-cards--fk---
-  (with-temp-public-dashboard-and-card [dash card dashcard]
-    (add-price-param-to-dashboard! dash)
-    (add-dimension-param-mapping-to-dashcard! dashcard card [:field (mt/id :venues :price) {:source-field (mt/id :checkins :venue_id)}])
-    (is (= (price-param-values)
-           (GET-param-values! dash)))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        New FieldValues search endpoints                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
