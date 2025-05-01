@@ -42,13 +42,11 @@
     :model/GroupTableAccessPolicy            metabase-enterprise.sandbox.models.group-table-access-policy
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
-    :model/LegacyMetric                      metabase.models.legacy-metric
-    :model/LegacyMetricImportantField        metabase.models.legacy-metric-important-field
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
     :model/ModerationReview                  metabase.models.moderation-review
-    :model/NativeQuerySnippet                metabase.models.native-query-snippet
+    :model/NativeQuerySnippet                metabase.native-query-snippets.models.native-query-snippet
     :model/Notification                      metabase.notification.models
     :model/NotificationCard                  metabase.notification.models
     :model/NotificationHandler               metabase.notification.models
