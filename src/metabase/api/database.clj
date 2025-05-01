@@ -34,7 +34,7 @@
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
-   [metabase.upload :as upload]
+   [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.honey-sql-2 :as h2x]
@@ -530,6 +530,9 @@
         (update :tables (fn [tables]
                           (for [table tables]
                             (update table :segments (partial filter mi/can-read?)))))
+        (update :tables (fn [tables]
+                          (for [table tables]
+                            (update table :schema str))))
         (update :tables (if remove_inactive?
                           (fn [tables]
                             (filter :active tables))

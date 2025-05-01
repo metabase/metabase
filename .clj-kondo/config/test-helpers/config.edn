@@ -126,7 +126,7 @@
      metabase.test/initialize-if-needed!
      metabase.test/test-helpers-set-global-values!
      metabase.test/with-temp-env-var-value!
-     metabase.upload-test/set-local-infile!
+     metabase.upload.impl-test/set-local-infile!
      metabase.util.files/create-dir-if-not-exists!
      metabase.util.ssh-test/start-mock-servers!
      metabase.util.ssh-test/stop-mock-servers!}}}}

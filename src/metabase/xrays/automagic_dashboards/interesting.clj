@@ -76,7 +76,7 @@
     @fields))
 
 (defn semantic-groups
-  "From a :model/LegacyMetric, construct a mapping of semantic types of linked fields to
+  "From a :xrays/Metric, construct a mapping of semantic types of linked fields to
    sets of fields that can satisfy that type. A linked field is one that is in the
    source table for the metric contribute to the metric itself, is not a PK, and
    has a semantic_type (we assume nil semantic_type fields are boring)."
@@ -152,11 +152,11 @@
   [_ {:keys [display_name full-name]}]
   (or full-name display_name))
 
-(defmethod ->reference [:string :model/LegacyMetric]
+(defmethod ->reference [:string :xrays/Metric]
   [_ {:keys [name full-name]}]
   (or full-name name))
 
-(defmethod ->reference [:mbql :model/LegacyMetric]
+(defmethod ->reference [:mbql :xrays/Metric]
   [_ {:keys [id definition]}]
   (if id
     [:metric id]
@@ -452,7 +452,7 @@
   "Identify interesting metrics and dimensions of a `thing`. First identifies interesting dimensions, and then
   interesting metrics which are satisfied.
   Metrics from the template are assigned a score of 50; user defined metrics a score of 95"
-  [{{:keys [linked-metrics]} :root :as context}
+  [context
    {:keys [dimension-specs
            metric-specs
            filter-specs]} :- [:map
@@ -466,38 +466,12 @@
         set-score (fn [score metrics]
                     (map #(assoc % :metric-score score) metrics))]
     {:dimensions dims
-     :metrics    (concat (set-score 50 metrics) (set-score 95 linked-metrics)
+     :metrics    (concat (set-score 50 metrics)
                          (let [entity (-> context :root :entity)]
                            ;; metric x-rays talk about "this" in the template
-                           (when (mi/instance-of? :model/LegacyMetric entity)
+                           (when (mi/instance-of? :xrays/Metric entity)
                              [{:metric-name       "this"
                                :metric-title      (:name entity)
                                :metric-definition {:aggregation [(->reference :mbql entity)]}
                                :metric-score      dashboard-templates/max-score}])))
      :filters (grounded-filters filter-specs dims)}))
-
-(defn card->dashcard
-  "Convert a card to a dashboard card."
-  [{:keys [width height] :as card}]
-  {:id                     (gensym)
-   :size_x                 width
-   :size_y                 height
-   :dashboard_tab_id       nil
-   :card                   (dissoc card :width :height)
-   :visualization_settings {}})
-
-(defn make-layout
-  "Assign `:row` and `:col` values to the provied seq of dashcards."
-  [dashcards]
-  (loop [[{:keys [size_x size_y] :as dashcard} & dashcards] dashcards
-         [xmin ymin xmax ymax] [0 0 0 0]
-         final-cards []]
-    (if dashcard
-      (let [dashcard (assoc dashcard :row ymin :col xmax)
-            bounds   (if (> xmax 20)
-                       [xmin ymax 0 (+ ymax size_y)]
-                       [xmin ymin (+ xmax size_x) (max ymax (+ ymin size_y))])]
-        (recur dashcards
-               bounds
-               (conj final-cards dashcard)))
-      final-cards)))

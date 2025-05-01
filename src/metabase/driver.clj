@@ -732,6 +732,9 @@
     ;; Does this driver support the :distinct-where function?
     :distinct-where
 
+    ;; Does this driver support sandboxing with saved questions?
+    :saved-question-sandboxing
+
     ;; Does this driver support casting text and floats to integers? (`integer()` custom expression function)
     :expressions/integer
 
@@ -796,6 +799,7 @@
                               :test/jvm-timezone-setting              true
                               :fingerprint                            true
                               :upload-with-auto-pk                    true
+                              :saved-question-sandboxing              true
                               :test/dynamic-dataset-loading           true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 

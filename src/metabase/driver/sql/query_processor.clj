@@ -908,6 +908,12 @@
   (cond-> agg
     (and (vector? agg) (= (first agg) :aggregation-options)) second))
 
+(defn- contains-clause?
+  [clause-pred form]
+  (boolean (and (vector? form)
+                (or (clause-pred (first form))
+                    (m/find-first (partial contains-clause? clause-pred) (rest form))))))
+
 (defn- over-order-bys
   "Returns a vector containing the `aggregations` specified by `order-bys` compiled to
   honeysql expressions for `driver` suitable for ordering in the over clause of a window function."
@@ -918,7 +924,7 @@
                   (if (aggregation? expr)
                     (let [[_aggregation index] expr
                           agg (unwrap-aggregation-option (aggregations index))]
-                      (when-not (#{:cum-count :cum-sum :offset} (first agg))
+                      (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
                         [(->honeysql driver agg) direction]))
                     [(->honeysql driver expr) direction])))
           order-bys)))
