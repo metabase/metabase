@@ -1,4 +1,4 @@
-(ns metabase-enterprise.internal-stats
+(ns metabase-enterprise.internal-stats.core
   (:require
    [metabase.models.setting :as setting]
    [metabase.premium-features.core :refer [defenterprise]]))
