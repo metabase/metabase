@@ -105,7 +105,6 @@
 
             (is (next-batch-num :undo user-id test-scope))
             (is (next-batch-num :redo user-id test-scope))
-            ;; This doesn't tell the FE which rows to hide
             (is (= {table-id [[:delete {:id 1}]]}
                    (undo-via-api! user-id test-scope)))
             (is (= [] (table-rows table-id)))
@@ -263,15 +262,12 @@
                                                [user-id {:name "Toffle" :status "comforted"}]
                                                [user-id nil]])
 
-            ;; Create row 1 with Too-tickley directly using CRUD API
             (create-row! user-id table-id {:id 1, :name "Too-tickley", :status "squirming"})
 
-            (is (= [[1 "Too-tickley" "squirming"]] (table-rows table-id)))
-
-            ;; Create row 2 with Toggle using CRUD API
             (create-row! user-id table-id {:id 2, :name "Toggle", :status "restored"})
-            ;; Delete it to create an undo history
             (delete-row! user-id table-id {:id 2})
+
+            (is (= [[1 "Too-tickley" "squirming"]] (table-rows table-id)))
 
             (is (nil? (next-batch-num :redo user-id test-scope)))
             (is (next-batch-num :undo user-id test-scope))
