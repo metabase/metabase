@@ -8,5 +8,5 @@ export const Watermark = ({ card }: { card: Card | BaseDashboardCard }) => {
     return null;
   }
 
-  return <div className={S.Root} />;
+  return <div className={S.Root} data-testid="visualization-watermark" />;
 };
