@@ -3,9 +3,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import NoResults from "assets/img/metrics_bot.svg";
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { skipToken, useListDatabasesQuery } from "metabase/api";
-import { useDatabaseListQuery, useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import EmptyState from "metabase/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -109,7 +108,10 @@ export function BrowseMetrics() {
         <BrowseSection>
           <Stack mb="lg" gap="md" w="100%">
             {isEmpty ? (
-              <MetricsEmptyState />
+              <MetricsEmptyState
+                canCreateMetric={hasDataAccess}
+                newMetricLink={newMetricLink}
+              />
             ) : (
               <DelayedLoadingAndErrorWrapper
                 error={error}
@@ -127,18 +129,13 @@ export function BrowseMetrics() {
   );
 }
 
-function MetricsEmptyState() {
-  const isLoggedIn = Boolean(useSelector(getCurrentUser));
-  const { data: databases = [] } = useDatabaseListQuery({
-    enabled: isLoggedIn,
-  });
-  const hasDataAccess = getHasDataAccess(databases);
-
-  const newMetricLink = Urls.newQuestion({
-    mode: "query",
-    cardType: "metric",
-  });
-
+function MetricsEmptyState({
+  canCreateMetric,
+  newMetricLink,
+}: {
+  canCreateMetric: boolean;
+  newMetricLink: string;
+}) {
   const { url: metricsDocsLink, showMetabaseLinks } = useDocsUrl(
     "data-modeling/metrics",
   );
@@ -161,7 +158,7 @@ function MetricsEmptyState() {
                     variant="brandBold"
                   >{t`Read the docs`}</Link>
                 )}
-                {hasDataAccess && (
+                {canCreateMetric && (
                   <Button
                     component={Link}
                     to={newMetricLink}
