@@ -355,7 +355,7 @@
 
   lib-be
   {:api #{metabase.lib-be.init}
-   :uses #{models settings task util}}
+   :uses #{lib models settings task util}}
 
   logger
   {:api  #{metabase.logger metabase.logger.init}
