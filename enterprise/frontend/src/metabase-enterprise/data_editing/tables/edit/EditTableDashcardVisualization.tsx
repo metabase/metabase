@@ -64,10 +64,10 @@ export const EditTableDashcardVisualization = ({
   const objectIdParam = useMemo(() => {
     const searchParams = new URLSearchParams(location.search);
     const objectIdParam = searchParams.get("objectId");
-    const dashcardIdParam = searchParams.get("dashcardId");
+    const parsedParams = parseModalCompositeObjectId(objectIdParam);
 
-    if (dashcardIdParam === dashcardId.toString()) {
-      return objectIdParam ?? undefined;
+    if (parsedParams?.dashcardId === dashcardId) {
+      return parsedParams.objectId ?? undefined;
     }
 
     return undefined;
@@ -78,10 +78,11 @@ export const EditTableDashcardVisualization = ({
       const searchParams = new URLSearchParams(location.search);
 
       if (objectId) {
-        searchParams.set("dashcardId", dashcardId.toString());
-        searchParams.set("objectId", objectId);
+        searchParams.set(
+          "objectId",
+          getModalCompositeObjectId(objectId, dashcardId),
+        );
       } else {
-        searchParams.delete("dashcardId");
         searchParams.delete("objectId");
       }
 
@@ -244,4 +245,28 @@ function getEditTableRowCountMessage(data: DatasetData): string {
     return t`Showing first ${HARD_ROW_LIMIT} rows`;
   }
   return t`Showing ${formatRowCount(rowCount)}`;
+}
+
+const MODAL_COMPOSITE_OBJECT_ID_SEPARATOR = "_";
+function getModalCompositeObjectId(objectId: string, dashcardId: number) {
+  return `${dashcardId}${MODAL_COMPOSITE_OBJECT_ID_SEPARATOR}${objectId}`;
+}
+
+function parseModalCompositeObjectId(compositeObjectId: string | null) {
+  if (!compositeObjectId) {
+    return undefined;
+  }
+
+  // objectId can contain separator symbol itself, so we should slice the first part
+  const separatorIndex = compositeObjectId.indexOf(
+    MODAL_COMPOSITE_OBJECT_ID_SEPARATOR,
+  );
+  if (separatorIndex === -1) {
+    return undefined;
+  }
+
+  const dashcardId = compositeObjectId.slice(0, separatorIndex);
+  const objectId = compositeObjectId.slice(separatorIndex + 1);
+
+  return { dashcardId: parseInt(dashcardId), objectId };
 }
