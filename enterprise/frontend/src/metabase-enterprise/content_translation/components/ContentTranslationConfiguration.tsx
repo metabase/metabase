@@ -134,7 +134,7 @@ const UploadForm = () => {
           activeLabel={
             <Group gap="md" role="alert">
               <Loader size="xs" opacity=".8" />
-              <Text>{t`Uploading dictionary...`}</Text>
+              <Text>{t`Uploading dictionary…`}</Text>
             </Group>
           }
           maw="20rem"
