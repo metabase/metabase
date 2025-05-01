@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import NoResults from "assets/img/metrics_bot.svg";
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
-import { skipToken } from "metabase/api";
+import { skipToken, useListDatabasesQuery } from "metabase/api";
 import { useDatabaseListQuery, useDocsUrl } from "metabase/common/hooks";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import EmptyState from "metabase/components/EmptyState";
@@ -15,6 +15,7 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { getHasDataAccess } from "metabase/selectors/data";
 import {
+  ActionIcon,
   Box,
   Button,
   Flex,
@@ -23,6 +24,7 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "metabase/ui";
 
 import {
@@ -42,12 +44,21 @@ const {
 } = PLUGIN_CONTENT_VERIFICATION;
 
 export function BrowseMetrics() {
+  const { data } = useListDatabasesQuery();
   const [metricFilters, setMetricFilters] = useMetricFilterSettings();
   const { isLoading, error, metrics, hasVerifiedMetrics } =
     useFilteredMetrics(metricFilters);
 
   const isEmpty = !isLoading && !error && !metrics?.length;
   const titleId = useMemo(() => _.uniqueId("browse-metrics"), []);
+
+  const newMetricLink = Urls.newQuestion({
+    mode: "query",
+    cardType: "metric",
+  });
+
+  const databases = data?.data ?? [];
+  const hasDataAccess = getHasDataAccess(databases);
 
   return (
     <BrowseContainer aria-labelledby={titleId}>
@@ -60,21 +71,36 @@ export function BrowseMetrics() {
             justify="space-between"
             align="center"
           >
-            <Title order={1} c="text-dark" id={titleId}>
-              <Group gap="sm">
-                <Icon
-                  size={24}
-                  color="var(--mb-color-icon-primary)"
-                  name="metric"
-                />
-                {t`Metrics`}
-              </Group>
-            </Title>
+            <Tooltip label="foo">
+              <Title order={1} c="text-dark" id={titleId}>
+                <Group gap="sm">
+                  <Icon
+                    size={24}
+                    color="var(--mb-color-icon-primary)"
+                    name="metric"
+                  />
+                  {t`Metrics`}
+                </Group>
+              </Title>
+            </Tooltip>
             {hasVerifiedMetrics && (
               <MetricFilterControls
                 metricFilters={metricFilters}
                 setMetricFilters={setMetricFilters}
               />
+            )}
+            {hasDataAccess && (
+              <Tooltip label={t`Create a metric`}>
+                <ActionIcon
+                  aria-label={t`Create a metric`}
+                  size={32}
+                  variant="viewHeader"
+                  component={Link}
+                  to={newMetricLink}
+                >
+                  <Icon name="add" />
+                </ActionIcon>
+              </Tooltip>
             )}
           </Flex>
         </BrowseSection>
