@@ -1,10 +1,11 @@
 import type React from "react";
-import type {
-  ComponentType,
-  Dispatch,
-  HTMLAttributes,
-  ReactNode,
-  SetStateAction,
+import {
+  type ComponentType,
+  type Dispatch,
+  type HTMLAttributes,
+  type ReactNode,
+  type SetStateAction,
+  useCallback,
 } from "react";
 import { t } from "ttag";
 import type { AnySchema } from "yup";
@@ -621,12 +622,9 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
 export const PLUGIN_CONTENT_TRANSLATION = {
   isEnabled: false,
   ContentTranslationConfiguration: PluginPlaceholder,
-  useTranslateContent: () => {
+  useTranslateContent: (): ContentTranslationFunction => {
     // In OSS, the input is not translated
-    const contentTranslationFunction: ContentTranslationFunction = <T>(
-      arg: T,
-    ) => arg;
-    return contentTranslationFunction;
+    return useCallback(<T>(arg: T) => arg, []);
   },
 };
 
