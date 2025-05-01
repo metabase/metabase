@@ -1,3 +1,7 @@
+import * as I from "icepick";
+import _ from "underscore";
+
+import type { ContentTranslationFunction } from "metabase-lib";
 import type { DictionaryArray } from "metabase-types/api";
 
 /** Translate a user-generated string
@@ -35,4 +39,31 @@ export const translateContentString = <
   }
 
   return msgstr;
+};
+
+const isRecord = (obj: unknown): obj is Record<string, unknown> =>
+  _.isObject(obj) && Object.keys(obj).every((key) => typeof key === "string");
+
+/** Walk through obj and translate any display name fields */
+export const translateDisplayNames = <T>(
+  obj: T,
+  tc: ContentTranslationFunction,
+  fieldsToTranslate = ["display_name", "displayName"],
+): T => {
+  const traverse = (o: T): T => {
+    if (Array.isArray(o)) {
+      return I.map(traverse, o) as T;
+    }
+    if (isRecord(o)) {
+      return Object.entries(o).reduce((acc, [key, value]) => {
+        const newValue =
+          fieldsToTranslate.includes(key as string) && typeof value === "string"
+            ? tc(value)
+            : traverse(value as T);
+        return I.assoc(acc, key, newValue);
+      }, o);
+    }
+    return o;
+  };
+  return traverse(obj);
 };

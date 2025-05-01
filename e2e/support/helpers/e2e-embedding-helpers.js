@@ -162,7 +162,7 @@ export function visitIframe() {
   });
 }
 
-function getIframeUrl() {
+export function getIframeUrl() {
   modal().findByText("Preview").click();
 
   return cy.document().then((doc) => {

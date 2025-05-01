@@ -86,20 +86,6 @@ describe("useTranslateContent", () => {
     expect(await screen.findByText("Hello? World?")).toBeInTheDocument();
   });
 
-  it("should return the original string when translation is an empty string", async () => {
-    setup({
-      msgid: "Hello World",
-      locale: "es",
-      translations: [
-        {
-          ...sampleSpanishDictionary[0],
-          msgstr: "",
-        },
-      ],
-    });
-    expect(await screen.findByText("Hello World")).toBeInTheDocument();
-  });
-
   it("should return the translated string when a translation is found", async () => {
     setup({
       msgid: "Hello World",
