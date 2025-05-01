@@ -56,17 +56,6 @@
   [topic event]
   (audit-log/record-event! topic event))
 
-(derive ::metric-event ::event)
-(derive :event/metric-create ::metric-event)
-(derive :event/metric-update ::metric-event)
-(derive :event/metric-delete ::metric-event)
-
-(methodical/defmethod events/publish-event! ::metric-event
-  [topic {:keys [object user-id revision-message] :as _event}]
-  (audit-log/record-event! topic {:object  object
-                                  :user-id user-id
-                                  :details (when revision-message {:revision-message revision-message})}))
-
 (derive ::pulse-event ::event)
 (derive :event/pulse-create ::pulse-event)
 (derive :event/pulse-delete ::pulse-event)

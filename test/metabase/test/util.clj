@@ -187,13 +187,6 @@
             :ip_address         "0:0:0:0:0:0:0:1"
             :timestamp          (t/zoned-date-time)})
 
-   :model/LegacyMetric
-   (fn [_] (default-timestamped
-            {:creator_id  (rasta-id)
-             :definition  {}
-             :description "Lookin' for a blueberry"
-             :name        "Toucans in the rainforest"}))
-
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
             {:creator_id (user-id :crowberto)

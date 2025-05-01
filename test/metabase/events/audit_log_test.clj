@@ -178,59 +178,6 @@
             :details     {}}
            (mt/latest-audit-log-entry "install")))))
 
-(deftest metric-create-event-test
-  (testing :metric-create
-    (mt/with-temp [:model/LegacyMetric metric {:table_id (mt/id :venues)}]
-      (is (= {:object metric :user-id (mt/user->id :rasta)}
-             (events/publish-event! :event/metric-create {:object metric :user-id (mt/user->id :rasta)})))
-      (is (= {:topic       :metric-create
-              :user_id     (mt/user->id :rasta)
-              :model       "Metric"
-              :model_id    (:id metric)
-              :details     {:name        (:name metric)
-                            :description (:description metric)
-                            :database_id (mt/id)
-                            :table_id    (mt/id :venues)}}
-             (mt/latest-audit-log-entry "metric-create" (:id metric)))))))
-
-(deftest metric-update-event-test
-  (testing :metric-update
-    (mt/with-temp [:model/LegacyMetric metric {:table_id (mt/id :venues)}]
-      (let [event {:object           metric
-                   :revision-message "update this mofo"
-                   :user-id          (mt/user->id :rasta)}]
-        (is (= event
-               (events/publish-event! :event/metric-update event)))
-        (is (= {:topic       :metric-update
-                :user_id     (mt/user->id :rasta)
-                :model       "Metric"
-                :model_id    (:id metric)
-                :details     {:name             (:name metric)
-                              :description      (:description metric)
-                              :database_id (mt/id)
-                              :table_id    (mt/id :venues)
-                              :revision-message "update this mofo"}}
-               (mt/latest-audit-log-entry "metric-update" (:id metric))))))))
-
-(deftest metric-delete-event-test
-  (testing :metric-delete
-    (mt/with-temp [:model/LegacyMetric metric {:table_id (mt/id :venues)}]
-      (let [event {:object           metric
-                   :revision-message "deleted"
-                   :user-id          (mt/user->id :rasta)}]
-        (is (= event
-               (events/publish-event! :event/metric-delete event)))
-        (is (= {:topic       :metric-delete
-                :user_id     (mt/user->id :rasta)
-                :model       "Metric"
-                :model_id    (:id metric)
-                :details     {:name             (:name metric)
-                              :description      (:description metric)
-                              :revision-message "deleted"
-                              :database_id (mt/id)
-                              :table_id    (mt/id :venues)}}
-               (mt/latest-audit-log-entry "metric-delete" (:id metric))))))))
-
 (deftest subscription-events-test
   (mt/with-temp [:model/Dashboard      {dashboard-id :id} {}
                  :model/Pulse          pulse {:archived     false

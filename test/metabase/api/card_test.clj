@@ -341,7 +341,6 @@
   (mt/with-temp [:model/Database {database-id :id} {}
                  :model/Table {table-id :id} {:db_id database-id}
                  :model/Segment {segment-id :id} {:table_id table-id}
-                 :model/LegacyMetric {metric-id :id} {:table_id table-id}
                  :model/Card {model-id :id :as model} {:name "Model"
                                                        :type :model
                                                        :dataset_query {:query {:source-table (mt/id :venues)
@@ -353,12 +352,6 @@
                                                      :database (mt/id)
                                                      :type :query}}
                  :model/Card {other-card-id :id} {}
-                 ;; source-table doesn't match
-                 :model/Card card-2 {:name "Card 2"
-                                     :dataset_query (mt/mbql-query nil
-                                                      {:source-table (str "card__" other-card-id)
-                                                       :filter [:= [:field 5 nil] (str "card__" model-id)]
-                                                       :aggregation [[:metric metric-id]]})}
                  ;; matching join
                  :model/Card card-3 {:name "Card 3"
                                      :dataset_query (let [alias (str "Question " model-id)]
@@ -379,7 +372,7 @@
                                                                                  :filter [:or
                                                                                           [:> [:field 1 nil] 3]
                                                                                           [:segment segment-id]]
-                                                                                 :aggregation  [[:+ [:metric metric-id] 1]]
+                                                                                 :aggregation  [[:+ [:count] 1]]
                                                                                  :breakout     [[:field 4 nil]]}}]
                                                          :fields [[:field 9 nil]]
                                                          :source-table (str "card__" other-card-id)}))}
@@ -420,16 +413,13 @@
                                      :archived true
                                      :dataset_query {:query {:source-table (str "card__" model-id)}}}]
     (testing "list cards using a model"
-      (with-cards-in-readable-collection! [model card-1 card-2 card-3 card-4 card-5 card-6 card-7]
+      (with-cards-in-readable-collection! [model card-1 card-3 card-4 card-5 card-6 card-7]
         (is (= #{"Card 1" "Card 3" "Card 4"}
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
                                                            :f :using_model :model_id model-id))))
         (is (= #{"Card 1" "Card 3"}
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
-                                                           :f :using_segment :model_id segment-id))))
-        (is (= #{"Card 2" "Card 3"}
-               (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
-                                                           :f :using_metric :model_id metric-id))))))))
+                                                           :f :using_segment :model_id segment-id))))))))
 
 (deftest get-cards-with-last-edit-info-test
   (mt/with-temp [:model/Card {card-1-id :id} {:name "Card 1"}
