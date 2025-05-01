@@ -356,7 +356,7 @@
 ;;; |                                                WEEKDAYS                                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; Background on weekdays in Metabase:
-;;; - Day 1 inside Metabase is defined by [[metabase.public-settings/start-of-week]]; default `:sunday`.
+;;; - Day 1 inside Metabase is defined by [[metabase.settings.deprecated-grab-bag/start-of-week]]; default `:sunday`.
 ;;; - Databases store this differently - 1 to 7, 0 to 6, hard-coded first day, based on the locale, ...
 ;;; - Drivers handle that variation, and always expect 1 to 7 where 1 is the `start-of-week` day.
 ;;; - Locales differ in what they consider the first day of the week; generally Sunday in the Americas, Monday in
@@ -1034,6 +1034,23 @@
           (mt/with-native-query-testing-context query
             (is (= [[1020]]
                    (mt/formatted-rows [int] (qp/process-query query))))))))))
+
+(deftest ^:parallel coercion-with-expression-test-2
+  (testing "An expression in the breakout with a coerced column should work (#56886)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+      (mt/dataset sad-toucan-incidents
+        (let [query (mt/mbql-query incidents
+                      {:expressions {"double severity" [:* $severity 2]}
+                       :aggregation [[:count]]
+                       :breakout    [$timestamp [:expression "double severity"]]
+                       :limit       3})]
+          (mt/with-native-query-testing-context query
+            (is (= [["2015-06-01T00:00:00Z" 2 3]
+                    ["2015-06-01T00:00:00Z" 6 1]
+                    ["2015-06-01T00:00:00Z" 8 1]]
+                   (mt/formatted-rows
+                    [u.date/temporal-str->iso8601-str int int]
+                    (qp/process-query query))))))))))
 
 (deftest ^:parallel null-array-test
   (testing "a null array should be handled gracefully and return nil"

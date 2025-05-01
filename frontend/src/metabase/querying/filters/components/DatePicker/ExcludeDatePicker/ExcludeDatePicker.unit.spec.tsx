@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import {
@@ -8,20 +9,23 @@ import {
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
+  ExcludeDatePickerValue,
 } from "metabase/querying/filters/types";
+
+import type { DatePickerSubmitButtonProps } from "../types";
 
 import { ExcludeDatePicker } from "./ExcludeDatePicker";
 
 interface SetupOpts {
   availableOperators?: DatePickerOperator[];
   availableUnits?: DatePickerExtractionUnit[];
-  submitButtonLabel?: string;
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
 }
 
 function setup({
   availableOperators = DATE_PICKER_OPERATORS,
   availableUnits = DATE_PICKER_EXTRACTION_UNITS,
-  submitButtonLabel = "Apply",
+  renderSubmitButton,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -30,7 +34,7 @@ function setup({
     <ExcludeDatePicker
       availableOperators={availableOperators}
       availableUnits={availableUnits}
-      submitButtonLabel={submitButtonLabel}
+      renderSubmitButton={renderSubmitButton}
       onChange={onChange}
       onBack={onBack}
     />,
@@ -164,6 +168,29 @@ describe("ExcludeDatePicker", () => {
       type: "exclude",
       operator: "is-null",
       values: [],
+    });
+  });
+
+  it("should pass the value to the submit button callback", async () => {
+    const renderSubmitButton = jest.fn().mockReturnValue(null);
+    setup({ renderSubmitButton });
+
+    const defaultValue: ExcludeDatePickerValue = {
+      type: "exclude",
+      operator: "!=",
+      unit: "hour-of-day",
+      values: [],
+    };
+    await userEvent.click(screen.getByText("Hours of the day…"));
+    expect(renderSubmitButton).toHaveBeenLastCalledWith({
+      value: defaultValue,
+      isDisabled: true,
+    });
+
+    await userEvent.click(screen.getByLabelText("5 PM"));
+    expect(renderSubmitButton).toHaveBeenLastCalledWith({
+      value: { ...defaultValue, values: [17] },
+      isDisabled: false,
     });
   });
 });

@@ -3,10 +3,10 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.config :as config]
-   [metabase.embed.settings :as embed.settings]
-   [metabase.models.setting :as setting]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]))
 
 ;; TODO: figure out what other functions to move here from metabase.api.common

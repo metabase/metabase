@@ -1,5 +1,5 @@
 (ns metabase.api.routes.common
-  "Shared helpers used by [[metabase.api.routes/routes]] as well as premium-only routes
+  "Shared helpers used by [[metabase.api-routes.core/routes]] as well as premium-only routes
   like [[metabase-enterprise.sandbox.api.routes/routes]]."
   (:require
    [metabase.api.open-api :as open-api]

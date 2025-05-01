@@ -14,11 +14,11 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.setting :as setting]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -197,10 +197,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SQL Driver Methods                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :integer]
-  [driver [_ value]]
-  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :split-part]
   [driver [_ text divider position]]
