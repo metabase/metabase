@@ -17,6 +17,7 @@ export const useLocale = () => {
   const instanceLocale = useSelector((state) =>
     getSetting(state, "site-locale"),
   );
+
   const userLocale: string | undefined =
     useSelector(getCurrentUser)?.locale || undefined;
 
