@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import { Form, Formik } from "formik";
-import * as Yup from "yup";
+import { boolean, object } from "yup";
 
 import { render, screen, waitFor } from "__support__/ui";
 
 import FormToggle from "./FormToggle";
 
-const TEST_SCHEMA = Yup.object({
-  value: Yup.boolean().isTrue("error"),
+const TEST_SCHEMA = object({
+  value: boolean().isTrue("error"),
 });
 
 interface TestFormToggleProps {

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
+import { object, string } from "yup";
 
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
@@ -17,10 +17,10 @@ import FormArchiveButton from "../FormArchiveButton";
 
 import { TimelineFormFooter } from "./TimelineForm.styled";
 
-const TIMELINE_SCHEMA = Yup.object({
-  name: Yup.string().required(Errors.required).max(255, Errors.maxLength),
-  description: Yup.string().nullable().max(255, Errors.maxLength),
-  icon: Yup.string().required(Errors.required),
+const TIMELINE_SCHEMA = object({
+  name: string().required(Errors.required).max(255, Errors.maxLength),
+  description: string().nullable().max(255, Errors.maxLength),
+  icon: string().required(Errors.required),
 });
 
 export interface TimelineFormProps {

@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import * as Yup from "yup";
+import { number, object, string } from "yup";
 
 import type { ApiKey } from "metabase-types/api";
 
@@ -7,9 +7,9 @@ export function formatMaskedKey(maskedKey: string) {
   return maskedKey.substring(0, 7) + "...";
 }
 
-export const API_KEY_VALIDATION_SCHEMA = Yup.object({
-  name: Yup.string().required(),
-  group_id: Yup.number()
+export const API_KEY_VALIDATION_SCHEMA = object({
+  name: string().required(),
+  group_id: number()
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     .typeError(t`Select a group`)
     .required(),
