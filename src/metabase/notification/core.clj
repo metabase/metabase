@@ -14,7 +14,8 @@
 
 (p/import-vars
  [notification.payload
-  notification-payload]
+  notification-payload
+  notification-payload-schema]
  [notification.payload.system-event
   sample-payload]
  [notification.task.send
