@@ -55,7 +55,7 @@
                           strategy input (out output))))
 
             ;; Test roundtrip conversion
-            #_(testing "Roundtrip conversion"
-                (is (= input (-> input in out))
-                    (format "Roundtrip conversion failed for %s: %s -> %s -> %s"
-                            strategy input (in input) (out (in input)))))))))))
+            (testing "Roundtrip conversion"
+              (is (= input (-> input in out))
+                  (format "Roundtrip conversion failed for %s: %s -> %s -> %s"
+                          strategy input (in input) (out (in input)))))))))))
