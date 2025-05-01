@@ -1,7 +1,3 @@
-(def ContentTranslationModel
-  "Model for dictionary entries containing translations"
-  [:enum "locale" "msgid" "translation"])
-
 (ns metabase-enterprise.content-translation.models
   "A model representing dictionary entries for translations."
   (:require
