@@ -8,8 +8,7 @@
    [babashka.tasks :as bt]
    [clojure.string :as str]
    [mage.color :as c]
-   [mage.util :as u]
-   [puget.printer]))
+   [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -120,14 +119,11 @@
                      (println message))
                    (when data
                      (println (c/on-red "  * ex-data *  "))
-                     (-> data
-                         (dissoc :mage/error-report :mage/exit-code)
-                         puget.printer/pprint
-                         puget.printer/with-color))
+                     (u/pp data))
                    (if (and (not data) (not message) (not report))
                      (binding [*out* *err*] (show-exception e))
                      (when-not debug?
-                       (println "\nException hidden: Run with MAGE_DEBUG set for more information.")))
+                       (println "\nRun with MAGE_DEBUG set for more information.")))
                    (System/exit (:mage/exit-code data 1))))))))))
 
 (when (= *file* (System/getProperty "babashka.file"))

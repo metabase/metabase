@@ -51,8 +51,11 @@
   (cond
     (re-matches #"\d+" version) (str "1." (latest-patch-version version))
     (re-matches #"\d+\.\d+\.\d+" version) version
-    :else (throw (ex-info (str "Invalid version format:" version)
-                          {:version version}))))
+    :else (throw (ex-info (str "Invalid version format: " version)
+                          {:version version
+                           :mage/error-report (str "Failed to find latest version: Invalid version format: '" version "'\n"
+                                                   "expected: 'major.minor.patch' or 'major'")
+                           :mage/exit-code 1}))))
 
 (defn- download-jar! [version dir]
   (let [latest-version (find-latest-version version)]
@@ -70,7 +73,10 @@
       (println (str "Downloaded " latest-version ".jar to " dir))
       (catch Exception e
         (println (str "Error downloading version " latest-version ". Do both the directory and version exist?"))
-        (pst e)))))
+        (throw (ex-info (ex-message e)
+                        (merge (ex-data e)
+                               {:mage/error-report (str (c/red "Failed to download version: ") latest-version)
+                                :mage/exit-code 1})))))))
 
 (defn- without-slash [s] (str/replace s #"/$" ""))
 

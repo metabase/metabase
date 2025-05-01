@@ -22,10 +22,11 @@
         (doseq [[cmd effect] examples]
           (println "\n" cmd "\n -" (c/magenta effect))))
       (when usage-fn
-        (println "\n"
-                 #_:clj-kondo/ignore
-                 ((eval usage-fn) current-task)))
-      (System/exit 0))))
+        (when-let [usage-fn (eval usage-fn)]
+          (println "\n"
+                   #_:clj-kondo/ignore
+                   (usage-fn current-task))))
+      (System/exit 1))))
 
 (defn- coerce-arguments [arg-schema current-task arguments]
   (if-not arg-schema
@@ -42,8 +43,8 @@
                               ". It should match: " (mc/form schema)
                               " got: " (pr-str value))))
             (binding [*command-line-args* ["-h"]]
-              (check-print-help current-task))
-            (System/exit 0))))))
+              (check-print-help current-task)
+              (System/exit 1)))))))
 
 (defn- check-option-errors [option-errors *error-hit? summary]
   (when option-errors
@@ -55,7 +56,7 @@
     (when @*error-hit?
       (println "Usage:")
       (println summary)
-      (System/exit 0))))
+      (System/exit 1))))
 
 (defn parse!
   "Options are pulled from the current task map in bb.edn.
@@ -78,12 +79,16 @@
            :as parsed-opts} (tools.cli/parse-opts *command-line-args* options)
           _ (check-option-errors option-errors *error-hit? summary)
           parsed (update parsed-opts :arguments (partial coerce-arguments arg-schema current-task))]
-      (u/debug (c/green "UNPARSED: ") *command-line-args*)
-      (u/debug (c/green "PARSED:   ") parsed)
+      (u/debug (u/pp-str [::options options]))
+      (u/debug (u/pp-str [[:unparsed *command-line-args*] [::parsed parsed]]))
       parsed)
     (catch Exception e
-      (println (c/red "Error: " (.getMessage e)))
-      (System/exit 1))))
+      (throw (ex-info "Error parsing arguments!"
+                      {:type ::parse-error
+                       :args *command-line-args*
+                       :ex-message (.getMessage e)
+                       :ex-data (ex-data e)
+                       :mage/exit-code 1})))))
 
 (comment
 

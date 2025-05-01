@@ -5,7 +5,8 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [mage.color :as c]))
+   [mage.color :as c]
+   [puget.printer]))
 
 (set! *warn-on-reflection* true)
 
@@ -105,6 +106,18 @@
         (filter (fn [filename]
                   (fs/exists? (str project-root-directory "/" filename))))
         sort)))
+
+(defn pp
+  "Pretty print `x` via puget, with color."
+  [x]
+  (-> x
+      puget.printer/pprint
+      puget.printer/with-color))
+
+(defn pp-str
+  "Return a string of the pretty printed `x`."
+  [x]
+  (with-out-str (pp x)))
 
 (comment
   (count (updated-files "master"))

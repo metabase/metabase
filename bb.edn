@@ -3,8 +3,8 @@
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths          ["mage" "test" "bin/lint-migrations-file/src"]
  :deps           {metosin/malli {:mvn/version "0.17.0"}
-                  table/table   {:mvn/version "0.5.0"}
-                  mvxcvi/puget  {:mvn/version "1.3.4"}}
+                  mvxcvi/puget  {:mvn/version "1.3.4"}
+                  table/table   {:mvn/version "0.5.0"}}
  :tasks
  {:requires [[mage.cli :as cli]]
   :init (do (defmacro task! "Binds the parsed command line arguments to `parsed`."
@@ -92,19 +92,16 @@
    :requires [[babashka.nrepl.server :as nrepl.server]
               [mage.color :as c]]
    :examples [["./bin/mage nrepl" "Starts the nrepl server"]]
-   :task     (task!
-               (spit ".nrepl-port" 1667)
-               (nrepl.server/start-server!)
-               (deref (promise)))}
+   :task     (task! (spit ".nrepl-port" 1667) (nrepl.server/start-server!) (deref (promise)))}
 
   lint-migrations
   {:doc        "Lint migrations files"
    :requires   [[lint-migrations-file]
                 [babashka.process :as p]]
    :examples   [["./bin/mage lint-migrations" "Lint all migrations and print report"]]
-   :task       (do (cli/parse! (current-task))
-                   (p/shell "bin/pre-lint-migrations-file.sh")
-                   (lint-migrations-file/-main))}
+   :task       (task!
+                (p/shell "bin/pre-lint-migrations-file.sh")
+                (lint-migrations-file/-main))}
 
   jar-download
   {:doc        "Given a version, downloads a metabase jar"
@@ -118,14 +115,13 @@
                 [:tuple
                  [:string {:desc "version"}]
                  [:string {:desc "path"}]]]
-   :task       (task!
-                (jar-download/jar-download *command-line-args*))}
+   :task       (task! (jar-download/jar-download (:arguments parsed)))}
 
   setup-stats-repl
   {:doc "Connect to the stats repl"
    :examples [["./bin/mage connect-stats-repl" "Connects to the stats repl"]]
    :requires [[mage.stats-repl :as stats-repl]]
-   :task     (stats-repl/connect (cli/parse! (current-task)))}
+   :task     (task! (stats-repl/connect parsed))}
 
   setup-autocomplete
   {:doc      "Prints instructions to setup autocomplete"
@@ -154,14 +150,14 @@
                "Evaluate a keyword inside a namespace"]]
    :options [["-n" "--namespace NAMESPACE" "Namespace to use for the task"]
              ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
-   :task     (let [parsed (cli/parse! (current-task))
-                   code (first (:arguments parsed))
-                   port (or (:port (:options parsed))
-                            (slurp ".nrepl-port")
-                            (do (println (c/red "No port specified, and no .nrepl-port file found."))
-                                (System/exit 1)))
-                   nns (or (:namespace (:options parsed)) "user")]
-               (nrepl-eval nns code port))}
+   :task     (task!
+              (let [code (first (:arguments parsed))
+                    port (or (:port (:options parsed))
+                             (slurp ".nrepl-port")
+                             (do (println (c/red "No port specified, and no .nrepl-port file found."))
+                                 (System/exit 1)))
+                    nns (or (:namespace (:options parsed)) "user")]
+                (nrepl-eval nns code port)))}
 
   -check-readable
   {:doc      "Check that code is readable parens a file"
@@ -175,8 +171,8 @@
                "Check file for readability"]
               ["./bin/mage -check-readable dev/src/dev.clj 300"
                "Check top level form containing line 300 for readability"]]
-   :task     (let [{:keys [arguments]} (cli/parse! (current-task))]
-               (apply readability/check arguments))}
+   :task     (task! (let [{:keys [arguments]} parsed]
+                      (apply readability/check arguments)))}
 
   -example-calculator
   {;; `:doc` is a short docstring for the task, will be listed in `./bin/mage -h` and other help info
@@ -186,12 +182,14 @@
                 ["./bin/mage -example-calculator 100 - 99" "evaluates to 1"]]
    ;; The task is the actual code that runs when you run the task.
    :task       (task!
-                (println "Parsed input:") (prn parsed)
-                (let [{:keys [arguments data]} (cli/parse! (current-task))
+                (println "*** Parsed input:")
+                (u/pp parsed)
+                (let [{:keys [arguments data]} parsed
                       [a op b]                 arguments]
                   (println a (name op) b "=" (c/blue (({:+ + :- -} op) a b)))))
    ;; (optional) `:require` lazily libraries for just your task:
-   :requires   [[mage.color :as c]]
+   :requires   [[mage.color :as c]
+                [mage.util :as u]]
    ;; (optional) `:options` are passed to [[clojure.tools.cli/parse-opts]].
    ;; See: https://clojure.github.io/tools.cli/index.html#clojure.tools.cli/parse-opts
    :options    [["-a" "--a-cli-flag" "Check staged files (not actually used)"]
@@ -201,8 +199,9 @@
    ;; (optional) `:usage-fn` is a function called with the current-task map
    ;; and returns a string containing extra-detailed usage information.
    :usage-fn   (fn [{:keys [doc]}]
-                 (println "Optional extra usage information, if you want.")
-                 (println "Reversed docstring:" (apply str (reverse doc))))
+                 (-> "Optional extra usage information, if you want. \n"
+                     (str "Reversed docstring: ")
+                     (str (apply str (reverse doc)))))
    ;; (optional) Any other keys are completely allowed. Put things to lookup or that you want to be easy to change
    ;; here. These will be returned from `(current-task)`. See: start-db for an example of using `:ports` to define a
    ;; map of ports.
