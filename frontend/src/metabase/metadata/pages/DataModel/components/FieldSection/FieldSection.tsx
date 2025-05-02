@@ -1,9 +1,10 @@
 import { getFieldDisplayName } from "metabase/metadata/utils/field";
-import { Box, Stack, Title } from "metabase/ui";
+import { Stack, Title } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
-import { FieldDataSection } from "./FieldDataSection";
+import { DataSection } from "./DataSection";
 import S from "./FieldSection.module.css";
+import { MetadataSection } from "./MetadataSection";
 
 interface Props {
   field: Field;
@@ -16,9 +17,10 @@ export const FieldSection = ({ field }: Props) => {
         {getFieldDisplayName(field)}
       </Title>
 
-      <Box className={S.container} h="100%" pb="lg" px="xl">
-        <FieldDataSection field={field} />
-      </Box>
+      <Stack className={S.container} gap="xl" h="100%" pb="lg" px="xl">
+        <DataSection field={field} />
+        <MetadataSection field={field} />
+      </Stack>
     </Stack>
   );
 };

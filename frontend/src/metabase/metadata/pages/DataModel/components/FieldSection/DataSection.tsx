@@ -19,7 +19,7 @@ interface Props {
   field: Field;
 }
 
-export const FieldDataSection = ({ field }: Props) => {
+export const DataSection = ({ field }: Props) => {
   const [updateField] = useUpdateFieldMutation();
   const [isCasting, setIsCasting] = useState(
     field ? field.coercion_strategy != null : false,
@@ -27,10 +27,8 @@ export const FieldDataSection = ({ field }: Props) => {
   const id = getRawTableFieldId(field);
 
   useEffect(() => {
-    if (field) {
-      setIsCasting(field.coercion_strategy != null);
-    }
-  }, [field]);
+    setIsCasting(field.coercion_strategy != null);
+  }, [field.coercion_strategy]);
 
   return (
     <Stack gap="md">
@@ -68,7 +66,7 @@ export const FieldDataSection = ({ field }: Props) => {
                 checked={isCasting}
                 flex="1"
                 label={t`Cast to a specific data type`}
-                my="md"
+                mt="md"
                 size="xs"
                 onChange={(event) => {
                   setIsCasting(event.target.checked);
