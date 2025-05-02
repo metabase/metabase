@@ -567,7 +567,8 @@
                       details-to-succeed all-possible-details
                       :let [uses-secret? (seq (set/intersection (m/remove-vals nil? details-to-succeed)
                                                                 #{:private-key-id :private-key-path :private-key-value}))]]
-                ;; If a password detail succeeds it will delete the secret, this resets it.
+                ;; Looping over all-possible-details and succeeding on details-to-succeed is stateful:
+                ;;  If a password detail succeeds it will delete the secret, this resets it.
                 (let [updated-secret (secret/upsert-secret-value! secret-id (:name secret) (:kind secret) (:source secret) (:value secret))]
                   (if (not= (:id updated-secret) secret-id)
                     (t2/update! :model/Secret :id (:id updated-secret) {:id secret-id})))
@@ -576,37 +577,42 @@
                     (spit pk-path pk-key)
                     (is (= 4 (count all-possible-details)))
                     (t2/update! (t2/table-name :model/Database) (mt/id) {:details (json/encode details)})
-                    (log/with-no-logs
-                      (log.capture/with-log-messages-for-level [messages [metabase.models.database :info]]
-                        (is (= details-to-succeed
-                               (database/maybe-test-and-migrate-details! (assoc (t2/select-one :model/Database (mt/id))
-                                                                                :details details))))
-                        (let [success-re #"^Successfully connected, migrating to: (.*)"
-                              msgs (messages)
-                              migrating-to (edn/read-string (str/replace (:message (second msgs)) success-re "$1"))
-                              success-keys (set (keys details-to-succeed))
-                              [_ keys-removed _] (data/diff success-keys (set (keys details)))]
-                          (is (=? [{:level :info, :message "Attempting to connect to 4 possible legacy details"}
-                                   {:level :info, :message success-re}]
-                                  msgs))
-                          (is (= {:keys success-keys
-                                  :keys-removed keys-removed}
-                                 migrating-to))))
-                    (let [migrated-details (:details (t2/select-one :model/Database (mt/id)))
-                          expected-migrated (cond-> details-to-succeed
-                                              uses-secret? (assoc :private-key-id secret-id)
-                                              :always (dissoc :private-key-options :private-key-value :private-key-path))]
-                      (is (nil? (driver/db-details-to-test-and-migrate :snowflake migrated-details)))
-                      (is (= expected-migrated migrated-details)))
-                    (when uses-secret?
-                      (let [source (case (:private-key-options details-to-succeed "local")
-                                     "local" :file-path
-                                     "uploaded" :uploaded)]
-                        (is (=? {:value (u/string-to-bytes (if (= :file-path source)
-                                                             (:private-key-path details-to-succeed pk-path)
-                                                             pk-key))
-                                 :source source}
-                                (secret/latest-for-id secret-id)))))))))))))))
+                    (testing "Connection succeeds and migration occurs"
+                      (log/with-no-logs
+                        (log.capture/with-log-messages-for-level [messages [metabase.models.database :info]]
+                          (is (= details-to-succeed
+                                 (database/maybe-test-and-migrate-details! (assoc (t2/select-one :model/Database (mt/id))
+                                                                                  :details details))))
+                          (let [success-re #"^Successfully connected, migrating to: (.*)"
+                                msgs (messages)
+                                migrating-to (edn/read-string (str/replace (:message (second msgs)) success-re "$1"))
+                                success-keys (set (keys details-to-succeed))
+                                [_ keys-removed _] (data/diff success-keys (set (keys details)))]
+                            (is (=? [{:level :info, :message "Attempting to connect to 4 possible legacy details"}
+                                     {:level :info, :message success-re}]
+                                    msgs))
+                            (is (= {:keys success-keys
+                                    :keys-removed keys-removed}
+                                   migrating-to))))
+                        (let [migrated-details (:details (t2/select-one :model/Database (mt/id)))
+                              expected-migrated (cond-> details-to-succeed
+                                                  uses-secret? (assoc :private-key-id secret-id)
+                                                  :always (dissoc :private-key-options :private-key-value :private-key-path))]
+
+                          (testing "Migration persists as expected"
+                            (is (= expected-migrated migrated-details)))
+                          (testing "Migration results in unambiguous details"
+                            (is (nil? (driver/db-details-to-test-and-migrate :snowflake migrated-details)))))
+                        (testing "Secrets persist as expected"
+                          (when uses-secret?
+                            (let [source (case (:private-key-options details-to-succeed "local")
+                                           "local" :file-path
+                                           "uploaded" :uploaded)]
+                              (is (=? {:value (u/string-to-bytes (if (= :file-path source)
+                                                                   (:private-key-path details-to-succeed pk-path)
+                                                                   pk-key))
+                                       :source source}
+                                      (secret/latest-for-id secret-id)))))))))))))))))
 
 (deftest ^:synchronized pk-auth-custom-role-e2e-test
   (mt/test-driver
