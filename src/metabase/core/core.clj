@@ -22,7 +22,7 @@
    [metabase.plugins :as plugins]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.sample-data :as sample-data]
+   [metabase.sample-data.core :as sample-data]
    [metabase.server.core :as server]
    [metabase.settings.core :as setting]
    [metabase.settings.deprecated-grab-bag :as public-settings]
