@@ -69,7 +69,12 @@
     (u/remove-nils
      {:select    (search.spec/qualify-columns :this
                                               (concat
-                                               (map (fn [term] [[:left (keyword (str "this." (name term))) [:cast max-searchable-value-length :integer]] term]) (:search-terms spec))
+                                               (map (fn [term] [[:left
+                                                                 (keyword (str "this." (name term)))
+                                                                 ;; Select lightly more than the max length
+                                                                 ;; so we can better determine the word boundaries when we actually trim
+                                                                 [:cast (+ max-searchable-value-length 100) :integer]] term])
+                                                    (:search-terms spec))
                                                (mapcat (fn [k] (attrs->select-items (get spec k) (:search-terms spec)))
                                                        [:attrs :render-terms])))
       :from      [[(t2/table-name (:model spec)) :this]]
