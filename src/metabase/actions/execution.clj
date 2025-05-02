@@ -174,7 +174,7 @@
                   (= implicit-action :model.row/update)
                   (assoc :update-row row-parameters))]
     (binding [qp.perms/*card-id* (:model_id action)]
-      (actions/perform-action-with-single-input-and-output implicit-action arg-map))))
+      (actions/perform-action-with-single-input-and-output implicit-action arg-map {:policy :model-action}))))
 
 (mu/defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
