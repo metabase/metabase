@@ -225,32 +225,20 @@ export const fetchRemapping = createThunkAction(
     if (field && remappedExternalField && !field.hasRemappedValue(value)) {
       const fieldId = (field.target || field).id;
       const remappedFieldId = remappedExternalField.id;
-      fetchData({
-        dispatch,
-        getState,
-        requestStatePath: [
-          "entities",
-          "remapping",
+      const remapping = await entityCompatibleQuery(
+        {
+          value,
           fieldId,
-          JSON.stringify(value),
-        ],
-        getData: async () => {
-          const remapping = await entityCompatibleQuery(
-            {
-              value,
-              fieldId,
-              remappedFieldId,
-            },
-            dispatch,
-            fieldApi.endpoints.getRemappedFieldValue,
-            { forceRefetch: false },
-          );
-          if (remapping) {
-            // FIXME: should this be field.id (potentially the FK) or fieldId (always the PK)?
-            dispatch(addRemappings(field.id, [remapping]));
-          }
+          remappedFieldId,
         },
-      });
+        dispatch,
+        fieldApi.endpoints.getRemappedFieldValue,
+        { forceRefetch: false },
+      );
+      if (remapping) {
+        // FIXME: should this be field.id (potentially the FK) or fieldId (always the PK)?
+        dispatch(addRemappings(field.id, [remapping]));
+      }
     }
   },
 );
