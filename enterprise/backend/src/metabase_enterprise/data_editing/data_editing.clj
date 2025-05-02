@@ -92,7 +92,7 @@
                                :when (not (isa? semantic_type :type/PK))]
                            [(keyword field-name)
                             (or (when (nil? coercion_strategy) identity)
-                                (data-editing.coerce/input-coercion-fn coercion_strategy)
+                                (:in (data-editing.coerce/coercion-fns coercion_strategy))
                                 (throw (ex-info "Coercion strategy has no defined coercion function"
                                                 {:status 400
                                                  :field field-name
