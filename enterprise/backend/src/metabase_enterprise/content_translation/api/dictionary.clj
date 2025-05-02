@@ -4,7 +4,7 @@
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
