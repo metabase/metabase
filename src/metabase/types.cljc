@@ -471,6 +471,8 @@
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/String->Integer :type/Text  :type/Integer)
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/Float->Integer  :type/Float :type/Integer)
 
+(coercion-hierarchies/define-non-inheritable-type! :Coercion/DateTime->Date  :type/DateTime :type/Date)
+
 (defn is-coercible-from?
   "Whether `coercion-strategy` is allowed for `base-type`."
   [coercion-strategy base-type]

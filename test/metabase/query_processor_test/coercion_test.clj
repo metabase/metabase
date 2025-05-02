@@ -86,21 +86,21 @@
 (deftest date-to-datetime-coercion-test
   (mt/test-drivers (mt/normal-drivers)
     (doseq [[human-col table col] [["orders created_at" :orders :created_at]]]
-      (let [mp (lib.tu/merged-mock-metadata-provider
-                (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                {:fields [{:id                (mt/id table col)
-                           :coercion-strategy :Coercion/DateTime->Date
-                           :effective-type    :type/Date}]})
-            query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                      (lib/with-fields [(lib.metadata/field mp (mt/id table col))])
-                      (lib/limit 10))]
-        (testing (format "DateTime->Date coercion works with %s" human-col)
-          (let [result (qp/process-query query)
-                cols (mt/cols result)
-                rows (mt/rows result)]
-            (is (types/field-is-type? :type/Date (last cols)))
-            (doseq [[date-col] rows
-                    :let [date-val (-> date-col java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")))]]
-              (is (zero? (.getHour date-val)))
-              (is (zero? (.getMinute date-val)))
-              (is (zero? (.getSecond date-val))))))))))
+      (testing (format "DateTime->Date coercion works with %s" human-col)
+        (let [mp (lib.tu/merged-mock-metadata-provider
+                  (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                  {:fields [{:id                (mt/id table col)
+                             :coercion-strategy :Coercion/DateTime->Date
+                             :effective-type    :type/Date}]})
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                        (lib/with-fields [(lib.metadata/field mp (mt/id table col))])
+                        (lib/limit 10))
+              result (qp/process-query query)
+              cols (mt/cols result)
+              rows (mt/rows result)]
+          (is (types/field-is-type? :type/Date (last cols)))
+          (doseq [[date-col] rows
+                  :let [date-val (-> date-col java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")))]]
+            (is (zero? (.getHour date-val)))
+            (is (zero? (.getMinute date-val)))
+            (is (zero? (.getSecond date-val)))))))))

@@ -737,7 +737,7 @@
                [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
                (cast-temporal-byte driver coercion-strategy honeysql-form)
 
-               [:type/DateTime (:isa? :Coercion/DateTime->Date)]
+               [(:isa? :type/DateTime) (:isa? :Coercion/DateTime->Date)]
                (h2x/maybe-cast :date honeysql-form)
 
                [:type/Text (:isa? :Coercion/String->Float)]
