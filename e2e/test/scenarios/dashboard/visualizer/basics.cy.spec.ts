@@ -421,4 +421,34 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
     });
   });
+
+  it("should allow adding a dataset after a card is created (VIZ-926)", () => {
+    H.createDashboard().then(({ body: { id: dashboardId } }) => {
+      H.visitDashboard(dashboardId);
+    });
+
+    H.editDashboard();
+
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
+
+    H.saveDashcardVisualizerModal(true);
+    H.saveDashboard();
+
+    H.editDashboard();
+    H.showDashcardVisualizerModal(0);
+
+    H.switchToAddMoreData();
+    H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+    H.saveDashcardVisualizerModal();
+    H.saveDashboard();
+
+    // Making sure the card renders
+    H.getDashboardCard(0).within(() => {
+      cy.findByText(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).should(
+        "exist",
+      );
+      cy.findByText("Created At: Month").should("exist");
+    });
+  });
 });

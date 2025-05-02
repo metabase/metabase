@@ -142,9 +142,9 @@ export function showDashcardVisualizerModalSettings(index = 0) {
   });
 }
 
-export function saveDashcardVisualizerModal() {
+export function saveDashcardVisualizerModal(isCreation = false) {
   modal().within(() => {
-    cy.findByText("Save").click();
+    cy.findByText(isCreation ? "Add to dashboard" : "Save").click();
   });
 }
 
