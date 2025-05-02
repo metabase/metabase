@@ -5,7 +5,7 @@ import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Flex, Group, Icon, Input, Radio } from "metabase/ui";
 
 import { PeopleList } from "../components/PeopleList";
