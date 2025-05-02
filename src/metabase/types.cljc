@@ -351,6 +351,9 @@
 (derive :Coercion/UNIXMicroSeconds->DateTime :Coercion/UNIXTime->Temporal)
 (derive :Coercion/UNIXNanoSeconds->DateTime :Coercion/UNIXTime->Temporal)
 
+(derive :Coercion/Temporal->Temporal :Coercion/*)
+(derive :Coercion/DateTime->Date :Coercion/Temporal->Temporal)
+
 (derive :Coercion/String->Number :Coercion/*)
 (derive :Coercion/String->Float :Coercion/String->Number)
 
