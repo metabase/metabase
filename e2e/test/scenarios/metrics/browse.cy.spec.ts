@@ -5,10 +5,11 @@ import {
   FIRST_COLLECTION_ID,
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-type StructuredQuestionDetailsWithName = H.StructuredQuestionDetails & {
+type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
   name: string;
 };
 
