@@ -146,7 +146,6 @@ const UploadForm = () => {
         />
         <UploadInput
           id="content-translation-dictionary-upload-input"
-          style={{ display: "none" }}
           ref={inputRef}
           accept="text/csv"
           onChange={handleFileChange}
