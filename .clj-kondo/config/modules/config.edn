@@ -863,7 +863,8 @@
    :uses #{api channel embedding events notification premium-features request session settings sso util enterprise/scim}}
 
   enterprise/stale
-  {:api  #{metabase-enterprise.stale.routes}
+  {:api  #{metabase-enterprise.stale.api
+           metabase-enterprise.stale.init}
    :uses #{analytics api embedding models premium-features request settings util}}
 
   enterprise/task
