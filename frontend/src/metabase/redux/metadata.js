@@ -222,7 +222,7 @@ export const fetchRemapping = createThunkAction(
 
     // external and type/Name remapping
     const remappedExternalField = field && field.remappedExternalField();
-    if (field && remappedExternalField) {
+    if (remappedExternalField) {
       const fieldId = (field.target || field).id;
       const remappedFieldId = remappedExternalField.id;
       const remapping = await entityCompatibleQuery(
