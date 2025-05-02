@@ -1,4 +1,4 @@
-(ns metabase.sample-data-test
+(ns metabase.sample-data.impl-test
   "Tests to make sure the Sample Database syncs the way we would expect."
   (:require
    [clojure.core.memoize :as memoize]
@@ -10,7 +10,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models.field-values :as field-values]
    [metabase.plugins :as plugins]
-   [metabase.sample-data :as sample-data]
+   [metabase.sample-data.impl :as sample-data]
    [metabase.sync.core :as sync]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
    [metabase.test :as mt]
