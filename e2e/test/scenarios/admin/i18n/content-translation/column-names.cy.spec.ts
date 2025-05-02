@@ -8,13 +8,6 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
-/** The rows in the translation dictionary that are actually used in the
- * interface. One word is in the dictionary that we don't want to use in the
- * interface. */
-const usedGermanFieldNames = germanFieldNames.filter(
-  (row) => row.msgstr !== "Kahl",
-);
-
 describe("scenarios > admin > localization > content translation of column names", () => {
   describe("ee", () => {
     before(() => {
@@ -65,7 +58,7 @@ describe("scenarios > admin > localization > content translation of column names
           it("column headers", () => {
             H.visitQuestion(productsQuestionId);
             cy.findByTestId("table-header").within(() => {
-              usedGermanFieldNames.forEach((row) => {
+              germanFieldNames.forEach((row) => {
                 cy.findByText(row.msgid).should("be.visible");
                 cy.findByText(row.msgstr).should("not.exist");
               });
@@ -77,7 +70,7 @@ describe("scenarios > admin > localization > content translation of column names
 
             H.filter();
 
-            Object.values(usedGermanFieldNames).forEach((row) => {
+            Object.values(germanFieldNames).forEach((row) => {
               H.popover().within(() => {
                 cy.findByText(row.msgstr).should("not.exist");
                 cy.findByText(row.msgid).click();
@@ -98,7 +91,7 @@ describe("scenarios > admin > localization > content translation of column names
             H.summarize();
             H.rightSidebar().within(() => {
               cy.log("Summarize sidebar includes all column names in English");
-              Object.values(usedGermanFieldNames).forEach((row) => {
+              Object.values(germanFieldNames).forEach((row) => {
                 cy.findByText(row.msgstr).should("not.exist");
                 cy.findByText(row.msgid).should("be.visible");
               });
@@ -115,7 +108,7 @@ describe("scenarios > admin > localization > content translation of column names
           it("column headers", () => {
             H.visitQuestion(productsQuestionId);
             cy.findByTestId("table-header").within(() => {
-              usedGermanFieldNames.forEach((row) => {
+              germanFieldNames.forEach((row) => {
                 cy.findByText(row.msgid).should("not.exist");
                 cy.findByText(row.msgstr).should("be.visible");
               });
@@ -127,7 +120,7 @@ describe("scenarios > admin > localization > content translation of column names
             // Filter is 'Filter' in German
             H.initiateAction("Filter");
 
-            Object.values(usedGermanFieldNames).forEach((row) => {
+            Object.values(germanFieldNames).forEach((row) => {
               H.popover().within(() => {
                 cy.findByText(row.msgid).should("not.exist");
                 cy.findByText(row.msgstr).click();
@@ -144,7 +137,7 @@ describe("scenarios > admin > localization > content translation of column names
             cy.log("Column names should be searchable");
             H.popover().within(() => {
               cy.findByPlaceholderText(/Finden/).type("er");
-              const translatedColumnNames = usedGermanFieldNames.map(
+              const translatedColumnNames = germanFieldNames.map(
                 (n) => n.msgstr,
               );
               const nonMatches = translatedColumnNames.filter(
@@ -170,7 +163,7 @@ describe("scenarios > admin > localization > content translation of column names
             H.initiateAction("Zusammenfassen" as "Summarize");
             H.rightSidebar().within(() => {
               cy.log("Summarize sidebar includes all column names in German");
-              Object.values(usedGermanFieldNames).forEach((row) => {
+              Object.values(germanFieldNames).forEach((row) => {
                 cy.findByText(row.msgid).should("not.exist");
                 cy.findByText(row.msgstr).should("be.visible");
               });
