@@ -1,6 +1,8 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 
+import type * as Lib from "metabase-lib";
+
 import { defineClauses, dimension, op } from "./define";
 import { MBQLClauseCategory as CATEGORY } from "./types";
 
@@ -32,7 +34,7 @@ const WINDOW = defineClauses(
       displayName: "Offset",
       type: "any", // ideally we'd dynamically infer it from the first argument
       requiresFeature: "window-functions/offset",
-      validator(_expr: any, offset: number) {
+      validator(_expr: Lib.ExpressionParts, offset: number) {
         if (offset === 0) {
           return t`Row offset cannot be zero`;
         }
@@ -365,7 +367,7 @@ const STRING = defineClauses(
     substring: {
       displayName: "substring",
       type: "string",
-      validator(_arg: any, start: number, _length: any) {
+      validator(_arg: Lib.ExpressionParts, start: number, _length: number) {
         if (start <= 0) {
           return t`Expected positive integer but found ${start}`;
         }
@@ -396,7 +398,11 @@ const STRING = defineClauses(
     "split-part": {
       displayName: "splitPart",
       type: "string",
-      validator(_arg: any, _delimeter: string, position: number) {
+      validator(
+        _arg: Lib.ExpressionParts,
+        _delimeter: string,
+        position: number,
+      ) {
         if (position < 1) {
           return t`Expected positive integer but found ${position}`;
         }
