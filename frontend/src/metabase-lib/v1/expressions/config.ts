@@ -1,38 +1,8 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 
-import {
-  MBQLClauseCategory as CATEGORY,
-  type MBQLClauseDefinition,
-} from "./types";
-
-const names = new Set();
-
-function defineClauses<const T extends Record<string, MBQLClauseDefinition>>(
-  options: Partial<MBQLClauseDefinition>,
-  clauses: T,
-): Record<keyof T, MBQLClauseDefinition> {
-  const result = {} as Record<keyof T, MBQLClauseDefinition>;
-  for (const name in clauses) {
-    if (names.has(name)) {
-      throw new Error(`Duplicate clause name: ${name}`);
-    }
-    names.add(name);
-    result[name] = {
-      ...options,
-      ...clauses[name],
-    };
-  }
-  return result;
-}
-
-function op(operator: string, ...args: unknown[]): any {
-  return { operator, options: {}, args };
-}
-
-function dimension(name: string) {
-  return op("dimension", name);
-}
+import { defineClauses, dimension, op } from "./define";
+import { MBQLClauseCategory as CATEGORY } from "./types";
 
 const WINDOW = defineClauses(
   { category: CATEGORY.Window },
