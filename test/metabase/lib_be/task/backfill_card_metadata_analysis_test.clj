@@ -4,6 +4,7 @@
    [metabase.lib-be.task.backfill-card-metadata-analysis :as analysis]
    [metabase.lib.core :as lib]
    [metabase.models.card :as card]
+   [metabase.models.task-history :as task-history]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -187,7 +188,7 @@
                                       mt/card-with-metadata
                                       (update :result_metadata strip-idents))]
     (is (empty? (keep :ident (:result_metadata card))))
-    (is (= 1 (#'analysis/backfill-idents-for-card! card)))
+    (is (= :analyzed (#'analysis/backfill-idents-for-card! card)))
     (let [backfilled (t2/select-one :model/Card (:id card))]
       (is (=? {:result_metadata           [{:ident (mt/ident :orders :id)}
                                            {:ident (mt/ident :orders :user_id)}
@@ -214,7 +215,7 @@
                                       (update :result_metadata strip-idents))]
     (is (empty? (keep :ident (:result_metadata src))))
     (is (empty? (keep :ident (:result_metadata card))))
-    (is (= 1 (#'analysis/backfill-idents-for-card! card)))
+    (is (= :analyzed (#'analysis/backfill-idents-for-card! card)))
     (let [backfilled (t2/select-one :model/Card (:id card))]
       (is (=? {:result_metadata           [{:ident (mt/ident :orders :id)}
                                            {:ident (mt/ident :orders :user_id)}
@@ -241,7 +242,7 @@
                                       (update :result_metadata strip-idents))]
     (is (empty? (keep :ident (:result_metadata src))))
     (is (empty? (keep :ident (:result_metadata card))))
-    (is (= 1 (#'analysis/backfill-idents-for-card! card)))
+    (is (= :blocked (#'analysis/backfill-idents-for-card! card)))
     (let [backfilled (t2/select-one :model/Card (:id card))]
       (is (=? {:result_metadata           (:result_metadata card) ; Unchanged
                :metadata_analysis_state   :blocked
@@ -264,7 +265,7 @@
                   (fn [metadata _card]
                     (mapv #(assoc % :ident (lib/native-ident (:name %) ""))
                           metadata))]
-      (is (= 1 (#'analysis/backfill-idents-for-card! card))))
+      (is (= :failed (#'analysis/backfill-idents-for-card! card))))
     (let [backfilled (t2/select-one :model/Card (:id card))]
       (is (=? {:result_metadata           (:result_metadata card) ; Unchanged
                :metadata_analysis_state   :failed
@@ -277,7 +278,7 @@
                                       mt/card-with-metadata
                                       (update :result_metadata strip-idents))]
     (is (empty? (keep :ident (:result_metadata card))))
-    (is (= 1 (#'analysis/analyze-card! card)))
+    (is (= :analyzed (#'analysis/analyze-card! card)))
     (let [backfilled (t2/select-one :model/Card (:id card))]
       (is (=? {:result_metadata           [{:ident (mt/ident :orders :id)}
                                            {:ident (mt/ident :orders :user_id)}
@@ -305,7 +306,7 @@
                                       (update :result_metadata strip-idents))]
     (is (empty? (keep :ident (:result_metadata src))))
     (is (empty? (keep :ident (:result_metadata card))))
-    (is (= 1 (#'analysis/analyze-card! card)))
+    (is (= :analyzed (#'analysis/analyze-card! card)))
     (let [backfilled (t2/select-one :model/Card (:id card))]
       (is (=? {:result_metadata           [{:ident (mt/ident :orders :id)}
                                            {:ident (mt/ident :orders :user_id)}
@@ -334,7 +335,7 @@
                                       (update :result_metadata strip-idents))]
     (is (empty? (keep :ident (:result_metadata src))))
     (is (empty? (keep :ident (:result_metadata card))))
-    (is (= 1 (#'analysis/analyze-card! card)))
+    (is (= :blocked (#'analysis/analyze-card! card)))
     (let [backfilled (t2/select-one :model/Card (:id card))]
       (is (=? {:result_metadata           (:result_metadata card) ; Unchanged
                :metadata_analysis_state   :blocked
@@ -357,7 +358,7 @@
                   (fn [metadata _card]
                     (mapv #(assoc % :ident (lib/native-ident (:name %) ""))
                           metadata))]
-      (is (= 1 (#'analysis/analyze-card! card))))
+      (is (= :failed (#'analysis/analyze-card! card))))
     (let [backfilled (t2/select-one :model/Card (:id card))]
       (is (=? {:result_metadata           (:result_metadata card) ; Unchanged
                :metadata_analysis_state   :failed
@@ -388,7 +389,7 @@
                                         mt/card-with-metadata
                                         (assoc-in [:result_metadata 0 :ident] ""))]
       (t2/with-call-count [call-count]
-        (is (= 1 (#'analysis/analyze-card! card)))
+        (is (= :failed (#'analysis/analyze-card! card)))
         (is (pos? (call-count))))
       (is (=? {:result_metadata           (:result_metadata card) ; Unchanged
                :metadata_analysis_state   :failed
@@ -403,12 +404,24 @@
                                         mt/card-with-metadata
                                         (update :result_metadata strip-idents))]
       (t2/with-call-count [call-count]
-        (is (nil? (#'analysis/analyze-card! card)))
+        (is (= :skipped (#'analysis/analyze-card! card)))
         (is (zero? (call-count))))
       (is (=? {:result_metadata           (:result_metadata card) ; Unchanged
                :metadata_analysis_state   state
                :metadata_analysis_blocker nil}
               (t2/select-one :model/Card (:id card)))))))
+
+(defn- call-with-task-history!
+  "Call `f` with [[task-history/update-task-history!]] redef'd.
+
+  Returns what `f` returns, but with `:task-history-ids` in its metadata."
+  [f]
+  (let [created-task-history-ids (atom [])
+        original-update-th!      @#'task-history/update-task-history!]
+    (with-redefs [task-history/update-task-history! (fn [th-id startime-ms info]
+                                                      (swap! created-task-history-ids conj th-id)
+                                                      (original-update-th! th-id startime-ms info))]
+      (vary-meta (f) assoc :task-history-ids @created-task-history-ids))))
 
 (deftest ^:synchronized batched-metadata-analysis!-test-1-mark-priority
   (mt/with-temp [:model/Card c1 {:metadata_analysis_state :not-started}
@@ -419,10 +432,35 @@
                  :model/Card c6 {:metadata_analysis_state :priority}]
     (let [analyzed (atom #{})]
       (with-redefs [analysis/analyze-card! (fn [card]
-                                             (swap! analyzed conj (:id card)))]
+                                             (swap! analyzed conj (:id card))
+                                             (if (= (:id card) (:id c3))
+                                               :skipped
+                                               :analyzed))]
         (reset! card/cards-for-priority-analysis #{(:id c1) (:id c2) (:id c3)})
         (binding [analysis/*batch-size* 4]
-          (#'analysis/batched-metadata-analysis!))
+          (let [analysis-result (call-with-task-history! @#'analysis/batched-metadata-analysis!)]
+            (is (=? {:card_results {(:id c1) :analyzed
+                                    (:id c2) :analyzed
+                                    (:id c6) :analyzed}
+                     :state_counts {:analyzed #(>= % 3)}}
+                    analysis-result))
+            (is (=? {:task-history-ids seq}
+                    (meta analysis-result)))
+            (is (=? [{:task "card_metadata_analysis"
+                      :db_id nil
+                      :started_at some?
+                      :ended_at   some?
+                      :duration   number?
+                      :task_details {:card_ids     (every-pred sequential?
+                                                               #(= (count %) 4)
+                                                               #(some #{(:id c1)} %)
+                                                               #(some #{(:id c2)} %)
+                                                               #(some #{(:id c6)} %))
+                                     :card_results {(keyword (str (:id c1))) "analyzed"
+                                                    (keyword (str (:id c2))) "analyzed"
+                                                    (keyword (str (:id c6))) "analyzed"}
+                                     :state_counts {:analyzed #(>= % 3)}}}]
+                    (t2/select :model/TaskHistory :id [:in (:task-history-ids (meta analysis-result))])))))
         (testing "c1, c2 and c3 were noted as needing priority analysis"
           (testing "c1 and c2 were set to :priority state"
             (is (= :priority (t2/select-one-fn :metadata_analysis_state :model/Card (:id c1))))
