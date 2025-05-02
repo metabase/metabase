@@ -9,5 +9,3 @@
  [metabase.sample-data.impl
   extract-and-sync-sample-database!
   update-sample-database-if-needed!])
-
-(ns metabase.sample-data.core)
