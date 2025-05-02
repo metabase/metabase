@@ -11187,23 +11187,7 @@ databaseChangeLog:
                   remarks: The translation
                   type: varchar(255)
                   constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v55.2025-04-28T16:00:00
-      author: rafpaf
-      comment: Make the 'msgstr' column in the content_translation table non-nullable
-      changes:
-      changes:
-        - addNotNullConstraint:
-            tableName: content_translation
-            columnName: msgstr
-            columnDataType: varchar(255)
-      rollback:
-        - dropNotNullConstraint:
-            tableName: content_translation
-            columnName: msgstr
-            columnDataType: varchar(255)
+                    nullable: false
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
