@@ -67,7 +67,7 @@
         (analytics/inc! :metabase-search/index-error)
         (throw e)))))
 
-(task/defjob ^{DisallowConcurrentExecution true
+(jobs/defjob ^{DisallowConcurrentExecution true
                :doc                        "Populate a new Search Index"}
   SearchIndexReindex [_ctx]
   (reindex!))
