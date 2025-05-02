@@ -51,6 +51,11 @@ const TABLE_STEP = "TABLE";
 // chooses a table field (table has already been selected)
 const FIELD_STEP = "FIELD";
 
+/**
+ *
+ * @param {import("metabase/embedding-sdk/types/components/data-picker").DataSourceSelectorProps} props
+ * @returns {JSX.Element}
+ */
 export function DataSourceSelector(props) {
   return (
     <DataSelector

@@ -6,6 +6,7 @@ import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getEmbedOptions } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { TableId } from "metabase-types/api";
 
 import { DataPickerTarget } from "../DataPickerTarget";
@@ -49,7 +50,7 @@ export function EmbeddingDataPicker({
       return [
         metadata.database(databaseId),
         metadata.savedQuestionsDatabase(),
-      ].filter(Boolean);
+      ].filter(Boolean) as Database[];
     }
 
     /**
