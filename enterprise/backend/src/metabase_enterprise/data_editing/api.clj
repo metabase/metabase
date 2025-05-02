@@ -318,6 +318,106 @@
         provided    (update-keys params #(api/check-400 (param-id (name %)) "Unexpected parameter provided"))]
     (actions/execute-action! action (merge row-params provided))))
 
+(defn- table-action-id [table-id action-type]
+  (format "%d.%s" table-id (name action-type)))
+
+(defn- parse-table-action-id [id]
+  (when-some [[_ table-id-part type-part] (re-find #"(\d+)(\.+)" id)]
+    (when-some [action-type ({"create" :create
+                              "update" :update
+                              "delete" :delete}
+                             type-part)]
+      {:table-id    (parse-long table-id-part)
+       :action-type action-type})))
+
+(def ^:private table-action->int {:create 0 :update 1 :delete 2})
+(def ^:private int->table-action (set/map-invert table-action->int))
+
+(defn- table-action-id ^long [^long table-id op]
+  (let [action-bits (table-action->int op)
+        encoded (bit-or (bit-shift-left action-bits 32) (bit-and table-id 0xFFFFFFFF))
+        negative-id (- (bit-or encoded 0x800000000))] ; force negative via high bit
+    negative-id))
+
+(defn- unpack-table-action-id [^long encoded-id]
+  (let [pos-id (bit-and (Math/abs encoded-id) 0xFFFFFFFFFF)
+        table-id (bit-and pos-id 0xFFFFFFFF)
+        action-bits (bit-and (bit-shift-right pos-id 32) 0x3)]
+    {:table-id table-id :op (int->table-action action-bits)}))
+
+(api.macros/defendpoint :get "/tmp-action"
+  [_
+   _
+   _]
+  (api/check-superuser)
+  (let [databases          (t2/select [:model/Database :id :settings])
+        editable-database? #(-> % :settings :database-enable-table-editing boolean)
+        editable-databases (filter editable-database? databases)
+
+        editable-tables
+        (when (seq editable-databases)
+          (t2/select :model/Table :database_id [:in (map :id editable-databases)]))
+
+        fields
+        (when (seq editable-tables)
+          (t2/select :model/Field [:in (map :id editable-tables)]))
+
+        fields-by-table
+        (group-by :table_id fields)
+
+        table-actions
+        (for [t editable-tables
+              action-type [:create :update :delete]]
+          {:database_id (:database_id t)
+           :name        (name action-type)
+           :kind        "table"
+           :table_id (:id t)
+           :id (table-action-id (:it t) action-type)
+           :visualization_settings
+           {:name ""
+            :type "button"
+            :description ""
+            :fields (->> (for [field (fields-by-table (:id t))
+                               :let [field-name (:name field)]]
+                           [field-name
+                            {:description ""
+                             :placeholder ""
+                             :name        field-name
+                             :width       "medium"
+                             :title       field-name
+                             :hidden      false
+                             :id          field-name
+                             :order       999
+                             :inputType   "string"
+                             :required    (:database_required field)
+                             :fieldType   nil}])
+                         (into {}))}
+           :parameters
+           (->> (for [field (fields-by-table (:id t))
+                      :let [field-name (:name field)]]
+                  [field-name
+                   {:value nil
+                    :id    field-name
+                    :type  :string/=
+                    :target [:variable [:template-tag field-name]]
+                    :name  field-name
+                    :slug  field-name
+                    :hasVariableTemplateTagTarget true}])
+                (into {}))})
+
+        model-actions
+        (for [a (actions/select-actions :archived false)]
+          (merge
+           {:kind "model"}
+           (select-keys a [:name
+                           :model_id
+                           :type
+                           :database_id
+                           :id
+                           :visualization_settings
+                           :parameters])))]
+    {:actions (concat model-actions table-actions)}))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."
   (api.macros/ns-handler *ns* +auth))
