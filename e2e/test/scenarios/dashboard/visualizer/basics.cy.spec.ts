@@ -432,7 +432,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.openQuestionsSidebar();
     H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
 
-    H.saveDashcardVisualizerModal(true);
+    H.saveDashcardVisualizerModal("create");
     H.saveDashboard();
 
     H.editDashboard();
