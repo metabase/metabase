@@ -446,14 +446,15 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     name: "date",
     structure: "date",
     category: "conversion",
-    description: () => t`Converts an ISO 8601 date string to a date.`,
+    description: () =>
+      t`Converts a datetime or an ISO 8601 datetime string to a date. Time part is truncated.`,
     args: [
       {
         get name() {
           return t`value`;
         },
         get description() {
-          return t`The string to convert to a date.`;
+          return t`The string or datetime to convert to a date.`;
         },
         example: "2025-03-20",
       },
