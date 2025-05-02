@@ -37,6 +37,60 @@
    (and (some? dashcard)
         (get-in dashcard [:visualization_settings :visualization]))))
 
+(defn is-scalar-funnel?
+  "Check if the visualization is a scalar funnel.
+   Matches the frontend implementation in frontend/src/metabase/visualizer/visualizations/funnel.ts"
+  [{:keys [display settings]}]
+  (and (= display "funnel")
+       (= (get settings :funnel.metric) "METRIC")
+       (= (get settings :funnel.dimension) "DIMENSION")))
+
+(defn get-visualization-columns
+  "Creates visualization columns for a visualizer entity.
+   Similar to the frontend implementation in src/metabase/visualizer/utils/get-visualization-columns.ts"
+  [visualizer-definition series-data]
+  (let [{:keys [columnValuesMapping settings] :as viz-def} visualizer-definition]
+    (cond
+      ;; Scalar funnel uses pre-defined metric and dimension columns
+      (is-scalar-funnel? viz-def)
+      (let [metric-column-name (get settings :funnel.metric)
+            dimension-column-name (get settings :funnel.dimension)
+            main-card-with-data (first series-data)
+            base-type (get-in main-card-with-data [:data :cols 0 :base_type])]
+        [{:name metric-column-name
+          :display_name metric-column-name
+          :base_type (or base-type :type/Number)
+          :semantic_type :type/Quantity}
+         {:name dimension-column-name
+          :display_name dimension-column-name
+          :base_type :type/Text
+          :semantic_type :type/Category}])
+
+      ;; For all other chart types, create visualization columns from column mappings
+      :else
+      (reduce
+       (fn [columns [viz-col-name column-mappings]]
+         (concat
+          columns
+          (filter some?
+                  (map
+                   (fn [mapping]
+                     (when-not (string? mapping) ;; Skip string values which are name references
+                       (let [card-id (value-source->card-id mapping)
+                             card-with-data (u/find-first-map series-data [:card :id] card-id)
+                             original-column (u/find-first-map
+                                              (get-in card-with-data [:data :cols])
+                                              [:name]
+                                              (:originalName mapping))
+                             card-name (get-in card-with-data [:card :name])]
+                         (when (and original-column card-name)
+                           (assoc original-column
+                                  :name (:name mapping)
+                                  :display_name (str card-name ": " (:display_name original-column)))))))
+                   column-mappings))))
+       []
+       columnValuesMapping))))
+
 (defn merge-visualizer-data
   "Takes visualizer dashcard series/column data and returns a row-major matrix of data
    with respect to the visualizer specific column settings. The point of this function is to support visualizer display
@@ -82,7 +136,13 @@
 
    The input `series-data` is the dashcard data series results from QP as a vector of maps, [{:card {...} :data {...}, ...]"
   [series-data {:keys [columns columnValuesMapping] :as visualizer-settings}]
-  (let [source-mappings-with-vals   (extract-value-sources columnValuesMapping)
+  (let [;; Generate columns if they are missing
+        viz-columns (if (seq columns)
+                      columns
+                      (get-visualization-columns visualizer-settings series-data))
+        _ (def viz-columns viz-columns)
+        _ (def visualizer-settings visualizer-settings)
+        source-mappings-with-vals   (extract-value-sources columnValuesMapping)
         ;; Create map from virtual column name e.g. 'COLUMN_1' to a vector of values only for value sources
         remapped-col-name->vals     (reduce
                                      (fn [acc {:keys [name originalName] :as source-mapping}]
@@ -111,8 +171,8 @@
                                                    ;; Source is actual column data
                                                    (get remapped-col-name->vals (:name source-mapping)))))
                                               vec)))
-                                     columns)]
+                                     viz-columns)]
     {:viz-settings (:settings visualizer-settings)
-     :cols columns
+     :cols viz-columns
      ;; Return in row-major format
      :rows (apply mapv vector unzipped-rows)}))
