@@ -22,9 +22,7 @@ const PUNCTUATOR_TO_TYPE = {
   or: t.LOGICAL_OR,
 } as const;
 
-export function isPunctuator(
-  str: string,
-): str is keyof typeof PUNCTUATOR_TO_TYPE {
+export function isPunctuator(str: string): str is PUNCTUATOR {
   return str in PUNCTUATOR_TO_TYPE;
 }
 
