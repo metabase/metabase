@@ -4,7 +4,7 @@
    [metabase.lib-be.task.backfill-card-metadata-analysis :as analysis]
    [metabase.lib.core :as lib]
    [metabase.models.card :as card]
-   [metabase.models.task-history :as task-history]
+   [metabase.task-history.models.task-history :as task-history]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -31,7 +31,7 @@
          (is (=? (map idents-only metadata)
                  (map idents-only inferred))
              "Inference puts them back")
-         (is (every? #(#'analysis/has-valid-ident? % card) inferred)
+         (is (card/all-idents-valid? card inferred)
              "And all the idents are valid.")
          (when extra-fn
            (extra-fn card inferred)))))))
@@ -204,8 +204,7 @@
               backfilled)))))
 
 (deftest ^:synchronized backfill-idents-for-card!-test-2-source-card-with-idents
-  (mt/with-temp [:model/Card src  (-> {:dataset_query (mt/mbql-query orders
-                                                        #_{:expressions {"tax_rate" [:/ $tax $subtotal]}})}
+  (mt/with-temp [:model/Card src  (-> {:dataset_query (mt/mbql-query orders)}
                                       mt/card-with-metadata
                                       (update :result_metadata strip-idents))
                  :model/Card card (-> {:dataset_query (mt/mbql-query orders
@@ -480,3 +479,5 @@
             (is (contains? @analyzed (:id c1)))
             (is (contains? @analyzed (:id c2)))
             (is (contains? @analyzed (:id c6)))))))))
+
+#_(t2/update! :model/Card :metadata_analysis_state :priority {:metadata_analysis_state :not-started})

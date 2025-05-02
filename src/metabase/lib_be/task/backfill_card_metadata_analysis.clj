@@ -6,9 +6,9 @@
    [metabase.lib.core :as lib]
    [metabase.models.card :as card]
    [metabase.models.card.metadata :as card.metadata]
-   [metabase.models.setting :refer [defsetting]]
-   [metabase.models.task-history :as task-history]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.task :as task]
+   [metabase.task-history.core :as task-history]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
@@ -36,21 +36,6 @@
   :default    20000)
 
 ;; ## Analysis internals
-(defn- has-valid-ident?
-  "Checks that this column both has an `:ident` and that it's valid.
-
-  For a native card, the ident must be based on this card's `entity_id`.
-
-  For a model, the ident must likewise be for this card, **and** `:model/inner_ident` must also be set to the
-  corresponding unwrapped, inner ident."
-  [{:keys [ident model/inner_ident] :as _column} {:keys [entity_id] :as card}]
-  (if (= (:type card) :model)
-    (and ident
-         (lib/valid-model-ident? ident entity_id)
-         inner_ident
-         (= ident (lib/model-ident inner_ident entity_id)))
-    (and ident (lib/valid-basic-ident? ident entity_id))))
-
 (defn- infer-idents-for-result-metadata
   "Computes `:ident`s for a card which does not current have them defined.
 
@@ -107,7 +92,7 @@
   (binding [card/*upstream-cards-without-idents* (atom #{})]
     (let [idented (infer-idents-for-result-metadata (:result_metadata card) card)
           updates (cond
-                    (every? #(has-valid-ident? % card) idented) ; All idents valid!
+                    (card/all-idents-valid? card idented)
                     {:result_metadata           idented
                      :metadata_analysis_state   :analyzed
                      :metadata_analysis_blocker nil}
@@ -143,7 +128,7 @@
     :keys [id] :as card}]
   (case state
     ;; If the card has meanwhile been marked `:executed` or `:analyzed`, mark it as :failed since something went wrong.
-    (:executed :analyzed)    (when-not (every? #(has-valid-ident? % card) cols)
+    (:executed :analyzed)    (when-not (card/all-idents-valid? card cols)
                                (t2/update! :model/Card id {:metadata_analysis_state :failed})
                                :failed)
 

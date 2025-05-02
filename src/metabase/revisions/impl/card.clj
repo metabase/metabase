@@ -12,6 +12,8 @@
     :last_used_at
     :made_public_by_id
     :metabase_version
+    :metadata_analysis_state
+    :metadata_analysis_blocker
     :public_uuid
     :updated_at
     :view_count})
