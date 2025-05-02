@@ -87,8 +87,6 @@ const Users = createEntity({
       }
       const result = await thunkCreator(user)(dispatch, getState);
 
-      // TODO: should I still load these since it is entity land???
-      // dispatch(loadMemberships());
       return {
         // HACK: include user ID and password for temporaryPasswords reducer
         id: result.result,
