@@ -7,6 +7,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import { useDocsUrl } from "metabase/common/hooks";
 import { UploadInput } from "metabase/components/upload";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Markdown from "metabase/core/components/Markdown";
@@ -16,18 +17,14 @@ import {
   FormSubmitButton,
   useFormContext,
 } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
-import { getDocsUrl } from "metabase/selectors/settings";
 import { Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
 
 export const ContentTranslationConfiguration = () => {
-  const availableLocalesDocsUrl = useSelector((state) =>
-    // eslint-disable-next-line no-unconditional-metabase-links-render -- This is used in admin settings
-    getDocsUrl(state, {
-      page: "configuring-metabase/localization",
-      anchor: "supported-languages",
-    }),
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- This is used in admin settings
+  const availableLocalesDocsUrl = useDocsUrl(
+    "configuring-metabase/localization",
+    { anchor: "supported-languages" },
   );
 
   return (
