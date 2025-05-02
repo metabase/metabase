@@ -106,16 +106,11 @@ class SnippetSidebarInner extends React.Component {
               className={cx(CS.flex, CS.alignCenter, CS.pl3, CS.pr2)}
               style={{ paddingTop: 10, paddingBottom: 11 }}
             >
-              <div className={CS.flexFull}>
-                <div
-                  /* Hide the search input by collapsing dimensions rather than `display: none`.
-                                                                           This allows us to immediately focus on it when showSearch is set to true.*/
-                  style={showSearch ? {} : { width: 0, height: 0 }}
-                  className={cx(CS.textHeavy, CS.h3, CS.overflowHidden)}
-                >
+              {showSearch ? (
+                <Flex>
                   <input
-                    className={cx(CS.input, CS.inputBorderless, CS.p0)}
                     ref={this.searchBox}
+                    className={cx(CS.input, CS.inputBorderless, CS.p0)}
                     onChange={(e) =>
                       this.setState({ searchString: e.target.value })
                     }
@@ -126,90 +121,92 @@ class SnippetSidebarInner extends React.Component {
                       }
                     }}
                   />
-                </div>
-                <span
-                  className={cx({ [CS.hide]: showSearch }, CS.textHeavy, CS.h3)}
-                >
-                  {snippetCollection.id === "root" ? (
-                    t`Snippets`
-                  ) : (
-                    <span
-                      className={S.SnippetTitle}
-                      onClick={() => {
-                        const parentId = snippetCollection.parent_id;
-                        this.props.setSnippetCollectionId(
-                          // if this collection's parent isn't in the list, we don't have perms to see it, return to the root instead
-                          this.props.snippetCollections.some(
-                            (sc) =>
-                              canonicalCollectionId(sc.id) ===
-                              canonicalCollectionId(parentId),
-                          )
-                            ? parentId
-                            : null,
-                        );
-                      }}
-                    >
-                      <Icon name="chevronleft" className={CS.mr1} />
-                      {snippetCollection.name}
-                    </span>
-                  )}
-                </span>
-              </div>
-              <div
-                className={cx(
-                  CS.flexAlignRight,
-                  CS.flex,
-                  CS.alignCenter,
-                  CS.textMedium,
-                  CS.noDecoration,
-                )}
-              >
-                {[
-                  ...PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map((f) =>
-                    f(this, { className: CS.mr2 }),
-                  ),
-                ]}
-                {snippets.length >= MIN_SNIPPETS_FOR_SEARCH &&
-                  (showSearch ? (
-                    <Button variant="subtle" onClick={this.hideSearch} p="sm">
-                      <Icon name="close" />
-                    </Button>
-                  ) : (
-                    <Button variant="subtle" onClick={this.showSearch} p="sm">
-                      <Icon name="search" />
-                    </Button>
-                  ))}
+                  <Button variant="subtle" onClick={this.hideSearch} p="sm">
+                    <Icon name="close" />
+                  </Button>
+                </Flex>
+              ) : (
+                <>
+                  <span className={cx(CS.textHeavy, CS.h3)}>
+                    {snippetCollection.id === "root" ? (
+                      t`Snippets`
+                    ) : (
+                      <span
+                        className={S.SnippetTitle}
+                        onClick={() => {
+                          const parentId = snippetCollection.parent_id;
+                          this.props.setSnippetCollectionId(
+                            // if this collection's parent isn't in the list, we don't have perms to see it, return to the root instead
+                            this.props.snippetCollections.some(
+                              (sc) =>
+                                canonicalCollectionId(sc.id) ===
+                                canonicalCollectionId(parentId),
+                            )
+                              ? parentId
+                              : null,
+                          );
+                        }}
+                      >
+                        <Icon name="chevronleft" className={CS.mr1} />
+                        {snippetCollection.name}
+                      </span>
+                    )}
+                  </span>
+                  <div
+                    className={cx(
+                      CS.flexAlignRight,
+                      CS.flex,
+                      CS.alignCenter,
+                      CS.textMedium,
+                      CS.noDecoration,
+                    )}
+                  >
+                    {[
+                      ...PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map((f) =>
+                        f(this, { className: CS.mr2 }),
+                      ),
+                    ]}
 
-                {snippetCollection.can_write && !showSearch && (
-                  <Menu position="bottom-end">
-                    <Menu.Target>
-                      <Button variant="subtle" px="sm">
-                        <Icon name="add" />
+                    {snippets.length >= MIN_SNIPPETS_FOR_SEARCH && (
+                      <Button variant="subtle" onClick={this.showSearch} p="sm">
+                        <Icon name="search" />
                       </Button>
-                    </Menu.Target>
-                    <Menu.Dropdown>
-                      {[
-                        {
-                          icon: "snippet",
-                          name: t`New snippet`,
-                          onClick: openSnippetModalWithSelectedText,
-                        },
-                        ...PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.map((f) =>
-                          f(this),
-                        ),
-                      ].map(({ icon, name, onClick }) => (
-                        <Menu.Item
-                          key={name}
-                          onClick={onClick}
-                          leftSection={<Icon name={icon} className={CS.mr2} />}
-                        >
-                          {name}
-                        </Menu.Item>
-                      ))}
-                    </Menu.Dropdown>
-                  </Menu>
-                )}
-              </div>
+                    )}
+
+                    {snippetCollection.can_write && !showSearch && (
+                      <Menu position="bottom-end">
+                        <Menu.Target>
+                          <Button variant="subtle" px="sm">
+                            <Icon name="add" />
+                          </Button>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          {[
+                            {
+                              icon: "snippet",
+                              name: t`New snippet`,
+                              onClick: openSnippetModalWithSelectedText,
+                            },
+                            ...PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.map(
+                              (f) => f(this),
+                            ),
+                          ].map(({ icon, name, onClick }) => (
+                            <Menu.Item
+                              key={name}
+                              onClick={onClick}
+                              leftSection={
+                                <Icon name={icon} className={CS.mr2} />
+                              }
+                            >
+                              {name}
+                            </Menu.Item>
+                          ))}
+                        </Menu.Dropdown>
+                      </Menu>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
             <div className={CS.flexFull}>
               {displayedItems.length > 0
