@@ -73,6 +73,7 @@ class SnippetSidebarInner extends React.Component {
       snippets,
       openSnippetModalWithSelectedText,
       snippetCollection,
+      snippetCollections,
       search,
     } = this.props;
 
@@ -91,6 +92,23 @@ class SnippetSidebarInner extends React.Component {
           snippet.name.toLowerCase().includes(searchString.toLowerCase()),
         )
       : _.sortBy(search, "model"); // relies on "collection" sorting before "snippet";
+
+    const hasParentCollection = snippetCollection.parent_id !== null;
+    const onSnippetCollectionBack = () => {
+      // if this collection's parent isn't in the list,
+      // we don't have perms to see it, return to the root instead
+      const hasPermissionToSeeParent = snippetCollections.some(
+        (collection) =>
+          canonicalCollectionId(collection.id) ===
+          canonicalCollectionId(snippetCollection.parent_id),
+      );
+
+      const targetId = hasPermissionToSeeParent
+        ? snippetCollection.parent_id
+        : null;
+
+      this.props.setSnippetCollectionId(targetId);
+    };
 
     return (
       <SidebarContent footer={this.footer()}>
@@ -127,31 +145,16 @@ class SnippetSidebarInner extends React.Component {
                 </Flex>
               ) : (
                 <>
-                  <span className={cx(CS.textHeavy, CS.h3)}>
-                    {snippetCollection.id === "root" ? (
-                      t`Snippets`
-                    ) : (
-                      <span
-                        className={S.SnippetTitle}
-                        onClick={() => {
-                          const parentId = snippetCollection.parent_id;
-                          this.props.setSnippetCollectionId(
-                            // if this collection's parent isn't in the list, we don't have perms to see it, return to the root instead
-                            this.props.snippetCollections.some(
-                              (sc) =>
-                                canonicalCollectionId(sc.id) ===
-                                canonicalCollectionId(parentId),
-                            )
-                              ? parentId
-                              : null,
-                          );
-                        }}
-                      >
-                        <Icon name="chevronleft" className={CS.mr1} />
-                        {snippetCollection.name}
-                      </span>
-                    )}
-                  </span>
+                  {snippetCollection.id === "root" ? (
+                    <SidebarHeader title={t`Snippets`} />
+                  ) : (
+                    <SidebarHeader
+                      title={snippetCollection.name}
+                      onBack={
+                        hasParentCollection ? onSnippetCollectionBack : null
+                      }
+                    />
+                  )}
                   <div
                     className={cx(
                       CS.flexAlignRight,
