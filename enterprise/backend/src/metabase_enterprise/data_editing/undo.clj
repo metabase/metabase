@@ -183,7 +183,7 @@
                   opts {:existing-context {:invocation_id    iid
                                            :invocation-stack [[action-kw iid]]}}]]
       (case (if undo? (invert category) category)
-        :create (try (data-editing/perform-bulk-action! :bulk/create user-id scope table-id rows opts)
+        :create (try (data-editing/perform-bulk-action! :table.row/create user-id scope table-id rows opts)
                      (catch Exception e
                        ;; Sometimes cols don't support a custom value being provided, e.g., GENERATED ALWAYS AS IDENTITY
                        (throw (ex-info "Failed to un-delete row(s)"
@@ -192,8 +192,8 @@
                                         :table-id  table-id
                                         :pks       (map :row_pk batch)}
                                        e))))
-        :update (data-editing/perform-bulk-action! :bulk/update user-id scope table-id rows opts)
-        :delete (data-editing/perform-bulk-action! :bulk/delete user-id scope table-id rows opts)))))
+        :update (data-editing/perform-bulk-action! :table.row/update user-id scope table-id rows opts)
+        :delete (data-editing/perform-bulk-action! :table.row/delete user-id scope table-id rows opts)))))
 
 (defn- undo*! [undo-or-redo user-id scope]
   (let [undo? (= :undo undo-or-redo)

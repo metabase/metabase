@@ -90,15 +90,15 @@
     (let  [column (db-identifier->name column)]
       (merge {:type error-type}
              (case action-type
-               :row/create
+               :model.row/create
                {:message (tru "Unable to create a new record.")
                 :errors {column (tru "This {0} does not exist." (str/capitalize column))}}
 
-               :row/delete
+               :model.row/delete
                {:message (tru "Other tables rely on this row so it cannot be deleted.")
                 :errors  {}}
 
-               :row/update
+               :model.row/update
                {:message (tru "Unable to update the record.")
                 :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))))
 

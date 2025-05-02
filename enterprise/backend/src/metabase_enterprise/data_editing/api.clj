@@ -101,7 +101,7 @@
     (let [user-id api/*current-user-id*
           scope   (or scope {:table-id table-id})
           rows    (data-editing/apply-coercions table-id rows)
-          rows    (map :after (data-editing/perform-bulk-action! :bulk/update user-id scope table-id rows))]
+          rows    (map :after (data-editing/perform-bulk-action! :table.row/update user-id scope table-id rows))]
       {:updated (invalidate-and-present! table-id rows)})))
 
 ;; This is a POST instead of DELETE as not all web proxies pass on the body of DELETE requests.
@@ -116,7 +116,7 @@
   (check-permissions)
   (let [user-id api/*current-user-id*
         scope   (or scope {:table-id table-id})]
-    (data-editing/perform-bulk-action! :bulk/delete user-id scope table-id rows)
+    (data-editing/perform-bulk-action! :table.row/delete user-id scope table-id rows)
     {:success true}))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust

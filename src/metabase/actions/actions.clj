@@ -46,7 +46,7 @@
 (defmulti action-arg-map-spec
   "Return the appropriate spec to use to validate the arg map passed to [[perform-action!*]].
 
-    (action-arg-map-spec :row/create) => :actions.args.crud/row.create"
+    (action-arg-map-spec :model.row/create) => :actions.args.crud/row.create"
   {:arglists '([action]), :added "0.44.0"}
   keyword)
 
@@ -55,23 +55,10 @@
   any?)
 
 (defmulti perform-action!*
-  "Multimethod for doing an Action. The specific `action` is a keyword like `:row/create` or `:bulk/create`; the shape
+  "Multimethod for doing an Action. The specific `action` is a keyword like `:model.row/create` or `:table.row/create`; the shape
   of each input depends on the action being performed. [[action-arg-map-spec]] returns the appropriate spec to use to
   validate the inputs for a given action. When implementing a new action type, be sure to implement both this method
   and [[action-arg-map-spec]].
-
-  // AS FAR AS I CAN TELL THERE ARE NO APIS LIKE THIS, AT LEAST NOT ANYMORE.
-
-  At the time of this writing Actions are performed with either `POST /api/action/:action-namespace/:action-name`,
-  which passes in the request body as `args-map` directly, or `POST
-  /api/action/:action-namespace/:action-name/:table-id`, which passes in an `args-map` like
-
-    {:table-id <table-id>, :arg <request-body>}
-
-  The former endpoint is currently used for the various `:row/*` Actions while the version with `:table-id` as part of
-  the route is currently used for `:bulk/*` Actions.
-
-  // END OF LIES
 
   DON'T CALL THIS METHOD DIRECTLY TO PERFORM ACTIONS -- use [[perform-action!]] instead which does normalization,
   validation, and binds Database-local values."
@@ -254,8 +241,8 @@
         _         (when (seq errors)
                     (throw (ex-info (str "Invalid Action arg map(s) for " action-kw)
                                     {::schema-errors errors})))
-        dbs       (mapv (comp api/check-404 cached-database) (keep :database arg-maps))
-        _         (when (> (count dbs) 2)
+        dbs       (map (comp api/check-404 cached-database) (distinct (keep :database arg-maps)))
+        _         (when-not (= 1 (count dbs))
                     (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
                                     {:status-code  400
                                      :database-ids (map :id dbs)})))
@@ -331,7 +318,7 @@
    :actions.args/common
    (s/keys :req-un [:actions.args.crud.row.common/query])))
 
-;;;; `:row/create`
+;;;; `:model.row/create`
 
 ;;; row/create requires at least
 ;;;
@@ -339,7 +326,7 @@
 ;;;     :query      {:source-table <id>, :filter <mbql-filter-clause>}
 ;;;     :create-row <map>}
 
-(defmethod normalize-action-arg-map :row/create
+(defmethod normalize-action-arg-map :model.row/create
   [_action query]
   (mbql.normalize/normalize-or-throw query))
 
@@ -351,11 +338,11 @@
    :actions.args.crud.row/common
    (s/keys :req-un [:actions.args.crud.row.create/create-row])))
 
-(defmethod action-arg-map-spec :row/create
+(defmethod action-arg-map-spec :model.row/create
   [_action]
   :actions.args.crud/row.create)
 
-;;;; `:row/update`
+;;;; `:model.row/update`
 
 ;;; row/update requires at least
 ;;;
@@ -363,7 +350,7 @@
 ;;;     :query      {:source-table <id>, :filter <mbql-filter-clause>}
 ;;;     :update-row <map>}
 
-(defmethod normalize-action-arg-map :row/update
+(defmethod normalize-action-arg-map :model.row/update
   [_action query]
   (mbql.normalize/normalize-or-throw query))
 
@@ -384,18 +371,18 @@
    (s/keys :req-un [:actions.args.crud.row.update/update-row
                     :actions.args.crud.row.update/query])))
 
-(defmethod action-arg-map-spec :row/update
+(defmethod action-arg-map-spec :model.row/update
   [_action]
   :actions.args.crud/row.update)
 
-;;;; `:row/delete`
+;;;; `:model.row/delete`
 
 ;;; row/delete requires at least
 ;;;
 ;;;    {:database <id>
 ;;;     :query    {:source-table <id>, :filter <mbql-filter-clause>}}
 
-(defmethod normalize-action-arg-map :row/delete
+(defmethod normalize-action-arg-map :model.row/delete
   [_action query]
   (mbql.normalize/normalize-or-throw query))
 
@@ -412,7 +399,7 @@
    :actions.args.crud.row/common
    (s/keys :req-un [:actions.args.crud.row.delete/query])))
 
-(defmethod action-arg-map-spec :row/delete
+(defmethod action-arg-map-spec :model.row/delete
   [_action]
   :actions.args.crud/row.delete)
 
@@ -422,17 +409,17 @@
 ;;;
 ;;;    {:database <id>, :table-id <id>, :rows [{<key> <value>} ...]}
 
-(s/def :actions.args.crud.bulk.common/table-id
+(s/def :actions.args.crud.table.common/table-id
   :actions.args/id)
 
-(s/def :actions.args.crud.bulk/rows
+(s/def :actions.args.crud.table/rows
   (s/cat :rows (s/+ (s/map-of string? any?))))
 
-(s/def :actions.args.crud.bulk/common
+(s/def :actions.args.crud.table/common
   (s/merge
    :actions.args/common
-   (s/keys :req-un [:actions.args.crud.bulk.common/table-id
-                    :actions.args.crud.bulk/rows])))
+   (s/keys :req-un [:actions.args.crud.table.common/table-id
+                    :actions.args.crud.table/rows])))
 
 ;;; The request bodies for the bulk CRUD actions are all the same. The body of a request to `POST
 ;;; /api/action/:action-namespace/:action-name/:table-id` is just a vector of rows but the API endpoint itself calls
@@ -444,30 +431,39 @@
 ;;;
 ;;;     {:database <database-id>, :table-id <table-id>, :rows <request-body>}
 
-;;;; `:bulk/create`, `:bulk/delete`, `:bulk/update` -- these all have the exact same shapes
+;;;; `:table.row/create`, `:table.row/delete`, `:table.row/update` -- these all have the exact same shapes
 
-(defn- normalize-bulk-crud-action-arg-map
-  [{:keys [database table-id], rows :arg, :as _arg-map}]
-  {:type :query, :query {:source-table table-id}
-   :database database, :table-id table-id, :rows (map #(update-keys % u/qualified-name) rows)})
+(defn- normalize-table-crud-action-arg-map
+  [{:keys [database table-id row], row-or-rows :arg, :as _arg-map}]
+  {;; TODO get rid of these first two
+   :type     :query
+   :query    {:source-table table-id}
+   :database database
+   :table-id table-id
+   ;; TODO stop overloading this and always take singular
+   :rows     (map #(update-keys % u/qualified-name)
+                  (or (when row [row])
+                      (if (map? row-or-rows)
+                        [row-or-rows]
+                        row-or-rows)))})
 
-(defmethod normalize-action-arg-map :bulk/create
+(defmethod normalize-action-arg-map :table.row/create
   [_action arg-map]
-  (normalize-bulk-crud-action-arg-map arg-map))
+  (normalize-table-crud-action-arg-map arg-map))
 
-(defmethod action-arg-map-spec :bulk/create
+(defmethod action-arg-map-spec :table.row/create
   [_action]
-  :actions.args.crud.bulk/common)
+  :actions.args.crud.table/common)
 
-(defmethod normalize-action-arg-map :bulk/update
+(defmethod normalize-action-arg-map :table.row/update
   [_action arg-map]
-  (normalize-bulk-crud-action-arg-map arg-map))
+  (normalize-table-crud-action-arg-map arg-map))
 
-(defmethod action-arg-map-spec :bulk/update
+(defmethod action-arg-map-spec :table.row/update
   [_action]
-  :actions.args.crud.bulk/common)
+  :actions.args.crud.table/common)
 
-;;;; `:bulk/delete`
+;;;; `:table.row/delete`
 
 ;;; Request-body should look like:
 ;;;
@@ -478,10 +474,10 @@
 ;;;    ;; multiple pks, one row
 ;;;    [{"PK1": 1, "PK2": "john"}]
 
-(defmethod normalize-action-arg-map :bulk/delete
+(defmethod normalize-action-arg-map :table.row/delete
   [_action arg-map]
-  (normalize-bulk-crud-action-arg-map arg-map))
+  (normalize-table-crud-action-arg-map arg-map))
 
-(defmethod action-arg-map-spec :bulk/delete
+(defmethod action-arg-map-spec :table.row/delete
   [_action]
-  :actions.args.crud.bulk/common)
+  :actions.args.crud.table/common)

@@ -151,7 +151,7 @@
                 table-id-hydrate-schemas)]
    [:row_change row-change-schema]])
 
-(def ^:private bulk-row-schema
+(def ^:private table-row-schema
   [:map {:closed true}
    [:args (into [:map
                  [:db_id pos-int?]
@@ -167,7 +167,7 @@
 (mr/def :event/row.updated single-event)
 (mr/def :event/row.deleted single-event)
 
-(def ^:private bulk-event (into bulk-row-schema actor-schema))
+(def ^:private bulk-event (into table-row-schema actor-schema))
 
 (mr/def :event/rows.created bulk-event)
 (mr/def :event/rows.updated bulk-event)

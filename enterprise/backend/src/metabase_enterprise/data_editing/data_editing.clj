@@ -103,29 +103,29 @@
       (m/map-kv-vals coerce row))))
 
 (defn perform-bulk-action!
-  "Operates on rows in the database, supply an action-kw: :bulk/create, :bulk/update, :bulk/delete.
+  "Operates on rows in the database, supply an action-kw: :table.row/create, :table.row/update, :table.row/delete.
   The input `rows` is given different semantics depending on the action type, see actions/perform-action!."
   [action-kw user-id scope table-id rows & {:keys [existing-context]}]
   ;; TODO make this work for multi instances by using the metabase_cluster_lock table, or something similar
   ;; https://github.com/metabase/metabase/pull/56173/files
   (locking #'perform-bulk-action!
-    (->> (actions/perform-action!
-          action-kw
-          scope
-          [{:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
-            :table-id table-id
-            :arg      rows}]
-          {:policy           :data-editing
-           :existing-context (if existing-context
-                               (assoc existing-context :user-id user-id)
-                               (let [iid (nano-id/nano-id)]
-                                 {:invocation-id    iid
-                                  :invocation-stack [[:grid/edit iid]]
-                                  :user-id          user-id
-                                  :scope            scope}))})
-         :effects
-         (filter (comp #{:effect/row.modified} first))
-         (map second))))
+    (let [db-id (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))]
+      (->> (actions/perform-action!
+            action-kw
+            scope
+            (for [row rows]
+              {:database db-id, :table-id table-id, :row row})
+            {:policy           :data-editing
+             :existing-context (if existing-context
+                                 (assoc existing-context :user-id user-id)
+                                 (let [iid (nano-id/nano-id)]
+                                   {:invocation-id    iid
+                                    :invocation-stack [[:grid/edit iid]]
+                                    :user-id          user-id
+                                    :scope            scope}))})
+           :effects
+           (filter (comp #{:effect/row.modified} first))
+           (map second)))))
 
 (defn insert!
   "Inserts rows into the table, recording their creation as an event. Returns the inserted records.
@@ -133,7 +133,7 @@
   are required, that work must be done before calling this function."
   [user-id scope table-id rows]
   (api/check-500 user-id)
-  (let [res (perform-bulk-action! :bulk/create user-id scope table-id rows)]
+  (let [res (perform-bulk-action! :table.row/create user-id scope table-id rows)]
     {:created-rows (map :after res)}))
 
 (defn- row-update-event
