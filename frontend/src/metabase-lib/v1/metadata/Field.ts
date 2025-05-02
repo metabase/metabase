@@ -311,11 +311,24 @@ export default class Field extends Base {
 
   // REMAPPINGS
 
+  remappedField() {
+    return this.remappedInternalField() ?? this.remappedExternalField();
+  }
+
+  remappedInternalField() {
+    const dimensions = this.dimensions ?? [];
+    if (dimensions.length > 0 && dimensions[0].type === "internal") {
+      return this;
+    }
+
+    return null;
+  }
+
   /**
    * Returns the remapped field, if any
    * @return {?Field}
    */
-  remappedField() {
+  remappedExternalField() {
     const displayFieldId = this.dimensions?.[0]?.human_readable_field_id;
 
     if (displayFieldId != null) {
@@ -371,7 +384,7 @@ export default class Field extends Base {
       return this.isSearchable() ? this : null;
     }
 
-    const remappedField = this.remappedField();
+    const remappedField = this.remappedExternalField();
     if (remappedField && remappedField.isSearchable()) {
       return remappedField;
     }

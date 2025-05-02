@@ -166,7 +166,7 @@ describe("FieldValuesWidget", () => {
         const remappedField = metadata.field(PRODUCTS.CATEGORY);
 
         if (field) {
-          field.remappedField = () => remappedField;
+          field.remappedExternalField = () => remappedField;
         }
 
         await setup({ fields: [field] });
