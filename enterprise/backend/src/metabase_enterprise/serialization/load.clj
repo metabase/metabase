@@ -16,7 +16,6 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.settings.core :as setting]
-   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]

@@ -667,7 +667,10 @@
                                        :archived true
                                        :database_id (mt/id)
                                        :table_id (mt/id :categories)}]
-      (is (=? {:metrics [(assoc metric :type "metric" :display "table")]}
+      (is (=? {:metrics [(assoc metric
+                                :type                    "metric"
+                                :display                 "table"
+                                :metadata_analysis_state "not-started")]}
               (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories))))))))
 
 (deftest ^:parallel table-metadata-has-entity-ids-test
