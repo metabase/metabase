@@ -7,6 +7,7 @@
    [metabase.models.card :as card]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.setting :refer [defsetting]]
+   [metabase.models.task-history :as task-history]
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -99,7 +100,9 @@
   its results:
   - Successfully assigned a valid `:ident` to all columns: mark this card as `:analyzed`.
   - Some idents are missing: randomly choose a card from the dynamic list of referenced cards to be `:blocked` on.
-  - All idents are present but some fail validation: mark as `:failed`."
+  - All idents are present but some fail validation: mark as `:failed`.
+
+  Returns the new state of the card."
   [card]
   (binding [card/*upstream-cards-without-idents* (atom #{})]
     (let [idented (infer-idents-for-result-metadata (:result_metadata card) card)
@@ -114,7 +117,8 @@
                     :else                                       ; Some idents failed validation: failed
                     {:metadata_analysis_state   :failed
                      :metadata_analysis_blocker nil})]
-      (t2/update! :model/Card (:id card) updates))))
+      (t2/update! :model/Card (:id card) updates)
+      (:metadata_analysis_state updates))))
 
 ;; ## Entry point for analysis
 (defn- analyze-card!
@@ -131,17 +135,21 @@
     - If some idents are missing, and the set of referenced unanalyzed cards is not empty:
       - Choose a card arbitrarily, mark the card being analyzed as `:blocked` on that referenced card.
     - If some idents are missing, but the set of referenced unanalyzed cards is not empty:
-      - Mark the card as `:failed` - we can't compute its idents and we're not sure why."
+      - Mark the card as `:failed` - we can't compute its idents and we're not sure why.
+
+  Returns either the new state of the card, or `:skipped` if it's already `:failed` or `:blocked`."
   [{state :metadata_analysis_state
     cols  :result_metadata
     :keys [id] :as card}]
   (case state
     ;; If the card has meanwhile been marked `:executed` or `:analyzed`, mark it as :failed since something went wrong.
     (:executed :analyzed)    (when-not (every? #(has-valid-ident? % card) cols)
-                               (t2/update! :model/Card id {:metadata_analysis_state :failed}))
+                               (t2/update! :model/Card id {:metadata_analysis_state :failed})
+                               :failed)
 
     ;; If the card has been concurrently marked `:failed` or `:blocked`, just skip it.
-    (:failed :blocked)       (log/debugf "Card %d is marked as %s; skipping analysis" id state)
+    (:failed :blocked)       (do (log/debugf "Card %d is marked as %s; skipping analysis" id state)
+                                 :skipped)
 
     ;; Run the analysis and consider the results.
     (:not-started :priority) (backfill-idents-for-card! card)))
@@ -159,9 +167,16 @@
   (let [prioritized (t2/select :model/Card :metadata_analysis_state :priority {:limit *batch-size*})
         headroom    (- *batch-size* (count prioritized))
         extras      (when (pos? headroom)
-                      (t2/select :model/Card :metadata_analysis_state :not-started {:limit headroom}))]
-    (doseq [card (concat prioritized extras)]
-      (analyze-card! card))))
+                      (t2/select :model/Card :metadata_analysis_state :not-started {:limit headroom}))
+        the-cards   (concat prioritized extras)]
+    (task-history/with-task-history {:task            "card_metadata_analysis"
+                                     :on-success-info (fn [update-map result]
+                                                        (update update-map :task_details
+                                                                merge (select-keys result [:card_results :state_counts])))
+                                     :task_details    {:card_ids (mapv :id the-cards)}}
+      (let [id->state (into {} (map (juxt :id analyze-card!)) the-cards)]
+        {:card_results id->state
+         :state_counts (frequencies (vals id->state))}))))
 
 (task/defjob ^{:doc "Examines batches of cards to analyze their `:result_metadata` and backfill their idents."}
   BackfillCardMetadataAnalysis [_ctx]
