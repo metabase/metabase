@@ -12,7 +12,7 @@ const TitleAndDescription = ({ title, description, className }) => {
     <div className={cx(CS.flex, CS.alignCenter, className)}>
       <h2 className={cx(CS.h2, CS.mr1, CS.textWrap)}>{tc(title)}</h2>
       {description && (
-        <Tooltip label={description} maw="22em">
+        <Tooltip label={tc(description)} maw="22em">
           <Icon name="info" className={CS.mx1} />
         </Tooltip>
       )}
