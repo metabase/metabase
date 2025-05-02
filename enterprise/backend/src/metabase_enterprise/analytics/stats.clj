@@ -1,4 +1,4 @@
-(ns metabase-enterprise.stats
+(ns metabase-enterprise.analytics.stats
   (:require
    [metabase-enterprise.advanced-config.models.pulse-channel :as advanced-config.models.pulse-channel]
    [metabase-enterprise.scim.api :as scim-api]

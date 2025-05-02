@@ -734,6 +734,10 @@
   {:api  #{}
    :uses #{premium-features util}}
 
+  enterprise/analytics
+  {:api  #{}
+   :uses #{driver premium-features enterprise/advanced-config enterprise/scim enterprise/sso}}
+
   enterprise/api
   {:api  #{metabase-enterprise.api.routes
            metabase-enterprise.api.routes.common}
@@ -861,10 +865,6 @@
   enterprise/stale
   {:api  #{metabase-enterprise.stale.routes}
    :uses #{analytics api embedding models premium-features request settings util}}
-
-  enterprise/stats
-  {:api  #{}
-   :uses #{driver premium-features enterprise/advanced-config enterprise/scim enterprise/sso}}
 
   enterprise/task
   {:api  #{metabase-enterprise.task.truncate-audit-tables}
