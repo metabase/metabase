@@ -140,8 +140,6 @@
         viz-columns (if (seq columns)
                       columns
                       (get-visualization-columns visualizer-settings series-data))
-        _ (def viz-columns viz-columns)
-        _ (def visualizer-settings visualizer-settings)
         source-mappings-with-vals   (extract-value-sources columnValuesMapping)
         ;; Create map from virtual column name e.g. 'COLUMN_1' to a vector of values only for value sources
         remapped-col-name->vals     (reduce
