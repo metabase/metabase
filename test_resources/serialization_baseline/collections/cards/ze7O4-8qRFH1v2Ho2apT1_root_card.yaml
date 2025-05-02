@@ -28,6 +28,8 @@ serdes/meta:
   model: Card
 archived_directly: false
 dashboard_id: null
-metabase_version: v1.54.4-SNAPSHOT (c6780bb)
+metabase_version: v1.55.2-SNAPSHOT (a675142)
+metadata_analysis_blocker: null
+metadata_analysis_state: not-started
 source_card_id: null
 type: question
