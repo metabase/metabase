@@ -118,7 +118,7 @@
 
 (defn- weighted-tsvector [weight text]
   ;; tsvector has a max value size of 1048575 bytes
-  [:setweight [:to_tsvector [:inline tsv-language] [:cast (u.str/limit-bytes text 1048575) :text]] [:inline weight]])
+  [:setweight [:to_tsvector [:inline tsv-language] [:cast (u.str/limit-bytes text 800000) :text]] [:inline weight]])
 
 (defmethod specialization/extra-entry-fields :postgres [entity]
   {:search_vector
