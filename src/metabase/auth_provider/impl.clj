@@ -1,4 +1,4 @@
-(ns metabase.auth-provider
+(ns metabase.auth-provider.impl
   (:require
    [metabase.premium-features.core :refer [defenterprise]]))
 
