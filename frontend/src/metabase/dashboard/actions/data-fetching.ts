@@ -106,8 +106,11 @@ function isNewAdditionalSeriesCard(
   dashcardBeforeEditing?: DashboardCard,
 ) {
   if (isVisualizerDashboardCard(dashcard)) {
-    const prevSeries =
-      (dashcardBeforeEditing as QuestionDashboardCard)?.series ?? [];
+    if (!dashcardBeforeEditing || !("series" in dashcardBeforeEditing)) {
+      return false;
+    }
+
+    const prevSeries = dashcardBeforeEditing.series ?? [];
     const newSeries = dashcard.series ?? [];
 
     return (
@@ -371,7 +374,6 @@ export const fetchCardDataAction = createAsyncThunk<
       const shouldUseCardQueryEndpoint =
         isNewDashcard(dashcard) ||
         (isQuestionDashCard(dashcard) &&
-          !isVisualizerDashboardCard(dashcard) &&
           isNewAdditionalSeriesCard(card, dashcard, dashcardBeforeEditing)) ||
         hasReplacedCard;
 
