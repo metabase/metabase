@@ -434,13 +434,18 @@
 ;;;; `:table.row/create`, `:table.row/delete`, `:table.row/update` -- these all have the exact same shapes
 
 (defn- normalize-table-crud-action-arg-map
-  [{:keys [database table-id], rows :arg, :as _arg-map}]
+  [{:keys [database table-id row], row-or-rows :arg, :as _arg-map}]
   {;; TODO get rid of these first two
    :type     :query
    :query    {:source-table table-id}
    :database database
    :table-id table-id
-   :rows     (map #(update-keys % u/qualified-name) rows)})
+   ;; TODO stop overloading this and always take singular
+   :rows     (map #(update-keys % u/qualified-name)
+                  (or (when row [row])
+                      (if (map? row-or-rows)
+                        [row-or-rows]
+                        row-or-rows)))})
 
 (defmethod normalize-action-arg-map :table.row/create
   [_action arg-map]

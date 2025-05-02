@@ -274,8 +274,8 @@
                  (:outputs
                   (actions/perform-action! :table.row/create
                                            test-scope
-                                           [{:database db-id, :table-id table-id, :arg [{name-col "NEW_A"}]}
-                                            {:database db-id, :table-id table-id, :arg [{name-col "NEW_B"}]}]))))
+                                           [{:database db-id, :table-id table-id, :arg {name-col "NEW_A"}}
+                                            {:database db-id, :table-id table-id, :arg {name-col "NEW_B"}}]))))
           (is (= [[76 "NEW_A"]
                   [77 "NEW_B"]]
                  (mt/rows (mt/run-mbql-query categories {:filter   [:starts-with $name "NEW"]
@@ -317,7 +317,7 @@
                          {(format-field-name :id) "STRING"}]]
                 {:database (mt/id)
                  :table-id (mt/id :categories)
-                 :arg      [row]}))))
+                 :row      row}))))
           (testing "Should not have committed any of the valid rows"
             (is (= 75
                    (categories-row-count)))))))))
@@ -335,10 +335,10 @@
                                           test-scope
                                           [{:database (mt/id)
                                             :table-id (mt/id :categories)
-                                            :arg      [{(format-field-name :id) 75}]}
+                                            :arg      {(format-field-name :id) 75}}
                                            {:database (mt/id)
                                             :table-id (mt/id :categories)
-                                            :arg      [{(format-field-name :id) 74}]}])))))
+                                            :arg      {(format-field-name :id) 74}}])))))
         (is (= 73
                (categories-row-count)))))))
 
@@ -365,8 +365,7 @@
                                                  {(format-field-name :id) 107}]]
                                         {:database (mt/id)
                                          :table-id (mt/id :categories)
-                                         :arg
-                                         [row]}))))
+                                         :row      row}))))
           (testing "Should report non-pk keys"
             (is (thrown-with-msg? Exception (re-pattern (format "Rows have the wrong columns: expected #\\{%s\\}, but got #\\{%s\\}"
                                                                 (pr-str (name (format-field-name :id)))
@@ -375,7 +374,7 @@
                                                            test-scope
                                                            [{:database (mt/id)
                                                              :table-id (mt/id :categories)
-                                                             :arg      [{(format-field-name :nonid) 75}]}])))
+                                                             :arg      {(format-field-name :nonid) 75}}])))
             (testing "Even if all PK columns are specified"
               (is (thrown-with-msg? Exception (re-pattern (format "Rows have the wrong columns: expected #\\{%s\\}, but got #\\{%s %s\\}"
                                                                   (pr-str (name (format-field-name :id)))
@@ -387,7 +386,7 @@
                                                                          (format-field-name :nonid) 75}]]
                                                                {:database (mt/id)
                                                                 :table-id (mt/id :categories)
-                                                                :arg      [row]}))))))
+                                                                :row      row}))))))
           (testing "Should report repeat rows"
             (is (thrown-with-msg? Exception (re-pattern (format "Rows need to be unique: repeated rows \\{%s 74\\} × 3, \\{%s 75\\} × 2"
                                                                 (pr-str (name (format-field-name :id)))
@@ -402,7 +401,7 @@
                                                                       {(format-field-name :id) 75}]]
                                                              {:database (mt/id)
                                                               :table-id (mt/id :categories)
-                                                              :arg [row]})))))
+                                                              :row      row})))))
           (is (= 75
                  (categories-row-count))))))))
 
@@ -428,7 +427,7 @@
                                                        {id 2, name "Millet Treat"}]]
                                               {:database (mt/id)
                                                :table-id (mt/id :categories)
-                                               :arg      [row]})))))))
+                                               :row      row})))))))
 
         (testing "rows should be updated in the DB"
           (is (= [[1 "Seed Bowl"]
@@ -448,7 +447,7 @@
                                                             (for [row rows]
                                                               {:database (mt/id)
                                                                :table-id (mt/id :categories)
-                                                               :arg      [row]})))]
+                                                               :row      row})))]
           (testing "Initial values"
             (is (= [[1 "African"]
                     [2 "American"]
@@ -549,7 +548,7 @@
                                                     {id 2, name "Millet Treat"}]]
                                            {:database (mt/id)
                                             :table-id (mt/id :categories)
-                                            :arg      [row]})))))
+                                            :row      row})))))
                                     (catch Exception e e))]
                   (if correct-password?
                     (is (= {:rows-updated 2} response))
