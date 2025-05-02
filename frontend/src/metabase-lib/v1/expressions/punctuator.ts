@@ -1,7 +1,7 @@
 import type { NodeType } from "./pratt";
 import { NODE_TYPE as t } from "./pratt/syntax";
 
-export type PUNCTUATOR = keyof typeof PUNCTUATOR_TO_TYPE;
+export type Punctuator = keyof typeof PUNCTUATOR_TO_TYPE;
 
 const PUNCTUATOR_TO_TYPE = {
   ",": t.COMMA,
@@ -22,7 +22,7 @@ const PUNCTUATOR_TO_TYPE = {
   or: t.LOGICAL_OR,
 } as const;
 
-export function isPunctuator(str: string): str is PUNCTUATOR {
+export function isPunctuator(str: string): str is Punctuator {
   return str in PUNCTUATOR_TO_TYPE;
 }
 
