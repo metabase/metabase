@@ -473,6 +473,13 @@
   ;; This default works for most models, but needs overriding for those that don't rely on entity_id.
   (maybe-labeled model-name entity :name))
 
+(defn log-path-str
+  "Returns a string for logging from a serdes path sequence (i.e. in :serdes/meta)"
+  [elements]
+  (->> elements
+       (map #(str (:model %) " " (:id %)))
+       (str/join " > ")))
+
 ;;; # Export Process
 ;;; An *export* (writing a Metabase instance's entities to disk) happens in two stages: *extraction* and *storage*.
 ;;; These are independent, and deliberately decoupled. The result of extraction is a reducible stream of Clojure maps,
@@ -648,7 +655,7 @@
 (defn log-and-extract-one
   "Extracts a single entity; will replace `extract-one` as public interface once `extract-one` overrides are gone."
   [model opts instance]
-  (log/infof "Extracting %s %s %s" model (:id instance) (entity-id model instance))
+  (log/info "Extracting" {:path (log-path-str (generate-path model instance))})
   (try
     (extract-one model opts instance)
     (catch Exception e
@@ -1032,13 +1039,6 @@
                                   :let [parents (rest (str/split location #"/"))]]
                               [entity_id (map coll-names (concat parents [(str id)]))]))]
     {:collections coll->path}))
-
-(defn log-path-str
-  "Returns a string for logging from a serdes path sequence (i.e. in :serdes/meta)"
-  [elements]
-  (->> elements
-       (map #(str (:model %) " " (:id %)))
-       (str/join " > ")))
 
 ;;; # Utilities for implementing serdes
 ;;; Note that many of these use `^::cache` to cache their lookups during deserialization. This greatly reduces the
