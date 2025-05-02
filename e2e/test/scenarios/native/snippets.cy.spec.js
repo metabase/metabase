@@ -393,7 +393,6 @@ describe("scenarios > question > snippets (EE)", () => {
         .find(".Icon-ellipsis")
         .click({ force: true });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       H.popover().findByText("Change permissions").click();
 
       // Update permissions for "All users" and let them only "View" this folder
