@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-editing.coerce-test
   (:require
    [clojure.data :refer [diff]]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.data-editing.coerce :as coerce]
    [metabase.test :as mt]))
@@ -36,13 +37,15 @@
             :input    "2024-03-20T00:00Z[UTC]"
             :output   "2024-03-20"}
 
-           #_{:strategy :Coercion/ISO8601->Time
-              :input    "2025-05-01T15:30:45Z[UTC]"
-              :output   "15:30:45"}]]
+           {:strategy :Coercion/ISO8601->Time
+            :input    "2025-05-01T15:30:45Z[UTC]"
+            :reversed #(str/ends-with? % "T15:30:45Z[UTC]")
+            :output   "15:30:45"}]]
 
-      (doseq [{:keys [strategy input output]} test-cases]
+      (doseq [{:keys [strategy input reversed output]} test-cases]
         (testing (format "Testing %s conversions" strategy)
-          (let [{:keys [in out]} (get coerce/coercion-fns strategy)]
+          (let [reversed?        (or reversed #{input})
+                {:keys [in out]} (get coerce/coercion-fns strategy)]
             ;; Test input conversion (JSON -> Database format)
             (testing "Input conversion"
               (is (= output (in input))
@@ -51,13 +54,17 @@
 
             ;; Test output conversion (Database format -> JSON)
             (testing "Output conversion"
-              (is (= input (out output))
+              (is (reversed? (out output))
                   (format "Output conversion failed for %s: expected %s, got %s"
-                          strategy input (out output))))
+                          strategy
+                          (if-not reversed
+                            input
+                            (str "something like " input))
+                          (out output))))
 
             ;; Test roundtrip conversion
             (testing "Roundtrip conversion"
-              (is (= input (-> input in out))
+              (is (reversed? (-> input in out))
                   (format "Roundtrip conversion failed for %s: %s -> %s -> %s"
                           strategy input (in input) (out (in input)))))))))))
 
