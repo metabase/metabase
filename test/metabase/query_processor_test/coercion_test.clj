@@ -85,7 +85,8 @@
 
 (deftest date-to-datetime-coercion-test
   (mt/test-drivers (mt/normal-drivers)
-    (doseq [[human-col table col] [["orders created_at" :orders :created_at]]]
+    (doseq [[human-col table col] [["orders created_at (timestamptz)" :orders :created_at]
+                                   ["users last_login (timestamp)"    :users  :last_login]]]
       (testing (format "DateTime->Date coercion works with %s" human-col)
         (let [mp (lib.tu/merged-mock-metadata-provider
                   (lib.metadata.jvm/application-database-metadata-provider (mt/id))
