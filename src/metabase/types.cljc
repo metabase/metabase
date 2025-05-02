@@ -464,14 +464,14 @@
 
 (coercion-hierarchies/define-types! :Coercion/YYYYMMDDHHMMSSString->Temporal :type/Text                 :type/DateTime)
 
+(coercion-hierarchies/define-types! :Coercion/DateTime->Date  :type/DateTime :type/Date)
+
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/YYYYMMDDHHMMSSBytes->Temporal :type/* :type/DateTime)
 
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/String->Float :type/Text :type/Float)
 
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/String->Integer :type/Text  :type/Integer)
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/Float->Integer  :type/Float :type/Integer)
-
-(coercion-hierarchies/define-non-inheritable-type! :Coercion/DateTime->Date  :type/DateTime :type/Date)
 
 (defn is-coercible-from?
   "Whether `coercion-strategy` is allowed for `base-type`."
