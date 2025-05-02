@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
@@ -22,16 +21,7 @@ export const FieldDataSection = ({ field }: Props) => {
   const [isCasting, setIsCasting] = useState(
     field ? field.coercion_strategy != null : false,
   );
-  const previousField = usePrevious(field);
-  const hasFieldIdChanged =
-    previousField && field && previousField.id !== field.id;
   const id = getRawTableFieldId(field);
-
-  useEffect(() => {
-    if (hasFieldIdChanged) {
-      setIsCasting(false);
-    }
-  }, [hasFieldIdChanged]);
 
   useEffect(() => {
     if (field) {
