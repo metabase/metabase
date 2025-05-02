@@ -91,6 +91,10 @@ export const EditTableDataContainer = ({
   const stateUpdateStrategy =
     useTableEditingStateApiUpdateStrategy(fakeTableQuery);
 
+  const editingScope = useMemo(() => {
+    return { "table-id": tableId };
+  }, [tableId]);
+
   const {
     isInserting,
     tableFieldMetadataMap,
@@ -99,6 +103,7 @@ export const EditTableDataContainer = ({
     handleExpandedRowDelete,
   } = useTableCRUD({
     tableId,
+    scope: editingScope,
     datasetData,
     stateUpdateStrategy,
   });
@@ -106,6 +111,7 @@ export const EditTableDataContainer = ({
   const { undo, redo, isUndoLoading, isRedoLoading, currentActionLabel } =
     useTableEditingUndoRedo({
       tableId,
+      scope: editingScope,
       stateUpdateStrategy,
     });
 
