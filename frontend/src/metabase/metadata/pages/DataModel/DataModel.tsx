@@ -47,7 +47,15 @@ export const DataModel = ({ params }: Props) => {
         <Box className={S.tableSectionContainer} h="100%" pb="lg" px="xl">
           <LoadingAndErrorWrapper error={error} loading={isLoading}>
             {table && (
-              <TableSection key={table.id} params={params} table={table} />
+              <TableSection
+                /**
+                 * Make sure internal component state is reset when changing tables.
+                 * This is to avoid state mix-up with optimistic updates.
+                 */
+                key={table.id}
+                params={params}
+                table={table}
+              />
             )}
           </LoadingAndErrorWrapper>
         </Box>
@@ -78,7 +86,14 @@ export const DataModel = ({ params }: Props) => {
           <Box flex="0 0 400px">
             <LoadingAndErrorWrapper error={error} loading={isLoading}>
               {field && (
-                <FieldSection field={field} key={getRawTableFieldId(field)} />
+                <FieldSection
+                  field={field}
+                  /**
+                   * Make sure internal component state is reset when changing fields.
+                   * This is to avoid state mix-up with optimistic updates.
+                   */
+                  key={getRawTableFieldId(field)}
+                />
               )}
             </LoadingAndErrorWrapper>
           </Box>
