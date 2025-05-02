@@ -81,12 +81,12 @@ describe("getLegendTitles", () => {
           {
             isSdk: true,
             sdkMetabaseInstanceUrl: "http://mb-instance.example.com",
-            settings: { "map.region": "foobarbaz.geojson" },
+            settings: { "map.region": "f3b71a29-5e4b-4d6c-8a1f-9c0e2d3a4b5c" },
           },
         );
 
         expect(url).toBe(
-          "http://mb-instance.example.com/api/geojson/foobarbaz.geojson",
+          "http://mb-instance.example.com/api/geojson/f3b71a29-5e4b-4d6c-8a1f-9c0e2d3a4b5c",
         );
       });
     });
