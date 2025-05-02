@@ -7,6 +7,7 @@
   See https://metaboat.slack.com/archives/CKZEMT1MJ/p1736556522733279 for rationale behind this pattern."
   (:require
    [metabase.activity-feed.init]
+   [metabase.cache.init]
    [metabase.channel.init]
    [metabase.cloud-migration.init]
    [metabase.config :as config]
@@ -32,7 +33,9 @@
    [metabase.sync.init]
    [metabase.task-history.init]
    [metabase.task.init]
+   [metabase.testing-api.init]
    [metabase.tiles.init]
+   [metabase.upload.init]
    [metabase.user-key-value.init]
    [metabase.xrays.init]))
 

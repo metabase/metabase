@@ -29,7 +29,7 @@
        (raise e)))))
 
 (defn- json-handler
-  "Given the [[metabase.api.routes/routes]] handler, return a Ring handler that returns `openapi.json`."
+  "Given the [[metabase.api-routes.core/routes]] handler, return a Ring handler that returns `openapi.json`."
   [root-handler]
   (fn handler*
     ([_request]
@@ -58,7 +58,7 @@
        (raise e)))))
 
 (defn make-routes
-  "/api/docs routes. Takes the [[metabase.api.routes/routes]] handler and returns a Ring handler with the signature
+  "/api/docs routes. Takes the [[metabase.api-routes.core/routes]] handler and returns a Ring handler with the signature
 
     (handler request respond raise)"
   [root-handler]
