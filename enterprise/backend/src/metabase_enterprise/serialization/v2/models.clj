@@ -52,7 +52,6 @@
    "DatabaseRouter"
    "DashboardBookmark"
    "DataPermissions"
-   "FieldUsage"
    "GroupTableAccessPolicy"
    "HTTPAction"
    "ImplicitAction"

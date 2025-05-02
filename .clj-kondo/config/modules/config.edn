@@ -380,7 +380,6 @@
           metabase.models.database
           metabase.models.dispatch
           metabase.models.field
-          metabase.models.field-usage
           metabase.models.field-values
           metabase.models.humanization
           metabase.models.init
