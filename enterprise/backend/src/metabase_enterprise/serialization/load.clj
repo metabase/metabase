@@ -16,6 +16,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.settings.core :as setting]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -624,6 +625,10 @@
       (assoc :creator_id    (default-user-id)
              :collection_id (:collection context))
       (update-in [:dataset_query :database] (comp :database fully-qualified-name->context))
+      (update :metadata_analysis_state (fn [state]
+                                         (if (string? state)
+                                           (keyword state)
+                                           (or state :not-started))))
       resolve-visualization-settings
       (cond->
        (-> card

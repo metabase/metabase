@@ -527,6 +527,7 @@
            models
            settings
            task
+           task-history
            util}}
 
   logger

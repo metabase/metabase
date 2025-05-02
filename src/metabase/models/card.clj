@@ -100,7 +100,9 @@
                  :failed      5
                  :blocked     6}
         num->kw (into {} (map (fn [[k v]] [v k])) kw->num)]
-    {:in  kw->num
+    {:in  (merge kw->num                        ; Handle keywords
+                 (update-keys kw->num str)      ; or strings
+                 {nil (kw->num :not-started)})  ; or nil
      :out #(num->kw % :not-started)}))
 
 (t2/deftransforms :model/Card
@@ -874,6 +876,38 @@
   ;; Always returning the card unchanged.
   card)
 
+(defn- has-valid-ident?
+  "Checks that this column both has an `:ident` and that it's valid.
+
+  For a native card, the ident must be based on this card's `entity_id`.
+
+  For a model, the ident must likewise be for this card, **and** `:model/inner_ident` must also be set to the
+  corresponding unwrapped, inner ident."
+  [{:keys [ident model/inner_ident] :as _column} {:keys [entity_id] :as card}]
+  (if (= (:type card) :model)
+    (and ident
+         (lib/valid-model-ident? ident entity_id)
+         inner_ident
+         (= ident (lib/model-ident inner_ident entity_id)))
+    (and ident (lib/valid-basic-ident? ident entity_id))))
+
+(defn all-idents-valid?
+  "If this card has `:result_metadata`, returns true iff all the columns have valid `:ident`s.
+
+  If the card does not have `:result_metadata` (or it's nil or empty), returns false."
+  ([card] (all-idents-valid? card (:result_metadata card)))
+  ([card metadata]
+   (boolean (and (seq metadata)
+                 (every? #(has-valid-ident? % card) metadata)))))
+
+(defn- populate-metadata-analysis-state [{state :metadata_analysis_state :as card}]
+  (cond-> card
+    (string? state) (update :metadata_analysis_state keyword)
+    (not state)     (assoc :metadata_analysis_state   (if (all-idents-valid? card)
+                                                        :analyzed
+                                                        :not-started)
+                           :metadata_analysis_blocker nil)))
+
 (t2/define-after-select :model/Card
   [card]
   ;; +===============================================================================================+
@@ -902,6 +936,7 @@
       (ensure-clause-idents ::before-insert)
       (u/assoc-default :entity_id (u/generate-nano-id)) ; Must have an entity_id before populating the metadata.
       card.metadata/populate-result-metadata
+      populate-metadata-analysis-state
       pre-insert
       populate-query-fields))
 
@@ -961,6 +996,7 @@
              (not verified-result-metadata?)
              (contains? changes :type))
           card.metadata/populate-result-metadata)
+        populate-metadata-analysis-state
         pre-update
         populate-query-fields
         maybe-populate-initially-published-at)))
@@ -1385,7 +1421,7 @@
   [_model-name _opts]
   {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
           :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name
-          :card_schema]
+          :card_schema :metadata_analysis_state]
    :skip [;; cache invalidation is instance-specific
           :cache_invalidated_at
           ;; those are instance-specific analytic columns
@@ -1395,24 +1431,25 @@
           ;; this column is not used anymore
           :cache_ttl]
    :transform
-   {:created_at             (serdes/date)
-    :database_id            (serdes/fk :model/Database :name)
-    :table_id               (serdes/fk :model/Table)
-    :source_card_id         (serdes/fk :model/Card)
-    :collection_id          (serdes/fk :model/Collection)
-    :dashboard_id           (serdes/fk :model/Dashboard)
-    :creator_id             (serdes/fk :model/User)
-    :made_public_by_id      (serdes/fk :model/User)
-    :dataset_query          {:export serdes/export-mbql :import serdes/import-mbql}
-    :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
-    :parameter_mappings     {:export serdes/export-parameter-mappings :import serdes/import-parameter-mappings}
-    :visualization_settings {:export serdes/export-visualization-settings :import serdes/import-visualization-settings}
-    :result_metadata        {:export export-result-metadata :import import-result-metadata}}})
+   {:created_at                (serdes/date)
+    :database_id               (serdes/fk :model/Database :name)
+    :table_id                  (serdes/fk :model/Table)
+    :source_card_id            (serdes/fk :model/Card)
+    :collection_id             (serdes/fk :model/Collection)
+    :dashboard_id              (serdes/fk :model/Dashboard)
+    :creator_id                (serdes/fk :model/User)
+    :made_public_by_id         (serdes/fk :model/User)
+    :metadata_analysis_blocker (serdes/fk :model/Card)
+    :dataset_query             {:export serdes/export-mbql :import serdes/import-mbql}
+    :parameters                {:export serdes/export-parameters :import serdes/import-parameters}
+    :parameter_mappings        {:export serdes/export-parameter-mappings :import serdes/import-parameter-mappings}
+    :visualization_settings    {:export serdes/export-visualization-settings :import serdes/import-visualization-settings}
+    :result_metadata           {:export export-result-metadata :import import-result-metadata}}})
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
            result_metadata table_id source_card_id visualization_settings
-           dashboard_id]}]
+           dashboard_id metadata_analysis_blocker]}]
   (set
    (concat
     (mapcat serdes/mbql-deps parameter_mappings)
@@ -1420,6 +1457,7 @@
     [[{:model "Database" :id database_id}]]
     (when table_id #{(serdes/table->path table_id)})
     (when source_card_id #{[{:model "Card" :id source_card_id}]})
+    (when metadata_analysis_blocker #{[{:model "Card" :id metadata_analysis_blocker}]})
     (when collection_id #{[{:model "Collection" :id collection_id}]})
     (when dashboard_id #{[{:model "Dashboard" :id dashboard_id}]})
     (result-metadata-deps result_metadata)
