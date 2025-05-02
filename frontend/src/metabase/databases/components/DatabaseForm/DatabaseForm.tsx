@@ -14,6 +14,10 @@ import { Flex } from "metabase/ui";
 import type { DatabaseData, Engine } from "metabase-types/api";
 
 import { getEngines, getIsHosted } from "../../selectors";
+import {
+  type ParsedConnectionResult,
+  parseConnectionString,
+} from "../../utils/connectionString";
 import { getDefaultEngineKey } from "../../utils/engine";
 import {
   getSubmitValues,
@@ -147,7 +151,13 @@ const DatabaseFormBody = ({
   setIsDirty,
   config,
 }: DatabaseFormBodyProps): JSX.Element => {
-  const { values, dirty } = useFormikContext<DatabaseData>();
+  const { values, dirty, setFieldValue, validateForm } =
+    useFormikContext<DatabaseData>();
+  const [pendingConnectionString, setPendingConnectionString] = useState<
+    string | null
+  >(null);
+  const [needsValidationAfterPaste, setNeedsValidationAfterPaste] =
+    useState(false);
 
   useEffect(() => {
     setIsDirty?.(dirty);
@@ -156,6 +166,96 @@ const DatabaseFormBody = ({
   const fields = useMemo(() => {
     return engine ? getVisibleFields(engine, values, isAdvanced) : [];
   }, [engine, values, isAdvanced]);
+
+  const applyParsedFields = useCallback(
+    (parsedResult: ParsedConnectionResult) => {
+      Object.entries(parsedResult.fieldValues).forEach(([path, value]) => {
+        const key = path.startsWith("details.") ? path.substring(8) : null;
+        if (key && values.details && key in values.details) {
+          setFieldValue(path, value);
+        } else if (!path.includes(".") && path in values) {
+          setFieldValue(path, value);
+        }
+      });
+    },
+    [setFieldValue, values],
+  );
+
+  const tryEnableSave = useCallback(() => {
+    setIsDirty?.(true);
+    setNeedsValidationAfterPaste(true); // Formik requires a cycle to detect the change and enable the save button
+  }, [setIsDirty]);
+
+  useEffect(() => {
+    if (pendingConnectionString && engine) {
+      const result = parseConnectionString(
+        pendingConnectionString,
+        engines,
+        engine,
+      );
+      applyParsedFields(result);
+      setPendingConnectionString(null);
+      tryEnableSave();
+    }
+  }, [
+    engine,
+    engines,
+    pendingConnectionString,
+    applyParsedFields,
+    tryEnableSave,
+  ]);
+
+  useEffect(() => {
+    if (needsValidationAfterPaste) {
+      void validateForm();
+      setNeedsValidationAfterPaste(false);
+    }
+  }, [needsValidationAfterPaste, validateForm]);
+
+  const handleConnectionStringPaste = useCallback(
+    (e: React.ClipboardEvent<HTMLInputElement>) => {
+      const connectionString = e.clipboardData.getData("text");
+      if (!connectionString) {
+        return;
+      }
+
+      const result = parseConnectionString(connectionString, engines, engine);
+      if (!result.isValid) {
+        return;
+      }
+      e.preventDefault();
+
+      const needsEngineChange =
+        result.engineKey && result.engineKey !== engineKey;
+      if (needsEngineChange) {
+        // Trigger engine change and store string for processing after the form is updated
+        onEngineChange(result.engineKey);
+        setPendingConnectionString(connectionString);
+        // DO NOT apply fields here; useEffect will handle it with the correct engine context
+      } else {
+        // Engine doesn't change, apply all fields immediately using the helper
+        applyParsedFields(result);
+        setPendingConnectionString(null);
+        tryEnableSave();
+      }
+    },
+    [
+      engine,
+      engineKey,
+      engines,
+      onEngineChange,
+      applyParsedFields,
+      tryEnableSave,
+    ],
+  );
+
+  const connectionStringPastable = [
+    "host",
+    "port",
+    "dbname",
+    "user",
+    "password",
+  ];
 
   return (
     <Form data-testid="database-form" className="database-form">
@@ -176,21 +276,29 @@ const DatabaseFormBody = ({
           />
         </>
       )}
+
       {engine && (
         <DatabaseNameField
           engine={engine}
           config={config}
+          onPaste={handleConnectionStringPaste}
           autoFocus={autofocusFieldName === "name"}
         />
       )}
+
       {fields.map((field) => (
         <DatabaseDetailField
           key={field.name}
           field={field}
           autoFocus={autofocusFieldName === field.name}
-          data-kek={field.name}
+          onPaste={
+            connectionStringPastable.includes(field.name)
+              ? handleConnectionStringPaste
+              : undefined
+          }
         />
       ))}
+
       <DatabaseFormFooter
         isDirty={dirty}
         isAdvanced={isAdvanced}
