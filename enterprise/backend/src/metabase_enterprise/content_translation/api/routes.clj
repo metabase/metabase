@@ -29,8 +29,7 @@
                                     :file     (get-in multipart-params ["file" :tempfile])})
   {:status http-status-ok
    :headers {"Content-Type" "application/json"}
-   :body (json/encode {:success true
-                       :message (tru "Import was successful")})})
+   :body (json/encode {:success true})})
 
 (api.macros/defendpoint :get "/dictionary"
   "Provides content translations stored in the content_translations table"

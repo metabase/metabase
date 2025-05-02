@@ -26,7 +26,7 @@ export const contentTranslationApi = EnterpriseApi.injectEndpoints({
         providesTags: () => [listTag("content-translation")],
       }),
       uploadContentTranslationDictionary: builder.mutation<
-        DictionaryArray,
+        { success: boolean },
         UploadContentTranslationDictionaryRequest
       >({
         query: ({ file }) => {
