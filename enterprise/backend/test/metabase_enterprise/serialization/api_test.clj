@@ -6,7 +6,6 @@
    [clojure.walk :as walk]
    [metabase-enterprise.serialization.api :as api.serialization]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
-   [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
@@ -49,7 +48,7 @@
   "Find out entity type by log message"
   [lines]
   (->> lines
-       (keep #(second (re-find #"(?:Extracting|Loading|Storing) (\w+)" %)))
+       (keep #(second (re-find #"(?:Extracting|Loading|Storing) \{:path (\w+)" %)))
        set))
 
 (defn- tar-file-types [f & [raw?]]
