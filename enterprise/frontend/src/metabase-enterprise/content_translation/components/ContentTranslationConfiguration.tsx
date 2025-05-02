@@ -19,7 +19,7 @@ export const ContentTranslationConfiguration = () => {
   const availableLocalesDocsUrl = useDocsUrl(
     "configuring-metabase/localization",
     { anchor: "supported-languages" },
-  );
+  ).url;
 
   return (
     <Stack gap="sm" maw="38rem">
