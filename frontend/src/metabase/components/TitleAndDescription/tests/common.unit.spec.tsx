@@ -2,19 +2,15 @@ import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
 
-import { setup as baseSetup } from "./setup";
+import { type SetupOpts, setup as baseSetup } from "./setup";
 
-function setup(opts: SetupOpts = {}) {
+function setup(opts: SetupOpts) {
   return baseSetup({ hasEnterprisePlugins: false, ...opts });
 }
 
-jest.mock("metabase/i18n/hooks", () => ({
-  useTranslateContent: () => (text) => text,
-}));
-
 describe("TitleAndDescription Component", () => {
   it("displays 'Sample text' and 'Sample description' correctly", async () => {
-    setup();
+    setup({ localeCode: "de" });
     expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
       "Sample text",
     );

@@ -1,3 +1,5 @@
+import fetchMock from "fetch-mock";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
@@ -37,6 +39,15 @@ export function setup({
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
+
+  fetchMock.get(
+    {
+      url: "path:/api/ee/content-translation/dictionary",
+    },
+    {
+      data: [{ locale: "de", msgid: "Sample text", msgstr: "Beispieltext" }],
+    },
+  );
 
   return renderWithProviders(
     <TitleAndDescription
