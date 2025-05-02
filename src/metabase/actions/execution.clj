@@ -99,6 +99,11 @@
                 :parameters             request-parameters
                 :destination-parameters destination-param-ids})))
 
+(def ^:private legacy->current
+  {:row/create :model.row/create
+   :row/update :model.row/update
+   :row/delete :model.row/delete})
+
 (mu/defn- build-implicit-query :- [:map
                                    [:query          ::mbql.s/Query]
                                    [:row-parameters ::lib.schema.actions/row]
@@ -130,8 +135,8 @@
                                       (into {}))
         pk-field-name            (:name pk-field)
         row-parameters           (cond-> simple-parameters
-                                   (not= implicit-action :row/create) (dissoc pk-field-name))
-        requires-pk?             (contains? #{:row/delete :row/update} implicit-action)]
+                                   (not= implicit-action :model.row/create) (dissoc pk-field-name))
+        requires-pk?             (contains? #{:model.row/delete :model.row/update} implicit-action)]
     (api/check (or (not requires-pk?)
                    (some? (get simple-parameters pk-field-name)))
                400
@@ -151,18 +156,22 @@
                                     :type "id"
                                     :value [(get simple-parameters pk-field-name)]}]))))
 
+(defn parse-implicit-action [action-instance]
+  (let [k (keyword (:kind action-instance))]
+    (legacy->current k k)))
+
 (defn- execute-implicit-action!
   [action request-parameters]
-  (let [implicit-action (keyword (:kind action))
+  (let [implicit-action (parse-implicit-action action)
         {:keys [query row-parameters]} (build-implicit-query action implicit-action request-parameters)
-        _ (api/check (or (= implicit-action :row/delete) (seq row-parameters))
+        _ (api/check (or (= implicit-action :model.row/delete) (seq row-parameters))
                      400
                      (tru "Implicit parameters must be provided."))
         arg-map (cond-> query
-                  (= implicit-action :row/create)
+                  (= implicit-action :model.row/create)
                   (assoc :create-row row-parameters)
 
-                  (= implicit-action :row/update)
+                  (= implicit-action :model.row/update)
                   (assoc :update-row row-parameters))]
     (binding [qp.perms/*card-id* (:model_id action)]
       (actions/perform-action-with-single-input-and-output implicit-action arg-map))))
@@ -213,10 +222,10 @@
 
 (defn- fetch-implicit-action-values
   [action request-parameters]
-  (api/check (contains? #{"row/update" "row/delete"} (:kind action))
+  (api/check (contains? #{:model.row/update :model.row/delete} (parse-implicit-action action))
              400
              (tru "Values can only be fetched for actions that require a Primary Key."))
-  (let [implicit-action (keyword (:kind action))
+  (let [implicit-action (parse-implicit-action action)
         {:keys [prefetch-parameters]} (build-implicit-query action implicit-action request-parameters)
         info {:executed-by api/*current-user-id*
               :context     :action
