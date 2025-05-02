@@ -1,10 +1,10 @@
-import { EDITOR_QUOTES } from "./config";
-
 const DOUBLE_QUOTE = '"';
 const SINGLE_QUOTE = "'";
 const OPEN_BRACKET = "[";
 const CLOSE_BRACKET = "]";
 const BACKSLASH = "\\";
+
+export const STRING_LITERAL_DEFAULT_QUOTE = '"';
 
 export type Delimiter =
   | typeof DOUBLE_QUOTE
@@ -45,13 +45,9 @@ const DELIMITER_PAIRS: Record<StartDelimiter, Delimiter> = {
 
 export function formatStringLiteral(
   node: string,
-  {
-    delimiters = EDITOR_QUOTES,
-  }: {
-    delimiters?: { literalQuoteDefault: StartDelimiter };
-  } = {},
+  delimiter: StartDelimiter = STRING_LITERAL_DEFAULT_QUOTE,
 ) {
-  return quoteString(node, delimiters.literalQuoteDefault);
+  return quoteString(node, delimiter);
 }
 
 export function quoteString(string: string, delimiter: StartDelimiter) {
