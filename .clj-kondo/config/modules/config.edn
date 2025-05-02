@@ -730,10 +730,6 @@
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api enterprise/impersonation lib models permissions premium-features query-processor util}}
 
-  enterprise/airgap
-  {:api  #{}
-   :uses #{premium-features util}}
-
   enterprise/analytics
   {:api  #{}
    :uses #{driver premium-features enterprise/advanced-config enterprise/scim enterprise/sso}}
@@ -815,6 +811,10 @@
   enterprise/llm
   {:api  #{metabase-enterprise.llm.api}
    :uses #{analytics analyze api query-processor settings util}}
+
+  enterprise/premium-features
+  {:api  #{}
+   :uses #{premium-features util}}
 
   enterprise/query-reference-validation
   {:api  #{metabase-enterprise.query-reference-validation.api}
