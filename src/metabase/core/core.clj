@@ -27,6 +27,7 @@
    [metabase.settings.core :as setting]
    [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.setup.core :as setup]
+   [metabase.startup.core :as startup]
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -174,6 +175,7 @@
   (init-status/set-progress! 0.95)
   (setting/migrate-encrypted-settings!)
   (database/check-health!)
+  (startup/run-startup-logic!)
   (task/start-scheduler!)
   (queue/start-listeners!)
   (init-status/set-complete!)

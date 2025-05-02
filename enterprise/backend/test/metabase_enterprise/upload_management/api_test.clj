@@ -4,8 +4,8 @@
    [java-time.api :as t]
    [metabase.api.table-test :as oss-test]
    [metabase.test :as mt]
-   [metabase.upload :as upload]
-   [metabase.upload-test :as upload-test]))
+   [metabase.upload.core :as upload]
+   [metabase.upload.impl-test :as upload-test]))
 
 (def list-url "ee/upload-management/tables")
 

@@ -274,7 +274,7 @@
   metabase.test/with-user-in-groups                                                      [[:inner 0]]
   metabase.timeseries-query-processor-test.util/test-timeseries-drivers                  [[:block 0]]
   metabase.timeseries-query-processor-test/run-mbql-query                                [[:inner 0]]
-  metabase.upload-test/with-upload-table!                                                [[:inner 0]]
+  metabase.upload.impl-test/with-upload-table!                                           [[:inner 0]]
   metabase.upload.types/with-currency                                                    [[:default]]
   metabase.upload.types/with-parens                                                      [[:default]]
   metabase.util.async/cancelable-thread                                                  [[:block 0]]

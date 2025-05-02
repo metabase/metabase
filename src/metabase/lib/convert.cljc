@@ -461,7 +461,8 @@
 
 (doseq [tag [:count :avg :count-where :distinct :distinct-where
              :max :median :min :percentile
-             :share :stddev :sum :sum-where]]
+             :share :stddev :sum :sum-where
+             :cum-sum :cum-count]]
   (lib.hierarchy/derive tag ::aggregation))
 
 (doseq [tag [:+ :- :* :/
