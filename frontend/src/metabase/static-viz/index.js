@@ -70,7 +70,7 @@ export function RenderChart(rawSeries, dashcardSettings, options) {
     rawSeriesWithDashcardSettings,
   );
 
-  const hasDevWatermark = Boolean(options.tokenFeatures["development-mode"]);
+  const hasDevWatermark = Boolean(options.tokenFeatures?.["development-mode"]);
 
   return ReactDOMServer.renderToStaticMarkup(
     <StaticVisualization
