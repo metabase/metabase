@@ -1,7 +1,7 @@
 (ns metabase.lib.parse-param-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib.parse-param :as params.parse-param]))
+   [metabase.lib.parse-param :as lib.parse-param]))
 
 (defn- ->param [name]
   {:type :metabase.lib.parse/param
@@ -15,27 +15,27 @@
 (deftest simple-param-test
   (testing "Should parse simple params"
     (is (= (->param "foo_bar")
-           (params.parse-param/parse-param "foo_bar")))))
+           (lib.parse-param/parse-param "foo_bar")))))
 
 (deftest special-param-test
   (testing "Should parse params with special charactesr in the name"
     (is (= (->param "5: the-best_!#?")
-           (params.parse-param/parse-param "5: the-best_!#?")))))
+           (lib.parse-param/parse-param "5: the-best_!#?")))))
 
 (deftest no-arg-function-test
   (testing "Should parse a no-arg function"
     (is (= (->function-param "mb.foo" [])
-           (params.parse-param/parse-param "mb.foo()")))))
+           (lib.parse-param/parse-param "mb.foo()")))))
 
 (deftest single-quote-arg-function-test
   (testing "Should parse a function with a single-quote string arg"
     (is (= (->function-param "mb.foo" ["hello"])
-           (params.parse-param/parse-param "mb.foo('hello')")))))
+           (lib.parse-param/parse-param "mb.foo('hello')")))))
 
 (deftest double-quote-arg-function-test
   (testing "Should parse a function with a double-quote string arg"
     (is (= (->function-param "mb.foo" ["hello"])
-           (params.parse-param/parse-param "mb.foo(\"hello\")")))))
+           (lib.parse-param/parse-param "mb.foo(\"hello\")")))))
 
 (deftest mixed-quote-arg-function-test
   (testing "Should parse a function with both single-quote and double-quote string args"
