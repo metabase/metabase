@@ -207,7 +207,7 @@ describe("pie", () => {
   });
 
   describe("combineWithPieChart", () => {
-    const dataSource = createDataSource("card", 2, "Q2");
+    const dataSource = createDataSource("card", `entity_2`, "Q2");
 
     const metricColumn3 = createMockNumericColumn({ id: 5, name: "avg" });
     const dimensionColumn3 = createMockCategoryColumn({

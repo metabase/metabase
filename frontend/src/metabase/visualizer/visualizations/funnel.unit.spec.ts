@@ -20,7 +20,7 @@ import {
 } from "./funnel";
 
 describe("funnel", () => {
-  const dataSource = createDataSource("card", 1, "Q1");
+  const dataSource = createDataSource("card", `entity_1`, "Q1");
 
   const metricColumn = createMockNumericColumn({ id: 1, name: "count" });
   const metricColumnRef = createVisualizerColumnReference(
@@ -59,7 +59,7 @@ describe("funnel", () => {
     },
   });
 
-  const dataSource2 = createDataSource("card", 2, "Q2");
+  const dataSource2 = createDataSource("card", `entity_2`, "Q2");
   const scalarDataset2 = createMockDataset({
     data: {
       cols: [metricColumn2],

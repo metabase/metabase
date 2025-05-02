@@ -27,7 +27,7 @@ import {
 
 describe("cartesian", () => {
   describe("addColumnToCartesianChart", () => {
-    const dataSource = createDataSource("card", 1, "Card 1");
+    const dataSource = createDataSource("card", `entity_1`, "Card 1");
 
     const column1 = createMockDatetimeColumn({ id: 1, name: "CREATED_AT" });
     const column1Ref = createVisualizerColumnReference(dataSource, column1, []);
@@ -251,11 +251,11 @@ describe("cartesian", () => {
   });
 
   describe("removeColumnFromCartesianChart", () => {
-    const dataSource1 = createDataSource("card", 1, "Card 1");
+    const dataSource1 = createDataSource("card", `entity_1`, "Card 1");
     const metric1 = createMockNumericColumn({ id: 1, name: "count" });
     const dimension1 = createMockDatetimeColumn({ id: 2, name: "created_at" });
 
-    const dataSource2 = createDataSource("card", 2, "Card 2");
+    const dataSource2 = createDataSource("card", `entity_2`, "Card 2");
     const metric2 = createMockNumericColumn({ id: 3, name: "avg" });
     const dimension2 = createMockDatetimeColumn({ id: 4, name: "date" });
 
@@ -528,7 +528,7 @@ describe("cartesian", () => {
         createMockDataset({
           data: { cols: [newMetricColumn, newDimensionColumn] },
         }),
-        createDataSource("card", 2, "Card 2"),
+        createDataSource("card", `entity_2`, "Card 2"),
       );
 
       expect(nextState.columns.map((col) => col.name)).toEqual([
@@ -622,7 +622,7 @@ describe("cartesian", () => {
             ],
           },
         }),
-        createDataSource("card", 2, "Card 2"),
+        createDataSource("card", `entity_2`, "Card 2"),
       );
 
       expect(nextState.columns.map((col) => col.name)).toEqual([
@@ -658,7 +658,7 @@ describe("cartesian", () => {
   });
 
   describe("scatter bubble size", () => {
-    const dataSource = createDataSource("card", 1, "Card 1");
+    const dataSource = createDataSource("card", `entity_1`, "Card 1");
 
     const column1 = createMockNumericColumn({ id: 1, name: "count" });
     const column1Ref = createVisualizerColumnReference(dataSource, column1, []);
