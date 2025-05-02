@@ -26,7 +26,7 @@ import { SnippetRow } from "../SnippetRow";
 import S from "./SnippetSidebar.module.css";
 import { SnippetSidebarEmptyState } from "./SnippetSidebarEmptyState";
 
-const MIN_SNIPPETS_FOR_SEARCH = 15;
+const MIN_SNIPPETS_FOR_SEARCH = 1;
 
 class SnippetSidebarInner extends React.Component {
   state = {
@@ -42,10 +42,18 @@ class SnippetSidebarInner extends React.Component {
     insertSnippet: PropTypes.func.isRequired,
   };
 
+  searchBox = React.createRef();
+
+  componentDidUpdate() {
+    if (this.state.showSearch) {
+      this.searchBox.current?.focus();
+    }
+  }
+
   showSearch = () => {
     this.setState({ showSearch: true });
-    this.searchBox && this.searchBox.focus();
   };
+
   hideSearch = () => {
     this.setState({ showSearch: false, searchString: "" });
   };
@@ -107,7 +115,7 @@ class SnippetSidebarInner extends React.Component {
                 >
                   <input
                     className={cx(CS.input, CS.inputBorderless, CS.p0)}
-                    ref={(e) => (this.searchBox = e)}
+                    ref={this.searchBox}
                     onChange={(e) =>
                       this.setState({ searchString: e.target.value })
                     }
