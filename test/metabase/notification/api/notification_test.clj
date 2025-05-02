@@ -1060,7 +1060,7 @@
         (is (=? {:condition     ["=" ["context" "event_info" "table_id"] table-id]
                  :payload       {:event_name "event/action.success"
                                  :table_id   table-id
-                                 :action     "row/create"}
+                                 :action     "model.row/create"}
                  :creator_id    (mt/user->id :crowberto)
                  :payload_type  "notification/system-event"}
                 notification))
