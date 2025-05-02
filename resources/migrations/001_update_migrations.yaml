@@ -11307,10 +11307,19 @@ databaseChangeLog:
                   remarks: FK to the card that stopped this one from being analyzed
                   constraints:
                     nullable: true
-                    referencedTableName: report_card
-                    referencedColumnNames: id
-                    foreignKeyName: fk_metadata_analysis_blocker_ref_card_id
-                    deleteCascade: false
+
+  - changeSet:
+      id: v55.2025-05-02T19:06:21
+      author: bshepherdson
+      comment: FK constraint and index for Card.metadata_analysis_blocker
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: metadata_analysis_blocker
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_report_card_metadata_analysis_blocker_ref_report_card_id
+            onDelete: SET NULL
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
