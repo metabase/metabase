@@ -148,13 +148,14 @@ export const updateUrl = createThunkAction(
         }
       }
 
+      const originalQuestion = getOriginalQuestion(getState());
+      const isAdHocModelOrMetric = isAdHocModelOrMetricQuestion(
+        question,
+        originalQuestion,
+      );
+
       if (dirty == null) {
-        const originalQuestion = getOriginalQuestion(getState());
         const uiControls = getUiControls(getState());
-        const isAdHocModelOrMetric = isAdHocModelOrMetricQuestion(
-          question,
-          originalQuestion,
-        );
         dirty =
           !originalQuestion ||
           (!isAdHocModelOrMetric &&
@@ -176,8 +177,9 @@ export const updateUrl = createThunkAction(
         datasetEditorTab = getDatasetEditorTab(getState());
       }
 
+      const card = isAdHocModelOrMetric ? getCard(getState()) : question.card();
       const newState = {
-        card: question._doNotCallSerializableCard(),
+        card,
         cardId: question.id(),
         objectId,
       };
