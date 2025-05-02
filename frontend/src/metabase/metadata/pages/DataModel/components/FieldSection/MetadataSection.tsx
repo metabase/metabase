@@ -1,17 +1,19 @@
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
+import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Stack, TextInputBlurChange } from "metabase/ui";
-import type { Field } from "metabase-types/api";
+import type { Field, Table } from "metabase-types/api";
 
 import { SectionPill } from "../SectionPill";
 
 interface Props {
   field: Field;
+  table: Table;
 }
 
-export const MetadataSection = ({ field }: Props) => {
+export const MetadataSection = ({ field, table }: Props) => {
   const [updateField] = useUpdateFieldMutation();
   const id = getRawTableFieldId(field);
 
@@ -35,6 +37,13 @@ export const MetadataSection = ({ field }: Props) => {
         onBlurChange={(event) => {
           updateField({ id, display_name: event.target.value });
         }}
+      />
+
+      <SemanticTypeAndTargetPicker
+        field={field}
+        // idFields={idFields}
+        table={table}
+        // onUpdateField={onUpdateField}
       />
     </Stack>
   );

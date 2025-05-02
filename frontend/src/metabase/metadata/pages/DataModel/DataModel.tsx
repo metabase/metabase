@@ -85,7 +85,7 @@ export const DataModel = ({ params }: Props) => {
         <Flex bg="accent-gray-light" flex="1">
           <Box flex="0 0 400px">
             <LoadingAndErrorWrapper error={error} loading={isLoading}>
-              {field && (
+              {table && field && (
                 <FieldSection
                   field={field}
                   /**
@@ -93,6 +93,7 @@ export const DataModel = ({ params }: Props) => {
                    * This is to avoid state mix-up with optimistic updates.
                    */
                   key={getRawTableFieldId(field)}
+                  table={table}
                 />
               )}
             </LoadingAndErrorWrapper>
