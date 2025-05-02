@@ -7,6 +7,7 @@
    ;; TODO: integrations.slack should be migrated to channel.slack
    [metabase.channel.slack :as slack]
    [metabase.models.params.shared :as shared.params]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.malli :as mu]
    [metabase.util.markdown :as markdown]
@@ -149,6 +150,11 @@
    (format "*%s*\n%s" (:name filter) (shared.params/value-string filter (public-settings/site-locale)))
    attachment-text-length-limit))
 
+(defn- include-branding?
+  "Branding in exports is included only for instances that do not have a whitelabel feature flag."
+  []
+  (not (premium-features/enable-whitelabeling?)))
+
 (def metabase-branding-link
   "Metabase link with UTM params related to the branding exports campaign"
   "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=slack")
@@ -162,16 +168,20 @@
                                 :text (truncate (:name dashboard) header-text-limit)
                                 :emoji true}}
         link-section    {:type "section"
-                         :fields [{:type "mrkdwn"
-                                   :text (mkdwn-link-text
-                                          (urls/dashboard-url (:id dashboard) parameters)
-                                          (format "*Sent from %s by %s*"
-                                                  (public-settings/site-name)
-                                                  creator-name))}
-                                  {:type "mrkdwn"
-                                   :text (mkdwn-link-text
-                                          metabase-branding-link
-                                          "Made with Metabase :heart:")}]}
+                         :fields (cond->
+                                  [{:type "mrkdwn"
+                                    :text (mkdwn-link-text
+                                           (urls/dashboard-url (:id dashboard) parameters)
+                                           (format "*Sent from %s by %s*"
+                                                   (public-settings/site-name)
+                                                   creator-name))}]
+                                   (include-branding?)
+                                   (conj
+                                    {:type "mrkdwn"
+                                     :text (mkdwn-link-text
+                                            metabase-branding-link
+                                            "Made with Metabase :heart:")}))}
+
         filter-fields   (for [filter parameters]
                           {:type "mrkdwn"
                            :text (filter-text filter)})
