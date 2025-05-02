@@ -13,6 +13,7 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { getHasDataAccess } from "metabase/selectors/data";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   ActionIcon,
   Box,
@@ -58,6 +59,9 @@ export function BrowseMetrics() {
 
   const databases = data?.data ?? [];
   const hasDataAccess = getHasDataAccess(databases);
+  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
+
+  const canCreateMetric = !isEmbeddingIframe && hasDataAccess;
 
   return (
     <BrowseContainer aria-labelledby={titleId}>
@@ -86,7 +90,7 @@ export function BrowseMetrics() {
                 setMetricFilters={setMetricFilters}
               />
             )}
-            {hasDataAccess && (
+            {canCreateMetric && (
               <Tooltip label={t`Create a new metric`} position="bottom">
                 <ActionIcon
                   aria-label={t`Create a new metric`}
@@ -107,7 +111,7 @@ export function BrowseMetrics() {
           <Stack mb="lg" gap="md" w="100%">
             {isEmpty ? (
               <MetricsEmptyState
-                canCreateMetric={hasDataAccess}
+                canCreateMetric={canCreateMetric}
                 newMetricLink={newMetricLink}
               />
             ) : (
