@@ -538,6 +538,7 @@
                     (is (can-connect? details))))))))))))
 
 (deftest maybe-test-and-migrate-details!-test
+  "We create very ambiguous database details and loop over which version should succeed on connect."
   (let [pk-key (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
         pk-user (tx/db-test-env-var-or-throw :snowflake :pk-user)
         pk-db (tx/db-test-env-var-or-throw :snowflake :pk-db "SNOWFLAKE_SAMPLE_DATA")]
@@ -564,10 +565,14 @@
                                                 :private-key-id secret-id}))
                             all-possible-details (driver/db-details-to-test-and-migrate :snowflake details)]
                       details-to-succeed all-possible-details
-                      :let [uses-secret? (set/intersection details-to-succeed #{:private-key-id :private-key-path :private-key-value})]]
-                (secret/upsert-secret-value! secret-id (:name secret) (:kind secret) (:source secret) (:value secret))
+                      :let [uses-secret? (seq (set/intersection (m/remove-vals nil? details-to-succeed)
+                                                                #{:private-key-id :private-key-path :private-key-value}))]]
+                ;; If a password detail succeeds it will delete the secret, this resets it.
+                (let [updated-secret (secret/upsert-secret-value! secret-id (:name secret) (:kind secret) (:source secret) (:value secret))]
+                  (if (not= (:id updated-secret) secret-id)
+                    (t2/update! :model/Secret :id (:id updated-secret) {:id secret-id})))
                 (with-redefs [driver/can-connect? (fn [_ d] (= d (assoc details-to-succeed :engine :snowflake)))]
-                  (testing (format "use-password: %s private-key-options: %s" use-password options)
+                  (testing (format "use-password: %s private-key-options: %s uses-secret? %s" use-password options uses-secret?)
                     (spit pk-path pk-key)
                     (is (= 4 (count all-possible-details)))
                     (t2/update! (t2/table-name :model/Database) (mt/id) {:details (json/encode details)})
@@ -586,11 +591,13 @@
                                   msgs))
                           (is (= {:keys success-keys
                                   :keys-removed keys-removed}
-                                 migrating-to)))))
-                    (is (= (-> details-to-succeed
-                               (cond-> uses-secret? (assoc :private-key-id secret-id))
-                               (dissoc :private-key-options :private-key-value :private-key-path))
-                           (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) (mt/id))))
+                                 migrating-to))))
+                    (let [migrated-details (:details (t2/select-one :model/Database (mt/id)))
+                          expected-migrated (cond-> details-to-succeed
+                                              uses-secret? (assoc :private-key-id secret-id)
+                                              :always (dissoc :private-key-options :private-key-value :private-key-path))]
+                      (is (nil? (driver/db-details-to-test-and-migrate :snowflake migrated-details)))
+                      (is (= expected-migrated migrated-details)))
                     (when uses-secret?
                       (let [source (case (:private-key-options details-to-succeed "local")
                                      "local" :file-path
