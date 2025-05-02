@@ -1,6 +1,6 @@
 (ns metabase.lib.parse-param-test
   (:require
-   [clojure.test :refer :all]
+   [clojure.test :refer [deftest is testing]]
    [metabase.lib.parse-param :as lib.parse-param]))
 
 (defn- ->param [name]
