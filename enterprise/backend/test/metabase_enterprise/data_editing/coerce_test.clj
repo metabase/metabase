@@ -59,3 +59,7 @@
               (is (= input (-> input in out))
                   (format "Roundtrip conversion failed for %s: %s -> %s -> %s"
                           strategy input (in input) (out (in input)))))))))))
+
+(deftest coercion-fns-static-test
+  (testing "all coercion pair have to have an in and out function"
+    (testing (every? #(and (fn? (:in %)) (fn? (:out %))) coerce/coercion-fns))))

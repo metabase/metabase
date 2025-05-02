@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-editing.coerce
   (:require
-   [metabase.util.date-2 :as u.date])
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.malli :as mu])
   (:import
    (clojure.lang BigInt)
    (java.time LocalDateTime ZonedDateTime ZoneId)
@@ -89,8 +90,8 @@
 (def coercion-fns
   "Maps a coercion strategy to a map containing both input and output conversion functions.
 
-   :input  - Function to convert from input JSON to database format
-   :output - Function to convert from database format to JSON output
+   :in  - Function to convert from input JSON to database format
+   :out - Function to convert from database format to JSON output
 
    Assumes the input/output values are valid for the coercion strategy and can fit within bounds."
   {:Coercion/UNIXSeconds->DateTime          {:in  #'json-zdt->unix-seconds
