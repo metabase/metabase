@@ -32,10 +32,7 @@ import { defer } from "metabase/lib/promise";
 import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
 import { uuid } from "metabase/lib/uuid";
-import {
-  getDashboardQuestions,
-  getDashboardUiParameters,
-} from "metabase/parameters/utils/dashboards";
+import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -742,12 +739,11 @@ export const fetchDashboard = createAsyncThunk(
       const lastUsedParametersValues = result["last_used_param_values"] ?? {};
 
       const metadata = getMetadata(getState());
-      const questions = getDashboardQuestions(result.dashcards, metadata);
       const parameters = getDashboardUiParameters(
+        result.parameters,
         result.dashcards,
-        result.parameters ?? [],
+        result.param_fields,
         metadata,
-        questions,
       );
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())

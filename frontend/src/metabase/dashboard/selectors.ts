@@ -387,17 +387,17 @@ export const getQuestions = createSelector(
 );
 
 export const getParameters = createSelector(
-  [getDashboardComplete, getMetadata, getQuestions],
-  (dashboard, metadata, questions) => {
+  [getDashboardComplete, getMetadata],
+  (dashboard, metadata) => {
     if (!dashboard || !metadata) {
       return [];
     }
 
     return getDashboardUiParameters(
-      dashboard.dashcards,
       dashboard.parameters,
+      dashboard.dashcards,
+      dashboard.param_fields,
       metadata,
-      questions,
     );
   },
 );

@@ -233,13 +233,12 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
 
   const PARAMETER_MAPPING: Record<ParameterType, UiParameter[]> = {
     text: getDashboardUiParameters(
-      dashboard.dashcards,
       [CATEGORY_FILTER],
-      createMockMetadata({}),
+      dashboard.dashcards,
       {},
+      createMockMetadata({}),
     ),
     number: getDashboardUiParameters(
-      dashboard.dashcards,
       [
         createMockParameter({
           id: NUMBER_FILTER_ID,
@@ -249,35 +248,35 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
           type: "number/=",
         }),
       ],
-      createMockMetadata({}),
+      dashboard.dashcards,
       {},
+      createMockMetadata({}),
     ),
     dropdown_multiple: getDashboardUiParameters(
-      dashboard.dashcards,
       [CATEGORY_FILTER],
+      dashboard.dashcards,
+      {},
       createMockMetadata({
         databases: [createSampleDatabase()],
       }),
-      {},
     ),
     dropdown_single: getDashboardUiParameters(
-      dashboard.dashcards,
       [CATEGORY_SINGLE_FILTER],
+      dashboard.dashcards,
+      {},
       createMockMetadata({
         databases: [createSampleDatabase()],
       }),
-      {},
     ),
     search: getDashboardUiParameters(
-      dashboard.dashcards,
       [CATEGORY_FILTER],
+      dashboard.dashcards,
+      {},
       createMockMetadata({
         databases: [createSampleDatabase()],
       }),
-      {},
     ),
     date_all_options: getDashboardUiParameters(
-      dashboard.dashcards,
       [
         createMockParameter({
           id: DATE_FILTER_ID,
@@ -287,11 +286,11 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
           type: "date/all-options",
         }),
       ],
-      createMockMetadata({}),
+      dashboard.dashcards,
       {},
+      createMockMetadata({}),
     ),
     date_month_year: getDashboardUiParameters(
-      dashboard.dashcards,
       [
         createMockParameter({
           id: DATE_FILTER_ID,
@@ -301,11 +300,11 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
           type: "date/month-year",
         }),
       ],
-      createMockMetadata({}),
+      dashboard.dashcards,
       {},
+      createMockMetadata({}),
     ),
     date_quarter_year: getDashboardUiParameters(
-      dashboard.dashcards,
       [
         createMockParameter({
           id: DATE_FILTER_ID,
@@ -315,11 +314,11 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
           type: "date/quarter-year",
         }),
       ],
-      createMockMetadata({}),
+      dashboard.dashcards,
       {},
+      createMockMetadata({}),
     ),
     date_single: getDashboardUiParameters(
-      dashboard.dashcards,
       [
         createMockParameter({
           id: DATE_FILTER_ID,
@@ -329,11 +328,11 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
           type: "date/single",
         }),
       ],
-      createMockMetadata({}),
+      dashboard.dashcards,
       {},
+      createMockMetadata({}),
     ),
     date_range: getDashboardUiParameters(
-      dashboard.dashcards,
       [
         createMockParameter({
           id: DATE_FILTER_ID,
@@ -343,11 +342,11 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
           type: "date/range",
         }),
       ],
-      createMockMetadata({}),
+      dashboard.dashcards,
       {},
+      createMockMetadata({}),
     ),
     date_relative: getDashboardUiParameters(
-      dashboard.dashcards,
       [
         createMockParameter({
           id: DATE_FILTER_ID,
@@ -357,11 +356,11 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
           type: "date/relative",
         }),
       ],
-      createMockMetadata({}),
+      dashboard.dashcards,
       {},
+      createMockMetadata({}),
     ),
     temporal_unit: getDashboardUiParameters(
-      dashboard.dashcards,
       [
         createMockParameter({
           id: UNIT_OF_TIME_FILTER_ID,
@@ -371,8 +370,9 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
           type: "temporal-unit",
         }),
       ],
-      createMockMetadata({}),
+      dashboard.dashcards,
       {},
+      createMockMetadata({}),
     ),
   };
   return (
