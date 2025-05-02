@@ -519,13 +519,21 @@
               update!      #(mt/user-http-request :crowberto :put  200 url {:rows %})]
           (is (= [] (field-values)))
           (create! [{:n "a"}])
+          ;; It's async
+          (Thread/sleep 10)
           (is (= ["a"] (field-values)))
           (create! [{:n "b"} {:n "c"}])
+          ;; It's async
+          (Thread/sleep 10)
           (is (= ["a" "b" "c"] (field-values)))
           (update! [{:id 2, :n "d"}])
+          ;; It's async
+          (Thread/sleep 10)
           (is (= ["a" "c" "d"] (field-values)))
           (create! [{:n "a"}])
           (update! [{:id 1, :n "e"}])
+          ;; It's async
+          (Thread/sleep 10)
           (is (= ["a" "c" "d" "e"] (field-values))))))))
 
 (deftest get-row-action-test
