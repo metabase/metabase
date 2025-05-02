@@ -173,7 +173,7 @@
   [notification]
   (case (:payload_type notification)
     :notification/system-event
-    (mu/generate-example (notification/notification-payload-schema notification))
+    (notification/sample-payload notification)
 
     ;; else
     (notification/notification-payload notification)))
