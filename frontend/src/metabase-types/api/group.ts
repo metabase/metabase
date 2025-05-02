@@ -20,14 +20,17 @@ export type Member = {
   is_superuser: boolean;
 };
 
-export type Group = {
+export type GroupInfo = {
   id: GroupId;
-  members: Member[];
   name: string;
   member_count: number;
 };
 
-export type GroupListQuery = Omit<Group, "members">;
+export type Group = GroupInfo & {
+  members: Member[];
+};
+
+export type GroupListQuery = GroupInfo;
 
 export type BaseGroupInfo = {
   id: GroupId;

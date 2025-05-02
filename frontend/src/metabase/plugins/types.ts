@@ -35,7 +35,7 @@ export type GetRemoveMembershipConfirmation = (
   currentUser: User,
   currentUserMemberships: Membership[],
   deletedMembershipId: number,
-) => Partial<ConfirmationState> | null;
+) => Pick<ConfirmationState, "title" | "message"> | null;
 
 export type GetRevokeManagerPeopleRedirect = (
   currentUser: User,

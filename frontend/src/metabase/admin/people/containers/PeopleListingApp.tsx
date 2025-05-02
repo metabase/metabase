@@ -62,7 +62,10 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
         }
       />
       {isAdmin && (
-        <Radio.Group value={status} onChange={updateStatus}>
+        <Radio.Group
+          value={status}
+          onChange={(val) => updateStatus(USER_STATUS[val])}
+        >
           <Group>
             <Radio label={t`Active`} value={USER_STATUS.active} />
             <Radio label={t`Deactivated`} value={USER_STATUS.deactivated} />
@@ -76,20 +79,22 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
     isAdmin && status === USER_STATUS.active ? t`Invite someone` : "";
 
   return (
-    <LoadingAndErrorWrapper error={error} loading={isLoading}>
+    <LoadingAndErrorWrapper error={error} loading={isLoading || !currentUser}>
       <AdminPaneLayout
         headingContent={headingContent}
         buttonText={buttonText}
         buttonLink={Urls.newUser()}
       >
-        <PeopleList
-          groups={groups}
-          isAdmin={isAdmin}
-          currentUser={currentUser}
-          query={query}
-          onNextPage={handleNextPage}
-          onPreviousPage={handlePreviousPage}
-        />
+        {currentUser && (
+          <PeopleList
+            groups={groups}
+            isAdmin={isAdmin}
+            currentUser={currentUser}
+            query={query}
+            onNextPage={handleNextPage}
+            onPreviousPage={handlePreviousPage}
+          />
+        )}
         {children}
       </AdminPaneLayout>
     </LoadingAndErrorWrapper>

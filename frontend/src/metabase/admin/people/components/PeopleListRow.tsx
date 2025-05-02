@@ -19,8 +19,8 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import type {
-  Group,
   GroupId,
+  GroupInfo,
   Member,
   Membership,
   User,
@@ -36,7 +36,7 @@ const enablePasswordLoginKey = "enable-password-login";
 interface PeopleListRowProps {
   user: User;
   showDeactivated: boolean;
-  groups: Group[];
+  groups: GroupInfo[];
   userMemberships: Membership[];
   isCurrentUser: boolean;
   isAdmin: boolean;
