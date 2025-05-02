@@ -113,6 +113,20 @@ const DATE_TEST_CASES: CastTestCase[] = [
     filterValue: "March 15, 2025",
     expectedRowCount: 1,
   },
+  {
+    name: "Datetime",
+    expression: "date([Created At])",
+    filterOperator: "Before",
+    filterValue: "April 27, 2016",
+    expectedRowCount: 1,
+  },
+  {
+    name: "DatetimeExpression",
+    expression: "date(dateTimeAdd([Created At], 1, 'day'))",
+    filterOperator: "Before",
+    filterValue: "April 28, 2016",
+    expectedRowCount: 1,
+  },
 ];
 
 const FLOAT_TEST_CASES: CastTestCase[] = [
