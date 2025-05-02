@@ -386,4 +386,5 @@
   (-> card card->template-tag-field-ids field-ids->param-field-values))
 
 (defmethod param-fields :model/Card [card]
-  (-> card card->template-tag-field-ids param-field-ids->fields))
+  (let [field-ids (card->template-tag-field-ids card)]
+    (param-field-ids->fields {"" field-ids})))
