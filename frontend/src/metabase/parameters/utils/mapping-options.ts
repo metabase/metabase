@@ -4,6 +4,7 @@ import _ from "underscore";
 import { tag_names } from "cljs/metabase.parameters.shared";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { isActionDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
+import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { getAllowedIframeAttributes } from "metabase/visualizations/visualizations/IFrameViz/utils";
 import * as Lib from "metabase-lib";
@@ -49,11 +50,12 @@ function buildStructuredQuerySectionOptions(
   stageIndex: number,
   group: Lib.ColumnGroup,
   columns: Lib.ColumnMetadata[],
+  tc?: ContentTranslationFunction,
 ): StructuredQuerySectionOption[] {
   const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
   return columns.map((column) => {
-    const columnInfo = Lib.displayInfo(query, stageIndex, column);
+    const columnInfo = Lib.displayInfo(query, stageIndex, column, tc);
 
     return {
       sectionName: getGroupName(groupInfo, stageIndex) ?? t`Summaries`,
@@ -131,6 +133,7 @@ export function getParameterMappingOptions(
   parameter: Parameter | null | undefined = null,
   card: Card,
   dashcard: BaseDashboardCard | null | undefined = null,
+  tc?: ContentTranslationFunction,
 ): ParameterMappingOption[] {
   if (dashcard && isVirtualDashCard(dashcard)) {
     if (["heading", "text"].includes(card.display)) {
@@ -185,6 +188,7 @@ export function getParameterMappingOptions(
             stageIndex,
             group,
             Lib.getColumnsFromColumnGroup(group),
+            tc,
           ),
         );
       },

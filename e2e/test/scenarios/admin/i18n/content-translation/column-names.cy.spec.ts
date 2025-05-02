@@ -9,6 +9,8 @@ import {
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { type CardDisplayType, cardDisplayTypes } from "metabase-types/api";
 import { P, match } from "ts-pattern";
+import { columnNamesWithTypeText } from "./constants";
+import { openDashCardCardParameterMapper } from "./helpers/e2e-content-translation-helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
   SAMPLE_DATABASE;
@@ -59,13 +61,26 @@ describe("scenarios > admin > localization > content translation of column names
             cy.signInAsNormalUser();
           });
 
-          it("column headers", () => {
+          it.only("column headers", () => {
             H.visitQuestion(productsQuestionId);
             cy.findByTestId("table-header").within(() => {
               germanFieldNames.forEach((row) => {
                 cy.findByText(row.msgid).should("be.visible");
                 cy.findByText(row.msgstr).should("not.exist");
               });
+            });
+          });
+
+          it("dashcard parameter mapper", () => {
+            openDashCardCardParameterMapper();
+
+            H.popover().within(() => {
+              Object.values(usedGermanFieldNames)
+                .filter((tr) => columnNamesWithTypeText.includes(tr.msgid))
+                .forEach((row) => {
+                  cy.findByText(row.msgstr).should("not.exist");
+                  cy.findByText(row.msgid).should("be.visible");
+                });
             });
           });
         });
@@ -293,6 +308,19 @@ describe("scenarios > admin > localization > content translation of column names
             });
           });
           // - pie
+
+          it("dashcard parameter mapper", () => {
+            openDashCardCardParameterMapper();
+
+            H.popover().within(() => {
+              Object.values(usedGermanFieldNames)
+                .filter((tr) => columnNamesWithTypeText.includes(tr.msgid))
+                .forEach((row) => {
+                  cy.findByText(row.msgid).should("not.exist");
+                  cy.findByText(row.msgstr).should("be.visible");
+                });
+            });
+          });
         });
       });
     });
