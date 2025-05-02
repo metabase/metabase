@@ -1222,11 +1222,11 @@
 
 (deftest continue-on-error-test
   (let [change-ser   (fn [ser changes] ;; kind of like left-join, but right side is indexed
-                        (vec (for [entity ser]
-                               (merge entity (get changes (:entity_id entity))))))
+                       (vec (for [entity ser]
+                              (merge entity (get changes (:entity_id entity))))))
         logs-extract (fn [re logs]
-                        (keep #(rest (re-find re %))
-                              (map :message logs)))]
+                       (keep #(rest (re-find re %))
+                             (map :message logs)))]
     (mt/with-empty-h2-app-db
       (mt/with-temp [:model/Collection coll {:name "coll"}
                      :model/Card       c1   {:name "card1" :collection_id (:id coll)}
