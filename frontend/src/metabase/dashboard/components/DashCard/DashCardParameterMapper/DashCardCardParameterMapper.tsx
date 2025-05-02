@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
@@ -9,7 +8,6 @@ import {
   getQuestionByCard,
 } from "metabase/dashboard/selectors";
 import { isNativeDashCard, isQuestionDashCard } from "metabase/dashboard/utils";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { connect } from "metabase/lib/redux";
 import {
   type ParameterMappingOption,
@@ -73,24 +71,14 @@ export function DashCardCardParameterMapper({
   mappingOptions,
   isRecentlyAutoConnected,
 }: DashcardCardParameterMapperProps) {
-  const tc = useTranslateContent();
   const isQuestion = isQuestionDashCard(dashcard);
   const hasSeries = isQuestion && dashcard.series && dashcard.series.length > 0;
   const isAction = isActionDashCard(dashcard);
   const isDisabled = mappingOptions.length === 0 || isAction;
   const isNative = isQuestion && isNativeDashCard(dashcard);
 
-  const translatedMappingOptions = useMemo(
-    () =>
-      mappingOptions.map((opt) => ({
-        ...opt,
-        name: tc(opt.name),
-      })),
-    [mappingOptions, tc],
-  );
-
   const selectedMappingOption = getMappingOptionByTarget(
-    translatedMappingOptions,
+    mappingOptions,
     target,
     question,
     editingParameter ?? undefined,
@@ -124,7 +112,7 @@ export function DashCardCardParameterMapper({
         dashcard={dashcard}
         question={question}
         editingParameter={editingParameter}
-        mappingOptions={translatedMappingOptions}
+        mappingOptions={mappingOptions}
         isQuestion={isQuestion}
         card={card}
         selectedMappingOption={selectedMappingOption}

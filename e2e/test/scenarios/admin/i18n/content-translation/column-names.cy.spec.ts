@@ -1,11 +1,8 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
-import { columnNamesWithTypeText, germanFieldNames } from "./constants";
-import {
-  openDashCardCardParameterMapper,
-  uploadTranslationDictionary,
-} from "./helpers/e2e-content-translation-helpers";
+import { germanFieldNames } from "./constants";
+import { uploadTranslationDictionary } from "./helpers/e2e-content-translation-helpers";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -23,10 +20,12 @@ describe("scenarios > admin > localization > content translation of column names
     before(() => {
       H.restore();
     });
+
     beforeEach(() => {
       cy.signInAsAdmin();
       H.setTokenFeatures("all");
     });
+
     describe("after uploading related German translations", () => {
       before(() => {
         cy.signInAsAdmin();
@@ -63,7 +62,7 @@ describe("scenarios > admin > localization > content translation of column names
             cy.signInAsNormalUser();
           });
 
-          it.only("column headers", () => {
+          it("column headers", () => {
             H.visitQuestion(productsQuestionId);
             cy.findByTestId("table-header").within(() => {
               usedGermanFieldNames.forEach((row) => {
@@ -103,19 +102,6 @@ describe("scenarios > admin > localization > content translation of column names
                 cy.findByText(row.msgstr).should("not.exist");
                 cy.findByText(row.msgid).should("be.visible");
               });
-            });
-          });
-
-          it("dashcard parameter mapper", () => {
-            openDashCardCardParameterMapper();
-
-            H.popover().within(() => {
-              Object.values(usedGermanFieldNames)
-                .filter((tr) => columnNamesWithTypeText.includes(tr.msgid))
-                .forEach((row) => {
-                  cy.findByText(row.msgstr).should("not.exist");
-                  cy.findByText(row.msgid).should("be.visible");
-                });
             });
           });
         });
@@ -193,19 +179,6 @@ describe("scenarios > admin > localization > content translation of column names
               cy.findByPlaceholderText(/Finden/).type("kat");
               cy.findByText("Erstellt am").should("not.exist");
               cy.findByText("Kategorie").should("be.visible");
-            });
-          });
-
-          it("dashcard parameter mapper", () => {
-            openDashCardCardParameterMapper();
-
-            H.popover().within(() => {
-              Object.values(usedGermanFieldNames)
-                .filter((tr) => columnNamesWithTypeText.includes(tr.msgid))
-                .forEach((row) => {
-                  cy.findByText(row.msgid).should("not.exist");
-                  cy.findByText(row.msgstr).should("be.visible");
-                });
             });
           });
         });
