@@ -59,6 +59,7 @@
    [dev.migrate :as dev.migrate]
    [dev.model-tracking :as model-tracking]
    [dev.render-png :as render-png]
+   [hashp.config]
    [hashp.preload :as hashp]
    [honey.sql :as sql]
    [java-time.api :as t]
@@ -373,6 +374,9 @@
      (mt/with-driver (:engine db#)
        (mt/with-db db#
          ~@body))))
+
+;; default is to output to *err* right now, which is not displayed in nrepl console
+(alter-var-root #'hashp.config/*hashp-output* (constantly *out*))
 
 (defmacro p
   "#p, but to use in pipelines like `(-> 1 inc dev/p inc)`.
