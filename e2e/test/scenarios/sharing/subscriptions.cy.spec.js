@@ -109,8 +109,8 @@ describe("scenarios > dashboard > subscriptions", () => {
 
       it("should not add a recipient when Escape is pressed (metabase#24629)", () => {
         openDashboardSubscriptions(ORDERS_DASHBOARD_ID);
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Email it").click();
+
+        H.sidebar().findByText("Email it").click();
 
         const input = cy.findByPlaceholderText(
           "Enter user names or email addresses",
