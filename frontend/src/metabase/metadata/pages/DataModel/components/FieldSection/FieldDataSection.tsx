@@ -7,10 +7,13 @@ import {
   canCoerceFieldType,
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
-import { Box, Icon, Stack, Switch, TextInput } from "metabase/ui";
+import { Box, Flex, Icon, Stack, Switch, TextInput } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
 import { SectionPill } from "../SectionPill";
+
+import SubInputFollowIllustration from "./illustrations/sub-input-follow.svg?component";
+import SubInputIllustration from "./illustrations/sub-input.svg?component";
 
 interface Props {
   field: Field;
@@ -43,38 +46,52 @@ export const FieldDataSection = ({ field }: Props) => {
         value={field.name}
       />
 
-      <TextInput
-        disabled
-        label={t`Data type`}
-        rightSection={<Icon name="lock" />}
-        rightSectionPointerEvents="none"
-        value={field.database_type}
-      />
-
-      {canCoerceFieldType(field) && (
-        <Switch
-          checked={isCasting}
-          label={t`Cast to a specific data type`}
-          size="xs"
-          onChange={(event) => {
-            setIsCasting(event.target.checked);
-
-            if (!event.target.checked) {
-              updateField({ id, coercion_strategy: null });
-            }
-          }}
+      <Stack gap={0}>
+        <TextInput
+          disabled
+          label={t`Data type`}
+          rightSection={<Icon name="lock" />}
+          rightSectionPointerEvents="none"
+          value={field.database_type}
         />
-      )}
 
-      {canCoerceFieldType(field) && isCasting && (
-        <CoercionStrategyPicker
-          baseType={field.base_type}
-          value={field.coercion_strategy ?? undefined}
-          onChange={(coercionStrategy) => {
-            updateField({ id, coercion_strategy: coercionStrategy });
-          }}
-        />
-      )}
+        {canCoerceFieldType(field) && (
+          <>
+            <Flex gap="xs" ml={12}>
+              {isCasting ? (
+                <SubInputFollowIllustration />
+              ) : (
+                <SubInputIllustration />
+              )}
+
+              <Switch
+                checked={isCasting}
+                flex="1"
+                label={t`Cast to a specific data type`}
+                my="md"
+                size="xs"
+                onChange={(event) => {
+                  setIsCasting(event.target.checked);
+
+                  if (!event.target.checked) {
+                    updateField({ id, coercion_strategy: null });
+                  }
+                }}
+              />
+            </Flex>
+
+            {isCasting && (
+              <CoercionStrategyPicker
+                baseType={field.base_type}
+                value={field.coercion_strategy ?? undefined}
+                onChange={(coercionStrategy) => {
+                  updateField({ id, coercion_strategy: coercionStrategy });
+                }}
+              />
+            )}
+          </>
+        )}
+      </Stack>
     </Stack>
   );
 };
