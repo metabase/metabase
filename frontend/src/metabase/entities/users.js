@@ -1,7 +1,4 @@
-import { assocIn } from "icepick";
-
 import {
-  sessionApi,
   skipToken,
   useGetUserQuery,
   useListUserRecipientsQuery,
@@ -9,14 +6,7 @@ import {
   userApi,
 } from "metabase/api";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
-import { generatePassword } from "metabase/lib/security";
-import MetabaseSettings from "metabase/lib/settings";
 import { UserSchema } from "metabase/schema";
-
-export const PASSWORD_RESET_EMAIL =
-  "metabase/entities/users/PASSWORD_RESET_EMAIL";
-export const PASSWORD_RESET_MANUAL =
-  "metabase/entities/users/RESET_PASSWORD_MANUAL";
 
 const getUserList = (query = {}, dispatch) =>
   entityCompatibleQuery(query, dispatch, userApi.endpoints.listUsers);
@@ -72,67 +62,11 @@ const Users = createEntity({
     getName: (user) => user.common_name,
   },
 
-  actionTypes: {
-    PASSWORD_RESET_EMAIL,
-    PASSWORD_RESET_MANUAL,
-  },
-
   actionDecorators: {
-    create: (thunkCreator) => (user) => async (dispatch, getState) => {
-      if (!MetabaseSettings.isEmailConfigured()) {
-        user = {
-          ...user,
-          password: generatePassword(),
-        };
-      }
-      const result = await thunkCreator(user)(dispatch, getState);
-
-      return {
-        // HACK: include user ID and password for temporaryPasswords reducer
-        id: result.result,
-        password: user.password,
-        ...result,
-      };
-    },
     update: (thunkCreator) => (user) => async (dispatch, getState) => {
       const result = await thunkCreator(user)(dispatch, getState);
       return result;
     },
-  },
-
-  objectActions: {
-    resetPasswordEmail:
-      ({ email }) =>
-      async (dispatch) => {
-        await entityCompatibleQuery(
-          email,
-          dispatch,
-          sessionApi.endpoints.forgotPassword,
-        );
-        dispatch({ type: PASSWORD_RESET_EMAIL });
-      },
-    resetPasswordManual:
-      async ({ id }, password = generatePassword()) =>
-      async (dispatch) => {
-        await entityCompatibleQuery(
-          { id, password },
-          dispatch,
-          userApi.endpoints.updatePassword,
-        );
-        dispatch({ type: PASSWORD_RESET_MANUAL, payload: { id, password } });
-      },
-  },
-
-  reducer: (state = {}, { type, payload, error }) => {
-    if (error) {
-      return state;
-    }
-    switch (type) {
-      case PASSWORD_RESET_MANUAL:
-        return assocIn(state, [payload.id, "password"], payload.password);
-      default:
-        return state;
-    }
   },
 });
 
