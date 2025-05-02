@@ -103,7 +103,7 @@
       (m/map-kv-vals coerce row))))
 
 (defn perform-bulk-action!
-  "Operates on rows in the database, supply an action-kw: :bulk/create, :bulk/update, :bulk/delete.
+  "Operates on rows in the database, supply an action-kw: :table.row/create, :table.row/update, :table.row/delete.
   The input `rows` is given different semantics depending on the action type, see actions/perform-action!."
   [action-kw user-id scope table-id rows & {:keys [existing-context]}]
   ;; TODO make this work for multi instances by using the metabase_cluster_lock table, or something similar
@@ -133,7 +133,7 @@
   are required, that work must be done before calling this function."
   [user-id scope table-id rows]
   (api/check-500 user-id)
-  (let [res (perform-bulk-action! :bulk/create user-id scope table-id rows)]
+  (let [res (perform-bulk-action! :table.row/create user-id scope table-id rows)]
     {:created-rows (map :after res)}))
 
 (defn- row-update-event

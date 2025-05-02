@@ -838,11 +838,11 @@
   (let [table-id (mt/id :categories)]
     (notification.tu/with-system-event-notification!
       [{noti-id-1 :id} {:notification-system-event {:event_name :event/action.success
-                                                    :action     :row/create
+                                                    :action     :model.row/create
                                                     :table_id   table-id}}]
       (notification.tu/with-system-event-notification!
         [{noti-id-2 :id} {:notification-system-event {:event_name :event/action.success
-                                                      :action :row/create
+                                                      :action :model.row/create
                                                       :table_id   table-id}}]
         (testing "returns notifications for the given table"
           (is (= #{noti-id-1 noti-id-2}
@@ -1051,7 +1051,7 @@
           notification (mt/user-http-request :crowberto :post 200 "notification"
                                              {:payload_type :notification/system-event
                                               :payload      {:table_id   table-id
-                                                             :action     :row/create
+                                                             :action     :model.row/create
                                                              :event_name :event/action.success}
                                               :creator_id   (mt/user->id :crowberto)
                                               :condition    [:= [:context "event_info" "table_id"] table-id]

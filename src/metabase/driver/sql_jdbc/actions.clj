@@ -188,7 +188,7 @@
 
 (defmulti prepare-query*
   "Multimethod for preparing a honeysql query `hsql-query` for a given action type `action`.
-  `action` is a keyword like `:row/create` or `:bulk/create`; `hsql-query` is a generic
+  `action` is a keyword like `:model.row/create` or `:table.row/create`; `hsql-query` is a generic
   query of the type corresponding to `action`."
   {:changelog-test/ignore true, :arglists '([driver action hsql-query]), :added "0.46.0"}
   (fn [driver action _]
@@ -303,7 +303,7 @@
          :before   row-before
          :after    nil}))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :row/delete] :- (result-schema [:map [:rows-deleted :int]])
+(mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/delete] :- (result-schema [:map [:rows-deleted :int]])
   [action context inputs]
   (let [database       (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
@@ -351,7 +351,7 @@
          :before   row-before
          :after    row-after}))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :row/update]
+(mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/update]
   [action context inputs]
   (let [database          (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
@@ -399,8 +399,8 @@
                                                 (for [[col val] result]
                                                   [:= (keyword col) val]))))
         select-sql-args (sql.qp/format-honeysql driver select-hsql)]
-    (log/tracef ":row/create SELECT HoneySQL:\n\n%s" (u/pprint-to-str select-hsql))
-    (log/tracef ":row/create SELECT SQL + args:\n\n%s" (u/pprint-to-str select-sql-args))
+    (log/tracef ":model.row/create SELECT HoneySQL:\n\n%s" (u/pprint-to-str select-hsql))
+    (log/tracef ":model.row/create SELECT SQL + args:\n\n%s" (u/pprint-to-str select-sql-args))
     (first (jdbc/query {:connection conn} select-sql-args {:identifiers identity, :transaction? false, :keywordize? false}))))
 
 (defn- row-create!* [action database {:keys [create-row] :as query}]
@@ -411,23 +411,23 @@
                          :values      [(cast-values driver create-row db-id (get-in query [:query :source-table]))]}
                         (prepare-query driver action))
         sql-args    (sql.qp/format-honeysql driver create-hsql)]
-    (log/tracef ":row/create HoneySQL:\n\n%s" (u/pprint-to-str create-hsql))
-    (log/tracef ":row/create SQL + args:\n\n%s" (u/pprint-to-str sql-args))
+    (log/tracef ":model.row/create HoneySQL:\n\n%s" (u/pprint-to-str create-hsql))
+    (log/tracef ":model.row/create SQL + args:\n\n%s" (u/pprint-to-str sql-args))
     (with-jdbc-transaction [conn db-id]
       (let [result (with-auto-parse-sql-exception driver database action
                      (jdbc/execute! {:connection conn} sql-args {:return-keys  true
                                                                  :identifiers  identity
                                                                  :transaction? false
                                                                  :keywordize?  false}))
-            _      (log/tracef ":row/create INSERT returned\n\n%s" (u/pprint-to-str result))
+            _      (log/tracef ":model.row/create INSERT returned\n\n%s" (u/pprint-to-str result))
             row    (update-keys (select-created-row driver create-hsql conn result) keyword)]
-        (log/tracef ":row/create returned row %s" (pr-str row))
+        (log/tracef ":model.row/create returned row %s" (pr-str row))
         {:table-id (-> query :query :source-table)
          :db-id    (u/the-id database)
          :before nil
          :after  row}))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :row/create] :- (result-schema [:map [:created-row ::row]])
+(mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/create] :- (result-schema [:map [:created-row ::row]])
   [action context inputs :- [:sequential ::mbql.s/Query]]
   (let [database (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
@@ -496,17 +496,17 @@
       ;; We're not yet batching per table, due to the "mapcat". Need to rework the row functions.
       :xform   (mapcat #(map (partial input-fn database (:table-id %)) (:rows %)))})))
 
-(mr/def ::bulk-row-input
+(mr/def ::table-row-input
   [:map
    [:table-id ::lib.schema.id/table]
    ;; TODO un-nest rows into the top-level sequence, to make things more composable.
    [:rows [:sequential ::lib.schema.actions/row]]])
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :bulk/create]
-  [_action context inputs :- [:sequential ::bulk-row-input]]
+(mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/create]
+  [_action context inputs :- [:sequential ::table-row-input]]
   (let [[errors results]
         (batch-execution-by-table-id!
-         {:row-action :row/create
+         {:row-action :model.row/create
           :row-fn     row-create!*
           :inputs     inputs
           :input-fn   (fn [database table-id row]
@@ -520,9 +520,9 @@
                        :errors      errors
                        :results     results})))
     {:context (record-mutations context results)
-     :outputs [{:created-rows (map :after results)}]}))
+     :outputs (mapv :after results)}))
 
-;;;; Shared stuff for both `:bulk/delete` and `:bulk/update`
+;;;; Shared stuff for both `:table.row/delete` and `:table.row/update`
 
 (mu/defn- table-id->pk-field-name->id :- [:map-of ::lib.schema.common/non-blank-string ::lib.schema.id/field]
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
@@ -561,7 +561,7 @@
                                                            (pr-str field-name)))]]
                  [:= [:field field-id nil] value])))
 
-;;;; `:bulk/delete`
+;;;; `:table.row/delete`
 
 (defn- check-rows-have-expected-columns-and-no-other-keys
   "Make sure all `rows` have all the keys in `expected-columns` *and no other keys*, or return a 400."
@@ -603,12 +603,12 @@
                                           (format "%s × %d" (pr-str row) repeat-count))))
                     {:status-code 400, :repeated-rows repeats}))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :bulk/delete]
-  [_action context inputs :- [:sequential ::bulk-row-input]]
+(mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/delete]
+  [_action context inputs :- [:sequential ::table-row-input]]
   (let [[errors results]
         (batch-execution-by-table-id!
          {:inputs        inputs
-          :row-action    :row/delete
+          :row-action    :model.row/delete
           :row-fn        row-delete!*
           :validate-fn   (fn [database table-id rows]
                            (let [pk-name->id (table-id->pk-field-name->id (:id database) table-id)]
@@ -655,12 +655,12 @@
                        :all-keys    (set (keys row))
                        :pk-names    pk-names})))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :bulk/update]
-  [_action context inputs :- [:sequential ::bulk-row-input]]
+(mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/update]
+  [_action context inputs :- [:sequential ::table-row-input]]
   (let [[errors results]
         (batch-execution-by-table-id!
          {:inputs     inputs
-          :row-action :row/update
+          :row-action :model.row/update
           :row-fn     row-update!*
           :input-fn   (fn [database table-id row]
                         ;; We could optimize the worst case a bit by pre-validating all the rows.
