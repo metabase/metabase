@@ -615,7 +615,7 @@
     (track-n-cols-for-autosizing! (or col-count (count ordered-cols)) sheet)
     (when (not pivot?)
       (setup-header-row! sheet (count ordered-cols))
-      (spreadsheet/add-row! sheet streaming.common/column-titles ordered-cols (or viz-settings {})  format-rows?))
+      (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols (or viz-settings {})  format-rows?)))
     sheet))
 
 (defn get-formatter
