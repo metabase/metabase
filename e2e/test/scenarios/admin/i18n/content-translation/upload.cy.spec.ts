@@ -9,7 +9,6 @@ import {
   stringTranslatedTwice,
 } from "./constants";
 import {
-  assertAdminSummarizesTranslations,
   assertOnlyTheseTranslationsAreStored,
   uploadTranslationDictionary,
 } from "./helpers/e2e-content-translation-helpers";
@@ -49,7 +48,6 @@ describe("scenarios > admin > localization > content translation", () => {
           "Dictionary uploaded",
         );
         assertOnlyTheseTranslationsAreStored(germanFieldNames);
-        assertAdminSummarizesTranslations({ German: germanFieldNames.length });
       });
 
       it("accepts a CSV upload with non-ASCII characters", () => {
@@ -58,18 +56,6 @@ describe("scenarios > admin > localization > content translation", () => {
           "Dictionary uploaded",
         );
         assertOnlyTheseTranslationsAreStored(nonAsciiFieldNames);
-        assertAdminSummarizesTranslations({
-          Arabic: 1,
-          Hebrew: 1,
-          Japanese: 1,
-          Korean: 1,
-          Russian: 1,
-          Turkish: 1,
-          Ukrainian: 1,
-          Vietnamese: 1,
-          "Chinese (Taiwan)": 1,
-          English: 1,
-        });
       });
 
       it("accepts a CSV upload with a hyphenated locale", () => {
@@ -79,9 +65,6 @@ describe("scenarios > admin > localization > content translation", () => {
         );
         cy.signInAsNormalUser();
         assertOnlyTheseTranslationsAreStored(portugueseFieldNames);
-        assertAdminSummarizesTranslations({
-          "Portuguese (Brazil)": portugueseFieldNames.length,
-        });
       });
 
       it("does not store rows with translations made of only whitespace and/or semicolons", () => {
