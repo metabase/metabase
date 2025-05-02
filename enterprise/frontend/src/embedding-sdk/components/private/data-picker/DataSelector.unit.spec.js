@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
 import { getIcon, render, renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
-import { UnconnectedDataSelector as DataSelector } from "metabase/query_builder/components/DataSelector";
 import {
   createMockDatabase,
   createMockSavedQuestionsDatabase,
@@ -17,6 +16,8 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
+
+import { UnconnectedDataSelector as DataSelector } from "./DataSelector";
 
 const MULTI_SCHEMA_DB_ID = 2;
 const MULTI_SCHEMA_TABLE1_ID = 100;
