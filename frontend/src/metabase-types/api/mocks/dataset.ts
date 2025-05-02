@@ -14,7 +14,6 @@ export const createMockColumn = (
 ): DatasetColumn => {
   return {
     id: 1,
-    entity_id: `entity_${data.id ?? 1}`,
     display_name: "Column",
     source: "native",
     name: "column",

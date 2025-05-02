@@ -82,14 +82,14 @@ describe("getInitialStateForCardDataSource", () => {
         {
           name: "COLUMN_1",
           originalName: "CREATED_AT",
-          sourceId: "card:1",
+          sourceId: `card:${dashCard.card.entity_id}`,
         },
       ],
       COLUMN_2: [
         {
           name: "COLUMN_2",
           originalName: "SOME_METRIC",
-          sourceId: "card:1",
+          sourceId: `card:${dashCard.card.entity_id}`,
         },
       ],
     });

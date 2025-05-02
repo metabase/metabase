@@ -115,10 +115,17 @@ export function DatasetsList({
         .filter((maybeCard) =>
           ["card", "dataset", "metric"].includes(maybeCard.model),
         )
-        .map((card) => ({
-          ...createDataSource("card", card.entity_id, card.name),
-          cardId: card.id,
-        }));
+        .map((card) => {
+          const entityId = "entity_id" in card ? card.entity_id : null;
+          if (!entityId) {
+            return null;
+          }
+          return {
+            ...createDataSource("card", entityId, card.name),
+            cardId: card.id,
+          };
+        })
+        .filter(isNotNull);
     }
     return result.data
       .map((item) =>
@@ -126,7 +133,7 @@ export function DatasetsList({
         shouldIncludeDashboardQuestion(item, dashboardId)
           ? {
               ...createDataSource("card", item.entity_id, item.name),
-              cardId: item.id,
+              cardId: Number(item.id),
             }
           : null,
       )

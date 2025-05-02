@@ -229,6 +229,8 @@ export function createDashboardWithVisualizerDashcards() {
       viewsColumnQuestionEntityId,
     } = this;
 
+    console.log(">>>this", this);
+
     H.createDashboard().then(({ body: { id: dashboardId } }) => {
       const dc1 = createVisualizerDashcardWithTimeseriesBreakout(
         ordersCountByCreatedAtQuestionId,
