@@ -4,4 +4,5 @@
   See https://metaboat.slack.com/archives/CKZEMT1MJ/p1736556522733279 for rationale behind this pattern."
   (:require
    [metabase.sync.events.sync-database]
+   [metabase.sync.settings]
    [metabase.sync.task.sync-databases]))
