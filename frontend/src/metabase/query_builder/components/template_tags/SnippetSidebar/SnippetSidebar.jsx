@@ -157,7 +157,11 @@ class SnippetSidebarInner extends React.Component {
                     />
                   )}
 
-                  <Flex align="center" justify="flex-end">
+                  <Flex
+                    align="center"
+                    justify="flex-end"
+                    data-testid="snippet-header-buttons"
+                  >
                     {[
                       ...PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map((f) =>
                         f(this, { className: S.HeaderButton }),

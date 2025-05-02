@@ -1,6 +1,5 @@
 const { H } = cy;
 import { USER_GROUPS } from "e2e/support/cypress_data";
-import { modal } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
@@ -388,15 +387,14 @@ describe("scenarios > question > snippets (EE)", () => {
       cy.icon("snippet").click();
 
       // Edit permissions for a snippet folder
-      cy.findByTestId("sidebar-right").within(() => {
-        cy.findByText("Snippet Folder")
-          .next()
-          .find(".Icon-ellipsis")
-          .click({ force: true });
-      });
+      H.rightSidebar()
+        .findByText("Snippet Folder")
+        .next()
+        .find(".Icon-ellipsis")
+        .click({ force: true });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Change permissions").click();
+      H.popover().findByText("Change permissions").click();
 
       // Update permissions for "All users" and let them only "View" this folder
       H.modal().within(() => {
@@ -406,15 +404,17 @@ describe("scenarios > question > snippets (EE)", () => {
       });
 
       H.popover().contains("View").click();
-      modal().button("Save").click();
+      H.modal().button("Save").click();
 
       cy.wait("@updatePermissions");
 
       // Now let's do the sanity check for the top level (root) snippet permissions and make sure nothing changed there
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Snippets").parent().next().find(".Icon-ellipsis").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Change permissions").click();
+      H.rightSidebar()
+        .findByTestId("snippet-header-buttons")
+        .icon("ellipsis")
+        .click();
+
+      H.popover().findByText("Change permissions").click();
 
       // UI check
       H.modal().within(() => {
