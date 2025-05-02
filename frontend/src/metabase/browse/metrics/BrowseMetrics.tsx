@@ -84,25 +84,27 @@ export function BrowseMetrics() {
                 {t`Metrics`}
               </Group>
             </Title>
-            {hasVerifiedMetrics && (
-              <MetricFilterControls
-                metricFilters={metricFilters}
-                setMetricFilters={setMetricFilters}
-              />
-            )}
-            {canCreateMetric && (
-              <Tooltip label={t`Create a new metric`} position="bottom">
-                <ActionIcon
-                  aria-label={t`Create a new metric`}
-                  size={32}
-                  variant="viewHeader"
-                  component={ForwardRefLink}
-                  to={newMetricLink}
-                >
-                  <Icon name="add" />
-                </ActionIcon>
-              </Tooltip>
-            )}
+            <Group gap="xs">
+              {canCreateMetric && (
+                <Tooltip label={t`Create a new metric`} position="bottom">
+                  <ActionIcon
+                    aria-label={t`Create a new metric`}
+                    size={32}
+                    variant="viewHeader"
+                    component={ForwardRefLink}
+                    to={newMetricLink}
+                  >
+                    <Icon name="add" />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {hasVerifiedMetrics && (
+                <MetricFilterControls
+                  metricFilters={metricFilters}
+                  setMetricFilters={setMetricFilters}
+                />
+              )}
+            </Group>
           </Flex>
         </BrowseSection>
       </BrowseHeader>
