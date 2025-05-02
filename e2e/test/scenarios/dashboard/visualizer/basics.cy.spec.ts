@@ -413,10 +413,10 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByText("Add to dashboard").click({ force: true });
     });
 
-    // // save the dashboard
+    // save the dashboard
     H.saveDashboard();
 
-    // // check that the dashboard saved and the card is in the first tab
+    // check that the dashboard saved and the card is in the first tab
     H.getDashboardCard(0).within(() => {
       cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
     });
@@ -450,5 +450,27 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       );
       cy.findByText("Created At: Month").should("exist");
     });
+  });
+
+  it("should allow changing the viz when no dataset is selected (VIZ-929)", () => {
+    createDashboardWithVisualizerDashcards();
+    H.editDashboard();
+
+    H.showDashcardVisualizerModal(3);
+
+    H.removeDataSource(PRODUCTS_COUNT_BY_CREATED_AT.name);
+
+    H.modal().within(() => {
+      cy.findByText("Scatterplot").click();
+    });
+
+    H.switchToAddMoreData();
+
+    H.selectDataset(ORDERS_COUNT_BY_CREATED_AT.name);
+
+    // For now let's just check we're not crashing
+    // and as a follow up we should check that columns are actually assigned properly
+    // but for now that's require too big a change
+    cy.findAllByText("Something’s gone wrong").should("not.exist");
   });
 });

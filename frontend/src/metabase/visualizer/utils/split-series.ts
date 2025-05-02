@@ -19,7 +19,7 @@ export function shouldSplitVisualizerSeries(
     dimensions
       .map((columnName) => {
         const mapping = columnValuesMapping[columnName];
-        if (isDataSourceNameRef(mapping[0])) {
+        if (!mapping || isDataSourceNameRef(mapping[0])) {
           return;
         }
         return mapping[0]?.sourceId;
