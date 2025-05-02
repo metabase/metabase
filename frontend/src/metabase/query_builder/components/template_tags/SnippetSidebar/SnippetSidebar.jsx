@@ -136,10 +136,9 @@ class SnippetSidebarInner extends React.Component {
                     }}
                   />
                   <Button
-                    variant="subtle"
+                    variant="transparent"
                     onClick={this.hideSearch}
-                    p="sm"
-                    title={t`Close search`}
+                    className={S.HeaderButton}
                   >
                     <Icon name="close" />
                   </Button>
@@ -160,12 +159,16 @@ class SnippetSidebarInner extends React.Component {
                   <Flex align="center" justify="flex-end">
                     {[
                       ...PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map((f) =>
-                        f(this, {}),
+                        f(this, { className: S.HeaderButton }),
                       ),
                     ]}
 
                     {snippets.length >= MIN_SNIPPETS_FOR_SEARCH && (
-                      <Button variant="subtle" onClick={this.showSearch} p="sm">
+                      <Button
+                        variant="transparent"
+                        onClick={this.showSearch}
+                        className={S.HeaderButton}
+                      >
                         <Icon name="search" />
                       </Button>
                     )}
@@ -173,7 +176,10 @@ class SnippetSidebarInner extends React.Component {
                     {snippetCollection.can_write && !showSearch && (
                       <Menu position="bottom-end">
                         <Menu.Target>
-                          <Button variant="subtle" p="sm">
+                          <Button
+                            variant="transparent"
+                            className={S.HeaderButton}
+                          >
                             <Icon name="add" />
                           </Button>
                         </Menu.Target>
