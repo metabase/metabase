@@ -6,6 +6,10 @@ type CastTestCase = {
   filterOperator: string;
   filterValue: string;
   expectedRowCount: number;
+  expectedTableData?: {
+    columns: string[];
+    firstRows: string[][];
+  };
 };
 
 const TEXT_TEST_CASES: CastTestCase[] = [
@@ -119,6 +123,10 @@ const DATE_TEST_CASES: CastTestCase[] = [
     filterOperator: "Before",
     filterValue: "April 27, 2016",
     expectedRowCount: 1,
+    expectedTableData: {
+      columns: ["ID", "Datetime"],
+      firstRows: [["36", "April 26, 2016"]],
+    },
   },
   {
     name: "DatetimeExpression",
@@ -126,6 +134,10 @@ const DATE_TEST_CASES: CastTestCase[] = [
     filterOperator: "Before",
     filterValue: "April 28, 2016",
     expectedRowCount: 1,
+    expectedTableData: {
+      columns: ["ID", "DatetimeExpression"],
+      firstRows: [["36", "April 27, 2016"]],
+    },
   },
 ];
 
@@ -233,6 +245,12 @@ function testFilterWithExpressions(
     addFilter(testCase);
     H.visualize();
     H.assertQueryBuilderRowCount(testCase.expectedRowCount);
+
+    if (testCase.expectedTableData) {
+      // @ts-expect-error: assertTableData is not typed
+      H.assertTableData(testCase.expectedTableData);
+    }
+
     H.openNotebook();
     removeCustomColumn(testCase);
   });
