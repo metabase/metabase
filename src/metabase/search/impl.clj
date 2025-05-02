@@ -54,10 +54,17 @@
     ;; We filter what we can (i.e., everything in a collection) out already when querying
     true))
 
+;; TODO: remove this implementation now that we check permissions in the SQL, leaving it in for now to guard against
+;; issue with new pure sql implementation
 (defmethod check-permissions-for-model :table
-  [_search-ctx _instance]
-  ;; we've already filtered out tables the user doesn't have access do and don't want to use the default
-  true)
+  [search-ctx instance]
+  ;; we've already filtered out tables w/o collection permissions in the query itself.
+  (let [instance-id (:id instance)
+        user-id     (:current-user-id search-ctx)
+        db-id       (database/table-id->database-id instance-id)]
+    (and
+     (perms/user-has-permission-for-table? user-id :perms/view-data :unrestricted db-id instance-id)
+     (perms/user-has-permission-for-table? user-id :perms/create-queries :query-builder db-id instance-id))))
 
 (defmethod check-permissions-for-model :indexed-entity
   [search-ctx instance]
