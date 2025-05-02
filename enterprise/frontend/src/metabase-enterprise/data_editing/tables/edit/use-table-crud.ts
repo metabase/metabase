@@ -9,7 +9,10 @@ import {
   useInsertTableRowsMutation,
   useUpdateTableRowsMutation,
 } from "metabase-enterprise/api";
-import type { UpdatedRowCellsHandlerParams } from "metabase-enterprise/data_editing/tables/types";
+import type {
+  TableEditingScope,
+  UpdatedRowCellsHandlerParams,
+} from "metabase-enterprise/data_editing/tables/types";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ConcreteTableId,
@@ -22,10 +25,12 @@ import type { TableEditingStateUpdateStrategy } from "./use-table-state-update-s
 
 export const useTableCRUD = ({
   tableId,
+  scope,
   datasetData,
   stateUpdateStrategy,
 }: {
   tableId: ConcreteTableId;
+  scope?: TableEditingScope;
   datasetData: DatasetData | null | undefined;
   stateUpdateStrategy: TableEditingStateUpdateStrategy;
 }) => {
@@ -94,6 +99,7 @@ export const useTableCRUD = ({
       const response = await updateTableRows({
         tableId: tableId,
         rows: [updatedRowWithPk],
+        scope,
       });
 
       stateUpdateStrategy.onRowsUpdated(response.data?.updated);
@@ -105,6 +111,7 @@ export const useTableCRUD = ({
       datasetData,
       updateTableRows,
       tableId,
+      scope,
       displayErrorIfExists,
       stateUpdateStrategy,
     ],
@@ -115,6 +122,7 @@ export const useTableCRUD = ({
       const response = await insertTableRows({
         tableId: tableId,
         rows: [data],
+        scope,
       });
 
       displayErrorIfExists(response.error);
@@ -124,7 +132,13 @@ export const useTableCRUD = ({
 
       return !response.error;
     },
-    [insertTableRows, tableId, displayErrorIfExists, stateUpdateStrategy],
+    [
+      insertTableRows,
+      tableId,
+      scope,
+      displayErrorIfExists,
+      stateUpdateStrategy,
+    ],
   );
 
   const handleExpandedRowDelete = useCallback(
@@ -147,6 +161,7 @@ export const useTableCRUD = ({
       const response = await deleteTableRows({
         rows,
         tableId: tableId,
+        scope,
       });
 
       if (response.data?.success) {
@@ -161,6 +176,7 @@ export const useTableCRUD = ({
       datasetData,
       deleteTableRows,
       tableId,
+      scope,
       displayErrorIfExists,
       stateUpdateStrategy,
     ],

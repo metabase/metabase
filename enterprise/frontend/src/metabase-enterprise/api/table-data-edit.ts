@@ -17,44 +17,44 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
       TableInsertRowsResponse,
       TableInsertRowsRequest
     >({
-      query: ({ tableId, rows }) => ({
+      query: ({ tableId, rows, scope }) => ({
         method: "POST",
         url: `/api/ee/data-editing/table/${tableId}`,
-        body: { rows },
+        body: { rows, scope },
       }),
     }),
     updateTableRows: builder.mutation<
       TableUpdateRowsResponse,
       TableUpdateRowsRequest
     >({
-      query: ({ tableId, rows }) => ({
+      query: ({ tableId, rows, scope }) => ({
         method: "PUT",
         url: `/api/ee/data-editing/table/${tableId}`,
-        body: { rows },
+        body: { rows, scope },
       }),
     }),
     deleteTableRows: builder.mutation<
       TableDeleteRowsResponse,
       TableDeleteRowsRequest
     >({
-      query: ({ tableId, rows }) => ({
+      query: ({ tableId, rows, scope }) => ({
         method: "POST",
         url: `/api/ee/data-editing/table/${tableId}/delete`,
-        body: { rows },
+        body: { rows, scope },
       }),
     }),
     tableUndo: builder.mutation<TableUndoRedoResponse, TableUndoRedoRequest>({
-      query: ({ tableId, noOp }) => ({
+      query: ({ tableId, scope, noOp }) => ({
         method: "POST",
         url: `/api/ee/data-editing/undo`,
-        body: { "table-id": tableId, "no-op": noOp },
+        body: { "table-id": tableId, scope, "no-op": noOp },
       }),
     }),
     tableRedo: builder.mutation<TableUndoRedoResponse, TableUndoRedoRequest>({
-      query: ({ tableId, noOp }) => ({
+      query: ({ tableId, scope, noOp }) => ({
         method: "POST",
         url: `/api/ee/data-editing/redo`,
-        body: { "table-id": tableId, "no-op": noOp },
+        body: { "table-id": tableId, scope, "no-op": noOp },
       }),
     }),
   }),

@@ -113,6 +113,10 @@ export const EditTableDashcardVisualization = ({
     cardId,
   );
 
+  const editingScope = useMemo(() => {
+    return { "dashcard-id": dashcardId };
+  }, [dashcardId]);
+
   const {
     isInserting,
     tableFieldMetadataMap,
@@ -121,6 +125,7 @@ export const EditTableDashcardVisualization = ({
     handleExpandedRowDelete,
   } = useTableCRUD({
     tableId,
+    scope: editingScope,
     datasetData: data,
     stateUpdateStrategy,
   });
@@ -128,6 +133,7 @@ export const EditTableDashcardVisualization = ({
   const { undo, redo, isUndoLoading, isRedoLoading, currentActionLabel } =
     useTableEditingUndoRedo({
       tableId,
+      scope: editingScope,
       stateUpdateStrategy,
     });
 
