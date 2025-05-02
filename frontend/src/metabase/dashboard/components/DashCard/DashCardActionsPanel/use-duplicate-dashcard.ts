@@ -77,7 +77,11 @@ export function useDuplicateDashCard({
             dispatch(fetchCardData(card, { ...dashcard, id: newId }));
           });
         }
-      } else if (isQuestionDashCard(dashcard) && dashcard.series?.length > 0) {
+      } else if (
+        isQuestionDashCard(dashcard) &&
+        dashcard.series &&
+        dashcard.series.length > 0
+      ) {
         // For standard multi-series cards, fetch data for each series card
         dashcard.series.forEach((card) => {
           dispatch(fetchCardData(card, { ...dashcard, id: newId }));
