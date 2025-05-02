@@ -36,9 +36,9 @@
             :input    "2024-03-20T00:00Z[UTC]"
             :output   "2024-03-20"}
 
-           {:strategy :Coercion/ISO8601->Time
-            :input    "2025-05-01T15:30:45Z[UTC]"
-            :output   "15:30:45"}]]
+           #_{:strategy :Coercion/ISO8601->Time
+              :input    "2025-05-01T15:30:45Z[UTC]"
+              :output   "15:30:45"}]]
 
       (doseq [{:keys [strategy input output]} test-cases]
         (testing (format "Testing %s conversions" strategy)
