@@ -120,7 +120,7 @@ class SnippetSidebarInner extends React.Component {
           />
         ) : (
           <>
-            <Flex align="center" justify="space-between" px="lg" py="md">
+            <Flex align="center" justify="space-between" p="md" pl="lg" pr="sm">
               {showSearch ? (
                 <>
                   <input
