@@ -1,25 +1,35 @@
+import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
+import {
+  useDeactivateUserMutation,
+  useListUsersQuery,
+  useReactivateUserMutation,
+} from "metabase/api";
 import { ConfirmModal } from "metabase/components/ConfirmModal";
-import Users from "metabase/entities/users";
-import { connect } from "metabase/lib/redux";
-import type { User } from "metabase-types/api";
 
 interface UserActivationModalInnerProps {
-  user: User & {
-    reactivate: () => void | Promise<void>;
-    deactivate: () => void | Promise<void>;
-  };
+  params: { userId: string };
   onClose: () => void;
 }
 
 // NOTE: we have to load the list of users because /api/user/:id doesn't return deactivated users
 // but that's ok because it's probably already loaded through the people PeopleListingApp
-const UserActivationModalInner = ({
-  user,
+export const UserActivationModal = ({
+  params,
   onClose,
 }: UserActivationModalInnerProps) => {
+  const userId = parseInt(params.userId, 10);
+  const { data } = useListUsersQuery({ include_deactivated: true });
+
+  const user = useMemo(() => {
+    const users = data?.data ?? [];
+    return users.find((u) => u.id === userId);
+  }, [data, userId]);
+
+  const [deactivateUser] = useDeactivateUserMutation();
+  const [reactivateUser] = useReactivateUserMutation();
+
   if (!user) {
     return null;
   }
@@ -33,7 +43,7 @@ const UserActivationModalInner = ({
         confirmButtonText={t`Deactivate`}
         onClose={onClose}
         onConfirm={() => {
-          user.deactivate();
+          deactivateUser(userId);
           onClose();
         }}
       />
@@ -48,28 +58,9 @@ const UserActivationModalInner = ({
       confirmButtonText={t`Reactivate`}
       onClose={onClose}
       onConfirm={() => {
-        user.reactivate();
+        reactivateUser(userId);
         onClose();
       }}
     />
   );
 };
-
-export const UserActivationModal = _.compose(
-  Users.loadList({
-    query: { include_deactivated: true },
-    wrapped: true,
-  }),
-  connect(
-    (
-      _state,
-      {
-        users,
-        params: { userId },
-      }: {
-        users: User[];
-        params: { userId: string };
-      },
-    ) => ({ user: _.findWhere(users, { id: parseInt(userId) }) }),
-  ),
-)(UserActivationModalInner);

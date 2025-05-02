@@ -13,8 +13,6 @@ import { generatePassword } from "metabase/lib/security";
 import MetabaseSettings from "metabase/lib/settings";
 import { UserSchema } from "metabase/schema";
 
-export const DEACTIVATE = "metabase/entities/users/DEACTIVATE";
-export const REACTIVATE = "metabase/entities/users/REACTIVATE";
 export const PASSWORD_RESET_EMAIL =
   "metabase/entities/users/PASSWORD_RESET_EMAIL";
 export const PASSWORD_RESET_MANUAL =
@@ -75,8 +73,6 @@ const Users = createEntity({
   },
 
   actionTypes: {
-    DEACTIVATE,
-    REACTIVATE,
     PASSWORD_RESET_EMAIL,
     PASSWORD_RESET_MANUAL,
   },
@@ -91,6 +87,7 @@ const Users = createEntity({
       }
       const result = await thunkCreator(user)(dispatch, getState);
 
+      // TODO: should I still load these since it is entity land???
       // dispatch(loadMemberships());
       return {
         // HACK: include user ID and password for temporaryPasswords reducer
@@ -101,10 +98,6 @@ const Users = createEntity({
     },
     update: (thunkCreator) => (user) => async (dispatch, getState) => {
       const result = await thunkCreator(user)(dispatch, getState);
-      // if (user.user_group_memberships) {
-      //   // group ids were just updated
-      //   dispatch(loadMemberships());
-      // }
       return result;
     },
   },
@@ -130,26 +123,6 @@ const Users = createEntity({
         );
         dispatch({ type: PASSWORD_RESET_MANUAL, payload: { id, password } });
       },
-    deactivate:
-      ({ id }) =>
-      async (dispatch) => {
-        await entityCompatibleQuery(
-          id,
-          dispatch,
-          userApi.endpoints.deactivateUser,
-        );
-        dispatch({ type: DEACTIVATE, payload: { id } });
-      },
-    reactivate:
-      ({ id }) =>
-      async (dispatch) => {
-        const user = await entityCompatibleQuery(
-          id,
-          dispatch,
-          userApi.endpoints.reactivateUser,
-        );
-        dispatch({ type: REACTIVATE, payload: user });
-      },
   },
 
   reducer: (state = {}, { type, payload, error }) => {
@@ -157,10 +130,6 @@ const Users = createEntity({
       return state;
     }
     switch (type) {
-      case DEACTIVATE:
-        return assocIn(state, [payload.id, "is_active"], false);
-      case REACTIVATE:
-        return assocIn(state, [payload.id, "is_active"], true);
       case PASSWORD_RESET_MANUAL:
         return assocIn(state, [payload.id, "password"], payload.password);
       default:

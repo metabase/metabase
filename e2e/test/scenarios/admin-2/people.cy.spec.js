@@ -459,6 +459,7 @@ describe("scenarios > admin > people", () => {
         cy.findByLabelText("Previous page").should("be.disabled");
 
         cy.findByTestId("next-page-btn").click();
+        cy.wait("@users");
 
         // Page 2
         cy.findByTestId("people-list-footer")

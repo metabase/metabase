@@ -2,7 +2,6 @@ import dayjs from "dayjs";
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 import UserAvatar from "metabase/components/UserAvatar";
 import Link, { ForwardRefLink } from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
@@ -68,8 +67,6 @@ export const PeopleListRow = ({
     [userMemberships],
   );
 
-  const isLoadingGroups = !groups;
-
   const isPasswordLoginEnabled = useSelector((state) =>
     getSetting(state, enablePasswordLoginKey),
   );
@@ -78,7 +75,7 @@ export const PeopleListRow = ({
     <tr key={user.id}>
       <Flex component="td" align="center" gap="md" c="text-white">
         <UserAvatar bg={userToColor(user)} user={user} />
-        <Text fw="700">{getName(user)}</Text>
+        <Text fw="700">{getFullName(user) ?? "-"}</Text>
       </Flex>
       <td>
         {user.sso_source === "google" ? (
@@ -107,20 +104,16 @@ export const PeopleListRow = ({
       ) : (
         <Fragment>
           <td>
-            {isLoadingGroups ? (
-              <LoadingSpinner />
-            ) : (
-              <MembershipSelect
-                groups={groups}
-                memberships={membershipsByGroupId}
-                isCurrentUser={isCurrentUser}
-                isUserAdmin={user.is_superuser}
-                onAdd={onAdd}
-                onRemove={onRemove}
-                onChange={onChange}
-                isConfirmModalOpen={isConfirmModalOpen}
-              />
-            )}
+            <MembershipSelect
+              groups={groups}
+              memberships={membershipsByGroupId}
+              isCurrentUser={isCurrentUser}
+              isUserAdmin={user.is_superuser}
+              onAdd={onAdd}
+              onRemove={onRemove}
+              onChange={onChange}
+              isConfirmModalOpen={isConfirmModalOpen}
+            />
           </td>
           <td>
             {user.last_login ? dayjs(user.last_login).fromNow() : t`Never`}
@@ -172,13 +165,3 @@ export const PeopleListRow = ({
     </tr>
   );
 };
-
-function getName(user: User): string {
-  const name = getFullName(user);
-
-  if (!name) {
-    return "-";
-  }
-
-  return name;
-}

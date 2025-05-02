@@ -4,7 +4,6 @@ import { msgid, ngettext, t } from "ttag";
 import {
   useCreateMembershipMutation,
   useDeleteMembershipMutation,
-  useListUserMembershipsQuery,
   useUpdateMembershipMutation,
 } from "metabase/api";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
@@ -20,20 +19,19 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
 import { Box } from "metabase/ui";
-import type { Group, Member, Membership } from "metabase-types/api";
+import type { Group, Member, Membership, User } from "metabase-types/api";
 
 import { GroupMembersTable } from "./GroupMembersTable";
 
-interface GroupDescriptionProps {
+interface GroupDetailProps {
   group: Group;
+  membershipsByUser: Record<User["id"], Membership[]>;
 }
 
-export const GroupDetail = ({ group }: { group: Group }) => {
+export const GroupDetail = ({ membershipsByUser, group }: GroupDetailProps) => {
   const dispatch = useDispatch();
   const currentUser = useSelector(getUser);
 
-  // TODO: pretty sure this can be removed and all checks that use is can just use group.members
-  const { data: membershipsByUser = {} } = useListUserMembershipsQuery();
   const [createMembership] = useCreateMembershipMutation();
   const [updateMembership] = useUpdateMembershipMutation();
   const [deleteMembership] = useDeleteMembershipMutation();
@@ -41,26 +39,6 @@ export const GroupDetail = ({ group }: { group: Group }) => {
   const { modalContent, show } = useConfirmation();
   const [addUserVisible, setAddUserVisible] = useState(false);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
-
-  const confirmDeleteMembershipAction = (
-    membershipId: number,
-    userMemberships: Membership[],
-  ) =>
-    dispatch(
-      PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction(
-        membershipId,
-        userMemberships,
-      ),
-    );
-
-  const confirmUpdateMembershipAction = (
-    membership: Member,
-    userMemberships: Membership[],
-  ) =>
-    PLUGIN_GROUP_MANAGERS.confirmUpdateMembershipAction(
-      membership,
-      userMemberships,
-    );
 
   const onAddUsersClicked = () => setAddUserVisible(true);
   const onAddUserCanceled = () => setAddUserVisible(false);
@@ -89,19 +67,20 @@ export const GroupDetail = ({ group }: { group: Group }) => {
       membership,
     );
 
-    if (!confirmation) {
+    if (confirmation) {
+      show({
+        ...confirmation,
+        onConfirm: () =>
+          dispatch(
+            PLUGIN_GROUP_MANAGERS.confirmUpdateMembershipAction(
+              membership,
+              membershipsByUser[currentUser.id],
+            ),
+          ),
+      });
+    } else {
       return await updateMembership(membership).unwrap();
     }
-
-    show({
-      ...confirmation,
-      title: confirmation.title ?? "",
-      onConfirm: () =>
-        confirmUpdateMembershipAction(
-          membership,
-          membershipsByUser[currentUser.id],
-        ),
-    });
   };
 
   const handleRemove = async (membership: Membership) => {
@@ -115,19 +94,20 @@ export const GroupDetail = ({ group }: { group: Group }) => {
       membership.membership_id,
     );
 
-    if (!confirmation) {
+    if (confirmation) {
+      show({
+        ...confirmation,
+        onConfirm: () =>
+          dispatch(
+            PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction(
+              membership,
+              membershipsByUser[currentUser.id],
+            ),
+          ),
+      });
+    } else {
       return await deleteMembership(membership).unwrap();
     }
-
-    show({
-      ...confirmation,
-      title: confirmation.title ?? "",
-      onConfirm: () =>
-        confirmDeleteMembershipAction(
-          membership.membership_id,
-          membershipsByUser[currentUser.id],
-        ),
-    });
   };
 
   return (
@@ -163,7 +143,7 @@ export const GroupDetail = ({ group }: { group: Group }) => {
   );
 };
 
-const GroupDescription = ({ group }: GroupDescriptionProps) => {
+const GroupDescription = ({ group }: { group: Group }) => {
   if (isDefaultGroup(group)) {
     return (
       <Box maw="38rem" px="1rem">

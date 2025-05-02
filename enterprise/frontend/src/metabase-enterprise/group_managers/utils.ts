@@ -61,7 +61,7 @@ export const getRemoveMembershipConfirmation = (
   currentUser: User,
   currentUserMemberships: Membership[],
   deletedMembershipId: number,
-): Partial<ConfirmationState> | null => {
+): Pick<ConfirmationState, "title" | "message"> | null => {
   const isRemovingSelf =
     currentUserMemberships.find(
       (membership) => membership.membership_id === deletedMembershipId,
@@ -75,7 +75,7 @@ export const getRemoveMembershipConfirmation = (
 export const getChangeMembershipConfirmation = (
   currentUser: User,
   updatedMembership: Membership,
-): Partial<ConfirmationState> | null => {
+): Pick<ConfirmationState, "title" | "message"> | null => {
   const isRevokingFromSelf =
     updatedMembership.user_id === currentUser.id &&
     !updatedMembership.is_group_manager;

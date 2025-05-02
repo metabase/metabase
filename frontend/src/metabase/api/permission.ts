@@ -71,7 +71,7 @@ export const permissionApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/permissions/membership`,
       }),
-      // TODO: providesTags
+      providesTags: () => [listTag("permissions-group")],
     }),
     createMembership: builder.mutation<void, CreateMembershipRequest>({
       query: (body) => ({

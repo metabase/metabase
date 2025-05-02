@@ -1,6 +1,8 @@
 import { t } from "ttag";
 
+import { useListPermissionsGroupsQuery } from "metabase/api";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -14,6 +16,13 @@ const PAGE_SIZE = 25;
 
 export function PeopleListingApp({ children }: { children: React.ReactNode }) {
   const isAdmin = useSelector(getUserIsAdmin);
+  const currentUser = useSelector(getUser);
+
+  const {
+    data: groups = [],
+    isLoading,
+    error,
+  } = useListPermissionsGroupsQuery();
 
   const {
     query,
@@ -67,17 +76,22 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
     isAdmin && status === USER_STATUS.active ? t`Invite someone` : "";
 
   return (
-    <AdminPaneLayout
-      headingContent={headingContent}
-      buttonText={buttonText}
-      buttonLink={Urls.newUser()}
-    >
-      <PeopleList
-        query={query}
-        onNextPage={handleNextPage}
-        onPreviousPage={handlePreviousPage}
-      />
-      {children}
-    </AdminPaneLayout>
+    <LoadingAndErrorWrapper error={error} loading={isLoading}>
+      <AdminPaneLayout
+        headingContent={headingContent}
+        buttonText={buttonText}
+        buttonLink={Urls.newUser()}
+      >
+        <PeopleList
+          groups={groups}
+          isAdmin={isAdmin}
+          currentUser={currentUser}
+          query={query}
+          onNextPage={handleNextPage}
+          onPreviousPage={handlePreviousPage}
+        />
+        {children}
+      </AdminPaneLayout>
+    </LoadingAndErrorWrapper>
   );
 }

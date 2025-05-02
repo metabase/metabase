@@ -4,66 +4,31 @@ import { usePrevious } from "react-use";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { useListUserMembershipsQuery } from "metabase/api";
+import {
+  useCreateMembershipMutation,
+  useDeleteMembershipMutation,
+  useListUserMembershipsQuery,
+  useUpdateMembershipMutation,
+} from "metabase/api";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import Group from "metabase/entities/groups";
 import Users from "metabase/entities/users";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
-import { connect } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import type {
   GroupId,
   Group as IGroup,
   Member,
-  Membership,
   User,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { USER_STATUS } from "../constants";
-import {
-  createMembership,
-  deleteMembership,
-  updateMembership,
-} from "../people";
 
 import { PeopleListRow } from "./PeopleListRow";
-
-const mapStateToProps = (state: State) => ({
-  currentUser: getUser(state),
-  isAdmin: getUserIsAdmin(state),
-  groups: Group.selectors.getList(state),
-});
-
-const mapDispatchToProps = {
-  createMembership,
-  deleteMembership,
-  updateMembership,
-  confirmDeleteMembershipAction: async (
-    membershipId: number,
-    userMemberships: Member[],
-    view: string,
-  ) =>
-    PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction(
-      membershipId,
-      userMemberships,
-      view,
-    ),
-  confirmUpdateMembershipAction: async (
-    membership: Member,
-    userMemberships: Member[],
-    view: string,
-  ) =>
-    PLUGIN_GROUP_MANAGERS.confirmUpdateMembershipAction(
-      membership,
-      userMemberships,
-      view,
-    ),
-};
 
 interface PeopleListQueryProps {
   query: {
@@ -84,18 +49,6 @@ interface PeopleListProps extends PeopleListQueryProps {
     groupId: GroupId;
     userId: User["id"];
   }) => void | Promise<void>;
-  deleteMembership: (membershipId: number) => void | Promise<void>;
-  updateMembership: (membership: Membership) => void | Promise<void>;
-  confirmDeleteMembershipAction: (
-    membershipId: number,
-    userMemberships: Membership[],
-    view: string,
-  ) => Promise<void>;
-  confirmUpdateMembershipAction: (
-    membership: Membership,
-    userMemberships: Membership[],
-    view: string,
-  ) => Promise<void>;
   onNextPage?: () => void;
   onPreviousPage: () => void;
   reloadUsers: () => void;
@@ -106,17 +59,12 @@ interface PeopleListProps extends PeopleListQueryProps {
 }
 
 const PeopleListInner = ({
-  currentUser,
   users,
+  isAdmin,
+  currentUser,
   groups,
   query,
   metadata,
-  isAdmin,
-  createMembership,
-  deleteMembership,
-  updateMembership,
-  confirmDeleteMembershipAction,
-  confirmUpdateMembershipAction,
   reloadUsers,
   reloadGroups,
   onNextPage,
@@ -124,6 +72,12 @@ const PeopleListInner = ({
 }: PeopleListProps) => {
   const { modalContent, show } = useConfirmation();
   const prevUsers = usePrevious(users);
+
+  const dispatch = useDispatch();
+
+  const [createMembership] = useCreateMembershipMutation();
+  const [updateMembership] = useUpdateMembershipMutation();
+  const [deleteMembership] = useDeleteMembershipMutation();
 
   const { data: membershipsByUser = {} } = useListUserMembershipsQuery();
 
@@ -167,6 +121,7 @@ const PeopleListInner = ({
     const membership = membershipsByUser[userId].find(
       (membership) => membership.group_id === groupId,
     );
+
     if (!membership) {
       console.error("Tried to update a membership that does not exist");
       return;
@@ -182,32 +137,31 @@ const PeopleListInner = ({
       updatedMembership,
     );
 
-    if (!confirmation) {
-      await updateMembership(updatedMembership);
-      reloadGroups();
-      return;
+    if (confirmation) {
+      show({
+        ...confirmation,
+        onConfirm: async () => {
+          await dispatch(
+            PLUGIN_GROUP_MANAGERS.confirmUpdateMembershipAction(
+              updatedMembership,
+              membershipsByUser[currentUser.id],
+              "people",
+            ),
+          );
+          reloadGroups();
+        },
+      });
+    } else {
+      await updateMembership(updatedMembership).unwrap();
     }
-
-    show({
-      ...confirmation,
-      title: confirmation.title ?? "",
-      onConfirm: async () => {
-        await confirmUpdateMembershipAction(
-          updatedMembership,
-          membershipsByUser[currentUser.id],
-          "people",
-        );
-        reloadGroups();
-      },
-    });
   };
 
   const handleRemove = async (groupId: GroupId, userId: User["id"]) => {
-    const membershipId = membershipsByUser[userId].find(
+    const membership = membershipsByUser[userId].find(
       (membership) => membership.group_id === groupId,
-    )?.membership_id;
+    );
 
-    if (!membershipId) {
+    if (!membership) {
       console.error("Tried to remove a membership that does not exist");
       return;
     }
@@ -215,31 +169,30 @@ const PeopleListInner = ({
     const confirmation = PLUGIN_GROUP_MANAGERS.getRemoveMembershipConfirmation(
       currentUser,
       membershipsByUser[currentUser.id],
-      membershipId,
+      membership.membership_id,
     );
 
-    if (!confirmation) {
-      await deleteMembership(membershipId);
-      reloadGroups();
-      return;
+    if (confirmation) {
+      show({
+        ...confirmation,
+        onConfirm: async () => {
+          await dispatch(
+            PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction(
+              membership,
+              membershipsByUser[currentUser.id],
+              "people",
+            ),
+          );
+          reloadGroups();
+        },
+      });
+    } else {
+      return await deleteMembership(membership).unwrap();
     }
-
-    show({
-      ...confirmation,
-      title: confirmation.title ?? "",
-      onConfirm: async () => {
-        await confirmDeleteMembershipAction(
-          membershipId,
-          membershipsByUser[currentUser.id],
-          "people",
-        );
-        reloadGroups();
-      },
-    });
   };
 
   const handleAdd = (groupId: GroupId, userId: User["id"]) => {
-    createMembership({ groupId, userId });
+    return createMembership({ group_id: groupId, user_id: userId }).unwrap();
   };
 
   return (
@@ -335,9 +288,6 @@ const PeopleListInner = ({
 };
 
 export const PeopleList = _.compose(
-  Group.loadList({
-    reload: true,
-  }),
   Users.loadList({
     reload: true,
     query: (_state: State, { query }: PeopleListQueryProps) => ({
@@ -347,5 +297,4 @@ export const PeopleList = _.compose(
       offset: query.pageSize * query.page,
     }),
   }),
-  connect(mapStateToProps, mapDispatchToProps),
 )(PeopleListInner);
