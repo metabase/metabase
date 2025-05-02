@@ -62,7 +62,7 @@ class SnippetSidebarInner extends React.Component {
       className={S.SidebarFooter}
       onClick={() => this.setState({ showArchived: true })}
     >
-      <Icon className={S.SidebarIcon} name="view_archive" />
+      <Icon color="var(--mb-color-text-light)" mr="sm" name="view_archive" />
       {t`Archived snippets`}
     </Flex>
   );
