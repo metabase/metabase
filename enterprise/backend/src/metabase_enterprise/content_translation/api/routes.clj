@@ -42,4 +42,3 @@
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/content-translation` routes."
   (api.macros/ns-handler *ns* +auth))
-
