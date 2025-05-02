@@ -120,7 +120,7 @@ export function getDashboardUiParameters(
   const mappings = getMappings(mappableDashcards);
   const uiParameters: UiParameter[] = (parameters || []).map((parameter) => {
     if (isFieldFilterParameter(parameter)) {
-      const fields = (parameterFields ? parameterFields[parameter.id] : [])
+      const fields = (parameterFields?.[parameter.id] ?? [])
         .map((field) => metadata.field(field.id))
         .filter(isNotNull);
       const hasVariableTemplateTagTarget = mappings.some(
