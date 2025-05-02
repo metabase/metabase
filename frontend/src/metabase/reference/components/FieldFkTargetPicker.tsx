@@ -1,7 +1,7 @@
-import { useEffect } from "react";
-
-import Databases from "metabase/entities/databases";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import {
+  useGetTableQueryMetadataQuery,
+  useListDatabaseIdFieldsQuery,
+} from "metabase/api";
 import { FkTargetPicker } from "metabase/metadata/components";
 import type { DatabaseId, Field, FieldId } from "metabase-types/api";
 
@@ -18,19 +18,16 @@ export const FieldFkTargetPicker = ({
   value,
   onChange,
 }: Props) => {
-  const dispatch = useDispatch();
-  const idFields = useSelector((state) => {
-    return Databases.selectors.getIdFields(state, { databaseId });
+  const { data: table } = useGetTableQueryMetadataQuery({ id: field.table_id });
+  const { data: idFields = [] } = useListDatabaseIdFieldsQuery({
+    id: databaseId,
   });
-
-  useEffect(() => {
-    dispatch(Databases.objectActions.fetchIdFields({ id: databaseId }));
-  }, [databaseId, dispatch]);
 
   return (
     <FkTargetPicker
       field={field}
       idFields={idFields}
+      table={table}
       value={value}
       onChange={onChange}
     />
