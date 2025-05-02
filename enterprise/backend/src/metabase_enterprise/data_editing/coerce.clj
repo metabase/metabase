@@ -90,10 +90,19 @@
 (def coercion-fns
   "Maps a coercion strategy to a map containing both input and output conversion functions.
 
-   :in  - Function to convert from input JSON to database format
-   :out - Function to convert from database format to JSON output
+  :in  - Function to convert from input JSON to database format
+  :out - Function to convert from database format to JSON output
 
-   Assumes the input/output values are valid for the coercion strategy and can fit within bounds."
+  Assumes the input/output values are valid for the coercion strategy and can fit within bounds."
+  ;; TODO: missing (second (clojure.data/diff (into #{} (keys coercion-fns)) (descendants :Coercion/*)))
+  ;;{:Coercion/Bytes->Temporal
+  ;; :Coercion/UNIXTime->Temporal
+  ;; :Coercion/String->Float
+  ;; :Coercion/Number->Temporal
+  ;; :Coercion/String->Number
+  ;; :Coercion/YYYYMMDDHHMMSSBytes->Temporal
+  ;; :Coercion/String->Temporal
+  ;; :Coercion/ISO8601->Temporal}
   {:Coercion/UNIXSeconds->DateTime          {:in  #'json-zdt->unix-seconds
                                              :out #'unix-seconds->json-zdt}
    :Coercion/UNIXMilliSeconds->DateTime     {:in  #'json-zdt->unix-millis

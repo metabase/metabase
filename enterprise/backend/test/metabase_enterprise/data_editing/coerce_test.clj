@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-editing.coerce-test
   (:require
+   [clojure.data :refer [diff]]
    [clojure.test :refer :all]
    [metabase-enterprise.data-editing.coerce :as coerce]
    [metabase.test :as mt]))
@@ -62,4 +63,8 @@
 
 (deftest coercion-fns-static-test
   (testing "all coercion pair have to have an in and out function"
-    (testing (every? #(and (fn? (:in %)) (fn? (:out %))) coerce/coercion-fns))))
+    (testing (every? #(and (fn? (:in %)) (fn? (:out %))) coerce/coercion-fns)))
+
+  ;; TODO: fix this test by implementing all strategies
+  #_(testing "all coercion strategies are covered"
+      (is (empty? (second (diff (into #{} (keys coerce/coercion-fns)) (descendants :Coercion/*)))))))
