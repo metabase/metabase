@@ -2,6 +2,7 @@ import { DatePicker } from "@mantine/dates";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { useLocale } from "metabase/common/hooks";
 
 import { LocaleProvider, getLocaleToUse } from "./LocaleProvider";
 
@@ -105,20 +106,7 @@ describe("getLocaleToUse", () => {
 
 describe("LocaleProvider", () => {
   it("should make Mantine components use correct locale", async () => {
-    fetchMock.get("/app/locales/de.json", {
-      charset: "utf-8",
-      headers: {
-        language: "de",
-        // `plural-forms` is required otherwise the loading fails
-        "plural-forms": "nplurals=2; plural=(n != 1);",
-      },
-      translations: {
-        // at least a key is required otherwise the loading fails
-        "": {
-          "": {},
-        },
-      },
-    });
+    mockLocaleJsonResponse("de");
 
     renderWithProviders(
       <LocaleProvider locale="de">
@@ -126,13 +114,56 @@ describe("LocaleProvider", () => {
       </LocaleProvider>,
     );
 
-    await waitFor(() => {
-      expect(fetchMock.done("/app/locales/de.json")).toBe(true);
-    });
+    await waitForLocaleJson("de");
 
     // `waitFor` to ensure the component has time to re-render
     await waitFor(() => {
       expect(screen.getByText("Januar 2020")).toBeInTheDocument();
     });
   });
+
+  it("should make useLocale return the correct locale", async () => {
+    const TestComponent = () => {
+      const locale = useLocale();
+      return <div>{locale}</div>;
+    };
+
+    mockLocaleJsonResponse("de");
+
+    renderWithProviders(
+      <LocaleProvider locale="de">
+        <TestComponent />
+      </LocaleProvider>,
+    );
+
+    await waitForLocaleJson("de");
+
+    // `waitFor` to ensure the component has time to re-render
+    await waitFor(() => {
+      expect(screen.getByText("de")).toBeInTheDocument();
+    });
+  });
 });
+
+const mockLocaleJsonResponse = (locale: string) => {
+  fetchMock.get(`/app/locales/${locale}.json`, {
+    charset: "utf-8",
+    headers: {
+      language: locale,
+      // `plural-forms` is required otherwise the loading fails
+      "plural-forms": "nplurals=2; plural=(n != 1);",
+    },
+    translations: {
+      // at least a key is required otherwise the loading fails
+      "": {
+        "": {},
+      },
+    },
+  });
+};
+
+async function waitForLocaleJson(locale: string) {
+  await waitFor(() => {
+    expect(fetchMock.done(`/app/locales/${locale}.json`)).toBe(true);
+  });
+}
