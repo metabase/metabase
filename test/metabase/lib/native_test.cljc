@@ -40,6 +40,15 @@
     #{"#123"} "SELECT * FROM table WHERE {{ #not-this }} AND {{#123}}"
     #{} "{{ #123foo }}"))
 
+(deftest ^:parallel function-tag-test
+  (are [exp input] (= exp (update-vals (lib.native/extract-template-tags input)
+                                       #(select-keys % [:type :name])))
+    {"unit" {:name "unit"
+             :type :temporal-unit}} "SELECT *, {{mb.time_grouping(\"unit\", \"foo\")}} FROM table WHERE some_field IS NOT NULL"
+    {} "SELECT *, {{mb.unrecognized_name('unit', 'foo')}} FROM table WHERE some_field IS NOT NULL"
+    {"unit" {:name "unit"
+             :type :temporal-unit}} "SELECT *, {{mb.time_grouping('unit', 'foo')}}, {{mb.time_grouping('unit', 'bar')}} FROM table WHERE some_field IS NOT NULL"))
+
 (deftest ^:parallel template-tags-test
   (testing "snippet tags"
     (is (=? {"snippet:foo" {:type         :snippet
