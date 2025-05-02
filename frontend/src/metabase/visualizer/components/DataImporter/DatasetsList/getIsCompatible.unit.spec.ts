@@ -3,6 +3,7 @@ import {
   NumberColumn,
   StringColumn,
 } from "__support__/visualizations";
+import { TYPE } from "cljs/metabase.types";
 import type { Field } from "metabase-types/api";
 import { createMockColumn, createMockField } from "metabase-types/api/mocks";
 
@@ -257,6 +258,38 @@ describe("getIsCompatible", () => {
           display: "line",
           fields: [anotherFieldWithSameType, anotherField],
         },
+      }),
+    ).toBe(true);
+  });
+
+  it("should accept a target with an assignable type to the primary column, regardless of the semantic type (VIZ-638)", () => {
+    const primaryColumn = createMockColumn(
+      DateTimeColumn({
+        id: 1,
+        name: "the column",
+        semantic_type: TYPE.Temporal, // <-- this needs to be set to something
+      }),
+    );
+
+    const field = createMockField(
+      StringColumn({
+        id: 2,
+        name: "the column",
+      }),
+    );
+
+    // No semantic type here, it shouldn't matter
+    const anotherField = createMockField(
+      DateTimeColumn({
+        id: 3,
+        name: "another column",
+      }),
+    );
+
+    expect(
+      getIsCompatible({
+        currentDataset: { display: "line", primaryColumn },
+        targetDataset: { display: "line", fields: [field, anotherField] },
       }),
     ).toBe(true);
   });
