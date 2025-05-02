@@ -55,14 +55,9 @@
     true))
 
 (defmethod check-permissions-for-model :table
-  [search-ctx instance]
-  ;; we've already filtered out tables w/o collection permissions in the query itself.
-  (let [instance-id (:id instance)
-        user-id     (:current-user-id search-ctx)
-        db-id       (database/table-id->database-id instance-id)]
-    (and
-     (perms/user-has-permission-for-table? user-id :perms/view-data :unrestricted db-id instance-id)
-     (perms/user-has-permission-for-table? user-id :perms/create-queries :query-builder db-id instance-id))))
+  [_search-ctx _instance]
+  ;; we've already filtered out tables the user doesn't have access do and don't want to use the default
+  true)
 
 (defmethod check-permissions-for-model :indexed-entity
   [search-ctx instance]

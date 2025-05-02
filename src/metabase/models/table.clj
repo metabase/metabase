@@ -2,6 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.audit :as audit]
+   [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.models.audit-log :as audit-log]
@@ -9,9 +10,12 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.search.core :as search]
+   [metabase.search.spec :as search.spec]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -127,6 +131,73 @@
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Table pk))))
 
+;;; ------------------------------------------------ SQL Permissions ------------------------------------------------
+
+(def ^:private TableVisibilityConfig
+  [:map
+   [:user-id pos-int?]
+   [:is-superuser? :boolean]
+   [:view-data-permission-level data-perms/PermissionValue]
+   [:create-queries-permission-level data-perms/PermissionValue]])
+
+(mu/defn- perm-type-to-int-case
+  [perm-type :- data-perms/PermissionType column-or-perm-value :- [:or :keyword [:tuple [:= ::h2x/literal] :string]]]
+  (into [:case]
+        (apply concat
+               (map-indexed (fn [idx perm-value] [[:= column-or-perm-value (h2x/literal perm-value)] [:inline idx]])
+                            (-> data-perms/Permissions perm-type :values)))))
+
+(mu/defn- perm-condition
+  [perm-type :- :keyword required-level :- :keyword equality-comp]
+  [:and
+   equality-comp
+   [:= :dp.perm_type (h2x/literal perm-type)]
+   [:<=
+    (perm-type-to-int-case perm-type :dp.perm_value)
+    (perm-type-to-int-case perm-type (h2x/literal required-level))]])
+
+(mu/defn- user-in-group-half-join
+  [user-id :- pos-int?]
+  [:exists {:select [1]
+            :from   [[:permissions_group :pg]]
+            :where  [:and
+                     [:= :pg.id :dp.group_id]
+                     [:exists {:select [1]
+                               :from [[:permissions_group_membership :pgm]]
+                               :where [:and
+                                       [:= :pgm.group_id :pg.id]
+                                       [:= :pgm.user_id [:inline user-id]]]}]]}])
+
+(mu/defn- has-perms-for-table-as-honey-sql?
+  [user-id :- pos-int? perm-type :- :keyword required-level :- :keyword]
+  [:exists {:select [1]
+            :from   [[:data_permissions :dp]]
+            :where  [:and [:or
+                           (perm-condition perm-type required-level [:and [:= :t.db_id :dp.db_id]
+                                                                     [:= :dp.table_id nil]])
+                           (perm-condition perm-type required-level [:= :t.id :dp.table_id])]
+                     (user-in-group-half-join user-id)]}])
+
+(mu/defn visible-tables-filter-clause
+  "Returns a query for tables that are visible to the supplied user given the supplied view-data & create-queries permission levels."
+  [table-id-field-or-fields :- [:or [:sequential :keyword] :keyword]
+   {:keys [user-id is-superuser? view-data-permission-level create-queries-permission-level]} :- TableVisibilityConfig]
+  (if is-superuser?
+    [:= 1 1]
+    [:in [:cast (if (sequential? table-id-field-or-fields)
+                  (into [:coalesce] table-id-field-or-fields)
+                  table-id-field-or-fields)
+          (case (mdb/db-type)
+            :mysql :signed
+            :integer)]
+     {:select [:t.id]
+      :from   [[:metabase_table :t]]
+      :where  [:and
+               (has-perms-for-table-as-honey-sql? user-id :perms/view-data view-data-permission-level)
+               (has-perms-for-table-as-honey-sql? user-id :perms/create-queries create-queries-permission-level)]}]))
+
+;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
+
 (defmethod serdes/hash-fields :model/Table
   [_table]
   [:schema :name (serdes/hydrated-hash :db :db_id)])
@@ -219,7 +290,7 @@
 
 (mi/define-batched-hydration-method with-segments
   :segments
-  "Efficiently hydrate the Segments for a collection of `tables`."
+  "Efficientsly hydrate the Segments for a collection of `tables`."
   [tables]
   (with-objects :segments
     (fn [table-ids]
@@ -309,7 +380,7 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
-(search/define-spec "table"
+(search.spec/define-spec "table"
   {:model        :model/Table
    :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
