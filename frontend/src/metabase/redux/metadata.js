@@ -243,6 +243,7 @@ export const fetchRemapping = createThunkAction(
             },
             dispatch,
             fieldApi.endpoints.getRemappedFieldValue,
+            { forceRefetch: false },
           );
           if (remapping) {
             // FIXME: should this be field.id (potentially the FK) or fieldId (always the PK)?
