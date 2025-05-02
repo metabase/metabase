@@ -682,7 +682,7 @@
    metabase.request.core/with-current-request                                                                                hooks.common/with-used-first-arg
    metabase.request.core/with-current-user                                                                                   hooks.common/with-used-first-arg
    metabase.request.core/with-limit-and-offset                                                                               hooks.common/with-used-first-two-args
-   metabase.sample-data-test/with-temp-sample-database-db                                                                    hooks.common/with-one-binding
+   metabase.sample-data.impl-test/with-temp-sample-database-db                                                               hooks.common/with-one-binding
    metabase.search.api-test/with-search-items-in-collection                                                                  hooks.metabase.search.api-test/with-search-items-in-collection
    metabase.search.api-test/with-search-items-in-root-collection                                                             hooks.common/do*
    metabase.server.streaming-response-test/with-start-execution-chan                                                         hooks.common/with-one-binding

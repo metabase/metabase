@@ -3,7 +3,7 @@
    [compojure.route :as route]
    [metabase.actions.api]
    [metabase.activity-feed.api]
-   [metabase.api.api-key]
+   [metabase.api-keys.api]
    [metabase.api.card]
    [metabase.api.cards]
    [metabase.api.collection]
@@ -17,9 +17,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
-   [metabase.api.slack]
    [metabase.api.table]
-   [metabase.api.testing]
    [metabase.api.user]
    [metabase.api.util]
    [metabase.api.util.handlers :as handlers]
@@ -47,6 +45,8 @@
    [metabase.sso.api]
    [metabase.sync.api]
    [metabase.task-history.api]
+   [metabase.testing-api.api]
+   [metabase.testing-api.core]
    [metabase.tiles.api]
    [metabase.timeline.api]
    [metabase.upload.api]
@@ -56,7 +56,7 @@
 
 (comment metabase.actions.api/keep-me
          metabase.activity-feed.api/keep-me
-         metabase.api.api-key/keep-me
+         metabase.api-keys.api/keep-me
          metabase.api.card/keep-me
          metabase.api.cards/keep-me
          metabase.api.collection/keep-me
@@ -66,9 +66,7 @@
          metabase.api.field/keep-me
          metabase.api.geojson/keep-me
          metabase.api.logger/keep-me
-         metabase.api.slack/keep-me
          metabase.api.table/keep-me
-         metabase.api.testing/keep-me
          metabase.api.user/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
@@ -85,6 +83,7 @@
          metabase.settings.api/keep-me
          metabase.setup.api/keep-me
          metabase.task-history.api/keep-me
+         metabase.testing-api.api/keep-me
          metabase.tiles.api/keep-me
          metabase.upload.api/keep-me
          metabase.user-key-value.api/keep-me)
@@ -105,10 +104,6 @@
    ;; no OpenAPI spec for this handler.
    (fn [_prefix]
      nil)))
-
-(def ^:private enable-testing-routes?
-  (or (not config/is-prod?)
-      (config/config-bool :mb-enable-test-endpoints)))
 
 (defn- ->handler [x]
   (cond-> x
@@ -132,7 +127,7 @@
   {"/action"               (+auth 'metabase.actions.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
    "/alert"                (+auth metabase.pulse.api/alert-routes)
-   "/api-key"              (+auth 'metabase.api.api-key)
+   "/api-key"              (+auth 'metabase.api-keys.api)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
    "/cache"                (+auth 'metabase.cache.api)
@@ -169,10 +164,10 @@
    "/session"              metabase.session.api/routes
    "/setting"              (+auth 'metabase.settings.api)
    "/setup"                'metabase.setup.api
-   "/slack"                (+auth 'metabase.api.slack)
+   "/slack"                (+auth metabase.channel.api/slack-routes)
    "/table"                (+auth 'metabase.api.table)
    "/task"                 (+auth 'metabase.task-history.api)
-   "/testing"              (if enable-testing-routes? 'metabase.api.testing pass-thru-handler)
+   "/testing"              (if metabase.testing-api.core/enable-testing-routes? 'metabase.testing-api.api pass-thru-handler)
    "/tiles"                (+auth 'metabase.tiles.api)
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
    "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)

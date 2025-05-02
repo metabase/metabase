@@ -95,12 +95,6 @@ export const updateFieldValues = (fieldId, fieldValuePairs) => {
   return Fields.actions.updateFieldValues({ id: fieldId }, fieldValuePairs);
 };
 
-export { ADD_PARAM_VALUES } from "metabase/entities/fields";
-export const addParamValues = (paramValues) => {
-  deprecated("metabase/redux/metadata addParamValues");
-  return Fields.actions.addParamValues(paramValues);
-};
-
 export { ADD_FIELDS } from "metabase/entities/fields";
 export const addFields = (fieldMaps) => {
   deprecated("metabase/redux/metadata addFields");
@@ -210,10 +204,26 @@ export const fetchRemapping = createThunkAction(
   (value, fieldId) => async (dispatch, getState) => {
     const metadata = getMetadata(getState());
     const field = metadata.field(fieldId);
-    const remappedField = field && field.remappedField();
-    if (field && remappedField && !field.hasRemappedValue(value)) {
+    if (field == null) {
+      return;
+    }
+
+    // internal remapping
+    const remappedInternalField = field.remappedInternalField();
+    if (remappedInternalField) {
+      const response = await entityCompatibleQuery(
+        fieldId,
+        dispatch,
+        fieldApi.endpoints.getFieldValues,
+      );
+      dispatch(addRemappings(field.id, response.values));
+    }
+
+    // external and type/Name remapping
+    const remappedExternalField = field && field.remappedExternalField();
+    if (field && remappedExternalField && !field.hasRemappedValue(value)) {
       const fieldId = (field.target || field).id;
-      const remappedFieldId = remappedField.id;
+      const remappedFieldId = remappedExternalField.id;
       fetchData({
         dispatch,
         getState,
