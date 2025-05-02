@@ -163,14 +163,20 @@
     (update field :dimensions (partial map remove-dimension-nonpublic-columns))))
 
 (mu/defn- param-field-ids->fields
-  "Get the Fields (as a map of Field ID -> Field) that should be returned for hydrated `:param_fields` for a Card or
+  "Get the Fields (as a map of Parameter ID -> Fields) that should be returned for hydrated `:param_fields` for a Card or
   Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
-  [field-ids :- [:maybe [:set ms/PositiveInt]]]
-  (when (seq field-ids)
-    (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
-                        (t2/hydrate :has_field_values :name_field [:dimensions :human_readable_field] :target)
-                        remove-dimensions-nonpublic-columns))))
+  [param-id->field-ids :- [:map-of ms/NonBlankString [:sequential ms/PositiveInt]]]
+  (let [field-ids (set (mapcat second param-id->field-ids))
+        field-id->field (when (seq field-ids)
+                          (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
+                                              (t2/hydrate :has_field_values :name_field [:dimensions :human_readable_field] :target)
+                                              remove-dimensions-nonpublic-columns)))]
+    (m/map-vals (fn [field-ids]
+                  (into []
+                        (comp (filter some?) (map field-id->field))
+                        field-ids))
+                param-id->field-ids)))
 
 (defmulti ^:private ^{:hydrate :param_values} param-values
   "Add a `:param_values` map (Field ID -> FieldValues) containing FieldValues for the Fields referenced by the
@@ -233,7 +239,8 @@
   "Update the `ctx` with `field-id`. This function is supposed to be used on params where target is a name field, in
   reducing step of [[field-id-into-context-rf]], when it is certain that param target is no integer id field."
   [ctx param-dashcard-info]
-  (let [param-target       (get-in param-dashcard-info [:parameter :target])
+  (let [param-id           (get-in param-dashcard-info [:parameter-mapping :parameter_id])
+        param-target       (get-in param-dashcard-info [:parameter-mapping :target])
         card-id            (get-in param-dashcard-info [:dashcard :card :id])
         filterable-columns (get-in ctx [:card-id->filterable-columns card-id])]
     (if-some [field-id (lib.util.match/match-one param-target
@@ -241,7 +248,9 @@
                          (->> filterable-columns
                               (m/find-first #(= field-name (:name %)))
                               :id))]
-      (update ctx :field-ids conj field-id)
+      (-> ctx
+          (update :param-id->field-ids #(merge {param-id []} %))
+          (update-in [:param-id->field-ids param-id] conj field-id))
       ctx)))
 
 (def ^:dynamic *field-id-context*
@@ -254,7 +263,7 @@
 (def empty-field-id-context
   "Context for effective field id computation. See the [[field-id-into-context-rf]]'s docstring."
   {:card-id->filterable-columns {}
-   :field-ids                   #{}})
+   :param-id->field-ids         {}})
 
 (mu/defn- field-id-into-context-rf
   "Reducing function that generates _field id_ corresponding to `:parameter` of `param-dashcard-info` if possible,
@@ -275,11 +284,12 @@
    (when (some-> *field-id-context* deref)
      (swap! *field-id-context* update :card-id->filterable-columns
             merge (:card-id->filterable-columns ctx)))
-   (set (:field-ids ctx)))
-  ([ctx {:keys [param-target-field] :as param-dashcard-info}]
+   (:param-id->field-ids ctx))
+  ([ctx {:keys [param-mapping param-target-field] :as param-dashcard-info}]
    (if-not param-target-field
      ctx
-     (let [card (get-in param-dashcard-info [:dashcard :card])]
+     (let [card (get-in param-dashcard-info [:dashcard :card])
+           param-id (:parameter_id param-mapping)]
        (if-some [field-id (or
                            ;; Get the field id from the field-clause if it contains it. This is the common case
                            ;; for mbql queries.
@@ -288,7 +298,9 @@
                            ;; This is the common case for native queries in which mappings from original columns
                            ;; have been performed using model metadata.
                            (:id (qp.util/field->field-info param-target-field (:result_metadata card))))]
-         (update ctx :field-ids conj field-id)
+         (-> ctx
+             (update :param-id->field-ids #(merge {param-id []} %))
+             (update-in [:param-id->field-ids param-id] conj field-id))
          ;; In case the card doesn't have the same result_metadata columns as filterable columns (a question that
          ;; aggregates a native query model with a field that was mapped to a db field), we need to load metadata in
          ;; [[ensure-filterable-columns-for-card]] to find the originating field. (#42829)
@@ -296,13 +308,13 @@
              (ensure-filterable-columns-for-card card)
              (field-id-from-dashcards-filterable-columns param-dashcard-info)))))))
 
-(mu/defn dashcards->param-field-ids* :- [:set ms/PositiveInt]
-  "Return set of field ids referenced dashcards"
+(mu/defn dashcards->param-field-ids* :- [:map-of ms/NonBlankString [:sequential ms/PositiveInt]]
+  "Return map of parameter ids to mapped field ids."
   [dashcards]
   (letfn [(dashcard->param-dashcard-info
             [dashcard]
-            (map #(hash-map :parameter          %
-                            :dashcard           dashcard
+            (map #(hash-map :dashcard           dashcard
+                            :param-mapping      %
                             :param-target-field (param-target->field-clause (:target %)
                                                                             (:card dashcard)))
                  (:parameter_mappings dashcard)))]
@@ -310,14 +322,12 @@
                field-id-into-context-rf
                dashcards)))
 
-(mu/defn dashcards->param-field-ids :- [:set ms/PositiveInt]
-  "Return a set of Field IDs referenced by parameters in Cards in the given `dashcards`, or `nil` if none are referenced. This
-  also includes IDs of Fields that are to be found in the 'implicit' parameters for SQL template tag Field filters.
-  `dashcards` must be hydrated with :card."
+(mu/defn dashcards->param-field-ids :- [:map-of ms/NonBlankString [:sequential ms/PositiveInt]]
+  "Return a map of Parameter ID to Field IDs referenced by parameters in Cards in the given `dashcards`, or `nil` if
+  none are referenced. This also includes IDs of Fields that are to be found in the 'implicit' parameters for SQL
+  template tag Field filters. `dashcards` must be hydrated with :card."
   [dashcards]
-  (set/union
-   (dashcards->param-field-ids* dashcards)
-   (cards->card-param-field-ids (map :card dashcards))))
+  (dashcards->param-field-ids* dashcards))
 
 (defn get-linked-field-ids
   "Retrieve a map relating paramater ids to field ids."
