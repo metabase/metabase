@@ -6,7 +6,6 @@
 *.po~
 *.sqlite
 *.trace.db
-*.trace.db.old
 *.xcworkspacedata
 .DS_Store
 .\#*
@@ -139,5 +138,3 @@ modules/drivers/*/.lsp/*
 .aider*
 /config.yml
 CLAUDE.local.md
-
-**/.claude/settings.local.json
