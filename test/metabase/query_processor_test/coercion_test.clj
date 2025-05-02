@@ -104,4 +104,3 @@
               (is (zero? (.getHour date-val)))
               (is (zero? (.getMinute date-val)))
               (is (zero? (.getSecond date-val))))))))))
-
