@@ -32,10 +32,6 @@
    :body (json/encode {:success true
                        :message (tru "Import was successful")})})
 
-(def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/content-translation` routes."
-  (api.macros/ns-handler *ns* +auth))
-
 (api.macros/defendpoint :get "/dictionary"
   "Provides content translations stored in the content_translations table"
   [_route-params query-params _body]
@@ -43,3 +39,8 @@
     (if locale
       {:data (ct/get-translations locale)}
       {:data (ct/get-translations)})))
+
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/content-translation` routes."
+  (api.macros/ns-handler *ns* +auth))
+
