@@ -1,10 +1,4 @@
-import {
-  type ChangeEvent,
-  type ReactNode,
-  useCallback,
-  useRef,
-  useState,
-} from "react";
+import { type ChangeEvent, type ReactNode, useCallback, useRef } from "react";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
@@ -60,15 +54,18 @@ const UploadForm = () => {
   const [uploadContentTranslationDictionary] =
     useUploadContentTranslationDictionaryMutation();
 
-  // This is used to reset the input so that the same file can be uploaded
-  // multiple times
-  const [uploadInputReactKey, setUploadInputReactKey] = useState(0);
-
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files?.length) {
       const file = event.target.files[0];
       await uploadFile(file);
-      setUploadInputReactKey((n) => n + 1);
+      resetInput();
+    }
+  };
+
+  const resetInput = () => {
+    const input = inputRef.current;
+    if (input) {
+      input.value = "";
     }
   };
 

@@ -1,5 +1,5 @@
 import { invalidateTags, listTag } from "metabase/api/tags";
-import type { DictionaryArray } from "metabase/i18n/types";
+import type { DictionaryResponse } from "metabase-types/api/content-translation";
 
 import { EnterpriseApi } from "./api";
 
@@ -15,7 +15,7 @@ export const contentTranslationApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => {
     return {
       listContentTranslations: builder.query<
-        { data: DictionaryArray },
+        DictionaryResponse,
         ListContentTranslationsRequest | void
       >({
         query: (params) => ({
