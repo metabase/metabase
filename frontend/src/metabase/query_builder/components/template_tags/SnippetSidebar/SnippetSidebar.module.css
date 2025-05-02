@@ -1,40 +1,10 @@
-.SidebarIcon {
-  color: var(--mb-color-text-light);
-  margin-right: 0.5rem;
-}
-
-.SnippetTitle {
-  cursor: pointer;
-
-  &:hover {
-    color: var(--mb-color-brand);
-  }
-}
-
-.MenuIconContainer {
-  display: flex;
-  padding: 1rem;
-  cursor: pointer;
-
-  &:hover {
-    color: var(--mb-color-brand);
-    background-color: var(--mb-color-bg-medium);
-  }
-}
-
 .SidebarFooter {
-  display: flex;
-  padding: 1rem;
   font-size: 0.875em;
-  color: var(--mb-color-text-medium);
   cursor: pointer;
+  color: var(--mb-color-text-medium);
 
   &:hover {
     color: var(--mb-color-brand);
-
-    .SidebarIcon {
-      color: var(--mb-color-brand);
-    }
   }
 }
 
