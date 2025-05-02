@@ -74,6 +74,21 @@ describe("getLegendTitles", () => {
           "http://mb-instance.example.com/sub-path/api/geojson/world.json",
         );
       });
+
+      it("supports custom GeoJSON maps", () => {
+        const url = getMapUrl(
+          { builtin: false },
+          {
+            isSdk: true,
+            sdkMetabaseInstanceUrl: "http://mb-instance.example.com",
+            settings: { "map.region": "foobarbaz" },
+          },
+        );
+
+        expect(url).toBe(
+          "http://mb-instance.example.com/api/geojson/foobarbaz",
+        );
+      });
     });
   });
 });
