@@ -119,7 +119,7 @@ export const PeopleListRow = ({
           <td>
             {user.last_login ? dayjs(user.last_login).fromNow() : t`Never`}
           </td>
-          <Box componen="td" ta="right">
+          <Box component="td" ta="right">
             {isAdmin && (
               <Menu shadow="md" position="bottom-end">
                 <Menu.Target>
