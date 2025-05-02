@@ -10,7 +10,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.config :as config]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
    [metabase.plugins.classloader :as classloader]
    [metabase.server.middleware.json]

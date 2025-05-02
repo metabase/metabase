@@ -282,7 +282,8 @@
            util}}
 
   events
-  {:api  #{metabase.events metabase.events.init}
+  {:api  #{metabase.events.core
+           metabase.events.init}
    :uses #{api channel driver models premium-features util}}
 
   formatter
