@@ -119,11 +119,8 @@ class SnippetSidebarInner extends React.Component {
             onClick={openSnippetModalWithSelectedText}
           />
         ) : (
-          <div>
-            <div
-              className={cx(CS.flex, CS.alignCenter, CS.pl3, CS.pr2)}
-              style={{ paddingTop: 10, paddingBottom: 11 }}
-            >
+          <>
+            <Flex align="center" justify="space-between" p="lg" py="sm">
               {showSearch ? (
                 <Flex>
                   <input
@@ -155,15 +152,7 @@ class SnippetSidebarInner extends React.Component {
                       }
                     />
                   )}
-                  <div
-                    className={cx(
-                      CS.flexAlignRight,
-                      CS.flex,
-                      CS.alignCenter,
-                      CS.textMedium,
-                      CS.noDecoration,
-                    )}
-                  >
+                  <Flex align="center" justify="flex-end">
                     {[
                       ...PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map((f) =>
                         f(this, { className: CS.mr2 }),
@@ -207,25 +196,24 @@ class SnippetSidebarInner extends React.Component {
                         </Menu.Dropdown>
                       </Menu>
                     )}
-                  </div>
+                  </Flex>
                 </>
               )}
-            </div>
-            <div className={CS.flexFull}>
-              {displayedItems.length > 0
-                ? displayedItems.map((item) => (
-                    <Row
-                      key={`${item.model || "snippet"}-${item.id}`}
-                      item={item}
-                      type={item.model || "snippet"}
-                      setSidebarState={this.setState.bind(this)}
-                      canWrite={snippetCollection.can_write}
-                      {...this.props}
-                    />
-                  ))
-                : null}
-            </div>
-          </div>
+            </Flex>
+
+            <Flex direction="column">
+              {displayedItems.map((item) => (
+                <Row
+                  key={`${item.model || "snippet"}-${item.id}`}
+                  item={item}
+                  type={item.model || "snippet"}
+                  setSidebarState={this.setState.bind(this)}
+                  canWrite={snippetCollection.can_write}
+                  {...this.props}
+                />
+              ))}
+            </Flex>
+          </>
         )}
         {PLUGIN_SNIPPET_SIDEBAR_MODALS.map((f) => f(this))}
       </SidebarContent>
