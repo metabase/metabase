@@ -1,4 +1,9 @@
-import { getLocaleToUse } from "./LocaleProvider";
+import { DatePicker } from "@mantine/dates";
+import fetchMock from "fetch-mock";
+
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+
+import { LocaleProvider, getLocaleToUse } from "./LocaleProvider";
 
 const expectLocale = ({
   locale,
@@ -94,6 +99,40 @@ describe("getLocaleToUse", () => {
       locale: "DE",
       availableLocales,
       expected: "de",
+    });
+  });
+});
+
+describe("LocaleProvider", () => {
+  it("should make Mantine components use correct locale", async () => {
+    fetchMock.get("/app/locales/de.json", {
+      charset: "utf-8",
+      headers: {
+        language: "de",
+        // `plural-forms` is required otherwise the loading fails
+        "plural-forms": "nplurals=2; plural=(n != 1);",
+      },
+      translations: {
+        // at least a key is required otherwise the loading fails
+        "": {
+          "": {},
+        },
+      },
+    });
+
+    renderWithProviders(
+      <LocaleProvider locale="de">
+        <DatePicker defaultDate={new Date(2020, 0, 1)} onChange={() => {}} />
+      </LocaleProvider>,
+    );
+
+    await waitFor(() => {
+      expect(fetchMock.done("/app/locales/de.json")).toBe(true);
+    });
+
+    // `waitFor` to ensure the component has time to re-render
+    await waitFor(() => {
+      expect(screen.getByText("Januar 2020")).toBeInTheDocument();
     });
   });
 });

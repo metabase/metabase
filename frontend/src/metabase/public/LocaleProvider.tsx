@@ -3,6 +3,7 @@ import { type PropsWithChildren, useEffect, useState } from "react";
 import { useSetting } from "metabase/common/hooks";
 import { setLocaleHeader } from "metabase/lib/api";
 import { loadLocalization, setUserLocale } from "metabase/lib/i18n";
+import { DatesProvider } from "metabase/ui/components/theme/DatesProvider/DatesProvider";
 
 interface LocaleProviderProps {
   locale?: string | null;
@@ -42,10 +43,16 @@ export const LocaleProvider = ({
     return null;
   }
 
-  // note: we may show a loader here while loading, this would prevent race
-  // conditions and things being rendered for some time with the wrong locale
-  // downside is that it would make the initial load slower
-  return children;
+  return (
+    // The `DatesProvider` wrapping the app is not re-rendered when the locale changes
+    // so we need to wrap the children in another `DatesProvider` to ensure the locale is updated
+    <DatesProvider>
+      {/* note: we may show a loader here while loading, this would prevent race
+      conditions and things being rendered for some time with the wrong locale
+      downside is that it would make the initial load slower */}
+      {children}
+    </DatesProvider>
+  );
 };
 
 // Re-implementation of the fallback logic of the backend.
