@@ -9,4 +9,6 @@
   60)
 
 (defenterprise fetch-auth "In OSS, this returns an empty map."
-  metabase-enterprise.auth-provider [_driver _database-id _db-details] {})
+  metabase-enterprise.auth-provider.impl
+  [_driver _database-id _db-details]
+  {})
