@@ -10,7 +10,7 @@
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.settings.deprecated-grab-bag :as public-settings]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 

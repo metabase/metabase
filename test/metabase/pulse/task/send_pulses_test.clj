@@ -8,7 +8,7 @@
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.util :as mt.util]
    [metabase.util :as u]

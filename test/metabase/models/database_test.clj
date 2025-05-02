@@ -16,7 +16,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
    [metabase.sync.task.sync-databases :as task.sync-databases]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]

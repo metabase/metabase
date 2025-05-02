@@ -28,7 +28,7 @@
    [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.setup.core :as setup]
    [metabase.startup.core :as startup]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.queue :as queue]

@@ -13,7 +13,7 @@
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.send :as notification.send]
    [metabase.notification.task.send :as task.notification]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

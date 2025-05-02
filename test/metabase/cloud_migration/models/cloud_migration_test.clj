@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.cloud-migration.models.cloud-migration :as cloud-migration]
    [metabase.cloud-migration.settings :as cloud-migration.settings]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

@@ -7,7 +7,7 @@
    [metabase.search.core :as search]
    [metabase.search.ingestion :as ingestion]
    [metabase.startup.core :as startup]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.cluster-lock :as cluster-lock]
    [metabase.util.log :as log]

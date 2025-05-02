@@ -6,7 +6,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.analytics.core :as analytics]
    [metabase.settings.deprecated-grab-bag :as public-settings]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
