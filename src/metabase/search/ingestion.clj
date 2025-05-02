@@ -32,6 +32,10 @@
   "The name of the listener that consumes the queue"
   "search-index-update")
 
+(def max-searchable-value-length
+  "The maximum length of a searchable value. This is mostly driven by postgresql max-lengths on tsvector columns."
+  500000)
+
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
   (->> (:search-terms (search.spec/spec (:model m)))
@@ -53,10 +57,11 @@
        :legacy_input (dissoc m :pinned :view_count :last_viewed_at :native_query)
        :searchable_text (searchable-text m))))
 
-(defn- attrs->select-items [attrs]
+(defn- attrs->select-items [attrs exclude-attrs]
   (for [[k v] attrs :when v]
-    (let [as (keyword (u/->snake_case_en (name k)))]
-      (if (true? v) as [v as]))))
+    (when-not (some #{k} exclude-attrs)
+      (let [as (keyword (u/->snake_case_en (name k)))]
+        (if (true? v) as [v as])))))
 
 (defn- spec-index-query*
   [search-model]
@@ -64,8 +69,8 @@
     (u/remove-nils
      {:select    (search.spec/qualify-columns :this
                                               (concat
-                                               (:search-terms spec)
-                                               (mapcat (fn [k] (attrs->select-items (get spec k)))
+                                               (map (fn [term] [[:left (keyword (str "this." (name term))) [:cast max-searchable-value-length :integer]] term]) (:search-terms spec))
+                                               (mapcat (fn [k] (attrs->select-items (get spec k) (:search-terms spec)))
                                                        [:attrs :render-terms])))
       :from      [[(t2/table-name (:model spec)) :this]]
       :where     (:where spec [:inline [:= 1 1]])
