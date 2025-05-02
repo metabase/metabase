@@ -3,9 +3,7 @@
    [clojure.test :refer :all]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
-   [toucan2.core :as t2])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,7 +28,7 @@
 
 (deftest identity-hash-test
   (testing "Segment hashes are composed of the segment name and table identity-hash"
-    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+    (let [now #t "2022-09-01T12:34:56Z"]
       (mt/with-temp [:model/Database db      {:name "field-db" :engine :h2}
                      :model/Table    table   {:schema "PUBLIC" :name "widget" :db_id (:id db)}
                      :model/Segment  segment {:name "big customers" :table_id (:id table) :created_at now}]
