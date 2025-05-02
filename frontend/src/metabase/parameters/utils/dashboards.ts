@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import { isQuestionCard, isQuestionDashCard } from "metabase/dashboard/utils";
 import { slugify } from "metabase/lib/formatting";
-import { checkNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/lib/types";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -122,7 +122,7 @@ export function getDashboardUiParameters(
     if (isFieldFilterParameter(parameter)) {
       const fields = (parameterFields ? parameterFields[parameter.id] : [])
         .map((field) => metadata.field(field.id))
-        .filter(checkNotNull);
+        .filter(isNotNull);
       const hasVariableTemplateTagTarget = mappings.some(
         (mapping) =>
           mapping.parameter_id === parameter.id &&
