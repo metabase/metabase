@@ -83,7 +83,6 @@ function preventDragging(e: React.MouseEvent<HTMLButtonElement>) {
 }
 
 export const DashCardPlaceholder = Object.assign(DashCardPlaceholderInner, {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   getUiName: () => t`Empty card`,
   identifier: "placeholder",
   iconName: "table_spaced", // TODO replace
