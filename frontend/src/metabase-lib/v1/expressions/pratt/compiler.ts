@@ -81,7 +81,7 @@ function compileNode(
   ctx: Context,
 ): Lib.ExpressionParts | Lib.ExpressionArg {
   const fn = COMPILE.get(node.type);
-  assert(fn, `Invalid node type: ${node.type}`);
+  assert(fn, t`Invalid node type: ${node.type}`);
   return fn(node, ctx);
 }
 
