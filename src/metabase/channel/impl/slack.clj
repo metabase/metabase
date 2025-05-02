@@ -180,7 +180,7 @@
                                     {:type "mrkdwn"
                                      :text (mkdwn-link-text
                                             metabase-branding-link
-                                            "Made with Metabase :heart:")}))}
+                                            "Made with Metabase :blue_heart:")}))}
 
         filter-fields   (for [filter parameters]
                           {:type "mrkdwn"
