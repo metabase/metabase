@@ -3,7 +3,8 @@
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
    [metabase.channel.impl.slack :as channel.slack]
-   [metabase.channel.slack :as slack]))
+   [metabase.channel.slack :as slack]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -164,3 +165,24 @@
       "abc"    "🔔 abc"
       "abcde"  "🔔 abcde"
       "abcdef" "🔔 abcd…")))
+
+(deftest dashboard-header-branding-test
+  (let [render-dashboard-header
+        (fn []
+          (let [notification {:payload_type :notification/dashboard
+                              :payload      {:dashboard       {:id 42, :name "Test Dashboard"}
+                                             :parameters      {}
+                                             :dashboard_parts []}
+                              :creator      {:common_name "Test User"}}
+                recipient    {:type    :notification-recipient/raw-value
+                              :details {:value "#foo"}}
+                processed    (with-redefs [slack/upload-file! (constantly {:url "a.com", :id "id"})]
+                               (channel/render-notification :channel/slack notification nil [recipient]))]
+            (-> processed first :attachments first :blocks)))
+        link-section (last (render-dashboard-header))]
+    (testing "When whitelabeling is enabled, branding link should not be included"
+      (mt/with-premium-features #{:whitelabel}
+        (is (= 1 (count link-section)))))
+    (testing "When whitelabeling is disabled, branding link should be included"
+      (mt/with-premium-features #{}
+        (is (= 2 (count link-section)))))))
