@@ -1,5 +1,6 @@
 import { CollectionBrowser } from "@metabase/embedding-sdk-react";
 
+import { FIRST_COLLECTION_ENTITY_ID } from "e2e/support/cypress_sample_instance_data";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/component-testing-sdk";
 import {
   mockAuthProviderAndJwtSignIn,
@@ -65,6 +66,30 @@ describe("scenarios > embedding-sdk > collection browser", () => {
       cy.wait("@getRootCollection");
 
       getSdkRoot().findByText("Our analytics").should("exist");
+    });
+  });
+
+  describe("collection using entity ids", () => {
+    beforeEach(() => {
+      signInAsAdminAndEnableEmbeddingSdk();
+      cy.signOut();
+      mockAuthProviderAndJwtSignIn();
+    });
+
+    it("should not crash when using entity ids in the collection browser", () => {
+      cy.intercept("GET", "/api/collection/*").as("getCollection");
+
+      mountSdkContent(
+        <CollectionBrowser collectionId={FIRST_COLLECTION_ENTITY_ID} />,
+      );
+
+      getSdkRoot().within(() => {
+        cy.findByText("Our analytics").should("not.exist");
+        cy.findByText("First collection").should("exist");
+        cy.findByTestId("collection-entry")
+          .findByText("Second collection")
+          .should("exist");
+      });
     });
   });
 });
