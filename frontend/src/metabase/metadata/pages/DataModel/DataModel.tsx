@@ -4,6 +4,7 @@ import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import { useGetTableQueryMetadataQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Box, Flex, Stack, Title } from "metabase/ui";
 
@@ -45,7 +46,9 @@ export const DataModel = ({ params }: Props) => {
 
         <Box className={S.tableSectionContainer} h="100%" pb="lg" px="xl">
           <LoadingAndErrorWrapper error={error} loading={isLoading}>
-            {table && <TableSection params={params} table={table} />}
+            {table && (
+              <TableSection key={table.id} params={params} table={table} />
+            )}
           </LoadingAndErrorWrapper>
         </Box>
       </Stack>
@@ -74,7 +77,9 @@ export const DataModel = ({ params }: Props) => {
         <Flex bg="accent-gray-light" flex="1">
           <Box flex="0 0 400px">
             <LoadingAndErrorWrapper error={error} loading={isLoading}>
-              {field && <FieldSection field={field} key={fieldId} />}
+              {field && (
+                <FieldSection field={field} key={getRawTableFieldId(field)} />
+              )}
             </LoadingAndErrorWrapper>
           </Box>
 
