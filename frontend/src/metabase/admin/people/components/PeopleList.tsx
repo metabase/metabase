@@ -299,7 +299,7 @@ const PeopleListInner = ({
       {hasUsers && (
         <Flex
           align="center"
-          justify="center"
+          justify="space-between"
           p="md"
           data-testid="people-list-footer"
         >
