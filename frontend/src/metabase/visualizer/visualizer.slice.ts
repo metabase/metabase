@@ -41,7 +41,6 @@ import {
   getColumnVizSettings,
   getDataSourceIdFromNameRef,
   getInitialStateForCardDataSource,
-  parseDataSourceId,
 } from "./utils";
 import { getUpdatedSettingsForDisplay } from "./utils/get-updated-settings-for-display";
 import {
@@ -93,15 +92,16 @@ function getInitialState(): VisualizerState {
 type InitVisualizerPayload =
   | {
       state?: Partial<VisualizerVizDefinitionWithColumns>;
+      cardByEntityId: Record<string, Card>;
     }
-  | { cardId: CardId };
+  | { card: Card };
 
 export const initializeVisualizer = createAsyncThunk(
   "visualizer/initializeVisualizer",
   async (payload: InitVisualizerPayload, { dispatch, getState }) => {
-    if ("cardId" in payload) {
+    if ("card" in payload) {
       const initState = await initializeFromCard(
-        payload.cardId,
+        payload.card,
         dispatch,
         getState,
       );
@@ -115,8 +115,10 @@ export const initializeVisualizer = createAsyncThunk(
 const initializeFromState = async (
   {
     state: initialState = {},
+    cardByEntityId,
   }: {
     state?: Partial<VisualizerVizDefinitionWithColumns>;
+    cardByEntityId: Record<string, Card>;
   },
   dispatch: Dispatch,
 ) => {
@@ -129,10 +131,17 @@ const initializeFromState = async (
   await Promise.all(
     dataSourceIds
       .map((sourceId) => {
-        const [, cardId] = sourceId.split(":");
+        const [, cardEntityId] = sourceId.split(":");
+        const cardId = cardByEntityId[cardEntityId].id;
+
         return [
-          dispatch(fetchCard(Number(cardId))),
-          dispatch(fetchCardQuery(Number(cardId))),
+          dispatch(fetchCard({ cardId: Number(cardId), cardEntityId })),
+          dispatch(
+            fetchCardQuery({
+              cardId: Number(cardId),
+              cardEntityId: cardEntityId,
+            }),
+          ),
         ];
       })
       .flat(),
@@ -141,55 +150,55 @@ const initializeFromState = async (
 };
 
 const initializeFromCard = async (
-  cardId: number,
+  card: Card,
   dispatch: Dispatch,
   getState: GetState,
 ) => {
-  await Promise.all([
-    dispatch(fetchCard(cardId)),
-    dispatch(fetchCardQuery(cardId)),
-  ]);
-  const { cards, datasets } = getState().visualizer.present;
-  const card = cards.find((card) => card.id === cardId);
-  const dataset = datasets[`card:${cardId}`];
+  await dispatch(fetchCard({ cardId: card.id, cardEntityId: card.entity_id }));
+  await dispatch(
+    fetchCardQuery({ cardId: card.id, cardEntityId: card.entity_id }),
+  );
+  const { datasets } = getState().visualizer.present;
+  const dataset = datasets[`card:${card?.entity_id}`];
   if (!card || !dataset) {
-    throw new Error(`Card or dataset not found for ID: ${cardId}`);
+    throw new Error(`Card or dataset not found for ID: ${card.id}`);
   }
   return getInitialStateForCardDataSource(card, dataset);
 };
 
 export const addDataSource = createAsyncThunk(
   "visualizer/dataImporter/addDataSource",
-  async (id: VisualizerDataSourceId, { dispatch, getState }) => {
-    const { type, sourceId } = parseDataSourceId(id);
-
+  async (
+    { cardId, cardEntityId }: { cardId: number; cardEntityId: string },
+    { dispatch, getState },
+  ) => {
     const state = getCurrentVisualizerState(getState());
 
     let dataSource: VisualizerDataSource | null = null;
     let dataset: Dataset | null = null;
 
-    if (type === "card") {
-      // TODO handle rejected requests
-      const cardAction = await dispatch(fetchCard(sourceId));
-      const cardQueryAction = await dispatch(fetchCardQuery(sourceId));
+    // TODO handle rejected requests
+    const cardAction = await dispatch(fetchCard({ cardId, cardEntityId }));
+    const card = cardAction.payload as Card;
+    const cardQueryAction = await dispatch(
+      fetchCardQuery({ cardId: card.id, cardEntityId: card.entity_id }),
+    );
 
-      const card = cardAction.payload as Card;
-      dataset = cardQueryAction.payload as Dataset;
+    dataset = cardQueryAction.payload as Dataset;
 
-      if (
-        !state.display ||
-        (card.display === state.display && state.columns.length === 0)
-      ) {
-        return getInitialStateForCardDataSource(card, dataset);
-      }
-
-      dataSource = createDataSource("card", card.id, card.name);
-    } else {
-      throw new Error(`Unsupported data source type: ${type}`);
+    if (
+      !state.display ||
+      (card.display === state.display && state.columns.length === 0)
+    ) {
+      return getInitialStateForCardDataSource(card, dataset);
     }
 
+    dataSource = createDataSource("card", card.entity_id, card.name);
+
     if (!dataSource || !dataset) {
-      throw new Error(`Could not get data source or dataset for: ${sourceId}`);
+      throw new Error(
+        `Could not get data source or dataset for card id: ${cardId}`,
+      );
     }
 
     // Computed settings include all settings with their default values, including derived settings
@@ -218,31 +227,31 @@ export const addDataSource = createAsyncThunk(
   },
 );
 
-const fetchCard = createAsyncThunk<Card, CardId>(
-  "visualizer/fetchCard",
-  async (cardId, { dispatch }) => {
-    const result = await dispatch(
-      cardApi.endpoints.getCard.initiate({ id: cardId }),
-    );
-    if (result.data != null) {
-      return result.data;
-    }
-    throw new Error("Failed to fetch card");
-  },
-);
+const fetchCard = createAsyncThunk<
+  Card,
+  { cardId: CardId; cardEntityId: string }
+>("visualizer/fetchCard", async ({ cardId }, { dispatch }) => {
+  const result = await dispatch(
+    cardApi.endpoints.getCard.initiate({ id: cardId }),
+  );
+  if (result.data != null) {
+    return result.data;
+  }
+  throw new Error("Failed to fetch card");
+});
 
-const fetchCardQuery = createAsyncThunk<Dataset, CardId>(
-  "visualizer/fetchCardQuery",
-  async (cardId, { dispatch }) => {
-    const result = await dispatch(
-      cardApi.endpoints.getCardQuery.initiate({ cardId, parameters: [] }),
-    );
-    if (result.data != null) {
-      return result.data;
-    }
-    throw new Error("Failed to fetch card query");
-  },
-);
+const fetchCardQuery = createAsyncThunk<
+  Dataset,
+  { cardId: CardId; cardEntityId: string }
+>("visualizer/fetchCardQuery", async ({ cardId }, { dispatch }) => {
+  const result = await dispatch(
+    cardApi.endpoints.getCardQuery.initiate({ cardId, parameters: [] }),
+  );
+  if (result.data != null) {
+    return result.data;
+  }
+  throw new Error("Failed to fetch card query");
+});
 
 export const undo = createAction("visualizer/undo");
 export const redo = createAction("visualizer/redo");
@@ -311,7 +320,11 @@ const visualizerSlice = createSlice({
 
       const dataSourceMap = Object.fromEntries(
         state.cards.map((card) => {
-          const dataSource = createDataSource("card", card.id, card.name);
+          const dataSource = createDataSource(
+            "card",
+            card.entity_id,
+            card.name,
+          );
           return [dataSource.id, dataSource];
         }),
       );
@@ -411,7 +424,11 @@ const visualizerSlice = createSlice({
           datasetMap: state.datasets as Record<VisualizerDataSourceId, Dataset>,
           dataSourceMap: Object.fromEntries(
             state.cards.map((card) => {
-              const dataSource = createDataSource("card", card.id, card.name);
+              const dataSource = createDataSource(
+                "card",
+                card.entity_id,
+                card.name,
+              );
               return [dataSource.id, dataSource];
             }),
           ),
@@ -425,8 +442,10 @@ const visualizerSlice = createSlice({
     removeDataSource: (state, action: PayloadAction<VisualizerDataSource>) => {
       const source = action.payload;
       if (source.type === "card") {
-        const cardId = source.sourceId;
-        state.cards = state.cards.filter((card) => card.id !== cardId);
+        const cardEntityId = source.sourceId;
+        state.cards = state.cards.filter(
+          (card) => card.entity_id !== cardEntityId,
+        );
       }
       delete state.loadingDataSources[source.id];
       delete state.datasets[source.id];
@@ -505,8 +524,8 @@ const visualizerSlice = createSlice({
         }
       })
       .addCase(fetchCard.pending, (state, action) => {
-        const cardId = action.meta.arg;
-        state.loadingDataSources[`card:${cardId}`] = true;
+        const cardEntityId = action.meta.arg.cardEntityId;
+        state.loadingDataSources[`card:${cardEntityId}`] = true;
         state.error = null;
       })
       .addCase(fetchCard.fulfilled, (state, action: PayloadAction<Card>) => {
@@ -520,36 +539,32 @@ const visualizerSlice = createSlice({
           state.cards.push(card as any);
         }
 
-        state.loadingDataSources[`card:${card.id}`] = false;
+        state.loadingDataSources[`card:${card.entity_id}`] = false;
       })
       .addCase(fetchCard.rejected, (state, action) => {
-        const cardId = action.meta.arg;
-        if (cardId) {
-          state.loadingDataSources[`card:${cardId}`] = false;
+        const cardEntityId = action.meta.arg.cardEntityId;
+        if (cardEntityId) {
+          state.loadingDataSources[`card:${cardEntityId}`] = false;
         }
         state.error = action.error.message || "Failed to fetch card";
       })
       .addCase(fetchCardQuery.pending, (state, action) => {
-        const cardId = action.meta.arg;
-        state.loadingDatasets[`card:${cardId}`] = true;
+        const cardEntityId = action.meta.arg.cardEntityId;
+        state.loadingDatasets[`card:${cardEntityId}`] = true;
         state.error = null;
       })
-      .addCase(
-        fetchCardQuery.fulfilled,
-        (state, action: { payload: Dataset; meta: { arg: CardId } }) => {
-          const cardId = action.meta.arg;
-          const dataset = action.payload;
+      .addCase(fetchCardQuery.fulfilled, (state, action) => {
+        const cardEntityId = action.meta.arg.cardEntityId;
+        const dataset = action.payload;
 
-          // `any` prevents the "Type instantiation is excessively deep" error
-          state.datasets[`card:${cardId}`] = dataset as any;
-
-          state.loadingDatasets[`card:${cardId}`] = false;
-        },
-      )
+        // `any` prevents the "Type instantiation is excessively deep" error
+        state.datasets[`card:${cardEntityId}`] = dataset as any;
+        state.loadingDatasets[`card:${cardEntityId}`] = false;
+      })
       .addCase(fetchCardQuery.rejected, (state, action) => {
-        const cardId = action.meta.arg;
-        if (cardId) {
-          state.loadingDatasets[`card:${cardId}`] = false;
+        const cardEntityId = action.meta.arg.cardEntityId;
+        if (cardEntityId) {
+          state.loadingDatasets[`card:${cardEntityId}`] = false;
         }
         state.error = action.error.message || "Failed to fetch card query";
       });

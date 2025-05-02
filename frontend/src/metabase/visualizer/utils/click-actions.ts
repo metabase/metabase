@@ -15,7 +15,11 @@ export function formatVisualizerClickObject(
   const object = { ...clicked };
 
   if (object.column) {
-    object.cardId = findColumnCardId(object.column, columnValuesMapping);
+    const entityId = findColumnCardEntityId(object.column, columnValuesMapping);
+    const card = originalSeries.find(
+      (series) => series.card.entity_id === entityId,
+    )?.card;
+    object.cardId = card?.id;
     object.column = findRealColumn(
       object.column,
       originalSeries,
@@ -50,7 +54,7 @@ export function formatVisualizerClickObject(
   return object;
 }
 
-function findColumnCardId(
+function findColumnCardEntityId(
   column: DatasetColumn,
   columnValuesMapping: Record<string, VisualizerColumnValueSource[]>,
 ) {
@@ -72,8 +76,10 @@ function findRealColumn(
     return;
   }
 
-  const cardId = parseDataSourceId(valueSource.sourceId).sourceId;
-  const cardSeries = originalSeries.find((series) => series.card.id === cardId);
+  const cardEntityId = parseDataSourceId(valueSource.sourceId).sourceId;
+  const cardSeries = originalSeries.find(
+    (series) => series.card.entity_id === cardEntityId,
+  );
 
   return cardSeries?.data?.cols?.find(
     (col) => col.name === valueSource.originalName,

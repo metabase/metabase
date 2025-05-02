@@ -10,7 +10,7 @@ import { extractReferencedColumns } from "./column";
 
 export function createDataSource(
   type: VisualizerDataSourceType,
-  sourceId: number,
+  sourceId: string,
   name: string,
 ): VisualizerDataSource {
   return {
@@ -23,16 +23,7 @@ export function createDataSource(
 
 export function parseDataSourceId(id: VisualizerDataSourceId) {
   const [type, sourceId] = id.split(":");
-  return { type, sourceId: Number(sourceId) };
-}
-
-export function isDataSourceId(id: string): id is VisualizerDataSourceId {
-  try {
-    const { type, sourceId } = parseDataSourceId(id as VisualizerDataSourceId);
-    return type === "card" && Number.isSafeInteger(sourceId);
-  } catch {
-    return false;
-  }
+  return { type, sourceId };
 }
 
 export function createDataSourceNameRef(
@@ -61,15 +52,4 @@ export function getDataSourceIdsFromColumnValueMappings(
 ) {
   const referencedColumns = extractReferencedColumns(columnValuesMapping);
   return Array.from(new Set(referencedColumns.map((ref) => ref.sourceId)));
-}
-
-export function getCardIdsFromColumnValueMappings(
-  columnValuesMapping: Record<string, VisualizerColumnValueSource[]>,
-) {
-  const usedDataSourceIds =
-    getDataSourceIdsFromColumnValueMappings(columnValuesMapping);
-  return usedDataSourceIds.map((id) => {
-    const { sourceId } = parseDataSourceId(id);
-    return sourceId;
-  });
 }

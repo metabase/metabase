@@ -33,6 +33,7 @@ import { Box, Flex } from "metabase/ui";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
+import { getCardByEntityId } from "metabase/visualizer/utils/get-card-by-entity-id";
 import type {
   BaseDashboardCard,
   Card,
@@ -549,7 +550,10 @@ class DashboardGridInner extends Component<
     );
   }
 
-  onVisualizerModalSave = (visualization: VisualizerVizDefinition) => {
+  onVisualizerModalSave = (
+    visualization: VisualizerVizDefinition,
+    cards: Card[],
+  ) => {
     const { visualizerModalStatus } = this.state;
 
     if (!visualizerModalStatus) {
@@ -559,6 +563,7 @@ class DashboardGridInner extends Component<
     this.props.replaceCardWithVisualization({
       dashcardId: visualizerModalStatus.dashcardId,
       visualization,
+      cards,
     });
 
     this.onVisualizerModalClose();
@@ -574,11 +579,17 @@ class DashboardGridInner extends Component<
       return null;
     }
 
+    const dashcard = this.props.dashboard.dashcards.find(
+      (dashcard) => dashcard.id === visualizerModalStatus.dashcardId,
+    );
+
+    const cardByEntityId = getCardByEntityId(dashcard);
+
     return (
       <VisualizerModal
         onSave={this.onVisualizerModalSave}
         onClose={this.onVisualizerModalClose}
-        initialState={{ state: visualizerModalStatus.state }}
+        initialState={{ state: visualizerModalStatus.state, cardByEntityId }}
         saveLabel={t`Save`}
       />
     );

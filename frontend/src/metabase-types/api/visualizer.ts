@@ -4,13 +4,17 @@ import type {
 } from "metabase-types/api";
 
 export type VisualizerDataSourceType = "card";
-export type VisualizerDataSourceId = `${VisualizerDataSourceType}:${number}`;
+export type VisualizerDataSourceId = `${VisualizerDataSourceType}:${string}`;
 
 export type VisualizerDataSource = {
   id: VisualizerDataSourceId;
-  sourceId: number;
+  sourceId: string;
   type: VisualizerDataSourceType;
   name: string;
+};
+
+export type VisualizerCardDataSource = VisualizerDataSource & {
+  cardId: number;
 };
 
 export type VisualizerColumnReference = {

@@ -9,8 +9,7 @@ import {
   getVisualizationType,
   getVisualizerPrimaryColumn,
 } from "metabase/visualizer/selectors";
-import { parseDataSourceId } from "metabase/visualizer/utils";
-import type { VisualizerDataSource } from "metabase-types/api";
+import type { VisualizerCardDataSource } from "metabase-types/api";
 
 import { useVisualizerUi } from "../../VisualizerUiContext";
 
@@ -18,10 +17,10 @@ import S from "./DatasetsListItem.module.css";
 import { getIsCompatible } from "./getIsCompatible";
 
 interface DatasetsListItemProps {
-  item: VisualizerDataSource;
-  onSwap?: (item: VisualizerDataSource) => void;
-  onToggle?: (item: VisualizerDataSource) => void;
-  onRemove?: (item: VisualizerDataSource) => void;
+  item: VisualizerCardDataSource;
+  onSwap?: (item: VisualizerCardDataSource) => void;
+  onToggle?: (item: VisualizerCardDataSource) => void;
+  onRemove?: (item: VisualizerCardDataSource) => void;
   selected: boolean;
 }
 
@@ -33,8 +32,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
   const currentDisplay = useSelector(getVisualizationType);
   const primaryColumn = useSelector(getVisualizerPrimaryColumn);
 
-  const { sourceId } = parseDataSourceId(item.id);
-  const { data } = useGetCardQuery({ id: sourceId });
+  const { data } = useGetCardQuery({ id: item.cardId });
 
   const metadata = useMemo(
     () => ({

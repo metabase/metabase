@@ -63,7 +63,7 @@ function getVisualizerRawSeries(rawSeries, dashcardSettings) {
   }, {});
 
   const dataSources = rawSeries.map((series) =>
-    createDataSource("card", series.card.id, series.card.name),
+    createDataSource("card", series.card.entity_id, series.card.name),
   );
 
   const columns = getVisualizationColumns(

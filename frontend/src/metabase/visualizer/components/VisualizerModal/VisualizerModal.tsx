@@ -8,7 +8,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Modal } from "metabase/ui";
 import { getIsDirty } from "metabase/visualizer/selectors";
 import { initializeVisualizer } from "metabase/visualizer/visualizer.slice";
-import type { CardId, VisualizerVizDefinition } from "metabase-types/api";
+import type { Card, VisualizerVizDefinition } from "metabase-types/api";
 
 import { Visualizer } from "../Visualizer";
 
@@ -18,8 +18,9 @@ interface VisualizerModalProps {
   initialState?:
     | {
         state: VisualizerVizDefinition;
+        cardByEntityId: Record<string, Card>;
       }
-    | { cardId: CardId };
+    | { card: Card };
 }
 
 export function VisualizerModal({
