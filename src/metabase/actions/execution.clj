@@ -164,7 +164,7 @@
   [action request-parameters]
   (let [implicit-action (parse-implicit-action action)
         {:keys [query row-parameters]} (build-implicit-query action implicit-action request-parameters)
-        _ (api/check (or (= implicit-action :row/delete) (seq row-parameters))
+        _ (api/check (or (= implicit-action :model.row/delete) (seq row-parameters))
                      400
                      (tru "Implicit parameters must be provided."))
         arg-map (cond-> query

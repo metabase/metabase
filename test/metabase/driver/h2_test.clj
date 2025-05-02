@@ -368,7 +368,7 @@
             :message "Ranking must have values."
             :errors  {"RANKING" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :h2 actions.error/violate-not-null-constraint nil :row/created
+            :h2 actions.error/violate-not-null-constraint nil :model.row/created
             "NULL not allowed for column \"RANKING\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"GROUP\" (\"NAME\") VALUES (CAST(? AS VARCHAR)) [23502-214])")))))
 
 (deftest actions-maybe-parse-sql-error-test-2

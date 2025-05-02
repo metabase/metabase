@@ -1099,7 +1099,7 @@
             :message "Ranking must have values."
             :errors {"ranking" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-not-null-constraint nil :row/created
+            :postgres actions.error/violate-not-null-constraint nil :model.row/created
             "ERROR: null value in column \"ranking\" violates not-null constraint\n  Detail: Failing row contains (3, admin, null).")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test-2
@@ -1108,7 +1108,7 @@
             :message "Ranking must have values."
             :errors {"ranking" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-not-null-constraint nil :row/created
+            :postgres actions.error/violate-not-null-constraint nil :model.row/created
             "ERROR: null value in column \"ranking\" of relation \"group\" violates not-null constraint\n  Detail: Failing row contains (57, admin, null).")))))
 
 (deftest actions-maybe-parse-sql-error-violate-unique-constraint-test
