@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
+import { useGetTableQueryMetadataQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Box, Flex, Stack, Title } from "metabase/ui";
 
 import S from "./DataModel.module.css";
@@ -22,6 +25,16 @@ const PREVIEW_NOT_IMPLEMENTED_YET = true;
 export const DataModel = ({ params }: Props) => {
   const { tableId, fieldId } = parseRouteParams(params);
   const isEmptyStateShown = tableId == null || fieldId == null;
+  const {
+    data: table,
+    error,
+    isLoading,
+  } = useGetTableQueryMetadataQuery({
+    id: tableId,
+    include_sensitive_fields: true,
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  });
+  const field = table?.fields?.find((field) => field.id === fieldId);
 
   return (
     <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`}>
@@ -31,7 +44,9 @@ export const DataModel = ({ params }: Props) => {
         </Title>
 
         <Box className={S.tableSectionContainer} h="100%" pb="lg" px="xl">
-          {tableId && <TableSection params={params} tableId={tableId} />}
+          <LoadingAndErrorWrapper error={error} loading={isLoading}>
+            {table && <TableSection params={params} table={table} />}
+          </LoadingAndErrorWrapper>
         </Box>
       </Stack>
 
@@ -58,7 +73,9 @@ export const DataModel = ({ params }: Props) => {
       {!isEmptyStateShown && (
         <Flex bg="accent-gray-light" flex="1">
           <Box flex="0 0 400px">
-            <FieldSection fieldId={fieldId} key={fieldId} />
+            <LoadingAndErrorWrapper error={error} loading={isLoading}>
+              {field && <FieldSection field={field} key={fieldId} />}
+            </LoadingAndErrorWrapper>
           </Box>
 
           {!PREVIEW_NOT_IMPLEMENTED_YET && (
