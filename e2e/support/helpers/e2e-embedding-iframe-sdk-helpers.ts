@@ -1,10 +1,7 @@
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
 import { createApiKey } from "./api";
-import {
-  mockSessionPropertiesTokenFeatures,
-  setTokenFeatures,
-} from "./e2e-enterprise-helpers";
+import { setTokenFeatures } from "./e2e-enterprise-helpers";
 import { restore } from "./e2e-setup-helpers";
 
 const EMBED_JS_PATH = "/app/embed.v1.js";
@@ -130,7 +127,6 @@ export function prepareSdkIframeEmbedTest({
 
   if (withTokenFeatures) {
     setTokenFeatures("all");
-    mockSessionPropertiesTokenFeatures({ embedding_iframe_sdk: true });
   }
 
   createApiKey("test iframe sdk embedding", ADMIN_GROUP_ID).then(({ body }) => {
