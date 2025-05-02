@@ -32,10 +32,9 @@
 (defmethod mi/perms-objects-set RootCollection
   [collection read-or-write]
   {:pre [(map? collection)]}
-  ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
+  ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE snippet collections are enabled
   (if (and (= (u/qualified-name (:namespace collection)) "snippets")
-           #_{:clj-kondo/ignore [:deprecated-var]}
-           (not (premium-features/enable-enhancements?)))
+           (not (premium-features/enable-snippet-collections?)))
     #{}
     #{((case read-or-write
          :read  perms/collection-read-path

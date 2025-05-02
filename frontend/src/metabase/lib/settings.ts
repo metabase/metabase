@@ -118,10 +118,10 @@ class MetabaseSettings {
   }
 
   /**
-   * @deprecated use getSetting(state, "enable-enhancements?")
+   * @deprecated use getSetting(state, "enable-sandboxes?")
    */
-  enhancementsEnabled() {
-    return this.get("enable-enhancements?");
+  sandboxingEnabled() {
+    return this.get("enable-sandboxes?");
   }
 
   /**
