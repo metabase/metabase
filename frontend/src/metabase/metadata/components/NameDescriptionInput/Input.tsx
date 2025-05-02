@@ -47,9 +47,9 @@ export const Input = ({
       onBlur={() => setIsFocused(false)}
       onBlurChange={(event) => {
         const newValue = event.target.value;
-        const normalizedValue = normalize ? normalize(newValue) : newValue;
+        const newNormalizedValue = normalize ? normalize(newValue) : newValue;
 
-        if (normalizedValue !== value) {
+        if (newNormalizedValue !== value) {
           onChange(event.target.value);
         }
       }}
