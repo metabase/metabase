@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import cx from "classnames";
 import PropTypes from "prop-types";
 import * as React from "react";
 import { t } from "ttag";
@@ -19,7 +18,7 @@ import {
 } from "metabase/plugins";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
-import { Button, Flex, Icon, Menu } from "metabase/ui";
+import { Box, Button, Flex, Icon, Menu } from "metabase/ui";
 
 import { SnippetRow } from "../SnippetRow";
 
@@ -120,12 +119,12 @@ class SnippetSidebarInner extends React.Component {
           />
         ) : (
           <>
-            <Flex align="center" justify="space-between" p="lg" py="sm">
+            <Flex align="center" justify="space-between" px="lg" py="md">
               {showSearch ? (
-                <Flex>
+                <>
                   <input
                     ref={this.searchBox}
-                    className={cx(CS.input, CS.inputBorderless, CS.p0)}
+                    className={CS.inputBorderless}
                     onChange={(e) =>
                       this.setState({ searchString: e.target.value })
                     }
@@ -139,7 +138,7 @@ class SnippetSidebarInner extends React.Component {
                   <Button variant="subtle" onClick={this.hideSearch} p="sm">
                     <Icon name="close" />
                   </Button>
-                </Flex>
+                </>
               ) : (
                 <>
                   {snippetCollection.id === "root" ? (
@@ -152,10 +151,11 @@ class SnippetSidebarInner extends React.Component {
                       }
                     />
                   )}
+
                   <Flex align="center" justify="flex-end">
                     {[
                       ...PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map((f) =>
-                        f(this, { className: CS.mr2 }),
+                        f(this, {}),
                       ),
                     ]}
 
@@ -168,7 +168,7 @@ class SnippetSidebarInner extends React.Component {
                     {snippetCollection.can_write && !showSearch && (
                       <Menu position="bottom-end">
                         <Menu.Target>
-                          <Button variant="subtle" px="sm">
+                          <Button variant="subtle" p="sm">
                             <Icon name="add" />
                           </Button>
                         </Menu.Target>
@@ -186,9 +186,7 @@ class SnippetSidebarInner extends React.Component {
                             <Menu.Item
                               key={name}
                               onClick={onClick}
-                              leftSection={
-                                <Icon name={icon} className={CS.mr2} />
-                              }
+                              leftSection={<Icon name={icon} />}
                             >
                               {name}
                             </Menu.Item>
@@ -249,11 +247,9 @@ class ArchivedSnippetsInner extends React.Component {
 
     return (
       <SidebarContent>
-        <SidebarHeader
-          className={CS.p2}
-          title={t`Archived snippets`}
-          onBack={onBack}
-        />
+        <Box p="lg">
+          <SidebarHeader title={t`Archived snippets`} onBack={onBack} />
+        </Box>
 
         {archivedSnippetCollections.map((collection) => (
           <Row
