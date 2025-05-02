@@ -135,7 +135,12 @@ class SnippetSidebarInner extends React.Component {
                       }
                     }}
                   />
-                  <Button variant="subtle" onClick={this.hideSearch} p="sm">
+                  <Button
+                    variant="subtle"
+                    onClick={this.hideSearch}
+                    p="sm"
+                    title={t`Close search`}
+                  >
                     <Icon name="close" />
                   </Button>
                 </>
@@ -236,44 +241,42 @@ export const SnippetSidebar = _.compose(
   }),
 )(SnippetSidebarInner);
 
-class ArchivedSnippetsInner extends React.Component {
-  render() {
-    const { onBack, snippets, snippetCollections, archivedSnippetCollections } =
-      this.props;
-    const collectionsById = _.indexBy(
-      snippetCollections.concat(archivedSnippetCollections),
-      (c) => canonicalCollectionId(c.id),
-    );
+function ArchivedSnippetsInner(props) {
+  const { onBack, snippets, snippetCollections, archivedSnippetCollections } =
+    props;
+  const collectionsById = _.indexBy(
+    snippetCollections.concat(archivedSnippetCollections),
+    (c) => canonicalCollectionId(c.id),
+  );
 
-    return (
-      <SidebarContent>
-        <Box p="lg">
-          <SidebarHeader title={t`Archived snippets`} onBack={onBack} />
-        </Box>
+  return (
+    <SidebarContent>
+      <Box p="lg">
+        <SidebarHeader title={t`Archived snippets`} onBack={onBack} />
+      </Box>
 
-        {archivedSnippetCollections.map((collection) => (
-          <Row
-            key={`collection-${collection.id}`}
-            item={collection}
-            type="collection"
-          />
-        ))}
-        {snippets.map((snippet) => (
-          <Row
-            key={`snippet-${snippet.id}`}
-            item={snippet}
-            type="snippet"
-            canWrite={
-              collectionsById[
-                // `String` used to appease flow
-                String(canonicalCollectionId(snippet.collection_id))
-              ].can_write
-            }
-          />
-        ))}
-      </SidebarContent>
-    );
-  }
+      {archivedSnippetCollections.map((collection) => (
+        <Row
+          key={`collection-${collection.id}`}
+          item={collection}
+          type="collection"
+        />
+      ))}
+      {snippets.map((snippet) => (
+        <Row
+          key={`snippet-${snippet.id}`}
+          item={snippet}
+          type="snippet"
+          canWrite={
+            collectionsById[
+              // `String` used to appease flow
+              String(canonicalCollectionId(snippet.collection_id))
+            ].can_write
+          }
+        />
+      ))}
+    </SidebarContent>
+  );
 }
 
 const ArchivedSnippets = _.compose(
