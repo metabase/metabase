@@ -293,6 +293,9 @@ export interface UploadsSettings {
 
 interface InstanceSettings {
   "admin-email": string;
+  "email-from-name": string | null;
+  "email-from-address": string | null;
+  "email-reply-to": string[] | null;
   "email-smtp-host": string | null;
   "email-smtp-port": number | null;
   "email-smtp-security": "none" | "ssl" | "tls" | "starttls";

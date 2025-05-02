@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.cache.core]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.core :as lib]
@@ -21,7 +22,6 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
    [metabase.request.core :as request]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
@@ -658,7 +658,7 @@
                                    (#'cache/save-results-xform (System/currentTimeMillis) {} (byte 0) (ttl-strategy) conj)
                                    (repeat 10000 [1]))))))
   (testing "Make sure we properly handle situations where we abort serialization (e.g. due to result being too big)"
-    (let [max-bytes (* (public-settings/query-caching-max-kb) 1024)]
+    (let [max-bytes (* (metabase.cache.core/query-caching-max-kb) 1024)]
       (is (= max-bytes (count (transduce identity
                                          (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
                                          (repeat max-bytes [1]))))))))
