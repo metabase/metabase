@@ -86,7 +86,6 @@
    "SearchIndexMetadata"
    "Secret"
    "Session"
-   "TablePrivileges"
    "TaskHistory"
    "User"
    "UserKeyValue"
