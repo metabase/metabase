@@ -639,6 +639,7 @@
    metabase.api.embed-test/with-temp-dashcard                                                                                hooks.common/let-one-with-optional-value
    metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
    metabase.api.user-test/with-temp-user-email!                                                                              hooks.common/with-one-binding
+   metabase.channel.render.js.svg/with-static-viz-context                                                                    hooks.common/with-one-top-level-binding
    metabase.channel.template.handlebars-helper/defhelper                                                                     hooks.metabase.channel.template.handlebars-helper/defhelper
    metabase.channel.template.handlebars-test/with-temp-template!                                                             hooks.common/with-vec-first-binding
    metabase.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                                 hooks.common/let-second
