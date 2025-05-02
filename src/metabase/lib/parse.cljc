@@ -77,14 +77,16 @@
 
 (defn- param [{:keys [parse-error-type]} parsed]
   (let [[k & more] (combine-adjacent-strings parsed)]
-    (if (or (seq more)
-            (not (string? k)))
+    (cond
+      (or (seq more)
+          (not (string? k)))
       (maybe-throw-error parse-error-type
                          (tru "Invalid '''{{...}}''' clause: expected a param name"))
-      (let [k (str/trim k)]
-        (if (empty? k)
-          (maybe-throw-error parse-error-type (tru "'''{{...}}''' clauses cannot be empty."))
-          [(parse-param/parse-param k)])))))
+
+      (empty? (str/trim k))
+      (maybe-throw-error parse-error-type (tru "'''{{...}}''' clauses cannot be empty."))
+
+      :else [(parse-param/parse-param k)])))
 
 (defn- optional [{:keys [parse-error-type]} parsed]
   (if-not (some #(and (map? %) (#{::param ::function-param} (:type %)))

@@ -4,7 +4,7 @@
    [instaparse.core :as insta]))
 
 (insta/defparser ^:private param-grammar "
-S = <whitespace> function/param <whitespace>
+S = (<whitespace> function <whitespace>) / param
 param = #'.*'
 expr = string|doubleString
 string = <'\\''> #'[^\\']*' <'\\''>

@@ -1,6 +1,7 @@
 (ns metabase.driver.common.parameters.parse
   (:require
    [clojure.core.match :refer [match]]
+   [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -22,7 +23,7 @@
   (match [value]
     [s :guard string?] s
     [{:type ::lib.parse/param
-      :name name}] (params/->Param name)
+      :name name}] (params/->Param (str/trim name))
     [{:type ::lib.parse/function-param
       :name name
       :args args}] (params/->FunctionParam name (map ->param args))

@@ -19,6 +19,18 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
+(def ^:private variable-tag-regex
+  #"\{\{\s*([A-Za-z0-9_\.]+)\s*\}\}")
+
+(def ^:private snippet-tag-regex
+  #"\{\{\s*(snippet:\s*[^}]+)\s*\}\}")
+
+(def ^:private card-tag-regex
+  #"\{\{\s*(#([0-9]*)(-[a-z0-9-]*)?)\s*\}\}")
+
+(def ^:private tag-regexes
+  [variable-tag-regex snippet-tag-regex card-tag-regex])
+
 (defn- fresh-tag [tag-name]
   {:type :text
    :name tag-name
@@ -33,8 +45,7 @@
                             :id (str (random-uuid))}))
     nil))
 
-(mu/defn- recognize-template-tags :- [:set ::common/non-blank-string]
-  [query-text :- ::common/non-blank-string]
+(defn- recognize-template-tags [query-text]
   (let [parsed (lib.parse/parse {} query-text)]
     (loop [found {}
            [current & more] (vec parsed)]
@@ -42,7 +53,11 @@
         [nil] found
         [_ :guard string?] (recur found more)
         [{:type ::lib.parse/param
-          :name tag-name}] (recur (assoc found tag-name (fresh-tag tag-name)) more)
+          :name tag-name}] (let [full-tag         (str "{{" tag-name "}}")
+                                 [_ matched-name] (some #(re-matches % full-tag) tag-regexes)]
+                             (recur (cond-> found
+                                      matched-name (assoc matched-name (fresh-tag matched-name)))
+                                    more))
         [{:type ::lib.parse/function-param
           :name function-name
           :args args}] (if-let [new-tag (fresh-function-tag function-name args)]
