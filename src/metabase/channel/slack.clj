@@ -1,108 +1,26 @@
-(ns metabase.integrations.slack
+(ns metabase.channel.slack
   (:require
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.channel.settings :as channel.settings]
    [metabase.events :as events]
-   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase.util.string :as u.str]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
-
-(defsetting slack-token
-  (deferred-tru
-   (str "Deprecated Slack API token for connecting the Metabase Slack bot. "
-        "Please use a new Slack app integration instead."))
-  :deprecated "0.42.0"
-  :encryption :when-encryption-key-set
-  :visibility :settings-manager
-  :doc        false
-  :audit      :never
-  :export?    false)
-
-(defsetting slack-app-token
-  (deferred-tru
-   (str "Bot user OAuth token for connecting the Metabase Slack app. "
-        "This should be used for all new Slack integrations starting in Metabase v0.42.0."))
-  :encryption :when-encryption-key-set
-  :visibility :settings-manager
-  :getter (fn []
-            (-> (setting/get-value-of-type :string :slack-app-token)
-                (u.str/mask 9))))
-
-(defn- unobfuscated-slack-app-token
-  []
-  (setting/get-value-of-type :string :slack-app-token))
-
-(defsetting slack-token-valid?
-  (deferred-tru
-   (str "Whether the current Slack app token, if set, is valid. "
-        "Set to ''false'' if a Slack API request returns an auth error."))
-  :type       :boolean
-  :visibility :settings-manager
-  :doc        false
-  :audit      :never)
-
-(defn process-files-channel-name
-  "Converts empty strings to `nil`, and removes leading `#` from the channel name if present."
-  [channel-name]
-  (when-not (str/blank? channel-name)
-    (if (str/starts-with? channel-name "#") (subs channel-name 1) channel-name)))
-
-(defsetting slack-cached-channels-and-usernames
-  "A cache shared between instances for storing an instance's slack channels and users."
-  :encryption :when-encryption-key-set
-  :visibility :internal
-  :type       :json
-  :doc        false
-  :audit      :never
-  :export?    false)
-
-(def ^:private zoned-time-epoch (t/zoned-date-time 1970 1 1 0))
-
-(defsetting slack-channels-and-usernames-last-updated
-  "The updated-at time for the [[slack-cached-channels-and-usernames]] setting."
-  :visibility :internal
-  :cache?     false
-  :type       :timestamp
-  :default    zoned-time-epoch
-  :doc        false
-  :audit      :never
-  :export?    false)
-
-(defsetting slack-files-channel
-  (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
-  :deprecated "0.54.0"
-  :default "metabase_files"
-  :encryption :no
-  :visibility :settings-manager
-  :audit      :getter
-  :setter (fn [channel-name]
-            (setting/set-value-of-type! :string :slack-files-channel (process-files-channel-name channel-name))))
-
-(defsetting slack-bug-report-channel
-  (deferred-tru "The name of the channel where bug reports should be posted")
-  :default "metabase-bugs"
-  :encryption :no
-  :visibility :settings-manager
-  :audit      :getter
-  :export?    false
-  :setter (fn [channel-name]
-            (setting/set-value-of-type! :string :slack-bug-report-channel (process-files-channel-name channel-name))))
 
 (defn slack-configured?
   "Is Slack integration configured?"
   []
-  (boolean (or (seq (slack-app-token)) (seq (slack-token)))))
+  (boolean (or (seq (channel.settings/slack-app-token)) (seq (channel.settings/slack-token)))))
 
 (def ^:private slack-token-error-codes
   "List of error codes that indicate an invalid or revoked Slack token."
@@ -130,9 +48,9 @@
       ;; Check `slack-token-valid?` before sending emails to avoid sending repeat emails for the same invalid token.
       ;; We should send an email if `slack-token-valid?` is `true` or `nil` (i.e. a pre-existing bot integration is
       ;; being used)
-      (when (slack-token-valid?)
+      (when (channel.settings/slack-token-valid?)
         (events/publish-event! :event/slack-token-invalid {}))
-      (slack-token-valid?! false))
+      (channel.settings/slack-token-valid?! false))
     (when invalid-token?
       (log/warn (u/colorize :red (str "🔒 Your Slack authorization token is invalid or has been revoked. Please"
                                       " update your integration in Admin Settings -> Slack."))))
@@ -148,8 +66,8 @@
 (defn- do-slack-request [request-fn endpoint request]
   (let [token (or (get-in request [:query-params :token])
                   (get-in request [:form-params :token])
-                  (unobfuscated-slack-app-token)
-                  (slack-token))]
+                  (channel.settings/unobfuscated-slack-app-token)
+                  (channel.settings/slack-token))]
     (when token
       (let [url     (str "https://slack.com/api/" (name endpoint))
             _       (log/tracef "Slack API request: %s %s" (pr-str url) (pr-str request))
@@ -242,7 +160,7 @@
   (boolean
    (let [channel-names (into #{} (comp (map (juxt :name :id))
                                        cat)
-                             (:channels (slack-cached-channels-and-usernames)))]
+                             (:channels (channel.settings/slack-cached-channels-and-usernames)))]
      (and channel-name (contains? channel-names channel-name)))))
 
 (mu/defn valid-token?
@@ -281,14 +199,14 @@
 
 (defn- needs-refresh? []
   (u.date/older-than?
-   (slack-channels-and-usernames-last-updated)
+   (channel.settings/slack-channels-and-usernames-last-updated)
    (t/minutes 10)))
 
 (defn clear-channel-cache!
   "Clear the Slack channels cache, and reset its last-updated timestamp to its default value (the Unix epoch)."
   []
-  (slack-channels-and-usernames-last-updated! zoned-time-epoch)
-  (slack-cached-channels-and-usernames! {:channels []}))
+  (channel.settings/slack-channels-and-usernames-last-updated! channel.settings/zoned-time-epoch)
+  (channel.settings/slack-cached-channels-and-usernames! {:channels []}))
 
 (defn refresh-channels-and-usernames!
   "Refreshes users and conversations in slack-cache. finds both in parallel, sets
@@ -299,8 +217,8 @@
     (let [users (future (vec (users-list)))
           private-channels? #(contains? (oauth-scopes) "groups:read")
           conversations (future (vec (conversations-list :private-channels (private-channels?))))]
-      (slack-cached-channels-and-usernames! {:channels (concat @conversations @users)})
-      (slack-channels-and-usernames-last-updated! (t/zoned-date-time)))))
+      (channel.settings/slack-cached-channels-and-usernames! {:channels (concat @conversations @users)})
+      (channel.settings/slack-channels-and-usernames-last-updated! (t/zoned-date-time)))))
 
 (defn refresh-channels-and-usernames-when-needed!
   "Refreshes users and conversations in slack-cache on a per-instance lock."
@@ -315,7 +233,7 @@
   [[slack-bug-report-channel]] setting with an # prefix. If it does, returns the channel details as a map. If it doesn't,
   throws an error that advices an admin to create it."
   []
-  (let [channel-name (slack-bug-report-channel)]
+  (let [channel-name (channel.settings/slack-bug-report-channel)]
     (if (channel-exists? channel-name)
       channel-name
       (let [message (str (tru "Slack channel named `{0}` is missing!" channel-name)

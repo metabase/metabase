@@ -1,10 +1,11 @@
-(ns metabase.task.refresh-slack-channel-user-cache
+(ns metabase.channel.task.refresh-slack-channel-user-cache
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.integrations.slack :as slack]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.channel.slack :as slack]
    [metabase.task :as task]
    [metabase.util.log :as log]))
 
@@ -16,7 +17,7 @@
           start-ms (System/currentTimeMillis)
           _        (slack/refresh-channels-and-usernames!)]
       (log/infof "Slack user/channel startup cache refreshed with %s entries, took %sms."
-                 (count (:channels (slack/slack-cached-channels-and-usernames)))
+                 (count (:channels (channel.settings/slack-cached-channels-and-usernames)))
                  (- (System/currentTimeMillis) start-ms)))
     (log/info "Slack is not configured, not refreshing slack user/channel cache.")))
 

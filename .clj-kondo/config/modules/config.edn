@@ -46,11 +46,11 @@
            metabase.analytics.prometheus
            metabase.analytics.snowplow}
    :uses #{api
+           channel
            config
            db
            driver
            eid-translation
-           integrations
            internal-stats
            models
            premium-features
@@ -78,9 +78,7 @@
           metabase.api.open-api
           metabase.api.query-metadata
           metabase.api.routes.common
-          metabase.api.slack
           metabase.api.table
-          metabase.api.testing
           metabase.api.user
           metabase.api.util
           metabase.api.util.handlers}
@@ -96,7 +94,6 @@
            eid-translation
            embedding
            events
-           integrations
            legacy-mbql
            lib
            logger
@@ -149,6 +146,7 @@
            metabase.cache.init}
    :uses #{api config db events models premium-features settings util}}
 
+  ;; TODO -- way too many API namespaces.
   channel
   {:api  #{metabase.channel.api
            metabase.channel.core
@@ -157,6 +155,8 @@
            metabase.channel.init
            metabase.channel.models.channel
            metabase.channel.render.core
+           metabase.channel.settings
+           metabase.channel.slack
            metabase.channel.template.core}
    :uses #{analytics
            api
@@ -165,7 +165,6 @@
            driver
            events
            formatter
-           integrations
            lib
            models
            notification
@@ -173,6 +172,7 @@
            premium-features
            settings
            query-processor
+           task
            timeline
            types
            util}}
@@ -282,8 +282,8 @@
            util}}
 
   events
-  {:api  #{metabase.events metabase.events.init metabase.events.notification}
-   :uses #{api channel driver models notification premium-features task-history util}}
+  {:api  #{metabase.events metabase.events.init}
+   :uses #{api channel driver models premium-features util}}
 
   formatter
   {:api  #{metabase.formatter}
@@ -292,10 +292,6 @@
   indexed-entities
   {:api  #{metabase.indexed-entities.api metabase.indexed-entities.init}
    :uses #{analytics api driver legacy-mbql lib models query-processor search sync task util}}
-
-  integrations
-  {:api  #{metabase.integrations.slack}
-   :uses #{events settings util}}
 
   internal-stats
   {:api #{metabase.internal-stats.core}
@@ -445,12 +441,14 @@
            metabase.native-query-snippets.core}
    :uses #{api models permissions premium-features util}}
 
+  ;; TODO -- way too many API namespaces. We need to prune these down.
   notification
   {:api  #{metabase.notification.api
+           metabase.notification.api.notification
            metabase.notification.core
+           metabase.notification.events.notification
            metabase.notification.init
            metabase.notification.models
-           metabase.notification.api.notification
            metabase.notification.payload.core
            metabase.notification.send}
    :uses #{analytics
@@ -504,7 +502,7 @@
            metabase.pulse.core
            metabase.pulse.init
            metabase.pulse.task.send-pulses}
-   :uses #{api channel config db driver events integrations models notification permissions plugins premium-features
+   :uses #{api channel config db driver events models notification permissions plugins premium-features
            query-processor request task task-history util
            enterprise/advanced-config enterprise/advanced-permissions enterprise/sandbox}}
 
@@ -660,7 +658,6 @@
            config
            db
            driver
-           integrations
            plugins
            premium-features
            settings
@@ -679,6 +676,12 @@
            request
            task
            util}}
+
+  testing-api
+  {:api  #{metabase.testing-api.api
+           metabase.testing-api.core
+           metabase.testing-api.init}
+   :uses #{analytics api config db premium-features search util}}
 
   tiles
   {:api  #{metabase.tiles.api
@@ -851,7 +854,7 @@
   {:api #{metabase-enterprise.sso.api.routes
           metabase-enterprise.sso.integrations.sso-settings
           metabase-enterprise.sso.integrations.sso-utils}
-   :uses #{api channel embedding events premium-features request session settings sso util enterprise/scim}}
+   :uses #{api channel embedding events notification premium-features request session settings sso util enterprise/scim}}
 
   enterprise/stale
   {:api  #{metabase-enterprise.stale.routes}
