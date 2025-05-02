@@ -204,7 +204,7 @@ export const fetchRemapping = createThunkAction(
   (value, fieldId) => async (dispatch, getState) => {
     const metadata = getMetadata(getState());
     const field = metadata.field(fieldId);
-    if (field == null) {
+    if (field == null || field.hasRemappedValue(value)) {
       return;
     }
 
@@ -215,6 +215,7 @@ export const fetchRemapping = createThunkAction(
         fieldId,
         dispatch,
         fieldApi.endpoints.getFieldValues,
+        { forceRefetch: false },
       );
       dispatch(addRemappings(field.id, response.values));
     }
