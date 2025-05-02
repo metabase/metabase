@@ -143,7 +143,6 @@ const UploadForm = () => {
           ref={inputRef}
           accept="text/csv"
           onChange={handleFileChange}
-          key={uploadInputReactKey}
         />
       </Stack>
     </Form>
