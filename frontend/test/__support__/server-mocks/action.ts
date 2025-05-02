@@ -54,3 +54,7 @@ export function setupModelActionsEndpoints(
 
   actions.forEach((action) => setupActionEndpoints(action));
 }
+
+export function setupListPublicActionsEndpoint() {
+  fetchMock.get("path:/api/action/public", []);
+}
