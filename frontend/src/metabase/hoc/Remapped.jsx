@@ -29,7 +29,12 @@ export default (ComposedComponent) =>
 
       UNSAFE_componentWillMount() {
         if (this.props.column) {
-          this.props.fetchRemapping(this.props.value, this.props.column.id);
+          this.props.fetchRemapping({
+            value: this.props.value,
+            fieldId: this.props.column.id,
+            parameterId: this.props.parameterId,
+            dashboardId: this.props.dashboardId,
+          });
         }
       }
       UNSAFE_componentWillReceiveProps(nextProps) {
@@ -38,7 +43,12 @@ export default (ComposedComponent) =>
           (this.props.value !== nextProps.value ||
             this.props.column?.id !== nextProps.column.id)
         ) {
-          this.props.fetchRemapping(nextProps.value, nextProps.column.id);
+          this.props.fetchRemapping({
+            value: nextProps.value,
+            fieldId: nextProps.column.id,
+            parameterId: nextProps.parameterId,
+            dashboardId: nextProps.dashboardId,
+          });
         }
       }
 

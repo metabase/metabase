@@ -39,8 +39,10 @@ import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
   Dashboard,
+  DashboardId,
   FieldValue,
   Parameter,
+  ParameterId,
   RowValue,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -320,6 +322,8 @@ export const FieldValuesWidgetInner = forwardRef<
         fields,
         formatOptions,
         value,
+        parameterId: parameter?.id,
+        dashboardId: dashboard?.id,
         autoLoad: true,
         compact: false,
         displayValue: option?.[1],
@@ -333,6 +337,8 @@ export const FieldValuesWidgetInner = forwardRef<
         fields,
         formatOptions,
         value: option[0],
+        parameterId: parameter?.id,
+        dashboardId: dashboard?.id,
         autoLoad: false,
         displayValue: option[1],
       });
@@ -660,9 +666,11 @@ function renderOptions({
 }
 
 function renderValue({
+  parameterId,
+  dashboardId,
   fields,
-  formatOptions,
   value,
+  formatOptions,
   autoLoad,
   compact,
   displayValue,
@@ -670,6 +678,8 @@ function renderValue({
   fields: Field[];
   formatOptions: Record<string, any>;
   value: RowValue;
+  parameterId?: ParameterId;
+  dashboardId?: DashboardId;
   autoLoad?: boolean;
   compact?: boolean;
   displayValue?: string;
@@ -678,6 +688,8 @@ function renderValue({
     <ValueComponent
       value={value}
       column={fields[0]}
+      parameterId={parameterId}
+      dashboardId={dashboardId}
       maximumFractionDigits={20}
       remap={displayValue || showRemapping(fields)}
       displayValue={displayValue}

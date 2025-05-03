@@ -1,7 +1,7 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import { fieldApi } from "metabase/api";
+import { dashboardApi, fieldApi } from "metabase/api";
 import Databases from "metabase/entities/databases";
 import Fields from "metabase/entities/fields";
 import Segments from "metabase/entities/segments";
@@ -201,46 +201,58 @@ export const addRemappings = (fieldId, remappings) => {
 const FETCH_REMAPPING = "metabase/metadata/FETCH_REMAPPING";
 export const fetchRemapping = createThunkAction(
   FETCH_REMAPPING,
-  (value, fieldId) => async (dispatch, getState) => {
-    const metadata = getMetadata(getState());
-    const field = metadata.field(fieldId);
-    if (field == null || field.hasRemappedValue(value)) {
-      return;
-    }
-
-    // internal remapping
-    const remappedInternalField = field.remappedInternalField();
-    if (remappedInternalField) {
-      const response = await entityCompatibleQuery(
-        fieldId,
-        dispatch,
-        fieldApi.endpoints.getFieldValues,
-        { forceRefetch: false },
-      );
-      dispatch(addRemappings(field.id, response.values));
-    }
-
-    // external and type/Name remapping
-    const remappedExternalField = field && field.remappedExternalField();
-    if (remappedExternalField) {
-      const fieldId = (field.target || field).id;
-      const remappedFieldId = remappedExternalField.id;
-      const remapping = await entityCompatibleQuery(
-        {
-          value,
-          fieldId,
-          remappedFieldId,
-        },
-        dispatch,
-        fieldApi.endpoints.getRemappedFieldValue,
-        { forceRefetch: false },
-      );
-      if (remapping) {
-        // FIXME: should this be field.id (potentially the FK) or fieldId (always the PK)?
-        dispatch(addRemappings(field.id, [remapping]));
+  ({ value, fieldId, parameterId, dashboardId }) =>
+    async (dispatch, getState) => {
+      const metadata = getMetadata(getState());
+      const field = metadata.field(fieldId);
+      if (field == null || field.hasRemappedValue(value)) {
+        return;
       }
-    }
-  },
+
+      const remappedInternalField = field.remappedInternalField();
+      const remappedExternalField = field && field.remappedExternalField();
+
+      if (dashboardId != null && parameterId != null) {
+        const response = await entityCompatibleQuery(
+          {
+            dashboard_id: dashboardId,
+            parameter_id: parameterId,
+            [parameterId]: value,
+          },
+          dispatch,
+          dashboardApi.endpoints.getDashboardParameterValues,
+          { forceRefetch: false },
+        );
+        dispatch(addRemappings(field.id, response.values));
+      } else if (remappedInternalField) {
+        // internal remapping
+        const response = await entityCompatibleQuery(
+          fieldId,
+          dispatch,
+          fieldApi.endpoints.getFieldValues,
+          { forceRefetch: false },
+        );
+        dispatch(addRemappings(field.id, response.values));
+      } else if (remappedExternalField) {
+        // external and type/Name remapping
+        const fieldId = (field.target || field).id;
+        const remappedFieldId = remappedExternalField.id;
+        const remapping = await entityCompatibleQuery(
+          {
+            value,
+            fieldId,
+            remappedFieldId,
+          },
+          dispatch,
+          fieldApi.endpoints.getRemappedFieldValue,
+          { forceRefetch: false },
+        );
+        if (remapping) {
+          // FIXME: should this be field.id (potentially the FK) or fieldId (always the PK)?
+          dispatch(addRemappings(field.id, [remapping]));
+        }
+      }
+    },
 );
 
 const FETCH_REAL_DATABASES_WITH_METADATA =
