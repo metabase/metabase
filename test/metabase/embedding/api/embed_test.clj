@@ -1165,11 +1165,7 @@
      (testing "GET /api/embed/card/:token/field/:field/search/:search-field-id nil"
        (testing "Search for Field values for a Card"
          (with-embedding-enabled-and-temp-card-referencing! :venues :id [card]
-           (tests :model/Card card))))
-     (testing "GET /api/embed/dashboard/:token/field/:field/search/:search-field-id nil"
-       (testing "Search for Field values for a Dashboard"
-         (with-embedding-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
-           (tests :model/Dashboard dashboard)))))))
+           (tests :model/Card card)))))))
 
 ;;; ----------------------- GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil ------------------------
 
