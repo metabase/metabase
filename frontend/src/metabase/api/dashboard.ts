@@ -1,9 +1,11 @@
+import { PLUGIN_API } from "metabase/plugins";
 import type {
   CopyDashboardRequest,
   CreateDashboardRequest,
   Dashboard,
   DashboardId,
   DashboardQueryMetadata,
+  GetDashboardParameterValuesRequest,
   GetDashboardQueryMetadataRequest,
   GetDashboardRequest,
   GetEmbeddableDashboard,
@@ -12,6 +14,7 @@ import type {
   ListCollectionItemsResponse,
   ListDashboardsRequest,
   ListDashboardsResponse,
+  ParameterValues,
   SaveDashboardRequest,
   UpdateDashboardPropertyRequest,
   UpdateDashboardRequest,
@@ -23,6 +26,7 @@ import {
   invalidateTags,
   listTag,
   provideDashboardListTags,
+  provideDashboardParameterValuesTags,
   provideDashboardQueryMetadataTags,
   provideDashboardTags,
 } from "./tags";
@@ -75,6 +79,21 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (metadata) =>
           metadata ? provideDashboardQueryMetadataTags(metadata) : [],
+      }),
+      getDashboardParameterValues: builder.query<
+        ParameterValues,
+        GetDashboardParameterValuesRequest
+      >({
+        query: ({ dashboard_id, parameter_id, ...params }) => ({
+          method: "GET",
+          url: PLUGIN_API.getDashboardParameterValuesUrl(
+            dashboard_id,
+            parameter_id,
+          ),
+          params,
+        }),
+        providesTags: (_response, _error, { parameter_id }) =>
+          provideDashboardParameterValuesTags(parameter_id),
       }),
       listDashboardItems: builder.query<
         ListCollectionItemsResponse,
@@ -203,6 +222,7 @@ export const {
   useGetDashboardQueryMetadataQuery,
   useListDashboardsQuery,
   useListDashboardItemsQuery,
+  useGetDashboardParameterValuesQuery,
   useCreateDashboardMutation,
   useUpdateDashboardMutation,
   useSaveDashboardMutation,

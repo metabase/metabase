@@ -11,6 +11,7 @@ import type {
   Parameter,
   ParameterId,
   ParameterTarget,
+  ParameterValueOrArray,
   Table,
   UserId,
   VirtualCardDisplay,
@@ -322,3 +323,8 @@ export type UpdateDashboardPropertyRequest<
 export type GetPublicDashboard = Pick<Dashboard, "id" | "name" | "public_uuid">;
 
 export type GetEmbeddableDashboard = Pick<Dashboard, "id" | "name">;
+
+export type GetDashboardParameterValuesRequest = {
+  dashboard_id: DashboardId;
+  parameter_id: ParameterId;
+} & Record<ParameterId, ParameterValueOrArray>;

@@ -54,6 +54,7 @@ import type {
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
   Dashboard,
+  DashboardId,
   Database as DatabaseType,
   Dataset,
   FieldId,
@@ -61,6 +62,7 @@ import type {
   GroupPermissions,
   GroupsPermissions,
   ModelCacheRefreshStatus,
+  ParameterId,
   Pulse,
   Revision,
   TableId,
@@ -638,4 +640,9 @@ export const PLUGIN_API = {
     `/api/field/${fieldId}/remapping/${remappedFieldId}`,
   getSearchFieldValuesUrl: (fieldId: FieldId, searchFieldId: FieldId) =>
     `/api/field/${fieldId}/search/${searchFieldId}`,
+  getDashboardParameterValuesUrl: (
+    dashboardId: DashboardId,
+    parameterId: ParameterId,
+  ) =>
+    `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/values`,
 };
