@@ -4,7 +4,7 @@ import { screen } from "__support__/ui";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
 
-function setup(opts: SetupOpts = {}) {
+function setup(opts: SetupOpts) {
   return baseSetup({
     hasEnterprisePlugins: true,
     tokenFeatures: { content_translation: true },
