@@ -9,6 +9,7 @@ import {
 import { type CardDisplayType, cardDisplayTypes } from "metabase-types/api";
 import { P, match } from "ts-pattern";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { uploadTranslationDictionary } from "./helpers/e2e-content-translation-helpers";
 
 const { PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
