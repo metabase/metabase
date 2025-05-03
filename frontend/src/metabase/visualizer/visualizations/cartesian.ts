@@ -2,6 +2,7 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import type { Draft } from "immer";
 import _ from "underscore";
 
+import { isNotNull } from "metabase/lib/types";
 import { isCartesianChart } from "metabase/visualizations";
 import {
   getDefaultDimensionFilter,
@@ -185,6 +186,62 @@ export function addDimensionColumnToCartesianChart(
   };
 }
 
+export function findColumnSlotForCartesianChart(
+  {
+    display,
+    columns,
+    settings,
+  }: Pick<
+    VisualizerVizDefinitionWithColumns,
+    "display" | "columns" | "settings"
+  >,
+  column: DatasetColumn,
+  dataset: Dataset,
+) {
+  if (display === "scatter") {
+    const metrics = settings["graph.metrics"] ?? [];
+    const dimensions = settings["graph.dimensions"] ?? [];
+    const bubble = settings["scatter.bubble"];
+
+    const couldBeMetric = getDefaultMetricFilter("scatter")(column);
+    const couldBeDimension = getDefaultDimensionFilter("scatter")(column);
+
+    if (metrics.length === 0 && couldBeMetric) {
+      return "graph.metrics";
+    } else if (dimensions.length === 0 && couldBeDimension) {
+      return "graph.dimensions";
+    } else if (!bubble && couldBeMetric) {
+      return "scatter.bubble";
+    }
+  } else {
+    const ownDimensions = settings["graph.dimensions"] ?? [];
+    if (
+      ownDimensions.length === 0 ||
+      isCompatibleWithCartesianChart({ settings, columns }, dataset)
+    ) {
+      if (isDimension(column) && !isMetric(column)) {
+        if (ownDimensions.length === 0) {
+          return "graph.dimensions";
+        } else {
+          const dimensionColumns = ownDimensions
+            .map((name) => columns.find((col) => col.name === name))
+            .filter(isNotNull);
+          const isCompatible = dimensionColumns.some((col) => {
+            if (isDate(col)) {
+              return isDate(column);
+            } else {
+              return col.id === column.id;
+            }
+          });
+          return isCompatible ? "graph.dimensions" : undefined;
+        }
+      } else if (isMetric(column)) {
+        return "graph.metrics";
+      }
+    }
+  }
+}
+
 /**
  * This adds a column to a cartesian chart, either as a dimension or a metric.
  * It tries to be "smart", in the sense that it will add the column where it makes sense.
@@ -199,51 +256,18 @@ export function addColumnToCartesianChart(
   dataset: Dataset,
   dataSource: VisualizerDataSource,
 ) {
-  if (
-    !state.display ||
-    !["area", "bar", "line", "scatter"].includes(state.display)
-  ) {
-    return;
-  }
-
-  if (state.display === "scatter") {
-    const metrics = state.settings["graph.metrics"] ?? [];
-    const dimensions = state.settings["graph.dimensions"] ?? [];
-    const bubble = state.settings["scatter.bubble"];
-
-    const couldBeMetric = getDefaultMetricFilter("scatter")(column);
-    const couldBeDimension = getDefaultDimensionFilter("scatter")(column);
-
-    if (metrics.length === 0 && couldBeMetric) {
-      addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
-    } else if (dimensions.length === 0 && couldBeDimension) {
-      addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
-    } else if (!bubble && couldBeMetric) {
-      replaceMetricColumnAsScatterBubbleSize(
-        state,
-        column,
-        columnRef,
-        dataSource,
-      );
-    }
-  } else {
-    const ownDimensions = state.settings["graph.dimensions"] ?? [];
-
-    if (
-      ownDimensions.length === 0 ||
-      isCompatibleWithCartesianChart(state, dataset)
-    ) {
-      if (isDimension(column) && !isMetric(column)) {
-        addDimensionColumnToCartesianChart(
-          state,
-          column,
-          columnRef,
-          dataSource,
-        );
-      } else if (isMetric(column)) {
-        addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
-      }
-    }
+  const slot = findColumnSlotForCartesianChart(state, column, dataset);
+  if (slot === "graph.dimensions") {
+    addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
+  } else if (slot === "graph.metrics") {
+    addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
+  } else if (slot === "scatter.bubble") {
+    replaceMetricColumnAsScatterBubbleSize(
+      state,
+      column,
+      columnRef,
+      dataSource,
+    );
   }
 }
 
@@ -389,11 +413,14 @@ export function maybeImportDimensionsFromOtherDataSources(
 }
 
 export function isCompatibleWithCartesianChart(
-  state: VisualizerVizDefinitionWithColumns,
+  {
+    settings,
+    columns,
+  }: Pick<VisualizerVizDefinitionWithColumns, "settings" | "columns">,
   { data }: Dataset,
 ) {
-  const ownDimensions = state.settings["graph.dimensions"] ?? [];
-  const ownDimensionColumns = state.columns.filter((col) =>
+  const ownDimensions = settings["graph.dimensions"] ?? [];
+  const ownDimensionColumns = columns.filter((col) =>
     ownDimensions.includes(col.name),
   );
   const [ownTimeDimensions, ownOtherDimensions] = _.partition(
