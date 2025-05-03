@@ -995,6 +995,65 @@
             (is (= "completed"
                    (:status (client/client :get 202 (dashcard-url (assoc dashcard :card_id (u/the-id series-card)))))))))))))
 
+;;; ------------------------------- GET /api/embed/card/:token/field/:field/values nil --------------------------------
+
+(defn- field-values-url [card-or-dashboard field-or-id & [entity-id]]
+  (str
+   "embed/"
+   (condp mi/instance-of? card-or-dashboard
+     :model/Card      (str "card/"      (card-token card-or-dashboard {} entity-id))
+     :model/Dashboard (str "dashboard/" (dash-token card-or-dashboard {} entity-id)))
+   "/field/"
+   (u/the-id field-or-id)
+   "/values"))
+
+(defn- do-with-embedding-enabled-and-temp-card-referencing! [table-kw field-kw f]
+  (with-embedding-enabled-and-new-secret-key!
+    (mt/with-temp [:model/Card card (assoc (public-test/mbql-card-referencing table-kw field-kw)
+                                           :enable_embedding true)]
+      (f card))))
+
+(defmacro ^:private with-embedding-enabled-and-temp-card-referencing!
+  {:style/indent 3}
+  [table-kw field-kw [card-binding] & body]
+  `(do-with-embedding-enabled-and-temp-card-referencing!
+    ~table-kw ~field-kw
+    (fn [~(or card-binding '_)]
+      ~@body)))
+
+;; should be able to fetch values for a Field referenced by a public Card
+(deftest should-be-able-to-fetch-values-for-a-field-referenced-by-a-public-card
+  (field-values/clear-field-values-for-field! (mt/id :venues :name))
+  (is (= {:values          [["20th Century Cafe"]
+                            ["25°"]
+                            ["33 Taps"]
+                            ["800 Degrees Neapolitan Pizzeria"]
+                            ["BCD Tofu House"]]
+          :field_id        (mt/id :venues :name)
+          :has_more_values false}
+         (with-embedding-enabled-and-temp-card-referencing! :venues :name [card]
+           (-> (client/client :get 200 (field-values-url card (mt/id :venues :name)))
+               (update :values (partial take 5)))))))
+
+;; but for Fields that are not referenced we should get an Exception
+(deftest but-for-fields-that-are-not-referenced-we-should-get-an-exception
+  (is (= "Not found."
+         (with-embedding-enabled-and-temp-card-referencing! :venues :name [card]
+           (client/client :get 400 (field-values-url card (mt/id :venues :price)))))))
+
+;; Endpoint should fail if embedding is disabled
+(deftest endpoint-should-fail-if-embedding-is-disabled
+  (is (= "Embedding is not enabled."
+         (with-embedding-enabled-and-temp-card-referencing! :venues :name [card]
+           (mt/with-temporary-setting-values [enable-embedding-static false]
+             (client/client :get 400 (field-values-url card (mt/id :venues :name))))))))
+
+(deftest embedding-not-enabled-message
+  (is (= "Embedding is not enabled for this object."
+         (with-embedding-enabled-and-temp-card-referencing! :venues :name [card]
+           (t2/update! :model/Card (u/the-id card) {:enable_embedding false})
+           (client/client :get 400 (field-values-url card (mt/id :venues :name)))))))
+
 (deftest card-param-values
   (letfn [(search [card param-key prefix & [entity-id]]
             (client/client :get 200 (format "embed/card/%s/params/%s/search/%s"
@@ -1070,6 +1129,201 @@
               (is (= {:has_more_values false,
                       :values          [["Fred 62"] ["Red Medicine"]]}
                      response)))))))))
+
+;;; ----------------------------- GET /api/embed/dashboard/:token/field/:field/values nil -----------------------------
+
+(defn- do-with-embedding-enabled-and-temp-dashcard-referencing! [table-kw field-kw f]
+  (with-embedding-enabled-and-new-secret-key!
+    (mt/with-temp [:model/Dashboard     dashboard {:enable_embedding true}
+                   :model/Card          card      (public-test/mbql-card-referencing table-kw field-kw)
+                   :model/DashboardCard dashcard  {:dashboard_id       (u/the-id dashboard)
+                                                   :card_id            (u/the-id card)
+                                                   :parameter_mappings [{:card_id (u/the-id card)
+                                                                         :target  [:dimension
+                                                                                   [:field
+                                                                                    (mt/id table-kw field-kw) nil]]}]}]
+      (f dashboard card dashcard))))
+
+(defmacro ^:private with-embedding-enabled-and-temp-dashcard-referencing!
+  {:style/indent 3}
+  [table-kw field-kw [dash-binding card-binding dashcard-binding] & body]
+  `(do-with-embedding-enabled-and-temp-dashcard-referencing!
+    ~table-kw ~field-kw
+    (fn [~(or dash-binding '_) ~(or card-binding '_) ~(or dashcard-binding '_)]
+      ~@body)))
+
+;; should be able to use it when everything is g2g
+(deftest should-be-able-to-use-it-when-everything-is-g2g
+  (is (= {:values          [["20th Century Cafe"]
+                            ["25°"]
+                            ["33 Taps"]
+                            ["800 Degrees Neapolitan Pizzeria"]
+                            ["BCD Tofu House"]]
+          :field_id        (mt/id :venues :name)
+          :has_more_values false}
+         (with-embedding-enabled-and-temp-dashcard-referencing! :venues :name [dashboard]
+           (-> (client/client :get 200 (field-values-url dashboard (mt/id :venues :name)))
+               (update :values (partial take 5))))
+         (with-embedding-enabled-and-temp-dashcard-referencing! :venues :name [dashboard]
+           (-> (client/client :get 200 (field-values-url dashboard (mt/id :venues :name) (:entity_id dashboard)))
+               (update :values (partial take 5)))))))
+
+;; shound NOT be able to use the endpoint with a Field not referenced by the Dashboard
+(deftest shound-not-be-able-to-use-the-endpoint-with-a-field-not-referenced-by-the-dashboard
+  (is (= "Not found."
+         (with-embedding-enabled-and-temp-dashcard-referencing! :venues :name [dashboard]
+           (client/client :get 400 (field-values-url dashboard (mt/id :venues :price)))))))
+
+;; Endpoint should fail if embedding is disabled
+(deftest field-values-endpoint-should-fail-if-embedding-is-disabled
+  (is (= "Embedding is not enabled."
+         (with-embedding-enabled-and-temp-dashcard-referencing! :venues :name [dashboard]
+           (mt/with-temporary-setting-values [enable-embedding-static false]
+             (client/client :get 400 (field-values-url dashboard (mt/id :venues :name))))))))
+
+;; Endpoint should fail if embedding is disabled for the Dashboard
+(deftest endpoint-should-fail-if-embedding-is-disabled-for-the-dashboard
+  (is (= "Embedding is not enabled for this object."
+         (with-embedding-enabled-and-temp-dashcard-referencing! :venues :name [dashboard]
+           (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding false})
+           (client/client :get 400 (field-values-url dashboard (mt/id :venues :name)))))))
+
+;;; --------------------------------------------- Field search endpoints ---------------------------------------------
+
+(defn- field-search-url [card-or-dashboard field-or-id search-field-or-id & [entity-id]]
+  (str "embed/"
+       (condp mi/instance-of? card-or-dashboard
+         :model/Card      (str "card/"      (card-token card-or-dashboard {} entity-id))
+         :model/Dashboard (str "dashboard/" (dash-token card-or-dashboard {} entity-id)))
+       "/field/" (u/the-id field-or-id)
+       "/search/" (u/the-id search-field-or-id)))
+
+(deftest field-search-test
+  (testing
+   (letfn [(tests [model object]
+             (is (= [[93 "33 Taps"]]
+                    (client/client :get 200 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
+                                   :value "33 T")))
+             (is (= [[93 "33 Taps"]]
+                    (client/client :get 200 (field-search-url object (mt/id :venues :id) (mt/id :venues :name) (:entity_id object))
+                                   :value "33 T")))
+
+             (testing "if search field isn't allowed to be used with the other Field endpoint should return exception"
+               (is (= "Invalid Request."
+                      (client/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :price))
+                                     :value "33 T"))))
+
+             (testing "Endpoint should fail if embedding is disabled"
+               (mt/with-temporary-setting-values [enable-embedding-static false]
+                 (is (= "Embedding is not enabled."
+                        (client/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
+                                       :value "33 T")))))
+
+             (testing "Endpoint should fail if embedding is disabled for the object"
+               (t2/update! model (u/the-id object) {:enable_embedding false})
+               (is (= "Embedding is not enabled for this object."
+                      (client/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
+                                     :value "33 T")))))]
+     (testing "GET /api/embed/card/:token/field/:field/search/:search-field-id nil"
+       (testing "Search for Field values for a Card"
+         (with-embedding-enabled-and-temp-card-referencing! :venues :id [card]
+           (tests :model/Card card))))
+     (testing "GET /api/embed/dashboard/:token/field/:field/search/:search-field-id nil"
+       (testing "Search for Field values for a Dashboard"
+         (with-embedding-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
+           (tests :model/Dashboard dashboard)))))))
+
+;;; ----------------------- GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil ------------------------
+
+(defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id & [entity-id]]
+  (str "embed/"
+       (condp mi/instance-of? card-or-dashboard
+         :model/Card      (str "card/"      (card-token card-or-dashboard {} entity-id))
+         :model/Dashboard (str "dashboard/" (dash-token card-or-dashboard {} entity-id)))
+       "/field/" (u/the-id field-or-id)
+       "/remapping/" (u/the-id remapped-field-or-id)))
+
+(deftest field-remapping-test
+  (letfn [(tests [model object & [entity-id]]
+            (testing (str "we should be able to use the API endpoint and get the same results we get by calling the "
+                          "function above directly")
+              (is (= [10 "Fred 62"]
+                     (client/client :get 200 (field-remapping-url
+                                              object (mt/id :venues :id) (mt/id :venues :name) entity-id)
+                                    :value "10"))))
+
+            (testing " ...or if the remapping Field isn't allowed to be used with the other Field"
+              (is (= "Invalid Request."
+                     (client/client :get 400 (field-remapping-url
+                                              object (mt/id :venues :id) (mt/id :venues :price) entity-id)
+                                    :value "10"))))
+
+            (testing " ...or if embedding is disabled"
+              (mt/with-temporary-setting-values [enable-embedding-static false]
+                (is (= "Embedding is not enabled."
+                       (client/client :get 400 (field-remapping-url
+                                                object (mt/id :venues :id) (mt/id :venues :name) entity-id)
+                                      :value "10")))))
+
+            (testing " ...or if embedding is disabled for the Card/Dashboard"
+              (t2/update! model (u/the-id object) {:enable_embedding false})
+              (is (= "Embedding is not enabled for this object."
+                     (client/client :get 400 (field-remapping-url
+                                              object (mt/id :venues :id) (mt/id :venues :name) entity-id)
+                                    :value "10")))))]
+
+    (testing "GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil"
+      (testing "Get remapped Field values for a Card"
+        (with-embedding-enabled-and-temp-card-referencing! :venues :id [card]
+          (tests :model/Card card)))
+      (testing "Get remapped Field values for a Card with entity-ids"
+        (with-embedding-enabled-and-temp-card-referencing! :venues :id [card]
+          (tests :model/Card card (:entity_id card))))
+      (testing "Shouldn't work if Card doesn't reference the Field in question"
+        (with-embedding-enabled-and-temp-card-referencing! :venues :price [card]
+          (is (= "Not found."
+                 (client/client :get 400 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
+                                :value "10"))))))
+
+    (testing "GET /api/embed/dashboard/:token/field/:field/remapping/:remapped-id nil"
+      (testing "Get remapped Field values for a Dashboard"
+        (with-embedding-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
+          (tests :model/Dashboard dashboard)))
+      (testing "Get remapped Field values for a Dashboard with entity-ids"
+        (with-embedding-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
+          (tests :model/Dashboard dashboard (:entity_id dashboard))))
+      (testing "Shouldn't work if Dashboard doesn't reference the Field in question"
+        (with-embedding-enabled-and-temp-dashcard-referencing! :venues :price [dashboard]
+          (is (= "Not found."
+                 (client/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
+                                :value "10"))))))
+
+    (testing "with entity ids"
+      (testing "GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil"
+        (testing "Get remapped Field values for a Card"
+          (with-embedding-enabled-and-temp-card-referencing! :venues :id [card]
+            (tests :model/Card card (:entity_id card))))
+        (testing "Get remapped Field values for a Card with entity-ids"
+          (with-embedding-enabled-and-temp-card-referencing! :venues :id [card]
+            (tests :model/Card card (:entity_id card))))
+        (testing "Shouldn't work if Card doesn't reference the Field in question"
+          (with-embedding-enabled-and-temp-card-referencing! :venues :price [card]
+            (is (= "Not found."
+                   (client/client :get 400 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
+                                  :value "10"))))))
+
+      (testing "GET /api/embed/dashboard/:token/field/:field/remapping/:remapped-id nil"
+        (testing "Get remapped Field values for a Dashboard"
+          (with-embedding-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
+            (tests :model/Dashboard dashboard (:entity_id dashboard))))
+        (testing "Get remapped Field values for a Dashboard with entity-ids"
+          (with-embedding-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
+            (tests :model/Dashboard dashboard (:entity_id dashboard))))
+        (testing "Shouldn't work if Dashboard doesn't reference the Field in question"
+          (with-embedding-enabled-and-temp-dashcard-referencing! :venues :price [dashboard]
+            (is (= "Not found."
+                   (client/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
+                                  :value "10")))))))))
 
 ;;; ------------------------------------------------ Chain filtering -------------------------------------------------
 
