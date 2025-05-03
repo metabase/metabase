@@ -385,6 +385,11 @@ function setFieldEndpoints(prefix) {
     `${prefix}/field/${fieldId}/remapping/${remappedFieldId}`;
 }
 
+function setParameterEndpoints(prefix) {
+  PLUGIN_API.getDashboardParameterValuesUrl = (_dashboardId, parameterId) =>
+    `${prefix}/params/${encodeURIComponent(parameterId)}/values`;
+}
+
 function setCardEndpoints(prefix) {
   // RTK query
   setFieldEndpoints(prefix);
@@ -402,6 +407,7 @@ function setCardEndpoints(prefix) {
 function setDashboardEndpoints(prefix) {
   // RTK query
   setFieldEndpoints(prefix);
+  setParameterEndpoints(prefix);
 
   // legacy API
   DashboardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
@@ -414,6 +420,10 @@ function setDashboardEndpoints(prefix) {
 }
 
 function setDashboardParameterValuesEndpoint(prefix) {
+  // RTK query
+  setParameterEndpoints(prefix);
+
+  // legacy API
   DashboardApi.parameterValues = GET(
     `${prefix}/dashboard/:dashId/params/:paramId/values`,
   );
