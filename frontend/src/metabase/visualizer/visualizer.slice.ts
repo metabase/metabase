@@ -353,9 +353,6 @@ const visualizerSlice = createSlice({
         return;
       }
 
-      state.columns.push(column);
-      state.columnValuesMapping[column.name] = [columnRef];
-
       if (isCartesianChart(state.display)) {
         addColumnToCartesianChart(
           state,
