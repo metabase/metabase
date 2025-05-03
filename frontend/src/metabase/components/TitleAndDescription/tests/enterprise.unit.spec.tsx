@@ -6,10 +6,10 @@ import { dictionaryWithGermanPhrases } from "./constants";
 import { type SetupOpts, setup as baseSetup } from "./setup";
 
 function setup(opts: SetupOpts) {
-  return baseSetup({ hasEnterprisePlugins: false, ...opts });
+  return baseSetup({ hasEnterprisePlugins: true, ...opts });
 }
 
-describe("TitleAndDescription Component (OSS)", () => {
+describe("TitleAndDescription Component (EE without token feature)", () => {
   it("displays 'Sample text' and 'Sample description' untranslated", async () => {
     setup({ localeCode: "de", dictionary: dictionaryWithGermanPhrases });
     expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
