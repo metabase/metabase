@@ -33,7 +33,7 @@ export function setup({
     settings: mockSettings({
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
-    currentUser: createMockUser({ id: 1 }),
+    currentUser: createMockUser({ id: 1, locale: localeCode }),
   });
 
   if (hasEnterprisePlugins) {
