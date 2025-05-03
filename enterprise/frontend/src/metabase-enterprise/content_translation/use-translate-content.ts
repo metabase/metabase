@@ -12,7 +12,6 @@ export const useTranslateContent = (): ContentTranslationFunction => {
   const { data } = useListContentTranslationsQuery({
     locale,
   });
-
   const dictionary = data?.data;
 
   return useCallback(
