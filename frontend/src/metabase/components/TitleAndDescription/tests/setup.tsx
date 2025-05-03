@@ -4,7 +4,10 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
-import type { DictionaryResponse } from "metabase-types/api/content-translation";
+import type {
+  DictionaryResponse,
+  RetrievedDictionaryArrayRow,
+} from "metabase-types/api/content-translation";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -20,22 +23,14 @@ export interface SetupOpts {
   localeCode: string;
   hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  dictionary?: RetrievedDictionaryArrayRow[];
 }
-
-const sampleDictionary = [
-  { id: 0, locale: "de", msgid: "Sample text", msgstr: "Beispieltext" },
-  {
-    id: 1,
-    locale: "de",
-    msgid: "Sample description",
-    msgstr: "Beispielbeschreibung",
-  },
-];
 
 export function setup({
   localeCode,
   hasEnterprisePlugins,
   tokenFeatures = {},
+  dictionary = [],
 }: SetupOpts) {
   const state = createMockState({
     setup: createMockSetupState({
@@ -54,7 +49,7 @@ export function setup({
   fetchMock.get("path:/api/ee/content-translation/dictionary", (url) => {
     const localeCode = new URL(url).searchParams.get("locale");
     const response: DictionaryResponse = {
-      data: sampleDictionary.filter((row) => row.locale === localeCode),
+      data: dictionary.filter((row) => row.locale === localeCode),
     };
     return response;
   });
