@@ -27,6 +27,7 @@ import {
   splitVisualizerSeries,
 } from "./utils";
 import { findColumnSlotForCartesianChart } from "./visualizations/cartesian";
+import { findColumnSlotForPieChart } from "./visualizations/pie";
 
 type State = {
   visualizer: {
@@ -307,6 +308,10 @@ export const getColumnCompatibilityCheckFn = createSelector(
           column,
           dataset,
         );
+    }
+    if (display === "pie") {
+      return (column: DatasetColumn) =>
+        !!findColumnSlotForPieChart({ settings }, column);
     }
     return () => true;
   },

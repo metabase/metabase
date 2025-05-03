@@ -379,7 +379,7 @@ const visualizerSlice = createSlice({
           );
         }
       } else if (state.display === "pie") {
-        addColumnToPieChart(state, column);
+        addColumnToPieChart(state, column, columnRef);
       }
     },
     removeColumn: (
