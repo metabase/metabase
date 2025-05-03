@@ -165,9 +165,7 @@ export function combineWithPieChart(
       dataSource.name,
       state.columns,
     );
-    state.columns.push(column);
-    state.columnValuesMapping[column.name] = [columnRef];
-    addColumnToPieChart(state, column);
+    addColumnToPieChart(state, column, columnRef);
   }
 
   if (_.isEmpty(state.settings["pie.dimension"]) && dimensions.length === 1) {
@@ -183,8 +181,6 @@ export function combineWithPieChart(
       dataSource.name,
       state.columns,
     );
-    state.columns.push(column);
-    state.columnValuesMapping[column.name] = [columnRef];
-    addColumnToPieChart(state, column);
+    addColumnToPieChart(state, column, columnRef);
   }
 }

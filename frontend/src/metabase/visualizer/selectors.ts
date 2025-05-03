@@ -27,6 +27,7 @@ import {
   splitVisualizerSeries,
 } from "./utils";
 import { findColumnSlotForCartesianChart } from "./visualizations/cartesian";
+import { findColumnSlotForFunnel } from "./visualizations/funnel";
 import { findColumnSlotForPieChart } from "./visualizations/pie";
 
 type State = {
@@ -312,6 +313,14 @@ export const getColumnCompatibilityCheckFn = createSelector(
     if (display === "pie") {
       return (column: DatasetColumn) =>
         !!findColumnSlotForPieChart({ settings }, column);
+    }
+    if (display === "funnel") {
+      return (column: DatasetColumn, dataset: Dataset) =>
+        !!findColumnSlotForFunnel(
+          { display, columns, settings },
+          column,
+          dataset,
+        );
     }
     return () => true;
   },
