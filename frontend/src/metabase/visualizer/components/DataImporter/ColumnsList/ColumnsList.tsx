@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, Icon, Loader, Text } from "metabase/ui";
 import { DRAGGABLE_ID } from "metabase/visualizer/constants";
 import {
+  getColumnCompatibilityCheckFn,
   getDataSources,
   getDatasets,
   getLoadingDatasets,
@@ -29,6 +30,7 @@ export const ColumnsList = () => {
   const datasets = useSelector(getDatasets);
   const loadingDatasets = useSelector(getLoadingDatasets);
   const referencedColumns = useSelector(getReferencedColumns);
+  const checkIfColumnCompatible = useSelector(getColumnCompatibilityCheckFn);
   const dispatch = useDispatch();
 
   const { expandedDataSources, toggleDataSourceExpanded } = useVisualizerUi();
@@ -100,11 +102,13 @@ export const ColumnsList = () => {
                     isReferenceToColumn(column, source.id, ref),
                   );
                   const isSelected = !!columnReference;
+
                   return (
                     <DraggableColumnListItem
                       key={column.name}
                       column={column}
                       dataSource={source}
+                      isDisabled={!checkIfColumnCompatible(column, dataset)}
                       isSelected={isSelected}
                       onClick={() => {
                         if (!isSelected) {
