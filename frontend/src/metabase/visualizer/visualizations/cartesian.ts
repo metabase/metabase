@@ -451,29 +451,45 @@ export function isCompatibleWithCartesianChart(
 
 export function combineWithCartesianChart(
   state: VisualizerVizDefinitionWithColumns,
-  { data }: Dataset,
+  dataset: Dataset,
   dataSource: VisualizerDataSource,
 ) {
+  const { data } = dataset;
+
   const metrics = data.cols.filter((col) => isMetric(col));
   const dimensions = data.cols.filter(
     (col) => isDimension(col) && !isMetric(col),
   );
 
   metrics.forEach((column) => {
-    const columnRef = createVisualizerColumnReference(
-      dataSource,
+    const isCompatible = !!findColumnSlotForCartesianChart(
+      state,
       column,
-      extractReferencedColumns(state.columnValuesMapping),
+      dataset,
     );
-    addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
+    if (isCompatible) {
+      const columnRef = createVisualizerColumnReference(
+        dataSource,
+        column,
+        extractReferencedColumns(state.columnValuesMapping),
+      );
+      addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
+    }
   });
 
   dimensions.forEach((column) => {
-    const columnRef = createVisualizerColumnReference(
-      dataSource,
+    const isCompatible = !!findColumnSlotForCartesianChart(
+      state,
       column,
-      extractReferencedColumns(state.columnValuesMapping),
+      dataset,
     );
-    addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
+    if (isCompatible) {
+      const columnRef = createVisualizerColumnReference(
+        dataSource,
+        column,
+        extractReferencedColumns(state.columnValuesMapping),
+      );
+      addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
+    }
   });
 }
