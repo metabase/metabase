@@ -11,6 +11,8 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
   Card,
+  Dataset,
+  DatasetColumn,
   DatasetData,
   RawSeries,
   SingleSeries,
@@ -24,6 +26,7 @@ import {
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
 } from "./utils";
+import { findColumnSlotForCartesianChart } from "./visualizations/cartesian";
 
 type State = {
   visualizer: {
@@ -284,5 +287,27 @@ export const getIsRenderable = createSelector(
     } catch (e) {
       return false;
     }
+  },
+);
+
+export const getColumnCompatibilityCheckFn = createSelector(
+  [
+    getVisualizationType,
+    getVisualizerDatasetColumns,
+    getVisualizerComputedSettings,
+  ],
+  (display, columns, settings) => {
+    if (!display) {
+      return () => true;
+    }
+    if (isCartesianChart(display)) {
+      return (column: DatasetColumn, dataset: Dataset) =>
+        !!findColumnSlotForCartesianChart(
+          { display, columns, settings },
+          column,
+          dataset,
+        );
+    }
+    return () => true;
   },
 );
