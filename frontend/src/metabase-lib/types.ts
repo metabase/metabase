@@ -664,13 +664,7 @@ export type FieldItem = {
 };
 
 export type DependentItem = DatabaseItem | SchemaItem | TableItem | FieldItem;
-<<<<<<< HEAD
 
 export type ContentTranslationFunction = <T extends string | null | undefined>(
   msgid: T,
 ) => string | T;
-||||||| parent of c2ae5a76fa2 (Support column name translations)
-=======
-
-export type ContentTranslationFunction = <T>(msgid: T) => string | T;
->>>>>>> c2ae5a76fa2 (Support column name translations)
