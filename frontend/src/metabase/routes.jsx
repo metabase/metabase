@@ -56,6 +56,7 @@ import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisi
 import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
+import { EmbedPage } from "metabase/embed/components/EmbedPage";
 
 import {
   CanAccessOnboarding,
@@ -130,7 +131,11 @@ export const getRoutes = (store) => {
                 });
               }
             }}
-          />
+          >
+            <IndexRoute component={HomePage} />
+          </Route>
+
+          <Route path="/embed" title={t`Embed`} component={EmbedPage} />
 
           <Route
             path="getting-started"
