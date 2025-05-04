@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ResizableBox } from "react-resizable";
 import "react-resizable/css/styles.css";
 
+import { colors } from "metabase/lib/colors";
 import {
   Box,
   Button,
@@ -84,15 +85,17 @@ const exampleParameters = [
 const PreviewSkeleton = ({
   type,
   showParameters,
+  showTitle,
 }: {
   type: EmbedType;
   showParameters: boolean;
+  showTitle: boolean;
 }) => {
   switch (type) {
     case "dashboard":
       return (
         <Box>
-          <Box h="40px" bg="bg-light" mb="md" />
+          {showTitle && <Box h="40px" bg="bg-light" mb="md" />}
           {showParameters && (
             <Box
               h="60px"
@@ -112,7 +115,7 @@ const PreviewSkeleton = ({
     case "chart":
       return (
         <Box>
-          <Box h="40px" bg="bg-light" mb="md" />
+          {showTitle && <Box h="40px" bg="bg-light" mb="md" />}
           {showParameters && (
             <Box
               h="60px"
@@ -131,7 +134,7 @@ const PreviewSkeleton = ({
     case "exploration":
       return (
         <Box>
-          <Box h="40px" bg="bg-light" mb="md" />
+          {showTitle && <Box h="40px" bg="bg-light" mb="md" />}
           {showParameters && (
             <Box
               h="60px"
@@ -160,6 +163,10 @@ export const EmbedPage = () => {
   const [sidebarWidth, setSidebarWidth] = useState(400);
   const [allowDrillThrough, setAllowDrillThrough] = useState(false);
   const [allowDownloads, setAllowDownloads] = useState(false);
+  const [showTitle, setShowTitle] = useState(true);
+  const [brandColor, setBrandColor] = useState(colors.brand);
+  const [textColor, setTextColor] = useState(colors["text-dark"]);
+  const [backgroundColor, setBackgroundColor] = useState(colors.white);
   const [parameterVisibility, setParameterVisibility] = useState<
     Record<string, boolean>
   >(
@@ -261,6 +268,37 @@ export const EmbedPage = () => {
                 label="Allow downloads"
                 checked={allowDownloads}
                 onChange={(e) => setAllowDownloads(e.target.checked)}
+              />
+            </Stack>
+          </Card>
+
+          <Card p="md">
+            <Text size="lg" fw="bold" mb="md">
+              Appearance
+            </Text>
+            <Stack gap="md">
+              <TextInput
+                label="Brand Color"
+                value={brandColor}
+                onChange={(e) => setBrandColor(e.target.value)}
+                placeholder={colors.brand}
+              />
+              <TextInput
+                label="Text Color"
+                value={textColor}
+                onChange={(e) => setTextColor(e.target.value)}
+                placeholder={colors["text-dark"]}
+              />
+              <TextInput
+                label="Background Color"
+                value={backgroundColor}
+                onChange={(e) => setBackgroundColor(e.target.value)}
+                placeholder={colors.white}
+              />
+              <Checkbox
+                label="Show dashboard title"
+                checked={showTitle}
+                onChange={(e) => setShowTitle(e.target.checked)}
               />
             </Stack>
           </Card>
@@ -370,6 +408,7 @@ export const EmbedPage = () => {
             <PreviewSkeleton
               type={selectedType}
               showParameters={Object.values(parameterVisibility).some(Boolean)}
+              showTitle={showTitle}
             />
           </Stack>
         </Card>
