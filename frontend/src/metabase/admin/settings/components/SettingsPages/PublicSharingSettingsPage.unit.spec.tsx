@@ -34,9 +34,28 @@ const setup = async (enablePublicSharing = false) => {
       createMockSettingDefinition({ key: key as SettingKey, value }),
     ),
   );
-  setupListPublicActionsEndpoint();
-  setupListPublicCardsEndpoint();
-  setupListPublicDashboardsEndpoint();
+  setupListPublicActionsEndpoint([
+    {
+      id: 1,
+      name: "Test Action",
+      model_id: 1,
+      public_uuid: "e4f2be29-78df-4c35-9cc4-98d04091ff13",
+    },
+  ]);
+  setupListPublicCardsEndpoint([
+    {
+      name: "Test Question",
+      id: 2,
+      public_uuid: "11bf0e18-34d2-4630-865a-c0bebb75c8b3",
+    },
+  ]);
+  setupListPublicDashboardsEndpoint([
+    {
+      name: "Test Dashboard",
+      id: 3,
+      public_uuid: "16a4568d-c328-4306-9c4b-ec8fbd6e4c8e",
+    },
+  ]);
 
   renderWithProviders(
     <div>
@@ -57,9 +76,16 @@ describe("PublicSharingSettingsPage", () => {
 
     expect(screen.getByText("Enable Public Sharing")).toBeInTheDocument();
 
-    expect(screen.queryByText("Shared Dashboards")).not.toBeInTheDocument();
-    expect(screen.queryByText("Shared Questions")).not.toBeInTheDocument();
-    expect(screen.queryByText("Shared Action Forms")).not.toBeInTheDocument();
+    [
+      "Shared Dashboards",
+      "Shared Questions",
+      "Shared Action Forms",
+      "Test Action",
+      "Test Dashboard",
+      "Test Question",
+    ].forEach((text) => {
+      expect(screen.queryByText(text)).not.toBeInTheDocument();
+    });
   });
 
   it("should render the PublicSharingSettingsPage with public sharing enabled", async () => {
@@ -69,6 +95,9 @@ describe("PublicSharingSettingsPage", () => {
       "Shared Dashboards",
       "Shared Questions",
       "Shared Action Forms",
+      "Test Action",
+      "Test Dashboard",
+      "Test Question",
     ].forEach((text) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });

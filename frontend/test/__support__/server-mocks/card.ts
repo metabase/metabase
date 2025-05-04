@@ -6,6 +6,7 @@ import type {
   CardId,
   CardQueryMetadata,
   Dataset,
+  GetPublicCard,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -75,6 +76,6 @@ export function setupCardPublicLinkEndpoints(cardId: CardId) {
   });
 }
 
-export function setupListPublicCardsEndpoint() {
-  fetchMock.get("path:/api/card/public", []);
+export function setupListPublicCardsEndpoint(publicCards: GetPublicCard[]) {
+  fetchMock.get("path:/api/card/public", publicCards);
 }

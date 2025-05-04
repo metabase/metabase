@@ -5,6 +5,7 @@ import type {
   Dashboard,
   DashboardId,
   DashboardQueryMetadata,
+  GetPublicDashboard,
 } from "metabase-types/api";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
@@ -52,6 +53,8 @@ export function setupDashboardPublicLinkEndpoints(dashboardId: DashboardId) {
   });
 }
 
-export function setupListPublicDashboardsEndpoint() {
-  fetchMock.get("path:/api/dashboard/public", []);
+export function setupListPublicDashboardsEndpoint(
+  publicDashboards: GetPublicDashboard[],
+) {
+  fetchMock.get("path:/api/dashboard/public", publicDashboards);
 }

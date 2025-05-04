@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { act } from "react-dom/test-utils";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
@@ -7,7 +8,10 @@ import type { GetPublicCard } from "metabase-types/api";
 
 import { PublicLinksListing } from "./PublicLinksListing";
 
-const setup = async (props: { publicCardData?: GetPublicCard[] }) => {
+const setup = async (props: {
+  publicCardData?: GetPublicCard[];
+  revoke?: () => Promise<unknown>;
+}) => {
   renderWithProviders(
     <div>
       <PublicLinksListing<GetPublicCard>
@@ -17,7 +21,7 @@ const setup = async (props: { publicCardData?: GetPublicCard[] }) => {
         getPublicUrl={({ name }) => {
           return `test-public-url-${name}`;
         }}
-        revoke={() => Promise.resolve()}
+        revoke={props.revoke || Promise.resolve}
       />
       <UndoListing />
     </div>,
@@ -74,5 +78,45 @@ describe("PublicSharingSettingsPage", () => {
       expect(button).toBeInTheDocument();
       expect(button).toHaveAttribute("aria-label", "Revoke link");
     });
+  });
+
+  it("should only call revoke function when user confirms in modal", async () => {
+    const mockRevoke = jest.fn().mockResolvedValue(undefined);
+    const publicCardData: GetPublicCard[] = [
+      {
+        public_uuid: "5eb3c485-f7d4-40d7-b625-6cc338cf9f4c",
+        name: "Test Question 1",
+        id: 1,
+      },
+    ];
+
+    await act(() =>
+      setup({
+        publicCardData,
+        revoke: mockRevoke,
+      }),
+    );
+
+    const revokeButton = screen.getByRole("button", { name: /revoke link/i });
+    await userEvent.click(revokeButton);
+
+    expect(screen.getByText("Disable this link?")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "They won't work anymore, and can't be restored, but you can create new links.",
+      ),
+    ).toBeInTheDocument();
+
+    const cancelButton = screen.getByRole("button", { name: /cancel/i });
+    await userEvent.click(cancelButton);
+    expect(screen.queryByText("Disable this link?")).not.toBeInTheDocument();
+    expect(mockRevoke).not.toHaveBeenCalled();
+
+    await userEvent.click(revokeButton);
+    const confirmButton = screen.getByRole("button", { name: /yes/i });
+    await userEvent.click(confirmButton);
+    expect(mockRevoke).toHaveBeenCalledTimes(1);
+    expect(mockRevoke).toHaveBeenCalledWith(publicCardData[0]);
+    expect(screen.queryByText("Disable this link?")).not.toBeInTheDocument();
   });
 });
