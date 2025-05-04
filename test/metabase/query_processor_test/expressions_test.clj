@@ -710,8 +710,9 @@
                                 :expressions  {"One" [:value 1.0 {:base_type :type/Float}]
                                                "Two" [:value 2 {:base_type :type/Integer}]
                                                "Bob" [:value "Bob's Burgers" {:base_type :type/Text}]}
-                                :filters      [[:= 2.0 [:* [:expression "Two"] [:expression "One"]]]]}
-                 :filters      [[:!= *Bob/Text [:expression "Name"]]
+                                :filter       [:= 2.0 [:* [:expression "Two"] [:expression "One"]]]}
+                 :filter       [:and
+                                [:!= *Bob/Text [:expression "Name"]]
                                 [:!= $name [:expression "Name"]]
                                 [:= true [:expression "MyTrue"]]
                                 [:= [:expression "MyTrue"] true]
@@ -739,13 +740,13 @@
                                &JoinedCategories.venues.name]
                  :expressions {"InversePrice"  [:/ &JoinedCategories.*LiteralInt/Integer $price]
                                "NameEquals"    [:= &JoinedCategories.*LiteralString/Text $name]}
-                 :filters     [[:expression "NameEquals"]]
+                 :filter      [:expression "NameEquals"]
                  :joins       [{:strategy     :left-join
                                 :condition    [:= $category_id &JoinedCategories.venues.category_id]
                                 :source-query {:source-table $$venues
                                                :expressions  {"LiteralInt"    [:value 1 {:base_type :type/Integer}]
                                                               "LiteralString" [:value "Stout Burgers & Beers" {:base_type :type/Text}]}
-                                               :filters     [[:!= $name [:expression "LiteralString"]]]
+                                               :filter       [:!= $name [:expression "LiteralString"]]
                                                :fields       [$category_id
                                                               $name
                                                               [:expression "LiteralInt"]
@@ -782,8 +783,9 @@
                                                [:aggregation-options [:sum [:expression "Two"]] {:name "SumTwo"}]
                                                [:aggregation-options [:min [:expression "Bob"]] {:name "MinBob"}]]
                                 :breakout     [$category_id]
-                                :filters      [[:= 2.0 [:* [:expression "Two"] [:expression "One"]]]]}
-                 :filters      [[:!= *MinBob/Text [:expression "Name"]]
+                                :filter       [:= 2.0 [:* [:expression "Two"] [:expression "One"]]]}
+                 :filter       [:and
+                                [:!= *MinBob/Text [:expression "Name"]]
                                 [:= true [:expression "True"]]
                                 [:= [:expression "True"] true]
                                 [:=
