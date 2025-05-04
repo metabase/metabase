@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ResizableBox } from "react-resizable";
 import "react-resizable/css/styles.css";
 
+import { ColorPill } from "metabase/core/components/ColorPill";
 import { colors } from "metabase/lib/colors";
 import {
   Box,
@@ -152,6 +153,26 @@ const PreviewSkeleton = ({
         </Box>
       );
   }
+};
+
+const ColorSwatch = ({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (color?: string) => void;
+}) => {
+  return (
+    <ColorPill
+      color={value}
+      onClick={() => {
+        const newColor = prompt("Enter a color (hex, rgb, or name):");
+        if (newColor) {
+          onChange(newColor);
+        }
+      }}
+    />
+  );
 };
 
 export const EmbedPage = () => {
@@ -307,31 +328,43 @@ export const EmbedPage = () => {
             <Text size="lg" fw="bold" mb="md">
               Appearance
             </Text>
-            <Stack gap="md">
-              <TextInput
-                label="Brand Color"
-                value={brandColor}
-                onChange={(e) => setBrandColor(e.target.value)}
-                placeholder={colors.brand}
-              />
-              <TextInput
-                label="Text Color"
-                value={textColor}
-                onChange={(e) => setTextColor(e.target.value)}
-                placeholder={colors["text-dark"]}
-              />
-              <TextInput
-                label="Background Color"
-                value={backgroundColor}
-                onChange={(e) => setBackgroundColor(e.target.value)}
-                placeholder={colors.white}
-              />
-              <Checkbox
-                label="Show dashboard title"
-                checked={showTitle}
-                onChange={(e) => setShowTitle(e.target.checked)}
-              />
-            </Stack>
+            <Group align="start" gap="xl">
+              <Stack gap="xs" align="start">
+                <Text size="sm" fw="bold">
+                  Brand Color
+                </Text>
+                <ColorSwatch
+                  value={brandColor}
+                  onChange={(color?: string) => color && setBrandColor(color)}
+                />
+              </Stack>
+              <Stack gap="xs" align="start">
+                <Text size="sm" fw="bold">
+                  Text Color
+                </Text>
+                <ColorSwatch
+                  value={textColor}
+                  onChange={(color?: string) => color && setTextColor(color)}
+                />
+              </Stack>
+              <Stack gap="xs" align="start">
+                <Text size="sm" fw="bold">
+                  Background
+                </Text>
+                <ColorSwatch
+                  value={backgroundColor}
+                  onChange={(color?: string) =>
+                    color && setBackgroundColor(color)
+                  }
+                />
+              </Stack>
+            </Group>
+            <Checkbox
+              label="Show dashboard title"
+              checked={showTitle}
+              onChange={(e) => setShowTitle(e.target.checked)}
+              mt="md"
+            />
           </Card>
         </Stack>
       );
