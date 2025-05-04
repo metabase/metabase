@@ -298,7 +298,7 @@ export const EmbedPage = () => {
               <Text size="lg" fw="bold">
                 Parameters
               </Text>
-              <Text size="lg" fw="bold">
+              <Text size="sm" fw="bold">
                 Visibility
               </Text>
             </Group>
@@ -318,6 +318,7 @@ export const EmbedPage = () => {
                         [param.id]: e.target.checked,
                       })
                     }
+                    size="sm"
                   />
                 </Group>
               ))}
