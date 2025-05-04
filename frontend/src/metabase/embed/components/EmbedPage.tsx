@@ -5,11 +5,14 @@ import "react-resizable/css/styles.css";
 import { ColorPill } from "metabase/core/components/ColorPill";
 import { colors } from "metabase/lib/colors";
 import {
+  ActionIcon,
   Box,
   Button,
   Card,
   Checkbox,
+  Code,
   Group,
+  Icon,
   Radio,
   Stack,
   Switch,
@@ -18,7 +21,7 @@ import {
 } from "metabase/ui";
 
 type EmbedType = "dashboard" | "chart" | "exploration";
-type Step = "select-type" | "select-entity" | "configure";
+type Step = "select-type" | "select-entity" | "configure" | "get-code";
 
 const embedTypes = [
   {
@@ -82,6 +85,10 @@ const exampleParameters = [
     placeholder: "All categories",
   },
 ];
+
+const exampleApiKey = "mb_6FlhSYBpxcDJJp4nXl41asr1di5IwQ7cFuuaXsBbNYY=";
+// eslint-disable-next-line no-literal-metabase-strings -- This is an example URL for embedding
+const exampleEmbedUrl = "https://simple-interactive-embedding-prototype.hosted.staging.metabase.com/embed/interactive/eyJlbWJlZFJlc291cmNlVHlwZSI6ImRhc2hib2FyZCIsImVtYmVkUmVzb3VyY2VJZCI6MSwidGhlbWUiOnsiY29sb3JzIjp7ImJhY2tncm91bmQiOiIjZmZmIiwidGV4dC1wcmltYXJ5IjoiIzRjNTc3MyIsInRleHQtc2Vjb25kYXJ5IjoiIzY5NmU3YiIsImJyYW5kIjoiIzUwOWVlMyJ9fX0=";
 
 const PreviewSkeleton = ({
   type,
@@ -175,6 +182,10 @@ const ColorSwatch = ({
   );
 };
 
+const copyToClipboard = (text: string) => {
+  navigator.clipboard.writeText(text);
+};
+
 export const EmbedPage = () => {
   const [currentStep, setCurrentStep] = useState<Step>("select-type");
   const [selectedType, setSelectedType] = useState<EmbedType>("dashboard");
@@ -202,6 +213,8 @@ export const EmbedPage = () => {
       setCurrentStep("select-entity");
     } else if (currentStep === "select-entity") {
       setCurrentStep("configure");
+    } else if (currentStep === "configure") {
+      setCurrentStep("get-code");
     }
   };
 
@@ -210,6 +223,8 @@ export const EmbedPage = () => {
       setCurrentStep("select-type");
     } else if (currentStep === "configure") {
       setCurrentStep("select-entity");
+    } else if (currentStep === "get-code") {
+      setCurrentStep("configure");
     }
   };
 
@@ -272,7 +287,7 @@ export const EmbedPage = () => {
           </Stack>
         </Card>
       );
-    } else {
+    } else if (currentStep === "configure") {
       return (
         <Stack gap="md">
           <Card p="md">
@@ -369,6 +384,82 @@ export const EmbedPage = () => {
           </Card>
         </Stack>
       );
+    } else {
+      return (
+        <Stack gap="md">
+          <Card p="md">
+            <Text size="lg" fw="bold" mb="md">
+              Authentication
+            </Text>
+            <Text size="sm" c="text-medium" mb="md">
+              {/* eslint-disable-next-line no-literal-metabase-strings -- This is an example message for admins */}
+              This API key is for demonstration purposes only. In production, you should create a least privileged and sandboxed API key to prevent unwanted access to your Metabase instance.
+            </Text>
+            <TextInput
+              value={exampleApiKey}
+              readOnly
+              rightSection={
+                <ActionIcon
+                  onClick={() => copyToClipboard(exampleApiKey)}
+                  variant="subtle"
+                >
+                  <Icon name="copy" size={16} />
+                </ActionIcon>
+              }
+            />
+          </Card>
+
+          <Card p="md">
+            <Text size="lg" fw="bold" mb="md">
+              Embed Code
+            </Text>
+            <Stack gap="xs">
+              <Code block>
+                {/* eslint-disable-next-line no-literal-metabase-strings -- This is an example code snippet for admins */}
+                {`<script src="https://simple-interactive-embedding-prototype.hosted.staging.metabase.com/app/embed.js"></script>
+
+<div id="metabase-embed-container"></div>
+
+<script>
+  const { MetabaseEmbed } = window["metabase.embed"];
+
+  const embed = new MetabaseEmbed({
+    target: "#metabase-embed-container",
+
+    // IMPORTANT: You must create a least privileged and sandboxed API key for
+    // public usage. Otherwise, you risk exposing Metabase to unwanted access.
+    apiKey: "${exampleApiKey}",
+
+    url: "${exampleEmbedUrl}"
+  });
+</script>`}
+              </Code>
+              <Button
+                leftSection={<Icon name="copy" size={16} />}
+                onClick={() => copyToClipboard(`<script src="https://simple-interactive-embedding-prototype.hosted.staging.metabase.com/app/embed.js"></script>
+
+<div id="metabase-embed-container"></div>
+
+<script>
+  const { MetabaseEmbed } = window["metabase.embed"];
+
+  const embed = new MetabaseEmbed({
+    target: "#metabase-embed-container",
+
+    // IMPORTANT: You must create a least privileged and sandboxed API key for
+    // public usage. Otherwise, you risk exposing Metabase to unwanted access.
+    apiKey: "${exampleApiKey}",
+
+    url: "${exampleEmbedUrl}"
+  });
+</script>`)}
+              >
+                Copy Code
+              </Button>
+            </Stack>
+          </Card>
+        </Stack>
+      );
     }
   };
 
@@ -442,12 +533,10 @@ export const EmbedPage = () => {
             <Button
               variant="filled"
               onClick={handleNext}
-              disabled={
-                (currentStep === "select-entity" && !selectedDashboard) ||
-                currentStep === "configure"
-              }
+              disabled={currentStep === "select-entity" && !selectedDashboard}
+              leftSection={currentStep === "get-code" ? <Icon name="bookmark" size={16} /> : undefined}
             >
-              {currentStep === "configure" ? "Finish" : "Next"}
+              {currentStep === "configure" ? "Get Code" : currentStep === "get-code" ? "Bookmark for later" : "Next"}
             </Button>
           </Group>
         </Box>
