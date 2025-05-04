@@ -339,7 +339,18 @@ export const EmbedPage = () => {
   };
 
   return (
-    <Box style={{ display: "flex", height: "100vh" }}>
+    <Box
+      style={{
+        display: "flex",
+        height: "calc(100vh - 4rem)",
+        overflow: "hidden",
+        position: "fixed",
+        top: "4rem",
+        left: 0,
+        right: 0,
+        bottom: 0,
+      }}
+    >
       <ResizableBox
         width={sidebarWidth}
         height={Infinity}
@@ -367,9 +378,14 @@ export const EmbedPage = () => {
             borderRight: "1px solid var(--mb-color-border)",
             padding: "1rem",
             position: "relative",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
           }}
         >
-          {renderStepContent()}
+          <Box style={{ flex: 1, overflowY: "auto", paddingBottom: "4rem" }}>
+            {renderStepContent()}
+          </Box>
           <Group
             justify="space-between"
             style={{
@@ -377,6 +393,9 @@ export const EmbedPage = () => {
               bottom: "1rem",
               left: "1rem",
               right: "1rem",
+              backgroundColor: "var(--mb-color-bg-white)",
+              padding: "0.5rem",
+              borderTop: "1px solid var(--mb-color-border)",
             }}
           >
             <Button
@@ -399,7 +418,7 @@ export const EmbedPage = () => {
           </Group>
         </Box>
       </ResizableBox>
-      <Box style={{ flex: 1, padding: "1rem" }}>
+      <Box style={{ flex: 1, padding: "1rem", overflow: "hidden" }}>
         <Card p="md" h="100%">
           <Stack h="100%">
             <Text size="lg" fw="bold" mb="md">
