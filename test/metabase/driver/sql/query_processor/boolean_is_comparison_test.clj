@@ -5,7 +5,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-is-comparison :as sql.qp.boolean-is-comparison]))
 
-(driver/register! ::test-driver, :parent #{::sql.qp.boolean-is-comparison/boolean-is-comparison})
+(driver/register! ::test-driver, :parent #{:sql ::sql.qp.boolean-is-comparison/boolean-is-comparison})
 
 (defmethod sql.qp/->honeysql [::test-driver Boolean]
   [_ bool]
