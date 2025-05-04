@@ -2,10 +2,21 @@ import { useState } from "react";
 import { ResizableBox } from "react-resizable";
 import "react-resizable/css/styles.css";
 
-import { Box, Button, Card, Group, Radio, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Card,
+  Checkbox,
+  Group,
+  Radio,
+  Stack,
+  Switch,
+  Text,
+  TextInput,
+} from "metabase/ui";
 
 type EmbedType = "dashboard" | "chart" | "exploration";
-type Step = "select-type" | "select-entity";
+type Step = "select-type" | "select-entity" | "configure";
 
 const embedTypes = [
   {
@@ -52,12 +63,48 @@ const exampleDashboards = [
   },
 ];
 
-const PreviewSkeleton = ({ type }: { type: EmbedType }) => {
+const exampleParameters = [
+  {
+    id: "date_range",
+    name: "Date Range",
+    placeholder: "Last 30 days",
+  },
+  {
+    id: "region",
+    name: "Region",
+    placeholder: "All regions",
+  },
+  {
+    id: "product_category",
+    name: "Product Category",
+    placeholder: "All categories",
+  },
+];
+
+const PreviewSkeleton = ({
+  type,
+  showParameters,
+}: {
+  type: EmbedType;
+  showParameters: boolean;
+}) => {
   switch (type) {
     case "dashboard":
       return (
         <Box>
           <Box h="40px" bg="bg-light" mb="md" />
+          {showParameters && (
+            <Box
+              h="60px"
+              bg="bg-light"
+              mb="md"
+              style={{ display: "flex", gap: "1rem", padding: "1rem" }}
+            >
+              {exampleParameters.map((param) => (
+                <Box key={param.id} h="100%" w="200px" bg="bg-medium" />
+              ))}
+            </Box>
+          )}
           <Box h="200px" bg="bg-light" mb="md" />
           <Box h="200px" bg="bg-light" />
         </Box>
@@ -66,6 +113,18 @@ const PreviewSkeleton = ({ type }: { type: EmbedType }) => {
       return (
         <Box>
           <Box h="40px" bg="bg-light" mb="md" />
+          {showParameters && (
+            <Box
+              h="60px"
+              bg="bg-light"
+              mb="md"
+              style={{ display: "flex", gap: "1rem", padding: "1rem" }}
+            >
+              {exampleParameters.map((param) => (
+                <Box key={param.id} h="100%" w="200px" bg="bg-medium" />
+              ))}
+            </Box>
+          )}
           <Box h="300px" bg="bg-light" />
         </Box>
       );
@@ -73,6 +132,18 @@ const PreviewSkeleton = ({ type }: { type: EmbedType }) => {
       return (
         <Box>
           <Box h="40px" bg="bg-light" mb="md" />
+          {showParameters && (
+            <Box
+              h="60px"
+              bg="bg-light"
+              mb="md"
+              style={{ display: "flex", gap: "1rem", padding: "1rem" }}
+            >
+              {exampleParameters.map((param) => (
+                <Box key={param.id} h="100%" w="200px" bg="bg-medium" />
+              ))}
+            </Box>
+          )}
           <Box h="200px" bg="bg-light" mb="md" />
           <Box h="40px" bg="bg-light" />
         </Box>
@@ -87,16 +158,30 @@ export const EmbedPage = () => {
     null,
   );
   const [sidebarWidth, setSidebarWidth] = useState(400);
+  const [allowDrillThrough, setAllowDrillThrough] = useState(false);
+  const [allowDownloads, setAllowDownloads] = useState(false);
+  const [parameterVisibility, setParameterVisibility] = useState<
+    Record<string, boolean>
+  >(
+    exampleParameters.reduce(
+      (acc, param) => ({ ...acc, [param.id]: true }),
+      {},
+    ),
+  );
 
   const handleNext = () => {
     if (currentStep === "select-type") {
       setCurrentStep("select-entity");
+    } else if (currentStep === "select-entity") {
+      setCurrentStep("configure");
     }
   };
 
   const handleBack = () => {
     if (currentStep === "select-entity") {
       setCurrentStep("select-type");
+    } else if (currentStep === "configure") {
+      setCurrentStep("select-entity");
     }
   };
 
@@ -124,7 +209,7 @@ export const EmbedPage = () => {
           </Radio.Group>
         </Card>
       );
-    } else {
+    } else if (currentStep === "select-entity") {
       return (
         <Card p="md" mb="md">
           <Text size="lg" fw="bold" mb="md">
@@ -158,6 +243,59 @@ export const EmbedPage = () => {
             ))}
           </Stack>
         </Card>
+      );
+    } else {
+      return (
+        <Stack gap="md">
+          <Card p="md">
+            <Text size="lg" fw="bold" mb="md">
+              Behavior
+            </Text>
+            <Stack gap="md">
+              <Checkbox
+                label="Allow users to drill through on data points"
+                checked={allowDrillThrough}
+                onChange={(e) => setAllowDrillThrough(e.target.checked)}
+              />
+              <Checkbox
+                label="Allow downloads"
+                checked={allowDownloads}
+                onChange={(e) => setAllowDownloads(e.target.checked)}
+              />
+            </Stack>
+          </Card>
+
+          <Card p="md">
+            <Group justify="space-between" mb="md">
+              <Text size="lg" fw="bold">
+                Parameters
+              </Text>
+              <Text size="lg" fw="bold">
+                Visibility
+              </Text>
+            </Group>
+            <Stack gap="md">
+              {exampleParameters.map((param) => (
+                <Group key={param.id} justify="space-between" align="center">
+                  <TextInput
+                    label={param.name}
+                    placeholder={param.placeholder}
+                    style={{ flex: 1 }}
+                  />
+                  <Switch
+                    checked={parameterVisibility[param.id]}
+                    onChange={(e) =>
+                      setParameterVisibility({
+                        ...parameterVisibility,
+                        [param.id]: e.target.checked,
+                      })
+                    }
+                  />
+                </Group>
+              ))}
+            </Stack>
+          </Card>
+        </Stack>
       );
     }
   };
@@ -213,9 +351,12 @@ export const EmbedPage = () => {
             <Button
               variant="filled"
               onClick={handleNext}
-              disabled={currentStep === "select-entity" && !selectedDashboard}
+              disabled={
+                (currentStep === "select-entity" && !selectedDashboard) ||
+                currentStep === "configure"
+              }
             >
-              Next
+              {currentStep === "configure" ? "Finish" : "Next"}
             </Button>
           </Group>
         </Box>
@@ -226,7 +367,10 @@ export const EmbedPage = () => {
             <Text size="lg" fw="bold" mb="md">
               Preview
             </Text>
-            <PreviewSkeleton type={selectedType} />
+            <PreviewSkeleton
+              type={selectedType}
+              showParameters={Object.values(parameterVisibility).some(Boolean)}
+            />
           </Stack>
         </Card>
       </Box>
