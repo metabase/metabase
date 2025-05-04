@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ResizableBox } from "react-resizable";
 import "react-resizable/css/styles.css";
 
@@ -186,12 +186,32 @@ const copyToClipboard = (text: string) => {
   navigator.clipboard.writeText(text);
 };
 
+const serializeState = (state: {
+  type: EmbedType;
+  dashboard: number | null;
+  allowDrillThrough: boolean;
+  allowDownloads: boolean;
+  showTitle: boolean;
+  brandColor: string;
+  textColor: string;
+  backgroundColor: string;
+  parameterVisibility: Record<string, boolean>;
+}) => {
+  return btoa(JSON.stringify(state));
+};
+
+const deserializeState = (encoded: string) => {
+  try {
+    return JSON.parse(atob(encoded));
+  } catch {
+    return null;
+  }
+};
+
 export const EmbedPage = () => {
   const [currentStep, setCurrentStep] = useState<Step>("select-type");
   const [selectedType, setSelectedType] = useState<EmbedType>("dashboard");
-  const [selectedDashboard, setSelectedDashboard] = useState<number | null>(
-    null,
-  );
+  const [selectedDashboard, setSelectedDashboard] = useState<number | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(400);
   const [allowDrillThrough, setAllowDrillThrough] = useState(false);
   const [allowDownloads, setAllowDownloads] = useState(false);
@@ -199,14 +219,59 @@ export const EmbedPage = () => {
   const [brandColor, setBrandColor] = useState(colors.brand);
   const [textColor, setTextColor] = useState(colors["text-dark"]);
   const [backgroundColor, setBackgroundColor] = useState(colors.white);
-  const [parameterVisibility, setParameterVisibility] = useState<
-    Record<string, boolean>
-  >(
-    exampleParameters.reduce(
-      (acc, param) => ({ ...acc, [param.id]: true }),
-      {},
-    ),
+  const [parameterVisibility, setParameterVisibility] = useState<Record<string, boolean>>(
+    exampleParameters.reduce((acc, param) => ({ ...acc, [param.id]: true }), {}),
   );
+
+  // Update URL whenever configuration changes
+  useEffect(() => {
+    const state = {
+      type: selectedType,
+      dashboard: selectedDashboard,
+      allowDrillThrough,
+      allowDownloads,
+      showTitle,
+      brandColor,
+      textColor,
+      backgroundColor,
+      parameterVisibility,
+    };
+    const encoded = serializeState(state);
+    const url = new URL(window.location.href);
+    url.searchParams.set("state", encoded);
+    window.history.replaceState({}, "", url);
+  }, [
+    selectedType,
+    selectedDashboard,
+    allowDrillThrough,
+    allowDownloads,
+    showTitle,
+    brandColor,
+    textColor,
+    backgroundColor,
+    parameterVisibility,
+  ]);
+
+  // Load state from URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const state = params.get("state");
+    if (state) {
+      const decoded = deserializeState(state);
+      if (decoded) {
+        setSelectedType(decoded.type);
+        setSelectedDashboard(decoded.dashboard);
+        setAllowDrillThrough(decoded.allowDrillThrough);
+        setAllowDownloads(decoded.allowDownloads);
+        setShowTitle(decoded.showTitle);
+        setBrandColor(decoded.brandColor);
+        setTextColor(decoded.textColor);
+        setBackgroundColor(decoded.backgroundColor);
+        setParameterVisibility(decoded.parameterVisibility);
+        setCurrentStep("get-code");
+      }
+    }
+  }, []);
 
   const handleNext = () => {
     if (currentStep === "select-type") {
@@ -226,6 +291,24 @@ export const EmbedPage = () => {
     } else if (currentStep === "get-code") {
       setCurrentStep("configure");
     }
+  };
+
+  const handleBookmark = () => {
+    const state = {
+      type: selectedType,
+      dashboard: selectedDashboard,
+      allowDrillThrough,
+      allowDownloads,
+      showTitle,
+      brandColor,
+      textColor,
+      backgroundColor,
+      parameterVisibility,
+    };
+    const encoded = serializeState(state);
+    const url = new URL(window.location.href);
+    url.searchParams.set("state", encoded);
+    window.history.pushState({}, "", url);
   };
 
   const renderStepContent = () => {
