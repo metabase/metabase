@@ -273,37 +273,6 @@ export const EmbedPage = () => {
           </Card>
 
           <Card p="md">
-            <Text size="lg" fw="bold" mb="md">
-              Appearance
-            </Text>
-            <Stack gap="md">
-              <TextInput
-                label="Brand Color"
-                value={brandColor}
-                onChange={(e) => setBrandColor(e.target.value)}
-                placeholder={colors.brand}
-              />
-              <TextInput
-                label="Text Color"
-                value={textColor}
-                onChange={(e) => setTextColor(e.target.value)}
-                placeholder={colors["text-dark"]}
-              />
-              <TextInput
-                label="Background Color"
-                value={backgroundColor}
-                onChange={(e) => setBackgroundColor(e.target.value)}
-                placeholder={colors.white}
-              />
-              <Checkbox
-                label="Show dashboard title"
-                checked={showTitle}
-                onChange={(e) => setShowTitle(e.target.checked)}
-              />
-            </Stack>
-          </Card>
-
-          <Card p="md">
             <Group justify="space-between" mb="md">
               <Text size="lg" fw="bold">
                 Parameters
@@ -331,6 +300,37 @@ export const EmbedPage = () => {
                   />
                 </Group>
               ))}
+            </Stack>
+          </Card>
+
+          <Card p="md">
+            <Text size="lg" fw="bold" mb="md">
+              Appearance
+            </Text>
+            <Stack gap="md">
+              <TextInput
+                label="Brand Color"
+                value={brandColor}
+                onChange={(e) => setBrandColor(e.target.value)}
+                placeholder={colors.brand}
+              />
+              <TextInput
+                label="Text Color"
+                value={textColor}
+                onChange={(e) => setTextColor(e.target.value)}
+                placeholder={colors["text-dark"]}
+              />
+              <TextInput
+                label="Background Color"
+                value={backgroundColor}
+                onChange={(e) => setBackgroundColor(e.target.value)}
+                placeholder={colors.white}
+              />
+              <Checkbox
+                label="Show dashboard title"
+                checked={showTitle}
+                onChange={(e) => setShowTitle(e.target.checked)}
+              />
             </Stack>
           </Card>
         </Stack>
