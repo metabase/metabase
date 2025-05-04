@@ -605,6 +605,39 @@
                  :order-by    [[:asc $id]]
                  :limit       2})))))))
 
+(deftest ^:parallel sum-where-with-literal-expression-test
+  (testing "sum-where using literal expressions"
+    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions :expression-literals)
+      (is (= [[1510617.7 0.0]]
+             (mt/formatted-rows
+              [2.0 2.0]
+              (mt/run-mbql-query orders
+                {:expressions standard-literal-expression-defs
+                 :aggregation [[:sum-where $total [:expression "MyTrue"]]
+                               [:sum-where $total [:expression "MyFalse"]]]})))))))
+
+(deftest ^:parallel count-where-with-literal-expression-test
+  (testing "count-where using literal expressions"
+    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions :expression-literals)
+      (is (= [[18760 0]]
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query orders
+                {:expressions standard-literal-expression-defs
+                 :aggregation [[:count-where [:expression "MyTrue"]]
+                               [:count-where [:expression "MyFalse"]]]})))))))
+
+(deftest ^:parallel distinct-where-with-literal-expression-test
+  (testing "distinct-where using literal expressions"
+    (mt/test-drivers (mt/normal-drivers-with-feature :distinct-where :expressions :expression-literals)
+      (is (= [[1746 0]]
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query orders
+                {:expressions standard-literal-expression-defs
+                 :aggregation [[:distinct-where $user_id [:expression "MyTrue"]]
+                               [:distinct-where $user_id [:expression "MyFalse"]]]})))))))
+
 (deftest ^:parallel filter-literal-expression-with-and-or-test
   (doseq [[op expected] [[:and []]
                          [:or  [[true false]]]]]
