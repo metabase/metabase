@@ -708,7 +708,7 @@ function renderValue({
 
 type RemappedValueProps = {
   parameter: Parameter;
-  fields: (Field | null)[];
+  fields: Field[];
   value: ParameterValueOrArray | null;
   dashboardId?: DashboardId;
   cardId?: CardId;
@@ -722,7 +722,7 @@ function RemappedValue({
   cardId,
 }: RemappedValueProps) {
   const field = fields[0];
-  const isRemapped = field?.remappedField() != null;
+  const isRemapped = showRemapping(fields) && field?.remappedField() != null;
 
   const { data: dashboardData } = useGetRemappedDashboardParameterValueQuery(
     dashboardId != null && value != null && isRemapped
