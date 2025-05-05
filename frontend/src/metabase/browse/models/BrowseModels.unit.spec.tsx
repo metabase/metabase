@@ -25,10 +25,15 @@ const defaultRootCollection = createMockCollection({
 interface SetupOptions {
   modelCount: number;
   recentModelCount?: number;
+  hasDataPermissions?: boolean;
 }
 
-const setup = ({ modelCount, recentModelCount = 5 }: SetupOptions) => {
-  const database = createMockDatabase();
+const setup = ({
+  modelCount,
+  recentModelCount = 5,
+  hasDataPermissions = true,
+}: SetupOptions) => {
+  const databases = hasDataPermissions ? [createMockDatabase()] : [];
   const mockModelResults = mockModels.map((model) =>
     createMockModelResult(model),
   );
@@ -36,7 +41,7 @@ const setup = ({ modelCount, recentModelCount = 5 }: SetupOptions) => {
     .slice(0, recentModelCount)
     .map((model) => createMockRecentModel(model));
   const models = mockModelResults.slice(0, modelCount);
-  setupDatabasesEndpoints([database]);
+  setupDatabasesEndpoints(databases);
   setupSearchEndpoints(models.map((model) => createMockSearchResult(model)));
   setupSettingsEndpoints([]);
   setupRecentViewsEndpoints(mockRecentModels);
