@@ -34,7 +34,7 @@
            (clojure.lang Reflector)
            (java.text Normalizer Normalizer$Form)
            (java.util Locale Random)
-           (org.apache.commons.validator.routines RegexValidator UrlValidator)))
+           (org.apache.commons.validator.routines DomainValidator RegexValidator UrlValidator)))
   #?(:cljs (:require-macros [camel-snake-kebab.internals.macros :as csk.macros]
                             [metabase.util])))
 
@@ -797,6 +797,13 @@
   [email-address domain]
   {:pre [(email? email-address)]}
   (= (email->domain email-address) domain))
+
+#?(:clj
+   (let [domain-validator (DomainValidator/getInstance)]
+     (defn domain?
+       "Check if `s` is a valid domain name."
+       [s]
+       (.isValid domain-validator s))))
 
 (defn pick-first
   "Returns a pair [match others] where match is the first element of `coll` for which `pred` returns

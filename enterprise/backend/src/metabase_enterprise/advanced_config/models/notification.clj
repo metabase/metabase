@@ -2,12 +2,15 @@
   (:require
    [clojure.string :as str]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.settings.core :refer [defsetting]]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (defsetting subscription-allowed-domains
-  (deferred-tru "Allowed email address domain(s) for new Dashboard Subscriptions and Alerts. To specify multiple domains, separate each domain with a comma, with no space in between. To allow all domains, leave the field empty. This setting doesn’t affect existing subscriptions.")
+  (deferred-tru
+   (str "Allowed email address domain(s) for new Dashboard Subscriptions and Alerts."
+        "To specify multiple domains, separate each domain with a comma, with no space in between."
+        "To allow all domains, leave the field empty. This setting doesn’t affect existing subscriptions."))
   :encryption :no
   :visibility :settings-manager
   :export?    true
@@ -15,6 +18,11 @@
   ;; this is a comma-separated string but we're not using `:csv` because it gets serialized to an array which makes it
   ;; inconvenient to use on the frontend.
   :type       :string
+  :setter     (fn [new-value]
+                (when (not-empty new-value)
+                  (when-let [domains (str/split new-value #",")]
+                    (assert (every? u/domain? domains) "Each domain must be a valid email domain.")))
+                (setting/set-value-of-type! :string :subscription-allowed-domains new-value))
   :audit      :getter)
 
 (defn- allowed-domains-set
@@ -32,7 +40,7 @@
   [email-addresses]
   (when-let [allowed-domains (allowed-domains-set)]
     (let [disallowed-emails (->> email-addresses
-                                 (filter #(->> % u/email->domain (contains? allowed-domains) not)))]
+                                 (filter #(->> % u/email->domain (remove allowed-domains))))]
       (when (seq disallowed-emails)
         (throw (ex-info
                 (tru "The following email addresses are not allowed: {0}"

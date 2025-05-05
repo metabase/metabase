@@ -166,8 +166,6 @@
   ;; remove this pulse from its existing trigger
   (update-send-pulse-trigger-if-needed! pulse-id pulse-channel :remove-pc-ids #{(:id pulse-channel)}))
 
-;; we want to load this at the top level so the Setting the namespace defines gets loaded
-
 (defn validate-email-domains
   "For channels that are being sent to raw email addresses: check that the domains in the emails are allowed by
   the [[metabase-enterprise.advanced-config.models.pulse-channel/subscription-allowed-domains]] Setting, if set. This
