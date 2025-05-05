@@ -10,7 +10,6 @@ import type {
 } from "metabase-types/api";
 
 export type TreeNode = TreeNodeData & {
-  icon: IconName;
   type: "database" | "schema" | "table";
   loading?: boolean;
   width?: string;
@@ -34,9 +33,9 @@ export function useTreeData() {
   const data = useMemo(() => {
     if (isLoading) {
       return [
-        getLoadingNode({ type: "database", icon: "database", width: "50%" }),
-        getLoadingNode({ type: "database", icon: "database", width: "70%" }),
-        getLoadingNode({ type: "database", icon: "database", width: "35%" }),
+        getLoadingNode({ type: "database", width: "50%" }),
+        getLoadingNode({ type: "database", width: "70%" }),
+        getLoadingNode({ type: "database", width: "35%" }),
       ];
     }
 
@@ -46,25 +45,6 @@ export function useTreeData() {
   return { data, isError };
 }
 
-function getLoadingNode({
-  type,
-  icon,
-  width,
-}: {
-  type: "database" | "schema" | "table";
-  icon: IconName;
-  width: string;
-}): TreeNode {
-  return {
-    type,
-    icon,
-    width,
-    loading: true,
-    value: `loading-type-${Math.random()}`,
-    label: "",
-  };
-}
-
 function getTreeData(database: Database[]): TreeNode[] {
   return database.map((database) => {
     const tables = database.tables ?? [];
@@ -72,13 +52,11 @@ function getTreeData(database: Database[]): TreeNode[] {
 
     const res = getTreeNode({
       type: "database",
-      icon: "database",
       label: database.name,
       data: { databaseId: database.id },
       children: Array.from(schemas).map((schema) =>
         getTreeNode({
           type: "schema",
-          icon: "schema",
           label: schema,
           data: {
             databaseId: database.id,
@@ -89,7 +67,6 @@ function getTreeData(database: Database[]): TreeNode[] {
             .map((table) =>
               getTreeNode({
                 type: "table",
-                icon: "table2",
                 label: table.name,
                 data: {
                   databaseId: database.id,
@@ -118,5 +95,30 @@ function getTreeNode(
   return {
     ...node,
     value: JSON.stringify(node.data),
+  };
+}
+
+export function getIconForType(
+  type: "database" | "schema" | "table",
+): IconName {
+  if (type === "table") {
+    return "table2";
+  }
+  return type;
+}
+
+function getLoadingNode({
+  type,
+  width,
+}: {
+  type: "database" | "schema" | "table";
+  width: string;
+}): TreeNode {
+  return {
+    type,
+    width,
+    loading: true,
+    value: `loading-type-${Math.random()}`,
+    label: "",
   };
 }

@@ -16,7 +16,12 @@ import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import { getUrl } from "../../utils";
 
 import S from "./TablePicker.module.css";
-import { type NodeData, type TreeNode, useTreeData } from "./utils";
+import {
+  type NodeData,
+  type TreeNode,
+  getIconForType,
+  useTreeData,
+} from "./utils";
 
 export function TablePicker(props: {
   databaseId?: DatabaseId;
@@ -65,8 +70,9 @@ export function TablePicker(props: {
 }
 
 function renderNode({ node, expanded, elementProps }: RenderTreeNodePayload) {
-  const { icon, label, width, loading } = node as TreeNode;
+  const { type, label, width, loading } = node as TreeNode;
 
+  const icon = getIconForType(type);
   const childCount = node.children?.length ?? 0;
   const hasChildren = childCount > 0;
 
