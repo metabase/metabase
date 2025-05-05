@@ -17,6 +17,7 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
 }
 
 export const SemanticTypePicker = ({
+  comboboxProps,
   field,
   value,
   onChange,
@@ -39,10 +40,9 @@ export const SemanticTypePicker = ({
           },
         },
         position: "bottom-start",
-        width: 300,
+        ...comboboxProps,
       }}
       data={data}
-      fw="bold"
       nothingFoundMessage={t`Didn't find any results`}
       placeholder={t`Select a semantic type`}
       searchable

@@ -21,7 +21,11 @@ export const FieldFkTargetPicker = ({
 
   return (
     <FkTargetPicker
+      comboboxProps={{
+        width: 300,
+      }}
       field={field}
+      fw="bold"
       idFields={idFields}
       value={value}
       onChange={onChange}
