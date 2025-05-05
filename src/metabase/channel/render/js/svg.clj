@@ -9,7 +9,6 @@
    [metabase.channel.render.style :as style]
    [metabase.config :as config]
    [metabase.settings.deprecated-grab-bag :as public-settings]
-   [metabase.util.delay :as delay]
    [metabase.util.json :as json])
   (:import
    (io.aleph.dirigiste Pool IPool$Generator IPool$Controller Pools Stats)
@@ -60,7 +59,7 @@
                ;; Generate a tuple of the engine and the expiry timestamp.
                [(load-viz-bundle (js.engine/context))
                 (+ (System/nanoTime) (.toNanos TimeUnit/MINUTES 10))])
-             (destroy [_ _ v]))
+             (destroy [_ _ _v]))
            ;; Wrap the utilization controller with a modification that doesn't allow the pool to go below 1 instance.
            (reify IPool$Controller
              (shouldIncrement [_ k a b] (.shouldIncrement base-controller k a b))
@@ -78,7 +77,9 @@
            10000 ;; Recheck every 10 seconds
            TimeUnit/MILLISECONDS)))
 
-(defn do-with-static-viz-context [f]
+(defn do-with-static-viz-context
+  "Impl for [[with-static-viz-context]]."
+  [f]
   (if config/is-dev?
     (f (load-viz-bundle (js.engine/context)))
     (loop []

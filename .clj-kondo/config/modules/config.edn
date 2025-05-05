@@ -504,7 +504,7 @@
            metabase.pulse.task.send-pulses}
    :uses #{api channel config db driver events models notification permissions plugins premium-features
            query-processor request task task-history util
-           enterprise/advanced-config enterprise/advanced-permissions enterprise/sandbox}}
+           enterprise/advanced-permissions enterprise/sandbox}}
 
   query-analysis
   {:api  #{metabase.query-analysis.core metabase.query-analysis.init}
