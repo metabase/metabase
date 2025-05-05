@@ -31,7 +31,7 @@ export const getNonVirtualFields = (parameter: UiParameter) => {
   - there is 1 unique field
   - there are 2 unique fields, where one is a PK and another one is a FK targeting the PK
  */
-export function canRemapValues(fields: Field[]) {
+export function canRemapFieldValues(fields: Field[]) {
   const fieldOrTargetFieldIds = fields.map(
     (field) => field.fk_target_field_id ?? field.id,
   );

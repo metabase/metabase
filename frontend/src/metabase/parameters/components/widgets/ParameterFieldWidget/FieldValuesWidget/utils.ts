@@ -6,7 +6,7 @@ import { isNotNull } from "metabase/lib/types";
 import type { ComboboxItem } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
-import { canRemapValues } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import { canRemapFieldValues } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
   canListFieldValues,
   canListParameterValues,
@@ -319,7 +319,7 @@ export function getFieldsRemappingInfo(fields: (Field | null)[]) {
   const searchField = field?.searchField();
 
   if (
-    canRemapValues(fields.filter(isNotNull)) &&
+    canRemapFieldValues(fields.filter(isNotNull)) &&
     field != null &&
     searchField != null &&
     typeof field.id === "number" &&
