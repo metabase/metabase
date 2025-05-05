@@ -11309,6 +11309,24 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
+      id: v55.2025-05-05T15:02:19
+      author: bshepherdson
+      comment: Creating index on the metadata_analysis_blocker
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: report_card
+                indexName: idx_report_card_metadata_analysis_blocker
+      changes:
+        - createIndex:
+            tableName: report_card
+            columns:
+              - column:
+                  name: metadata_analysis_blocker
+            indexName: idx_report_card_metadata_analysis_blocker
+
+  - changeSet:
       id: v55.2025-05-02T19:06:21
       author: bshepherdson
       comment: FK constraint and index for Card.metadata_analysis_blocker
