@@ -40,7 +40,8 @@
   [email-addresses]
   (when-let [allowed-domains (allowed-domains-set)]
     (let [disallowed-emails (->> email-addresses
-                                 (filter #(->> % u/email->domain (remove allowed-domains))))]
+                                 (remove #(->> % u/email->domain  allowed-domains))
+                                 seq)]
       (when (seq disallowed-emails)
         (throw (ex-info
                 (tru "The following email addresses are not allowed: {0}"
