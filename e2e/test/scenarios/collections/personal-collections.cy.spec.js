@@ -56,10 +56,9 @@ describe("personal collections", () => {
       cy.findAllByRole("tree")
         .contains("Your personal collection")
         .should("be.visible");
-      H.navigationSidebar().within(() => {
-        cy.icon("ellipsis").click();
-      });
-      H.popover().findByText("Other users' personal collections").click();
+      H.navigationSidebar()
+        .findByLabelText("Other users' personal collections")
+        .click();
       cy.location("pathname").should("eq", "/collection/users");
       cy.findByTestId("browsercrumbs").findByText(/All personal collections/i);
       Object.values(USERS).forEach((user) => {
