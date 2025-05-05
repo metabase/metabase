@@ -4,10 +4,12 @@ import { push } from "react-router-redux";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
+import { NoDataError } from "metabase/components/errors/NoDataError";
 import { useDispatch } from "metabase/lib/redux";
 import {
   ActionIcon,
   Box,
+  Button,
   Divider,
   Flex,
   Group,
@@ -16,7 +18,7 @@ import {
   Text,
   rem,
 } from "metabase/ui";
-import NoResultsView from "metabase/visualizations/components/Visualization/NoResultsView";
+import { ShortMessage } from "metabase/visualizations/components/Visualization/NoResultsView/NoResultsView.styled";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import { formatRowCount } from "metabase-lib/v1/queries/utils/row-count";
@@ -196,8 +198,20 @@ export const EditTableDashcardVisualization = ({
         </Group>
       </Flex>
       {data.rows.length === 0 ? (
-        <Stack h="100%" justify="center">
-          <NoResultsView />
+        <Stack
+          h="100%"
+          justify="center"
+          align="center"
+          c="var(--mb-color-text-tertiary)"
+        >
+          <NoDataError data-testid="no-results-image" />
+          <ShortMessage>{t`No results!`}</ShortMessage>
+          <Button
+            leftSection={<Icon name="add" />}
+            variant="filled"
+            onClick={openCreateRowModal}
+            disabled={shouldDisableActions}
+          >{t`New Record`}</Button>
         </Stack>
       ) : (
         <>
