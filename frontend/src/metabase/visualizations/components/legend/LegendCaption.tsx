@@ -17,6 +17,7 @@ import {
   LegendLabelIcon,
   LegendRightContent,
 } from "./LegendCaption.styled";
+import { useTranslateContent } from "metabase/i18n/hooks";
 
 function shouldHideDescription(width: number | undefined) {
   const HIDE_DESCRIPTION_THRESHOLD = 100;
@@ -77,6 +78,9 @@ export const LegendCaption = ({
     }
   }, [getHref]);
 
+  const tc = useTranslateContent();
+  const translatedTitle = tc(title);
+
   const titleElement = (
     <LegendLabel
       className={cx(
@@ -89,7 +93,9 @@ export const LegendCaption = ({
       onFocus={handleFocus}
       onMouseEnter={handleMouseEnter}
     >
-      <Ellipsified data-testid="legend-caption-title">{title}</Ellipsified>
+      <Ellipsified data-testid="legend-caption-title">
+        {translatedTitle}
+      </Ellipsified>
       {titleMenuItems && (
         <Icon
           style={{ flexShrink: 0, marginRight: 10 }}
