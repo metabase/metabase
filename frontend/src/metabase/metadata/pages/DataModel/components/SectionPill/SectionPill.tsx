@@ -11,7 +11,7 @@ export const SectionPill = ({ icon, title }: Props) => {
   return (
     <Flex
       align="center"
-      bg="var(--mb-color-bg-medium)"
+      bg="bg-medium"
       className={S.sectionPill}
       display="inline-flex"
       gap="sm"
