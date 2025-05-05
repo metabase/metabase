@@ -152,7 +152,7 @@ module.exports = (env) => {
       // so we use a different value instead
       moduleIds: isDevMode ? "natural" : undefined,
 
-      minimize: !isDevMode,
+      minimize: false,
       minimizer: mainConfig.optimization.minimizer,
 
       usedExports: true,
