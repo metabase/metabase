@@ -22,7 +22,12 @@ const defaultRootCollection = createMockCollection({
   name: "Our analytics",
 });
 
-const setup = (modelCount: number, recentModelCount = 5) => {
+interface SetupOptions {
+  modelCount: number;
+  recentModelCount?: number;
+}
+
+const setup = ({ modelCount, recentModelCount = 5 }: SetupOptions) => {
   const database = createMockDatabase();
   const mockModelResults = mockModels.map((model) =>
     createMockModelResult(model),
@@ -283,7 +288,7 @@ const mockModels = [
 describe("BrowseModels", () => {
   describe("Empty state", () => {
     it("displays an explanation about how to use models when no models exist", async () => {
-      setup(0);
+      setup({ modelCount: 0 });
 
       const emptyState = await screen.findByTestId("empty-state");
       const title =
@@ -305,7 +310,7 @@ describe("BrowseModels", () => {
     });
 
     it("should display embedded YouTube video (that doesn't auto play) when no models exist", async () => {
-      setup(0);
+      setup({ modelCount: 0 });
 
       const emptyState = await screen.findByTestId("empty-state");
       const youtubeVideo = await within(emptyState).findByTitle(
@@ -322,7 +327,7 @@ describe("BrowseModels", () => {
 
   describe("Models explanation banner", () => {
     it("displays an explanation banner when there is at least one model", async () => {
-      setup(1);
+      setup({ modelCount: 1 });
 
       const banner = await screen.findByRole("complementary");
       const title =
@@ -347,7 +352,7 @@ describe("BrowseModels", () => {
     });
 
     it("explanation banner can open an autoplaying embedded YouTube video in a modal", async () => {
-      setup(1);
+      setup({ modelCount: 1 });
 
       const banner = await screen.findByRole("complementary");
       const videoThumbnail = await within(banner).findByTestId(
@@ -374,7 +379,7 @@ describe("BrowseModels", () => {
   });
 
   it("displays the Our Analytics collection if it has a model", async () => {
-    setup(25);
+    setup({ modelCount: 25 });
     const modelsTable = await screen.findByRole("table", {
       name: /Table of models/,
     });
@@ -396,7 +401,7 @@ describe("BrowseModels", () => {
   });
 
   it("displays collection breadcrumbs", async () => {
-    setup(25);
+    setup({ modelCount: 25 });
     const modelsTable = await screen.findByRole("table", {
       name: /Table of models/,
     });
@@ -407,7 +412,7 @@ describe("BrowseModels", () => {
   });
 
   it("displays recently viewed models", async () => {
-    setup(25);
+    setup({ modelCount: 25 });
     const recentModelsGrid = await screen.findByRole("grid", {
       name: /Recents/,
     });
@@ -430,7 +435,7 @@ describe("BrowseModels", () => {
   });
 
   it("displays no recently viewed models when there are fewer than 9 models - but instance analytics models do not count", async () => {
-    setup(8);
+    setup({ modelCount: 8 });
     const recentModelsGrid = screen.queryByRole("grid", {
       name: /Recents/,
     });
