@@ -1,6 +1,21 @@
+import { t } from "ttag";
+
 export const GROUP_LABLES = {
-  global: `General`,
-  dashboard: "Dashboard",
-  question: "Querying & the notebook",
-  collection: "Collection",
+  get global() {
+    return t`General`;
+  },
+  get dashboard() {
+    return t`Dashboard`;
+  },
+  get question() {
+    return t`Querying & the notebook`;
+  },
+  get collection() {
+    return t`Collection`;
+  },
+  get admin() {
+    return t`Admin`;
+  },
 };
+
+export const ELLIPSIS = "...";

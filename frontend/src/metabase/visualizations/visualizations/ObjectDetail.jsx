@@ -12,7 +12,7 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 
 const ObjectDetailProperties = {
-  get uiName() {
+  getUiName() {
     return t`Detail`;
   },
   identifier: "object",
