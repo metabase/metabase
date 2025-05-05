@@ -263,7 +263,7 @@
 (def empty-field-id-context
   "Context for effective field id computation. See the [[field-id-into-context-rf]]'s docstring."
   {:card-id->filterable-columns {}
-   :param-id->field-ids         #{}})
+   :param-id->field-ids         {}})
 
 (mu/defn- field-id-into-context-rf
   "Reducing function that generates _field id_ corresponding to `:parameter` of `param-dashcard-info` if possible,
