@@ -9,7 +9,12 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Box, Flex, Stack, Title } from "metabase/ui";
 
 import S from "./DataModel.module.css";
-import { FieldSection, PreviewSection, TableSection } from "./components";
+import {
+  FieldSection,
+  PreviewSection,
+  TablePicker,
+  TableSection,
+} from "./components";
 import type { RouteParams } from "./types";
 import { parseRouteParams } from "./utils";
 
@@ -50,19 +55,23 @@ export const DataModel = ({ params }: Props) => {
         </Title>
 
         <Box className={S.tableSectionContainer} h="100%" pb="lg" px="xl">
-          <LoadingAndErrorWrapper error={error} loading={isLoading}>
-            {table && (
-              <TableSection
-                /**
-                 * Make sure internal component state is reset when changing tables.
-                 * This is to avoid state mix-up with optimistic updates.
-                 */
-                key={table.id}
-                params={params}
-                table={table}
-              />
-            )}
-          </LoadingAndErrorWrapper>
+          {tableId ? (
+            <LoadingAndErrorWrapper error={error} loading={isLoading}>
+              {table && (
+                <TableSection
+                  /**
+                   * Make sure internal component state is reset when changing tables.
+                   * This is to avoid state mix-up with optimistic updates.
+                   */
+                  key={table.id}
+                  params={params}
+                  table={table}
+                />
+              )}
+            </LoadingAndErrorWrapper>
+          ) : (
+            <TablePicker />
+          )}
         </Box>
       </Stack>
 
