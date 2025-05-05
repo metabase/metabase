@@ -395,4 +395,4 @@
 (defmethod param-fields :model/Card [card]
   (let [field-ids (card->template-tag-field-ids card)]
     ;; TODO this should use real parameter IDs
-    (param-field-ids->fields {"test" fields})))
+    (param-field-ids->fields {"test" field-ids})))
