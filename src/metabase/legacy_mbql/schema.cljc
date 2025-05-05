@@ -42,7 +42,7 @@
    {:description "Must be a positive integer."}
    pos-int?])
 
-;; `:day-of-week` depends on the [[metabase.public-settings/start-of-week]] Setting, by default Sunday.
+;; `:day-of-week` depends on the [[metabase.settings.deprecated-grab-bag/start-of-week]] Setting, by default Sunday.
 ;; 1 = first day of the week (e.g. Sunday)
 ;; 7 = last day of the week (e.g. Saturday)
 (def ^:private date-bucketing-units
@@ -1046,10 +1046,9 @@
 (defclause ^{:requires-features #{:percentile-aggregations}} percentile
   field-or-expression [:ref ::FieldOrExpressionDef], percentile NumericExpressionArg)
 
-;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
-;; expanded to other aggregations/etc. in the expand-macros middleware
+;;; V1 (Legacy) Metrics (which lived in their own table) do not exist anymore! A V2 Metric is just a subtype of a Card.
 (defclause metric
-  metric-id ::lib.schema.id/metric)
+  metric-id ::lib.schema.id/card)
 
 ;; the following are definitions for expression aggregations, e.g.
 ;;

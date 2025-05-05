@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.api.geojson-test :as geojson-test]
    [metabase.channel.email :as email]
-   [metabase.integrations.slack :as slack]
+   [metabase.channel.slack :as slack]
    [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))

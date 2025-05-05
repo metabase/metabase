@@ -6,11 +6,11 @@
    [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
    [metabase.query-processor.middleware.limit :as limit]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [toucan2.core :as t2])

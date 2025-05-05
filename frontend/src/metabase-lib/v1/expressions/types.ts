@@ -2,7 +2,7 @@ import type * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseFeature, Expression } from "metabase-types/api";
 
-import type { DefinedClauseName } from "./config";
+import type { DefinedClauseName } from "./clause";
 import type { Token } from "./pratt";
 
 export type MBQLClauseCategory =

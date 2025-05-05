@@ -2,7 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [metabase.sso.ldap :as ldap]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.sso.settings :as sso.settings]

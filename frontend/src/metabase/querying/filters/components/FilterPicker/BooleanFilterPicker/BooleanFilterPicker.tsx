@@ -9,7 +9,7 @@ import * as Lib from "metabase-lib";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { WIDTH } from "../constants";
-import type { FilterPickerWidgetProps } from "../types";
+import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 export function BooleanFilterPicker({
   query,
@@ -17,6 +17,7 @@ export function BooleanFilterPicker({
   column,
   filter,
   isNew,
+  withAddButton,
   onBack,
   onChange,
 }: FilterPickerWidgetProps) {
@@ -46,9 +47,17 @@ export function BooleanFilterPicker({
     }
   };
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleFilterChange = (opts: FilterChangeOpts) => {
+    onChange(getFilterClause(), opts);
+  };
+
+  const handleFormSubmit = (event: FormEvent) => {
     event.preventDefault();
-    onChange(getFilterClause());
+    handleFilterChange({ run: true });
+  };
+
+  const handleAddButtonClick = () => {
+    handleFilterChange({ run: false });
   };
 
   return (
@@ -56,7 +65,7 @@ export function BooleanFilterPicker({
       component="form"
       miw={WIDTH}
       data-testid="boolean-filter-picker"
-      onSubmit={handleSubmit}
+      onSubmit={handleFormSubmit}
     >
       {onBack && (
         <FilterPickerHeader
@@ -89,7 +98,12 @@ export function BooleanFilterPicker({
             {t`More options`}
           </Button>
         )}
-        <FilterPickerFooter isNew={isNew} canSubmit />
+        <FilterPickerFooter
+          isNew={isNew}
+          isValid
+          withAddButton={withAddButton}
+          onAddButtonClick={handleAddButtonClick}
+        />
       </div>
     </Box>
   );

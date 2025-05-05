@@ -279,6 +279,16 @@
   (doseq [table-name [(active-table) (pending-table)] :when table-name]
     (t2/delete! table-name :model search-model :model_id [:in ids])))
 
+(defn when-index-created
+  "Return creation time of the active index, or nil if there is none."
+  []
+  (t2/select-one-fn :created_at
+                    :model/SearchIndexMetadata
+                    :engine :appdb
+                    :version *index-version-id*
+                    :status :active
+                    {:order-by [[:created_at :desc]]}))
+
 (defn search-query
   "Query fragment for all models corresponding to a query parameter `:search-term`."
   ([search-term search-ctx]
