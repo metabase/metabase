@@ -1,4 +1,3 @@
-import { usePrevious } from "@mantine/hooks";
 import cx from "classnames";
 import { dissoc } from "icepick";
 import { useEffect, useState } from "react";
@@ -40,13 +39,7 @@ import { SuggestionsSidebar } from "./SuggestionsSidebar";
 
 type AutomaticDashboardAppRouterProps = WithRouterProps<{ splat: string }>;
 
-const AutomaticDashboardAppInner = ({
-  savedDashboardId,
-  setSavedDashboardId,
-}: {
-  savedDashboardId: DashboardId | null;
-  setSavedDashboardId: (id: DashboardId | null) => void;
-}) => {
+const AutomaticDashboardAppInner = () => {
   const {
     dashboard,
     parameters,
@@ -61,6 +54,16 @@ const AutomaticDashboardAppInner = ({
   } = useDashboardContext();
 
   const dispatch = useDispatch();
+
+  const [savedDashboardId, setSavedDashboardId] = useState<DashboardId | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (dashboard?.id) {
+      setSavedDashboardId(null);
+    }
+  }, [dashboard?.id]);
 
   const saveDashboard = (newDashboard: Omit<Dashboard, "id">) =>
     dispatch(dashboardApi.endpoints.saveDashboard.initiate(newDashboard));
@@ -221,30 +224,16 @@ const AutomaticDashboardAppInner = ({
   );
 };
 
-export const AutomaticDashboardAppConnected = (
-  props: AutomaticDashboardAppRouterProps,
-) => {
-  useDashboardUrlQuery(props.router, props.location);
+export const AutomaticDashboardApp = ({
+  router,
+  location,
+  params,
+}: AutomaticDashboardAppRouterProps) => {
+  useDashboardUrlQuery(router, location);
 
   const dispatch = useDispatch();
 
-  const dashboardId = `/auto/dashboard/${props.params.splat}${props.location.hash.replace(/^#?/, "?")}`;
-
-  const prevPathName = usePrevious(location.pathname);
-
-  const [savedDashboardId, setSavedDashboardId] = useState<DashboardId | null>(
-    null,
-  );
-
-  useEffect(() => {
-    if (prevPathName !== location.pathname) {
-      // scroll to the top when the pathname changes
-      window.scrollTo(0, 0);
-
-      // clear savedDashboardId if changing to a different dashboard
-      setSavedDashboardId(null);
-    }
-  }, [prevPathName]);
+  const dashboardId = `/auto/dashboard/${params.splat}${location.hash.replace(/^#?/, "?")}`;
 
   return (
     <DashboardContextProvider
@@ -253,10 +242,7 @@ export const AutomaticDashboardAppConnected = (
         dispatch(navigateToNewCardFromDashboard(opts))
       }
     >
-      <AutomaticDashboardAppInner
-        savedDashboardId={savedDashboardId}
-        setSavedDashboardId={setSavedDashboardId}
-      />
+      <AutomaticDashboardAppInner />
     </DashboardContextProvider>
   );
 };
