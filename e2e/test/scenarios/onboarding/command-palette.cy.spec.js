@@ -570,7 +570,6 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     H.openShortcutModal();
     H.shortcutModal().should("exist");
     cy.realPress("Escape");
-    cy.wait(200);
 
     cy.realPress("o");
     H.openNavigationSidebar();
