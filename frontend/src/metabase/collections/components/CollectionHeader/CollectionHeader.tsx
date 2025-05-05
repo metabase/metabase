@@ -12,6 +12,7 @@ import CollectionBookmark from "./CollectionBookmark";
 import { CollectionCaption } from "./CollectionCaption";
 import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 import { CollectionInfoSidebarToggle } from "./CollectionInfoSidebarToggle";
+import { CollectionNewButton } from "./CollectionNewButton";
 import { CollectionPermissions } from "./CollectionPermissions";
 import CollectionTimeline from "./CollectionTimeline";
 import { CollectionUpload } from "./CollectionUpload";
@@ -54,6 +55,7 @@ const CollectionHeader = ({
       />
       {!isTrash && (
         <HeaderActions data-testid="collection-menu">
+          {!isInstanceAnalytics && <CollectionNewButton />}
           {showUploadButton && (
             <CollectionUpload
               collection={collection}
