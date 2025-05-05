@@ -2,6 +2,7 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import type { Draft } from "immer";
 import _ from "underscore";
 
+import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { isNotNull } from "metabase/lib/types";
 import { isCartesianChart } from "metabase/visualizations";
 import {
@@ -424,7 +425,7 @@ export function isCompatibleWithCartesianChart(
     ownDimensions.includes(col.name),
   );
   const [ownTimeDimensions, ownOtherDimensions] = _.partition(
-    ownDimensionColumns,
+    ownDimensionColumns.filter((col) => !isPivotGroupColumn(col)),
     (col) => isDate(col),
   );
 
@@ -432,7 +433,7 @@ export function isCompatibleWithCartesianChart(
     (col) => isDimension(col) && !isMetric(col),
   );
   const [timeDimensions, otherDimensions] = _.partition(
-    dimensionColumns,
+    dimensionColumns.filter((col) => !isPivotGroupColumn(col)),
     (col) => isDate(col),
   );
 
