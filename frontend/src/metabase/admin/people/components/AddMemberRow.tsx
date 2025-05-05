@@ -16,9 +16,6 @@ interface AddMemberRowProps {
   onDone: (userIds: number[]) => void;
 }
 
-// TODO: loading state
-// TODO: error state
-
 export function AddMemberRow({ members, onCancel, onDone }: AddMemberRowProps) {
   const listUsersReq = useListUsersQuery();
 

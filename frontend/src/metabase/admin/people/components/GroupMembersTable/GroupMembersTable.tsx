@@ -17,7 +17,7 @@ import type { Group, Member, Membership } from "metabase-types/api";
 import { AddMemberRow } from "../AddMemberRow";
 
 const isApiKeyGroupMember = (member: Member) =>
-  member.email.includes("@api-key.invalid");
+  member.email.endsWith("@api-key.invalid");
 
 const canEditMembership = (group: Group) =>
   !isDefaultGroup(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell;

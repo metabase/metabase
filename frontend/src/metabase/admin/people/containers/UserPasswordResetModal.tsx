@@ -97,18 +97,20 @@ export const UserPasswordResetModal = (props: UserPasswordResetModalProps) => {
     getUserTemporaryPassword(state, { userId }),
   );
 
-  if (!user || isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
   return (
-    <UserPasswordResetModalInner
-      {...props}
-      onClose={() => dispatch(goBack())}
-      clearTemporaryPassword={() => dispatch(clearTemporaryPassword(user.id))}
-      user={user}
-      emailConfigured={MetabaseSettings.isEmailConfigured()}
-      temporaryPassword={temporaryPassword}
-    />
+    <LoadingAndErrorWrapper loading={isLoading} error={error}>
+      {user && (
+        <UserPasswordResetModalInner
+          {...props}
+          onClose={() => dispatch(goBack())}
+          clearTemporaryPassword={() =>
+            dispatch(clearTemporaryPassword(user.id))
+          }
+          user={user}
+          emailConfigured={MetabaseSettings.isEmailConfigured()}
+          temporaryPassword={temporaryPassword}
+        />
+      )}
+    </LoadingAndErrorWrapper>
   );
 };

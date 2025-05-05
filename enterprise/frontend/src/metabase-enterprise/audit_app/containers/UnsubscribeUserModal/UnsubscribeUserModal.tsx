@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { useGetUserQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { AuditApi } from "metabase-enterprise/services";
@@ -24,11 +25,15 @@ export const UnsubscribeUserModal = (props: UnsubscribeUserModal) => {
     dispatch(addUndo({ message: t`Unsubscribe successful` }));
   };
 
-  if (isLoading || error || !user) {
-    return null;
-  }
-
   return (
-    <UnsubscribeUserForm {...props} user={user} onUnsubscribe={onUnsubscribe} />
+    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+      {user && (
+        <UnsubscribeUserForm
+          {...props}
+          user={user}
+          onUnsubscribe={onUnsubscribe}
+        />
+      )}
+    </LoadingAndErrorWrapper>
   );
 };
