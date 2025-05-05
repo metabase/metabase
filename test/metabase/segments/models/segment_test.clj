@@ -5,9 +5,7 @@
    [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [metabase.util.json :as json]
-   [toucan2.core :as t2])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
