@@ -288,7 +288,7 @@ describe("DateFilterPicker", () => {
         withAddButton: true,
       });
 
-      await userEvent.click(screen.getByText("Fixed date range…"));
+      await userEvent.click(screen.getByText("Specific dates…"));
       await userEvent.click(screen.getByText("On"));
       await userEvent.clear(screen.getByLabelText("Date"));
       await userEvent.type(screen.getByLabelText("Date"), "Feb 15, 2020");
