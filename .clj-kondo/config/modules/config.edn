@@ -624,6 +624,7 @@
 
   enterprise/advanced-config
   {:api  #{metabase-enterprise.advanced-config.api.logs
+           metabase-enterprise.advanced-config.init
            metabase-enterprise.advanced-config.models.pulse-channel
            metabase-enterprise.advanced-config.file
            metabase-enterprise.advanced-config.crufty}
