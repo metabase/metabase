@@ -220,24 +220,21 @@ export const useInteractiveEmbeddingCta = () => {
     PLUGIN_EMBEDDING.isInteractiveEmbeddingEnabled,
   );
 
-  const url = useUrlWithUtm(
-    `https://www.metabase.com/product/embedded-analytics`,
-    {
-      utm_source: "product",
-      utm_medium: "upsell",
-      utm_campaign: "embedding-interactive",
-      utm_content: "static-embed-popover",
-    },
-  );
-
-  if (isInteractiveEmbeddingEnabled) {
-    return {
-      url: "/admin/settings/embedding-in-other-applications/full-app",
-    };
-  }
+  return {
+    url: "/embed?state=eyJ0eXBlIjoiZGFzaGJvYXJkIiwiZGFzaGJvYXJkIjpudWxsLCJhbGxvd0RyaWxsVGhyb3VnaCI6ZmFsc2UsImFsbG93RG93bmxvYWRzIjpmYWxzZSwic2hvd1RpdGxlIjp0cnVlLCJicmFuZENvbG9yIjoiIzUwOUVFMyIsInRleHRDb2xvciI6IiM0QzU3NzMiLCJiYWNrZ3JvdW5kQ29sb3IiOiIjRkZGRkZGIiwicGFyYW1ldGVyVmlzaWJpbGl0eSI6eyJkYXRlX3JhbmdlIjp0cnVlLCJyZWdpb24iOnRydWUsInByb2R1Y3RfY2F0ZWdvcnkiOnRydWV9fQ%3D%3D",
+    target: "_blank",
+  };
 
   return {
-    url,
+    url: useUrlWithUtm(
+      `https://www.metabase.com/product/embedded-analytics`,
+      {
+        utm_source: "product",
+        utm_medium: "upsell",
+        utm_campaign: "embedding-interactive",
+        utm_content: "static-embed-popover",
+      },
+    ),
     target: "_blank",
   };
 };
