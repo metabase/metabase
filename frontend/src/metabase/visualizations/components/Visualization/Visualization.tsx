@@ -701,7 +701,9 @@ class Visualization extends PureComponent<
           className={className}
           style={style}
           data-testid="visualization-root"
-          data-viz-ui-name={visualization?.uiName}
+          // `getUiName` should be defined (and is a required field on the TS type), but because we have javascript
+          // files about visualizations, it's best if we don't risk crashing the app, hence the `?.()`
+          data-viz-ui-name={visualization?.getUiName?.()}
           ref={this.props.forwardedRef}
         >
           {!!hasHeader && (
