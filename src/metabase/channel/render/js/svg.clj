@@ -127,9 +127,9 @@
       node)))
 
 (defn- clear-style-node
-  "The echarts library (whose output we get via the :javascript_visualization multimethod) adds a <style> tag that we don't need.
-  It has some invalid styles that Batik warns about, but they're all for :hover states,
-  which have no meaning or effect in the static-viz context anyway."
+  "The echarts library (whose output we get via the [[*javascript-visualization*]] function) adds a `<style>` tag that
+  we don't need. It has some invalid styles that Batik warns about, but they're all for :hover states, which have no
+  meaning or effect in the static-viz context anyway."
   [^Node node]
   (letfn [(element? [x] (instance? Element x))]
     (if (and (element? node)
@@ -139,7 +139,8 @@
       node)))
 
 (defn- sanitize-svg
-  "Using a regex of negated allowed characters according to the XML 1.0 spec, replace disallowed characters with an empty string."
+  "Using a regex of negated allowed characters according to the XML 1.0 spec, replace disallowed characters with an
+  empty string."
   [svg-string]
   (let [allowed-chars (re-pattern (str "[^"
                                        "\u0009"
@@ -187,8 +188,13 @@
   (-> s parse-svg-string render-svg))
 
 (defn funnel
-  "Clojure entrypoint to render a funnel chart. Data should be vec of [[Step Measure]] where Step is {:name name :format format-options} and Measure is {:format format-options} and you go and look to frontend/src/metabase/static-viz/components/FunnelChart/types.ts for the actual format options.
-  Returns a byte array of a png file."
+  "Clojure entrypoint to render a funnel chart. Data should be vec of [[Step Measure]] where Step is
+
+    {:name name :format format-options}
+
+  and Measure is {:format format-options} and you go and look to
+  frontend/src/metabase/static-viz/components/FunnelChart/types.ts for the actual format options. Returns a byte array
+  of a png file."
   [data settings]
   (let [svg-string (with-static-viz-context context
                      (.asString (js.engine/execute-fn-name context "funnel" (json/encode data)
@@ -197,8 +203,7 @@
     (svg-string->bytes svg-string)))
 
 (defn ^:dynamic *javascript-visualization*
-  "Clojure entrypoint to render javascript visualizations.
-This functions is dynanic only for testing purposes."
+  "Clojure entrypoint to render javascript visualizations. This functions is dynanic only for testing purposes."
   [cards-with-data dashcard-viz-settings]
   (let [response (with-static-viz-context context
                    (.asString (js.engine/execute-fn-name context "javascript_visualization"
