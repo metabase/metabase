@@ -1,4 +1,4 @@
-(ns metabase.models.audit-log
+(ns metabase.audit-app.models.audit-log
   "Model defenition for the Metabase Audit Log, which tracks actions taken by users across the Metabase app. This is
   distinct from the View Log model, which predates this namespace, and which powers specific API endpoints used for
   in-app functionality, such as the recently-viewed items displayed on the homepage."
@@ -37,6 +37,81 @@
 (defmethod model-details :default
   [_entity _event-type]
   {})
+
+(defmethod model-details :model/ApiKey
+  [entity _event-type]
+  (select-keys entity [:name :group :key_prefix :user_id]))
+
+(defmethod model-details :model/Card
+  [{card-type :type, :as card} _event-type]
+  (merge (select-keys card [:name :description :database_id :table_id])
+          ;; Use `model` instead of `dataset` to mirror product terminology
+         {:model? (= (keyword card-type) :model)}))
+
+(defmethod model-details :model/Channel
+  [channel _event-type]
+  (select-keys channel [:id :name :description :type :active]))
+
+(defmethod model-details :model/Dashboard
+  [dashboard event-type]
+  (case event-type
+    (:dashboard-create :dashboard-delete :dashboard-read)
+    (select-keys dashboard [:description :name])
+
+    (:dashboard-add-cards :dashboard-remove-cards)
+    (-> (select-keys dashboard [:description :name :parameters :dashcards])
+        (update :dashcards (fn [dashcards]
+                             (for [{:keys [id card_id]} dashcards]
+                               (-> (t2/select-one [:model/Card :name :description :card_schema], :id card_id)
+                                   (assoc :id id)
+                                   (assoc :card_id card_id))))))
+
+    {}))
+
+(defmethod model-details :model/Database
+  [database _event-type]
+  (select-keys database [:id :name :engine]))
+
+(defmethod model-details :model/Table
+  [table _event-type]
+  (select-keys table [:id :name :db_id]))
+
+(defmethod model-details :model/User
+  [entity event-type]
+  (case event-type
+    :user-update               (select-keys (t2/hydrate entity :user_group_memberships)
+                                            [:groups :first_name :last_name :email
+                                             :invite_method :sso_source
+                                             :user_group_memberships])
+    :user-invited              (select-keys (t2/hydrate entity :user_group_memberships)
+                                            [:groups :first_name :last_name :email
+                                             :invite_method :sso_source
+                                             :user_group_memberships])
+    :password-reset-initiated  (select-keys entity [:token])
+    :password-reset-successful (select-keys entity [:token])
+    {}))
+
+(defmethod model-details :model/Notification
+  [{:keys [subscriptions handlers] :as fully-hydrated-notification} _event-type]
+  (merge
+   (select-keys fully-hydrated-notification [:id :payload_type :payload_id :creator_id :active])
+   {:subscriptions (map #(dissoc % :id :created_at) subscriptions)
+    :handlers      (map (fn [handler]
+                          (merge (select-keys [:id :channel_type :channel_id :template_id :active]
+                                              handler)
+                                 {:recipients (map #(select-keys % [:id :type :user_id :permissions_group_id :details])
+                                                   (:recipients handler))}))
+                        handlers)}))
+
+(defmethod model-details :model/Segment
+  [metric _event-type]
+  (let [table-id (:table_id metric)
+        db-id    (when table-id
+                   (t2/select-one-fn :db_id :model/Table, :id table-id))]
+    (assoc
+     (select-keys metric [:name :description :revision_message])
+     :table_id    table-id
+     :database_id db-id)))
 
 (def ^:private model-name->audit-logged-name
   {"RootCollection" "Collection"})

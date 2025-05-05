@@ -3,7 +3,6 @@
    [clojure.core.memoize :as memoize]
    [crypto.random :as crypto-random]
    [metabase.db :as mdb]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
@@ -107,10 +106,6 @@
   [api-key]
   (-> api-key
       add-masked-key))
-
-(defmethod audit-log/model-details :model/ApiKey
-  [entity _event-type]
-  (select-keys entity [:name :group :key_prefix :user_id]))
 
 (def ^{:arglists '([user-id])} is-api-key-user?
   "Cached function to determine whether the user with this ID is an API key user"

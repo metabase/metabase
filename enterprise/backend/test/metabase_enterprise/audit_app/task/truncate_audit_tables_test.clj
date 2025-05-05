@@ -1,10 +1,10 @@
-(ns metabase-enterprise.task.truncate-audit-tables-test
+(ns metabase-enterprise.audit-app.task.truncate-audit-tables-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.audit-app.task.truncate-audit-tables :as task.truncate-audit-tables]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.util :as qp.util]
-   [metabase.task.truncate-audit-tables :as task.truncate-audit-tables]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -19,7 +19,7 @@
    :context      :ad-hoc})
 
 ;; More tests for different values of `mb-audit-max-retention-days` are located in
-;; `metabase.task.truncate-audit-tables-test`
+;; [[metabase.audit-app.task.truncate-audit-tables-test]]
 (deftest query-execution-cleanup-test
   (testing "When the task runs, rows in `query_execution` older than the configured threshold are deleted"
     (mt/with-premium-features #{:audit-app}

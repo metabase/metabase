@@ -1,11 +1,11 @@
-(ns metabase.task.truncate-audit-tables-test
+(ns metabase.audit-app.task.truncate-audit-tables-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.audit-app.task.truncate-audit-tables :as task.truncate-audit-tables]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.util :as qp.util]
    [metabase.settings.core :as setting]
-   [metabase.task.truncate-audit-tables :as task.truncate-audit-tables]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))

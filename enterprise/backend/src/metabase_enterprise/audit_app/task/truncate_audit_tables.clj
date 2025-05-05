@@ -1,4 +1,4 @@
-(ns metabase-enterprise.task.truncate-audit-tables
+(ns metabase-enterprise.audit-app.task.truncate-audit-tables
   (:require
    [metabase.premium-features.core :refer [defenterprise]]))
 

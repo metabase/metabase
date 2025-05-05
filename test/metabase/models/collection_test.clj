@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]

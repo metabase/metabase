@@ -1,7 +1,7 @@
 (ns metabase.permissions.models.data-permissions.graph-test
   (:require
    [clojure.test :refer :all]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]

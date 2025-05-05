@@ -5,13 +5,12 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.util :as driver.u]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
    [metabase.models.secret :as secret]
    [metabase.models.serialization :as serdes]
@@ -516,10 +515,6 @@
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
   ["databases" name name])
-
-(defmethod audit-log/model-details :model/Database
-  [database _event-type]
-  (select-keys database [:id :name :engine]))
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."

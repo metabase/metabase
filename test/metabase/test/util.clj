@@ -15,7 +15,7 @@
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [mb.hawk.parallel]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.config :as config]
    [metabase.models.collection :as collection]
    [metabase.models.moderation-review :as moderation-review]

@@ -4,7 +4,7 @@
    [clojure.set :as set]
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
