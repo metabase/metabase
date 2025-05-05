@@ -14,6 +14,7 @@ import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
+import { navigateToNewCardFromDashboard } from "metabase/dashboard/actions";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
@@ -225,6 +226,8 @@ export const AutomaticDashboardAppConnected = (
 ) => {
   useDashboardUrlQuery(props.router, props.location);
 
+  const dispatch = useDispatch();
+
   const dashboardId = `/auto/dashboard/${props.params.splat}${props.location.hash.replace(/^#?/, "?")}`;
 
   const prevPathName = usePrevious(location.pathname);
@@ -244,7 +247,12 @@ export const AutomaticDashboardAppConnected = (
   }, [prevPathName]);
 
   return (
-    <DashboardContextProvider dashboardId={dashboardId}>
+    <DashboardContextProvider
+      dashboardId={dashboardId}
+      navigateToNewCardFromDashboard={(opts) =>
+        dispatch(navigateToNewCardFromDashboard(opts))
+      }
+    >
       <AutomaticDashboardAppInner
         savedDashboardId={savedDashboardId}
         setSavedDashboardId={setSavedDashboardId}
