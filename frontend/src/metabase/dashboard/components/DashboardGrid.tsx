@@ -157,7 +157,7 @@ export type DashboardGridProps = {
   downloadsEnabled: boolean;
   autoScrollToDashcardId?: DashCardId;
   reportAutoScrolledToDashcard?: () => void;
-  handleSetEditing: (dashboard: Dashboard | null) => void;
+  handleSetEditing?: (dashboard: Dashboard | null) => void;
 };
 
 type DashboardGridInnerProps = Required<DashboardGridProps> &
@@ -585,7 +585,7 @@ class DashboardGridInner extends Component<
   }
 
   handleSetEditing = () => {
-    this.props.handleSetEditing(this.props.dashboard);
+    this.props.handleSetEditing?.(this.props.dashboard);
   };
 
   get isEditingLayout() {
