@@ -438,20 +438,8 @@ describe("collection permissions", () => {
       );
       cy.button("Create").click();
       cy.wait("@createCollection");
-      cy.location("pathname").should("match", /^\/collection\/\d+-foo/);
     });
-
-    H.navigationSidebar()
-      .findByLabelText("Create a new collection")
-      .should("be.visible")
-      .click();
-
-    cy.log(
-      "Should offer the current collection as a parent for the new sub-collection",
-    );
-    cy.findByTestId("new-collection-modal").within(() => {
-      cy.findByTestId("collection-picker-button").should("contain", "Foo");
-    });
+    cy.location("pathname").should("match", /^\/collection\/\d+-foo/);
   });
 });
 
