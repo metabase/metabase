@@ -62,8 +62,6 @@
 ;;; |                                                TOKEN VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(declare premium-embedding-token)
-
 ;; let's prevent the DB from getting slammed with calls to get the active user count, we only really need one in flight
 ;; at a time.
 (let [f    (fn []
@@ -209,7 +207,7 @@
 (mu/defn max-users-allowed :- [:maybe pos-int?]
   "Returns the max users value from an airgapped key, or nil indicating there is no limt."
   []
-  (when-let [token (premium-embedding-token)]
+  (when-let [token (premium-features.settings/premium-embedding-token)]
     (when (str/starts-with? token "airgap_")
       (let [max-users (:max-users (decode-airgap-token token))]
         (when (pos? max-users) max-users)))))
@@ -290,7 +288,7 @@
 (defn -token-status
   "Getter for the [[metabase.premium-features.settings/token-status]] setting."
   []
-  (some-> (premium-embedding-token) (fetch-token-status)))
+  (some-> (premium-features.settings/premium-embedding-token) (fetch-token-status)))
 
 (defn -set-premium-embedding-token!
   "Setter for the [[metabase.premium-features.settings/token-status]] setting."
@@ -317,7 +315,7 @@
 (defn -airgap-enabled
   "Getter for [[metabase.premium-features.settings/airgap-enabled]]"
   []
-  (mr/validate AirgapToken (premium-embedding-token)))
+  (mr/validate AirgapToken (premium-features.settings/premium-embedding-token)))
 
 (let [cached-logger (memoize/ttl
                      ^{::memoize/args-fn (fn [[token _e]] [token])}
@@ -330,16 +328,16 @@
     "Get the features associated with the system's premium features token."
     []
     (try
-      (or (some-> (premium-embedding-token) valid-token->features)
+      (or (some-> (premium-features.settings/premium-embedding-token) valid-token->features)
           #{})
       (catch Throwable e
-        (cached-logger (premium-embedding-token) e)
+        (cached-logger (premium-features.settings/premium-embedding-token) e)
         #{}))))
 
 (mu/defn plan-alias :- [:maybe :string]
   "Returns a string representing the instance's current plan, if included in the last token status request."
   []
-  (some-> (premium-embedding-token)
+  (some-> (premium-features.settings/premium-embedding-token)
           fetch-token-status
           :plan-alias))
 
