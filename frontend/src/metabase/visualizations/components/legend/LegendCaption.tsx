@@ -5,6 +5,7 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import type { IconProps } from "metabase/ui";
 import { Tooltip } from "metabase/ui";
@@ -75,6 +76,9 @@ export const LegendCaption = ({
     }
   }, [getHref]);
 
+  const tc = useTranslateContent();
+  const translatedTitle = tc(title);
+
   return (
     <LegendCaptionRoot className={className} data-testid="legend-caption">
       {icon && <LegendLabelIcon {...icon} />}
@@ -89,7 +93,9 @@ export const LegendCaption = ({
         onFocus={handleFocus}
         onMouseEnter={handleMouseEnter}
       >
-        <Ellipsified data-testid="legend-caption-title">{title}</Ellipsified>
+        <Ellipsified data-testid="legend-caption-title">
+          {translatedTitle}
+        </Ellipsified>
       </LegendLabel>
       <LegendRightContent>
         {hasInfoTooltip && description && !shouldHideDescription(width) && (
