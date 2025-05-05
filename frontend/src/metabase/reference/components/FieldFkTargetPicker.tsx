@@ -1,7 +1,4 @@
-import {
-  useGetTableQueryMetadataQuery,
-  useListDatabaseIdFieldsQuery,
-} from "metabase/api";
+import { useListDatabaseIdFieldsQuery } from "metabase/api";
 import { FkTargetPicker } from "metabase/metadata/components";
 import type { DatabaseId, Field, FieldId } from "metabase-types/api";
 
@@ -18,7 +15,6 @@ export const FieldFkTargetPicker = ({
   value,
   onChange,
 }: Props) => {
-  const { data: table } = useGetTableQueryMetadataQuery({ id: field.table_id });
   const { data: idFields = [] } = useListDatabaseIdFieldsQuery({
     id: databaseId,
   });
@@ -27,7 +23,6 @@ export const FieldFkTargetPicker = ({
     <FkTargetPicker
       field={field}
       idFields={idFields}
-      table={table}
       value={value}
       onChange={onChange}
     />

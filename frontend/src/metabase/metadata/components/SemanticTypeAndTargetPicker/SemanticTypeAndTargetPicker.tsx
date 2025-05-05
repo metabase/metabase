@@ -5,7 +5,6 @@ import type {
   Field,
   FieldFormattingSettings,
   FieldId,
-  Table,
 } from "metabase-types/api";
 
 import { CurrencyPicker } from "../CurrencyPicker";
@@ -17,7 +16,6 @@ interface SemanticTypeAndTargetPickerProps {
   field: Field;
   idFields: Field[];
   hasSeparator?: boolean;
-  table: Table;
   onUpdateField: (field: Field, updates: Partial<Field>) => void;
 }
 
@@ -26,7 +24,6 @@ export const SemanticTypeAndTargetPicker = ({
   field,
   idFields,
   hasSeparator,
-  table,
   onUpdateField,
 }: SemanticTypeAndTargetPickerProps) => {
   const showFKTargetSelect = isFK(field);
@@ -98,7 +95,6 @@ export const SemanticTypeAndTargetPicker = ({
           field={field}
           idFields={idFields}
           mt={hasSeparator ? 0 : "xs"}
-          table={table}
           value={field.fk_target_field_id}
           onChange={handleChangeTarget}
         />
