@@ -11327,7 +11327,7 @@ databaseChangeLog:
             indexName: idx_report_card_metadata_analysis_blocker
 
   - changeSet:
-      id: v55.2025-05-02T19:06:21
+      id: v55.2025-05-05T21:03:09
       author: bshepherdson
       comment: FK constraint and index for Card.metadata_analysis_blocker
       changes:
