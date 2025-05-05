@@ -24,24 +24,25 @@ export const DashboardLoadingAndErrorWrapper = ({
   isFullHeight,
   className,
   ...props
-}: DashboardLoadingAndErrorWrapperProps) => (
-  <LoadingAndErrorWrapper
-    data-testid="AAAAAAAAAAA"
-    className={cx(
-      className,
-      DashboardS.Dashboard,
-      S.DashboardLoadingAndErrorWrapper,
-      {
-        [DashboardS.DashboardFullscreen]: isFullscreen,
-        [DashboardS.DashboardNight]: isNightMode,
-        [ParametersS.DashboardNight]: isNightMode,
-        [ColorS.DashboardNight]: isNightMode,
-        [S.isFullHeight]: isFullHeight,
-      },
-    )}
-    {...props}
-  />
-);
+}: DashboardLoadingAndErrorWrapperProps) => {
+  return (
+    <LoadingAndErrorWrapper
+      className={cx(
+        className,
+        DashboardS.Dashboard,
+        S.DashboardLoadingAndErrorWrapper,
+        {
+          [DashboardS.DashboardFullscreen]: isFullscreen,
+          [DashboardS.DashboardNight]: isNightMode,
+          [ParametersS.DashboardNight]: isNightMode,
+          [ColorS.DashboardNight]: isNightMode,
+          [S.isFullHeight]: isFullHeight,
+        },
+      )}
+      {...props}
+    />
+  );
+};
 
 export const FIXED_WIDTH = "1048px";
 export const FixedWidthContainer = (

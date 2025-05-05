@@ -116,93 +116,89 @@ export function PublicOrEmbeddedDashboardView() {
   const isCompactHeader = !titled && !hasVisibleParameters && !dashboardHasTabs;
 
   return (
-    <>
+    <EmbedFrame
+      name={dashboard && dashboard.name}
+      description={dashboard && dashboard.description}
+      dashboard={dashboard}
+      parameters={parameters}
+      parameterValues={parameterValues}
+      draftParameterValues={draftParameterValues}
+      hiddenParameterSlugs={hiddenParameterSlugs}
+      setParameterValue={setParameterValue}
+      setParameterValueToDefault={setParameterValueToDefault}
+      enableParameterRequiredBehavior
+      actionButtons={buttons ? <div className={CS.flex}>{buttons}</div> : null}
+      dashboardTabs={
+        dashboardHasTabs && <DashboardTabs dashboardId={dashboardId} />
+      }
+      background={background}
+      bordered={bordered}
+      titled={titled}
+      theme={normalizedTheme}
+      hide_parameters={hideParameters}
+      pdfDownloadsEnabled={downloadsEnabled.pdf}
+      withFooter={withFooter}
+    >
       {dashboard && <SetTitle title={dashboard.name} />}
-      <EmbedFrame
-        name={dashboard && dashboard.name}
-        description={dashboard && dashboard.description}
-        dashboard={dashboard}
-        parameters={parameters}
-        parameterValues={parameterValues}
-        draftParameterValues={draftParameterValues}
-        hiddenParameterSlugs={hiddenParameterSlugs}
-        setParameterValue={setParameterValue}
-        setParameterValueToDefault={setParameterValueToDefault}
-        enableParameterRequiredBehavior
-        actionButtons={
-          buttons ? <div className={CS.flex}>{buttons}</div> : null
-        }
-        dashboardTabs={
-          dashboardHasTabs && <DashboardTabs dashboardId={dashboardId} />
-        }
-        background={background}
-        bordered={bordered}
-        titled={titled}
-        theme={normalizedTheme}
-        hide_parameters={hideParameters}
-        pdfDownloadsEnabled={downloadsEnabled.pdf}
-        withFooter={withFooter}
+      <LoadingAndErrorWrapper
+        className={cx({
+          [DashboardS.DashboardFullscreen]: isFullscreen,
+          [DashboardS.DashboardNight]: isNightMode,
+          [ParametersS.DashboardNight]: isNightMode,
+          [ColorS.DashboardNight]: isNightMode,
+        })}
+        loading={!dashboard}
       >
-        <LoadingAndErrorWrapper
-          className={cx({
-            [DashboardS.DashboardFullscreen]: isFullscreen,
-            [DashboardS.DashboardNight]: isNightMode,
-            [ParametersS.DashboardNight]: isNightMode,
-            [ColorS.DashboardNight]: isNightMode,
-          })}
-          loading={!dashboard}
-        >
-          {() => {
-            if (!dashboard) {
-              return null;
-            }
+        {() => {
+          if (!dashboard) {
+            return null;
+          }
 
-            if (!dashboardHasCards) {
-              return (
-                <DashboardEmptyStateWithoutAddPrompt
-                  isNightMode={isNightMode}
-                  isDashboardEmpty={true}
-                />
-              );
-            }
-
-            if (dashboardHasCards && !tabHasCards) {
-              return (
-                <DashboardEmptyStateWithoutAddPrompt
-                  isNightMode={isNightMode}
-                  isDashboardEmpty={false}
-                />
-              );
-            }
-
+          if (!dashboardHasCards) {
             return (
-              <FullWidthContainer mt={isCompactHeader ? "xs" : "sm"}>
-                <DashboardGridConnected
-                  dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
-                  isPublicOrEmbedded
-                  getClickActionMode={getClickActionMode}
-                  selectedTabId={selectedTabId}
-                  slowCards={slowCards}
-                  isEditing={false}
-                  isEditingParameter={false}
-                  isXray={false}
-                  isFullscreen={isFullscreen}
-                  isNightMode={isNightMode}
-                  withCardTitle={cardTitled}
-                  clickBehaviorSidebarDashcard={null}
-                  navigateToNewCardFromDashboard={
-                    navigateToNewCardFromDashboard ?? null
-                  }
-                  downloadsEnabled={downloadsEnabled}
-                  autoScrollToDashcardId={undefined}
-                  reportAutoScrolledToDashcard={_.noop}
-                />
-              </FullWidthContainer>
+              <DashboardEmptyStateWithoutAddPrompt
+                isNightMode={isNightMode}
+                isDashboardEmpty={true}
+              />
             );
-          }}
-        </LoadingAndErrorWrapper>
-      </EmbedFrame>
-    </>
+          }
+
+          if (dashboardHasCards && !tabHasCards) {
+            return (
+              <DashboardEmptyStateWithoutAddPrompt
+                isNightMode={isNightMode}
+                isDashboardEmpty={false}
+              />
+            );
+          }
+
+          return (
+            <FullWidthContainer mt={isCompactHeader ? "xs" : "sm"}>
+              <DashboardGridConnected
+                dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
+                isPublicOrEmbedded
+                getClickActionMode={getClickActionMode}
+                selectedTabId={selectedTabId}
+                slowCards={slowCards}
+                isEditing={false}
+                isEditingParameter={false}
+                isXray={false}
+                isFullscreen={isFullscreen}
+                isNightMode={isNightMode}
+                withCardTitle={cardTitled}
+                clickBehaviorSidebarDashcard={null}
+                navigateToNewCardFromDashboard={
+                  navigateToNewCardFromDashboard ?? null
+                }
+                downloadsEnabled={downloadsEnabled}
+                autoScrollToDashcardId={undefined}
+                reportAutoScrolledToDashcard={_.noop}
+              />
+            </FullWidthContainer>
+          );
+        }}
+      </LoadingAndErrorWrapper>
+    </EmbedFrame>
   );
 }
 

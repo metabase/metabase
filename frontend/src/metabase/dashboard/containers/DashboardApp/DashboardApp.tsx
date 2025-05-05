@@ -63,10 +63,6 @@ export const DashboardApp = ({
     parameterQueryParams,
   });
 
-  const _navigateToNewCardFromDashboard = (
-    args: NavigateToNewCardFromDashboardOpts,
-  ) => dispatch(navigateToNewCardFromDashboard(args));
-
   const {
     hasNightModeToggle,
     isFullscreen,
