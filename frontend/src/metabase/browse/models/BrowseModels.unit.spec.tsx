@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  setupDatabasesEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
   setupSettingsEndpoints,
@@ -8,6 +9,7 @@ import {
 import { renderWithProviders, screen, within } from "__support__/ui";
 import {
   createMockCollection,
+  createMockDatabase,
   createMockSearchResult,
 } from "metabase-types/api/mocks";
 import { createMockSetupState } from "metabase-types/store/mocks";
@@ -21,6 +23,7 @@ const defaultRootCollection = createMockCollection({
 });
 
 const setup = (modelCount: number, recentModelCount = 5) => {
+  const database = createMockDatabase();
   const mockModelResults = mockModels.map((model) =>
     createMockModelResult(model),
   );
@@ -28,6 +31,7 @@ const setup = (modelCount: number, recentModelCount = 5) => {
     .slice(0, recentModelCount)
     .map((model) => createMockRecentModel(model));
   const models = mockModelResults.slice(0, modelCount);
+  setupDatabasesEndpoints([database]);
   setupSearchEndpoints(models.map((model) => createMockSearchResult(model)));
   setupSettingsEndpoints([]);
   setupRecentViewsEndpoints(mockRecentModels);
