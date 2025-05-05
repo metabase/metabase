@@ -27,7 +27,6 @@ import type {
   ColumnGroup,
   ColumnGroupDisplayInfo,
   ColumnMetadata,
-  ContentTranslationFunction,
   DependentItem,
   DrillThru,
   DrillThruDisplayInfo,
@@ -70,126 +69,96 @@ declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   columnMetadata: ColumnMetadata,
-  tc?: ContentTranslationFunction,
 ): ColumnDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   columnGroup: ColumnGroup,
-  tc?: ContentTranslationFunction,
 ): ColumnGroupDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   cardMetadata: CardMetadata,
-  tc?: ContentTranslationFunction,
 ): CardDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   tableMetadata: TableMetadata,
-  tc?: ContentTranslationFunction,
 ): TableDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   tableLike: CardMetadata | TableMetadata,
-  tc?: ContentTranslationFunction,
 ): CardDisplayInfo | TableDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   aggregationClause: AggregationClause,
-  tc?: ContentTranslationFunction,
 ): AggregationClauseDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   aggregationOperator: AggregationOperator,
-  tc?: ContentTranslationFunction,
 ): AggregationOperatorDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   breakoutClause: BreakoutClause,
-  tc?: ContentTranslationFunction,
 ): BreakoutClauseDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   orderByClause: OrderByClause,
-  tc?: ContentTranslationFunction,
 ): OrderByClauseDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   clause: Clause,
-  tc?: ContentTranslationFunction,
 ): ClauseDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   bucket: Bucket,
-  tc?: ContentTranslationFunction,
 ): BucketDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   metric: MetricMetadata,
-  tc?: ContentTranslationFunction,
 ): MetricDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   joinStrategy: JoinStrategy,
-  tc?: ContentTranslationFunction,
 ): JoinStrategyDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   joinConditionOperator: JoinConditionOperator,
-  tc?: ContentTranslationFunction,
 ): JoinConditionOperatorDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   drillThru: DrillThru,
-  tc?: ContentTranslationFunction,
 ): DrillThruDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   filterOperator: FilterOperator,
-  tc?: ContentTranslationFunction,
 ): FilterOperatorDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   segment: SegmentMetadata,
-  tc?: ContentTranslationFunction,
 ): SegmentDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   extraction: ColumnExtraction,
-  tc?: ContentTranslationFunction,
 ): ColumnExtractionInfo;
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
-export const displayInfo: typeof DisplayInfoFn = (...args) => {
-  const info = ML.display_info(...args);
-
-  const tc = args[3];
-  if (typeof tc === "function") {
-    return {
-      ...info,
-      displayName: tc(info.displayName),
-      longDisplayName: tc(info.longDisplayName),
-    };
-  }
-  return info;
-};
+export const displayInfo: typeof DisplayInfoFn = ML.display_info;
 
 export function groupColumns(columns: ColumnMetadata[]): ColumnGroup[] {
   return ML.group_columns(columns);
