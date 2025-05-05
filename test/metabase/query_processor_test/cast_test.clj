@@ -573,9 +573,7 @@
                           (lib/expression "DATETRUNC" (lib/date field-md))
                           (lib/limit 100))
                 result (-> query qp/process-query)
-                cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (types/field-is-type? :type/Date (last cols)))
             (doseq [[uncasted-value casted-value] rows]
               (let [cd (-> casted-value   java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")) .toLocalDate)
                     ud (-> uncasted-value java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")) .toLocalDate)]

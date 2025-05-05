@@ -667,6 +667,9 @@
     (throw (ex-info (tru "now is not supported for MongoDB versions before 4.2")
                     {:database-version (:version (get-mongo-version))}))))
 
+(defmethod ->rvalue :date [[_ datetime-value]]
+  (with-rvalue-temporal-bucketing (->rvalue datetime-value) :day))
+
 (defmethod ->rvalue :datetime-add [[_ inp amount unit]]
   (check-date-operations-supported)
   {"$dateAdd" {:startDate (->rvalue inp)
