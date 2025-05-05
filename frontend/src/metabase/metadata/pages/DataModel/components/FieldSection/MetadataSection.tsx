@@ -6,7 +6,12 @@ import {
 } from "metabase/api";
 import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Stack, TextInputBlurChange } from "metabase/ui";
+import {
+  Box,
+  Stack,
+  TextInputBlurChange,
+  TextareaBlurChange,
+} from "metabase/ui";
 import type { DatabaseId, Field } from "metabase-types/api";
 
 import { SectionPill } from "../SectionPill";
@@ -42,6 +47,27 @@ export const MetadataSection = ({ databaseId, field }: Props) => {
         value={field.display_name}
         onBlurChange={(event) => {
           updateField({ id, display_name: event.target.value });
+        }}
+      />
+
+      <TextareaBlurChange
+        component="textarea"
+        label={t`Description`}
+        mih={80}
+        styles={{
+          input: {
+            minHeight: 80,
+          },
+        }}
+        placeholder={t`What is this field about?`}
+        value={field.description ?? ""}
+        onBlurChange={(event) => {
+          const newValue = event.target.value;
+
+          updateField({
+            id,
+            description: newValue.trim().length > 0 ? newValue : null,
+          });
         }}
       />
 
