@@ -1,4 +1,4 @@
-import type { DictionaryArray, DictionaryResponse } from "metabase/i18n/types";
+import type { DictionaryArray, DictionaryResponse } from "metabase-types/api";
 
 export const getCSVWithHeaderRow = (dictionary: DictionaryArray) => {
   const header = ["Language", "String", "Translation"];

@@ -1,4 +1,6 @@
-import type { DictionaryArray, NonEmpty } from "metabase/i18n/types";
+import type { DictionaryArray } from "metabase-api/types";
+
+import type { NonEmpty } from "metabase/i18n/types";
 
 export const germanFieldNames: NonEmpty<DictionaryArray> = [
   { locale: "de", msgid: "Title", msgstr: "Titel" },
