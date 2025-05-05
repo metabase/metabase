@@ -1,5 +1,5 @@
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { createMockField } from "metabase-types/api/mocks";
+import { createMockField, createMockTable } from "metabase-types/api/mocks";
 import {
   createOrdersProductIdField,
   createPeopleCreatedAtField,
@@ -102,5 +102,32 @@ describe("getFieldDisplayName", () => {
     });
 
     expect(getFieldDisplayName(field)).toBe("My field");
+  });
+
+  it("should include table name in the result", () => {
+    const field = createMockField({
+      name: "Name",
+      display_name: "My field",
+    });
+    const table = createMockTable({
+      display_name: "My table",
+    });
+
+    expect(getFieldDisplayName(field, table)).toBe("My table → My field");
+  });
+
+  it("should include both schema and table names in the result", () => {
+    const field = createMockField({
+      name: "Name",
+      display_name: "My field",
+    });
+    const table = createMockTable({
+      display_name: "My table",
+    });
+    const schema = "public";
+
+    expect(getFieldDisplayName(field, table, schema)).toBe(
+      "Public.My table → My field",
+    );
   });
 });
