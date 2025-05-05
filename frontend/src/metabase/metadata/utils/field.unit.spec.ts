@@ -1,16 +1,40 @@
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { createMockField } from "metabase-types/api/mocks";
+import { createMockField, createMockTable } from "metabase-types/api/mocks";
 import {
   createOrdersProductIdField,
   createPeopleCreatedAtField,
   createPeopleNameField,
 } from "metabase-types/api/mocks/presets";
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 
 import {
+  areFieldsComparable,
   canCoerceFieldType,
   getFieldDisplayName,
   getRawTableFieldId,
 } from "./field";
+
+describe("areFieldsComparable", () => {
+  it("should return true when both fields are type/MongoBSONID", () => {
+    const field1 = createMockField({ effective_type: "type/MongoBSONID" });
+    const field2 = createMockField({ effective_type: "type/MongoBSONID" });
+
+    expect(areFieldsComparable(field1, field2)).toBe(true);
+  });
+
+  it("should return false for fields with different types when one is MongoBSONID", () => {
+    const field1 = createMockField({ effective_type: "type/MongoBSONID" });
+    const field2 = createMockField({ effective_type: "type/Text" });
+
+    expect(areFieldsComparable(field1, field2)).toBe(false);
+  });
+
+  it("should return true for any non-MongoBSONID field types", () => {
+    const field1 = createMockField({ effective_type: "type/Text" });
+    const field2 = createMockField({ effective_type: "type/Number" });
+
+    expect(areFieldsComparable(field1, field2)).toBe(true);
+  });
+});
 
 describe("canCoerceFieldType", () => {
   it("should return true when field is not FK and is coerceable", () => {
@@ -102,5 +126,32 @@ describe("getFieldDisplayName", () => {
     });
 
     expect(getFieldDisplayName(field)).toBe("My field");
+  });
+
+  it("should include table name in the result", () => {
+    const field = createMockField({
+      name: "Name",
+      display_name: "My field",
+    });
+    const table = createMockTable({
+      display_name: "My table",
+    });
+
+    expect(getFieldDisplayName(field, table)).toBe("My table → My field");
+  });
+
+  it("should include both schema and table names in the result", () => {
+    const field = createMockField({
+      name: "Name",
+      display_name: "My field",
+    });
+    const table = createMockTable({
+      display_name: "My table",
+    });
+    const schema = "public";
+
+    expect(getFieldDisplayName(field, table, schema)).toBe(
+      "Public.My table → My field",
+    );
   });
 });

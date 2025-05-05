@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { type NumberValue, parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
 
-import { getClauseDefinition, getMBQLName, isDefinedClause } from "../config";
+import { getClauseDefinition, getMBQLName, isDefinedClause } from "../clause";
 import { CompileError, isExpressionError } from "../errors";
 import {
   isBigIntLiteral,
@@ -81,7 +81,7 @@ function compileNode(
   ctx: Context,
 ): Lib.ExpressionParts | Lib.ExpressionArg {
   const fn = COMPILE.get(node.type);
-  assert(fn, `Invalid node type: ${node.type}`);
+  assert(fn, t`Invalid node type: ${node.type}`);
   return fn(node, ctx);
 }
 
@@ -210,7 +210,10 @@ function compileLogicalOr(node: Node, ctx: Context): Lib.ExpressionParts {
 function compileComparisonOp(node: Node, ctx: Context): Lib.ExpressionParts {
   assert(node.type === COMPARISON, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
-  assert(isOperator(node.token.text), t`Invalid operator: ${node.token.text}`);
+  assert(
+    isDefinedClause(node.token.text),
+    t`Invalid operator: ${node.token.text}`,
+  );
 
   return compileInfixOp(node.token.text, node, ctx);
 }
@@ -218,7 +221,10 @@ function compileComparisonOp(node: Node, ctx: Context): Lib.ExpressionParts {
 function compileEqualityOp(node: Node, ctx: Context): Lib.ExpressionParts {
   assert(node.type === EQUALITY, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
-  assert(isOperator(node.token.text), t`Invalid operator: ${node.token.text}`);
+  assert(
+    isDefinedClause(node.token.text),
+    t`Invalid operator: ${node.token.text}`,
+  );
 
   return compileInfixOp(node.token.text, node, ctx);
 }
@@ -347,7 +353,10 @@ function compileAdditionOp(node: Node, ctx: Context): Lib.ExpressionParts {
 function compileMulDivOp(node: Node, ctx: Context): Lib.ExpressionParts {
   assert(node.type === MULDIV_OP, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
-  assert(isOperator(node.token.text), t`Invalid operator: ${node.token.text}`);
+  assert(
+    isDefinedClause(node.token.text),
+    t`Invalid operator: ${node.token.text}`,
+  );
 
   return compileInfixOp(node.token.text, node, ctx);
 }
@@ -430,11 +439,6 @@ function withNode<T>(node: Node, expressionParts: T): T {
     });
   }
   return expressionParts;
-}
-
-function isOperator(op: string): op is Lib.ExpressionOperator {
-  const res = getMBQLName(op);
-  return res != null;
 }
 
 const COMPILE = new Map<NodeType, CompileFn>([

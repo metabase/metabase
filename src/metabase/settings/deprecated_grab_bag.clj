@@ -741,14 +741,6 @@ See [fonts](../configuring-metabase/fonts.md).")
   :getter     (comp sort t/available-zone-ids)
   :doc        false)
 
-(defsetting has-sample-database?
-  "Whether this instance has a Sample Database database"
-  :type       :boolean
-  :visibility :authenticated
-  :setter     :none
-  :getter     (fn [] (t2/exists? :model/Database, :is_sample true))
-  :doc        false)
-
 (defsetting password-complexity
   "Current password complexity requirements"
   :visibility :public

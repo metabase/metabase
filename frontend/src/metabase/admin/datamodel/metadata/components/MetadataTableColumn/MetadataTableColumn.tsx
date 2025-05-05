@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -47,6 +47,17 @@ const MetadataTableColumn = ({
   dragHandle,
   onUpdateField,
 }: MetadataTableColumnProps) => {
+  const rawField = useMemo(() => field.getPlainObject(), [field]);
+  const rawIdFields = useMemo(() => {
+    return idFields.map(
+      (field) => ({
+        ...field.getPlainObject(),
+        table: field.table?.getPlainObject(),
+      }),
+      [idFields],
+    );
+  }, [idFields]);
+
   const handleChangeName = useCallback(
     (event: { target: HTMLInputElement }) => {
       if (event.target.value) {
@@ -98,9 +109,11 @@ const MetadataTableColumn = ({
               <Label>{field.getPlainObject().database_type}</Label>
               <SemanticTypeAndTargetPicker
                 className={CS.block}
-                field={field}
-                idFields={idFields}
-                onUpdateField={onUpdateField}
+                field={rawField}
+                idFields={rawIdFields}
+                onUpdateField={(_field, updates) => {
+                  onUpdateField(field, updates);
+                }}
               />
             </div>
             <div>

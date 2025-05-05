@@ -1,6 +1,11 @@
 import { t } from "ttag";
 
 import {
+  areFieldsComparable,
+  getFieldDisplayName,
+  getRawTableFieldId,
+} from "metabase/metadata/utils/field";
+import {
   Flex,
   Icon,
   Select,
@@ -8,9 +13,8 @@ import {
   type SelectProps,
   Text,
 } from "metabase/ui";
-import type Field from "metabase-lib/v1/metadata/Field";
 import { isFK } from "metabase-lib/v1/types/utils/isa";
-import type { Field as ApiField, FieldId } from "metabase-types/api";
+import type { Field as ApiField, Field, FieldId } from "metabase-types/api";
 
 import S from "./FkTargetPicker.module.css";
 
@@ -29,7 +33,7 @@ export const FkTargetPicker = ({
   ...props
 }: Props) => {
   const comparableIdFields = idFields.filter((idField) => {
-    return idField.isComparableWith(field);
+    return areFieldsComparable(idField, field);
   });
   const hasIdFields = comparableIdFields.length > 0;
   const includeSchema = hasMultipleSchemas(comparableIdFields);
@@ -116,14 +120,17 @@ export const FkTargetPicker = ({
 
 function getData(comparableIdFields: Field[], includeSchema: boolean) {
   return comparableIdFields
-    .map((field) => ({
-      field,
-      label: field.displayName({ includeTable: true, includeSchema }),
-      value:
-        typeof field.id === "object" && field.id != null
-          ? "" // we don't expect field references here, this should never happen
-          : stringifyValue(field.id),
-    }))
+    .map((field) => {
+      return {
+        field,
+        label: getFieldDisplayName(
+          field,
+          field.table,
+          includeSchema && field.table ? field.table.schema : undefined,
+        ),
+        value: stringifyValue(getRawTableFieldId(field)),
+      };
+    })
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 

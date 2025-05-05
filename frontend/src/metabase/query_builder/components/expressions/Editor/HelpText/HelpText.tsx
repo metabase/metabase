@@ -13,7 +13,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import Markdown from "metabase/core/components/Markdown";
 import { Box, Flex, Icon, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { getClauseDefinition } from "metabase-lib/v1/expressions/config";
+import { getClauseDefinition } from "metabase-lib/v1/expressions";
 import {
   getHelpDocsUrl,
   getHelpText,

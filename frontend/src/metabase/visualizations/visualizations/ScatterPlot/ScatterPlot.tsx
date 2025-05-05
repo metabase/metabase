@@ -24,8 +24,7 @@ import type {
 Object.assign(
   ScatterPlot,
   getCartesianChartDefinition({
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    uiName: t`Scatter`,
+    getUiName: () => t`Scatter`,
     identifier: "scatter",
     iconName: "bubble",
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045

@@ -204,7 +204,7 @@ export const fetchRemapping = createThunkAction(
   (value, fieldId) => async (dispatch, getState) => {
     const metadata = getMetadata(getState());
     const field = metadata.field(fieldId);
-    if (field == null) {
+    if (field == null || field.hasRemappedValue(value)) {
       return;
     }
 
@@ -215,40 +215,30 @@ export const fetchRemapping = createThunkAction(
         fieldId,
         dispatch,
         fieldApi.endpoints.getFieldValues,
+        { forceRefetch: false },
       );
       dispatch(addRemappings(field.id, response.values));
     }
 
     // external and type/Name remapping
     const remappedExternalField = field && field.remappedExternalField();
-    if (field && remappedExternalField && !field.hasRemappedValue(value)) {
+    if (remappedExternalField) {
       const fieldId = (field.target || field).id;
       const remappedFieldId = remappedExternalField.id;
-      fetchData({
-        dispatch,
-        getState,
-        requestStatePath: [
-          "entities",
-          "remapping",
+      const remapping = await entityCompatibleQuery(
+        {
+          value,
           fieldId,
-          JSON.stringify(value),
-        ],
-        getData: async () => {
-          const remapping = await entityCompatibleQuery(
-            {
-              value,
-              fieldId,
-              remappedFieldId,
-            },
-            dispatch,
-            fieldApi.endpoints.getRemappedFieldValue,
-          );
-          if (remapping) {
-            // FIXME: should this be field.id (potentially the FK) or fieldId (always the PK)?
-            dispatch(addRemappings(field.id, [remapping]));
-          }
+          remappedFieldId,
         },
-      });
+        dispatch,
+        fieldApi.endpoints.getRemappedFieldValue,
+        { forceRefetch: false },
+      );
+      if (remapping) {
+        // FIXME: should this be field.id (potentially the FK) or fieldId (always the PK)?
+        dispatch(addRemappings(field.id, [remapping]));
+      }
     }
   },
 );
