@@ -5,8 +5,8 @@ import { useDispatch } from "metabase/lib/redux";
 import {
   Group,
   Icon,
-  Loader,
   type RenderTreeNodePayload,
+  Skeleton,
   Tree,
   getTreeExpandedState,
   useTree,
@@ -24,7 +24,7 @@ export function TablePicker(props: {
   tableId?: TableId;
 }) {
   const dispatch = useDispatch();
-  const { data, isLoading, isError } = useTreeData();
+  const { data, isError } = useTreeData();
 
   const tree = useTree({
     multiple: false,
@@ -48,11 +48,6 @@ export function TablePicker(props: {
     },
   });
 
-  if (isLoading) {
-    // TODO: render skeleton
-    return <Loader />;
-  }
-
   if (isError) {
     // TODO: render proper error
     return "ERROR";
@@ -70,7 +65,7 @@ export function TablePicker(props: {
 }
 
 function renderNode({ node, expanded, elementProps }: RenderTreeNodePayload) {
-  const { icon, label } = node as TreeNode;
+  const { icon, label, width, loading } = node as TreeNode;
 
   const childCount = node.children?.length ?? 0;
   const hasChildren = childCount > 0;
@@ -91,7 +86,7 @@ function renderNode({ node, expanded, elementProps }: RenderTreeNodePayload) {
         />
       )}
       <Icon name={icon} color="var(--mb-color-text-placeholder)" />
-      {label}
+      {loading ? <Skeleton height={10} width={width} /> : label}
     </Group>
   );
 }

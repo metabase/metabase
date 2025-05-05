@@ -10,9 +10,10 @@ import type {
 } from "metabase-types/api";
 
 export type TreeNode = TreeNodeData & {
-  data: NodeData;
   icon: IconName;
   type: "database" | "schema" | "table";
+  loading?: boolean;
+  width?: string;
 };
 
 export type NodeData = {
@@ -30,9 +31,38 @@ export function useTreeData() {
     include: "tables",
   });
 
-  const data = useMemo(() => getTreeData(queryData?.data ?? []), [queryData]);
+  const data = useMemo(() => {
+    if (isLoading) {
+      return [
+        getLoadingNode({ type: "database", icon: "database", width: "50%" }),
+        getLoadingNode({ type: "database", icon: "database", width: "70%" }),
+        getLoadingNode({ type: "database", icon: "database", width: "35%" }),
+      ];
+    }
 
-  return { data, isLoading, isError };
+    return getTreeData(queryData?.data ?? []);
+  }, [queryData, isLoading]);
+
+  return { data, isError };
+}
+
+function getLoadingNode({
+  type,
+  icon,
+  width,
+}: {
+  type: "database" | "schema" | "table";
+  icon: IconName;
+  width: string;
+}): TreeNode {
+  return {
+    type,
+    icon,
+    width,
+    loading: true,
+    value: `loading-type-${Math.random()}`,
+    label: "",
+  };
 }
 
 function getTreeData(database: Database[]): TreeNode[] {
@@ -82,7 +112,9 @@ function getTreeData(database: Database[]): TreeNode[] {
   });
 }
 
-function getTreeNode(node: Omit<TreeNode, "value">): TreeNode {
+function getTreeNode(
+  node: Omit<TreeNode, "value"> & { data: NodeData },
+): TreeNode {
   return {
     ...node,
     value: JSON.stringify(node.data),
