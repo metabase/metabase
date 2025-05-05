@@ -154,7 +154,7 @@
    This lets us write SQL statements to compare permissions values by their index position in the same way we do in the
    `data-perms/at-least-as-permissive?` function"
   [perm-type :- data-perms/PermissionType
-   column-or-perm-value :- [:or :keyword [:tuple [:= ::h2x/literal] :string]]]
+   column-or-perm-value :- [:or :keyword h2x/Literal]]
   (into [:case]
         (apply concat
                (map-indexed (fn [idx perm-value] [[:= column-or-perm-value (h2x/literal perm-value)] [:inline idx]])
@@ -172,15 +172,7 @@
 
 (mu/defn- user-in-group-half-join
   [user-id :- pos-int?]
-  [:exists {:select [1]
-            :from   [[:permissions_group :pg]]
-            :where  [:and
-                     [:= :pg.id :dp.group_id]
-                     [:exists {:select [1]
-                               :from [[:permissions_group_membership :pgm]]
-                               :where [:and
-                                       [:= :pgm.group_id :pg.id]
-                                       [:= :pgm.user_id [:inline user-id]]]}]]}])
+  [:exists ])
 
 (mu/defn- has-perms-for-table-as-honey-sql?
   [user-id :- pos-int?
