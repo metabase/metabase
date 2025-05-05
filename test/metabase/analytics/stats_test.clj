@@ -554,7 +554,7 @@
     (let [included-features     (->> (concat (@#'stats/snowplow-features-data) (@#'stats/ee-snowplow-features-data))
                                      (map :name))
           included-features-set (set included-features)
-          all-features      @premium-features.settings/premium-features]
+          all-features      @@#'premium-features.settings/premium-features]
       ;; make sure features are not missing
       (is (empty? (set/difference all-features included-features-set excluded-features)))
 
