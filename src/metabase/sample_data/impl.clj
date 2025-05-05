@@ -1,4 +1,4 @@
-(ns metabase.sample-data
+(ns metabase.sample-data.impl
   "Code related to adding the Sample Database on launch, or adding it back programmatically (used by the REST API)."
   (:require
    [clojure.java.io :as io]
