@@ -501,26 +501,36 @@
 (sql/register-clause! ::union format-union :union)
 
 (defn- remapped-field-id-query [field-id]
-  {:select [[:ids.id :id]]
-   :from   [[{::union [;; Explicit FK Field->Field remapping
-                       {:select [[:dimension.human_readable_field_id :id]]
-                        :from   [[:dimension :dimension]]
-                        :where  [:and
-                                 [:= :dimension.field_id field-id]
-                                 [:not= :dimension.human_readable_field_id nil]]
-                        :limit  1}
-                       ;; Implicit PK Field-> [Name] Field remapping
-                       {:select    [[:dest.id :id]]
-                        :from      [[:metabase_field :source]]
-                        :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
-                                    [:metabase_field :dest] [:= :dest.table_id :table.id]]
-                        :where     [:and
-                                    [:= :source.id field-id]
-                                    (mdb.query/isa :source.semantic_type :type/PK)
-                                    (mdb.query/isa :dest.semantic_type :type/Name)]
-                        :limit     1}]}
-             :ids]]
-   :limit  1})
+  (let [implicit-pk->name-mapping (fn [field-id]
+                                    {:select    [[:dest.id :id]]
+                                     :from      [[:metabase_field :source]]
+                                     :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
+                                                 [:metabase_field :dest] [:= :dest.table_id :table.id]]
+                                     :where     [:and
+                                                 [:= :source.id field-id]
+                                                 (mdb.query/isa :source.semantic_type :type/PK)
+                                                 (mdb.query/isa :dest.semantic_type :type/Name)]
+                                     :limit     1})]
+    {:select [[:ids.id :id]]
+     :from   [[{::union [;; Explicit FK Field->Field remapping
+                         {:select [[:dimension.human_readable_field_id :id]]
+                          :from   [[:dimension :dimension]]
+                          :where  [:and
+                                   [:= :dimension.field_id field-id]
+                                   [:not= :dimension.human_readable_field_id nil]]
+                          :limit  1}
+                         ;; Implicit FK Field -> PK Field -> [Name] Field remapping
+                         (implicit-pk->name-mapping
+                          {:select    [:fk_target_field_id]
+                           :from      [:metabase_field]
+                           :where     [:and
+                                       [:= :id field-id]
+                                       (mdb.query/isa :semantic_type :type/FK)]
+                           :limit     1})
+                         ;; Implicit PK Field-> [Name] Field remapping
+                         (implicit-pk->name-mapping field-id)]}
+               :ids]]
+     :limit  1}))
 
 ;; TODO -- add some caching here?
 (mu/defn remapped-field-id :- [:maybe ms/PositiveInt]

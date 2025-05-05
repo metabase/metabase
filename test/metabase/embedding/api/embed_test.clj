@@ -16,7 +16,6 @@
    [metabase.embedding.api.common :as api.embed.common]
    [metabase.http-client :as client]
    [metabase.models.field-values :as field-values]
-   [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter-test :as chain-filer-test]
    [metabase.public-sharing.api-test :as public-test]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -1297,7 +1296,7 @@
                 {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
     (testing "Should work if the param we're fetching values for is enabled"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-        (is (= {:values          [[2] [3] [4] [5] [6]]
+        (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"] [5 "BBQ"] [6 "Bakery"]]
                 :has_more_values false}
                (chain-filer-test/take-n-values 5 (client/client :get 200 (values-url))))))
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
@@ -1307,7 +1306,7 @@
 
     (testing "If an ENABLED constraint param is present in the JWT, that's ok"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-        (is (= {:values          [[40] [67]]
+        (is (= {:values          [[40 "Japanese"] [67 "Steakhouse"]]
                 :has_more_values false}
                (client/client :get 200 (values-url {"price" 4})))))
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
@@ -1317,7 +1316,7 @@
 
     (testing "If an ENABLED param is present in query params but *not* the JWT, that's ok"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-        (is (= {:values          [[40] [67]]
+        (is (= {:values          [[40 "Japanese"] [67 "Steakhouse"]]
                 :has_more_values false}
                (client/client :get 200 (str (values-url) "?_PRICE_=4")))))
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
@@ -1341,7 +1340,7 @@
                       {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
           (testing "Should work if the param we're fetching values for is enabled"
             (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-              (is (= {:values          [[2] [3] [4] [5] [6]]
+              (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"] [5 "BBQ"] [6 "Bakery"]]
                       :has_more_values false}
                      (chain-filer-test/take-n-values 5 (mt/user-http-request :rasta :get 200 (values-url))))))
             (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
@@ -1371,7 +1370,7 @@
 
       (testing "if `:locked` param is supplied, request should succeed"
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-          (is (= {:values          [[40] [67]]
+          (is (= {:values          [[40 "Japanese"] [67 "Steakhouse"]]
                   :has_more_values false}
                  (client/client :get 200 (values-url {"price" 4})))))
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"

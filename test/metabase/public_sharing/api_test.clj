@@ -14,12 +14,10 @@
    [metabase.http-client :as client]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.params :as params]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-sharing.api :as api.public]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.test :as mt]
@@ -1411,12 +1409,12 @@
                      (client/client :get 200 (param-values-url :dashboard uuid (:card param-keys))))))
 
             (testing "parameter with source is chain filter"
-              (is (= {:values          [[2] [3] [4] [5] [6]]
+              (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"] [5 "BBQ"] [6 "Bakery"]]
                       :has_more_values false}
                      (->> (client/client :get 200 (param-values-url :dashboard uuid (:category-id param-keys)))
                           (chain-filter-test/take-n-values 5))))
               (testing "with constraints"
-                (is (= {:values          [[44]]
+                (is (= {:values          [[44 "Korean"]]
                         :has_more_values false}
                        (client/client :get 200 (param-values-url :dashboard uuid (:category-id param-keys))
                                       (keyword (:id param-keys)) "7"))))))
@@ -1539,7 +1537,7 @@
                 (is (= 1
                        (t2/update! :model/Dashboard (u/the-id dashboard) {:public_uuid uuid})))
                 (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
-                  (is (= {:values          [[2] [3] [4] [5] [6]]
+                  (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"] [5 "BBQ"] [6 "Bakery"]]
                           :has_more_values false}
                          (->> (mt/user-http-request :rasta :get 200 (param-values-url :dashboard uuid (:category-id param-keys)))
                               (chain-filter-test/take-n-values 5)))))
