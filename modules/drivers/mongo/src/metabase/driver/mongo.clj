@@ -417,6 +417,7 @@
                               :identifiers-with-spaces         true
                               :saved-question-sandboxing       false
                               :expressions/date                true
+                              :expressions/text                true
                               :index-info                      true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 

@@ -667,8 +667,17 @@
     (throw (ex-info (tru "now is not supported for MongoDB versions before 4.2")
                     {:database-version (:version (get-mongo-version))}))))
 
-(defmethod ->rvalue :date [[_ datetime-value]]
-  (with-rvalue-temporal-bucketing (->rvalue datetime-value) :day))
+(defmethod ->rvalue :text [[_ expr]]
+  {"$toString" (->rvalue expr)})
+
+(defmethod ->rvalue :date [[_ expr]]
+  (let [rvalue (->rvalue expr)]
+    (with-rvalue-temporal-bucketing
+      {"$cond" [{"$eq" [{"$type" rvalue} "string"]}
+                {"$toDate" rvalue}
+
+                rvalue]}
+      :day)))
 
 (defmethod ->rvalue :datetime-add [[_ inp amount unit]]
   (check-date-operations-supported)
