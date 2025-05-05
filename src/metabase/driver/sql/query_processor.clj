@@ -227,6 +227,26 @@
       (ex-info (str "Cannot convert " (pr-str value) " to float.")
                {:value value}))))
 
+(defmulti date-dbtype
+  "Return the name of the date type we convert to in this database."
+  {:added "0.55.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod date-dbtype :sql
+  [_driver]
+  :date)
+
+(defmulti ->date
+  "Cast to date."
+  {:added "0.55.0" :arglists '([driver honeysql-expr])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod ->date :sql
+  [driver value]
+  (h2x/maybe-cast (date-dbtype driver) value))
+
 (defn ->integer-with-round
   "Helper function for drivers that need to round before converting to integer.
 
@@ -1262,26 +1282,6 @@
 (mu/defmethod ->honeysql [:sql :time] :- some?
   [driver [_ value unit]]
   (date driver unit (->honeysql driver value)))
-
-(defmulti date-dbtype
-  "Return the name of the date type we convert to in this database."
-  {:added "0.55.0" :arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod date-dbtype :sql
-  [_driver]
-  :date)
-
-(defmulti ->date
-  "Cast to date."
-  {:added "0.55.0" :arglists '([driver honeysql-expr])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod ->date :sql
-  [driver value]
-  (h2x/maybe-cast (date-dbtype driver) value))
 
 (defmethod ->honeysql [:sql :date]
   [driver [_ value]]
