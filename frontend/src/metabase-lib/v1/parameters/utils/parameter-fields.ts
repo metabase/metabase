@@ -26,12 +26,15 @@ export const getNonVirtualFields = (parameter: UiParameter) => {
   return getFields(parameter).filter((field) => !field.isVirtual());
 };
 
-// A value for a list of fields can be remapped if it's 1 unique field or
-// if all the fields are the same PK or FKs targeting the same PK.
-export function shouldRemap(fields: Field[]) {
-  const targetOrFieldIds = fields.map(
+/*
+  A field value can be remapped in these cases:
+  - there is 1 unique field
+  - there are 2 unique fields, where one is a PK and another one is a FK targeting the PK
+ */
+export function canRemapValues(fields: Field[]) {
+  const fieldOrTargetFieldIds = fields.map(
     (field) => field.fk_target_field_id ?? field.id,
   );
-  const uniqueFieldIds = new Set(targetOrFieldIds);
+  const uniqueFieldIds = new Set(fieldOrTargetFieldIds);
   return uniqueFieldIds.size === 1;
 }

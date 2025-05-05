@@ -1,5 +1,5 @@
 import { render, screen } from "__support__/ui";
-import { shouldRemap } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import { canRemapValues } from "metabase-lib/v1/parameters/utils/parameter-fields";
 
 import ValueComponent from "../../Value";
 
@@ -18,7 +18,7 @@ function renderValue(fields, formatOptions, value, options) {
       value={value}
       column={fields[0]}
       maximumFractionDigits={20}
-      remap={shouldRemap(fields)}
+      remap={canRemapValues(fields)}
       {...formatOptions}
       {...options}
     />
