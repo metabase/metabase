@@ -28,6 +28,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.version.core :as version]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -121,7 +122,7 @@
    :running_on                           (environment-type)
    :startup_time_millis                  (int (public-settings/startup-time-millis))
    :application_database                 (config/config-str :mb-db-type)
-   :check_for_updates                    (public-settings/check-for-updates)
+   :check_for_updates                    (version/check-for-updates)
    :report_timezone                      (driver/report-timezone)
    ;; We deprecated advanced humanization but have this here anyways
    :friendly_names                       (= (humanization/humanization-strategy) "advanced")

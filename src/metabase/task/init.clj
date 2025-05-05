@@ -9,8 +9,7 @@
    [metabase.task.creator-sentiment-emails]
    [metabase.task.follow-up-emails]
    [metabase.task.send-anonymous-stats]
-   [metabase.task.truncate-audit-tables]
-   [metabase.task.upgrade-checks]))
+   [metabase.task.truncate-audit-tables]))
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!
