@@ -84,7 +84,7 @@
     :model/User                              metabase.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.models.user-parameter-value
-    :model/ViewLog                           metabase.models.view-log})
+    :model/ViewLog                           metabase.view-log.models.view-log})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!

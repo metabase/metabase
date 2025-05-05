@@ -283,7 +283,7 @@
 
   events
   {:api  #{metabase.events metabase.events.init}
-   :uses #{api channel driver models premium-features util}}
+   :uses #{channel driver models util view-log}}
 
   formatter
   {:api  #{metabase.formatter}
@@ -400,7 +400,6 @@
           metabase.models.user
           metabase.models.user-parameter-value
           metabase.models.util.spec-update
-          metabase.models.view-log-impl
           metabase.models.visualization-settings}
    :uses #{analytics
            analyze
@@ -710,6 +709,11 @@
   util
   {:api :any
    :uses #{config db driver legacy-mbql lib models plugins settings}}
+
+  view-log
+  {:api  #{metabase.view-log.core
+           metabase.view-log.init}
+   :uses #{analytics api events models premium-features util}}
 
   xrays
   {:api  #{metabase.xrays.api

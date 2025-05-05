@@ -1,4 +1,4 @@
-(ns metabase.events.view-log
+(ns metabase.view-log.events.view-log
   "This namespace is responsible for subscribing to events which should update the view log and view counts."
   (:require
    [java-time.api :as t]
