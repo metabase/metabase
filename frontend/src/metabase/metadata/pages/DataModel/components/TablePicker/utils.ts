@@ -12,7 +12,7 @@ export type TreeNode = TreeNodeData & {
   type: "database" | "schema" | "table";
 };
 
-type NodeData = {
+export type NodeData = {
   databaseId: DatabaseId;
   schemaId?: SchemaId;
   tableId?: TableId;

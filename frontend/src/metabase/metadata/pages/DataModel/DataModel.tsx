@@ -29,7 +29,7 @@ const DATA_MODEL_APP_NAV_BAR_HEIGHT = 53;
 const PREVIEW_NOT_IMPLEMENTED_YET = true;
 
 export const DataModel = ({ params }: Props) => {
-  const { databaseId, tableId, fieldId } = parseRouteParams(params);
+  const { databaseId, tableId, schemaId, fieldId } = parseRouteParams(params);
   const isEmptyStateShown =
     databaseId == null || tableId == null || fieldId == null;
   const {
@@ -70,7 +70,11 @@ export const DataModel = ({ params }: Props) => {
               )}
             </LoadingAndErrorWrapper>
           ) : (
-            <TablePicker />
+            <TablePicker
+              databaseId={databaseId}
+              schemaId={schemaId}
+              tableId={tableId}
+            />
           )}
         </Box>
       </Stack>

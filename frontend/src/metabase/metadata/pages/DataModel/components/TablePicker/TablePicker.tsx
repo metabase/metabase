@@ -1,20 +1,31 @@
 import cx from "classnames";
 import { useMemo } from "react";
+import { push } from "react-router-redux";
 
 import { useListDatabasesQuery } from "metabase/api";
+import { useDispatch } from "metabase/lib/redux";
 import {
   Group,
   Icon,
   Loader,
   type RenderTreeNodePayload,
   Tree,
+  getTreeExpandedState,
   useTree,
 } from "metabase/ui";
+import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+
+import { getUrl } from "../../utils";
 
 import S from "./TablePicker.module.css";
-import { type TreeNode, getTreeData } from "./utils";
+import { type NodeData, type TreeNode, getTreeData } from "./utils";
 
-export function TablePicker() {
+export function TablePicker(props: {
+  databaseId?: DatabaseId;
+  schemaId?: SchemaId;
+  tableId?: TableId;
+}) {
+  const dispatch = useDispatch();
   const { isLoading, isError, data } = useListDatabasesQuery({
     include: "tables",
   });
@@ -22,6 +33,24 @@ export function TablePicker() {
   const treeData = useMemo(() => getTreeData(data?.data ?? []), [data]);
   const tree = useTree({
     multiple: false,
+    initialExpandedState: getTreeExpandedState(treeData, [
+      JSON.stringify(props),
+      JSON.stringify({ ...props, tableId: undefined }),
+      JSON.stringify({ ...props, tableId: undefined, schemaId: undefined }),
+    ]),
+    onNodeExpand(value) {
+      const data = JSON.parse(value) as NodeData;
+      dispatch(
+        push(
+          getUrl({
+            databaseId: data.databaseId,
+            schemaId: data.schemaId,
+            tableId: data.tableId,
+            fieldId: undefined,
+          }),
+        ),
+      );
+    },
   });
 
   if (isLoading) {
