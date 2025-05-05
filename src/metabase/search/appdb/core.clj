@@ -70,7 +70,7 @@
       (update :last_edited_at parse-datetime)))
 
 (defn add-table-where-clauses
-  "Add a `WHERE` caluse to the query to only return tables the current user has access to"
+  "Add a `WHERE` clause to the query to only return tables the current user has access to"
   [search-ctx qry]
   (sql.helpers/where qry
                      [:or
@@ -78,7 +78,7 @@
                       [:!= :search_index.model [:inline "table"]]
                       [:and
                        [:= :search_index.model [:inline "table"]]
-                       (search.permissions/permitted-tables-caluse search-ctx :search_index.model_id)]]))
+                       (search.permissions/permitted-tables-clause search-ctx :search_index.model_id)]]))
 
 (defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,

@@ -161,16 +161,16 @@
     query))
 
 (defn add-table-where-clauses
-  "Add a `WHERE` caluse to the query to only return tables the current user has access to"
+  "Add a `WHERE` clause to the query to only return tables the current user has access to"
   [qry model search-ctx]
   (sql.helpers/where qry (case model
-                           "table" (search.permissions/permitted-tables-caluse search-ctx :table.id)
+                           "table" (search.permissions/permitted-tables-clause search-ctx :table.id)
                            "search-index" [:or
                                            [:= :search_index.model nil]
                                            [:!= :search_index.model [:inline "table"]]
                                            [:and
                                             [:= :search_index.model [:inline "table"]]
-                                            (search.permissions/permitted-tables-caluse search-ctx :search_index.model_id)]])))
+                                            (search.permissions/permitted-tables-clause search-ctx :search_index.model_id)]])))
 
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,

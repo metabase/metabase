@@ -42,7 +42,7 @@
      :is-superuser?   is-superuser?})
    (perms/audit-namespace-clause :collection.namespace nil)])
 
-(mu/defn permitted-tables-caluse
+(mu/defn permitted-tables-clause
   "Build the WHERE clause corresponding to which tables the given user has access to."
   [{:keys [current-user-id is-superuser?]} :- SearchContext table-id-col :- :keyword]
   (table/visible-tables-filter-clause
