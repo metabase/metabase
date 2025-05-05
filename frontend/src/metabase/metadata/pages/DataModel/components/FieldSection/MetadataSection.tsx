@@ -48,8 +48,8 @@ export const MetadataSection = ({ databaseId, field }: Props) => {
       <SemanticTypeAndTargetPicker
         description={t`What this data represents`}
         field={field}
-        label={t`Semantic type`}
         idFields={idFields}
+        label={t`Semantic type`}
         onUpdateField={(field, updates) => {
           const { id: _id, ...fieldAttributes } = field;
           const id = getRawTableFieldId(field);
