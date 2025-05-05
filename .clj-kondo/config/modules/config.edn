@@ -42,7 +42,9 @@
    :uses #{api config db events models util}}
 
   analytics
-  {:api  #{metabase.analytics.core
+  {:api  #{metabase.analytics.api
+           metabase.analytics.core
+           metabase.analytics.init
            metabase.analytics.prometheus
            metabase.analytics.snowplow}
    :uses #{api
@@ -55,6 +57,7 @@
            models
            premium-features
            settings
+           task
            util}}
   analyze
   {:api  #{metabase.analyze.core metabase.analyze.query-results}

@@ -29,6 +29,14 @@
   :base       setting/uuid-nonce-base
   :doc        false)
 
+(defsetting anon-tracking-enabled
+  (deferred-tru "Enable the collection of anonymous usage data in order to help {0} improve."
+                (public-settings/application-name-for-setting-descriptions))
+  :type       :boolean
+  :default    true
+  :visibility :public
+  :audit      :getter)
+
 (defsetting snowplow-available
   (deferred-tru
    (str "Boolean indicating whether a Snowplow collector is available to receive analytics events. "
@@ -46,7 +54,7 @@
   :type       :boolean
   :setter     :none
   :getter     (fn [] (and (snowplow-available)
-                          (public-settings/anon-tracking-enabled)))
+                          (anon-tracking-enabled)))
   :visibility :public
   :doc        false)
 

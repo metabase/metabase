@@ -7,6 +7,7 @@
   See https://metaboat.slack.com/archives/CKZEMT1MJ/p1736556522733279 for rationale behind this pattern."
   (:require
    [metabase.activity-feed.init]
+   [metabase.analytics.init]
    [metabase.cache.init]
    [metabase.channel.init]
    [metabase.cloud-migration.init]
