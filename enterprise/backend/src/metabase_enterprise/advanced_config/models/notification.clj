@@ -21,7 +21,7 @@
   :setter     (fn [new-value]
                 (when (not-empty new-value)
                   (when-let [domains (str/split new-value #",")]
-                    (assert (every? u/domain? domains) "Each domain must be a valid email domain.")))
+                    (assert (every? u/domain? domains) (format  "Each domain must be a valid email domain. %s" domains))))
                 (setting/set-value-of-type! :string :subscription-allowed-domains new-value))
   :audit      :getter)
 
