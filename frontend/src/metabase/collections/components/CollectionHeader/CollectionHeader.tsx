@@ -46,6 +46,7 @@ const CollectionHeader = ({
   const showUploadButton =
     collection.can_write && (canUpload || !uploadsEnabled);
   const isInstanceAnalytics = isInstanceAnalyticsCollection(collection);
+  const hasCuratePermissions = !!collection?.can_write;
 
   return (
     <HeaderRoot>
@@ -55,7 +56,9 @@ const CollectionHeader = ({
       />
       {!isTrash && (
         <HeaderActions data-testid="collection-menu">
-          {!isInstanceAnalytics && <CollectionNewButton />}
+          {!isInstanceAnalytics && hasCuratePermissions && (
+            <CollectionNewButton />
+          )}
           {showUploadButton && (
             <CollectionUpload
               collection={collection}
