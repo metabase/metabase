@@ -719,7 +719,8 @@
 
   enterprise/advanced-config
   {:api  #{metabase-enterprise.advanced-config.api.logs
-           metabase-enterprise.advanced-config.models.pulse-channel
+           metabase-enterprise.advanced-config.models.notification
+           metabase-enterprise.advanced-config.init
            metabase-enterprise.advanced-config.file}
    :uses #{api api-keys db driver models permissions premium-features setup settings sync util}}
 

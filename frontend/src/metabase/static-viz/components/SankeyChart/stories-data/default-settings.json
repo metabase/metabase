@@ -1,0 +1,430 @@
+[
+  {
+    "data": {
+      "rows": [
+        ["Button Clicked", null, "Basic", 4909],
+        ["Button Clicked", null, "Business", 48],
+        ["Button Clicked", null, "Premium", 227],
+        ["Page Viewed", "www.piespace.example/help", "Basic", 5924],
+        ["Page Viewed", "www.piespace.example/help", "Business", 62],
+        ["Page Viewed", "www.piespace.example/help", "Premium", 425],
+        ["Page Viewed", "www.piespace.example/home", "Basic", 5906],
+        ["Page Viewed", "www.piespace.example/home", "Business", 64],
+        ["Page Viewed", "www.piespace.example/home", "Premium", 419],
+        ["Page Viewed", "www.piespace.example/invite", "Basic", 5845],
+        ["Page Viewed", "www.piespace.example/invite", "Business", 72],
+        ["Page Viewed", "www.piespace.example/invite", "Premium", 425],
+        ["Page Viewed", "www.piespace.example/login", "Basic", 5938],
+        ["Page Viewed", "www.piespace.example/login", "Business", 67],
+        ["Page Viewed", "www.piespace.example/login", "Premium", 435],
+        ["Page Viewed", "www.piespace.example/pies", "Basic", 5905],
+        ["Page Viewed", "www.piespace.example/pies", "Business", 72],
+        ["Page Viewed", "www.piespace.example/pies", "Premium", 426]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "database_type": "CHARACTER VARYING",
+          "semantic_type": "type/Category",
+          "table_id": 7,
+          "coercion_strategy": null,
+          "name": "EVENT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            32,
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "active": true,
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 32,
+          "ident": "_I8L7mn5ucTG0C8sbB2__",
+          "position": 2,
+          "entity_id": "HX04pFL-VtEATbE2irzrF",
+          "visibility_type": "normal",
+          "display_name": "Event",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 2,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 11.3906
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "description": null,
+          "database_type": "CHARACTER VARYING",
+          "semantic_type": "type/URL",
+          "table_id": 7,
+          "coercion_strategy": null,
+          "name": "PAGE_URL",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            49,
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "active": true,
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 49,
+          "ident": "SANU8XnvpgLFTuvL4gfyp",
+          "position": 4,
+          "entity_id": "HzIGk1waf9s7kMqdeK5T5",
+          "visibility_type": "normal",
+          "display_name": "Page URL",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 6,
+              "nil%": 0.1302
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 22.2674
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "description": null,
+          "database_type": "CHARACTER VARYING",
+          "semantic_type": "type/Category",
+          "table_id": 6,
+          "coercion_strategy": null,
+          "name": "PLAN",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "fk_field_id": 45,
+          "field_ref": [
+            "field",
+            43,
+            {
+              "base-type": "type/Text",
+              "source-field": 45
+            }
+          ],
+          "effective_type": "type/Text",
+          "active": true,
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 43,
+          "ident": "LmTwvynC6QC1WS5Y3dBUh",
+          "position": 4,
+          "entity_id": "M1m9VQXh5hFvHpu_jbD9c",
+          "visibility_type": "normal",
+          "display_name": "Account → Plan",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 5.1062124248497
+              }
+            }
+          },
+          "base_type": "type/Text",
+          "source_alias": "ACCOUNTS__via__ACCOUNT_ID"
+        },
+        {
+          "database_type": "BIGINT",
+          "semantic_type": "type/Quantity",
+          "name": "count",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "effective_type": "type/BigInteger",
+          "aggregation_index": 0,
+          "ident": "imKFIqVD2-gfeiilpJbbn",
+          "display_name": "Count",
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT \"PUBLIC\".\"ANALYTIC_EVENTS\".\"EVENT\" AS \"EVENT\", \"PUBLIC\".\"ANALYTIC_EVENTS\".\"PAGE_URL\" AS \"PAGE_URL\", \"ACCOUNTS__via__ACCOUNT_ID\".\"PLAN\" AS \"ACCOUNTS__via__ACCOUNT_ID__PLAN\", COUNT(*) AS \"count\" FROM \"PUBLIC\".\"ANALYTIC_EVENTS\" LEFT JOIN \"PUBLIC\".\"ACCOUNTS\" AS \"ACCOUNTS__via__ACCOUNT_ID\" ON \"PUBLIC\".\"ANALYTIC_EVENTS\".\"ACCOUNT_ID\" = \"ACCOUNTS__via__ACCOUNT_ID\".\"ID\" GROUP BY \"PUBLIC\".\"ANALYTIC_EVENTS\".\"EVENT\", \"PUBLIC\".\"ANALYTIC_EVENTS\".\"PAGE_URL\", \"ACCOUNTS__via__ACCOUNT_ID\".\"PLAN\" ORDER BY \"PUBLIC\".\"ANALYTIC_EVENTS\".\"EVENT\" ASC, \"PUBLIC\".\"ANALYTIC_EVENTS\".\"PAGE_URL\" ASC, \"ACCOUNTS__via__ACCOUNT_ID\".\"PLAN\" ASC",
+        "params": null
+      },
+      "download_perms": "full",
+      "is_sandboxed": false,
+      "results_timezone": "Asia/Kolkata",
+      "format-rows?": true,
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "database_type": "CHARACTER VARYING",
+            "semantic_type": "type/Category",
+            "coercion_strategy": null,
+            "name": "EVENT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              32,
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 32,
+            "ident": "_I8L7mn5ucTG0C8sbB2__",
+            "visibility_type": "normal",
+            "display_name": "Event",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 11.3906
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "description": null,
+            "database_type": "CHARACTER VARYING",
+            "semantic_type": "type/URL",
+            "coercion_strategy": null,
+            "name": "PAGE_URL",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              49,
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 49,
+            "ident": "SANU8XnvpgLFTuvL4gfyp",
+            "visibility_type": "normal",
+            "display_name": "Page URL",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 6,
+                "nil%": 0.1302
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 22.2674
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "description": null,
+            "database_type": "CHARACTER VARYING",
+            "semantic_type": "type/Category",
+            "coercion_strategy": null,
+            "name": "PLAN",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              43,
+              {
+                "base-type": "type/Text",
+                "source-field": 45
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 43,
+            "ident": "LmTwvynC6QC1WS5Y3dBUh",
+            "visibility_type": "normal",
+            "display_name": "Account → Plan",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 5.1062124248497
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "database_type": "BIGINT",
+            "semantic_type": "type/Quantity",
+            "name": "count",
+            "field_ref": ["aggregation", 0],
+            "effective_type": "type/BigInteger",
+            "ident": "imKFIqVD2-gfeiilpJbbn",
+            "display_name": "Count",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 16,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 48,
+                  "q1": 70.66025403784438,
+                  "q3": 5845,
+                  "max": 5938,
+                  "sd": 2685.4510952477463,
+                  "avg": 2064.9444444444443
+                }
+              }
+            },
+            "base_type": "type/BigInteger"
+          }
+        ]
+      },
+      "insights": null
+    },
+    "cached": null,
+    "database_id": 1,
+    "started_at": "2025-05-02T20:14:12.60581+05:30",
+    "json_query": {
+      "database": 1,
+      "type": "query",
+      "query": {
+        "source-table": 7,
+        "aggregation": [["count"]],
+        "breakout": [
+          [
+            "field",
+            32,
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          [
+            "field",
+            49,
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          [
+            "field",
+            43,
+            {
+              "base-type": "type/Text",
+              "source-field": 45
+            }
+          ]
+        ],
+        "aggregation-idents": {
+          "0": "imKFIqVD2-gfeiilpJbbn"
+        },
+        "breakout-idents": {
+          "0": "_I8L7mn5ucTG0C8sbB2__",
+          "1": "SANU8XnvpgLFTuvL4gfyp",
+          "2": "LmTwvynC6QC1WS5Y3dBUh"
+        }
+      },
+      "middleware": {
+        "js-int-to-string?": true,
+        "userland-query?": true,
+        "add-default-userland-constraints?": true
+      }
+    },
+    "average_execution_time": null,
+    "status": "completed",
+    "context": "ad-hoc",
+    "row_count": 18,
+    "running_time": 30,
+    "card": {
+      "collection_id": null,
+      "creationType": "custom_question",
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 7,
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              32,
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            [
+              "field",
+              49,
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            [
+              "field",
+              43,
+              {
+                "base-type": "type/Text",
+                "source-field": 45
+              }
+            ]
+          ],
+          "aggregation-idents": {
+            "0": "imKFIqVD2-gfeiilpJbbn"
+          },
+          "breakout-idents": {
+            "0": "_I8L7mn5ucTG0C8sbB2__",
+            "1": "SANU8XnvpgLFTuvL4gfyp",
+            "2": "LmTwvynC6QC1WS5Y3dBUh"
+          }
+        }
+      },
+      "display": "sankey",
+      "type": "question",
+      "visualization_settings": {
+        "sankey.source": "PAGE_URL",
+        "sankey.target": "PLAN"
+      },
+      "displayIsLocked": true
+    }
+  }
+]
