@@ -62,7 +62,6 @@ import {
   canUseCardEndpoints,
   canUseDashboardEndpoints,
   canUseParameterEndpoints,
-  getFieldsRemappingInfo,
   getLabel,
   getOption,
   getTokenFieldPlaceholder,
@@ -569,8 +568,8 @@ function getNothingFoundMessage({
     return undefined;
   }
   if (fields.length === 1 && fields[0] != null) {
-    const remappingInfo = getFieldsRemappingInfo(fields);
-    const searchField = remappingInfo?.searchField ?? fields[0];
+    const [field] = fields;
+    const searchField = field.searchField();
     return t`No matching ${searchField?.display_name} found.`;
   } else {
     return t`No matching result`;
@@ -771,12 +770,13 @@ function RemappedValue({
 
 type RemappedOptionProps = {
   option: ComboboxItem;
-  fields: (Field | null)[];
+  fields: Field[];
 };
 
 function RemappedOption({ option, fields }: RemappedOptionProps) {
-  const remappingInfo = getFieldsRemappingInfo(fields);
-  if (remappingInfo == null) {
+  const field = fields[0];
+  const isRemapped = showRemapping(fields) && field?.remappedField() != null;
+  if (!isRemapped) {
     return option.label;
   }
 
