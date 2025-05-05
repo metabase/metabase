@@ -9,10 +9,8 @@ import {
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
-import { useDispatch } from "metabase/lib/redux";
 import type { Dashboard, DashboardId } from "metabase-types/api";
 
-import { navigateToNewCardFromDashboard } from "../actions";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
 import type {
@@ -38,9 +36,9 @@ type OwnProps = {
   onLoad?: (dashboard: Dashboard) => void;
   onError?: (error: FailedFetchDashboardResult) => void;
   onLoadWithoutCards?: (dashboard: Dashboard) => void;
-  navigateToNewCardFromDashboard?: (
-    opts: NavigateToNewCardFromDashboardOpts,
-  ) => void;
+  navigateToNewCardFromDashboard:
+    | ((opts: NavigateToNewCardFromDashboardOpts) => void)
+    | null;
 };
 
 type OwnResult = {
@@ -114,11 +112,9 @@ const DashboardContextProviderInner = ({
   toggleSidebar,
   reset,
   closeDashboard,
-  navigateToNewCardFromDashboard: _navigateToNewCardFromDashboard,
+  navigateToNewCardFromDashboard,
   ...reduxProps
 }: PropsWithChildren<ContextProps>) => {
-  const dispatch = useDispatch();
-
   const previousDashboard = usePrevious(dashboard);
   const previousDashboardId = usePrevious(dashboardId);
   const previousTabId = usePrevious(selectedTabId);
@@ -226,11 +222,7 @@ const DashboardContextProviderInner = ({
         onLoad,
         onError,
 
-        navigateToNewCardFromDashboard:
-          _navigateToNewCardFromDashboard ??
-          ((opts: NavigateToNewCardFromDashboardOpts) =>
-            dispatch(navigateToNewCardFromDashboard(opts))),
-
+        navigateToNewCardFromDashboard,
         isLoading: !dashboard,
 
         isFullscreen,

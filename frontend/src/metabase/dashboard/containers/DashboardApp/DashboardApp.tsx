@@ -126,6 +126,9 @@ export const DashboardApp = ({
         reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
         onLoad={onLoadDashboard}
         onError={(result) => dispatch(setErrorPage(result.payload))}
+        navigateToNewCardFromDashboard={(opts) =>
+          dispatch(navigateToNewCardFromDashboard(opts))
+        }
       >
         <DashboardTitle />
         <DashboardFavicon />
