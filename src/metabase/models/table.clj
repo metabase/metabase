@@ -141,14 +141,28 @@
    [:create-queries-permission-level data-perms/PermissionValue]])
 
 (mu/defn- perm-type-to-int-case
-  [perm-type :- data-perms/PermissionType column-or-perm-value :- [:or :keyword [:tuple [:= ::h2x/literal] :string]]]
+  "Converts a given `data-perm/PermissionType` keyword and either a column for a literal value into a case when ... then ... SQL statement
+   that converts the given column or literal into the index of the value for provide permission type.
+
+   For example, calling with perm-type :perms/view-data and a column :perm-value creates a SQL Statement like:
+
+     ```sql
+     CASE WHEN \"perm_value\" = 'unrestricted' THEN 0 ELSE ...
+     ```
+
+
+   This lets us write SQL statements to compare permissions values by their index position in the same way we do in the
+   `data-perms/at-least-as-permissive?` function"
+  [perm-type :- data-perms/PermissionType
+   column-or-perm-value :- [:or :keyword [:tuple [:= ::h2x/literal] :string]]]
   (into [:case]
         (apply concat
                (map-indexed (fn [idx perm-value] [[:= column-or-perm-value (h2x/literal perm-value)] [:inline idx]])
                             (-> data-perms/Permissions perm-type :values)))))
 
 (mu/defn- perm-condition
-  [perm-type :- :keyword required-level :- :keyword equality-comp]
+  [perm-type :- :keyword
+   required-level :- :keyword equality-comp]
   [:and
    equality-comp
    [:= :dp.perm_type (h2x/literal perm-type)]
@@ -169,7 +183,9 @@
                                        [:= :pgm.user_id [:inline user-id]]]}]]}])
 
 (mu/defn- has-perms-for-table-as-honey-sql?
-  [user-id :- pos-int? perm-type :- :keyword required-level :- :keyword]
+  [user-id :- pos-int?
+   perm-type :- :keyword
+   required-level :- :keyword]
   [:exists {:select [1]
             :from   [[:data_permissions :dp]]
             :where  [:and [:or
