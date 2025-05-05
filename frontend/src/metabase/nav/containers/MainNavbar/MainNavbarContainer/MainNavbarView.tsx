@@ -8,6 +8,10 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { useHasTokenFeature, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { Tree } from "metabase/components/tree";
+import {
+  PERSONAL_COLLECTIONS,
+  getCollectionIcon,
+} from "metabase/entities/collections";
 import { OnboardingDismissedToast } from "metabase/home/components/Onboarding";
 import {
   getCanAccessOnboardingPage,
@@ -15,6 +19,7 @@ import {
 } from "metabase/home/selectors";
 import { isSmallScreen } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import { addUndo } from "metabase/redux/undo";
 import { getHasOwnDatabase } from "metabase/selectors/data";
@@ -71,9 +76,11 @@ type Props = {
     oldIndex: number;
   }) => Promise<any>;
 };
+const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
 
 export function MainNavbarView({
   isAdmin,
+  currentUser,
   bookmarks,
   collections,
   databases,
@@ -228,6 +235,18 @@ export function MainNavbarView({
               <CollectionSectionHeading
                 handleCreateNewCollection={handleCreateNewCollection}
               />
+              {currentUser.is_superuser && (
+                <PaddedSidebarLink
+                  icon={
+                    getCollectionIcon(
+                      PERSONAL_COLLECTIONS as Collection,
+                    ) as unknown as IconName
+                  }
+                  url={OTHER_USERS_COLLECTIONS_URL}
+                >
+                  {t`Other users' personal collections`}
+                </PaddedSidebarLink>
+              )}
               <Tree
                 data={collectionsWithoutTrash}
                 selectedId={collectionItem?.id}
