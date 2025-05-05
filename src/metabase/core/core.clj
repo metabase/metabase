@@ -27,6 +27,7 @@
    [metabase.sample-data :as sample-data]
    [metabase.server.core :as server]
    [metabase.setup.core :as setup]
+   [metabase.startup.core :as startup]
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -179,6 +180,7 @@
 
   (settings/migrate-encrypted-settings!)
   (database/check-health!)
+  (startup/run-startup-logic!)
   (task/start-scheduler!)
   (queue/start-listeners!)
   (init-status/set-complete!)
