@@ -17,9 +17,6 @@
   ([]
    (get-translations nil))
   ([locale]
-   (let [base-query {:select [:*]
-                     :from [[(t2/table-name :model/ContentTranslation) :t]]}
-         query (if locale
-                 (assoc base-query :where [:= :t/locale locale])
-                 base-query)]
-     (t2/query query))))
+   (if locale
+     (t2/select :model/ContentTranslation :locale locale)
+     (t2/select :model/ContentTranslation))))
