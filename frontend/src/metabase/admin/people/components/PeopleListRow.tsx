@@ -3,7 +3,7 @@ import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
 import UserAvatar from "metabase/components/UserAvatar";
-import Link, { ForwardRefLink } from "metabase/core/components/Link";
+import { ForwardRefLink } from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getFullName } from "metabase/lib/user";
@@ -95,9 +95,12 @@ export const PeopleListRow = ({
           <td>{dayjs(user.updated_at).fromNow()}</td>
           <td>
             <Tooltip label={t`Reactivate this account`}>
-              <Link to={Urls.reactivateUser(user.id)} className={S.refreshLink}>
+              <ForwardRefLink
+                to={Urls.reactivateUser(user.id)}
+                className={S.refreshLink}
+              >
                 <Icon name="refresh" size={20} />
-              </Link>
+              </ForwardRefLink>
             </Tooltip>
           </td>
         </Fragment>
@@ -152,6 +155,7 @@ export const PeopleListRow = ({
                     <Menu.Item
                       component={ForwardRefLink}
                       to={Urls.deactivateUser(user.id)}
+                      c="danger"
                     >
                       {t`Deactivate user`}
                     </Menu.Item>
