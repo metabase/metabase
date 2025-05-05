@@ -721,8 +721,11 @@ function RemappedValue({
   dashboardId,
   cardId,
 }: RemappedValueProps) {
+  const field = fields[0];
+  const isRemapped = field?.remappedField() != null;
+
   const { data: dashboardData } = useGetRemappedDashboardParameterValueQuery(
-    dashboardId != null && value != null
+    dashboardId != null && value != null && isRemapped
       ? {
           dashboard_id: dashboardId,
           parameter_id: parameter.id,
@@ -732,7 +735,7 @@ function RemappedValue({
   );
 
   const { data: cardData } = useGetRemappedCardParameterValueQuery(
-    cardId != null && value != null
+    cardId != null && value != null && isRemapped
       ? {
           card_id: cardId,
           parameter_id: parameter.id,
@@ -742,7 +745,7 @@ function RemappedValue({
   );
 
   const { data: parameterData } = useGetRemappedParameterValueQuery(
-    dashboardId == null && cardId == null && value != null
+    dashboardId == null && cardId == null && value != null && isRemapped
       ? {
           parameter,
           field_ids: fields.filter(isNotNull).map(({ id }) => Number(id)),
