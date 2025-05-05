@@ -377,59 +377,14 @@ const Template: StoryFn<MockDashboardContextProps> = (args) => {
     ),
   };
 
-  const initialState = createMockState({
-    settings: createMockSettingsState({
-      "hide-embed-branding?": false,
-    }),
-    dashboard: createMockDashboardState({
-      dashcardData: {
-        [DASHCARD_BAR_ID]: {
-          [CARD_BAR_ID]: createMockDataset({
-            data: createMockDatasetData({
-              cols: [
-                createMockColumn(StringColumn({ name: "Dimension" })),
-                createMockColumn(NumberColumn({ name: "Count" })),
-              ],
-              rows: [
-                ["foo", 1],
-                ["bar", 2],
-              ],
-            }),
-          }),
-        },
-        [DASHCARD_TABLE_ID]: {
-          // Couldn't really figure out the type here.
-          [CARD_TABLE_ID]: createMockDataset(TABLE_RAW_SERIES[0] as any),
-        },
-      },
-    }),
-    parameters: {
-      parameterValuesCache: {
-        [`{"paramId":"${CATEGORY_FILTER.id}","dashId":${DASHBOARD_ID}}`]: {
-          values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
-          has_more_values: parameterType === "search" ? true : false,
-        },
-        [`{"paramId":"${CATEGORY_FILTER.id}","dashId":${DASHBOARD_ID},"query":"g"}`]:
-          {
-            values: [["Gadget"], ["Gizmo"], ["Widget"]],
-            has_more_values: parameterType === "search" ? true : false,
-          },
-      },
-    },
-  });
-
-  const store = getStore(publicReducers, initialState, [Api.middleware]);
-
   return (
-    <MetabaseReduxProvider store={store}>
-      <MockDashboardContext
-        {...args}
-        dashboardId={dashboard.id}
-        parameters={PARAMETER_MAPPING[parameterType]}
-      >
-        <PublicOrEmbeddedDashboardView />
-      </MockDashboardContext>
-    </MetabaseReduxProvider>
+    <MockDashboardContext
+      {...args}
+      dashboardId={dashboard.id}
+      parameters={PARAMETER_MAPPING[parameterType]}
+    >
+      <PublicOrEmbeddedDashboardView />
+    </MockDashboardContext>
   );
 };
 

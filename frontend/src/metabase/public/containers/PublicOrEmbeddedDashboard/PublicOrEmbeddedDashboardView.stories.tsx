@@ -87,7 +87,6 @@ const initialState = createMockState({
     "hide-embed-branding?": false,
   }),
   dashboard: createMockDashboardState({
-    slowCards: {},
     dashcardData: {
       [DASHCARD_BAR_ID]: {
         [CARD_BAR_ID]: createMockDataset({
