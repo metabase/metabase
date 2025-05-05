@@ -164,10 +164,15 @@ const FieldTypeSection = ({
   onUpdateField,
 }: FieldTypeSectionProps) => {
   const rawField = useMemo(() => field.getPlainObject(), [field]);
-  const rawIdFields = useMemo(
-    () => idFields.map((field) => field.getPlainObject(), [idFields]),
-    [idFields],
-  );
+  const rawIdFields = useMemo(() => {
+    return idFields.map(
+      (field) => ({
+        ...field.getPlainObject(),
+        table: field.table?.getPlainObject(),
+      }),
+      [idFields],
+    );
+  }, [idFields]);
 
   return (
     <MetadataSection>
