@@ -328,6 +328,20 @@ describe("BrowseModels", () => {
       expect(src).toContain("youtube.com");
       expect(src).toContain("autoplay=0");
     });
+
+    it("should display a new model button in the header along when in empty state", async () => {
+      setup({ modelCount: 0, hasDataPermissions: true });
+      const newModelButton = await screen.findByLabelText("Create a new model");
+      expect(newModelButton).toBeInTheDocument();
+    });
+
+    it("should not display a new model button in the header when in empty state if the user lacks data permissions", async () => {
+      setup({ modelCount: 0, hasDataPermissions: false });
+      const header = await screen.findByTestId("browse-models-header");
+      expect(
+        within(header).queryByLabelText("Create a new model"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("Models explanation banner", () => {
@@ -380,6 +394,20 @@ describe("BrowseModels", () => {
       const src = youtubeVideo.getAttribute("src");
       expect(src).toContain("youtube.com");
       expect(src).toContain("autoplay=1");
+    });
+
+    it("should display a new model button in the header along when a model explanation banner", async () => {
+      setup({ modelCount: 1, hasDataPermissions: true });
+      const newModelButton = await screen.findByLabelText("Create a new model");
+      expect(newModelButton).toBeInTheDocument();
+    });
+
+    it("should not display a new model button in the header along the model explanation banner if the user lacks data permission", async () => {
+      setup({ modelCount: 1, hasDataPermissions: false });
+      const header = await screen.findByTestId("browse-models-header");
+      expect(
+        within(header).queryByLabelText("Create a new model"),
+      ).not.toBeInTheDocument();
     });
   });
 
