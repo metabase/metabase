@@ -1,4 +1,4 @@
-const toJSArray = a => {
+const toJSArray = (a) => {
   const jsArray = [];
   for (let i = 0; i < a.length; i++) {
     jsArray[i] = a[i];
@@ -35,20 +35,12 @@ function gauge(card, data) {
   });
 }
 
-function funnel(data, settings) {
-  return StaticViz.LegacyRenderChart("funnel", {
-    data: JSON.parse(data),
-    settings: JSON.parse(settings),
-  });
-}
-
 /**
  * @deprecated use javascript_visualization instead
  */
-function categorical_donut(rows, legendColors, settings) {
-  return StaticViz.LegacyRenderChart("categorical/donut", {
-    data: toJSArray(rows),
-    colors: toJSMap(legendColors),
+function funnel(data, settings) {
+  return StaticViz.LegacyRenderChart("funnel", {
+    data: JSON.parse(data),
     settings: JSON.parse(settings),
   });
 }

@@ -100,6 +100,7 @@ type SetupOpts = {
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
   isNew?: boolean;
+  withAddButton?: boolean;
 };
 
 function setup({
@@ -108,6 +109,7 @@ function setup({
   column,
   filter,
   isNew = false,
+  withAddButton = false,
 }: SetupOpts) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -119,6 +121,7 @@ function setup({
       column={column}
       filter={filter}
       isNew={isNew}
+      withAddButton={withAddButton}
       onChange={onChange}
       onBack={onBack}
     />,

@@ -124,6 +124,12 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     this.setInputValue("", clearSearchValue);
   }
 
+  clearSelectedOption() {
+    this.setState({
+      selectedOptionValue: null,
+    });
+  }
+
   _id(value: any) {
     const { idKey } = this.props;
 
@@ -267,9 +273,12 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
 
     const { filteredOptions, selectedOptionValue } = this.state;
 
-    // enter, tab, comma
-    if (
-      keyCode === KEYCODE_ESCAPE ||
+    if (keyCode === KEYCODE_ESCAPE) {
+      event.preventDefault();
+      this.inputRef.current?.blur();
+      this.setState({ isFocused: false });
+    } else if (
+      // enter, tab, comma
       keyCode === KEYCODE_TAB ||
       // We check event.key for comma presses because some keyboard layouts
       // (e.g. Russian) have a letter on that key and require a modifier to type
@@ -303,6 +312,10 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
       if (index >= 0 && index < filteredOptions.length - 1) {
         this.setState({
           selectedOptionValue: this._value(filteredOptions[index + 1]),
+        });
+      } else if (filteredOptions.length > 0) {
+        this.setState({
+          selectedOptionValue: this._value(filteredOptions[0]),
         });
       }
     } else if (keyCode === KEYCODE_BACKSPACE || key === KEY_BACKSPACE) {
@@ -383,6 +396,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
         // only clear the search if this was the last option
         this.clearInputValue(filteredOptions.length === 1);
       }
+      this.clearSelectedOption();
       return true;
     } else if (this.props.parseFreeformValue) {
       // if we previously updated on input change then we don't need to do it again,
@@ -668,7 +682,7 @@ const DefaultTokenFieldLayout = ({
   <div>
     <TippyPopover
       visible={isFocused && !!optionsList}
-      content={<div>{optionsList}</div>}
+      content={<div data-testid="token-field-popover">{optionsList}</div>}
       placement="bottom-start"
     >
       <div>{valuesList}</div>

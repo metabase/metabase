@@ -3,8 +3,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.api.embed.common :as api.embed.common]
    [metabase.api.util :as api.util]
+   [metabase.eid-translation.util :as eid-translation.util]
    [metabase.test :as mt]
    [metabase.util.log :as log]))
 
@@ -101,7 +101,7 @@
                (update-keys name))))
 
     (testing "error message contains allowed models"
-      (is (= (set (map name (keys @#'api.embed.common/api-name->model)))
+      (is (= (set (map name (keys @#'eid-translation.util/api-name->model)))
              (set (:allowed-models (mt/user-http-request :crowberto :post 400 "util/entity_id" {:entity_ids {"Card" [card-eid]}}))))))))
 
 (deftest ^:parallel openapi-test

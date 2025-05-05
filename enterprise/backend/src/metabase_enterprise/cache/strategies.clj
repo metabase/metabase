@@ -1,8 +1,8 @@
 (ns metabase-enterprise.cache.strategies
   (:require
    [java-time.api :as t]
-   [metabase.api.cache]
-   [metabase.models.cache-config :as cache-config]
+   [metabase.cache.api]
+   [metabase.cache.core :as cache]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.util.log :as log]
@@ -11,26 +11,26 @@
 
 (set! *warn-on-reflection* true)
 
-(comment metabase.api.cache/keep-me)
+(comment metabase.cache.api/keep-me)
 
 ;; Data shape
 
 (mr/def ::cache-strategy
   "Schema for a caching strategy used internally"
   [:and
-   :metabase.api.cache/cache-strategy.base
+   :metabase.cache.api/cache-strategy.base
    [:multi {:dispatch :type}
-    [:nocache  :metabase.api.cache/cache-strategy.nocache]
+    [:nocache  :metabase.cache.api/cache-strategy.nocache]
     [:ttl      [:merge
-                :metabase.api.cache/cache-strategy.ttl
+                :metabase.cache.api/cache-strategy.ttl
                 [:map
                  [:invalidated-at {:optional true} some?]]]]
     [:duration [:merge
-                :metabase.api.cache/cache-strategy.ee.duration
+                :metabase.cache.api/cache-strategy.ee.duration
                 [:map
                  [:invalidated-at {:optional true} some?]]]]
     [:schedule [:merge
-                :metabase.api.cache/cache-strategy.ee.schedule
+                :metabase.cache.api/cache-strategy.ee.schedule
                 [:map
                  [:invalidated-at {:optional true} some?]]]]]])
 
@@ -56,7 +56,7 @@
               :order-by :ordering
               :limit    [:inline 1]}
         item (t2/select-one :model/CacheConfig :id q)]
-    (cache-config/card-strategy item card)))
+    (cache/card-strategy item card)))
 
 ;;; Strategy execution
 

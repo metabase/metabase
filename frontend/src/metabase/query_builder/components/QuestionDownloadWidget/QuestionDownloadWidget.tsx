@@ -97,7 +97,8 @@ export const QuestionDownloadWidget = ({
         last_table_download_format:
           newFormat !== "png"
             ? newFormat
-            : (formatPreference.last_table_download_format as TableExportFormat),
+            : (formatPreference?.last_table_download_format as TableExportFormat) ||
+              "csv",
       };
       setFormatPreference(newPreference);
     }

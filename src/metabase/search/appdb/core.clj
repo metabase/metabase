@@ -3,10 +3,9 @@
    [clojure.string :as str]
    [environ.core :as env]
    [honey.sql.helpers :as sql.helpers]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.models.setting :as setting]
-   [metabase.public-settings :as public-settings]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as search.scoring]
    [metabase.search.appdb.specialization.postgres :as specialization.postgres]
@@ -15,6 +14,8 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.permissions :as search.permissions]
+   [metabase.search.settings :as search.settings]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -38,7 +39,7 @@
 
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
   (and (or (not config/is-prod?)
-           (= "appdb" (some-> (public-settings/search-engine) name)))
+           (= "appdb" (some-> (search.settings/search-engine) name)))
        (supported-db? (mdb/db-type))))
 
 (defn- parse-datetime [s]
@@ -148,9 +149,16 @@
 
 (defmethod search.engine/init! :search.engine/appdb
   [_ {:keys [re-populate?] :as opts}]
-  (let [created? (search.index/ensure-ready! opts)]
-    (when (or created? re-populate?)
-      (populate-index! :search/updating))))
+  (let [index-created (search.index/when-index-created)]
+    (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
+      (do
+        (log/debug "Forcing early reindex because existing index is old")
+        (search.engine/reindex! :search.engine/appdb {}))
+
+      (let [created? (search.index/ensure-ready! opts)]
+        (when (or created? re-populate?)
+          (log/debug "Populating index")
+          (populate-index! :search/updating))))))
 
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
