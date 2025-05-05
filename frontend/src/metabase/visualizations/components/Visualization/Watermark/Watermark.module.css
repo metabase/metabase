@@ -5,6 +5,5 @@
   left: 0;
   right: 0;
   pointer-events: none;
-  background-image: url("./watermark.svg");
   background-repeat: repeat;
 }
