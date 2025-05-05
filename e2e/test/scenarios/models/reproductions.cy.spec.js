@@ -613,7 +613,6 @@ describe(
         cy.findByText("Created At").click();
         cy.findByText("Today").click();
       });
-      H.runButtonOverlay().click();
       cy.wait("@dataset");
       cy.get("[data-testid=cell-data]")
         .should("have.length", 4)
@@ -956,9 +955,8 @@ describe("issue 28971", () => {
     H.popover().within(() => {
       cy.findByText("Quantity").click();
       cy.findByText("20").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     cy.wait("@dataset");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 20").should("exist");
@@ -997,9 +995,8 @@ describe("issue 28971", () => {
     H.popover().within(() => {
       cy.findByText("Quantity").click();
       cy.findByText("20").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     cy.wait("@dataset");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 20").should("exist");
@@ -2133,7 +2130,6 @@ describe("cumulative count - issue 33330", () => {
       cy.findByText("Created At").click();
       cy.findByText("Today").click();
     });
-    H.runButtonOverlay().click();
     cy.wait("@dataset");
 
     H.queryBuilderHeader().findByLabelText("Show filters").click();

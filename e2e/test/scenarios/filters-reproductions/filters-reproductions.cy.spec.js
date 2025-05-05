@@ -682,10 +682,8 @@ describe("issue 25990", () => {
       cy.findByText("People").click();
       cy.findByText("ID").click();
       cy.findByPlaceholderText("Enter an ID").type("10").blur();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-
-    H.runButtonOverlay().click();
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel")
@@ -1204,9 +1202,8 @@ describe("issue 45252", { tags: "@external" }, () => {
     H.popover().within(() => {
       cy.findByText("Binary").click();
       cy.findByLabelText("Is empty").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(0);
 
@@ -1222,9 +1219,8 @@ describe("issue 45252", { tags: "@external" }, () => {
     H.popover().within(() => {
       cy.findByText("Jsonb").click();
       cy.findByLabelText("Not empty").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(2);
   });
