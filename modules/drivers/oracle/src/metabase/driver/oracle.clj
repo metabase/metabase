@@ -382,6 +382,10 @@
   [_]
   :BINARY_DOUBLE)
 
+(defmethod sql.qp/->date :oracle
+  [_ value]
+  (trunc :dd value))
+
 (defmethod sql.qp/cast-temporal-string [:oracle :Coercion/ISO8601->DateTime]
   [_driver _coercion-strategy expr]
   [:to_timestamp expr "YYYY-MM-DD HH:mi:SS"])
