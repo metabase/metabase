@@ -25,7 +25,8 @@ const PREVIEW_NOT_IMPLEMENTED_YET = true;
 
 export const DataModel = ({ params }: Props) => {
   const { databaseId, tableId, fieldId } = parseRouteParams(params);
-  const isEmptyStateShown = tableId == null || fieldId == null;
+  const isEmptyStateShown =
+    databaseId == null || tableId == null || fieldId == null;
   const {
     data: table,
     error,
