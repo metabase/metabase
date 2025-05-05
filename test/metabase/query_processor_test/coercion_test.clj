@@ -99,7 +99,8 @@
               result (qp/process-query query)
               cols (mt/cols result)
               rows (mt/rows result)]
-          (is (types/field-is-type? :type/Date (last cols)))
+          (is (or (types/field-is-type? :type/Date     (last cols))
+                  (types/field-is-type? :type/DateTime (last cols)))) ;; some databases return datetimes for date
           (doseq [[date-col] rows
                   :let [date-val (-> date-col java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")))]]
             (is (zero? (.getHour date-val)))
