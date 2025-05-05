@@ -8,6 +8,8 @@ title: API changelog
 
 - `POST /api/card/from-csv` has been renamed to `POST /api/upload/csv`.
 
+- `POST /api/util/entity_id` has been renamed to `POST /api/eid-translation/translate`.
+
 ## Metabase 0.54.0
 
 - The alert system has been migrated from the legacy pulse infrastructure to the new notification system. This migration includes the following changes:

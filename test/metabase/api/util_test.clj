@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.util :as api.util]
-   [metabase.eid-translation.util :as eid-translation.util]
    [metabase.test :as mt]
    [metabase.util.log :as log]))
 
@@ -90,19 +89,6 @@
                                :email    "happy_user@test.com"
                                :source   "Analytics Inc"})
         (is (true? (deref sent? 2000 ::timedout)))))))
-
-(deftest ^:parallel entity-id-translation-test
-  (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {}]
-    (is (= {card-eid {:id card-id :type "card" :status "ok"}}
-           (-> (mt/user-http-request :crowberto :post 200
-                                     "util/entity_id"
-                                     {:entity_ids {"card" [card-eid]}})
-               :entity_ids
-               (update-keys name))))
-
-    (testing "error message contains allowed models"
-      (is (= (set (map name (keys @#'eid-translation.util/api-name->model)))
-             (set (:allowed-models (mt/user-http-request :crowberto :post 400 "util/entity_id" {:entity_ids {"Card" [card-eid]}}))))))))
 
 (deftest ^:parallel openapi-test
   (testing "GET /api/util/openapi"
