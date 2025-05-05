@@ -752,7 +752,10 @@ export const PLUGIN_CONTENT_TRANSLATION = {
   ContentTranslationConfiguration: PluginPlaceholder,
   useTranslateContent: (): ContentTranslationFunction => {
     // In OSS, the input is not translated
-    return useCallback(<T>(arg: T) => arg, []);
+    return useCallback(
+      <T extends string | null | undefined>(arg: T) => arg,
+      [],
+    );
   },
 };
 
