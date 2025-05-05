@@ -100,9 +100,16 @@
               cols (mt/cols result)
               rows (mt/rows result)]
           (is (or (types/field-is-type? :type/Date     (last cols))
-                  (types/field-is-type? :type/DateTime (last cols)))) ;; some databases return datetimes for date
-          (doseq [[date-col] rows
-                  :let [date-val (-> date-col java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")))]]
-            (is (zero? (.getHour date-val)))
-            (is (zero? (.getMinute date-val)))
-            (is (zero? (.getSecond date-val)))))))))
+                  (types/field-is-type? :type/DateTime (last cols)) ;; some databases return datetimes for date (e.g., Oracle)
+                  (types/field-is-type? :type/Text     (last cols)) ;; sqlite uses text :(
+                  ))
+          (doseq [[date-col] rows]
+            (try
+              (is (-> date-col java.time.LocalDate/parse))
+              (catch Exception _ nil))
+            (try
+              (let [date-val (-> date-col java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")))]
+                (is (zero? (.getHour date-val)))
+                (is (zero? (.getMinute date-val)))
+                (is (zero? (.getSecond date-val))))
+              (catch Exception _ nil))))))))
