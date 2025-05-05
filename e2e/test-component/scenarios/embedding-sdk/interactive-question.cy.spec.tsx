@@ -75,7 +75,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     mountInteractiveQuestion();
 
     getSdkRoot().within(() => {
-      cy.findByTestId("visualization-watermark").should("exist");
+      cy.findByTestId("development-watermark").should("exist");
     });
   });
 

@@ -122,7 +122,7 @@ describe("Visualization", () => {
     );
 
     expect(
-      await screen.findByTestId("visualization-watermark"),
+      await screen.findByTestId("development-watermark"),
     ).toBeInTheDocument();
   });
 

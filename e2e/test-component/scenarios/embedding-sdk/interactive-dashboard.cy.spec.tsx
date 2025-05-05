@@ -114,7 +114,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
     });
 
     getSdkRoot().within(() => {
-      cy.findAllByTestId("visualization-watermark").should("have.length", 1);
+      cy.findAllByTestId("development-watermark").should("have.length", 1);
     });
   });
 

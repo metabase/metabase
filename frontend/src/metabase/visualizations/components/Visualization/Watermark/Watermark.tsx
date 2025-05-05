@@ -12,7 +12,7 @@ export const Watermark = ({ card }: { card: Card | BaseDashboardCard }) => {
   return (
     <div
       className={S.Root}
-      data-testid="visualization-watermark"
+      data-testid="development-watermark"
       style={{ backgroundImage: `url(${watermark})` }}
     />
   );

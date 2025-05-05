@@ -605,19 +605,19 @@ describe("scenarios > question > saved", () => {
     it("should show questions with a watermark when in dev mode whereever we show visualizations", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
-      cy.findByTestId("visualization-watermark").should("exist");
+      cy.findByTestId("development-watermark").should("exist");
 
       H.appBar()
         .findByRole("link", { name: /Our analytics/i })
         .click();
       cy.findByTestId("pinned-items")
-        .findAllByTestId("visualization-watermark")
+        .findAllByTestId("development-watermark")
         .should("have.length.above", 0);
 
       cy.findByTestId("collection-table")
         .findByRole("link", { name: /Orders in a dashboard/i })
         .click();
-      cy.findAllByTestId("visualization-watermark").should(
+      cy.findAllByTestId("development-watermark").should(
         "have.length.above",
         0,
       );
@@ -627,7 +627,7 @@ describe("scenarios > question > saved", () => {
         params: {},
       });
 
-      cy.findAllByTestId("visualization-watermark").should(
+      cy.findAllByTestId("development-watermark").should(
         "have.length.greaterThan",
         0,
       );
@@ -637,7 +637,7 @@ describe("scenarios > question > saved", () => {
         params: {},
       });
 
-      cy.findAllByTestId("visualization-watermark").should(
+      cy.findAllByTestId("development-watermark").should(
         "have.length.greaterThan",
         0,
       );
@@ -646,7 +646,7 @@ describe("scenarios > question > saved", () => {
       cy.signInAsAdmin();
 
       H.visitPublicQuestion(ORDERS_QUESTION_ID);
-      cy.findAllByTestId("visualization-watermark").should(
+      cy.findAllByTestId("development-watermark").should(
         "have.length.above",
         0,
       );
@@ -655,7 +655,7 @@ describe("scenarios > question > saved", () => {
       cy.signInAsAdmin();
 
       H.visitPublicDashboard(ORDERS_DASHBOARD_ID);
-      cy.findAllByTestId("visualization-watermark").should(
+      cy.findAllByTestId("development-watermark").should(
         "have.length.above",
         0,
       );
