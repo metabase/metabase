@@ -324,15 +324,13 @@
 
 (mu/defn dashcards->param-id->field-ids :- [:map-of ms/NonBlankString [:set ms/PositiveInt]]
   "Return a map of Parameter ID to Field IDs referenced by parameters in Cards in the given `dashcards`, or `nil` if
-  none are referenced. This also includes IDs of Fields that are to be found in the 'implicit' parameters for SQL
-  template tag Field filters. `dashcards` must be hydrated with :card."
+  none are referenced. `dashcards` must be hydrated with :card."
   [dashcards]
   (dashcards->param-field-ids* dashcards))
 
 (mu/defn dashcards->param-field-ids :- [:set ms/PositiveInt]
   "Return a set of Field IDs referenced by parameters in Cards in the given `dashcards`, or `nil` if
-  none are referenced. This also includes IDs of Fields that are to be found in the 'implicit' parameters for SQL
-  template tag Field filters. `dashcards` must be hydrated with :card."
+  none are referenced. `dashcards` must be hydrated with :card."
   [dashcards]
   (set (mapcat second (dashcards->param-field-ids* dashcards))))
 
