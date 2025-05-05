@@ -1,0 +1,12 @@
+.node {
+  color: var(--mb-color-text-primary);
+  align-items: center;
+}
+
+.chevron {
+  transition: transform 200ms ease-in-out;
+
+  &.expanded {
+    transform: rotate(90deg);
+  }
+}
