@@ -13,26 +13,19 @@ import {
   Text,
 } from "metabase/ui";
 import { isFK } from "metabase-lib/v1/types/utils/isa";
-import type {
-  Field as ApiField,
-  Field,
-  FieldId,
-  Table,
-} from "metabase-types/api";
+import type { Field as ApiField, Field, FieldId } from "metabase-types/api";
 
 import S from "./FkTargetPicker.module.css";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   field: ApiField;
   idFields: Field[];
-  table: Table | undefined;
   value: FieldId | null;
   onChange: (value: FieldId | null) => void;
 }
 
 export const FkTargetPicker = ({
   field,
-  table,
   idFields,
   value,
   onChange,
@@ -43,7 +36,7 @@ export const FkTargetPicker = ({
   });
   const hasIdFields = comparableIdFields.length > 0;
   const includeSchema = hasMultipleSchemas(comparableIdFields);
-  const data = getData(table, comparableIdFields, includeSchema);
+  const data = getData(comparableIdFields, includeSchema);
 
   const getField = (fieldId: FieldId | null) => {
     const option = data.find((option) => parseValue(option.value) === fieldId);
@@ -124,19 +117,15 @@ export const FkTargetPicker = ({
   );
 };
 
-function getData(
-  table: Table | undefined,
-  comparableIdFields: Field[],
-  includeSchema: boolean,
-) {
+function getData(comparableIdFields: Field[], includeSchema: boolean) {
   return comparableIdFields
     .map((field) => {
       return {
         field,
         label: getFieldDisplayName(
           field,
-          table,
-          includeSchema && table ? table.schema : undefined,
+          field.table,
+          includeSchema && field.table ? field.table.schema : undefined,
         ),
         value:
           typeof field.id === "object" && field.id != null
