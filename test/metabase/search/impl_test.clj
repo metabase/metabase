@@ -318,21 +318,21 @@
 (deftest limit-correct-with-permissions
   (let [search-term "permissions-filtering"]
     (mt/with-temp
-      [:model/Dashboard {dashboard-id :id} {:name search-term}
-       :model/Card {card-1 :id} {:name search-term}
-       :model/Card {card-2 :id} {:name search-term}
-       :model/Card {card-3 :id} {:name search-term}
-       :model/Card {card-4 :id} {:name search-term}
-       :model/Card {card-5 :id} {:name search-term}
-       :model/Card {card-6 :id} {:name search-term}
-       :model/Card {card-7 :id} {:name search-term}
-       :model/Card {card-8 :id} {:name search-term}
-       :model/Card {card-9 :id} {:name search-term}
-       :model/Card {card-10 :id} {:name search-term}
-       :model/Card {card-11 :id} {:name search-term}
-       :model/Card {card-12 :id} {:name search-term}
-       :model/Card {card-13 :id} {:name search-term}
-       :model/Card {card-14 :id} {:name search-term}]
+      [:model/Dashboard _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}]
 
       (testing "searching with limit"
         (mt/with-current-user (mt/user->id :crowberto)
