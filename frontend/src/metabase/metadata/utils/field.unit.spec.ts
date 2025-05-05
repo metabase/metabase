@@ -1,10 +1,10 @@
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 import {
   createOrdersProductIdField,
   createPeopleCreatedAtField,
   createPeopleNameField,
 } from "metabase-types/api/mocks/presets";
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 
 import {
   areFieldsComparable,
