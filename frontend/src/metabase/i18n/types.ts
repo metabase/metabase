@@ -2,4 +2,6 @@ export type NonEmpty<ArrayType> = ArrayType extends (infer ItemType)[]
   ? [ItemType, ...ItemType[]]
   : never;
 
-export type ContentTranslationFunction = <T>(msgid: T) => string | T;
+export type ContentTranslationFunction = <T extends string | null | undefined>(
+  msgid: T,
+) => string | T;
