@@ -5,18 +5,10 @@ import {
   QuestionPickerModal,
   type QuestionPickerValueItem,
 } from "metabase/common/components/QuestionPicker";
-import {
-  replaceCard,
-  replaceCardWithVisualization,
-} from "metabase/dashboard/actions";
+import { replaceCard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Flex } from "metabase/ui";
-import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
-import type {
-  Dashboard,
-  VirtualDashboardCard,
-  VisualizerVizDefinition,
-} from "metabase-types/api";
+import type { Dashboard, VirtualDashboardCard } from "metabase-types/api";
 
 import type { VisualizationProps } from "../types";
 
@@ -34,21 +26,11 @@ function DashCardPlaceholderInner({
   isEditingParameter,
 }: Props) {
   const [isQuestionPickerOpen, setQuestionPickerOpen] = useState(false);
-  const [isVisualizerModalOpen, setVisualizerModalOpen] = useState(false);
   const dispatch = useDispatch();
 
   const handleSelectQuestion = (nextCard: QuestionPickerValueItem) => {
     dispatch(replaceCard({ dashcardId: dashcard.id, nextCardId: nextCard.id }));
     setQuestionPickerOpen(false);
-  };
-
-  const handleSelectVisualization = (
-    visualization: VisualizerVizDefinition,
-  ) => {
-    dispatch(
-      replaceCardWithVisualization({ dashcardId: dashcard.id, visualization }),
-    );
-    setVisualizerModalOpen(false);
   };
 
   if (!isDashboard) {
@@ -77,11 +59,6 @@ function DashCardPlaceholderInner({
               onMouseDown={preventDragging}
               style={{ pointerEvents }}
             >{t`Select question`}</Button>
-            <Button
-              onClick={() => setVisualizerModalOpen(true)}
-              onMouseDown={preventDragging}
-              style={{ pointerEvents }}
-            >{t`Visualize`}</Button>
           </Flex>
         )}
       </Flex>
@@ -99,12 +76,6 @@ function DashCardPlaceholderInner({
           models={["card", "dataset", "metric"]}
           onChange={handleSelectQuestion}
           onClose={() => setQuestionPickerOpen(false)}
-        />
-      )}
-      {isVisualizerModalOpen && (
-        <VisualizerModal
-          onSave={handleSelectVisualization}
-          onClose={() => setVisualizerModalOpen(false)}
         />
       )}
     </>

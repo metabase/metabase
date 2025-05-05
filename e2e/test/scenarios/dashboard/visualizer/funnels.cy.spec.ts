@@ -173,13 +173,13 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
 
-    cy.findByLabelText("Add section").click();
-    H.menu().findByLabelText("KPI grid").click();
-    H.getDashboardCard(2).button("Visualize").click();
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(LANDING_PAGE_VIEWS.name);
 
     H.modal().within(() => {
+      cy.findByText(LANDING_PAGE_VIEWS.name).realHover();
+      cy.findAllByLabelText("Remove").eq(0).click();
       cy.findByText("Funnel").click();
-
       H.switchToAddMoreData();
       H.selectDataset(LANDING_PAGE_VIEWS.name);
       H.addDataset(CHECKOUT_PAGE_VIEWS.name);
