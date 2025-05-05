@@ -113,7 +113,7 @@ const AutomaticDashboardAppInner = ({
       if (!newDashboard) {
         return;
       }
-      invalidateCollections();
+      dispatch(dashboardApi.util.invalidateTags(invalidateCollections()));
       dispatch(
         addUndo({
           message: (
