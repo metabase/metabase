@@ -6,6 +6,7 @@ import {
 } from "metabase/api";
 import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import {
   Box,
   Stack,
@@ -24,6 +25,7 @@ interface Props {
 export const MetadataSection = ({ databaseId, field }: Props) => {
   const { data: idFields = [] } = useListDatabaseIdFieldsQuery({
     id: databaseId,
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   });
   const [updateField] = useUpdateFieldMutation();
   const id = getRawTableFieldId(field);
