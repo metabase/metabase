@@ -594,6 +594,11 @@ describe("scenarios > question > saved", () => {
 
       cy.request("PUT", `/api/card/${ORDERS_BY_YEAR_QUESTION_ID}`, {
         collection_position: 1,
+        enable_embedding: true,
+      });
+
+      cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+        enable_embedding: true,
       });
     });
 
@@ -601,6 +606,7 @@ describe("scenarios > question > saved", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
       cy.findByTestId("visualization-watermark").should("exist");
+
       H.appBar()
         .findByRole("link", { name: /Our analytics/i })
         .click();
@@ -611,6 +617,44 @@ describe("scenarios > question > saved", () => {
       cy.findByTestId("collection-table")
         .findByRole("link", { name: /Orders in a dashboard/i })
         .click();
+      cy.findAllByTestId("visualization-watermark").should(
+        "have.length.above",
+        0,
+      );
+
+      H.visitEmbeddedPage({
+        resource: { dashboard: ORDERS_DASHBOARD_ID },
+        params: {},
+      });
+
+      cy.findAllByTestId("visualization-watermark").should(
+        "have.length.greaterThan",
+        0,
+      );
+
+      H.visitEmbeddedPage({
+        resource: { question: ORDERS_BY_YEAR_QUESTION_ID },
+        params: {},
+      });
+
+      cy.findAllByTestId("visualization-watermark").should(
+        "have.length.greaterThan",
+        0,
+      );
+
+      //Need to sign in to generate the public link for the orders question
+      cy.signInAsAdmin();
+
+      H.visitPublicQuestion(ORDERS_QUESTION_ID);
+      cy.findAllByTestId("visualization-watermark").should(
+        "have.length.above",
+        0,
+      );
+
+      //Need to sign in to generate the public link for the orders dashboard
+      cy.signInAsAdmin();
+
+      H.visitPublicDashboard(ORDERS_DASHBOARD_ID);
       cy.findAllByTestId("visualization-watermark").should(
         "have.length.above",
         0,
