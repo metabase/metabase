@@ -14,6 +14,7 @@ import Tables from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Flex } from "metabase/ui";
+// eslint-disable-next-line no-restricted-imports
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { TableFieldOrder, TableId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
