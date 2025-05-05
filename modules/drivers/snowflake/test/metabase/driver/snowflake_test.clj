@@ -538,7 +538,7 @@
                     (is (can-connect? details))))))))))))
 
 (deftest maybe-test-and-migrate-details!-test
-  "We create very ambiguous database details and loop over which version should succeed on connect."
+  ;; We create very ambiguous database details and loop over which version should succeed on connect.
   (let [pk-key (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
         pk-user (tx/db-test-env-var-or-throw :snowflake :pk-user)
         pk-db (tx/db-test-env-var-or-throw :snowflake :pk-db "SNOWFLAKE_SAMPLE_DATA")]
@@ -570,7 +570,7 @@
                 ;; Looping over all-possible-details and succeeding on details-to-succeed is stateful:
                 ;;  If a password detail succeeds it will delete the secret, this resets it.
                 (let [updated-secret (secret/upsert-secret-value! secret-id (:name secret) (:kind secret) (:source secret) (:value secret))]
-                  (if (not= (:id updated-secret) secret-id)
+                  (when (not= (:id updated-secret) secret-id)
                     (t2/update! :model/Secret :id (:id updated-secret) {:id secret-id})))
                 (with-redefs [driver/can-connect? (fn [_ d] (= d (assoc details-to-succeed :engine :snowflake)))]
                   (testing (format "use-password: %s private-key-options: %s uses-secret? %s" use-password options uses-secret?)
@@ -612,7 +612,7 @@
                                                                    (:private-key-path details-to-succeed pk-path)
                                                                    pk-key))
                                        :source source}
-                                      (secret/latest-for-id secret-id)))))))))))))))))
+                                      (secret/latest-for-id secret-id))))))))))))))))))
 
 (deftest ^:synchronized pk-auth-custom-role-e2e-test
   (mt/test-driver
