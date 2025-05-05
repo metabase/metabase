@@ -20,7 +20,7 @@ const NOTIFICATION_DELAY = 9000;
 
 const mockUploadCSV = (valid = true) => {
   fetchMock.post(
-    "path:/api/card/from-csv",
+    "path:/api/upload/csv",
     valid
       ? "3"
       : {

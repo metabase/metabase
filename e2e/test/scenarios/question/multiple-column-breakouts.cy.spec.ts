@@ -1164,7 +1164,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             cy.findByText("Between").click();
             cy.findByLabelText("Start date").clear().type(columnMinValue);
             cy.findByLabelText("End date").clear().type(columnMaxValue);
-            cy.button("Add filter").click();
+            cy.button("Apply filter").click();
           });
         }
 
@@ -1202,7 +1202,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           });
 
           cy.log("assert query results");
-          H.runButtonOverlay().click();
           cy.wait("@dataset");
         }
 
@@ -1225,7 +1224,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             cy.findByPlaceholderText("Max")
               .clear()
               .type(String(columnMaxValue));
-            cy.button("Add filter").click();
+            cy.button("Apply filter").click();
           });
         }
 
@@ -1263,7 +1262,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           });
 
           cy.log("assert query results");
-          H.runButtonOverlay().click();
           cy.wait("@dataset");
         }
 

@@ -2,8 +2,8 @@
   "Middleware that handles limiting the maximum number of rows returned by a query."
   (:require
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.models.setting :as setting]
    [metabase.query-processor.util :as qp.util]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]))
 

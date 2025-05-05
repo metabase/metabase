@@ -5,7 +5,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
-   [metabase.upload :as upload]
+   [metabase.upload.core :as upload]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))

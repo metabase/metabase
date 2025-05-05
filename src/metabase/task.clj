@@ -24,6 +24,7 @@
    [metabase.db :as mdb]
    [metabase.plugins.classloader :as classloader]
    [metabase.task.bootstrap]
+   [metabase.task.prometheus :as task.prometheus]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -53,7 +54,7 @@
 
 (defmulti init!
   "Initialize (i.e., schedule) Job(s) with a given name. All implementations of this method are called once and only
-  once when the Quartz task scheduler is initialized. Task namespaces (`metabase.task.*`) should add new
+  once when the Quartz task scheduler is initialized. Task namespaces (`metabase.<module>.task.*`) should add new
   implementations of this method to schedule the jobs they define (i.e., with a call to `schedule-task!`.)
 
   The dispatch value for this function can be any unique keyword, but by convention is a namespaced keyword version of
@@ -122,6 +123,12 @@
       (when (compare-and-set! *quartz-scheduler* nil new-scheduler)
         (qs/standby new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
+        ;; Register Prometheus listeners
+        (let [listener-manager (.getListenerManager new-scheduler)]
+          (.addJobListener listener-manager
+                           (task.prometheus/create-job-execution-listener))
+          (.addTriggerListener listener-manager
+                               (task.prometheus/create-trigger-listener new-scheduler)))
         (delete-jobs-with-no-class!)
         (reset-errored-triggers! new-scheduler)
         (init-tasks!)))))
