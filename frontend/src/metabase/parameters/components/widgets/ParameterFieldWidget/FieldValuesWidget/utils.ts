@@ -2,9 +2,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { stripId } from "metabase/lib/formatting";
+import { isNotNull } from "metabase/lib/types";
 import type { ComboboxItem } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
+import { shouldRemap } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
   canListFieldValues,
   canListParameterValues,
@@ -45,10 +47,6 @@ export function canUseCardEndpoints(question?: Question) {
 
 export function canUseDashboardEndpoints(dashboard?: Dashboard | null) {
   return dashboard?.id;
-}
-
-export function showRemapping(fields: Field[]) {
-  return fields.length === 1;
 }
 
 export function shouldList({
@@ -321,7 +319,7 @@ export function getFieldsRemappingInfo(fields: (Field | null)[]) {
   const searchField = field?.searchField();
 
   if (
-    fields.length === 1 &&
+    shouldRemap(fields.filter(isNotNull)) &&
     field != null &&
     searchField != null &&
     typeof field.id === "number" &&

@@ -1,5 +1,6 @@
 import { renderNumberOfSelections } from "metabase/parameters/utils/formatting";
 import type Field from "metabase-lib/v1/metadata/Field";
+import { shouldRemap } from "metabase-lib/v1/parameters/utils/parameter-fields";
 
 import Value from "../Value";
 import { normalizeValue } from "../normalizeValue";
@@ -19,15 +20,11 @@ export function ParameterFieldWidgetValue({
 
   const numberOfValues = values.length;
 
-  // If there are multiple fields, turn off remapping since they might
-  // be remapped to different fields.
-  const shouldRemap = fields.length === 1;
-
   return numberOfValues > 1 ? (
     <>{renderNumberOfSelections(numberOfValues)}</>
   ) : (
     <Value
-      remap={shouldRemap}
+      remap={shouldRemap(fields)}
       value={values[0]}
       column={fields[0]}
       displayValue={displayValue}

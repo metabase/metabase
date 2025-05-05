@@ -37,6 +37,7 @@ import {
 } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
+import { shouldRemap } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import type {
   Dashboard,
   FieldValue,
@@ -66,7 +67,6 @@ import {
   isNumeric,
   isSearchable,
   shouldList,
-  showRemapping,
 } from "./utils";
 
 const MAX_SEARCH_RESULTS = 100;
@@ -265,7 +265,7 @@ export const FieldValuesWidgetInner = forwardRef<
 
   // ? this may rely on field mutations
   const updateRemappings = (options: FieldValue[]) => {
-    if (showRemapping(fields)) {
+    if (shouldRemap(fields)) {
       const [field] = fields;
       if (
         field.remappedField() === field.searchField(disablePKRemappingForSearch)
@@ -679,7 +679,7 @@ function renderValue({
       value={value}
       column={fields[0]}
       maximumFractionDigits={20}
-      remap={displayValue || showRemapping(fields)}
+      remap={displayValue || shouldRemap(fields)}
       displayValue={displayValue}
       {...formatOptions}
       autoLoad={autoLoad}
