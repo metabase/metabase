@@ -31,3 +31,8 @@ export const ExceedsGoal = {
   render: Template,
   args: EXCEEDS_GOAL,
 };
+
+export const Watermark = {
+  render: Template,
+  args: { ...EXCEEDS_GOAL, hasDevWatermark: true },
+};
