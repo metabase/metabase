@@ -2,9 +2,9 @@ import _ from "underscore";
 
 import { isQuestionCard, isQuestionDashCard } from "metabase/dashboard/utils";
 import { slugify } from "metabase/lib/formatting";
+import { isNotNull } from "metabase/lib/types";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import Question from "metabase-lib/v1/Question";
-import type Field from "metabase-lib/v1/metadata/Field";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   FieldFilterUiParameter,
@@ -117,7 +117,33 @@ function getMappings(dashcards: QuestionDashboardCard[]): ExtendedMapping[] {
   });
 }
 
-export function getDashboardUiParameters(
+export function getSavedDashboardUiParameters(
+  dashcards: Dashboard["dashcards"],
+  parameters: Dashboard["parameters"],
+  parameterFields: Dashboard["param_fields"],
+  metadata: Metadata,
+): UiParameter[] {
+  const mappableDashcards = dashcards.filter(isQuestionDashCard);
+  const mappings = getMappings(mappableDashcards);
+  const uiParameters: UiParameter[] = (parameters || []).map((parameter) => {
+    if (isFieldFilterParameter(parameter)) {
+      return buildSavedDashboardParameter(
+        parameter,
+        mappings,
+        parameterFields,
+        metadata,
+      );
+    }
+
+    return {
+      ...parameter,
+    };
+  });
+
+  return uiParameters;
+}
+
+export function getUnsavedDashboardUiParameters(
   dashcards: Dashboard["dashcards"],
   parameters: Dashboard["parameters"],
   metadata: Metadata,
@@ -127,7 +153,7 @@ export function getDashboardUiParameters(
   const mappings = getMappings(mappableDashcards);
   const uiParameters: UiParameter[] = (parameters || []).map((parameter) => {
     if (isFieldFilterParameter(parameter)) {
-      return buildFieldFilterUiParameter(
+      return buildUnsavedDashboardParameter(
         parameter,
         mappings,
         metadata,
@@ -165,7 +191,29 @@ export function getDashboardQuestions(
   }, {});
 }
 
-function buildFieldFilterUiParameter(
+function buildSavedDashboardParameter(
+  parameter: Parameter,
+  mappings: ExtendedMapping[],
+  parameterFields: Dashboard["param_fields"],
+  metadata: Metadata,
+) {
+  const fields = (parameterFields?.[parameter.id] ?? [])
+    .map((field) => metadata.field(field.id))
+    .filter(isNotNull);
+  const hasVariableTemplateTagTarget = mappings.some(
+    (mapping) =>
+      mapping.parameter_id === parameter.id &&
+      isParameterVariableTarget(mapping.target),
+  );
+
+  return {
+    ...parameter,
+    fields,
+    hasVariableTemplateTagTarget,
+  };
+}
+
+function buildUnsavedDashboardParameter(
   parameter: Parameter,
   mappings: ExtendedMapping[],
   metadata: Metadata,
@@ -190,21 +238,12 @@ function buildFieldFilterUiParameter(
   const mappedFields = uniqueMappingsForParameters.map((mapping) => {
     const { target, card } = mapping;
     if (!isQuestionCard(card)) {
-      return {
-        field: null,
-        shouldResolveFkField: false,
-      };
+      return null;
     }
 
     const question = questions[card.id] ?? new Question(card, metadata);
     try {
-      const field = getParameterTargetField(question, parameter, target);
-
-      return {
-        field,
-        // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
-        shouldResolveFkField: card.dataset_query?.type === "query",
-      };
+      return getParameterTargetField(question, parameter, target);
     } catch (e) {
       console.error("Error getting a field from a card", { card });
       throw e;
@@ -215,18 +254,7 @@ function buildFieldFilterUiParameter(
     return isParameterVariableTarget(mapping.target);
   });
 
-  const fields = mappedFields
-    .filter(
-      (
-        mappedField,
-      ): mappedField is { field: Field; shouldResolveFkField: boolean } => {
-        return mappedField.field != null;
-      },
-    )
-    .map(({ field, shouldResolveFkField }) => {
-      return shouldResolveFkField ? (field.target ?? field) : field;
-    });
-
+  const fields = mappedFields.filter(isNotNull);
   return {
     ...parameter,
     fields: _.uniq(fields, (field) => field.id),
