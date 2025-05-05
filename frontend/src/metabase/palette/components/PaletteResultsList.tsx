@@ -127,7 +127,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = (props) => {
         return;
       }
       if (item.command) {
-        item.command.perform(item);
+        item.command.perform();
         if (!(e?.metaKey === true || e?.ctrlKey === true)) {
           query.toggle();
         }
