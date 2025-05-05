@@ -5,7 +5,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase-enterprise.serialization.api :as api.serialization]
-   [metabase-enterprise.serialization.v2.load :as v2.load]
+   [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
@@ -48,7 +48,7 @@
   "Find out entity type by log message"
   [lines]
   (->> lines
-       (keep #(second (re-find #"(?:Extracting|Loading|Storing) (\w+)" %)))
+       (keep #(second (re-find #"(?:Extracting|Loading|Storing) \{:path (\w+)" %)))
        set))
 
 (defn- tar-file-types [f & [raw?]]
@@ -230,14 +230,11 @@
                                "error_message" nil}
                               (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))
 
-                (mt/with-dynamic-fn-redefs [v2.load/load-one! (let [load-one! (mt/dynamic-value #'v2.load/load-one!)]
-                                                                (fn [ctx path & [modfn]]
-                                                                  (load-one! ctx path
-                                                                             (or modfn
-                                                                                 (fn [ingested]
-                                                                                   (cond-> ingested
-                                                                                     (= (:entity_id ingested) (:entity_id card))
-                                                                                     (assoc :collection_id "DoesNotExist")))))))]
+                (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (let [ingest-file (mt/dynamic-value #'v2.ingest/ingest-file)]
+                                                                    (fn [^File file]
+                                                                      (cond-> (ingest-file file)
+                                                                        (str/includes? (.getName file) (:entity_id card))
+                                                                        (assoc :collection_id "DoesNotExist"))))]
                   (testing "ERROR /api/ee/serialization/import"
                     (let [res (binding [api.serialization/*additive-logging* false]
                                 (mt/user-http-request :crowberto :post 500 "ee/serialization/import"
