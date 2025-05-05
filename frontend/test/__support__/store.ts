@@ -13,7 +13,6 @@ import {
   SegmentSchema,
   SnippetSchema,
   TableSchema,
-  UserSchema,
 } from "metabase/schema";
 import type {
   Card,
@@ -57,7 +56,6 @@ const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
   segments: [SegmentSchema],
   snippets: [SnippetSchema],
   indexedEntities: [IndexedEntitySchema],
-  users: [UserSchema],
   questions: [QuestionSchema],
 };
 
