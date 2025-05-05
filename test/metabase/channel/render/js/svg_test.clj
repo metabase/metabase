@@ -91,6 +91,7 @@
                                           "progress"
                                           (json/encode {:value value :goal goal})
                                           (json/encode settings)
+                                          (json/encode {})
                                           (json/encode {})))]
         (validate-svg-string :progress svg-string)))))
 
