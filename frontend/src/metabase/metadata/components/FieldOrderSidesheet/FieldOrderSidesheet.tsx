@@ -10,6 +10,7 @@ import {
   type DragEndEvent,
   SortableList,
 } from "metabase/core/components/Sortable";
+// eslint-disable-next-line no-restricted-imports
 import Tables from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
