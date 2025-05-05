@@ -14,7 +14,7 @@ export const CollectionNewButton = () => {
       <div>
         <CollectionHeaderButton
           aria-label={t`Create a new collection`}
-          icon="add"
+          icon="add_folder"
           onClick={() => dispatch(setOpenModal("collection"))}
         />
       </div>
