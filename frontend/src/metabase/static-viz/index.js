@@ -127,10 +127,14 @@ export function RenderChart(rawSeries, dashcardSettings, options) {
   const rawSeriesWithRemappings = extractRemappings(
     rawSeriesWithDashcardSettings,
   );
+
+  const hasDevWatermark = Boolean(options.tokenFeatures?.["development-mode"]);
+
   return ReactDOMServer.renderToStaticMarkup(
     <StaticVisualization
       rawSeries={rawSeriesWithRemappings}
       renderingContext={renderingContext}
+      hasDevWatermark={hasDevWatermark}
     />,
   );
 }

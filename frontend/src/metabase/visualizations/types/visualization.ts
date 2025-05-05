@@ -100,6 +100,7 @@ export interface StaticVisualizationProps {
   rawSeries: RawSeries;
   renderingContext: RenderingContext;
   isStorybook?: boolean;
+  hasDevWatermark?: boolean;
 }
 
 export interface VisualizationProps {
