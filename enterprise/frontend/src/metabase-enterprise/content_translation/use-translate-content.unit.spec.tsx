@@ -12,7 +12,6 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { useTranslateContent } from "./use-translate-content";
 
-// Mock the API hook that returns content translations
 jest.mock("metabase-enterprise/api", () => ({
   useListContentTranslationsQuery: jest.fn(),
 }));
