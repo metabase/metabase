@@ -127,7 +127,6 @@ export const LoadingAndErrorWrapper = forwardRef<
     }
     return Children.only(children);
   }
-
   return (
     <div className={className} style={style} data-testid={testId} ref={ref}>
       {error ? (
