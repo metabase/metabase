@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import * as Lib from "metabase-lib";
 import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
@@ -42,13 +40,8 @@ export function getTemplateTagFromTarget(target: ParameterTarget) {
   return type === "template-tag" ? tag : null;
 }
 
-/**
- * Returns only real DB fields and not all mapped columns.
- * Use getMappingOptionByTarget for columns.
- */
-export function getParameterTargetField(
+export function getNativeParameterTargetField(
   question: Question,
-  parameter: Parameter,
   target: ParameterTarget,
 ) {
   if (!isDimensionTarget(target)) {
@@ -56,90 +49,25 @@ export function getParameterTargetField(
   }
 
   const targetRef = target[1];
-
-  // native queries
-  if (isTemplateTagReference(targetRef)) {
-    const query = question.query();
-    if (!Lib.queryDisplayInfo(query).isNative) {
-      return null;
-    }
-
-    const tagName = targetRef[1];
-    const tag = Lib.templateTags(query)[tagName];
-    if (tag == null || tag.dimension == null) {
-      return null;
-    }
-
-    return getParameterTargetFieldFromFieldRef(
-      question,
-      parameter,
-      tag.dimension,
-    );
+  if (!isTemplateTagReference(targetRef)) {
+    return null;
   }
 
-  // mbql queries
-  if (isConcreteFieldReference(targetRef)) {
-    return getParameterTargetFieldFromFieldRef(question, parameter, targetRef);
+  const query = question.query();
+  if (!Lib.queryDisplayInfo(query).isNative) {
+    return null;
   }
 
-  return null;
-}
+  const tagName = targetRef[1];
+  const tag = Lib.templateTags(query)[tagName];
+  const fieldRef = tag?.dimension;
+  if (fieldRef == null) {
+    return null;
+  }
 
-function getParameterTargetFieldFromFieldRef(
-  question: Question,
-  parameter: Parameter,
-  fieldRef: ConcreteFieldReference,
-) {
+  const fieldId = fieldRef[1];
   const metadata = question.metadata();
-
-  const [_type, fieldIdOrName] = fieldRef;
-  const fields = metadata.fieldsList();
-  if (typeof fieldIdOrName === "number") {
-    // performance optimization:
-    // we can match by id directly without finding this column via query
-    return fields.find((field) => field.id === fieldIdOrName);
-  }
-
-  const { query, columns } = getParameterColumns(question, parameter);
-
-  if (columns.length === 0) {
-    // query and metadata are not available: 1) no data permissions 2) embedding
-    // there is no way to find the correct field so pick the first one matching by name
-    return fields.find(
-      (field) => typeof field.id === "number" && field.name === fieldIdOrName,
-    );
-  }
-
-  const stageIndexes = _.uniq(columns.map(({ stageIndex }) => stageIndex));
-
-  for (const stageIndex of stageIndexes) {
-    const stageColumns = columns
-      .filter((column) => column.stageIndex === stageIndex)
-      .map(({ column }) => column);
-
-    const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
-      query,
-      stageIndex,
-      stageColumns,
-      [fieldRef],
-    );
-
-    if (columnIndex >= 0) {
-      const column = stageColumns[columnIndex];
-      const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
-
-      if (fieldValuesInfo.fieldId == null) {
-        // the column does not represent to a database field, e.g. coming from an aggregation clause
-        return null;
-      }
-
-      // do not use `metadata.field(id)` because it only works for fields loaded
-      // with the original table, not coming from model metadata
-      return fields.find((field) => field.id === fieldValuesInfo.fieldId);
-    }
-  }
-
-  return null;
+  return metadata.field(fieldId);
 }
 
 export function buildDimensionTarget(

@@ -12,8 +12,8 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
+  getNativeParameterTargetField,
   getParameterColumns,
-  getParameterTargetField,
   getTemplateTagFromTarget,
   isParameterVariableTarget,
 } from "metabase-lib/v1/parameters/utils/targets";
@@ -210,7 +210,7 @@ describe("parameters/utils/targets", () => {
     });
   });
 
-  describe("getParameterTargetField", () => {
+  describe("getNativeParameterTargetField", () => {
     it("should return null when the target is not a dimension", () => {
       const question = db.nativeQuestion({
         query: "select * from PRODUCTS where CATEGORY = {{foo}}",
@@ -220,10 +220,9 @@ describe("parameters/utils/targets", () => {
           }),
         },
       });
-      const parameter = createMockParameter();
 
       expect(
-        getParameterTargetField(question, parameter, [
+        getNativeParameterTargetField(question, [
           "variable",
           ["template-tag", "foo"],
         ]),
@@ -244,9 +243,7 @@ describe("parameters/utils/targets", () => {
           }),
         },
       });
-      const parameter = createMockParameter();
-
-      expect(getParameterTargetField(question, parameter, target)).toEqual(
+      expect(getNativeParameterTargetField(question, target)).toEqual(
         expect.objectContaining({
           id: PRODUCTS.CATEGORY,
         }),
@@ -255,12 +252,11 @@ describe("parameters/utils/targets", () => {
 
     it("should return the target field", () => {
       const question = productsTable.question();
-      const parameter = createMockParameter();
       const target: ParameterDimensionTarget = [
         "dimension",
         ["field", PRODUCTS.CATEGORY, null],
       ];
-      expect(getParameterTargetField(question, parameter, target)).toEqual(
+      expect(getNativeParameterTargetField(question, target)).toEqual(
         expect.objectContaining({
           id: PRODUCTS.CATEGORY,
         }),
