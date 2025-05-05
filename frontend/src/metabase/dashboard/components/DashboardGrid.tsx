@@ -147,9 +147,9 @@ export type DashboardGridProps = {
   // public dashboard passes it explicitly
   width?: number;
   // public or embedded dashboard passes it as noop
-  navigateToNewCardFromDashboard?: (
-    opts: NavigateToNewCardFromDashboardOpts,
-  ) => void;
+  navigateToNewCardFromDashboard:
+    | ((opts: NavigateToNewCardFromDashboardOpts) => void)
+    | null;
   downloadsEnabled: EmbedResourceDownloadOptions;
   autoScrollToDashcardId?: DashCardId;
   reportAutoScrolledToDashcard?: () => void;

@@ -67,9 +67,9 @@ interface InnerPublicOrEmbeddedDashboardViewProps {
   theme: DisplayTheme;
   getClickActionMode?: ClickActionModeGetter;
   hideParameters: EmbedHideParameters;
-  navigateToNewCardFromDashboard?: (
-    opts: NavigateToNewCardFromDashboardOpts,
-  ) => void;
+  navigateToNewCardFromDashboard:
+    | ((opts: NavigateToNewCardFromDashboardOpts) => void)
+    | null;
   slowCards: Record<number, boolean>;
   cardTitled: boolean;
   downloadsEnabled: EmbedResourceDownloadOptions;

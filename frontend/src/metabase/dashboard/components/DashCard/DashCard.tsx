@@ -75,9 +75,9 @@ export interface DashCardProps {
   onAddSeries: (dashcard: StoreDashcard) => void;
   onReplaceCard: (dashcard: StoreDashcard) => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
-  navigateToNewCardFromDashboard?: (
-    opts: NavigateToNewCardFromDashboardOpts,
-  ) => void;
+  navigateToNewCardFromDashboard:
+    | ((opts: NavigateToNewCardFromDashboardOpts) => void)
+    | null;
   onReplaceAllDashCardVisualizationSettings: (
     dashcardId: DashCardId,
     settings: VisualizationSettings,

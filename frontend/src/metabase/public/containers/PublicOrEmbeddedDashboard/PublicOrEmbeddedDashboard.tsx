@@ -66,9 +66,9 @@ type ReduxProps = ConnectedProps<typeof connector>;
 type OwnProps = {
   dashboardId: DashboardId;
   parameterQueryParams: Query;
-  navigateToNewCardFromDashboard?: (
-    opts: NavigateToNewCardFromDashboardOpts,
-  ) => void;
+  navigateToNewCardFromDashboard:
+    | ((opts: NavigateToNewCardFromDashboardOpts) => void)
+    | null;
 } & PublicOrEmbeddedDashboardEventHandlersProps;
 
 type PublicOrEmbeddedDashboardProps = OwnProps &
