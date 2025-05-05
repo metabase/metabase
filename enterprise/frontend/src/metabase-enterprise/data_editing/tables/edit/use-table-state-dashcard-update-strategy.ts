@@ -92,7 +92,7 @@ export function useTableEditingStateDashcardUpdateStrategy(
       );
 
       return {
-        undo: () =>
+        revert: () =>
           dispatch(
             updateCardData(cardId, dashcardId, {
               ...cardData,

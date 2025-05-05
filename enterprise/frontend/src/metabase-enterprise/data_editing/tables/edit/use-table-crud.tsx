@@ -1,12 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo, useState } from "react";
-import { t } from "ttag";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
-import type { DataGridCellId } from "metabase/data-grid";
-import { getResponseErrorMessage } from "metabase/lib/errors";
-import { useDispatch } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
 import {
   useDeleteTableRowsMutation,
   useInsertTableRowsMutation,
@@ -25,11 +20,8 @@ import type {
   UpdatedRowHandlerParams,
 } from "../types";
 
-import { ErrorUpdateToast } from "./ErrorUpdateToast";
-import type {
-  OptimisticUpdatePatchResult,
-  TableEditingStateUpdateStrategy,
-} from "./use-table-state-update-strategy";
+import { useTableCrudOptimisticUpdate } from "./use-table-crud-optimistic-update";
+import type { TableEditingStateUpdateStrategy } from "./use-table-state-update-strategy";
 import { getRowPkKeyValue } from "./utils";
 
 export const useTableCRUD = ({
@@ -50,11 +42,11 @@ export const useTableCRUD = ({
     number | undefined
   >();
 
-  const [cellsWithFailedUpdatesMap, setCellsWithFailedUpdatesMap] = useState<
-    Record<DataGridCellId, true>
-  >({});
-
-  const dispatch = useDispatch();
+  const {
+    cellsWithFailedUpdatesMap,
+    handleCellValueUpdateError,
+    handleGenericUpdateError,
+  } = useTableCrudOptimisticUpdate();
 
   const [deleteTableRows] = useDeleteTableRowsMutation();
   const [updateTableRows] = useUpdateTableRowsMutation();
@@ -76,61 +68,6 @@ export const useTableCRUD = ({
       ) || {}
     );
   }, [tableMetadata]);
-
-  const displayErrorIfExists = useCallback(
-    (error: unknown) => {
-      if (error) {
-        dispatch(
-          addUndo({
-            icon: "warning",
-            toastColor: "error",
-            message: getResponseErrorMessage(error) ?? t`An error occurred`,
-          }),
-        );
-      }
-    },
-    [dispatch],
-  );
-
-  const handleCellValueUpdateError = useCallback(
-    (
-      error: unknown,
-      cellUpdateContext: {
-        cellId: DataGridCellId;
-        patchResult: OptimisticUpdatePatchResult | undefined;
-      },
-    ) => {
-      const { cellId, patchResult } = cellUpdateContext;
-
-      patchResult?.revert();
-
-      dispatch(
-        addUndo({
-          toastColor: "bg-black",
-          icon: null,
-          renderChildren: () => <ErrorUpdateToast error={error} />,
-          timeout: null, // removes automatic toast hide
-          undo: false,
-          onDismiss: () => {
-            // TODO: handle case when there are 2+ failed updates for a single cell id
-            setCellsWithFailedUpdatesMap((prevState) => {
-              const newMap = { ...prevState };
-              delete newMap[cellId];
-              return newMap;
-            });
-          },
-
-          // TODO: add list of open failed updates toast ids, clean them in case of filters update
-        }),
-      );
-
-      setCellsWithFailedUpdatesMap({
-        ...cellsWithFailedUpdatesMap,
-        [cellId]: true,
-      });
-    },
-    [cellsWithFailedUpdatesMap, dispatch],
-  );
 
   const handleCellValueUpdate = useCallback(
     async ({ updatedData, rowIndex, cellId }: UpdateCellValueHandlerParams) => {
@@ -161,6 +98,10 @@ export const useTableCRUD = ({
             cellId,
             patchResult: patchResult || undefined,
           });
+        }
+
+        if (response.data?.updated) {
+          stateUpdateStrategy.onRowsUpdated(response.data.updated);
         }
       } catch (e) {
         handleCellValueUpdateError(e, {
@@ -201,14 +142,14 @@ export const useTableCRUD = ({
       if (!response.error && response.data) {
         stateUpdateStrategy.onRowsUpdated(response.data.updated);
       } else {
-        displayErrorIfExists(response.error);
+        handleGenericUpdateError(response.error);
       }
     },
     [
       datasetData,
       updateTableRows,
       tableId,
-      displayErrorIfExists,
+      handleGenericUpdateError,
       stateUpdateStrategy,
     ],
   );
@@ -224,13 +165,13 @@ export const useTableCRUD = ({
         closeCreateRowModal();
         stateUpdateStrategy.onRowsCreated(response.data["created-rows"]);
       } else {
-        displayErrorIfExists(response.error);
+        handleGenericUpdateError(response.error);
       }
     },
     [
       insertTableRows,
       tableId,
-      displayErrorIfExists,
+      handleGenericUpdateError,
       closeCreateRowModal,
       stateUpdateStrategy,
     ],
@@ -265,7 +206,7 @@ export const useTableCRUD = ({
       }
 
       if (response.error) {
-        displayErrorIfExists(response.error);
+        handleGenericUpdateError(response.error);
       }
     },
     [
@@ -274,7 +215,7 @@ export const useTableCRUD = ({
       deleteTableRows,
       tableId,
       stateUpdateStrategy,
-      displayErrorIfExists,
+      handleGenericUpdateError,
     ],
   );
 

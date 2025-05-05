@@ -42,7 +42,7 @@ export function useTableEditingStateApiUpdateStrategy(
     (rows: Record<string, RowValue>[]) => {
       const adhocQuery = checkNotNull(nullableAdhocQuery);
 
-      return dispatch(
+      const patchResult = dispatch(
         datasetApi.util.updateQueryData(
           "getAdhocQuery",
           adhocQuery,
@@ -69,6 +69,10 @@ export function useTableEditingStateApiUpdateStrategy(
           },
         ),
       );
+
+      return {
+        revert: patchResult.undo,
+      };
     },
     [dispatch, nullableAdhocQuery],
   );
