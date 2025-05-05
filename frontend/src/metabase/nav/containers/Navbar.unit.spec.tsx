@@ -7,6 +7,7 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
+  setupSettingEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -59,6 +60,11 @@ async function setup({
     collectionItems: [],
   });
   fetchMock.get("path:/api/bookmark", []);
+
+  setupSettingEndpoint({
+    settingKey: "version-info",
+    settingValue: {},
+  });
 
   const storeInitialState = createMockState({
     app: createMockAppState({

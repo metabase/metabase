@@ -1038,6 +1038,7 @@
                  :deprecated     nil
                  :enabled?       nil
                  :can-read-from-env?       true
+                 :include-in-list?         true
                  ;; Disable auditing by default for user- or database-local settings
                  :audit          (if (site-wide-only? setting) :no-value :never)}
                 (dissoc setting :name :type :default)))
@@ -1292,6 +1293,12 @@
   (default: `:no-value` for most settings; `:never` for user- and database-local settings, settings with no setter,
   and `:sensitive` settings.)
 
+  ###### `include-in-list?`
+
+  Boolean that determines if this setting is included in the list of all settings when settings are listed through
+  either the `GET /api/session/properties` or `GET /api/setting` endpoints. `true` by default but should be set to
+  false for settings with very large sizes or that are only used in specific places.
+
   ###### `base`
 
   A map which can provide values for any of the above options, except for :export?.
@@ -1455,7 +1462,8 @@
       (user-facing-settings-matching
        (fn [setting]
          (and (contains? writable-visibilities (:visibility setting))
-              (not= (:database-local setting) :only)))
+              (not= (:database-local setting) :only)
+              (:include-in-list? setting)))
        options))))
 
 (defn admin-writable-site-wide-settings
@@ -1501,7 +1509,8 @@
      {}
      (comp (filter (fn [[_setting-name setting]]
                      (and (not (database-local-only? setting))
-                          (can-read-setting? setting visibilities))))
+                          (can-read-setting? setting visibilities)
+                          (:include-in-list? setting))))
            (map (fn [[setting-name]]
                   [setting-name (get setting-name)])))
      @registered-settings)))
