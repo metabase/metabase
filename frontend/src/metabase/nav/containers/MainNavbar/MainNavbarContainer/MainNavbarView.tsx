@@ -233,6 +233,15 @@ export function MainNavbarView({
               <CollectionSectionHeading
                 handleCreateNewCollection={handleCreateNewCollection}
               />
+
+              <Tree
+                data={collectionsWithoutTrash}
+                selectedId={collectionItem?.id}
+                onSelect={onItemSelect}
+                TreeNode={SidebarCollectionLink}
+                role="tree"
+                aria-label="collection-tree"
+              />
               {isAdmin && (
                 <PaddedSidebarLink
                   icon={
@@ -245,14 +254,6 @@ export function MainNavbarView({
                   {t`Other users' personal collections`}
                 </PaddedSidebarLink>
               )}
-              <Tree
-                data={collectionsWithoutTrash}
-                selectedId={collectionItem?.id}
-                onSelect={onItemSelect}
-                TreeNode={SidebarCollectionLink}
-                role="tree"
-                aria-label="collection-tree"
-              />
             </ErrorBoundary>
           </SidebarSection>
 
