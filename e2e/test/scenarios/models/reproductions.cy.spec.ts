@@ -1461,3 +1461,34 @@ describe("issue 56698", () => {
     H.assertQueryBuilderRowCount(1);
   });
 });
+
+describe("issue 56775", () => {
+  const MODEL_NAME = "Model 56775";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createQuestion(
+      {
+        type: "model",
+        name: MODEL_NAME,
+        query: {
+          "source-table": PRODUCTS_ID,
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should render the correct query after using the back button in a model (metabase#56775)", () => {
+    H.openNotebook();
+    cy.button("Visualize").click();
+
+    cy.go("back");
+    H.openQuestionActions("Edit query definition");
+
+    cy.log("verify that the model definition is visible");
+    H.getNotebookStep("data").findByText(MODEL_NAME).should("not.exist");
+    H.getNotebookStep("data").findByText("Products").should("be.visible");
+  });
+});

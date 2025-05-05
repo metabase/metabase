@@ -576,8 +576,9 @@
    :uses #{api config events models util}}
 
   sample-data
-  {:api  #{metabase.sample-data}
-   :uses #{plugins sync util}}
+  {:api  #{metabase.sample-data.core
+           metabase.sample-data.init}
+   :uses #{plugins settings sync util}}
 
   search
   {:api #{metabase.search.api
