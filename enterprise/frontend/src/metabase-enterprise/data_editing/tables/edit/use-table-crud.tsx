@@ -27,8 +27,8 @@ import type {
 
 import { ErrorUpdateToast } from "./ErrorUpdateToast";
 import type {
+  OptimisticUpdatePatchResult,
   TableEditingStateUpdateStrategy,
-  UndoObject,
 } from "./use-table-state-update-strategy";
 import { getRowPkKeyValue } from "./utils";
 
@@ -52,7 +52,7 @@ export const useTableCRUD = ({
 
   const [cellsWithFailedUpdatesMap, setCellsWithFailedUpdatesMap] = useState<
     Record<DataGridCellId, true>
-  >({}); // TODO: maybe ref or set?
+  >({});
 
   const dispatch = useDispatch();
 
@@ -97,12 +97,12 @@ export const useTableCRUD = ({
       error: unknown,
       cellUpdateContext: {
         cellId: DataGridCellId;
-        patchResult: UndoObject | undefined;
+        patchResult: OptimisticUpdatePatchResult | undefined;
       },
     ) => {
       const { cellId, patchResult } = cellUpdateContext;
 
-      patchResult?.undo();
+      patchResult?.revert();
 
       dispatch(
         addUndo({
