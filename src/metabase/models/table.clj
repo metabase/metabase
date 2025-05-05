@@ -172,7 +172,15 @@
 
 (mu/defn- user-in-group-half-join
   [user-id :- pos-int?]
-  [:exists ])
+  [:exists {:select [1]
+            :from   [[:permissions_group :pg]]
+            :where  [:and
+                     [:= :pg.id :dp.group_id]
+                     [:exists {:select [1]
+                               :from [[:permissions_group_membership :pgm]]
+                               :where [:and
+                                       [:= :pgm.group_id :pg.id]
+                                       [:= :pgm.user_id [:inline user-id]]]}]]}])
 
 (mu/defn- has-perms-for-table-as-honey-sql?
   [user-id :- pos-int?
