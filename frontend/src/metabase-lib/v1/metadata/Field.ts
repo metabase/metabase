@@ -330,10 +330,12 @@ export default class Field extends Base {
       return this.metadata.field(displayFieldId);
     }
 
+    const maybePkField = this.target ?? this;
+
     // this enables "implicit" remappings from type/PK to type/Name on the same table,
     // used in FieldValuesWidget, but not table/object detail listings
-    if (this.name_field) {
-      return this.name_field;
+    if (maybePkField.name_field) {
+      return maybePkField.name_field;
     }
 
     return null;
