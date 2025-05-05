@@ -11184,12 +11184,16 @@ databaseChangeLog:
   - changeSet:
       id: v55.2025-05-02T08:21:44
       author: lbrdnk
-      comment: |
-        Migrate "hacked" semantic types
-        Context: Using semantic type that is descendant of :type/Number enabled eg. use of numeric
-        filter widgets on string columns. That is legal eg. in Mysql and considered a hack applicationwise.
-        Addition of String->Float coercion strategy enabled its "legalization".
+      comment: Migrate hacked semantic types
       rollback:
+        - update:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: coercion_strategy
+              - column:
+                  name: effective_type
+            where: coercion_strategy = 'Coercion/String->Float'
       changes:
         - update:
             tableName: metabase_field
@@ -11229,7 +11233,8 @@ databaseChangeLog:
                 'type/Share',
                 'type/Price',
                 'type/Income',
-                'type/Score'
+                'type/Score',
+                'type/Number'
               )
 
 
