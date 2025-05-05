@@ -86,6 +86,7 @@
   :export? false
   :default false
   :feature :tenants
+  :can-read-from-env? false
   :setter (fn [new-value]
             (when-not new-value
               (turn-off-tenants!))
