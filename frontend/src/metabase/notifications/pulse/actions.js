@@ -1,5 +1,6 @@
 import { createAction } from "redux-actions";
 
+import { getActionErrorMessage } from "metabase/actions/utils";
 import Pulses from "metabase/entities/pulses";
 import {
   NEW_PULSE_TEMPLATE,
@@ -8,6 +9,7 @@ import {
 } from "metabase/lib/pulse";
 import { createThunkAction } from "metabase/lib/redux";
 import { setErrorPage } from "metabase/redux/app";
+import { addUndo } from "metabase/redux/undo";
 import { PulseApi } from "metabase/services";
 
 import { getEditingPulse, getPulseFormInput } from "./selectors";
@@ -64,14 +66,29 @@ export const saveEditingPulse = createThunkAction(
   function () {
     return async function (dispatch, getState) {
       const editingPulse = getEditingPulse(getState());
-      if (editingPulse.id != null) {
-        return Pulses.HACK_getObjectFromAction(
-          await dispatch(Pulses.actions.update(editingPulse)),
+
+      try {
+        if (editingPulse.id != null) {
+          return Pulses.HACK_getObjectFromAction(
+            await dispatch(Pulses.actions.update(editingPulse)),
+          );
+        } else {
+          return Pulses.HACK_getObjectFromAction(
+            await dispatch(Pulses.actions.create(editingPulse)),
+          );
+        }
+      } catch (error) {
+        const message = getActionErrorMessage(error);
+
+        dispatch(
+          addUndo({
+            icon: "warning",
+            toastColor: "error",
+            message,
+          }),
         );
-      } else {
-        return Pulses.HACK_getObjectFromAction(
-          await dispatch(Pulses.actions.create(editingPulse)),
-        );
+
+        throw error;
       }
     };
   },
