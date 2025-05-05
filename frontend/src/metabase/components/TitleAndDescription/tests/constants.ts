@@ -1,3 +1,5 @@
+import type { RetrievedDictionaryArrayRow } from "metabase-types/api/content-translation";
+
 export const dictionaryWithGermanPhrases: RetrievedDictionaryArrayRow[] = [
   { id: 0, locale: "de", msgid: "Sample text", msgstr: "Beispieltext" },
   {

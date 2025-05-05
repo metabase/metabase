@@ -11,7 +11,7 @@ const TitleAndDescription = ({
   className,
 }: {
   title: string;
-  description?: string;
+  description?: string | null;
   className?: string;
 }) => {
   const tc = useTranslateContent();
