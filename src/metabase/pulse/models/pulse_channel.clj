@@ -2,10 +2,8 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.notification.models :as notification.models]
-   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
