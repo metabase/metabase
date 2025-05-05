@@ -1,19 +1,20 @@
-import type { TextInputProps } from "@mantine/core";
-import { TextInput } from "@mantine/core";
+import type { TextareaProps } from "@mantine/core";
 import type { ChangeEvent, FocusEvent } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import _ from "underscore";
 
 import { useUnmountLayout } from "metabase/hooks/use-unmount-layout";
 
-type TextInputRestProps = Omit<TextInputProps, "onBlur" | "ref">;
+import { Textarea } from "../Textarea";
 
-export type TextInputBlurChangeProps<
-  T extends TextInputRestProps = TextInputRestProps,
+type TextareaRestProps = Omit<TextareaProps, "onBlur" | "ref">;
+
+export type TextareaBlurChangeProps<
+  T extends TextareaRestProps = TextareaRestProps,
 > = T & {
   normalize?: (value?: T["value"] | undefined) => T["value"] | undefined;
   value: T["value"] | undefined;
-  onBlurChange: (event: { target: HTMLInputElement }) => void;
+  onBlurChange: (event: { target: HTMLTextAreaElement }) => void;
 };
 
 /**
@@ -21,21 +22,21 @@ export type TextInputBlurChangeProps<
  *
  * In case you don't need it, use TextInput directly.
  */
-export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
+export function TextareaBlurChange<T extends TextareaProps = TextareaProps>({
   normalize = (value) => value,
   value,
   onBlur,
   onBlurChange,
   onChange,
   ...restProps
-}: TextInputBlurChangeProps<T>) {
+}: TextareaBlurChangeProps<T>) {
   const [internalValue, setInternalValue] = useState<T["value"]>();
-  const ref = useRef<HTMLInputElement>(null);
+  const ref = useRef<HTMLTextAreaElement>(null);
 
   useLayoutEffect(() => setInternalValue(value), [value]);
 
   const handleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
       setInternalValue(event.target.value);
 
       if (onChange) {
@@ -47,7 +48,7 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
   );
 
   const handleBlur = useCallback(
-    (event: FocusEvent<HTMLInputElement>) => {
+    (event: FocusEvent<HTMLTextAreaElement>) => {
       onBlur?.(event);
 
       if (onBlurChange && (value || "") !== event.target.value) {
@@ -69,11 +70,11 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
     }
   });
 
-  const inputProps = _.omit(restProps, "onBlur", "onChange", "ref");
+  const textareaProps = _.omit(restProps, "onBlur", "onChange", "ref");
 
   return (
-    <TextInput
-      {...inputProps}
+    <Textarea
+      {...textareaProps}
       ref={ref}
       value={internalValue}
       onBlur={handleBlur}
