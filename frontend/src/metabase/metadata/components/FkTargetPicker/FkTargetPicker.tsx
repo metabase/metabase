@@ -3,6 +3,7 @@ import { t } from "ttag";
 import {
   areFieldsComparable,
   getFieldDisplayName,
+  getRawTableFieldId,
 } from "metabase/metadata/utils/field";
 import {
   Flex,
@@ -127,10 +128,7 @@ function getData(comparableIdFields: Field[], includeSchema: boolean) {
           field.table,
           includeSchema && field.table ? field.table.schema : undefined,
         ),
-        value:
-          typeof field.id === "object" && field.id != null
-            ? "" // we don't expect field references here, this should never happen
-            : stringifyValue(field.id),
+        value: stringifyValue(getRawTableFieldId(field)),
       };
     })
     .sort((a, b) => a.label.localeCompare(b.label));

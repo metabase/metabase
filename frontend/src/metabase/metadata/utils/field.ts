@@ -31,16 +31,6 @@ export function getRawTableFieldId(field: Field): FieldId {
   return field.id;
 }
 
-export function getFieldDisplayName(field: Field): string;
-export function getFieldDisplayName(
-  field: Field,
-  table: Table | undefined,
-): string;
-export function getFieldDisplayName(
-  field: Field,
-  table: Table | undefined,
-  schema: SchemaName | undefined,
-): string;
 export function getFieldDisplayName(
   field: Field,
   table?: Table | undefined,

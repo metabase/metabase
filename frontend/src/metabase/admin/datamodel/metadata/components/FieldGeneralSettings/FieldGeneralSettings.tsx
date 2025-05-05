@@ -163,14 +163,22 @@ const FieldTypeSection = ({
   idFields,
   onUpdateField,
 }: FieldTypeSectionProps) => {
+  const rawField = useMemo(() => field.getPlainObject(), [field]);
+  const rawIdFields = useMemo(
+    () => idFields.map((field) => field.getPlainObject(), [idFields]),
+    [idFields],
+  );
+
   return (
     <MetadataSection>
       <MetadataSectionHeader title={t`Field Type`} />
       <SemanticTypeAndTargetPicker
         className={cx(CS.flex, CS.alignCenter)}
-        field={field}
-        idFields={idFields}
-        onUpdateField={onUpdateField}
+        field={rawField}
+        idFields={rawIdFields}
+        onUpdateField={(_field, updates) => {
+          onUpdateField(field, updates);
+        }}
         hasSeparator
       />
     </MetadataSection>

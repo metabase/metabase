@@ -16,7 +16,12 @@ interface SemanticTypeAndTargetPickerProps {
   field: Field;
   idFields: Field[];
   hasSeparator?: boolean;
-  onUpdateField: (field: Field, updates: Partial<Field>) => void;
+  onUpdateField: (
+    field: Field,
+    updates: Partial<
+      Pick<Field, "semantic_type" | "fk_target_field_id" | "settings">
+    >,
+  ) => void;
 }
 
 export const SemanticTypeAndTargetPicker = ({
