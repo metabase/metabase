@@ -1275,7 +1275,7 @@
 
 (defmulti ->date
   "Cast to date."
-  {:changelog-test/ignore true :added "0.55.0" :arglists '([driver honeysql-expr])}
+  {:added "0.55.0" :arglists '([driver honeysql-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
