@@ -1,3 +1,6 @@
+import { useMemo } from "react";
+
+import { useListDatabasesQuery } from "metabase/api";
 import type { IconName, TreeNodeData } from "metabase/ui";
 import type {
   Database,
@@ -18,7 +21,21 @@ export type NodeData = {
   tableId?: TableId;
 };
 
-export function getTreeData(database: Database[]): TreeNode[] {
+export function useTreeData() {
+  const {
+    isLoading,
+    isError,
+    data: queryData,
+  } = useListDatabasesQuery({
+    include: "tables",
+  });
+
+  const data = useMemo(() => getTreeData(queryData?.data ?? []), [queryData]);
+
+  return { data, isLoading, isError };
+}
+
+function getTreeData(database: Database[]): TreeNode[] {
   return database.map((database) => {
     const tables = database.tables ?? [];
     const schemas = new Set(tables.map((table) => table.schema));

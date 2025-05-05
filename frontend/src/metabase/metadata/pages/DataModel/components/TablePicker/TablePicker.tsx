@@ -1,8 +1,6 @@
 import cx from "classnames";
-import { useMemo } from "react";
 import { push } from "react-router-redux";
 
-import { useListDatabasesQuery } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import {
   Group,
@@ -18,7 +16,7 @@ import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import { getUrl } from "../../utils";
 
 import S from "./TablePicker.module.css";
-import { type NodeData, type TreeNode, getTreeData } from "./utils";
+import { type NodeData, type TreeNode, useTreeData } from "./utils";
 
 export function TablePicker(props: {
   databaseId?: DatabaseId;
@@ -26,14 +24,11 @@ export function TablePicker(props: {
   tableId?: TableId;
 }) {
   const dispatch = useDispatch();
-  const { isLoading, isError, data } = useListDatabasesQuery({
-    include: "tables",
-  });
+  const { data, isLoading, isError } = useTreeData();
 
-  const treeData = useMemo(() => getTreeData(data?.data ?? []), [data]);
   const tree = useTree({
     multiple: false,
-    initialExpandedState: getTreeExpandedState(treeData, [
+    initialExpandedState: getTreeExpandedState(data, [
       JSON.stringify(props),
       JSON.stringify({ ...props, tableId: undefined }),
       JSON.stringify({ ...props, tableId: undefined, schemaId: undefined }),
@@ -66,7 +61,7 @@ export function TablePicker(props: {
   return (
     <Tree
       tree={tree}
-      data={treeData}
+      data={data}
       levelOffset="md"
       allowRangeSelection={false}
       renderNode={renderNode}
