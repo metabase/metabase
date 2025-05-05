@@ -6,7 +6,6 @@ import _ from "underscore";
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
 import { UpsellWhitelabel } from "metabase/admin/upsells";
 import MetabaseSettings from "metabase/lib/settings";
-import { newVersionAvailable } from "metabase/lib/utils";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_ADMIN_SETTINGS_AUTH_TABS,
@@ -395,25 +394,6 @@ export const getCurrentVersion = createSelector(
   getDerivedSettingValues,
   (settings) => {
     return settings.version?.tag;
-  },
-);
-
-export const getLatestVersion = createSelector(
-  getDerivedSettingValues,
-  (settings) => {
-    const updateChannel = settings["update-channel"] ?? "latest";
-    return settings["version-info"]?.[updateChannel]?.version;
-  },
-);
-
-export const getNewVersionAvailable = createSelector(
-  getCurrentVersion,
-  getLatestVersion,
-  (currentVersion, latestVersion) => {
-    return newVersionAvailable({
-      currentVersion,
-      latestVersion,
-    });
   },
 );
 
