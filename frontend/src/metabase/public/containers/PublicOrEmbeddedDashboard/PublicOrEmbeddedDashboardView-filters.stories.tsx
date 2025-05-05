@@ -1,7 +1,10 @@
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
-import type { ComponentProps } from "react";
 
+import {
+  MockDashboardContext,
+  type MockDashboardContextProps,
+} from "__support__/context/dashboard";
 import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
@@ -35,10 +38,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import {
-  PublicOrEmbeddedDashboard,
-  type PublicOrEmbeddedDashboardProps,
-} from "./PublicOrEmbeddedDashboard";
+import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Table);
@@ -52,8 +52,8 @@ registerVisualization(BarChart);
 const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 2500;
 
 export default {
-  title: "App/Embed/PublicOrEmbeddedDashboard/filters",
-  component: PublicOrEmbeddedDashboard,
+  title: "App/Embed/PublicOrEmbeddedDashboardView/filters",
+  component: PublicOrEmbeddedDashboardView,
   decorators: [
     ReduxDecorator,
     createWaitForResizeToStopDecorator(TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING),
@@ -223,7 +223,7 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<PublicOrEmbeddedDashboardProps> = (args) => {
+const Template: StoryFn<MockDashboardContextProps> = (args) => {
   // @ts-expect-error -- custom prop to support non JSON-serializable value as args
   const parameterType: ParameterType = args.parameterType;
   const dashboard = args.dashboard;
@@ -376,15 +376,62 @@ const Template: StoryFn<PublicOrEmbeddedDashboardProps> = (args) => {
       {},
     ),
   };
+
+  const initialState = createMockState({
+    settings: createMockSettingsState({
+      "hide-embed-branding?": false,
+    }),
+    dashboard: createMockDashboardState({
+      dashcardData: {
+        [DASHCARD_BAR_ID]: {
+          [CARD_BAR_ID]: createMockDataset({
+            data: createMockDatasetData({
+              cols: [
+                createMockColumn(StringColumn({ name: "Dimension" })),
+                createMockColumn(NumberColumn({ name: "Count" })),
+              ],
+              rows: [
+                ["foo", 1],
+                ["bar", 2],
+              ],
+            }),
+          }),
+        },
+        [DASHCARD_TABLE_ID]: {
+          // Couldn't really figure out the type here.
+          [CARD_TABLE_ID]: createMockDataset(TABLE_RAW_SERIES[0] as any),
+        },
+      },
+    }),
+    parameters: {
+      parameterValuesCache: {
+        [`{"paramId":"${CATEGORY_FILTER.id}","dashId":${DASHBOARD_ID}}`]: {
+          values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
+          has_more_values: parameterType === "search" ? true : false,
+        },
+        [`{"paramId":"${CATEGORY_FILTER.id}","dashId":${DASHBOARD_ID},"query":"g"}`]:
+          {
+            values: [["Gadget"], ["Gizmo"], ["Widget"]],
+            has_more_values: parameterType === "search" ? true : false,
+          },
+      },
+    },
+  });
+
+  const store = getStore(publicReducers, initialState, [Api.middleware]);
+
   return (
-    <PublicOrEmbeddedDashboard
-      {...args}
-      parameters={PARAMETER_MAPPING[parameterType]}
-    />
+    <MetabaseReduxProvider store={store}>
+      <MockDashboardContext
+        {...args}
+        dashboardId={dashboard.id}
+        parameters={PARAMETER_MAPPING[parameterType]}
+      >
+        <PublicOrEmbeddedDashboardView />
+      </MockDashboardContext>
+    </MetabaseReduxProvider>
   );
 };
-
-type ArgType = Partial<ComponentProps<typeof PublicOrEmbeddedDashboard>>;
 
 type ParameterType =
   | "text"
@@ -400,12 +447,20 @@ type ParameterType =
   | "date_relative"
   | "temporal_unit";
 
+type DefaultArgs = MockDashboardContextProps & {
+  parameterType?: ParameterType;
+};
 const createDefaultArgs = (
-  args: ArgType & { parameterType?: ParameterType } = {},
-): ArgType & { parameterType: ParameterType } => {
+  args: Omit<
+    DefaultArgs,
+    "dashboardId" | "navigateToNewCardFromDashboard"
+  > = {},
+): DefaultArgs => {
   const dashboard = createDashboard();
   return {
     dashboard,
+    dashboardId: dashboard.id,
+    navigateToNewCardFromDashboard: null,
     titled: true,
     bordered: true,
     background: true,

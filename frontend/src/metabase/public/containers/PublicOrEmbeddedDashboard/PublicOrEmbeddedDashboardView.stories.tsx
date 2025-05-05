@@ -1,8 +1,12 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
-import { type ComponentProps, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
+import {
+  MockDashboardContext,
+  type MockDashboardContextProps,
+} from "__support__/context/dashboard";
 import { getStore } from "__support__/entities-store";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
@@ -32,10 +36,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import {
-  PublicOrEmbeddedDashboard,
-  type PublicOrEmbeddedDashboardProps,
-} from "./PublicOrEmbeddedDashboard";
+import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Table);
@@ -43,8 +44,8 @@ registerVisualization(Table);
 registerVisualization(BarChart);
 
 export default {
-  title: "App/Embed/PublicOrEmbeddedDashboard",
-  component: PublicOrEmbeddedDashboard,
+  title: "App/Embed/PublicOrEmbeddedDashboardView",
+  component: PublicOrEmbeddedDashboardView,
   decorators: [
     ReduxDecorator,
     createWaitForResizeToStopDecorator(),
@@ -86,6 +87,7 @@ const initialState = createMockState({
     "hide-embed-branding?": false,
   }),
   dashboard: createMockDashboardState({
+    slowCards: {},
     dashcardData: {
       [DASHCARD_BAR_ID]: {
         [CARD_BAR_ID]: createMockDataset({
@@ -151,11 +153,15 @@ function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<PublicOrEmbeddedDashboardProps> = (args) => {
-  return <PublicOrEmbeddedDashboard {...args} />;
+const Template: StoryFn<MockDashboardContextProps> = (args) => {
+  return (
+    <MockDashboardContext {...args}>
+      <PublicOrEmbeddedDashboardView />
+    </MockDashboardContext>
+  );
 };
 
-const defaultArgs: Partial<ComponentProps<typeof PublicOrEmbeddedDashboard>> = {
+const defaultArgs: Partial<MockDashboardContextProps> = {
   dashboard: createDashboard(),
   downloadsEnabled: { pdf: true, results: true },
   titled: true,

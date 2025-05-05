@@ -51,17 +51,21 @@ type DashboardControls = DashboardFullscreenControls &
   EmbedDisplayParams &
   EmbedThemeControls;
 
-export type DashboardContextProps = OwnProps & Partial<DashboardControls>;
+export type DashboardContextProps = PropsWithChildren<
+  OwnProps & Partial<DashboardControls>
+>;
 
 type ContextProps = DashboardContextProps & ReduxProps;
 
-type ContextReturned = OwnResult &
+export type DashboardContextReturned = OwnResult &
   OwnProps &
   ReduxProps &
   Required<DashboardControls> &
   DashboardLoadingState;
 
-const DashboardContext = createContext<ContextReturned | undefined>(undefined);
+export const DashboardContext = createContext<
+  DashboardContextReturned | undefined
+>(undefined);
 
 const DashboardContextProviderInner = ({
   dashboardId,
@@ -103,18 +107,15 @@ const DashboardContextProviderInner = ({
   parameterValues,
 
   // redux actions
-  addCardToDashboard,
   cancelFetchDashboardCardData,
   fetchDashboard,
   fetchDashboardCardData,
   initialize,
-  setEditingDashboard,
-  toggleSidebar,
   reset,
   closeDashboard,
   navigateToNewCardFromDashboard,
   ...reduxProps
-}: PropsWithChildren<ContextProps>) => {
+}: ContextProps) => {
   const previousDashboard = usePrevious(dashboard);
   const previousDashboardId = usePrevious(dashboardId);
   const previousTabId = usePrevious(selectedTabId);
@@ -256,13 +257,10 @@ const DashboardContextProviderInner = ({
         parameterValues,
 
         // redux actions
-        addCardToDashboard,
         cancelFetchDashboardCardData,
         fetchDashboard,
         fetchDashboardCardData,
         initialize,
-        setEditingDashboard,
-        toggleSidebar,
         reset,
         closeDashboard,
         ...reduxProps,
