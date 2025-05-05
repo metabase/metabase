@@ -57,7 +57,6 @@ import type {
   DashboardId,
   Database as DatabaseType,
   Dataset,
-  FieldId,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -635,14 +634,14 @@ export const PLUGIN_DB_ROUTING = {
 };
 
 export const PLUGIN_API = {
-  getFieldValuesUrl: (fieldId: FieldId) => `/api/field/${fieldId}/values`,
-  getRemappedFieldValueUrl: (fieldId: FieldId, remappedFieldId: FieldId) =>
-    `/api/field/${fieldId}/remapping/${remappedFieldId}`,
-  getSearchFieldValuesUrl: (fieldId: FieldId, searchFieldId: FieldId) =>
-    `/api/field/${fieldId}/search/${searchFieldId}`,
-  getDashboardParameterValuesUrl: (
+  getRemappedCardParameterValueUrl: (
     dashboardId: DashboardId,
     parameterId: ParameterId,
   ) =>
-    `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/values`,
+    `/api/card/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
+  getRemappedDashboardParameterValueUrl: (
+    dashboardId: DashboardId,
+    parameterId: ParameterId,
+  ) =>
+    `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
 };

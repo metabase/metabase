@@ -5,16 +5,16 @@ import type {
   Dashboard,
   DashboardId,
   DashboardQueryMetadata,
-  GetDashboardParameterValuesRequest,
+  FieldValue,
   GetDashboardQueryMetadataRequest,
   GetDashboardRequest,
   GetEmbeddableDashboard,
   GetPublicDashboard,
+  GetRemappedDashboardParameterValueRequest,
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListDashboardsRequest,
   ListDashboardsResponse,
-  ParameterValues,
   SaveDashboardRequest,
   UpdateDashboardPropertyRequest,
   UpdateDashboardRequest,
@@ -26,9 +26,9 @@ import {
   invalidateTags,
   listTag,
   provideDashboardListTags,
-  provideDashboardParameterValuesTags,
   provideDashboardQueryMetadataTags,
   provideDashboardTags,
+  provideParameterValuesTags,
   tag,
 } from "./tags";
 
@@ -81,20 +81,20 @@ export const dashboardApi = Api.injectEndpoints({
         providesTags: (metadata) =>
           metadata ? provideDashboardQueryMetadataTags(metadata) : [],
       }),
-      getDashboardParameterValues: builder.query<
-        ParameterValues,
-        GetDashboardParameterValuesRequest
+      getRemappedDashboardParameterValue: builder.query<
+        FieldValue | null,
+        GetRemappedDashboardParameterValueRequest
       >({
         query: ({ dashboard_id, parameter_id, ...params }) => ({
           method: "GET",
-          url: PLUGIN_API.getDashboardParameterValuesUrl(
+          url: PLUGIN_API.getRemappedDashboardParameterValueUrl(
             dashboard_id,
             parameter_id,
           ),
           params,
         }),
         providesTags: (_response, _error, { parameter_id }) =>
-          provideDashboardParameterValuesTags(parameter_id),
+          provideParameterValuesTags(parameter_id),
       }),
       listDashboardItems: builder.query<
         ListCollectionItemsResponse,
@@ -233,7 +233,7 @@ export const {
   useGetDashboardQueryMetadataQuery,
   useListDashboardsQuery,
   useListDashboardItemsQuery,
-  useGetDashboardParameterValuesQuery,
+  useGetRemappedDashboardParameterValueQuery,
   useCreateDashboardMutation,
   useUpdateDashboardMutation,
   useSaveDashboardMutation,

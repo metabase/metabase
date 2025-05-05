@@ -1,7 +1,7 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import { dashboardApi, fieldApi } from "metabase/api";
+import { cardApi, dashboardApi, datasetApi } from "metabase/api";
 import Databases from "metabase/entities/databases";
 import Fields from "metabase/entities/fields";
 import Segments from "metabase/entities/segments";
@@ -201,54 +201,58 @@ export const addRemappings = (fieldId, remappings) => {
 const FETCH_REMAPPING = "metabase/metadata/FETCH_REMAPPING";
 export const fetchRemapping = createThunkAction(
   FETCH_REMAPPING,
-  ({ value, fieldId, parameterId, dashboardId }) =>
+  ({ parameter, value, fieldId, cardId, dashboardId }) =>
     async (dispatch, getState) => {
       const metadata = getMetadata(getState());
       const field = metadata.field(fieldId);
-      if (field == null || field.hasRemappedValue(value)) {
+      if (
+        field == null ||
+        field.remappedField() == null ||
+        field.hasRemappedValue(value)
+      ) {
         return;
       }
 
-      const remappedInternalField = field.remappedInternalField();
-      const remappedExternalField = field && field.remappedExternalField();
-
-      if (dashboardId != null && parameterId != null) {
-        const response = await entityCompatibleQuery(
-          {
-            dashboard_id: dashboardId,
-            parameter_id: parameterId,
-            [parameterId]: value,
-          },
-          dispatch,
-          dashboardApi.endpoints.getDashboardParameterValues,
-          { forceRefetch: false },
-        );
-        dispatch(addRemappings(field.id, response.values));
-      } else if (remappedInternalField) {
-        // internal remapping
-        const response = await entityCompatibleQuery(
-          fieldId,
-          dispatch,
-          fieldApi.endpoints.getFieldValues,
-          { forceRefetch: false },
-        );
-        dispatch(addRemappings(field.id, response.values));
-      } else if (remappedExternalField) {
-        // external and type/Name remapping
-        const fieldId = (field.target || field).id;
-        const remappedFieldId = remappedExternalField.id;
+      if (dashboardId != null && parameter != null) {
         const remapping = await entityCompatibleQuery(
           {
+            dashboard_id: dashboardId,
+            parameter_id: parameter.id,
             value,
-            fieldId,
-            remappedFieldId,
           },
           dispatch,
-          fieldApi.endpoints.getRemappedFieldValue,
+          dashboardApi.endpoints.getRemappedDashboardParameterValue,
           { forceRefetch: false },
         );
-        if (remapping) {
-          // FIXME: should this be field.id (potentially the FK) or fieldId (always the PK)?
+        if (remapping != null) {
+          dispatch(addRemappings(field.id, [remapping]));
+        }
+      } else if (cardId != null && parameter != null) {
+        const remapping = await entityCompatibleQuery(
+          {
+            card_id: cardId,
+            parameter_id: parameter.id,
+            value,
+          },
+          dispatch,
+          cardApi.endpoints.getRemappedCardParameterValue,
+          { forceRefetch: false },
+        );
+        if (remapping != null) {
+          dispatch(addRemappings(field.id, [remapping]));
+        }
+      } else if (parameter != null) {
+        const remapping = await entityCompatibleQuery(
+          {
+            parameter,
+            field_ids: [fieldId],
+            value,
+          },
+          dispatch,
+          datasetApi.endpoints.getRemappedParameterValue,
+          { forceRefetch: false },
+        );
+        if (remapping != null) {
           dispatch(addRemappings(field.id, [remapping]));
         }
       }

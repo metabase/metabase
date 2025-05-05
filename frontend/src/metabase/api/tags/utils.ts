@@ -317,7 +317,7 @@ export function provideDashboardListTags(
   ];
 }
 
-export function provideDashboardParameterValuesTags(
+export function provideParameterValuesTags(
   parameterId: ParameterId,
 ): TagDescription<TagType>[] {
   return [idTag("parameter-values", parameterId)];
