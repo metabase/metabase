@@ -33,7 +33,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Bookmark, Collection, User } from "metabase-types/api";
+import type { Bookmark, Collection } from "metabase-types/api";
 
 import {
   PaddedSidebarLink,
@@ -59,7 +59,6 @@ interface CollectionTreeItem extends Collection {
 type Props = {
   isAdmin: boolean;
   isOpen: boolean;
-  currentUser: User;
   bookmarks: Bookmark[];
   hasDataAccess: boolean;
   collections: CollectionTreeItem[];
@@ -80,7 +79,6 @@ const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
 
 export function MainNavbarView({
   isAdmin,
-  currentUser,
   bookmarks,
   collections,
   databases,
@@ -235,7 +233,7 @@ export function MainNavbarView({
               <CollectionSectionHeading
                 handleCreateNewCollection={handleCreateNewCollection}
               />
-              {currentUser.is_superuser && (
+              {isAdmin && (
                 <PaddedSidebarLink
                   icon={
                     getCollectionIcon(
