@@ -6,16 +6,16 @@ import type { Field, FieldId, SchemaName, Table } from "metabase-types/api";
 import { getSchemaDisplayName } from "./schema";
 
 /**
- * Predicate to decide whether `a` is comparable with `b`.
+ * Predicate to decide whether `field1` is comparable with `field2`.
  *
  * Currently only the MongoBSONID erroneous case is ruled out to fix the issue #49149. To the best of my knowledge
  * there's no logic on FE to reliably decide whether two columns are comparable. Trying to come up with that in ad-hoc
  * manner could disable some cases that users may depend on.
  */
-export function areFieldsComparable(a: Field, b: Field): boolean {
-  return a.effective_type === "type/MongoBSONID" ||
-    b.effective_type === "type/MongoBSONID"
-    ? a.effective_type === b.effective_type
+export function areFieldsComparable(field1: Field, field2: Field): boolean {
+  return field1.effective_type === "type/MongoBSONID" ||
+    field2.effective_type === "type/MongoBSONID"
+    ? field1.effective_type === field2.effective_type
     : true;
 }
 

@@ -7,10 +7,34 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import {
+  areFieldsComparable,
   canCoerceFieldType,
   getFieldDisplayName,
   getRawTableFieldId,
 } from "./field";
+
+describe("areFieldsComparable", () => {
+  it("should return true when both fields are type/MongoBSONID", () => {
+    const field1 = createMockField({ effective_type: "type/MongoBSONID" });
+    const field2 = createMockField({ effective_type: "type/MongoBSONID" });
+
+    expect(areFieldsComparable(field1, field2)).toBe(true);
+  });
+
+  it("should return false for fields with different types when one is MongoBSONID", () => {
+    const field1 = createMockField({ effective_type: "type/MongoBSONID" });
+    const field2 = createMockField({ effective_type: "type/Text" });
+
+    expect(areFieldsComparable(field1, field2)).toBe(false);
+  });
+
+  it("should return true for any non-MongoBSONID field types", () => {
+    const field1 = createMockField({ effective_type: "type/Text" });
+    const field2 = createMockField({ effective_type: "type/Number" });
+
+    expect(areFieldsComparable(field1, field2)).toBe(true);
+  });
+});
 
 describe("canCoerceFieldType", () => {
   it("should return true when field is not FK and is coerceable", () => {
