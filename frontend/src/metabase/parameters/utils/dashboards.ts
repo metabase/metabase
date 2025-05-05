@@ -2,13 +2,19 @@ import _ from "underscore";
 
 import { isQuestionCard, isQuestionDashCard } from "metabase/dashboard/utils";
 import { slugify } from "metabase/lib/formatting";
-import { isNotNull } from "metabase/lib/types";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import Question from "metabase-lib/v1/Question";
+import type Field from "metabase-lib/v1/metadata/Field";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type {
+  FieldFilterUiParameter,
+  UiParameter,
+} from "metabase-lib/v1/parameters/types";
 import { isFieldFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
-import { isParameterVariableTarget } from "metabase-lib/v1/parameters/utils/targets";
+import {
+  getParameterTargetField,
+  isParameterVariableTarget,
+} from "metabase-lib/v1/parameters/utils/targets";
 import type {
   Card,
   CardId,
@@ -18,6 +24,7 @@ import type {
   DashboardParameterMapping,
   Parameter,
   ParameterMappingOptions,
+  ParameterTarget,
   QuestionDashboardCard,
 } from "metabase-types/api";
 
@@ -111,29 +118,21 @@ function getMappings(dashcards: QuestionDashboardCard[]): ExtendedMapping[] {
 }
 
 export function getDashboardUiParameters(
-  parameters: Dashboard["parameters"],
   dashcards: Dashboard["dashcards"],
-  parameterFields: Dashboard["param_fields"],
+  parameters: Dashboard["parameters"],
   metadata: Metadata,
+  questions: Record<CardId, Question>,
 ): UiParameter[] {
   const mappableDashcards = dashcards.filter(isQuestionDashCard);
   const mappings = getMappings(mappableDashcards);
   const uiParameters: UiParameter[] = (parameters || []).map((parameter) => {
     if (isFieldFilterParameter(parameter)) {
-      const fields = (parameterFields?.[parameter.id] ?? [])
-        .map((field) => metadata.field(field.id))
-        .filter(isNotNull);
-      const hasVariableTemplateTagTarget = mappings.some(
-        (mapping) =>
-          mapping.parameter_id === parameter.id &&
-          isParameterVariableTarget(mapping.target),
+      return buildFieldFilterUiParameter(
+        parameter,
+        mappings,
+        metadata,
+        questions,
       );
-
-      return {
-        ...parameter,
-        fields,
-        hasVariableTemplateTagTarget,
-      };
     }
 
     return {
@@ -164,6 +163,75 @@ export function getDashboardQuestions(
 
     return acc;
   }, {});
+}
+
+function buildFieldFilterUiParameter(
+  parameter: Parameter,
+  mappings: ExtendedMapping[],
+  metadata: Metadata,
+  questions: Record<CardId, Question>,
+): FieldFilterUiParameter {
+  const mappingsForParameter = mappings.filter(
+    (mapping) => mapping.parameter_id === parameter.id,
+  );
+  const uniqueTargets: ParameterTarget[] = [];
+  const uniqueMappingsForParameters = mappingsForParameter.filter((mapping) => {
+    const isTargetUnique = uniqueTargets.every(
+      (target) => _.isEqual(target, mapping.target) === false,
+    );
+
+    if (isTargetUnique) {
+      uniqueTargets.push(mapping.target);
+    }
+
+    return isTargetUnique;
+  });
+
+  const mappedFields = uniqueMappingsForParameters.map((mapping) => {
+    const { target, card } = mapping;
+    if (!isQuestionCard(card)) {
+      return {
+        field: null,
+        shouldResolveFkField: false,
+      };
+    }
+
+    const question = questions[card.id] ?? new Question(card, metadata);
+    try {
+      const field = getParameterTargetField(question, parameter, target);
+
+      return {
+        field,
+        // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
+        shouldResolveFkField: card.dataset_query?.type === "query",
+      };
+    } catch (e) {
+      console.error("Error getting a field from a card", { card });
+      throw e;
+    }
+  });
+
+  const hasVariableTemplateTagTarget = mappingsForParameter.some((mapping) => {
+    return isParameterVariableTarget(mapping.target);
+  });
+
+  const fields = mappedFields
+    .filter(
+      (
+        mappedField,
+      ): mappedField is { field: Field; shouldResolveFkField: boolean } => {
+        return mappedField.field != null;
+      },
+    )
+    .map(({ field, shouldResolveFkField }) => {
+      return shouldResolveFkField ? (field.target ?? field) : field;
+    });
+
+  return {
+    ...parameter,
+    fields: _.uniq(fields, (field) => field.id),
+    hasVariableTemplateTagTarget,
+  };
 }
 
 export function hasMatchingParameters({

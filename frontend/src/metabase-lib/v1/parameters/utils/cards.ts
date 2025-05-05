@@ -5,7 +5,7 @@ import type {
   UiParameter,
 } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { getNativeQuestionParameterTargetField } from "metabase-lib/v1/parameters/utils/targets";
+import { getParameterTargetField } from "metabase-lib/v1/parameters/utils/targets";
 import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import type { Card, Parameter, ParameterTarget } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
@@ -34,7 +34,7 @@ export function getCardUiParameters(
     const target: ParameterTarget | undefined = (
       parameter as ParameterWithTarget
     ).target;
-    const field = getNativeQuestionParameterTargetField(question, target);
+    const field = getParameterTargetField(question, parameter, target);
     if (field) {
       return {
         ...parameter,
