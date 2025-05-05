@@ -1,11 +1,9 @@
 import { t } from "ttag";
 
 import {
-  useGetTableQueryMetadataQuery,
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
 } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import {
   DiscardTableFieldValuesButton,
   FieldOrderPicker,
@@ -13,30 +11,21 @@ import {
   RescanTableFieldsButton,
   SortableFieldList,
 } from "metabase/metadata/components";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Card, Flex, Stack, Switch, Text } from "metabase/ui";
-import type { FieldId, TableId } from "metabase-types/api";
+import type { FieldId, Table } from "metabase-types/api";
+
+import type { RouteParams } from "../../types";
+import { getUrl, parseRouteParams } from "../../utils";
 
 interface Props {
-  tableId: TableId;
+  params: RouteParams;
+  table: Table;
 }
 
-export const TableSection = ({ tableId }: Props) => {
-  const {
-    data: table,
-    error,
-    isLoading,
-  } = useGetTableQueryMetadataQuery({
-    id: tableId,
-    include_sensitive_fields: true,
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-  });
+export const TableSection = ({ params, table }: Props) => {
+  const { fieldId, ...parsedParams } = parseRouteParams(params);
   const [updateTable] = useUpdateTableMutation();
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
-
-  if (error || isLoading || !table) {
-    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
-  }
 
   return (
     <Stack gap="lg">
@@ -46,10 +35,10 @@ export const TableSection = ({ tableId }: Props) => {
         name={table.display_name}
         namePlaceholder={t`Give this table a name`}
         onDescriptionChange={(description) => {
-          updateTable({ id: tableId, description });
+          updateTable({ id: table.id, description });
         }}
         onNameChange={(name) => {
-          updateTable({ id: tableId, display_name: name });
+          updateTable({ id: table.id, display_name: name });
         }}
       />
 
@@ -63,7 +52,7 @@ export const TableSection = ({ tableId }: Props) => {
             size="sm"
             onChange={(event) => {
               const visibilityType = event.target.checked ? "hidden" : null;
-              updateTable({ id: tableId, visibility_type: visibilityType });
+              updateTable({ id: table.id, visibility_type: visibilityType });
             }}
           />
         </Card>
@@ -76,16 +65,18 @@ export const TableSection = ({ tableId }: Props) => {
           <FieldOrderPicker
             value={table.field_order}
             onChange={(fieldOrder) => {
-              updateTable({ id: tableId, field_order: fieldOrder });
+              updateTable({ id: table.id, field_order: fieldOrder });
             }}
           />
         </Flex>
 
         <SortableFieldList
+          activeFieldId={fieldId}
+          getFieldHref={(fieldId) => getUrl({ ...parsedParams, fieldId })}
           table={table}
           onChange={(fieldOrder) => {
             updateTableFieldsOrder({
-              id: tableId,
+              id: table.id,
               // in this context field id will never be a string because it's a raw table field, so it's ok to cast
               field_order: fieldOrder as FieldId[],
             });
@@ -99,9 +90,9 @@ export const TableSection = ({ tableId }: Props) => {
           {t`Metabase can scan the values in this table to enable checkbox filters in dashboards and questions.`}
         </Text>
 
-        <RescanTableFieldsButton tableId={tableId} />
+        <RescanTableFieldsButton tableId={table.id} />
 
-        <DiscardTableFieldValuesButton tableId={tableId} />
+        <DiscardTableFieldValuesButton tableId={table.id} />
       </Stack>
     </Stack>
   );

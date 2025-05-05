@@ -1,18 +1,24 @@
-import { Box, Title } from "metabase/ui";
-import type { FieldId } from "metabase-types/api";
+import { getFieldDisplayName } from "metabase/metadata/utils/field";
+import { Box, Stack, Title } from "metabase/ui";
+import type { Field } from "metabase-types/api";
+
+import { FieldDataSection } from "./FieldDataSection";
+import S from "./FieldSection.module.css";
 
 interface Props {
-  fieldId?: FieldId;
+  field: Field;
 }
 
-export const FieldSection = ({ fieldId }: Props) => {
+export const FieldSection = ({ field }: Props) => {
   return (
-    <Box>
-      <Title mb="md" order={2}>
-        Category
+    <Stack gap={0} h="100%">
+      <Title order={2} px="xl" py="lg" pb="md">
+        {getFieldDisplayName(field)}
       </Title>
 
-      <Box>Field: {fieldId}</Box>
-    </Box>
+      <Box className={S.container} h="100%" pb="lg" px="xl">
+        <FieldDataSection field={field} />
+      </Box>
+    </Stack>
   );
 };

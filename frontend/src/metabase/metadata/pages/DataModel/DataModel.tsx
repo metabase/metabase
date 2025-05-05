@@ -1,19 +1,17 @@
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
+import { useGetTableQueryMetadataQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
-import * as Urls from "metabase/lib/urls";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Box, Flex, Stack, Title } from "metabase/ui";
 
 import S from "./DataModel.module.css";
 import { FieldSection, PreviewSection, TableSection } from "./components";
-
-interface RouteParams {
-  databaseId?: string;
-  fieldId?: string;
-  schemaId?: string;
-  tableId?: string;
-}
+import type { RouteParams } from "./types";
+import { parseRouteParams } from "./utils";
 
 interface Props {
   params: RouteParams;
@@ -26,11 +24,18 @@ const DATA_MODEL_APP_NAV_BAR_HEIGHT = 53;
 const PREVIEW_NOT_IMPLEMENTED_YET = true;
 
 export const DataModel = ({ params }: Props) => {
-  // const databaseId = Urls.extractEntityId(params.databaseId);
-  // const schemaId = params.schemaId;
-  const tableId = Urls.extractEntityId(params.tableId);
-  const fieldId = Urls.extractEntityId(params.fieldId);
+  const { tableId, fieldId } = parseRouteParams(params);
   const isEmptyStateShown = tableId == null || fieldId == null;
+  const {
+    data: table,
+    error,
+    isLoading,
+  } = useGetTableQueryMetadataQuery({
+    id: tableId,
+    include_sensitive_fields: true,
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  });
+  const field = table?.fields?.find((field) => field.id === fieldId);
 
   return (
     <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`}>
@@ -40,7 +45,19 @@ export const DataModel = ({ params }: Props) => {
         </Title>
 
         <Box className={S.tableSectionContainer} h="100%" pb="lg" px="xl">
-          {tableId && <TableSection tableId={tableId} />}
+          <LoadingAndErrorWrapper error={error} loading={isLoading}>
+            {table && (
+              <TableSection
+                /**
+                 * Make sure internal component state is reset when changing tables.
+                 * This is to avoid state mix-up with optimistic updates.
+                 */
+                key={table.id}
+                params={params}
+                table={table}
+              />
+            )}
+          </LoadingAndErrorWrapper>
         </Box>
       </Stack>
 
@@ -66,8 +83,19 @@ export const DataModel = ({ params }: Props) => {
 
       {!isEmptyStateShown && (
         <Flex bg="accent-gray-light" flex="1">
-          <Box flex="0 0 400px" px="xl" py="lg">
-            <FieldSection fieldId={fieldId} />
+          <Box flex="0 0 400px">
+            <LoadingAndErrorWrapper error={error} loading={isLoading}>
+              {field && (
+                <FieldSection
+                  field={field}
+                  /**
+                   * Make sure internal component state is reset when changing fields.
+                   * This is to avoid state mix-up with optimistic updates.
+                   */
+                  key={getRawTableFieldId(field)}
+                />
+              )}
+            </LoadingAndErrorWrapper>
           </Box>
 
           {!PREVIEW_NOT_IMPLEMENTED_YET && (

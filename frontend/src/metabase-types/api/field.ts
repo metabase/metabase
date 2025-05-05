@@ -138,7 +138,7 @@ export interface UpdateFieldRequest {
   fk_target_field_id?: FieldId;
   points_of_interest?: string;
   semantic_type?: string;
-  coercion_strategy?: string;
+  coercion_strategy?: string | null;
   visibility_type?: FieldVisibilityType;
   has_field_values?: FieldValuesType;
   settings?: FieldFormattingSettings;

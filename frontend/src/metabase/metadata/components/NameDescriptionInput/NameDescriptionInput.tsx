@@ -1,7 +1,7 @@
 import { Box } from "metabase/ui";
 
+import { Input } from "./Input";
 import S from "./NameDescriptionInput.module.css";
-import { TextInputBlurChange } from "./TextInputBlurChange";
 
 interface Props {
   description: string;
@@ -22,12 +22,20 @@ export const NameDescriptionInput = ({
 }: Props) => {
   return (
     <Box>
-      <TextInputBlurChange
+      <Input
         classNames={{
           input: S.nameInput,
           root: S.name,
         }}
         fw="bold"
+        normalize={(newValue) => {
+          if (typeof newValue !== "string") {
+            return name;
+          }
+
+          const isNewValueEmpty = newValue.trim().length === 0;
+          return isNewValueEmpty ? name : newValue.trim();
+        }}
         placeholder={namePlaceholder}
         required
         size="lg"
@@ -35,7 +43,7 @@ export const NameDescriptionInput = ({
         onChange={onNameChange}
       />
 
-      <TextInputBlurChange
+      <Input
         classNames={{
           input: S.descriptionInput,
           root: S.description,

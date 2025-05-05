@@ -16,6 +16,18 @@
       }
     }
   }
+
+  &.active {
+    background-color: var(--mb-color-brand-lighter);
+
+    .label {
+      color: var(--mb-color-brand);
+    }
+  }
+
+  &:hover {
+    background-color: var(--mb-color-brand-lighter);
+  }
 }
 
 .label {

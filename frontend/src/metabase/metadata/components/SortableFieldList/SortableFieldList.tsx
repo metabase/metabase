@@ -6,18 +6,25 @@ import {
   SortableList,
 } from "metabase/core/components/Sortable";
 import { Flex } from "metabase/ui";
-import type { Table } from "metabase-types/api";
+import type { FieldId, Table } from "metabase-types/api";
 
 import { SortableField } from "../SortableField";
 
 import { getId, getItems, getItemsOrder, sortItems } from "./utils";
 
 interface Props {
+  activeFieldId?: FieldId;
+  getFieldHref?: (fieldId: FieldId) => string;
   table: Table;
   onChange: (fieldOrder: DragEndEvent["itemIds"]) => void;
 }
 
-export const SortableFieldList = ({ table, onChange }: Props) => {
+export const SortableFieldList = ({
+  activeFieldId,
+  getFieldHref,
+  table,
+  onChange,
+}: Props) => {
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
   });
@@ -37,7 +44,9 @@ export const SortableFieldList = ({ table, onChange }: Props) => {
         items={sortedItems}
         renderItem={({ item, id }) => (
           <SortableField
+            active={item.id === activeFieldId}
             disabled={isDragDisabled}
+            href={getFieldHref?.(item.id)}
             icon={item.icon}
             id={id}
             key={id}
