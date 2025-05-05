@@ -1,4 +1,5 @@
-import { memo, useCallback, useMemo, useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
+import { memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -92,9 +93,10 @@ const ChartColorTable = ({
   onReset,
   onGenerate,
 }: ChartColorTableProps): JSX.Element => {
-  const [showResetModal, setShowResetModal] = useState(false);
+  const [showResetModal, { open: openResetModal, close: closeResetModal }] =
+    useDisclosure(false);
   const handleReset = () => {
-    setShowResetModal(false);
+    closeResetModal();
     onReset();
   };
 
@@ -104,13 +106,13 @@ const ChartColorTable = ({
         <TableTitle>{t`Chart colors`}</TableTitle>
         {hasCustomColors && (
           <>
-            <Button variant="subtle" onClick={() => setShowResetModal(true)}>
+            <Button variant="subtle" onClick={openResetModal}>
               {t`Reset to default colors`}
             </Button>
             <ConfirmModal
               opened={showResetModal}
               title={t`Are you sure you want to reset to default colors?`}
-              onClose={() => setShowResetModal(false)}
+              onClose={closeResetModal}
               onConfirm={handleReset}
               confirmButtonText={t`Reset`}
             />
