@@ -461,7 +461,6 @@
      (into {} (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
                 {["Card" card-id] {"Dashboard" dash-id}})))))
 
-
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (search/define-spec "dashboard"

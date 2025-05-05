@@ -387,7 +387,6 @@
   (concat (serdes/storage-path-prefixes (serdes/path table))
           [(:name table)]))
 
-
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (search.spec/define-spec "table"

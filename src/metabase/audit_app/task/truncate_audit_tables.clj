@@ -1,13 +1,12 @@
 (ns metabase.audit-app.task.truncate-audit-tables
-  "Tasks for truncating audit-related tables, particularly `audit_log`, `view_log`, and `query_execution`, based on a configured retention policy."
+  "Tasks for truncating audit-related tables, particularly `audit_log`, `view_log`, and `query_execution`, based on a
+  configured retention policy."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
-   [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.task :as task]
