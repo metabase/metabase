@@ -104,7 +104,18 @@
     (testing "Test for password checking"
       (is (=? {:errors {:password "did not match stored password"}}
               (mt/client :post 401 "session" (-> (mt/user->credentials :rasta)
-                                                 (assoc :password "something else"))))))))
+                                                 (assoc :password "something else"))))))
+
+    (testing "Test that a user with sso_source set cannot login via email/password if SSO is enabled"
+      (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                         google-auth-enabled true] ; Ensure public-settings/sso-enabled? is true
+        (mt/with-temp [:model/User _ {:email "sso_user@metabase.com"
+                                      :password "password123"
+                                      :sso_source :google}]
+          (is (=? {:errors {:password "did not match stored password"}}
+                  (mt/client :post 401 "session" {:username "sso_user@metabase.com"
+                                                  :password "password123"}))
+              "Login attempt for SSO user via password should fail as if password didn't match"))))))
 
 (deftest login-throttling-test
   (reset-throttlers!)

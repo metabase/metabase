@@ -72,7 +72,11 @@
   [username    :- ms/NonBlankString
    password    :- [:maybe ms/NonBlankString]
    device-info :- request/DeviceInfo]
-  (if-let [user (t2/select-one [:model/User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
+  (if-let [user (t2/select-one [:model/User :id :password_salt :password :last_login :is_active],
+                               {:where [:and
+                                        [:= :%lower.email (u/lower-case-en username)]
+                                        (when (public-settings/sso-enabled?)
+                                          [:= :sso_source nil])]})]
     (when (u.password/verify-password password (:password_salt user) (:password user))
       (if (:is_active user)
         (session/create-session! :password user device-info)
