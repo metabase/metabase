@@ -143,7 +143,7 @@
 (deftest phrase-test
   (with-index
     (with-fulltext-filtering
-    ;; Less matches without an english dictionary
+      ;; Less matches without an english dictionary
       (is (= #_2 3 (index-hits "projected")))
       (is (= 2 (index-hits "revenue")))
       (is (= #_1 2 (index-hits "projected revenue")))
