@@ -20,6 +20,8 @@ export type TextInputBlurChangeProps<
  * A wrapper around TextInput to be used with onBlurChange prop.
  *
  * In case you don't need it, use TextInput directly.
+ *
+ * If you're modifying this component, make the same change in TextareaBlurChange.
  */
 export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
   normalize = (value) => value,
