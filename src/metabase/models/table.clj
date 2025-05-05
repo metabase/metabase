@@ -290,7 +290,7 @@
 
 (mi/define-batched-hydration-method with-segments
   :segments
-  "Efficientsly hydrate the Segments for a collection of `tables`."
+  "Efficiently hydrate the Segments for a collection of `tables`."
   [tables]
   (with-objects :segments
     (fn [table-ids]
