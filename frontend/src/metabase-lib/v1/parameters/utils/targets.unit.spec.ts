@@ -9,10 +9,9 @@ import {
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type Table from "metabase-lib/v1/metadata/Table";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
-  getNativeParameterTargetField,
+  getNativeQuestionParameterTargetField,
   getParameterColumns,
   getTemplateTagFromTarget,
   isParameterVariableTarget,
@@ -32,7 +31,6 @@ import {
 } from "metabase-types/api/mocks";
 import {
   PRODUCTS,
-  PRODUCTS_ID,
   REVIEWS_ID,
   SAMPLE_DB_ID,
   createOrdersCreatedAtField,
@@ -53,7 +51,6 @@ const metadata = createMockMetadata({
 });
 
 const db = metadata.database(SAMPLE_DB_ID) as Database;
-const productsTable = metadata.table(PRODUCTS_ID) as Table;
 
 const queryOrders = createQuery();
 
@@ -210,7 +207,7 @@ describe("parameters/utils/targets", () => {
     });
   });
 
-  describe("getNativeParameterTargetField", () => {
+  describe("getNativeQuestionParameterTargetField", () => {
     it("should return null when the target is not a dimension", () => {
       const question = db.nativeQuestion({
         query: "select * from PRODUCTS where CATEGORY = {{foo}}",
@@ -222,7 +219,7 @@ describe("parameters/utils/targets", () => {
       });
 
       expect(
-        getNativeParameterTargetField(question, [
+        getNativeQuestionParameterTargetField(question, [
           "variable",
           ["template-tag", "foo"],
         ]),
@@ -243,20 +240,7 @@ describe("parameters/utils/targets", () => {
           }),
         },
       });
-      expect(getNativeParameterTargetField(question, target)).toEqual(
-        expect.objectContaining({
-          id: PRODUCTS.CATEGORY,
-        }),
-      );
-    });
-
-    it("should return the target field", () => {
-      const question = productsTable.question();
-      const target: ParameterDimensionTarget = [
-        "dimension",
-        ["field", PRODUCTS.CATEGORY, null],
-      ];
-      expect(getNativeParameterTargetField(question, target)).toEqual(
+      expect(getNativeQuestionParameterTargetField(question, target)).toEqual(
         expect.objectContaining({
           id: PRODUCTS.CATEGORY,
         }),

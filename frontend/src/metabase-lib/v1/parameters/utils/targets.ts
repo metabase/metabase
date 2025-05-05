@@ -40,7 +40,7 @@ export function getTemplateTagFromTarget(target: ParameterTarget) {
   return type === "template-tag" ? tag : null;
 }
 
-export function getNativeParameterTargetField(
+export function getNativeQuestionParameterTargetField(
   question: Question,
   target: ParameterTarget,
 ) {
