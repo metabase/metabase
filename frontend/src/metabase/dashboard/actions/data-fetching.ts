@@ -733,7 +733,7 @@ export const fetchDashboard = createAsyncThunk(
       }
 
       if (result.param_fields) {
-        await dispatch(addFields(result.param_fields));
+        await dispatch(addFields(Object.values(result.param_fields).flat()));
       }
 
       const lastUsedParametersValues = result["last_used_param_values"] ?? {};

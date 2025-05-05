@@ -657,6 +657,7 @@
               (comparisons root))
        (fill-related max-related (get related-selectors (-> root :entity mi/model)))))
 
+;; TODO should return a map Parameter ID -> Fields
 (defn- filter-referenced-fields
   "Return a map of fields referenced in filter clause."
   [root filter-clause]

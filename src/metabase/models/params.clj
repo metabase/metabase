@@ -166,7 +166,7 @@
   "Get the Fields (as a map of Parameter ID -> Fields) that should be returned for hydrated `:param_fields` for a Card or
   Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
-  [param-id->field-ids :- [:map-of ms/NonBlankString [:sequential ms/PositiveInt]]]
+  [param-id->field-ids :- [:map-of ms/NonBlankString [:set ms/PositiveInt]]]
   (let [field-ids (set (mapcat second param-id->field-ids))
         field-id->field (when (seq field-ids)
                           (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
@@ -249,7 +249,7 @@
                               (m/find-first #(= field-name (:name %)))
                               :id))]
       (-> ctx
-          (update :param-id->field-ids #(merge {param-id []} %))
+          (update :param-id->field-ids #(merge {param-id #{}} %))
           (update-in [:param-id->field-ids param-id] conj field-id))
       ctx)))
 
@@ -263,7 +263,7 @@
 (def empty-field-id-context
   "Context for effective field id computation. See the [[field-id-into-context-rf]]'s docstring."
   {:card-id->filterable-columns {}
-   :param-id->field-ids         {}})
+   :param-id->field-ids         #{}})
 
 (mu/defn- field-id-into-context-rf
   "Reducing function that generates _field id_ corresponding to `:parameter` of `param-dashcard-info` if possible,
@@ -299,7 +299,7 @@
                            ;; have been performed using model metadata.
                            (:id (qp.util/field->field-info param-target-field (:result_metadata card))))]
          (-> ctx
-             (update :param-id->field-ids #(merge {param-id []} %))
+             (update :param-id->field-ids #(merge {param-id #{}} %))
              (update-in [:param-id->field-ids param-id] conj field-id))
          ;; In case the card doesn't have the same result_metadata columns as filterable columns (a question that
          ;; aggregates a native query model with a field that was mapped to a db field), we need to load metadata in
@@ -308,7 +308,7 @@
              (ensure-filterable-columns-for-card card)
              (field-id-from-dashcards-filterable-columns param-dashcard-info)))))))
 
-(mu/defn dashcards->param-field-ids* :- [:map-of ms/NonBlankString [:sequential ms/PositiveInt]]
+(mu/defn dashcards->param-field-ids* :- [:map-of ms/NonBlankString [:set ms/PositiveInt]]
   "Return map of parameter ids to mapped field ids."
   [dashcards]
   (letfn [(dashcard->param-dashcard-info
@@ -395,4 +395,4 @@
 (defmethod param-fields :model/Card [card]
   (let [field-ids (card->template-tag-field-ids card)]
     ;; TODO this should use real parameter IDs
-    (param-field-ids->fields {"test" (into [] field-ids)})))
+    (param-field-ids->fields {"test" fields})))
