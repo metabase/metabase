@@ -220,7 +220,9 @@
 (defn filterable-columns-for-query
   "Get filterable columns for query."
   [database-id card stage-number]
+  ;; TODO for sure we need to re-use metadata providers per database-id
   (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider database-id)
+        ;; TODO explain it better - models and metrics are always "wrapped" in dashboards
         query (if (= :question (:type card))
                 (lib/query metadata-provider (:dataset_query card))
                 (->> (lib.metadata/card metadata-provider (:id card))
@@ -241,6 +243,7 @@
     (if-not (and (not-empty dataset-query) (pos-int? database-id))
       ctx
       (-> ctx
+          ;; TODO this duplicated
           (update :card-id->filterable-columns #(merge {card-id {}} %))
           (assoc-in [:card-id->filterable-columns card-id stage-number]
                     (filterable-columns-for-query database-id card stage-number))))))
@@ -256,6 +259,8 @@
         [_ dimension]      (->> (mbql.normalize/normalize-tokens param-target :ignore-path)
                                 (mbql.u/check-clause :dimension))]
     (if-some [field-id (lib.util.match/match-one dimension
+                         ;; TODO it's basically a workaround for ignoring non-dimension parameter targets such as SQL variables
+                         ;; TODO code is misleading; let's check for :dimension and drop the match call here
                          [:field (field-name :guard string?) _]
                          (->> filterable-columns
                               (lib/find-matching-column (lib/->pMBQL dimension))
