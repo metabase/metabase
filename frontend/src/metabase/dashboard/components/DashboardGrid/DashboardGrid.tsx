@@ -292,10 +292,10 @@ export const DashboardGrid = forwardRef<
   const visibleCards = useMemo(() => {
     return getVisibleCards(
       dashboard.dashcards,
-      visibleCardIds, // This will now use the correctly updated visibleCardIds
+      visibleCardIds,
       isEditing,
       selectedTabId,
-    );
+    ) as DashboardCard[];
   }, [dashboard.dashcards, isEditing, selectedTabId, visibleCardIds]);
 
   // --- initialCardSizes Effect ---
@@ -394,8 +394,9 @@ export const DashboardGrid = forwardRef<
 
   const rowHeight = useMemo(() => {
     const hasScroll =
+      contentViewportElement !== null &&
       contentViewportElement?.clientHeight <
-      contentViewportElement?.scrollHeight;
+        contentViewportElement?.scrollHeight;
 
     const aspectHeight = width / GRID_WIDTH / GRID_ASPECT_RATIO;
     const actualHeight = Math.max(aspectHeight, MIN_ROW_HEIGHT);
@@ -403,11 +404,7 @@ export const DashboardGrid = forwardRef<
     // prevent infinite re-rendering when the scroll bar appears/disappears
     // https://github.com/metabase/metabase/issues/17229
     return hasScroll ? Math.ceil(actualHeight) : Math.floor(actualHeight);
-  }, [
-    contentViewportElement?.clientHeight,
-    contentViewportElement?.scrollHeight,
-    width,
-  ]);
+  }, [contentViewportElement, width]);
 
   // we need to track whether or not we're dragging so we can disable pointer events on action buttons :-/
   const onDrag = () => {
