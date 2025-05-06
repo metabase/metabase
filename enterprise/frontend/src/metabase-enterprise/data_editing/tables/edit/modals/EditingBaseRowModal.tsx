@@ -24,7 +24,7 @@ import type {
   Table,
 } from "metabase-types/api";
 
-import type { UpdatedRowCellsHandlerParams } from "../../types";
+import type { UpdatedRowHandlerParams } from "../../types";
 import { EditingBodyCellConditional } from "../inputs";
 import type { EditableTableColumnConfig } from "../use-editable-column-config";
 
@@ -38,7 +38,7 @@ interface EditingBaseRowModalProps {
   datasetTable?: Table;
   modalState: TableEditingModalState;
   onClose: () => void;
-  onEdit: (data: UpdatedRowCellsHandlerParams) => Promise<boolean>;
+  onEdit: (data: UpdatedRowHandlerParams) => Promise<boolean>;
   onRowCreate: (data: Record<string, RowValue>) => Promise<boolean>;
   onRowDelete: (rowIndex: number) => Promise<boolean>;
   currentRowData?: RowValues;

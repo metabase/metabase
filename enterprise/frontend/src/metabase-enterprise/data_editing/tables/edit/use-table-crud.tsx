@@ -1,18 +1,11 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
 import {
   useDeleteTableRowsMutation,
   useInsertTableRowsMutation,
   useUpdateTableRowsMutation,
 } from "metabase-enterprise/api";
-import type {
-  TableEditingScope,
-  UpdatedRowCellsHandlerParams,
-} from "metabase-enterprise/data_editing/tables/types";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ConcreteTableId,
@@ -21,7 +14,16 @@ import type {
   RowValue,
 } from "metabase-types/api";
 
+import type {
+  RowPkValue,
+  TableEditingScope,
+  UpdateCellValueHandlerParams,
+  UpdatedRowHandlerParams,
+} from "../types";
+
+import { useTableCrudOptimisticUpdate } from "./use-table-crud-optimistic-update";
 import type { TableEditingStateUpdateStrategy } from "./use-table-state-update-strategy";
+import { getRowPkKeyValue } from "./utils";
 
 export const useTableCRUD = ({
   tableId,
@@ -34,7 +36,11 @@ export const useTableCRUD = ({
   datasetData: DatasetData | null | undefined;
   stateUpdateStrategy: TableEditingStateUpdateStrategy;
 }) => {
-  const dispatch = useDispatch();
+  const {
+    cellsWithFailedUpdatesMap,
+    handleCellValueUpdateError,
+    handleGenericUpdateError,
+  } = useTableCrudOptimisticUpdate();
 
   const [deleteTableRows] = useDeleteTableRowsMutation();
   const [updateTableRows] = useUpdateTableRowsMutation();
@@ -57,26 +63,13 @@ export const useTableCRUD = ({
     );
   }, [tableMetadata]);
 
-  const displayErrorIfExists = useCallback(
-    (error: any) => {
-      if (error) {
-        dispatch(
-          addUndo({
-            icon: "warning",
-            toastColor: "error",
-            message: error?.data?.errors?.[0].error ?? t`An error occurred`,
-          }),
-        );
-      }
-    },
-    [dispatch],
-  );
-
   const handleCellValueUpdate = useCallback(
     async ({
       updatedData,
       rowIndex,
-    }: UpdatedRowCellsHandlerParams): Promise<boolean> => {
+      columnName,
+    }: UpdateCellValueHandlerParams): Promise<boolean> => {
+      // mostly the same as "handleRowUpdate", but has optimistic update and special error handling
       if (!datasetData) {
         console.warn(
           "Failed to update table data - no data is loaded for a table",
@@ -84,16 +77,67 @@ export const useTableCRUD = ({
         return false;
       }
 
-      const columns = datasetData.cols;
-      const rowData = datasetData.rows[rowIndex];
-
-      const pkColumnIndex = columns.findIndex(isPK);
-      const pkColumn = columns[pkColumnIndex];
-      const rowPkValue = rowData[pkColumnIndex];
-
+      const pkRecord = getRowPkKeyValue(datasetData, rowIndex);
       const updatedRowWithPk = {
         ...updatedData,
-        [pkColumn.name]: rowPkValue,
+        ...pkRecord,
+      };
+
+      const rowPkValue = Object.values(pkRecord)[0] as RowPkValue;
+
+      const patchResult = stateUpdateStrategy.onRowsUpdated([updatedRowWithPk]);
+
+      try {
+        const response = await updateTableRows({
+          tableId: tableId,
+          rows: [updatedRowWithPk],
+        });
+
+        if (response.error) {
+          handleCellValueUpdateError(response.error, {
+            columnName,
+            rowPkValue,
+            patchResult: patchResult || undefined,
+          });
+        }
+
+        if (response.data?.updated) {
+          stateUpdateStrategy.onRowsUpdated(response.data.updated);
+        }
+
+        return !response.error;
+      } catch (e) {
+        handleCellValueUpdateError(e, {
+          columnName,
+          rowPkValue,
+          patchResult: patchResult || undefined,
+        });
+
+        return false;
+      }
+    },
+    [
+      datasetData,
+      handleCellValueUpdateError,
+      stateUpdateStrategy,
+      tableId,
+      updateTableRows,
+    ],
+  );
+
+  const handleRowUpdate = useCallback(
+    async ({ updatedData, rowIndex }: UpdatedRowHandlerParams) => {
+      if (!datasetData) {
+        console.warn(
+          "Failed to update table data - no data is loaded for a table",
+        );
+        return false;
+      }
+
+      const pkRecord = getRowPkKeyValue(datasetData, rowIndex);
+      const updatedRowWithPk = {
+        ...updatedData,
+        ...pkRecord,
       };
 
       const response = await updateTableRows({
@@ -102,8 +146,11 @@ export const useTableCRUD = ({
         scope,
       });
 
-      stateUpdateStrategy.onRowsUpdated(response.data?.updated);
-      displayErrorIfExists(response.error);
+      if (!response.error && response.data) {
+        stateUpdateStrategy.onRowsUpdated(response.data.updated);
+      } else {
+        handleGenericUpdateError(response.error);
+      }
 
       return !response.error;
     },
@@ -112,7 +159,7 @@ export const useTableCRUD = ({
       updateTableRows,
       tableId,
       scope,
-      displayErrorIfExists,
+      handleGenericUpdateError,
       stateUpdateStrategy,
     ],
   );
@@ -125,9 +172,10 @@ export const useTableCRUD = ({
         scope,
       });
 
-      displayErrorIfExists(response.error);
-      if (!response.error) {
-        stateUpdateStrategy.onRowsCreated(response.data?.["created-rows"]);
+      if (!response.error && response.data) {
+        stateUpdateStrategy.onRowsCreated(response.data["created-rows"]);
+      } else {
+        handleGenericUpdateError(response.error);
       }
 
       return !response.error;
@@ -135,14 +183,14 @@ export const useTableCRUD = ({
     [
       insertTableRows,
       tableId,
+      handleGenericUpdateError,
       scope,
-      displayErrorIfExists,
       stateUpdateStrategy,
     ],
   );
 
-  const handleExpandedRowDelete = useCallback(
-    async (rowIndex: number): Promise<boolean> => {
+  const handleRowDelete = useCallback(
+    async (rowIndex: number) => {
       if (!datasetData) {
         console.warn(
           "Failed to update table data - no data is loaded for a table",
@@ -168,7 +216,9 @@ export const useTableCRUD = ({
         stateUpdateStrategy.onRowsDeleted(rows);
       }
 
-      displayErrorIfExists(response.error);
+      if (response.error) {
+        handleGenericUpdateError(response.error);
+      }
 
       return !response.error;
     },
@@ -177,17 +227,19 @@ export const useTableCRUD = ({
       deleteTableRows,
       tableId,
       scope,
-      displayErrorIfExists,
       stateUpdateStrategy,
+      handleGenericUpdateError,
     ],
   );
 
   return {
     isInserting,
     tableFieldMetadataMap,
+    cellsWithFailedUpdatesMap,
 
-    handleRowCreate,
     handleCellValueUpdate,
-    handleExpandedRowDelete,
+    handleRowCreate,
+    handleRowUpdate,
+    handleRowDelete,
   };
 };

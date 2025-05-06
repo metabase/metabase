@@ -11,6 +11,7 @@ import {
 import { formatValue } from "metabase/lib/formatting/value";
 import { Box, Icon } from "metabase/ui";
 import type { OrderByDirection } from "metabase-lib";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   DatasetData,
@@ -20,22 +21,24 @@ import type {
 } from "metabase-types/api";
 
 import { canEditField } from "../../helpers";
-import type { UpdatedRowCellsHandlerParams } from "../types";
+import type { RowPkValue, UpdateCellValueHandlerParams } from "../types";
 
 import S from "./EditTableData.module.css";
 import { EditingBodyCellWrapper } from "./EditingBodyCell";
 import type { EditableTableColumnConfig } from "./use-editable-column-config";
 import { useTableEditing } from "./use-table-editing";
+import { getCellUniqKey } from "./utils";
 
 type EditTableDataGridProps = {
   data: DatasetData;
   fieldMetadataMap: Record<FieldWithMetadata["name"], FieldWithMetadata>;
-  onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
+  onCellValueUpdate: (params: UpdateCellValueHandlerParams) => void;
   onRowExpandClick: (rowIndex: number) => void;
   columnsConfig?: EditableTableColumnConfig;
   getColumnSortDirection?: (
     column: DatasetColumn,
   ) => OrderByDirection | undefined;
+  cellsWithFailedUpdatesMap?: Record<RowPkValue, true>;
 };
 
 export const EditTableDataGrid = ({
@@ -45,6 +48,7 @@ export const EditTableDataGrid = ({
   onRowExpandClick,
   columnsConfig,
   getColumnSortDirection,
+  cellsWithFailedUpdatesMap,
 }: EditTableDataGridProps) => {
   const { cols, rows } = data;
 
@@ -65,6 +69,8 @@ export const EditTableDataGrid = ({
   const columnSizingMap = useMemo(() => ({}), []);
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
+    const pkColumnIndex = cols.findIndex(isPK);
+
     return cols.map((column, columnIndex) => {
       const isEditableColumn =
         !columnsConfig || !columnsConfig.isColumnReadonly(column.name);
@@ -103,6 +109,18 @@ export const EditTableDataGrid = ({
           />
         ),
         getIsCellEditing: (cellId: string) => editingCellId === cellId,
+        getCellClassNameByCellId: (cellContext) => {
+          const rowIndex = cellContext.row.index;
+          const columnName = cellContext.column.id;
+          const rowData = rows[rowIndex];
+          const rowPkValue = rowData[pkColumnIndex] as RowPkValue;
+
+          const cellUniqKey = getCellUniqKey(rowPkValue, columnName);
+
+          return cellsWithFailedUpdatesMap?.[cellUniqKey]
+            ? S.cellWithUpdateFail
+            : undefined;
+        },
       };
 
       if (!isEditableColumn) {
@@ -113,12 +131,14 @@ export const EditTableDataGrid = ({
     });
   }, [
     cols,
+    columnsConfig,
     getColumnSortDirection,
     fieldMetadataMap,
     onCellValueUpdate,
     onCellEditCancel,
     editingCellId,
-    columnsConfig,
+    rows,
+    cellsWithFailedUpdatesMap,
   ]);
 
   const rowId: RowIdColumnOptions = useMemo(
