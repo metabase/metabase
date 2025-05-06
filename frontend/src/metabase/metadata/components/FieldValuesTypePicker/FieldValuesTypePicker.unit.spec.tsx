@@ -8,7 +8,7 @@ import { FieldValuesTypePicker } from "./FieldValuesTypePicker";
 
 interface SetupOpts {
   value?: FieldValuesType;
-  onChange?: jest.Mock;
+  onChange?: (value: FieldValuesType) => void;
 }
 
 const setup = ({ value = "list", onChange = jest.fn() }: SetupOpts = {}) => {
