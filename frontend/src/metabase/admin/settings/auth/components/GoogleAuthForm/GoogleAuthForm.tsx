@@ -1,34 +1,40 @@
 import { useMemo } from "react";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
-import { useDocsUrl } from "metabase/common/hooks";
+import {
+  useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
+  useUpdateGoogleAuthMutation,
+} from "metabase/api";
+import {
+  useDocsUrl,
+  useHasTokenFeature,
+  useSetting,
+} from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import FormInput from "metabase/core/components/FormInput";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import { FormProvider } from "metabase/forms";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+} from "metabase/forms";
+import { Box, Stack, Text, Title } from "metabase/ui";
 import type { SettingDefinition, Settings } from "metabase-types/api";
 
 import { GOOGLE_SCHEMA } from "../../constants";
-
-import {
-  GoogleForm,
-  GoogleFormCaption,
-  GoogleFormHeader,
-} from "./GoogleAuthForm.styled";
 
 const ENABLED_KEY = "google-auth-enabled";
 const CLIENT_ID_KEY = "google-auth-client-id";
 const DOMAIN_KEY = "google-auth-auto-create-accounts-domain";
 
-const BREADCRUMBS = [
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  [t`Authentication`, "/admin/settings/authentication"],
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  [t`Google Sign-In`],
-];
+type GoogleAuthSettings = Pick<
+  Settings,
+  | "google-auth-enabled"
+  | "google-auth-client-id"
+  | "google-auth-auto-create-accounts-domain"
+>;
 
 export interface GoogleAuthFormProps {
   elements?: SettingDefinition[];
@@ -38,16 +44,10 @@ export interface GoogleAuthFormProps {
   onSubmit: (settingValues: Partial<Settings>) => void;
 }
 
-const GoogleAuthForm = ({
-  elements = [],
-  settingValues = {},
-  isEnabled,
-  isSsoEnabled,
-  onSubmit,
-}: GoogleAuthFormProps): JSX.Element => {
-  const settings = useMemo(() => {
-    return _.indexBy(elements, "key");
-  }, [elements]);
+export const GoogleAuthForm = (): JSX.Element => {
+  const { data: settingValues } = useGetSettingsQuery();
+  const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
+  const [updateGoogleAuthSettings] = useUpdateGoogleAuthMutation();
 
   const initialValues = useMemo(() => {
     const values = GOOGLE_SCHEMA.cast(settingValues, { stripUnknown: true });
@@ -58,67 +58,86 @@ const GoogleAuthForm = ({
     anchor: "enabling-google-sign-in",
   });
 
+  const onSubmit = (values: GoogleAuthSettings) => {
+    return updateGoogleAuthSettings(values).unwrap();
+  };
+
+  const hasTokenFeature = useHasTokenFeature("sso_google");
+  const isGoogleAuthEnabled = useSetting("google-auth-enabled");
+
   return (
     <FormProvider
       initialValues={initialValues}
       enableReinitialize
       validationSchema={GOOGLE_SCHEMA}
-      validationContext={settings}
+      validationContext={settingValues}
       onSubmit={onSubmit}
     >
       {({ dirty }) => (
-        <GoogleForm disabled={!dirty}>
-          <Breadcrumbs crumbs={BREADCRUMBS} />
-          <GoogleFormHeader>{t`Sign in with Google`}</GoogleFormHeader>
-          <GoogleFormCaption>
-            {t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`}
-          </GoogleFormCaption>
-          <GoogleFormCaption>
-            {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${(
-              <ExternalLink key="link" href={docsUrl}>
-                {t`here`}
-              </ExternalLink>
-            )}.`}
-          </GoogleFormCaption>
-          <FormInput
-            name={CLIENT_ID_KEY}
-            title={t`Client ID`}
-            placeholder={t`{your-client-id}.apps.googleusercontent.com`}
-            {...getFormFieldProps(settings[CLIENT_ID_KEY])}
+        <Form disabled={!dirty}>
+          <Breadcrumbs
+            crumbs={[
+              [t`Authentication`, "/admin/settings/authentication"],
+              [t`Google Sign-In`],
+            ]}
           />
-          <FormInput
-            name={DOMAIN_KEY}
-            title={t`Domain`}
-            description={
-              isSsoEnabled
-                ? t`Allow users to sign up on their own if their Google account email address is from one of the domains you specify here:`
-                : t`Allow users to sign up on their own if their Google account email address is from:`
-            }
-            placeholder={
-              isSsoEnabled
-                ? "mycompany.com, example.com.br, otherdomain.co.uk"
-                : "mycompany.com"
-            }
-            nullable
-            {...getFormFieldProps(settings[DOMAIN_KEY])}
-          />
-          <FormSubmitButton
-            title={isEnabled ? t`Save changes` : t`Save and enable`}
-            primary
-            disabled={!dirty}
-          />
-          <FormErrorMessage />
-        </GoogleForm>
+          <Stack gap="md" maw="32.5rem">
+            <Title order={2} mt="lg">{t`Sign in with Google`}</Title>
+            <Text c="text-medium">
+              {t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`}
+            </Text>
+            <Text c="text-medium">
+              {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${(
+                <ExternalLink key="link" href={docsUrl}>
+                  {t`here`}
+                </ExternalLink>
+              )}.`}
+            </Text>
+            <FormTextInput
+              name={CLIENT_ID_KEY}
+              label={t`Client ID`}
+              placeholder={t`{your-client-id}.apps.googleusercontent.com`}
+              {...getEnvSettingProps(settingDetails?.[CLIENT_ID_KEY])}
+            />
+            <FormTextInput
+              name={DOMAIN_KEY}
+              label={t`Domain`}
+              description={
+                hasTokenFeature
+                  ? t`Allow users to sign up on their own if their Google account email address is from one of the domains you specify here:`
+                  : t`Allow users to sign up on their own if their Google account email address is from:`
+              }
+              placeholder={
+                hasTokenFeature
+                  ? "mycompany.com, example.com.br, otherdomain.co.uk"
+                  : "mycompany.com"
+              }
+              nullable
+              {...getEnvSettingProps(settingDetails?.[DOMAIN_KEY])}
+            />
+            <Box>
+              <FormSubmitButton
+                label={
+                  isGoogleAuthEnabled ? t`Save changes` : t`Save and enable`
+                }
+                variant="filled"
+                disabled={!dirty}
+              />
+            </Box>
+            <FormErrorMessage />
+          </Stack>
+        </Form>
       )}
     </FormProvider>
   );
 };
 
-const getFormFieldProps = (setting?: SettingDefinition) => {
+const getEnvSettingProps = (setting?: SettingDefinition) => {
   if (setting?.is_env_setting) {
-    return { placeholder: t`Using ${setting.env_name}`, readOnly: true };
+    return {
+      description: t`Using ${setting.env_name}`,
+      readOnly: true,
+    };
   }
+  return {};
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default GoogleAuthForm;
