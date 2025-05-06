@@ -40,13 +40,13 @@
 (def block-text-length-limit "Section block character limit" 3000)
 (def ^:private attachment-text-length-limit                  2000)
 
-(defn- text->markdown-block
+(defn- text->markdown-section
   [text]
   (let [mrkdwn (markdown/process-markdown text :slack)]
     (when (not (str/blank? mrkdwn))
-      {:blocks [{:type "section"
-                 :text {:type "mrkdwn"
-                        :text (truncate mrkdwn block-text-length-limit)}}]})))
+      [{:type "section"
+        :text {:type "mrkdwn"
+               :text (truncate mrkdwn block-text-length-limit)}}])))
 
 (defn- mkdwn-link-text [url label]
   (if url
@@ -99,10 +99,10 @@
               :alt_text   title}])))
 
       :text
-      (-> part :text text->markdown-block :blocks)
+      (text->markdown-section (:text part))
 
       :tab-title
-      (-> part :text (format "# %s") text->markdown-block :blocks))))
+      (text->markdown-section (format "# %s" (:text part))))))
 
 (def ^:private SlackMessage
   [:map {:closed true}
@@ -183,7 +183,7 @@
   (let [event-name (:event_name context)
         template   (or template
                        (channel.template/default-template :notification/system-event context channel-type))
-        blocks     (:blocks (text->markdown-block (channel.template/render-template template notification-payload)))]
+        blocks     (text->markdown-section (channel.template/render-template template notification-payload))]
     (assert template (str "No template found for event " event-name))
     (for [channel (map notification-recipient->channel recipients)]
       {:channel channel
