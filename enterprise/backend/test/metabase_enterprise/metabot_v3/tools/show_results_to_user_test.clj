@@ -3,7 +3,7 @@
    [buddy.core.codecs :as codecs]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.show-results-to-user :as metabot-v3.tools.show-results-to-user]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
