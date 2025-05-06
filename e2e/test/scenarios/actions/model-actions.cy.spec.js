@@ -236,8 +236,7 @@ describe(
 
     it("should display parameters for variable template tags only", () => {
       cy.visit("/");
-      cy.findByTestId("app-bar").findByText("New").click();
-      H.popover().findByText("Action").click();
+      H.startNewAction();
 
       H.fillActionQuery("{{#1-orders-model}}");
       cy.findByLabelText("#1-orders-model").should("not.exist");

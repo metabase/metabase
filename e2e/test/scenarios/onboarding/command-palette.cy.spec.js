@@ -518,7 +518,8 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("Escape");
     // Legacy Modals
 
-    H.newButton("Action").click();
+    H.startNewAction();
+
     // Remove focus
     H.modal()
       .findByText(/Build custom forms/)

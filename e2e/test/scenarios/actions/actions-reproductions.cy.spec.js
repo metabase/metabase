@@ -479,12 +479,7 @@ describe("issue 32750", () => {
   });
 
   it("modal do not dissapear on viewport change", () => {
-    cy.findByRole("button", { name: "New" }).click();
-    cy.findByRole("dialog").within(() => {
-      cy.findByText("Action").click();
-    });
-
-    cy.findByTestId("action-creator").should("be.visible");
+    H.startNewAction();
     cy.viewport(320, 800);
     cy.findByTestId("action-creator").should("be.visible");
     cy.viewport(1440, 800);
