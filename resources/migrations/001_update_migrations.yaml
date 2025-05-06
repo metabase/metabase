@@ -11188,6 +11188,7 @@ databaseChangeLog:
       rollback:
         - update:
             tableName: metabase_field
+            # set columns to NULL
             columns:
               - column:
                   name: coercion_strategy
