@@ -42,8 +42,8 @@ export const UserActivationModal = ({
         message={t`${user.common_name} won't be able to log in anymore.`}
         confirmButtonText={t`Deactivate`}
         onClose={onClose}
-        onConfirm={() => {
-          deactivateUser(userId);
+        onConfirm={async () => {
+          await deactivateUser(userId);
           onClose();
         }}
       />
@@ -57,8 +57,8 @@ export const UserActivationModal = ({
       message={t`They'll be able to log in again, and they'll be placed back into the groups they were in before their account was deactivated.`}
       confirmButtonText={t`Reactivate`}
       onClose={onClose}
-      onConfirm={() => {
-        reactivateUser(userId);
+      onConfirm={async () => {
+        await reactivateUser(userId);
         onClose();
       }}
     />

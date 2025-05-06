@@ -63,7 +63,7 @@ export const ConfirmModal = ({
               color="danger"
               variant="filled"
               {...confirmButtonProps}
-              disabled={confirming}
+              disabled={confirmButtonProps.disabled || confirming}
               onClick={handleConfirm}
             >
               {confirmButtonText}

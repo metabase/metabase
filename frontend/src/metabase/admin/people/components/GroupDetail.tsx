@@ -15,9 +15,9 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/lib/groups";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
-import { getUser } from "metabase/selectors/user";
+import { addUndo } from "metabase/redux/undo";
 import { Box } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 
@@ -26,11 +26,15 @@ import { GroupMembersTable } from "./GroupMembersTable";
 interface GroupDetailProps {
   group: Group;
   membershipsByUser: Record<User["id"], Membership[]>;
+  currentUser: User;
 }
 
-export const GroupDetail = ({ membershipsByUser, group }: GroupDetailProps) => {
+export const GroupDetail = ({
+  membershipsByUser,
+  group,
+  currentUser,
+}: GroupDetailProps) => {
   const dispatch = useDispatch();
-  const currentUser = useSelector(getUser);
 
   const [createMembership] = useCreateMembershipMutation();
   const [updateMembership] = useUpdateMembershipMutation();
@@ -58,10 +62,6 @@ export const GroupDetail = ({ membershipsByUser, group }: GroupDetailProps) => {
   };
 
   const handleChange = async (membership: Member) => {
-    if (!currentUser) {
-      throw new Error("currentUser is not defined");
-    }
-
     const confirmation = PLUGIN_GROUP_MANAGERS.getChangeMembershipConfirmation(
       currentUser,
       membership,
@@ -79,15 +79,14 @@ export const GroupDetail = ({ membershipsByUser, group }: GroupDetailProps) => {
           ),
       });
     } else {
-      return await updateMembership(membership).unwrap();
+      const { error } = await updateMembership(membership);
+      if (error) {
+        dispatch(addUndo({ message: t`Failed to update user` }));
+      }
     }
   };
 
   const handleRemove = async (membership: Membership) => {
-    if (!currentUser) {
-      throw new Error("currentUser is not defined");
-    }
-
     const confirmation = PLUGIN_GROUP_MANAGERS.getRemoveMembershipConfirmation(
       currentUser,
       membershipsByUser[currentUser.id],
@@ -106,7 +105,10 @@ export const GroupDetail = ({ membershipsByUser, group }: GroupDetailProps) => {
           ),
       });
     } else {
-      return await deleteMembership(membership).unwrap();
+      const { error } = await deleteMembership(membership);
+      if (error) {
+        dispatch(addUndo({ message: t`Failed to remove user from group` }));
+      }
     }
   };
 
