@@ -246,7 +246,7 @@
     (if-some [field-id (lib.util.match/match-one param-target
                          [:field (field-name :guard string?) _]
                          (->> filterable-columns
-                              (m/find-first #(= field-name (:name %)))
+                              (m/find-first #(= field-name ((some-fn :lib/desired-column-alias :name) %)))
                               :id))]
       (-> ctx
           (update :param-id->field-ids #(merge {param-id #{}} %))
