@@ -256,16 +256,19 @@
 
   server.protocols/Respond
   (respond [_this context]
+    (println "StreamingResponse: respond")
     (respond context f options donechan))
 
   ;; sync responses only (in some cases?)
   compojure.response/Renderable
   (render [this request]
+    (println "StreamingResponse: render")
     (render this (should-gzip-response? request)))
 
   ;; async responses only
   compojure.response/Sendable
   (send* [this request respond* _raise]
+    (println "StreamingResponse: send*")
     (respond* (compojure.response/render this request))))
 
 (defn- render [^StreamingResponse streaming-response gzip?]

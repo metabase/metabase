@@ -7,6 +7,8 @@ import { METABOT_TAG, useMetabotAgentMutation } from "metabase-enterprise/api";
 import {
   dismissUserMessage,
   getIsProcessing,
+  getLastHistoryValue,
+  getMetabotState,
   getMetabotVisisble,
   getUserMessages,
   setVisible,
@@ -25,9 +27,24 @@ export const useMetabotAgent = () => {
     typeof getIsProcessing
   >;
 
+  const metabotState = useSelector(getMetabotState as any) as ReturnType<
+    typeof getMetabotState
+  >;
+
+  const lastHistoryValue = useSelector(
+    getLastHistoryValue as any,
+  ) as ReturnType<typeof getLastHistoryValue>;
+
   const [, sendMessageReq] = useMetabotAgentMutation({
     fixedCacheKey: METABOT_TAG,
   });
+
+  console.log("METABOT FROM SELECTORS", metabotState, lastHistoryValue);
+  console.log(
+    "METABOT FROM CACHE",
+    sendMessageReq.data?.state,
+    sendMessageReq.data?.history,
+  );
 
   return {
     visible: useSelector(getMetabotVisisble as any) as ReturnType<
