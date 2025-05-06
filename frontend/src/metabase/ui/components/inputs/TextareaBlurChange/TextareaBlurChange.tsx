@@ -1,7 +1,6 @@
 import type { TextareaProps } from "@mantine/core";
 import type { ChangeEvent, FocusEvent } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import _ from "underscore";
 
 import { useUnmountLayout } from "metabase/hooks/use-unmount-layout";
 
@@ -30,7 +29,7 @@ export function TextareaBlurChange<T extends TextareaProps = TextareaProps>({
   onBlur,
   onBlurChange,
   onChange,
-  ...restProps
+  ...props
 }: TextareaBlurChangeProps<T>) {
   const [internalValue, setInternalValue] = useState<T["value"]>();
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -72,11 +71,9 @@ export function TextareaBlurChange<T extends TextareaProps = TextareaProps>({
     }
   });
 
-  const textareaProps = _.omit(restProps, "onBlur", "onChange", "ref");
-
   return (
     <Textarea
-      {...textareaProps}
+      {...props}
       ref={ref}
       value={internalValue}
       onBlur={handleBlur}

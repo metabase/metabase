@@ -2,7 +2,6 @@ import type { TextInputProps } from "@mantine/core";
 import { TextInput } from "@mantine/core";
 import type { ChangeEvent, FocusEvent } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import _ from "underscore";
 
 import { useUnmountLayout } from "metabase/hooks/use-unmount-layout";
 
@@ -29,7 +28,7 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
   onBlur,
   onBlurChange,
   onChange,
-  ...restProps
+  ...props
 }: TextInputBlurChangeProps<T>) {
   const [internalValue, setInternalValue] = useState<T["value"]>();
   const ref = useRef<HTMLInputElement>(null);
@@ -71,11 +70,9 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
     }
   });
 
-  const inputProps = _.omit(restProps, "onBlur", "onChange", "ref");
-
   return (
     <TextInput
-      {...inputProps}
+      {...props}
       ref={ref}
       value={internalValue}
       onBlur={handleBlur}
