@@ -250,10 +250,22 @@ export type PreviewNotificationTemplateResponse = {
 
 // Initial schema for conditional expression.
 // Will be updated later.
-type Operator = "=" | ">" | "<" | ">=" | "<=" | "!=" | "and" | "or";
-type Path = Array<string>;
-type Value = string | number | boolean;
+export type ComparisonOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
+export type LogicalOperator = "and" | "or";
+export type FunctionName =
+  | ComparisonOperator
+  | LogicalOperator
+  | "max"
+  | "min"
+  | "count"
+  | "context";
+export type Path = Array<string>;
+export type Literal = string | number | boolean | null;
 
-type Expression = [Operator, Path | Expression, Value | Expression];
+export type Expression = [
+  FunctionName,
+  Path | Expression,
+  Literal | Expression | Expression[],
+];
 
-type Condition = Expression;
+export type Condition = Expression;
