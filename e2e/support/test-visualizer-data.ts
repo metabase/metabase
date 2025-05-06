@@ -102,6 +102,21 @@ export const PRODUCTS_COUNT_BY_CREATED_AT: StructuredQuestionDetailsWithName = {
   },
 };
 
+export const PRODUCTS_AVERAGE_BY_CREATED_AT: StructuredQuestionDetailsWithName =
+  {
+    display: "bar",
+    name: "Products average by Created At (Month)",
+    query: {
+      "source-table": PRODUCTS_ID,
+      aggregation: [["avg", ["field", PRODUCTS.PRICE, null]]],
+      breakout: [["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }]],
+    },
+    visualization_settings: {
+      "graph.dimensions": ["CREATED_AT"],
+      "graph.metrics": ["count"],
+    },
+  };
+
 export const PRODUCTS_COUNT_BY_CATEGORY: StructuredQuestionDetailsWithName = {
   display: "bar",
   name: "Products by Category",
