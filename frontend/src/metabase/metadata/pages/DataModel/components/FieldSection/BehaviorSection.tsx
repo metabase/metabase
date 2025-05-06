@@ -20,17 +20,17 @@ export const BehaviorSection = ({ field }: Props) => {
     <Stack gap="md">
       <Box>
         <SectionPill icon="filter" title={t`Behavior`} />
-
-        <FieldVisibilityPicker
-          value={field.visibility_type}
-          onChange={(visibilityType) => {
-            updateField({
-              id,
-              visibility_type: visibilityType,
-            });
-          }}
-        />
       </Box>
+
+      <FieldVisibilityPicker
+        value={field.visibility_type}
+        onChange={(visibilityType) => {
+          updateField({
+            id,
+            visibility_type: visibilityType,
+          });
+        }}
+      />
     </Stack>
   );
 };
