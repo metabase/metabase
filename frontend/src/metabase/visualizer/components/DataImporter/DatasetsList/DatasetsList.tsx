@@ -18,8 +18,6 @@ import type {
   VisualizerDataSourceId,
 } from "metabase-types/api";
 
-import { useVisualizerUi } from "../../VisualizerUiContext";
-
 import { DatasetsListItem } from "./DatasetsListItem";
 
 function shouldIncludeDashboardQuestion(
@@ -31,10 +29,16 @@ function shouldIncludeDashboardQuestion(
 
 interface DatasetsListProps {
   search: string;
+  setDataSourceCollapsed: (
+    sourceId: VisualizerDataSourceId,
+    collapsed: boolean,
+  ) => void;
 }
 
-export function DatasetsList({ search }: DatasetsListProps) {
-  const { setDataSourceExpanded } = useVisualizerUi();
+export function DatasetsList({
+  search,
+  setDataSourceCollapsed,
+}: DatasetsListProps) {
   const dashboardId = useSelector(getDashboard)?.id;
   const dispatch = useDispatch();
   const dataSources = useSelector(getDataSources);
@@ -46,17 +50,17 @@ export function DatasetsList({ search }: DatasetsListProps) {
   const handleAddDataSource = useCallback(
     (id: VisualizerDataSourceId) => {
       dispatch(addDataSource(id));
-      setDataSourceExpanded(id, true);
+      setDataSourceCollapsed(id, false);
     },
-    [dispatch, setDataSourceExpanded],
+    [dispatch, setDataSourceCollapsed],
   );
 
   const handleRemoveDataSource = useCallback(
     (source: VisualizerDataSource) => {
       dispatch(removeDataSource(source));
-      setDataSourceExpanded(source.id, false);
+      setDataSourceCollapsed(source.id, true);
     },
-    [dispatch, setDataSourceExpanded],
+    [dispatch, setDataSourceCollapsed],
   );
 
   const handleToggleDataSource = useCallback(
