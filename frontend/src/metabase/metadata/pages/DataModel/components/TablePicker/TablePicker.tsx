@@ -1,104 +1,190 @@
 import cx from "classnames";
-import { push } from "react-router-redux";
+import { type ReactNode, useState } from "react";
 
-import { useDispatch } from "metabase/lib/redux";
 import {
-  Group,
-  Icon,
-  type RenderTreeNodePayload,
-  Skeleton,
-  Tree,
-  getTreeExpandedState,
-  useTree,
-} from "metabase/ui";
-import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
-
-import { getUrl } from "../../utils";
+  skipToken,
+  useListDatabaseSchemaTablesQuery,
+  useListDatabaseSchemasQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
+import { Box, Flex, Icon } from "metabase/ui";
+import type { Database, DatabaseId, SchemaId } from "metabase-types/api";
 
 import S from "./TablePicker.module.css";
-import {
-  type NodeData,
-  type TreeNode,
-  getIconForType,
-  useTreeData,
-} from "./utils";
+import { getIconForType, hasChildren } from "./utils";
 
 export function TablePicker(props: {
   databaseId?: DatabaseId;
   schemaId?: SchemaId;
-  tableId?: TableId;
 }) {
-  const dispatch = useDispatch();
-  const { data, isError } = useTreeData(props);
+  const { databaseId, schemaId } = props;
+  const { data, isLoading, isError } = useListDatabasesQuery();
 
-  const tree = useTree({
-    initialExpandedState: getTreeExpandedState(data, [
-      JSON.stringify(props),
-      JSON.stringify({ ...props, tableId: undefined }),
-      JSON.stringify({ ...props, tableId: undefined, schemaId: undefined }),
-    ]),
-    onNodeExpand(value) {
-      const data = JSON.parse(value) as NodeData;
-      if (
-        data.databaseId !== props.databaseId &&
-        data.schemaId !== props.schemaId &&
-        data.tableId !== props.tableId
-      ) {
-        dispatch(
-          push(
-            getUrl({
-              databaseId: data.databaseId,
-              schemaId: data.schemaId,
-              tableId: data.tableId,
-              fieldId: undefined,
-            }),
-          ),
-        );
-      }
-    },
-  });
+  const [expandedDatabases, setExpandedDatabases] = useState<
+    Record<DatabaseId, boolean>
+  >(databaseId ? { [databaseId]: true } : {});
 
+  if (isLoading) {
+    return "LOADING";
+  }
   if (isError) {
-    // TODO: render proper error
-    return "ERROR";
+    throw new Error("Failed to load databases");
   }
 
-  return (
-    <Tree
-      tree={tree}
-      data={data}
-      levelOffset="md"
-      allowRangeSelection={false}
-      renderNode={renderNode}
+  const toggleDatabase = (databaseId: DatabaseId) => {
+    setExpandedDatabases((state) => ({
+      ...state,
+      [databaseId]: !state[databaseId],
+    }));
+  };
+
+  return data?.data?.map((database) => (
+    <DatabaseNode
+      key={database.id}
+      database={database}
+      expanded={expandedDatabases[database.id]}
+      onToggle={() => toggleDatabase(database.id)}
+      initialSchema={database.id === databaseId ? schemaId : undefined}
     />
+  ));
+}
+
+function DatabaseNode({
+  database,
+  expanded,
+  onToggle,
+  initialSchema,
+}: {
+  database: Database;
+  expanded?: boolean;
+  onToggle: () => void;
+  initialSchema?: SchemaId;
+}) {
+  const { data, isLoading, isError } = useListDatabaseSchemasQuery(
+    expanded
+      ? {
+          id: database.id,
+        }
+      : skipToken,
+  );
+
+  const [expandedSchemas, setExpandedSchemas] = useState<{
+    [key: SchemaId]: boolean;
+  }>(initialSchema ? { [initialSchema]: true } : {});
+
+  if (isError) {
+    throw new Error("Failed to load databases");
+  }
+
+  const onToggleSchema = (schemaId: SchemaId) => {
+    setExpandedSchemas((state) => ({ ...state, [schemaId]: !state[schemaId] }));
+  };
+
+  const singleSchema = !isLoading && data?.length === 1;
+
+  return (
+    <Node
+      type="database"
+      name={database.name}
+      expanded={expanded}
+      onToggle={onToggle}
+    >
+      {data?.map((name) => {
+        const slug = `${database.id}:${name}`;
+        return (
+          <SchemaNode
+            key={name}
+            databaseId={database.id}
+            schemaId={name}
+            expanded={singleSchema || expandedSchemas[slug]}
+            onToggle={() => onToggleSchema(slug)}
+            flatten={singleSchema}
+          />
+        );
+      })}
+    </Node>
   );
 }
 
-function renderNode({ node, expanded, elementProps }: RenderTreeNodePayload) {
-  const { type, label, width, loading } = node as TreeNode;
+function SchemaNode({
+  databaseId,
+  schemaId,
+  expanded,
+  onToggle,
+  flatten,
+}: {
+  databaseId: DatabaseId;
+  schemaId: SchemaId;
+  expanded?: boolean;
+  onToggle: () => void;
+  flatten?: boolean;
+}) {
+  const { data, isError } = useListDatabaseSchemaTablesQuery(
+    expanded
+      ? {
+          id: databaseId,
+          schema: schemaId,
+        }
+      : skipToken,
+  );
 
-  const hasChildren = type !== "table";
+  if (isError) {
+    throw new Error("Failed to load databases");
+  }
+
+  const tables = data?.map((table) => (
+    <Node key={table.id} type="table" name={table.display_name ?? table.name} />
+  ));
+
+  if (flatten) {
+    return tables;
+  }
 
   return (
-    <Group
-      {...elementProps}
-      gap="sm"
-      my="md"
-      className={cx(elementProps.className, S.node)}
-    >
-      {hasChildren && (
+    <Node type="schema" name={schemaId} expanded={expanded} onToggle={onToggle}>
+      {tables}
+    </Node>
+  );
+}
+
+function Node({
+  type,
+  name,
+  expanded,
+  onToggle,
+  children,
+}: {
+  type: "database" | "schema" | "table";
+  name: string;
+  expanded?: boolean;
+  onToggle?: () => void;
+  children?: ReactNode;
+}) {
+  return (
+    <Box my="md" className={S.node}>
+      <Flex
+        direction="row"
+        align="center"
+        gap="sm"
+        onClick={onToggle}
+        className={S.title}
+      >
+        {hasChildren(type) && (
+          <Icon
+            name="chevronright"
+            size={10}
+            className={cx(S.chevron, { [S.expanded]: expanded })}
+            color="var(--mb-color-text-light)"
+          />
+        )}
         <Icon
-          name="chevronright"
-          size={10}
-          className={cx(S.chevron, { [S.expanded]: expanded })}
-          color="var(--mb-color-text-light)"
+          name={getIconForType(type)}
+          color="var(--mb-color-text-placeholder)"
         />
-      )}
-      <Icon
-        name={getIconForType(type)}
-        color="var(--mb-color-text-placeholder)"
-      />
-      {loading ? <Skeleton height={10} width={width} /> : label}
-    </Group>
+        {name}
+      </Flex>
+
+      {expanded && <Box className={S.children}>{children}</Box>}
+    </Box>
   );
 }

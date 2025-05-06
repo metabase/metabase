@@ -10,3 +10,12 @@
     transform: rotate(90deg);
   }
 }
+
+.title {
+  cursor: pointer;
+  user-select: none;
+}
+
+.children {
+  margin-left: var(--mantine-spacing-md);
+}
