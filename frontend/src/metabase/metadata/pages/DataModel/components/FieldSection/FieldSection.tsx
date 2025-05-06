@@ -22,7 +22,7 @@ export const FieldSection = ({ databaseId, field }: Props) => {
       <Stack className={S.container} gap="xl" h="100%" pb="lg" px="xl">
         <DataSection field={field} />
         <MetadataSection databaseId={databaseId} field={field} />
-        <BehaviorSection field={field} />
+        <BehaviorSection databaseId={databaseId} field={field} />
       </Stack>
     </Stack>
   );

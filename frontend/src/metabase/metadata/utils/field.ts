@@ -61,10 +61,14 @@ export function getFieldDisplayName(
   return fieldDisplayName;
 }
 
-export function canUnfoldJson(field: Field, database: Database): boolean {
+export function canFieldUnfoldJson(field: Field, database: Database): boolean {
   return (
     isa(field.base_type, TYPE.JSON) &&
     database != null &&
     hasDatabaseFeature(database, "nested-field-columns")
   );
+}
+
+export function isFieldJsonUnfolded(field: Field, database: Database) {
+  return field.json_unfolding ?? database.details?.["json-unfolding"] ?? true;
 }

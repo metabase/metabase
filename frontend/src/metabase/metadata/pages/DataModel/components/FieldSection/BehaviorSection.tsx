@@ -1,21 +1,32 @@
 import { t } from "ttag";
 
-import { useUpdateFieldMutation } from "metabase/api";
+import { useGetDatabaseQuery, useUpdateFieldMutation } from "metabase/api";
 import {
   FieldValuesTypePicker,
   FieldVisibilityPicker,
+  UnfoldJsonPicker,
 } from "metabase/metadata/components";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import {
+  canFieldUnfoldJson,
+  getRawTableFieldId,
+  isFieldJsonUnfolded,
+} from "metabase/metadata/utils/field";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Box, Stack } from "metabase/ui";
-import type { Field } from "metabase-types/api";
+import type { DatabaseId, Field } from "metabase-types/api";
 
 import { SectionPill } from "../SectionPill";
 
 interface Props {
+  databaseId: DatabaseId;
   field: Field;
 }
 
-export const BehaviorSection = ({ field }: Props) => {
+export const BehaviorSection = ({ databaseId, field }: Props) => {
+  const { data: database } = useGetDatabaseQuery({
+    id: databaseId,
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  });
   const [updateField] = useUpdateFieldMutation();
   const id = getRawTableFieldId(field);
 
@@ -48,6 +59,20 @@ export const BehaviorSection = ({ field }: Props) => {
           });
         }}
       />
+
+      {database != null && canFieldUnfoldJson(field, database) && (
+        <UnfoldJsonPicker
+          description={t`Unfold JSON into component fields, where each JSON key becomes a column. You can turn this off if performance is slow.`}
+          label={t`Unfold JSON`}
+          value={isFieldJsonUnfolded(field, database)}
+          onChange={(jsonUnfolding) => {
+            updateField({
+              id,
+              json_unfolding: jsonUnfolding,
+            });
+          }}
+        />
+      )}
     </Stack>
   );
 };

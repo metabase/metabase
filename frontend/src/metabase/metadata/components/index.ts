@@ -12,3 +12,4 @@ export * from "./SemanticTypePicker";
 export * from "./SortableField";
 export * from "./SortableFieldList";
 export * from "./TableBreadcrumbs";
+export * from "./UnfoldJsonPicker";
