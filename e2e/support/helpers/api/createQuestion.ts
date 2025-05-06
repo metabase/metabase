@@ -165,8 +165,8 @@ export const question = (
        * })
        */
       if (wrapId) {
-        cy.wrap(body.id).as(idAlias);
         cy.wrap(body.entity_id).as(entityIdAlias);
+        cy.wrap(body.id).as(idAlias);
       }
 
       if (type === "model" || type === "metric" || enable_embedding) {

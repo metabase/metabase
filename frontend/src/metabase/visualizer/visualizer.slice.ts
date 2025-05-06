@@ -204,6 +204,18 @@ export const addDataSource = createAsyncThunk(
     // Computed settings include all settings with their default values, including derived settings
     const computedSettings =
       getVisualizerComputedSettingsForFlatSeries(getState());
+    // const computedSettings = getVisualizerComputedSettings(getState());
+
+    // When we add a new data source and we want to understand whether it can be combined with the existing data source
+    // we only need to look at the data settings such as metrics and dimensions: 'graph.dimensions' and 'graph.metrics' for cartesian charts,
+    // 'funnel.metric' and 'funnel.dimension' for funnel charts, etc. If we use full computed settings here, when saving the state
+    // we will store all settings with their default values, including derived settings.
+    const dataSettings = getColumnVizSettings(state.display);
+    const transformedSeries = getVisualizerTransformedSeries(getState());
+    const settings = {
+      ...transformedSeries[0].card.visualization_settings,
+      ..._.pick(computedSettings, dataSettings),
+    };
 
     // When we add a new data source and we want to understand whether it can be combined with the existing data source
     // we only need to look at the data settings such as metrics and dimensions: 'graph.dimensions' and 'graph.metrics' for cartesian charts,

@@ -23,12 +23,7 @@ import {
   resetVisualizer,
   setDraggedItem,
 } from "metabase/visualizer/visualizer.slice";
-import type { VisualizerVizDefinition } from "metabase-types/api";
-import type {
-  Card,
-  VisualizerDataSourceId,
-  VisualizerVizDefinition,
-} from "metabase-types/api";
+import type { Card, VisualizerVizDefinition } from "metabase-types/api";
 import type { DraggedItem } from "metabase-types/store/visualizer";
 
 import { DataImporter } from "../DataImporter";
