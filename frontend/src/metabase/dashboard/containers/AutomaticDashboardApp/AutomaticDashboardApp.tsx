@@ -223,7 +223,7 @@ const AutomaticDashboardAppInner = ({
                   autoScrollToDashcardId={undefined}
                   reportAutoScrolledToDashcard={_.noop}
                   navigateToNewCardFromDashboard={
-                    navigateToNewCardFromDashboard ?? undefined
+                    navigateToNewCardFromDashboard ?? null
                   }
                 />
               )

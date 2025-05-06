@@ -72,6 +72,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         locale={canWhitelabel ? locale : undefined}
         withFooter={true}
         getClickActionMode={undefined}
+        navigateToNewCardFromDashboard={null}
       />
     </>
   );

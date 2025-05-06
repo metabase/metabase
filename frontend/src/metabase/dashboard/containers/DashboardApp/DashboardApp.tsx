@@ -7,6 +7,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import CS from "metabase/css/core/index.css";
 import {
   addCardToDashboard,
+  navigateToNewCardFromDashboard,
   setEditingDashboard,
 } from "metabase/dashboard/actions";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
