@@ -10,6 +10,7 @@
    [metabase.models.user :as user]
    [metabase.models.user-test :as user-test]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.permissions.util :as perms-util]
    [metabase.request.core :as request]
    [metabase.test :as mt]
@@ -37,7 +38,8 @@
        :sso_source       nil
        :login_attributes nil
        :updated_at       true
-       :locale           nil})
+       :locale           nil
+       :tenant_id        false})
      :type)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

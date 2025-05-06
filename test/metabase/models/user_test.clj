@@ -14,6 +14,7 @@
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.permissions.models.permissions-test :as perms-test]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
@@ -238,12 +239,11 @@
 
 (defn- do-with-group [group-properties group-members f]
   (mt/with-temp [:model/PermissionsGroup group group-properties]
-    (doseq [member group-members]
-      (t2/insert! :model/PermissionsGroupMembership
-                  {:group_id (u/the-id group)
-                   :user_id  (if (keyword? member)
-                               (mt/user->id member)
-                               (u/the-id member))}))
+    (perms-group-membership/add-users-to-groups! (for [member group-members]
+                                                   {:user (if (keyword? member)
+                                                            (mt/user->id member)
+                                                            (u/the-id member))
+                                                    :group group}))
     (f group)))
 
 (defmacro ^:private with-groups [[group-binding group-properties members & more-groups] & body]
