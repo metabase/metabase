@@ -1,4 +1,7 @@
-import { RescanFieldButton } from "metabase/metadata/components";
+import {
+  DiscardFieldValuesButton,
+  RescanFieldButton,
+} from "metabase/metadata/components";
 import {
   getFieldDisplayName,
   getRawTableFieldId,
@@ -30,6 +33,7 @@ export const FieldSection = ({ databaseId, field }: Props) => {
 
         <Stack gap="sm" mt="xl">
           <RescanFieldButton fieldId={getRawTableFieldId(field)} />
+          <DiscardFieldValuesButton fieldId={getRawTableFieldId(field)} />
         </Stack>
       </Stack>
     </Stack>
