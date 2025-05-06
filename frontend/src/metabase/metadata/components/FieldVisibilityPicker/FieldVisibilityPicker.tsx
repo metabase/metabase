@@ -17,7 +17,7 @@ const DATA = getData();
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   value: FieldVisibilityType;
-  onChange: (visibilityType: FieldVisibilityType) => void;
+  onChange: (value: FieldVisibilityType) => void;
 }
 
 export const FieldVisibilityPicker = ({
@@ -26,12 +26,12 @@ export const FieldVisibilityPicker = ({
   onChange,
   ...props
 }: Props) => {
-  const handleChange = (visibilityType: string) => {
-    if (!isFieldVisibilityType(visibilityType)) {
+  const handleChange = (value: string) => {
+    if (!isFieldVisibilityType(value)) {
       throw new Error("Unknown 'visibilityType'. This should never happen");
     }
 
-    onChange(visibilityType);
+    onChange(value);
   };
 
   return (

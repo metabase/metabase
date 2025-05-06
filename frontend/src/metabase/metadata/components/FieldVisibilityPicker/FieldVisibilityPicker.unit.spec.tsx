@@ -1,19 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockMetadata } from "__support__/metadata";
 import { render, screen, within } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
-import { ORDERS, createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { FieldVisibilityPicker } from "./FieldVisibilityPicker";
 
 const setup = () => {
-  const metadata = createMockMetadata({
-    databases: [createSampleDatabase()],
-  });
-  const field = checkNotNull(metadata.field(ORDERS.ID));
-
-  render(<FieldVisibilityPicker field={field} onUpdateField={jest.fn()} />);
+  render(<FieldVisibilityPicker value="normal" onChange={jest.fn()} />);
 };
 
 describe("FieldVisibilityPicker", () => {
