@@ -1,6 +1,5 @@
 (ns metabase.driver.common.parameters.parse
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse-param :as parse-param]

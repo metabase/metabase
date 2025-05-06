@@ -66,7 +66,9 @@
         "mb.time_grouping"
         (substitute-time-grouping [sql args missing] param v)
 
-        [sql args (conj missing k)]))))
+        (throw (ex-info (tru "Unrecognized function: {0}" function-name)
+                        {:type    qp.error-type/invalid-query
+                         :missing missing}))))))
 
 (declare substitute*)
 
