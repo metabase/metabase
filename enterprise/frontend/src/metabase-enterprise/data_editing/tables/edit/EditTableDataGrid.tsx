@@ -10,7 +10,6 @@ import {
 } from "metabase/data-grid";
 import { formatValue } from "metabase/lib/formatting/value";
 import { Box, Icon } from "metabase/ui";
-import { getCellUniqKey } from "metabase-enterprise/data_editing/tables/edit/utils";
 import type { OrderByDirection } from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -28,6 +27,7 @@ import S from "./EditTableData.module.css";
 import { EditingBodyCellWrapper } from "./EditingBodyCell";
 import type { EditableTableColumnConfig } from "./use-editable-column-config";
 import { useTableEditing } from "./use-table-editing";
+import { getCellUniqKey } from "./utils";
 
 type EditTableDataGridProps = {
   data: DatasetData;

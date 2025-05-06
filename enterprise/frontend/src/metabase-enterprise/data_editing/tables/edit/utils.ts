@@ -2,12 +2,10 @@ import { t } from "ttag";
 
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import type { GenericErrorResponse } from "metabase/lib/errors";
-import type {
-  CellUniqKey,
-  RowPkValue,
-} from "metabase-enterprise/data_editing/tables/types";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, Filter } from "metabase-types/api";
+
+import type { CellUniqKey, RowPkValue } from "../types";
 
 export const serializeTableFilter = (filterMbql: Filter): string => {
   return utf8_to_b64url(JSON.stringify(filterMbql));
