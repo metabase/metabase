@@ -1,7 +1,6 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupContentTranslationEndpoints } from "__support__/server-mocks/content-translation";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders } from "__support__/ui";
-import { useListContentTranslationsQuery } from "metabase-enterprise/api";
 import type { TokenFeatures } from "metabase-types/api";
 import type { RetrievedDictionaryArrayRow } from "metabase-types/api/content-translation";
 import {
@@ -12,20 +11,12 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { useTranslateContent } from "./use-translate-content";
 
-jest.mock("metabase-enterprise/api", () => ({
-  useListContentTranslationsQuery: jest.fn(),
-}));
-
-const mockUseListContentTranslationsQuery =
-  useListContentTranslationsQuery as jest.Mock;
-
 interface SetupOpts {
   locale: string | undefined;
   /** An untranslated string */
   msgid: string | null | undefined;
   translations: RetrievedDictionaryArrayRow[] | undefined;
   tokenFeatures?: Partial<TokenFeatures>;
-  hasEnterprisePlugins?: boolean;
 }
 
 const sampleSpanishDictionary: RetrievedDictionaryArrayRow[] = [
@@ -37,19 +28,8 @@ const sampleSpanishDictionary: RetrievedDictionaryArrayRow[] = [
   },
 ];
 
-function setup({
-  locale,
-  msgid,
-  translations,
-  tokenFeatures = {},
-  hasEnterprisePlugins = true,
-}: SetupOpts) {
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
-  }
-  mockUseListContentTranslationsQuery.mockReturnValue({
-    data: translations ? { data: translations } : undefined,
-  });
+function setup({ locale, msgid, translations, tokenFeatures = {} }: SetupOpts) {
+  setupContentTranslationEndpoints({ dictionary: translations });
 
   const storeInitialState = createMockState({
     settings: mockSettings({
@@ -74,10 +54,6 @@ function setup({
 }
 
 describe("useTranslateContent", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   it("should return the original string when dictionary is undefined", () => {
     const { result } = setup({
       msgid: "Hello World",
@@ -116,11 +92,11 @@ describe("useTranslateContent", () => {
 
   it("should return the original string when no translation is found", () => {
     const { result } = setup({
-      msgid: "Hello World!!!",
+      msgid: "Hello? World?",
       locale: "es",
       translations: sampleSpanishDictionary,
     });
-    expect(result.current).toBe("Hello World!!!");
+    expect(result.current).toBe("Hello? World?");
   });
 
   it("should return the original string when translation is an empty string", () => {
