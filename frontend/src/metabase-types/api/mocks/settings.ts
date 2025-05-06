@@ -4,10 +4,10 @@ import type {
   Engine,
   EngineField,
   EngineSource,
+  EnterpriseSettingKey,
   EnterpriseSettings,
   FontFile,
   SettingDefinition,
-  SettingKey,
   Settings,
   TokenFeatures,
   TokenStatus,
@@ -129,7 +129,7 @@ export const createMockTokenFeatures = (
 });
 
 export const createMockSettingDefinition = <
-  Key extends SettingKey = SettingKey,
+  Key extends EnterpriseSettingKey = EnterpriseSettingKey,
 >(
   opts: SettingDefinition<Key>,
 ): SettingDefinition<Key> => ({
@@ -184,6 +184,9 @@ export const createMockSettings = (
   "email-smtp-security": "none",
   "email-smtp-username": null,
   "email-smtp-password": null,
+  "email-from-name": null,
+  "email-from-address": null,
+  "email-reply-to": null,
   "embedding-app-origin": "",
   "embedding-app-origins-sdk": "",
   "embedding-app-origins-interactive": "",

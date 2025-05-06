@@ -27,7 +27,7 @@ export function VisualizationPicker({
       .filter(([, viz]) => !viz.hidden && viz.supportsVisualizer)
       .map(([vizType, viz]) => {
         return {
-          label: viz.uiName,
+          label: viz.getUiName(),
           value: vizType,
           icon: viz.iconName,
           isSensible: Boolean(data && viz.isSensible?.(data)),

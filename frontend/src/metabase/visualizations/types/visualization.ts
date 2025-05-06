@@ -100,6 +100,7 @@ export interface StaticVisualizationProps {
   rawSeries: RawSeries;
   renderingContext: RenderingContext;
   isStorybook?: boolean;
+  hasDevWatermark?: boolean;
 }
 
 export interface VisualizationProps {
@@ -295,7 +296,7 @@ export type Visualization = React.ComponentType<
 export type VisualizationDefinition = {
   name?: string;
   noun?: string;
-  uiName: string;
+  getUiName: () => string;
   identifier: VisualizationDisplay;
   aliases?: string[];
   iconName: IconName;

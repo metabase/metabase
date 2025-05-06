@@ -5,6 +5,7 @@ import { GlobalTypes } from "@storybook/types";
 window.METABASE_REMOVE_DELAYS = true;
 
 import { storybookThemeOptions } from "embedding-sdk/test/storybook-themes";
+import { availableLocales } from "./constants";
 
 export const parameters = {
   actions: { argTypesRegex: "^on[A-Z].*" },
@@ -37,6 +38,17 @@ export const globalTypes: GlobalTypes = {
     toolbar: {
       icon: "user",
       items: ["admin", "normal"],
+      showName: true,
+      dynamicTitle: true,
+    },
+  },
+  locale: {
+    name: "Locale",
+    description: "Locale to be passed to the MetabaseProvider",
+    defaultValue: undefined,
+    toolbar: {
+      icon: "globe",
+      items: availableLocales,
       showName: true,
       dynamicTitle: true,
     },

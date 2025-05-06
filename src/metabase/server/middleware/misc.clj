@@ -3,9 +3,9 @@
   (:require
    [clojure.string :as str]
    [metabase.db :as mdb]
-   [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.server.streaming-response]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.log :as log])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)

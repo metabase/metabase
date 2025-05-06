@@ -45,15 +45,6 @@
   [topic event]
   (push-revision! :model/Dashboard event {:is-creation? (= topic :event/dashboard-create)}))
 
-(derive ::metric-event ::event)
-(derive :event/metric-create ::metric-event)
-(derive :event/metric-update ::metric-event)
-(derive :event/metric-delete ::metric-event)
-
-(methodical/defmethod events/publish-event! ::metric-event
-  [topic event]
-  (push-revision! :model/LegacyMetric event {:is-creation? (= topic :event/metric-create)}))
-
 (derive ::segment-event ::event)
 (derive :event/segment-create ::segment-event)
 (derive :event/segment-update ::segment-event)

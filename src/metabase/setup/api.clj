@@ -7,12 +7,12 @@
    [metabase.channel.email :as email]
    [metabase.config :as config]
    [metabase.events :as events]
-   [metabase.models.setting.cache :as setting.cache]
    [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
-   [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
+   [metabase.settings.core :as setting]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.setup.core :as setup]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
@@ -132,7 +132,7 @@
                 ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this
                 ;; endpoint (such as clearing the setup token) are reverted. We can't use `dosync` here to accomplish
                 ;; this because there is `io!` in this block
-                (setting.cache/restore-cache!)
+                (setting/restore-cache!)
                 (throw e))))]
     (let [{:keys [user-id session-key session]} (create!)
           superuser (t2/select-one :model/User :id user-id)]
