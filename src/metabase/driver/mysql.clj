@@ -191,6 +191,7 @@
     driver.common/default-dbname-details
     driver.common/default-user-details
     driver.common/default-password-details
+    driver.common/default-role-details
     driver.common/cloud-ip-address-info
     driver.common/default-ssl-details
     default-ssl-cert-details
@@ -1047,8 +1048,8 @@
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
 (defmethod driver.sql/default-database-role :mysql
-  [_ _]
-  "NONE")
+  [_ database]
+  (-> database :details :role))
 
 (defmethod driver.sql/set-role-statement :mysql
   [_ role]
