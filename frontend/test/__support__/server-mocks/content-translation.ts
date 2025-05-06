@@ -16,7 +16,6 @@ export function setupContentTranslationEndpoints({
       const data = localeCode
         ? dictionary.filter((row) => row.locale === localeCode)
         : dictionary;
-
       return { data };
     },
   );
