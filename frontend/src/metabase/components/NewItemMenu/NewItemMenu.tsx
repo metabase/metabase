@@ -135,19 +135,6 @@ const NewItemMenu = ({
       });
     }
 
-    if (hasDataAccess && !isEmbeddingIframe) {
-      items.push({
-        title: t`Metric`,
-        icon: "metric",
-        link: Urls.newQuestion({
-          mode: "query",
-          cardType: "metric",
-          collectionId,
-        }),
-        onClose: onCloseNavbar,
-      });
-    }
-
     return items;
   }, [
     hasDataAccess,
