@@ -9,5 +9,7 @@
  [metabase-enterprise.metabot-v3.api
   routes]
  [metabase-enterprise.metabot-v3.client
+  analyze-chart
+  analyze-dashboard
   fix-sql
   generate-sql])

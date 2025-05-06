@@ -1,7 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.show-results-to-user
   (:require
    [buddy.core.codecs :as codecs]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)

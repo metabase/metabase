@@ -1,12 +1,10 @@
 (ns metabase-enterprise.ai-entity-analysis.api
   "`/api/ee/ai-entity-analysis/` routes"
   (:require
-   [metabase-enterprise.metabot-v3.client :as metabot-client]
+   [metabase-enterprise.metabot-v3.core :as metabot-v3]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.premium-features.core :as premium-features]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,7 +26,7 @@
                     :chart {:name name
                             :description description}
                     :timeline_events timeline_events}
-        resp (metabot-client/analyze-chart chart-data)]
+        resp (metabot-v3/analyze-chart chart-data)]
     {:summary (:analysis resp)}))
 
 (api.macros/defendpoint :post "/analyze-dashboard"
@@ -46,7 +44,7 @@
                         :dashboard {:name name
                                     :description description
                                     :tab_name tab_name}}
-        resp (metabot-client/analyze-dashboard dashboard-data)]
+        resp (metabot-v3/analyze-dashboard dashboard-data)]
     {:summary (:analysis resp)}))
 
 (def ^{:arglists '([request respond raise])} routes
