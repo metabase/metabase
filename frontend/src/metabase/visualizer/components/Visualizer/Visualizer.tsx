@@ -23,10 +23,7 @@ import {
   resetVisualizer,
   setDraggedItem,
 } from "metabase/visualizer/visualizer.slice";
-import type {
-  VisualizerDataSourceId,
-  VisualizerVizDefinition,
-} from "metabase-types/api";
+import type { VisualizerVizDefinition } from "metabase-types/api";
 import type { DraggedItem } from "metabase-types/store/visualizer";
 
 import { DataImporter } from "../DataImporter";
@@ -64,7 +61,6 @@ const isVerticalDraggedItem = (draggedItem: DraggedItem | null) => {
 
 interface VisualizerProps {
   className?: string;
-  initialDataSources?: VisualizerDataSourceId[];
   onSave: (visualization: VisualizerVizDefinition) => void;
   onClose: () => void;
   saveLabel?: string;
@@ -194,12 +190,9 @@ const VisualizerInner = (props: VisualizerProps) => {
   );
 };
 
-export const Visualizer = ({
-  initialDataSources,
-  ...props
-}: VisualizerProps) => {
+export const Visualizer = ({ ...props }: VisualizerProps) => {
   return (
-    <VisualizerUiProvider initialDataSources={initialDataSources}>
+    <VisualizerUiProvider>
       <VisualizerInner {...props} />
     </VisualizerUiProvider>
   );

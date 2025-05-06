@@ -17,21 +17,28 @@ import {
   removeColumn,
   removeDataSource,
 } from "metabase/visualizer/visualizer.slice";
-import type { DatasetColumn, VisualizerDataSource } from "metabase-types/api";
-
-import { useVisualizerUi } from "../../VisualizerUiContext";
+import type {
+  DatasetColumn,
+  VisualizerDataSource,
+  VisualizerDataSourceId,
+} from "metabase-types/api";
 
 import S from "./ColumnsList.module.css";
 import { ColumnsListItem, type ColumnsListItemProps } from "./ColumnsListItem";
 
-export const ColumnsList = () => {
+export interface ColumnListProps {
+  collapsedDataSources: Record<string, boolean>;
+  toggleDataSource: (sourceId: VisualizerDataSourceId) => void;
+}
+
+export const ColumnsList = (props: ColumnListProps) => {
+  const { collapsedDataSources, toggleDataSource } = props;
+
   const dataSources = useSelector(getDataSources);
   const datasets = useSelector(getDatasets);
   const loadingDatasets = useSelector(getLoadingDatasets);
   const referencedColumns = useSelector(getReferencedColumns);
   const dispatch = useDispatch();
-
-  const { expandedDataSources, toggleDataSourceExpanded } = useVisualizerUi();
 
   const handleAddColumn = (
     dataSource: VisualizerDataSource,
@@ -55,7 +62,7 @@ export const ColumnsList = () => {
       {dataSources.map((source) => {
         const dataset = datasets[source.id];
         const isLoading = loadingDatasets[source.id];
-        const isExpanded = expandedDataSources[source.id];
+        const isCollapsed = collapsedDataSources[source.id];
 
         return (
           <Box key={source.id} mb={4} data-testid="data-source-list-item">
@@ -63,12 +70,12 @@ export const ColumnsList = () => {
               {!isLoading ? (
                 <Icon
                   style={{ flexShrink: 0 }}
-                  name={isExpanded ? "chevronup" : "chevrondown"}
+                  name={isCollapsed ? "chevrondown" : "chevronup"}
                   aria-label={t`Expand`}
                   size={12}
                   mr={6}
                   cursor="pointer"
-                  onClick={() => toggleDataSourceExpanded(source.id)}
+                  onClick={() => toggleDataSource(source.id)}
                 />
               ) : (
                 <Loader size={12} mr={6} />
@@ -89,7 +96,7 @@ export const ColumnsList = () => {
                 />
               )}
             </Flex>
-            {isExpanded && dataset && dataset.data.cols && (
+            {!isCollapsed && dataset && dataset.data.cols && (
               <Box ml={12} mt={2}>
                 {dataset.data.cols.map((column) => {
                   if (isPivotGroupColumn(column)) {

@@ -1,3 +1,4 @@
+import * as Lib from "metabase-lib";
 import { isDate, isNumber, isString } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
@@ -16,15 +17,15 @@ function compareIdAndName(
   return column.name === field.name && column.id === field.id;
 }
 
-function compareTypeAndName(
-  column: DatasetColumn | undefined,
-  field: Field,
-): boolean {
+function compareType(column: DatasetColumn | undefined, field: Field): boolean {
   if (!column) {
     return false;
   }
 
-  return column.semantic_type === field.semantic_type;
+  return Lib.isAssignableType(
+    Lib.legacyColumnTypeInfo(column),
+    Lib.legacyColumnTypeInfo(field as any), // TODO: Fix this type
+  );
 }
 
 function comparedId(column: DatasetColumn | undefined, field: Field): boolean {
@@ -66,7 +67,7 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
 
   const idAndNameMatcher = (f: Field) => compareIdAndName(primaryColumn, f);
   const idMatcher = (f: Field) => comparedId(primaryColumn, f);
-  const typeMatcher = (f: Field) => compareTypeAndName(primaryColumn, f);
+  const typeMatcher = (f: Field) => compareType(primaryColumn, f);
 
   if (currentDisplay === "scalar") {
     return (

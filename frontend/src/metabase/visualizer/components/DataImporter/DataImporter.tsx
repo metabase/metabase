@@ -15,6 +15,7 @@ import {
   TextInput,
   Title,
 } from "metabase/ui";
+import { useBooleanMap } from "metabase/visualizer/hooks/use-boolean-map";
 import { getDataSources } from "metabase/visualizer/selectors";
 
 import { ColumnsList } from "./ColumnsList/ColumnsList";
@@ -26,6 +27,12 @@ export const DataImporter = ({ className }: { className?: string }) => {
   const [showDatasets, handlers] = useDisclosure(false);
 
   const dataSources = useSelector(getDataSources);
+
+  const {
+    values: collapsedDataSources,
+    toggle: toggleDataSource,
+    setValue: setDataSourceCollapsed,
+  } = useBooleanMap();
 
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
 
@@ -81,7 +88,10 @@ export const DataImporter = ({ className }: { className?: string }) => {
               overflowY: "auto",
             }}
           >
-            <DatasetsList search={debouncedSearch} />
+            <DatasetsList
+              search={debouncedSearch}
+              setDataSourceCollapsed={setDataSourceCollapsed}
+            />
           </Flex>
         </Flex>
       ) : (
@@ -96,7 +106,10 @@ export const DataImporter = ({ className }: { className?: string }) => {
           }}
         >
           {dataSources.length > 0 ? (
-            <ColumnsList />
+            <ColumnsList
+              collapsedDataSources={collapsedDataSources}
+              toggleDataSource={toggleDataSource}
+            />
           ) : (
             <Center h="100%" w="100%" mx="auto">
               <Text>{t`Pick a dataset first`}</Text>
