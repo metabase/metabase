@@ -431,6 +431,20 @@
                    metadata-queries/add-required-filters-if-needed))
    :middleware {:disable-remaps? true}})
 
+(mu/defn- remapped-name-mbql-query
+  "Generate the MBQL for getting name value for a PK."
+  [pk-field-id   :- ms/PositiveInt
+   name-field-id :- ms/PositiveInt
+   value         :- :any]
+  {:database (field/field-id->database-id pk-field-id)
+   :type     :query
+   :query    (-> {:source-table (field/field-id->table-id pk-field-id)
+                  :filter       [:= [:field pk-field-id nil] value]
+                  :fields       [[:field name-field-id nil]]
+                  :limit        1}
+                 metadata-queries/add-required-filters-if-needed)
+   :middleware {:disable-remaps? true}})
+
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------
 
 (mu/defn- unremapped-chain-filter :- ms/FieldValuesResult
@@ -500,37 +514,57 @@
 
 (sql/register-clause! ::union format-union :union)
 
+(defn- implicit-pk->name-mapping-query
+  [field-id]
+  {:select    [[:dest.id :id]]
+   :from      [[:metabase_field :source]]
+   :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
+               [:metabase_field :dest] [:= :dest.table_id :table.id]]
+   :where     [:and
+               [:= :source.id field-id]
+               (mdb.query/isa :source.semantic_type :type/PK)
+               (mdb.query/isa :dest.semantic_type :type/Name)]
+   :limit     1})
+
 (defn- remapped-field-id-query [field-id]
-  (let [implicit-pk->name-mapping (fn [field-id]
-                                    {:select    [[:dest.id :id]]
-                                     :from      [[:metabase_field :source]]
-                                     :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
-                                                 [:metabase_field :dest] [:= :dest.table_id :table.id]]
-                                     :where     [:and
-                                                 [:= :source.id field-id]
-                                                 (mdb.query/isa :source.semantic_type :type/PK)
-                                                 (mdb.query/isa :dest.semantic_type :type/Name)]
-                                     :limit     1})]
-    {:select [[:ids.id :id]]
-     :from   [[{::union [;; Explicit FK Field->Field remapping
-                         {:select [[:dimension.human_readable_field_id :id]]
-                          :from   [[:dimension :dimension]]
-                          :where  [:and
-                                   [:= :dimension.field_id field-id]
-                                   [:not= :dimension.human_readable_field_id nil]]
-                          :limit  1}
-                         ;; Implicit FK Field -> PK Field -> [Name] Field remapping
-                         (implicit-pk->name-mapping
-                          {:select    [:fk_target_field_id]
-                           :from      [:metabase_field]
-                           :where     [:and
-                                       [:= :id field-id]
-                                       (mdb.query/isa :semantic_type :type/FK)]
-                           :limit     1})
-                         ;; Implicit PK Field-> [Name] Field remapping
-                         (implicit-pk->name-mapping field-id)]}
-               :ids]]
-     :limit  1}))
+  {:select [[:ids.id :id]]
+   :from   [[{::union [;; Explicit FK Field->Field remapping
+                       {:select [[:dimension.human_readable_field_id :id]]
+                        :from   [[:dimension :dimension]]
+                        :where  [:and
+                                 [:= :dimension.field_id field-id]
+                                 [:not= :dimension.human_readable_field_id nil]]
+                        :limit  1}
+                       ;; Implicit FK Field -> PK Field -> [Name] Field remapping
+                       (implicit-pk->name-mapping-query
+                        {:select    [:fk_target_field_id]
+                         :from      [:metabase_field]
+                         :where     [:and
+                                     [:= :id field-id]
+                                     (mdb.query/isa :semantic_type :type/FK)]
+                         :limit     1})
+                       ;; Implicit PK Field-> [Name] Field remapping
+                       (implicit-pk->name-mapping-query field-id)]}
+             :ids]]
+   :limit  1})
+
+(defn name-for-pk
+  "When there is a type/Name field in the table of `pk-field`, return the value
+  of that field for the entry where `pk-field` has the value `value`."
+  [pk-field value]
+  (let [pk-field-id (:id pk-field)]
+   (when-let [name-field-id (:id (t2/query-one (implicit-pk->name-mapping-query pk-field-id)))]
+     (let [mbql-query (remapped-name-mbql-query pk-field-id name-field-id value)]
+       (log/debugf "Remapped name MBQL query:\n%s" (u/pprint-to-str 'magenta mbql-query))
+       (try
+         (-> (qp/process-query mbql-query (constantly conj))
+             ffirst)
+         (catch Throwable e
+           (throw (ex-info "Error remapped name query"
+                           {:pk-field-id   pk-field-id
+                            :name-field-id name-field-id
+                            :mbql-query    mbql-query}
+                           e))))))))
 
 ;; TODO -- add some caching here?
 (mu/defn remapped-field-id :- [:maybe ms/PositiveInt]

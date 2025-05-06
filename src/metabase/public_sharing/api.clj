@@ -652,6 +652,17 @@
       (binding [qp.perms/*param-values-query* true]
         (api.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
 
+(api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/remapping"
+  "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of dashboard with UUID `uuid`."
+  [{:keys [uuid param-key]} :- [:map
+                                [:uuid      ms/UUIDString]
+                                [:param-key ms/NonBlankString]]
+   {:keys [value]}          :- [:map [:value :any]]]
+  (let [dashboard (dashboard-with-uuid uuid)]
+    (request/as-admin
+      (binding [qp.perms/*param-values-query* true]
+        (api.dashboard/dashboard-param-remapped-value dashboard param-key value)))))
+
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 
 ;; TODO -- why do these endpoints START with `/pivot/` whereas the version in Dash

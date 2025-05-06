@@ -282,6 +282,12 @@
   (api.embed.common/dashboard-param-values token param-key prefix
                                            (api.embed.common/parse-query-params query-params)))
 
+(api.macros/defendpoint :get "/dashboard/:token/params/:param-key/remapping"
+  "Embedded version of the remapped dashboard param value endpoint."
+  [{:keys [token param-key]}
+   {:keys [value]}]
+  (api.embed.common/dashboard-param-remapped-value token param-key value))
+
 (api.macros/defendpoint :get "/card/:token/params/:param-key/values"
   "Embedded version of api.card filter values endpoint."
   [{:keys [token param-key]} :- [:map

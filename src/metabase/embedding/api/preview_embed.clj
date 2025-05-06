@@ -67,6 +67,12 @@
                                            (api.embed.common/parse-query-params query-params)
                                            {:preview true}))
 
+(api.macros/defendpoint :get "/dashboard/:token/params/:param-key/remapping"
+  "Embedded version of the remapped dashboard param value endpoint."
+  [{:keys [token param-key]}
+   {:keys [value]}]
+  (api.embed.common/dashboard-param-remapped-value token param-key value {:preview true}))
+
 (api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
   [{:keys [token dashcard-id card-id]} :- [:map

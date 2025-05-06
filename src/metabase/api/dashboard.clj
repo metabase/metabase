@@ -1218,7 +1218,8 @@
     param-key                   :- ms/NonBlankString
     constraint-param-key->value :- [:map-of string? any?]
     query                       :- [:maybe ms/NonBlankString]]
-   (let [dashboard   (t2/hydrate dashboard :resolved-params)
+   (let [dashboard   (cond-> dashboard
+                       (nil? (:resolved-params dashboard)) (t2/hydrate :resolved-params))
          constraints (chain-filter-constraints dashboard constraint-param-key->value)
          param       (get-in dashboard [:resolved-params param-key])
          field-ids   (into #{} (map :field-id (param->fields param)))]
@@ -1299,6 +1300,54 @@
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
       (param-values dashboard param-key constraint-param-key->value query))))
+
+(defn- pk-field-of-fk-pk-pair
+  [[field-id1 field-id2 & others]]
+  (when (and (nil? others)
+             (pos-int? field-id1)
+             (pos-int? field-id2))
+    (let [[field1 field2 :as fields] (t2/select :model/Field :id [:in [field-id1 field-id2]])]
+      (when (= (count fields) 2)
+        (cond (= (:fk_target_field_id field1) (:id field2)) field2
+              (= (:fk_target_field_id field2) (:id field1)) field1)))))
+
+(defn dashboard-param-remapped-value
+  "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `dashboard`."
+  [dashboard param-key value]
+  ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
+  (let [dashboard (-> dashboard
+                      (t2/hydrate :resolved-params)
+                      ;; whatever the param's type, we want an equality constraint
+                      (m/update-existing-in [:resolved-params param-key] assoc :type :id))
+        param     (get-in dashboard [:resolved-params param-key])]
+    (case (:values_source_type param)
+      "static-list" (m/find-first #(and (vector? %) (= (count %) 2) (= (first %) value))
+                                  (get-in param [:values_source_config :values]))
+      "card"        nil
+      nil           (let [field-ids (into #{} (map :field-id (param->fields param)))]
+                      (if (= (count field-ids) 1)
+                        (-> (chain-filter dashboard param-key {param-key value})
+                            :values
+                            first)
+                        (when-let [pk-field (pk-field-of-fk-pk-pair field-ids)]
+                          (when-let [name-value (chain-filter/name-for-pk pk-field value)]
+                            [value name-value]))))
+      (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type param))
+                      {:status-code 400
+                       :parameter param})))))
+
+(api.macros/defendpoint :get "/:id/params/:param-key/remapping"
+  "Fetch the remapped value for a given value of the parameter with ID `:param-key`.
+
+    ;; fetch the remapped value for Dashboard 1 parameter 'abc' for value 100
+    GET /api/dashboard/1/params/abc/remapping?value=100"
+  [{:keys [id param-key]} :- [:map
+                              [:id ms/PositiveInt]
+                              [:param-key :string]]
+   {:keys [value]}        :- [:map [:value :any]]]
+  (let [dashboard (api/read-check :model/Dashboard id)]
+    (binding [qp.perms/*param-values-query* true]
+      (dashboard-param-remapped-value dashboard param-key value))))
 
 (api.macros/defendpoint :get "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in

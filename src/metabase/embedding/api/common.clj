@@ -424,6 +424,11 @@
                       (u/pprint-to-str (u/all-ex-data e)))
           (throw e))))))
 
+(defn- unsigned-token->dashboard-id
+  [unsigned-token]
+  (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+       (eid-translation/->id :model/Dashboard)))
+
 (defn dashboard-param-values
   "Common implementation for fetching parameter values for embedding and preview-embedding.
   Optionally pass a map with `:preview` containing `true` (or some non-falsy value) to disable checking
@@ -432,8 +437,7 @@
   [token searched-param-id prefix id-query-params
    & {:keys [preview] :or {preview false}}]
   (let [unsigned-token                                 (embed/unsign token)
-        pre-dashboard-id                               (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        dashboard-id                                   (eid-translation/->id :model/Dashboard pre-dashboard-id)
+        dashboard-id                                   (unsigned-token->dashboard-id unsigned-token)
         _                                              (when-not preview (check-embedding-enabled-for-dashboard dashboard-id))
         slug-token-params                              (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         {parameters                 :parameters
@@ -480,3 +484,17 @@
                          e)]
           (log/errorf e "Chain filter error\n%s" (u/pprint-to-str (u/all-ex-data e)))
           (throw e))))))
+
+;; TODO handle locked parameters
+(defn dashboard-param-remapped-value
+  "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `dashboard`."
+  ([token param-key value]
+   (dashboard-param-remapped-value token param-key value nil))
+  ([token param-key value {:keys [preview] :or {preview false}}]
+   (let [unsigned-token (embed/unsign token)
+         dashboard-id   (unsigned-token->dashboard-id unsigned-token)
+         _              (when-not preview (check-embedding-enabled-for-dashboard dashboard-id))
+         dashboard      (t2/select-one :model/Dashboard :id dashboard-id)]
+     (binding [api/*current-user-permissions-set* (atom #{"/"})
+               api/*is-superuser?*                true]
+       (api.dashboard/dashboard-param-remapped-value dashboard param-key value)))))
