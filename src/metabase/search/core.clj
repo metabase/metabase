@@ -37,7 +37,8 @@
   search-context]
 
  [search.ingestion
-  bulk-ingest!]
+  bulk-ingest!
+  searchable-value-trim-sql]
 
  [search.spec
   define-spec])
