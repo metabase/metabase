@@ -965,46 +965,6 @@ describe("issue 28971", () => {
   });
 });
 
-describe("issue 28971", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/card").as("createCard");
-    cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  it("should be able to filter a newly created model (metabase#28971)", () => {
-    cy.visit("/");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New").click();
-    H.popover().findByText("Model").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Use the notebook editor").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
-    });
-    cy.button("Save").click();
-    cy.findByTestId("save-question-modal").within((modal) => {
-      cy.findByText("Save").click();
-    });
-    cy.wait("@createCard");
-
-    H.filter();
-    H.popover().within(() => {
-      cy.findByText("Quantity").click();
-      cy.findByText("20").click();
-      cy.button("Apply filter").click();
-    });
-    cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Quantity is equal to 20").should("exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 4 rows").should("exist");
-  });
-});
-
 describe("issue 29378", () => {
   const ACTION_DETAILS = {
     name: "Update orders quantity",
