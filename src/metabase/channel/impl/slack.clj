@@ -12,7 +12,7 @@
    [metabase.util.markdown :as markdown]
    [metabase.util.urls :as urls]))
 
-(defn- notification-recipient->channel-id
+(defn- notification-recipient->channel
   [notification-recipient]
   (when (= (:type notification-recipient) :notification-recipient/raw-value)
     (-> notification-recipient :details :value)))
@@ -114,18 +114,14 @@
 
 (def ^:private SlackMessage
   [:map {:closed true}
-   [:channel-id                   :string]
-   ;; TODO: tighten this attachments schema
-   [:attachments                  :any]
-   [:message     {:optional true} [:maybe :string]]])
+   [:channel :string]
+   ;; TODO add support for :attachments and :text
+   [:blocks  [:sequential :map]]])
 
 (mu/defmethod channel/send! :channel/slack
-  [_channel message :- SlackMessage]
-  (let [{:keys [channel-id attachments]} message
-        message-content (mapv create-and-upload-slack-attachment! attachments)
-        blocks (mapcat :blocks message-content)]
-    (doseq [block-chunk (partition-all 50 blocks)]
-      (slack/post-chat-message! channel-id nil [{:blocks block-chunk}]))))
+  [_channel {:keys [channel blocks]} :- SlackMessage]
+  (doseq [block-chunk (partition-all 50 blocks)]
+    (slack/post-chat-message! {:channel channel :blocks block-chunk})))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                      Notification Card                                          ;;
@@ -137,10 +133,11 @@
                                 :text {:type "plain_text"
                                        :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)
                                        :emoji true}}]}
-                     (part->attachment-data (:card_part payload))]]
-    (for [channel-id (map notification-recipient->channel-id recipients)]
-      {:channel-id  channel-id
-       :attachments attachments})))
+                     (part->attachment-data (:card_part payload))]
+        blocks      (mapv create-and-upload-slack-attachment! attachments)]
+    (for [channel (map notification-recipient->channel recipients)]
+      {:channel channel
+       :blocks  (mapcat :blocks blocks)})))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    Dashboard Subscriptions                                      ;;
@@ -187,11 +184,13 @@
   [_channel-type _payload-type {:keys [payload creator]} _template recipients]
   (let [parameters (:parameters payload)
         dashboard  (:dashboard payload)]
-    (for [channel-id (map notification-recipient->channel-id recipients)]
-      {:channel-id  channel-id
-       :attachments (doall (remove nil?
-                                   (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
-                                             (create-slack-attachment-data (:dashboard_parts payload))])))})))
+    (for [channel-id (map notification-recipient->channel recipients)]
+      {:channel channel-id
+       :blocks  (->> (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
+                               (create-slack-attachment-data (:dashboard_parts payload))])
+                     (remove nil?)
+                     (mapv create-and-upload-slack-attachment!)
+                     (mapcat :blocks))})))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                           System Event                                          ;;
@@ -204,6 +203,6 @@
                         ;; TODO: the context here does not nescessarily have the same shape as payload, needs to rethink this
                         (channel.template/default-template :notification/system-event context channel-type))]
     (assert template (str "No template found for event " event-name))
-    (for [channel-id (map notification-recipient->channel-id recipients)]
-      {:channel-id  channel-id
-       :attachments [(text->markdown-block (channel.template/render-template template notification-payload))]})))
+    (for [channel (map notification-recipient->channel recipients)]
+      {:channel channel
+       :blocks  (:blocks (text->markdown-block (channel.template/render-template template notification-payload)))})))
