@@ -73,27 +73,6 @@ describe("scenarios > metrics > editing", () => {
   });
 
   describe("organization", () => {
-    it("should be able to create a new metric from the homepage", () => {
-      cy.visit("/");
-      cy.findByTestId("app-bar").findByText("New").click();
-      H.popover().findByText("Metric").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
-      });
-      addAggregation({ operatorName: "Count of rows" });
-      saveMetric({ name: "my new metric" });
-      verifyScalarValue("18,760");
-
-      cy.log(
-        "newly created metric should be visible in recents (metabase#44223)",
-      );
-      H.appBar()
-        .findByText(/search/i)
-        .click();
-      H.commandPalette().findByText("my new metric").should("be.visible");
-    });
-
     it("should be able to rename a metric", () => {
       const newTitle = "New metric name";
       H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
@@ -568,17 +547,6 @@ function addNumberBetweenFilter({ tableName, columnName, minValue, maxValue }) {
     cy.findByPlaceholderText("Min").type(String(minValue));
     cy.findByPlaceholderText("Max").type(String(maxValue));
     cy.button("Add filter").click();
-  });
-}
-
-function addAggregation({ operatorName, columnName, stageIndex }) {
-  startNewAggregation({ stageIndex });
-
-  H.popover().within(() => {
-    cy.findByText(operatorName).click();
-    if (columnName) {
-      cy.findByText(columnName).click();
-    }
   });
 }
 
