@@ -9,7 +9,6 @@
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.style :as style]
    [metabase.channel.settings :as channel.settings]
-   [metabase.channel.slack :as slack]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
    [metabase.notification.test-util :as notification.tu]

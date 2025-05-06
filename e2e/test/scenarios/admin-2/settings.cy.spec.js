@@ -1289,12 +1289,15 @@ describe("admin > settings > updates", () => {
     cy.signInAsAdmin();
     cy.visit("/admin/settings/updates");
 
-    cy.intercept("GET", "/api/session/properties", (req, res) => {
+    cy.intercept("GET", "/api/session/properties", (req) => {
       req.continue((res) => {
-        res.body["version-info"] = versionInfo;
         res.body.version.tag = currentVersion;
         return res.body;
       });
+    });
+
+    cy.intercept("GET", "/api/setting/version-info", (req) => {
+      req.reply(versionInfo);
     });
   });
 
