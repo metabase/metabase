@@ -10,7 +10,7 @@ import _ from "underscore";
 
 import { DragDropContext } from "metabase/core/components/DragDropContext";
 import CS from "metabase/css/core/index.css";
-import { Box, Text } from "metabase/ui";
+import { Box, Button, Flex, Icon, Text } from "metabase/ui";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import type { Partition } from "metabase/visualizations/visualizations/PivotTable/partitions";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
@@ -35,6 +35,24 @@ const columnAdd = (columns: string[], to: number, column: string) => {
   return splice(columns, to, 0, column);
 };
 
+type ChartSettingFieldPartitionProps = {
+  value: ColumnNameColumnSplitSetting;
+  onChange: (value: ColumnNameColumnSplitSetting) => void;
+  onShowWidget: (
+    widget: {
+      id: string;
+      props: {
+        initialKey: string;
+      };
+    },
+    ref: HTMLElement | undefined,
+  ) => void;
+  getColumnTitle: (column: DatasetColumn) => string;
+  columns: RemappingHydratedDatasetColumn[];
+  partitions: Partition[];
+  canEditColumns: boolean;
+};
+
 export const ChartSettingFieldsPartition = ({
   value,
   onChange,
@@ -42,17 +60,8 @@ export const ChartSettingFieldsPartition = ({
   getColumnTitle,
   partitions,
   columns,
-}: {
-  value: ColumnNameColumnSplitSetting;
-  onChange: (value: ColumnNameColumnSplitSetting) => void;
-  onShowWidget: (
-    widget: { id: string; props: { initialKey: string } },
-    ref: HTMLElement | undefined,
-  ) => void;
-  getColumnTitle: (column: DatasetColumn) => string;
-  columns: RemappingHydratedDatasetColumn[];
-  partitions: Partition[];
-}) => {
+  canEditColumns,
+}: ChartSettingFieldPartitionProps) => {
   const handleEditFormatting = (
     column: RemappingHydratedDatasetColumn,
     targetElement: HTMLElement,
@@ -133,22 +142,32 @@ export const ChartSettingFieldsPartition = ({
     [columns, value],
   );
 
+  const handleColumnAdd = () => {};
+
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      {partitions.map(({ name: partitionName, title }, index) => {
+      {partitions.map(({ name: partitionName, title }) => {
         const updatedColumns = updatedValue[partitionName] ?? [];
         const partitionType = getPartitionType(partitionName);
         return (
-          <Box
-            py="md"
-            className={index > 0 ? CS.borderTop : undefined}
-            key={partitionName}
-          >
-            <Text c="text-medium">{title}</Text>
+          <Box py="sm" key={partitionName}>
+            <Flex align="center" justify="space-between">
+              <Text c="text-medium">{title}</Text>
+              {canEditColumns && (
+                <Button
+                  variant="subtle"
+                  leftSection={<Icon name="add" />}
+                  size="compact-md"
+                  onClick={handleColumnAdd}
+                >
+                  {t`Add`}
+                </Button>
+              )}
+            </Flex>
             <Droppable
               droppableId={partitionName}
               type={partitionType}
-              renderClone={(provided, snapshot, rubric) => (
+              renderClone={(provided, _snapshot, rubric) => (
                 <Box
                   ref={provided.innerRef}
                   {...provided.draggableProps}
