@@ -390,10 +390,10 @@
                                    :channel_id   http-channel-id}]}]
         ;; this test only check that channel will send, the content are tested in [[metabase.notification.payload.impl.card-test]]
         (testing "send to all handlers"
-          (is (=? {:channel/email [{:message    (mt/malli=? some?)
-                                    :bcc        ["crowberto@metabase.com"]}]
-                   :channel/slack [{:attachments (mt/malli=? some?)
-                                    :channel-id  "#general"}]
+          (is (=? {:channel/email [{:message (mt/malli=? some?)
+                                    :bcc     ["crowberto@metabase.com"]}]
+                   :channel/slack [{:blocks  (mt/malli=? some?)
+                                    :channel "#general"}]
                    :channel/http [{:body (mt/malli=? some?)}]}
                   (notification.tu/with-captured-channel-send!
                     (mt/user-http-request :crowberto :post 204 (format "notification/%d/send" (:id notification)))))))
@@ -417,8 +417,8 @@
       (testing "send to all handlers"
         (is (=? {:channel/email [{:message (mt/malli=? some?)
                                   :bcc     ["crowberto@metabase.com"]}]
-                 :channel/slack [{:attachments (mt/malli=? some?)
-                                  :channel-id  "#general"}]
+                 :channel/slack [{:blocks  (mt/malli=? some?)
+                                  :channel "#general"}]
                  :channel/http  [{:body (mt/malli=? some?)}]}
                 (notification.tu/with-captured-channel-send!
                   (mt/user-http-request :crowberto :post 204 "notification/send"
