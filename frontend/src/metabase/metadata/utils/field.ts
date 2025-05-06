@@ -1,8 +1,16 @@
 import { is_coerceable } from "cljs/metabase.types";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
-import type { Field, FieldId, SchemaName, Table } from "metabase-types/api";
+import { TYPE } from "metabase-lib/v1/types/constants";
+import { isTypeFK, isa } from "metabase-lib/v1/types/utils/isa";
+import type {
+  Database,
+  Field,
+  FieldId,
+  SchemaName,
+  Table,
+} from "metabase-types/api";
 
+import { hasDatabaseFeature } from "./database";
 import { getSchemaDisplayName } from "./schema";
 
 /**
@@ -51,4 +59,12 @@ export function getFieldDisplayName(
   }
 
   return fieldDisplayName;
+}
+
+export function canUnfoldJson(field: Field, database: Database): boolean {
+  return (
+    isa(field.base_type, TYPE.JSON) &&
+    database != null &&
+    hasDatabaseFeature(database, "nested-field-columns")
+  );
 }
