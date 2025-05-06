@@ -2,7 +2,7 @@ import { msgid, ngettext } from "ttag";
 
 import * as Lib from "metabase-lib";
 
-import { getClauseDefinition } from "../../config";
+import { getClauseDefinition } from "../../clause";
 import { visit } from "../../visitor";
 import { error } from "../utils";
 
@@ -22,7 +22,8 @@ export function checkArgCount({
       return;
     }
 
-    const { displayName, args, multiple, hasOptions } = clause;
+    const { displayName, multiple, hasOptions } = clause;
+    const args = clause.args.filter((arg) => !arg.optional);
 
     if (multiple) {
       const argCount = operands.length;

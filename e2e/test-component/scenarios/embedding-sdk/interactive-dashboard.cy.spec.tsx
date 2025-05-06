@@ -102,6 +102,22 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
     });
   });
 
+  it("should show a watermark on dashcards in development mode", () => {
+    cy.intercept("/api/session/properties", (req) => {
+      req.continue((res) => {
+        res.body["token-features"]["development-mode"] = true;
+      });
+    });
+
+    cy.get("@dashboardId").then((dashboardId) => {
+      mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+    });
+
+    getSdkRoot().within(() => {
+      cy.findAllByTestId("development-watermark").should("have.length", 1);
+    });
+  });
+
   describe("loading behavior for both entity IDs and number IDs (metabase#49581)", () => {
     const successTestCases = [
       {

@@ -7,8 +7,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [toucan2.core :as t2]))
+   [metabase.xrays.automagic-dashboards.util :as magic.util]))
 
 ;; TODO - rename "minumum" to "minimum". Note that there are internationalization string implications
 ;; here so make sure to do a *thorough* find and replace on this.
@@ -26,10 +25,9 @@
 (defn metric-name
   "Return the name of the metric or name by describing it."
   [[op & args :as metric]]
-  (cond
-    (magic.util/adhoc-metric? metric) (-> op qp.util/normalize-token op->name)
-    (magic.util/saved-metric? metric) (->> args first (t2/select-one :model/LegacyMetric :id) :name)
-    :else                             (second args)))
+  (if (magic.util/adhoc-metric? metric)
+    (-> op qp.util/normalize-token op->name)
+    (second args)))
 
 (defn- join-enumeration
   "Join a sequence as [1 2 3 4] to \"1, 2, 3 and 4\""

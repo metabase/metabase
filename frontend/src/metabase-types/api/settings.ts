@@ -243,6 +243,7 @@ export const tokenFeatures = [
   "query_reference_validation",
   "cache_preemptive",
   "database_routing",
+  "development-mode",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -293,6 +294,9 @@ export interface UploadsSettings {
 
 interface InstanceSettings {
   "admin-email": string;
+  "email-from-name": string | null;
+  "email-from-address": string | null;
+  "email-reply-to": string[] | null;
   "email-smtp-host": string | null;
   "email-smtp-port": number | null;
   "email-smtp-security": "none" | "ssl" | "tls" | "starttls";
@@ -347,7 +351,7 @@ interface AdminSettings {
   "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name
   "show-database-syncing-modal": boolean;
   "token-status": TokenStatus | null;
-  "version-info": VersionInfo | null;
+  "version-info"?: VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
   "show-sdk-embed-terms": boolean | null;
