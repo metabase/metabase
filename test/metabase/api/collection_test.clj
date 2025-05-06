@@ -16,6 +16,7 @@
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]

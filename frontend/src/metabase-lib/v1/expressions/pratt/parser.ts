@@ -22,27 +22,20 @@ interface ParserOptions {
   hooks?: Hooks;
 }
 
-interface ParserResult {
-  root: Node;
-  errors: CompileError[];
-}
-
 const DEFAULT_HOOKS: Hooks = {
   error(error) {
     throw error;
   },
 };
 
-export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
+export function parse(tokens: Token[], opts: ParserOptions = {}): Node {
   const { maxIterations = 1000000, hooks = DEFAULT_HOOKS } = opts;
-  const errors: CompileError[] = [];
   let counter = 0;
   const root = createASTNode(null, null, ROOT);
 
   function error(message: string, node?: Node) {
     const error = new CompileError(message, node);
     hooks?.error?.(error);
-    errors.push(error);
   }
 
   let node = root;
@@ -141,7 +134,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
   if (childViolation !== null) {
     error(t`Unexpected token`, node);
   }
-  return { root, errors };
+  return root;
 }
 
 function createASTNode(
