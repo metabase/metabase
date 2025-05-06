@@ -142,6 +142,7 @@ export const ChartSettingFieldsPartition = ({
     [columns, value],
   );
 
+  // TODO: disambiguate from columnAdd above
   const handleColumnAdd = () => {};
 
   return (
@@ -159,6 +160,9 @@ export const ChartSettingFieldsPartition = ({
                   leftSection={<Icon name="add" />}
                   size="compact-md"
                   onClick={handleColumnAdd}
+                  styles={{
+                    root: { paddingInline: 0 },
+                  }}
                 >
                   {t`Add`}
                 </Button>
