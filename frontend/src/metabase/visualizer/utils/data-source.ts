@@ -26,10 +26,13 @@ export function parseDataSourceId(id: VisualizerDataSourceId) {
   return { type, sourceId };
 }
 
+const DATA_SOURCE_NAME_REF_PREFIX = "$_";
+const DATA_SOURCE_NAME_REF_SUFFIX = "_name";
+
 export function createDataSourceNameRef(
   id: VisualizerDataSourceId,
 ): VisualizerDataSourceNameReference {
-  return `$_${id}_name`;
+  return `${DATA_SOURCE_NAME_REF_PREFIX}${id}${DATA_SOURCE_NAME_REF_SUFFIX}`;
 }
 
 export function isDataSourceNameRef(
@@ -37,14 +40,16 @@ export function isDataSourceNameRef(
 ): value is VisualizerDataSourceNameReference {
   return (
     typeof value === "string" &&
-    value.startsWith("$_") &&
-    value.endsWith("_name")
+    value.startsWith(DATA_SOURCE_NAME_REF_PREFIX) &&
+    value.endsWith(DATA_SOURCE_NAME_REF_SUFFIX)
   );
 }
 
 export function getDataSourceIdFromNameRef(str: string) {
-  const [, dataSourceId] = str.split("_");
-  return dataSourceId;
+  return str.substring(
+    DATA_SOURCE_NAME_REF_PREFIX.length,
+    str.length - DATA_SOURCE_NAME_REF_SUFFIX.length,
+  );
 }
 
 export function getDataSourceIdsFromColumnValueMappings(
