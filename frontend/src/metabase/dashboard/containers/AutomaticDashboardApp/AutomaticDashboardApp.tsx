@@ -219,11 +219,11 @@ const AutomaticDashboardAppInner = ({
                   selectedTabId={selectedTabId}
                   slowCards={slowCards}
                   clickBehaviorSidebarDashcard={null}
-                  downloadsEnabled={false}
+                  downloadsEnabled={{ pdf: false, results: false }}
                   autoScrollToDashcardId={undefined}
                   reportAutoScrolledToDashcard={_.noop}
                   navigateToNewCardFromDashboard={
-                    navigateToNewCardFromDashboard ?? undefined
+                    navigateToNewCardFromDashboard ?? null
                   }
                 />
               )

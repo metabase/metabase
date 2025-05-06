@@ -97,6 +97,7 @@ const defaultArgs: Partial<
   bordered: true,
   getParameters: () => [],
   setCard: () => {},
+  downloadsEnabled: { pdf: true, results: true },
   result: createMockDataset({
     data: createMockDatasetData({
       cols: [

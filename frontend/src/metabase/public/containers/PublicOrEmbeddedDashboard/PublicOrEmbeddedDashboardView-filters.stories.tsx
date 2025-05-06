@@ -7,6 +7,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
+import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { publicReducers } from "metabase/reducers-public";
@@ -112,7 +113,7 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
     },
   });
 
-  const store = getStore(publicReducers, initialState);
+  const store = getStore(publicReducers, initialState, [Api.middleware]);
   return (
     <MetabaseReduxProvider store={store}>
       <Story />
