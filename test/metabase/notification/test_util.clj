@@ -8,6 +8,7 @@
    [metabase.channel.email :as email]
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.events.notification :as events.notification]
+   [metabase.integrations.slack :as slack]
    [metabase.notification.condition :as notification.condition]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
@@ -212,7 +213,11 @@
                                                                  email-smtp-port 587
                                                                  site-url        "https://testmb.com/"]
                                 (thunk)))
-   :channel/slack (fn [thunk] (thunk))})
+   :channel/slack (fn [thunk] (mt/with-temporary-setting-values [site-url "https://testmb.com/"]
+                                (mt/with-dynamic-fn-redefs [slack/upload-file! (fn [_file fname]
+                                                                                 {:url (format "https://uploaded.com/%s" fname)
+                                                                                  :id  fname})]
+                                  (thunk))))})
 
 (defn apply-channel-fixtures
   [channel-types thunk]

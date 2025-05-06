@@ -119,9 +119,9 @@
                                 :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)
                                 :emoji true}}]
                        (part->sections! (:card_part payload)))]
-    (for [channel (map notification-recipient->channel recipients)]
-      {:channel channel
-       :blocks  blocks})))
+    (doall (for [channel (map notification-recipient->channel recipients)]
+             {:channel channel
+              :blocks  blocks}))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    Dashboard Subscriptions                                      ;;
