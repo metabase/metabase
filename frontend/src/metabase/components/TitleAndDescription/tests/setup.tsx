@@ -8,10 +8,7 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import {
-  createMockSetupState,
-  createMockState,
-} from "metabase-types/store/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import TitleAndDescription from "../TitleAndDescription";
 
@@ -28,14 +25,11 @@ export function setup({
   tokenFeatures = {},
   dictionary = [],
 }: SetupOpts) {
-  const state = createMockState({
-    setup: createMockSetupState({
-      locale: { code: localeCode, name: "locale-name" },
-    }),
+  const storeInitialState = createMockState({
     settings: mockSettings({
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
-    currentUser: createMockUser({ id: 1, locale: localeCode }),
+    currentUser: createMockUser({ locale: localeCode }),
   });
 
   if (hasEnterprisePlugins) {
@@ -49,6 +43,6 @@ export function setup({
       title="Sample text"
       description="Sample description"
     />,
-    { storeInitialState: state },
+    { storeInitialState },
   );
 }
