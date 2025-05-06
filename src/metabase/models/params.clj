@@ -290,14 +290,9 @@
      ctx
      (let [card (get-in param-dashcard-info [:dashcard :card])
            param-id (:parameter_id param-mapping)]
-       (if-some [field-id (or
-                           ;; Get the field id from the field-clause if it contains it. This is the common case
-                           ;; for mbql queries.
-                           (lib.util.match/match-one param-target-field [:field (id :guard integer?) _] id)
-                           ;; Attempt to get the field clause from the model metadata corresponding to the field.
-                           ;; This is the common case for native queries in which mappings from original columns
-                           ;; have been performed using model metadata.
-                           (:id (qp.util/field->field-info param-target-field (:result_metadata card))))]
+       ;; Get the field id from the field-clause if it contains it. This is the common case
+       ;; for mbql queries.
+       (if-some [field-id (lib.util.match/match-one param-target-field [:field (id :guard integer?) _] id)]
          (-> ctx
              (update :param-id->field-ids #(merge {param-id #{}} %))
              (update-in [:param-id->field-ids param-id] conj field-id))
