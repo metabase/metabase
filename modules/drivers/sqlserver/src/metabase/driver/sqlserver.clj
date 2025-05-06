@@ -46,6 +46,7 @@
                                         ::sql.qp.boolean-is-comparison/boolean-is-comparison})
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
+                              :connection-impersonation               true
                               :uuid-type                              true
                               :convert-timezone                       true
                               :datetime-diff                          true
@@ -875,3 +876,16 @@
 
 (defmethod sql-jdbc/impl-query-canceled? :sqlserver [_ e]
   (= (sql-jdbc/get-sql-state e) "HY008"))
+
+;;; ------------------------------------------------- User Impersonation --------------------------------------------------
+
+(defmethod driver.sql/default-database-role :sqlserver
+  [_driver database]
+  ;; SQL Server supports impersonation via EXECUTE AS USER
+  ;; So the default role is the default user
+  (-> database :details :user))
+
+(defmethod driver.sql/set-role-statement :sqlserver
+  [_driver role]
+  ;; REVERT to handle the case where the users role attribute has changed
+  (format "REVERT; EXECUTE AS USER = '%s'" role))
