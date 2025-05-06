@@ -49,13 +49,54 @@
   []
   (let [namespace-names (all-namespace-names)]
     [{:id :sync
-      :display_name (tru "Sync issue troubleshooting")
+      :display_name (tru "Info") ; to be decided
       :loggers (->> (-> [(logger "metabase.driver")]
                         (into (loggers-under "metabase.sync" namespace-names))
                         (into (comp (map #(str "metabase.driver." %))
                                     (mapcat #(loggers-under % namespace-names)))
                               (sort (loaded-drivers))))
-                    (sort-by :name))}]))
+                    (sort-by :name))}
+     {:id :sync
+      :display_name (tru "Sync issue troubleshooting")
+      :loggers [{:name "metabase.sync.util" :level :debug}
+                {:name "metabase.sync.sync_metadata" :level :debug}
+                {:name "metabase.sync.analyze" :level :debug}
+                {:name "metabase.sync.analyze.fingerprint" :level :debug}
+                {:name "metabase.sync.field_values" :level :debug}
+                {:name "metabase.driver" :level :debug}
+                {:name "metabase.sync.task.sync_databases" :level :debug}]}
+     {:id :linkedfilters
+      :display_name (tru "Linked filters troubleshooting")
+      :loggers [{:name "metabase" :level :info}
+                {:name "metabase-enterprise" :level :info}
+                {:name "metabase.metabot" :level :info}
+                {:name "metabase.plugins" :level :info}
+                {:name "metabase.server.middleware" :level :info}
+                {:name "metabase.server.middleware.log" :level :debug}
+                {:name "metabase.query-processor.async" :level :info}
+                {:name "metabase.driver.sql.query-processor" :level :info}
+                {:name "metabase.query-processor.middleware.escape-join-aliases" :level :info}
+                {:name "com.mchange" :level :error}
+                {:name "org.quartz" :level :info}
+                {:name "liquibase" :level :error}
+                {:name "metabase.models.params.chain-filter" :level :debug}]}
+     {:id :linkedfilters
+      :display_name (tru "Serialization troubleshooting")
+      :loggers [{:name "metabase" :level :info}
+                {:name "metabase-enterprise" :level :info}
+                {:name "metabase.metabot" :level :info}
+                {:name "metabase.plugins" :level :info}
+                {:name "metabase.server.middleware" :level :info}
+                {:name "metabase.server.middleware.log" :level :debug}
+                {:name "metabase.query-processor.async" :level :info}
+                {:name "metabase.driver.sql.query-processor" :level :info}
+                {:name "metabase.query-processor.middleware.escape-join-aliases" :level :info}
+                {:name "com.mchange" :level :error}
+                {:name "org.quartz" :level :info}
+                {:name "liquibase" :level :error}
+                {:name "net.snowflake.client.jdbc.SnowflakeConnectString" :level :error}
+                {:name "metabase-enterprise.serialization" :level :debug}
+                {:name "metabase.models.serialization" :level :debug}]}]))
 
 (api.macros/defendpoint :get "/presets" :- [:sequential
                                             [:map
