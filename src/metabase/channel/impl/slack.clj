@@ -36,9 +36,9 @@
         (str "…"))
     mrkdwn))
 
-(def header-text-limit       "Header block character limit"    150)
-(def block-text-length-limit "Section block character limit"   3000)
-(def ^:private attachment-text-length-limit                    2000)
+(def header-text-limit       "Header block character limit"  150)
+(def block-text-length-limit "Section block character limit" 3000)
+(def ^:private attachment-text-length-limit                  2000)
 
 (defn- text->markdown-block
   [text]
@@ -134,10 +134,10 @@
                                        :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)
                                        :emoji true}}]}
                      (part->attachment-data (:card_part payload))]
-        blocks      (mapv create-and-upload-slack-attachment! attachments)]
+        blocks      (mapcat :bocks (mapv create-and-upload-slack-attachment! attachments))]
     (for [channel (map notification-recipient->channel recipients)]
       {:channel channel
-       :blocks  (mapcat :blocks blocks)})))
+       :blocks  blocks})))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    Dashboard Subscriptions                                      ;;
@@ -183,14 +183,16 @@
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard] :- [:sequential SlackMessage]
   [_channel-type _payload-type {:keys [payload creator]} _template recipients]
   (let [parameters (:parameters payload)
-        dashboard  (:dashboard payload)]
+        dashboard  (:dashboard payload)
+        blocks     (->> [(slack-dashboard-header dashboard (:common_name creator) parameters)
+                         (create-slack-attachment-data (:dashboard_parts payload))]
+                        flatten
+                        (remove nil?)
+                        (mapv create-and-upload-slack-attachment!)
+                        (mapcat :blocks))]
     (for [channel-id (map notification-recipient->channel recipients)]
       {:channel channel-id
-       :blocks  (->> (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
-                               (create-slack-attachment-data (:dashboard_parts payload))])
-                     (remove nil?)
-                     (mapv create-and-upload-slack-attachment!)
-                     (mapcat :blocks))})))
+       :blocks  blocks})))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                           System Event                                          ;;
@@ -199,10 +201,11 @@
 (mu/defmethod channel/render-notification [:channel/slack :notification/system-event] :- [:sequential SlackMessage]
   [channel-type _payload-type {:keys [context] :as notification-payload} template recipients]
   (let [event-name (:event_name context)
-        template    (or template
-                        ;; TODO: the context here does not nescessarily have the same shape as payload, needs to rethink this
-                        (channel.template/default-template :notification/system-event context channel-type))]
+        template   (or template
+                       ;; TODO: the context here does not nescessarily have the same shape as payload, needs to rethink this
+                       (channel.template/default-template :notification/system-event context channel-type))
+        blocks     (:blocks (text->markdown-block (channel.template/render-template template notification-payload)))]
     (assert template (str "No template found for event " event-name))
     (for [channel (map notification-recipient->channel recipients)]
       {:channel channel
-       :blocks  (:blocks (text->markdown-block (channel.template/render-template template notification-payload)))})))
+       :blocks  blocks})))
