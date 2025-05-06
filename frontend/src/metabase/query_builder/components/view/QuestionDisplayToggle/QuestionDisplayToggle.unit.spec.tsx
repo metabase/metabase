@@ -5,32 +5,20 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { QuestionDisplayToggle } from "./QuestionDisplayToggle";
 
 describe("QuestionDisplayToggle", () => {
-  it("should render with correct labels", () => {
+  it("renders correctly", () => {
     renderWithProviders(
       <QuestionDisplayToggle
         isShowingRawTable={false}
         onToggleRawTable={jest.fn()}
       />,
     );
-
-    expect(screen.getByRole("switch")).toBeInTheDocument();
-    expect(screen.getByRole("switch")).toHaveAccessibleName(
-      "Switch to visualization",
-    );
+    expect(screen.getByLabelText("Switch to data")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Switch to visualization"),
+    ).toBeInTheDocument();
   });
 
-  it("should show correct label when showing raw table", () => {
-    renderWithProviders(
-      <QuestionDisplayToggle
-        isShowingRawTable={true}
-        onToggleRawTable={jest.fn()}
-      />,
-    );
-
-    expect(screen.getByRole("switch")).toHaveAccessibleName("Switch to data");
-  });
-
-  it("should toggle state on click", async () => {
+  it("toggles to data on click", async () => {
     const onToggleRawTable = jest.fn();
     renderWithProviders(
       <QuestionDisplayToggle
@@ -39,28 +27,12 @@ describe("QuestionDisplayToggle", () => {
       />,
     );
 
-    const toggle = screen.getByRole("switch");
-    await userEvent.click(toggle);
+    const dataButton = screen.getByLabelText("Switch to data");
+    await userEvent.click(dataButton);
     expect(onToggleRawTable).toHaveBeenCalledWith(true);
   });
 
-  it("should toggle state on Enter key", async () => {
-    const onToggleRawTable = jest.fn();
-    renderWithProviders(
-      <QuestionDisplayToggle
-        isShowingRawTable={false}
-        onToggleRawTable={onToggleRawTable}
-      />,
-    );
-
-    const toggle = screen.getByRole("switch");
-    toggle.focus();
-
-    await userEvent.keyboard("{Enter}");
-    expect(onToggleRawTable).toHaveBeenCalledWith(true);
-  });
-
-  it("should toggle state on Space key", async () => {
+  it("toggles to visualization on click", async () => {
     const onToggleRawTable = jest.fn();
     renderWithProviders(
       <QuestionDisplayToggle
@@ -69,36 +41,36 @@ describe("QuestionDisplayToggle", () => {
       />,
     );
 
-    const toggle = screen.getByRole("switch");
-    toggle.focus();
-
-    await userEvent.keyboard(" ");
+    const vizButton = screen.getByLabelText("Switch to visualization");
+    await userEvent.click(vizButton);
     expect(onToggleRawTable).toHaveBeenCalledWith(false);
   });
 
-  it("should be reachable via keyboard tab navigation", async () => {
+  it("toggles state on Enter key press", async () => {
     const onToggleRawTable = jest.fn();
     renderWithProviders(
-      <div>
-        <button>Previous focusable</button>
-        <QuestionDisplayToggle
-          isShowingRawTable={false}
-          onToggleRawTable={onToggleRawTable}
-        />
-        <button>Next focusable</button>
-      </div>,
+      <QuestionDisplayToggle
+        isShowingRawTable={false}
+        onToggleRawTable={onToggleRawTable}
+      />,
     );
 
-    const previousButton = screen.getByText("Previous focusable");
-    previousButton.focus();
-    expect(previousButton).toHaveFocus();
+    const button = screen.getByLabelText("Switch to data");
+    await userEvent.type(button, "{enter}");
+    expect(onToggleRawTable).toHaveBeenCalledWith(true);
+  });
 
-    await userEvent.tab();
-    const toggle = screen.getByRole("switch");
-    expect(toggle).toHaveFocus();
+  it("toggles state on Space key press", async () => {
+    const onToggleRawTable = jest.fn();
+    renderWithProviders(
+      <QuestionDisplayToggle
+        isShowingRawTable={true}
+        onToggleRawTable={onToggleRawTable}
+      />,
+    );
 
-    await userEvent.tab();
-    const nextButton = screen.getByText("Next focusable");
-    expect(nextButton).toHaveFocus();
+    const button = screen.getByLabelText("Switch to visualization");
+    await userEvent.type(button, " ");
+    expect(onToggleRawTable).toHaveBeenCalledWith(false);
   });
 });

@@ -5,6 +5,7 @@
   border-radius: 99px;
   background-color: var(--mb-color-bg-medium);
   transition: background 300ms linear;
+  cursor: pointer;
 
   &:hover {
     background-color: color-mix(in srgb, var(--mb-color-bg-medium), black 5%);
@@ -14,41 +15,19 @@
 .ToggleIcon {
   display: flex;
   padding: 4px 8px;
-  cursor: pointer;
   background-color: transparent;
-  color: inherit;
   border-radius: 99px;
 
   &.active {
-    background-color: var(--mb-color-brand);
-    color: var(--mb-color-text-white);
+    background-color: color-mix(in srgb, var(--mb-color-brand), white 25%);
   }
 }
 
-.track {
-  transition:
-    background-color 200ms ease,
-    border-color 200ms ease;
+.InnerLabel {
+  color: var(--mb-color-text-medium);
+  transition: 300ms;
 
-  input:checked + & {
-    background-color: var(--mb-color-bg-medium);
+  &.activeLabel {
     color: var(--mb-color-text-white);
-
-    & > .thumb {
-      background-color: var(--mb-color-brand);
-      color: var(--mb-color-text-white);
-      transform: translate(-28%);
-    }
   }
-}
-
-.thumb {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 65px;
-  width: 30px;
-  height: 24px;
-  background-color: var(--mb-color-brand);
-  color: var(--mb-color-text-white);
 }
