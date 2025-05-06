@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { push } from "react-router-redux";
 import { useMount } from "react-use";
 
@@ -34,6 +34,13 @@ export function TablePicker(props: {
   const [expandedDatabases, setExpandedDatabases] = useState<
     Record<DatabaseId, boolean>
   >(databaseId ? { [databaseId]: true } : {});
+
+  useEffect(() => {
+    if (databaseId === undefined) {
+      return;
+    }
+    setExpandedDatabases((state) => ({ ...state, [databaseId]: true }));
+  }, [databaseId]);
 
   if (isError) {
     throw new Error("Failed to load databases");
@@ -102,6 +109,13 @@ function DatabaseNode({
   const [expandedSchemas, setExpandedSchemas] = useState<{
     [key: SchemaId]: boolean;
   }>(initialSchema ? { [initialSchema]: true } : {});
+
+  useEffect(() => {
+    if (initialSchema === undefined) {
+      return;
+    }
+    setExpandedSchemas((state) => ({ ...state, [initialSchema]: true }));
+  }, [initialSchema]);
 
   if (isError) {
     throw new Error("Failed to load databases");
