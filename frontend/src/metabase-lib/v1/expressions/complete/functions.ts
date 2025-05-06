@@ -4,8 +4,15 @@ import { isNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { EXPRESSION_FUNCTIONS, getClauseDefinition } from "../config";
-import { GROUP } from "../pratt";
+import { getClauseDefinition } from "../clause";
+import { EXPRESSION_FUNCTIONS } from "../config";
+import {
+  GROUP,
+  LOGICAL_AND,
+  LOGICAL_NOT,
+  LOGICAL_OR,
+  type Token,
+} from "../pratt";
 import { getDatabase } from "../utils";
 
 import {
@@ -14,7 +21,6 @@ import {
   fuzzyMatcher,
   isFieldReference,
   isIdentifier,
-  isOperator,
   tokenAtPos,
 } from "./util";
 
@@ -36,16 +42,17 @@ export function suggestFunctions({
   }
 
   const database = getDatabase(query, metadata);
-  const functions = [...EXPRESSION_FUNCTIONS]
+  const functions = Object.keys(EXPRESSION_FUNCTIONS)
     .map(getClauseDefinition)
     .filter(isNotNull)
-    .filter((clause) => clause && database?.hasFeature(clause.requiresFeature))
+    .filter((clause) => database?.hasFeature(clause.requiresFeature))
     .filter(function disableOffsetInFilterExpressions(clause) {
       const isOffset = clause.name === "offset";
       const isFilterExpression = expressionMode === "filter";
       const isOffsetInFilterExpression = isOffset && isFilterExpression;
       return !isOffsetInFilterExpression;
     })
+    .sort((a, b) => a.name.localeCompare(b.name))
     .map((func) =>
       expressionClauseCompletion(func, {
         type: "function",
@@ -62,7 +69,7 @@ export function suggestFunctions({
 
     if (
       !token ||
-      !(isIdentifier(token) || isOperator(token)) ||
+      !isPotentialFunctionPrefix(token) ||
       isFieldReference(token)
     ) {
       return null;
@@ -81,4 +88,10 @@ export function suggestFunctions({
       options,
     };
   };
+}
+
+const PREFIX_OPERATORS = new Set([LOGICAL_OR, LOGICAL_AND, LOGICAL_NOT]);
+
+function isPotentialFunctionPrefix(token: Token) {
+  return isIdentifier(token) || PREFIX_OPERATORS.has(token.type);
 }

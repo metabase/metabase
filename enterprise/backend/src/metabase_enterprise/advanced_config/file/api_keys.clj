@@ -3,7 +3,7 @@
   (:require
    [clojure.spec.alpha :as s]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
-   [metabase.models.api-key :as api-key]
+   [metabase.api-keys.core :as api-key]
    [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]

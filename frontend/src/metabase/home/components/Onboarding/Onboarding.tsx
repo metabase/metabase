@@ -229,7 +229,7 @@ export const Onboarding = () => {
           {isAdmin && (
             <Box mb={64}>
               <Title
-                order={2}
+                order={3}
                 mb="lg"
               >{t`Set up your ${applicationName}`}</Title>
               <Accordion.Item
@@ -316,7 +316,7 @@ export const Onboarding = () => {
           )}
 
           <Box mb={64}>
-            <Title order={2} mb="lg">{t`Start visualizing your data`}</Title>
+            <Title order={3} mb="lg">{t`Start visualizing your data`}</Title>
             <Accordion.Item
               value="x-ray"
               data-testid="x-ray-item"
@@ -493,7 +493,7 @@ export const Onboarding = () => {
             </Accordion.Item>
           </Box>
           <Box mb={64}>
-            <Title order={2} mb="lg">{t`Get email updates and alerts`}</Title>
+            <Title order={3} mb="lg">{t`Get email updates and alerts`}</Title>
             <Accordion.Item
               value="subscription"
               data-testid="subscription-item"
@@ -666,7 +666,7 @@ export const Onboarding = () => {
             {showMetabaseLinks && (
               <Box data-testid="learning-section" mb="xl">
                 <Title
-                  order={2}
+                  order={3}
                   mb={12}
                 >{t`Get the most out of ${applicationName}`}</Title>
                 <Text>

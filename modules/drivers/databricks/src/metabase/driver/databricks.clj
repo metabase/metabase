@@ -104,7 +104,6 @@
                :where [:and
                        (when-not multi-level-schema [:= :t.table_catalog catalog])
                        [:<> :t.table_schema [:inline "information_schema"]]
-                       [:!= :t.table_catalog [:inline "system"]]
                        [:not [:startswith :t.table_catalog [:inline "__databricks"]]]]}
               :dialect (sql.qp/quote-style driver)))
 
@@ -182,7 +181,6 @@
                        ;; `timestamp` columns when fetching the data. This exception should be removed when the problem
                        ;; is resolved by Databricks in underlying jdbc driver.
                        [:not= :c.full_data_type [:inline "timestamp_ntz"]]
-                       [:!= :c.table_catalog [:inline "system"]]
                        [:not [:startswith :c.table_catalog [:inline "__databricks"]]]
                        [:not [:in :c.table_schema [[:inline "information_schema"]]]]
                        (schema-names-filter schema-names multi-level-schema :c.table_catalog :c.table_schema)
@@ -217,7 +215,6 @@
                         [:= :pk_kcu.constraint_name :rc.unique_constraint_name]]]]
                :where [:and
                        (when-not multi-level-schema [:= :fk_kcu.table_catalog [:inline catalog]])
-                       [:!= :fk_kcu.table_catalog [:inline "system"]]
                        [:not [:startswith :fk_kcu.table_catalog [:inline "__databricks"]]]
                        [:not [:in :fk_kcu.table_schema ["information_schema"]]]
                        (schema-names-filter schema-names multi-level-schema :fk_kcu.table_catalog :fk_kcu.table_schema)
