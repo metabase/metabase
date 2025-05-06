@@ -451,4 +451,37 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByText("Created At: Month").should("exist");
     });
   });
+
+  it("should not store all computed settings in visualizer settings (VIZ-905)", () => {
+    H.createDashboard().then(({ body: { id: dashboardId } }) => {
+      H.visitDashboard(dashboardId);
+
+      H.editDashboard();
+
+      H.openQuestionsSidebar();
+      H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
+      H.modal().within(() => {
+        H.switchToAddMoreData();
+        H.addDataset("Products by Created At (Month)");
+      });
+      H.saveDashcardVisualizerModal("create");
+      H.saveDashboard();
+
+      cy.intercept("GET", `/api/dashboard/${dashboardId}*`).as("dashboardLoad");
+      cy.reload();
+
+      cy.wait("@dashboardLoad").then(({ response }) => {
+        const visualizerSettings =
+          response?.body?.dashcards[0]?.visualization_settings?.visualization
+            ?.settings;
+
+        expect(Object.keys(visualizerSettings)).to.have.length(3);
+        expect(visualizerSettings).to.eql({
+          "card.title": "Orders by Created At (Month)",
+          "graph.dimensions": ["COLUMN_1", "COLUMN_4"],
+          "graph.metrics": ["COLUMN_2", "COLUMN_3"],
+        });
+      });
+    });
+  });
 });
