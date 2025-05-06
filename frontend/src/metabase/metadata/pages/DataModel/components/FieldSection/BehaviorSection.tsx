@@ -23,6 +23,8 @@ export const BehaviorSection = ({ field }: Props) => {
       </Box>
 
       <FieldVisibilityPicker
+        description={t`Where this field should be displayed`}
+        label={t`Visibility`}
         value={field.visibility_type}
         onChange={(visibilityType) => {
           updateField({
