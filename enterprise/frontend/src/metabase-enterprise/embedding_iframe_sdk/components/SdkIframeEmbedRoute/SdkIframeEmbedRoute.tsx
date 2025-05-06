@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { P, match } from "ts-pattern";
 
 import {
@@ -7,8 +7,8 @@ import {
   defineMetabaseAuthConfig,
 } from "embedding-sdk";
 import { MetabaseProviderInternal } from "embedding-sdk/components/public/MetabaseProvider";
-import { useStore } from "metabase/lib/redux";
-import { setIsEmbeddingSdk } from "metabase/redux/embed";
+import { getSdkStore } from "embedding-sdk/store";
+import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { Box, Center, Loader } from "metabase/ui";
 
 import { useSdkIframeEmbedEventBus } from "../../hooks/use-sdk-iframe-embed-event-bus";
@@ -18,13 +18,12 @@ import type { StoreWithSdkState } from "../../types/store";
 import S from "./SdkIframeEmbedRoute.module.css";
 
 export const SdkIframeEmbedRoute = () => {
-  const store = useStore();
-  const { embedSettings } = useSdkIframeEmbedEventBus();
+  const storeRef = useRef<StoreWithSdkState | undefined>(undefined);
+  if (!storeRef.current) {
+    storeRef.current = getSdkStore();
+  }
 
-  useEffect(() => {
-    // we are not using getSdkStore so `isEmbeddingSdk: true` isn't set automatically
-    store.dispatch(setIsEmbeddingSdk(true));
-  }, [store]);
+  const { embedSettings } = useSdkIframeEmbedEventBus();
 
   const authConfig = useMemo(() => {
     if (!embedSettings) {
@@ -53,17 +52,19 @@ export const SdkIframeEmbedRoute = () => {
   const { theme, locale } = embedSettings;
 
   return (
-    <MetabaseProviderInternal
-      authConfig={authConfig}
-      theme={theme}
-      locale={locale}
-      store={store as StoreWithSdkState}
-      classNames={{ portalContainer: S.SdkIframeEmbedPortalContainer }}
-    >
-      <Box h="100vh" bg={theme?.colors?.background}>
-        <SdkIframeEmbedView settings={embedSettings} />
-      </Box>
-    </MetabaseProviderInternal>
+    <MetabaseReduxProvider store={storeRef.current}>
+      <MetabaseProviderInternal
+        authConfig={authConfig}
+        theme={theme}
+        locale={locale}
+        store={storeRef.current}
+        classNames={{ portalContainer: S.SdkIframeEmbedPortalContainer }}
+      >
+        <Box h="100vh" bg={theme?.colors?.background}>
+          <SdkIframeEmbedView settings={embedSettings} />
+        </Box>
+      </MetabaseProviderInternal>
+    </MetabaseReduxProvider>
   );
 };
 
