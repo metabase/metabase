@@ -1,13 +1,9 @@
-import fetchMock from "fetch-mock";
-
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupContentTranslationEndpoints } from "__support__/server-mocks/content-translation";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
-import type {
-  DictionaryResponse,
-  RetrievedDictionaryArrayRow,
-} from "metabase-types/api/content-translation";
+import type { RetrievedDictionaryArrayRow } from "metabase-types/api/content-translation";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -46,13 +42,7 @@ export function setup({
     setupEnterprisePlugins();
   }
 
-  fetchMock.get("path:/api/ee/content-translation/dictionary", (url) => {
-    const localeCode = new URL(url).searchParams.get("locale");
-    const response: DictionaryResponse = {
-      data: dictionary.filter((row) => row.locale === localeCode),
-    };
-    return response;
-  });
+  setupContentTranslationEndpoints({ dictionary });
 
   return renderWithProviders(
     <TitleAndDescription
