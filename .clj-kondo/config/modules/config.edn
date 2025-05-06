@@ -504,7 +504,7 @@
            metabase.pulse.task.send-pulses}
    :uses #{api channel config db driver events models notification permissions plugins premium-features
            query-processor request task task-history util
-           enterprise/advanced-config enterprise/advanced-permissions enterprise/sandbox}}
+           enterprise/advanced-permissions enterprise/sandbox}}
 
   query-analysis
   {:api  #{metabase.query-analysis.core metabase.query-analysis.init}
@@ -576,8 +576,9 @@
    :uses #{api config events models util}}
 
   sample-data
-  {:api  #{metabase.sample-data}
-   :uses #{plugins sync util}}
+  {:api  #{metabase.sample-data.core
+           metabase.sample-data.init}
+   :uses #{plugins settings sync util}}
 
   search
   {:api #{metabase.search.api
@@ -718,7 +719,8 @@
 
   enterprise/advanced-config
   {:api  #{metabase-enterprise.advanced-config.api.logs
-           metabase-enterprise.advanced-config.models.pulse-channel
+           metabase-enterprise.advanced-config.models.notification
+           metabase-enterprise.advanced-config.init
            metabase-enterprise.advanced-config.file}
    :uses #{api api-keys db driver models permissions premium-features setup settings sync util}}
 

@@ -68,8 +68,10 @@ describe("HelpText (OSS)", () => {
       ).toHaveTextContent(name);
 
       expect(
-        within(argumentsBlock).getByTestId(`arg-${name}-description`),
-      ).toHaveTextContent(description.replaceAll("`", "").replaceAll("$", ""));
+        within(argumentsBlock).getByTestId(`arg-${name}-description`) ?? "",
+      ).toHaveTextContent(
+        description?.replaceAll("`", "").replaceAll("$", "") ?? "",
+      );
     });
   });
 
