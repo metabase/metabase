@@ -8,10 +8,6 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { useHasTokenFeature, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { Tree } from "metabase/components/tree";
-import {
-  PERSONAL_COLLECTIONS,
-  getCollectionIcon,
-} from "metabase/entities/collections";
 import { OnboardingDismissedToast } from "metabase/home/components/Onboarding";
 import {
   getCanAccessOnboardingPage,
@@ -244,11 +240,7 @@ export function MainNavbarView({
               />
               {isAdmin && (
                 <PaddedSidebarLink
-                  icon={
-                    getCollectionIcon(
-                      PERSONAL_COLLECTIONS as Collection,
-                    ) as unknown as IconName
-                  }
+                  icon="group"
                   url={OTHER_USERS_COLLECTIONS_URL}
                 >
                   {t`Other users' personal collections`}
