@@ -747,7 +747,7 @@ function RemappedValue({
     dashboardId == null && cardId == null && value != null && isRemapped
       ? {
           parameter,
-          field_ids: fields.filter(isNotNull).map(({ id }) => Number(id)),
+          field_ids: fields.map(({ id }) => Number(id)),
           value,
         }
       : skipToken,
