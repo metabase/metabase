@@ -1,4 +1,4 @@
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box, Flex, Icon, type SelectProps } from "metabase/ui";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { isCurrency, isFK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -13,9 +13,12 @@ import { SemanticTypePicker } from "../SemanticTypePicker";
 
 interface SemanticTypeAndTargetPickerProps {
   className?: string;
+  description?: string;
   field: Field;
-  idFields: Field[];
   hasSeparator?: boolean;
+  idFields: Field[];
+  label?: string;
+  selectProps?: Omit<SelectProps, "data" | "value" | "onChange">;
   onUpdateField: (
     field: Field,
     updates: Partial<
@@ -26,9 +29,12 @@ interface SemanticTypeAndTargetPickerProps {
 
 export const SemanticTypeAndTargetPicker = ({
   className,
+  description,
   field,
   idFields,
+  label,
   hasSeparator,
+  selectProps,
   onUpdateField,
 }: SemanticTypeAndTargetPickerProps) => {
   const showFKTargetSelect = isFK(field);
@@ -36,7 +42,7 @@ export const SemanticTypeAndTargetPicker = ({
 
   const handleChangeSemanticType = (semanticType: string | null) => {
     // If we are changing the field from a FK to something else, we should delete any FKs present
-    if (field.target && field.target.id != null && isFK(field)) {
+    if (field.fk_target_field_id != null && isFK(field)) {
       onUpdateField(field, {
         semantic_type: semanticType,
         fk_target_field_id: null,
@@ -67,8 +73,11 @@ export const SemanticTypeAndTargetPicker = ({
       display={hasSeparator ? "flex" : "block"}
     >
       <SemanticTypePicker
+        {...selectProps}
         className={className}
+        description={description}
         field={field}
+        label={label}
         value={field.semantic_type}
         onChange={handleChangeSemanticType}
       />
@@ -81,6 +90,7 @@ export const SemanticTypeAndTargetPicker = ({
 
       {showCurrencyTypeSelect && (
         <CurrencyPicker
+          {...selectProps}
           className={className}
           mt={hasSeparator ? 0 : "xs"}
           value={getFieldCurrency(field)}
@@ -96,6 +106,7 @@ export const SemanticTypeAndTargetPicker = ({
 
       {showFKTargetSelect && (
         <FkTargetPicker
+          {...selectProps}
           className={className}
           field={field}
           idFields={idFields}
@@ -113,7 +124,8 @@ const getFieldCurrency = (field: Field) => {
     return field.settings.currency;
   }
 
-  const settings = getGlobalSettingsForColumn(field) as FieldFormattingSettings;
+  const settings: FieldFormattingSettings = getGlobalSettingsForColumn(field);
+
   if (settings.currency) {
     return settings.currency;
   }

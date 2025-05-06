@@ -27,7 +27,11 @@ export const DatasetFieldMetadataFkTargetPicker = ({
 
   return (
     <FkTargetPicker
+      comboboxProps={{
+        width: 300,
+      }}
       field={field}
+      fw="bold"
       idFields={idFields}
       value={formField.value}
       onChange={handleChange}

@@ -15,6 +15,7 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
 
 export const CoercionStrategyPicker = ({
   baseType,
+  comboboxProps,
   value,
   onChange,
   ...props
@@ -37,6 +38,7 @@ export const CoercionStrategyPicker = ({
           },
         },
         position: "bottom-start",
+        ...comboboxProps,
       }}
       data={data}
       error={isTouched ? error : null}

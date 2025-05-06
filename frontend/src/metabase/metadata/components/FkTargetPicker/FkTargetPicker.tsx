@@ -26,6 +26,7 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
 }
 
 export const FkTargetPicker = ({
+  comboboxProps,
   field,
   idFields,
   value,
@@ -60,7 +61,7 @@ export const FkTargetPicker = ({
           },
         },
         position: "bottom-start",
-        width: 300,
+        ...comboboxProps,
       }}
       data={data}
       data-testid="fk-target-select"
@@ -85,7 +86,6 @@ export const FkTargetPicker = ({
           );
         });
       }}
-      fw="bold"
       nothingFoundMessage={t`Didn't find any results`}
       placeholder={getFkFieldPlaceholder(field, comparableIdFields)}
       renderOption={(item) => {
@@ -97,12 +97,17 @@ export const FkTargetPicker = ({
             <Icon name={selected ? "check" : "empty"} />
 
             <Flex direction="column" flex="1" gap="xs">
-              <Text c="inherit" lh="1rem">
+              <Text c="inherit" component="span" lh="1rem">
                 {item.option.label}
               </Text>
 
               {field?.description && (
-                <Text c="text-tertiary" className={S.description} lh="1rem">
+                <Text
+                  c="text-tertiary"
+                  className={S.description}
+                  component="span"
+                  lh="1rem"
+                >
                   {field.description}
                 </Text>
               )}

@@ -111,6 +111,12 @@ const MetadataTableColumn = ({
                 className={CS.block}
                 field={rawField}
                 idFields={rawIdFields}
+                selectProps={{
+                  comboboxProps: {
+                    width: 300,
+                  },
+                  fw: "bold",
+                }}
                 onUpdateField={(_field, updates) => {
                   onUpdateField(field, updates);
                 }}

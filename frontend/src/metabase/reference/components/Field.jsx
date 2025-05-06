@@ -61,7 +61,11 @@ const Field = ({
           <div className={F.fieldType}>
             {isEditing ? (
               <SemanticTypePicker
+                comboboxProps={{
+                  width: 300,
+                }}
                 field={field}
+                fw="bold"
                 value={semanticType}
                 onChange={(value) => {
                   formField.semantic_type.onChange({

@@ -181,6 +181,12 @@ const FieldTypeSection = ({
         className={cx(CS.flex, CS.alignCenter)}
         field={rawField}
         idFields={rawIdFields}
+        selectProps={{
+          comboboxProps: {
+            width: 300,
+          },
+          fw: "bold",
+        }}
         onUpdateField={(_field, updates) => {
           onUpdateField(field, updates);
         }}

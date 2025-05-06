@@ -24,8 +24,9 @@ const DATA_MODEL_APP_NAV_BAR_HEIGHT = 53;
 const PREVIEW_NOT_IMPLEMENTED_YET = true;
 
 export const DataModel = ({ params }: Props) => {
-  const { tableId, fieldId } = parseRouteParams(params);
-  const isEmptyStateShown = tableId == null || fieldId == null;
+  const { databaseId, tableId, fieldId } = parseRouteParams(params);
+  const isEmptyStateShown =
+    databaseId == null || tableId == null || fieldId == null;
   const {
     data: table,
     error,
@@ -87,6 +88,7 @@ export const DataModel = ({ params }: Props) => {
             <LoadingAndErrorWrapper error={error} loading={isLoading}>
               {field && (
                 <FieldSection
+                  databaseId={databaseId}
                   field={field}
                   /**
                    * Make sure internal component state is reset when changing fields.

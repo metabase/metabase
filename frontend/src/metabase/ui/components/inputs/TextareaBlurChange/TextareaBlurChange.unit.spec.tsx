@@ -2,19 +2,19 @@ import userEvent from "@testing-library/user-event";
 
 import { cleanup, render, screen } from "__support__/ui";
 
-import type { TextInputBlurChangeProps } from "./TextInputBlurChange";
-import { TextInputBlurChange } from "./TextInputBlurChange";
+import type { TextareaBlurChangeProps } from "./TextareaBlurChange";
+import { TextareaBlurChange } from "./TextareaBlurChange";
 
 function setup({
   value = "",
   placeholder = "Type some text",
   normalize,
-}: Partial<TextInputBlurChangeProps> = {}) {
+}: Partial<TextareaBlurChangeProps> = {}) {
   const onChange = jest.fn();
   const onBlurChange = jest.fn((e) => e.target.value);
 
   render(
-    <TextInputBlurChange
+    <TextareaBlurChange
       value={value}
       placeholder={placeholder}
       onChange={onChange}
@@ -26,7 +26,7 @@ function setup({
   return { placeholder, value, onBlurChange, onChange };
 }
 
-describe("TextInputBlurChange", () => {
+describe("TextareaBlurChange", () => {
   it('should trigger "onBlurChange" on input blur', async () => {
     const { placeholder, onBlurChange } = setup();
 
