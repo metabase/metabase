@@ -26,7 +26,6 @@ Supported languages include:
 | Arabic (Saudi Arabia)  | `ar-SA` |
 | Bulgarian              | `bg`    |
 | Catalan                | `ca`    |
-| Chinese (Traditional)  | `zh`    |
 | Chinese (Taiwanese)    | `zh-TW` |
 | Chinese (Hong Kong)    | `zh-HK` |
 | Chinese (Simplified)   | `zh-CN` |
