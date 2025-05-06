@@ -6,14 +6,14 @@ describe("AuthenticationSettingsPage (OSS)", () => {
   it("should render oss auth providers", async () => {
     await setup();
 
-    expect(await screen.findByText("Google Sign-in")).toBeInTheDocument();
+    expect(await screen.findByText("Sign in with Google")).toBeInTheDocument();
     expect(await screen.findByText("LDAP")).toBeInTheDocument();
     expect(await screen.findByText("API Keys")).toBeInTheDocument();
   });
 
   it("should not render EE auth providers", async () => {
     await setup();
-    expect(await screen.findByText("Google Sign-in")).toBeInTheDocument();
+    expect(await screen.findByText("Sign in with Google")).toBeInTheDocument();
 
     expect(screen.queryByText(/saml/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/jwt/i)).not.toBeInTheDocument();
