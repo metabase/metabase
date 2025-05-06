@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { push } from "react-router-redux";
 
 import {
   skipToken,
@@ -7,7 +6,6 @@ import {
   useListDatabaseSchemasQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
 import type {
   Database,
   DatabaseId,
@@ -50,7 +48,6 @@ function RootNode({
 
   usePrefetch({ databaseId, schemaId });
 
-  const dispatch = useDispatch();
   const { expanded, toggle } = useExpandedState(databaseId);
 
   if (isError) {
@@ -67,28 +64,12 @@ function RootNode({
     );
   }
 
-  const toggleDatabase = (databaseId: DatabaseId) => {
-    if (!expanded[databaseId]) {
-      dispatch(
-        push(
-          getUrl({
-            databaseId,
-            schemaId: undefined,
-            tableId: undefined,
-            fieldId: undefined,
-          }),
-        ),
-      );
-    }
-    toggle(databaseId);
-  };
-
   return data?.data?.map((database) => (
     <DatabaseNode
       key={database.id}
       database={database}
       expanded={expanded[database.id]}
-      onToggle={() => toggleDatabase(database.id)}
+      onToggle={() => toggle(database.id)}
       initialSchema={database.id === databaseId ? schemaId : undefined}
     />
   ));
@@ -113,28 +94,11 @@ function DatabaseNode({
       : skipToken,
   );
 
-  const dispatch = useDispatch();
   const { expanded: expandedSchemas, toggle } = useExpandedState(initialSchema);
 
   if (isError) {
     throw new Error("Failed to load databases");
   }
-
-  const onToggleSchema = (schemaId: SchemaId) => {
-    if (!expandedSchemas[schemaId]) {
-      dispatch(
-        push(
-          getUrl({
-            databaseId: database.id,
-            schemaId,
-            tableId: undefined,
-            fieldId: undefined,
-          }),
-        ),
-      );
-    }
-    toggle(schemaId);
-  };
 
   const singleSchema = !isLoading && data?.length === 1;
 
@@ -146,7 +110,7 @@ function DatabaseNode({
         databaseId={database.id}
         schemaId={name}
         expanded={singleSchema || expandedSchemas[slug]}
-        onToggle={() => onToggleSchema(slug)}
+        onToggle={() => toggle(slug)}
         flatten={singleSchema}
       />
     );
@@ -158,6 +122,12 @@ function DatabaseNode({
       name={database.name}
       expanded={expanded}
       onToggle={onToggle}
+      href={getUrl({
+        databaseId: database.id,
+        schemaId: undefined,
+        tableId: undefined,
+        fieldId: undefined,
+      })}
     >
       {isLoading ? (
         <Delay>
@@ -185,7 +155,6 @@ function SchemaNode({
   onToggle: () => void;
   flatten?: boolean;
 }) {
-  const dispatch = useDispatch();
   const { data, isLoading, isError } = useListDatabaseSchemaTablesQuery(
     expanded
       ? {
@@ -199,25 +168,13 @@ function SchemaNode({
     throw new Error("Failed to load databases");
   }
 
-  function toggleTable(tableId: TableId) {
-    dispatch(
-      push(
-        getUrl({
-          databaseId,
-          schemaId,
-          tableId,
-          fieldId: undefined,
-        }),
-      ),
-    );
-  }
-
   const tables = data?.map((table) => (
-    <Node
+    <TableNode
       key={table.id}
-      type="table"
       name={table.display_name ?? table.name}
-      onToggle={() => toggleTable(table.id)}
+      databaseId={databaseId}
+      schemaId={schemaId}
+      tableId={table.id}
     />
   ));
 
@@ -226,7 +183,18 @@ function SchemaNode({
   }
 
   return (
-    <Node type="schema" name={schemaId} expanded={expanded} onToggle={onToggle}>
+    <Node
+      type="schema"
+      name={schemaId}
+      expanded={expanded}
+      onToggle={onToggle}
+      href={getUrl({
+        databaseId,
+        schemaId,
+        tableId: undefined,
+        fieldId: undefined,
+      })}
+    >
       {isLoading ? (
         <Delay>
           <LoadingNode type="table" />
@@ -237,5 +205,30 @@ function SchemaNode({
         tables
       )}
     </Node>
+  );
+}
+
+function TableNode({
+  name,
+  databaseId,
+  schemaId,
+  tableId,
+}: {
+  name: string;
+  databaseId: DatabaseId;
+  schemaId: SchemaId;
+  tableId: TableId;
+}) {
+  return (
+    <Node
+      type="table"
+      name={name}
+      href={getUrl({
+        databaseId,
+        schemaId,
+        tableId,
+        fieldId: undefined,
+      })}
+    />
   );
 }

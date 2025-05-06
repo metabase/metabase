@@ -2,6 +2,7 @@ import cx from "classnames";
 import { type ReactNode, useState } from "react";
 import { useMount } from "react-use";
 
+import Link from "metabase/core/components/Link";
 import { Box, Flex, Icon, Skeleton } from "metabase/ui";
 
 import S from "./Node.module.css";
@@ -12,41 +13,56 @@ export function Node({
   name,
   expanded,
   onToggle,
+  href,
   children,
 }: {
   type: "database" | "schema" | "table";
   name: ReactNode;
   expanded?: boolean;
   onToggle?: () => void;
+  href?: string;
   children?: ReactNode;
 }) {
   return (
     <Box my="md" className={S.node}>
-      <Flex
-        direction="row"
-        align="center"
-        gap="sm"
-        onClick={onToggle}
-        className={cx(S.title, { [S.clickable]: onToggle })}
-      >
-        {hasChildren(type) && (
+      <MaybeLink to={!expanded && href} onClick={onToggle}>
+        <Flex
+          direction="row"
+          align="center"
+          gap="sm"
+          className={cx(S.title, { [S.clickable]: onToggle })}
+        >
+          {hasChildren(type) && (
+            <Icon
+              name="chevronright"
+              size={10}
+              className={cx(S.chevron, { [S.expanded]: expanded })}
+              color="var(--mb-color-text-light)"
+            />
+          )}
           <Icon
-            name="chevronright"
-            size={10}
-            className={cx(S.chevron, { [S.expanded]: expanded })}
-            color="var(--mb-color-text-light)"
+            name={getIconForType(type)}
+            color="var(--mb-color-text-placeholder)"
           />
-        )}
-        <Icon
-          name={getIconForType(type)}
-          color="var(--mb-color-text-placeholder)"
-        />
-        {name}
-      </Flex>
+          {name}
+        </Flex>
+      </MaybeLink>
 
       {expanded && <Box className={S.children}>{children}</Box>}
     </Box>
   );
+}
+
+function MaybeLink(props: {
+  to?: string | boolean;
+  onClick?: () => void;
+  children: ReactNode;
+}) {
+  const { to, ...rest } = props;
+  if (typeof to === "string") {
+    return <Link {...props} to={to} />;
+  }
+  return <span {...rest} />;
 }
 
 export function LoadingNode({
