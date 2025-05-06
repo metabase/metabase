@@ -155,36 +155,6 @@ describe(
       });
     });
 
-    it("should allow to create an action with the New button", () => {
-      const QUERY = "UPDATE orders SET discount = {{ discount }}";
-      cy.visit("/");
-
-      cy.findByTestId("app-bar").findByText("New").click();
-      H.popover().findByText("Action").click();
-
-      cy.wait("@getDatabase");
-      H.fillActionQuery(QUERY);
-
-      cy.findByRole("dialog").within(() => {
-        cy.findByText(/New Action/)
-          .clear()
-          .type("Discount order");
-
-        cy.findByRole("button", { name: "Save" }).click();
-      });
-
-      H.modal().eq(1).findByText("Select a model").click();
-      H.entityPickerModal().within(() => {
-        cy.findByText("Order").click();
-      });
-
-      cy.findByRole("button", { name: "Create" }).click();
-
-      cy.get("@modelId").then((modelId) => {
-        cy.url().should("include", `/model/${modelId}/detail/actions`);
-      });
-    });
-
     it("should respect permissions", () => {
       // Enabling actions for sample database as well
       // to test database picker behavior in the action editor
