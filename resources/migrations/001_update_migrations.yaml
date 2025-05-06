@@ -11134,6 +11134,7 @@ databaseChangeLog:
             constraintName: fk_metabase_database_metabase_database_id
             onDelete: RESTRICT
 
+
   - changeSet:
       id: v55.2025-04-17T08:44:39
       author: johnswanson
@@ -11176,6 +11177,8 @@ databaseChangeLog:
                   type: ${boolean.type}
                   defaultValueBoolean: false
                   remarks: "true iff this is a Tenant Group"
+                  constraints:
+                    nullable: false
 
   - changeSet:
       id: v55.2025-04-22T05:54:51
