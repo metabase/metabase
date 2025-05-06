@@ -39,7 +39,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_AVERAGE_BY_CREATED_AT, {
-      idAlias: "productsCountByCreatedAtQuestionId",
+      idAlias: "productsAvgByCreatedAtQuestionId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY, {
@@ -467,17 +467,13 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.openQuestionsSidebar();
     H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
 
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.addDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
+      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+    });
+
     H.saveDashcardVisualizerModal("create");
-    H.saveDashboard();
-
-    H.editDashboard();
-    H.showDashcardVisualizerModal(0);
-
-    H.switchToAddMoreData();
-    H.addDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
-    H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
-
-    H.saveDashcardVisualizerModal();
     H.saveDashboard();
 
     // Making sure the card renders
