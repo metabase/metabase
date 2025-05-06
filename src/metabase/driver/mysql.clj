@@ -60,6 +60,7 @@
                               ;; the query itself don't present the option to the users in the UI
                               :case-sensitivity-string-filter-options false
                               :connection-impersonation               true
+                              :connection-impersonation-requires-role true
                               :describe-fields                        true
                               :describe-fks                           true
                               :convert-timezone                       true
@@ -1048,11 +1049,11 @@
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
 (defmethod driver.sql/default-database-role :mysql
-  [_ database]
+  [_driver database]
   (-> database :details :role))
 
 (defmethod driver.sql/set-role-statement :mysql
-  [_ role]
+  [_driver role]
   (let [special-chars-pattern #"[^a-zA-Z0-9_]"
         needs-quote           (re-find special-chars-pattern role)]
     (if needs-quote
