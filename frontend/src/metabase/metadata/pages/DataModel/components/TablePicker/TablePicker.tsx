@@ -17,7 +17,7 @@ import type {
 import { getUrl } from "../../utils";
 
 import { Delay, LoadingNode, Node } from "./Node";
-import { useExpandedState } from "./utils";
+import { useExpandedState, usePrefetch } from "./utils";
 
 export function TablePicker(props: {
   databaseId?: DatabaseId;
@@ -25,6 +25,8 @@ export function TablePicker(props: {
 }) {
   const { databaseId, schemaId } = props;
   const { data, isLoading, isError } = useListDatabasesQuery();
+
+  usePrefetch({ databaseId, schemaId });
 
   const dispatch = useDispatch();
   const { expanded, toggle } = useExpandedState(databaseId);
