@@ -1,6 +1,5 @@
-import { KBarContext, useRegisterActions } from "kbar";
+import { type ActionImpl, KBarContext, useRegisterActions } from "kbar";
 import { type DependencyList, useContext } from "react";
-import _ from "underscore";
 
 import { trackSimpleEvent } from "metabase/lib/analytics";
 
@@ -9,7 +8,7 @@ import type { ShortcutAction } from "../types";
 
 export type RegisterShortcutProps = {
   id: KeyboardShortcutId;
-  perform: () => void;
+  perform: (action: ActionImpl, event?: KeyboardEvent) => void;
 } & Partial<ShortcutAction>;
 
 export const useRegisterShortcut = (
@@ -28,21 +27,22 @@ export const useRegisterShortcut = (
     ? shortcutsToRegister.map(({ id, perform, ...rest }) => {
         const shortcutDef = shortcuts[id];
 
-        if (shortcutDef === undefined) {
-          throw Error(`Unrecgonized shortcut id ${id}`);
+        if (shortcutDef === undefined && !rest.shortcut) {
+          throw Error(`Unrecognized shortcut id ${id}`);
         }
 
         return {
           ...shortcutDef,
           id,
-          perform: _.compose(
-            () =>
+          perform: (action: ActionImpl, event?: KeyboardEvent) => {
+            perform(action, event);
+            if (event) {
               trackSimpleEvent({
                 event: "keyboard_shortcut_performed",
                 event_detail: id,
-              }),
-            perform,
-          ),
+              });
+            }
+          },
           ...rest,
         };
       })

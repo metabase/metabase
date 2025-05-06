@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.public-settings :as public-settings]
    [metabase.server.middleware.misc :as mw.misc]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [ring.mock.request :as ring.mock]))
 

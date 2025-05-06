@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import type { Dashboard } from "metabase-types/api";
 
 import {
@@ -7,7 +8,6 @@ import {
   getBrandingConfig,
   getBrandingSize,
 } from "./exports-branding-utils";
-import { getDomToCanvas, setupDashboardForRendering } from "./image-exports";
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
 
 const TARGET_ASPECT_RATIO = 21 / 17;
@@ -147,6 +147,7 @@ const createHeaderElement = (dashboardName: string, marginBottom: number) => {
 };
 
 const HEADER_MARGIN_BOTTOM = 12;
+const PARAMETERS_MARGIN_BOTTOM = 12;
 const PAGE_PADDING = 16;
 
 interface SavePdfProps {
@@ -166,28 +167,35 @@ export const saveDashboardPdf = async ({
       `Metabase - ${originalFileName}`
     : originalFileName;
 
-  const setup = setupDashboardForRendering(selector);
-  if (!setup) {
+  const dashboardRoot = document.querySelector(selector);
+  const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
+
+  if (!gridNode || !(gridNode instanceof HTMLElement)) {
+    console.warn("No dashboard content found", selector);
     return;
   }
-
-  const {
-    gridNode,
-    contentWidth,
-    parametersNode,
-    parametersHeight,
-    backgroundColor,
-  } = setup;
-
   const cardsBounds = getSortedDashCardBounds(gridNode);
 
   const pdfHeader = createHeaderElement(dashboardName, HEADER_MARGIN_BOTTOM);
+  const parametersNode = dashboardRoot
+    ?.querySelector(`#${DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}`)
+    ?.cloneNode(true);
+
+  let parametersHeight = 0;
+  if (parametersNode instanceof HTMLElement) {
+    gridNode.append(parametersNode);
+    parametersNode.style.cssText = `margin-bottom: ${PARAMETERS_MARGIN_BOTTOM}px`;
+    parametersHeight =
+      parametersNode.getBoundingClientRect().height + PARAMETERS_MARGIN_BOTTOM;
+    gridNode.removeChild(parametersNode);
+  }
 
   gridNode.appendChild(pdfHeader);
   const headerHeight =
     pdfHeader.getBoundingClientRect().height + HEADER_MARGIN_BOTTOM;
   gridNode.removeChild(pdfHeader);
 
+  const contentWidth = gridNode.offsetWidth;
   const width = contentWidth + PAGE_PADDING * 2;
 
   const size = getBrandingSize(width);
@@ -196,14 +204,38 @@ export const saveDashboardPdf = async ({
     headerHeight + parametersHeight + (includeBranding ? brandingHeight : 0);
   const contentHeight = gridNode.offsetHeight + verticalOffset;
 
-  const image = await getDomToCanvas(gridNode, {
+  const backgroundColor = getComputedStyle(document.documentElement)
+    .getPropertyValue("--mb-color-bg-dashboard")
+    .trim();
+
+  const { default: html2canvas } = await import("html2canvas-pro");
+  const image = await html2canvas(gridNode, {
     height: contentHeight,
     width: contentWidth,
+    useCORS: true,
+    backgroundColor,
+    scale: window.devicePixelRatio || 1,
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.style.height = `${contentHeight}px`;
       node.style.backgroundColor = backgroundColor;
-      if (parametersNode) {
+
+      // Handle all dashboard card containers and their children
+      const dashboardCards = node.querySelectorAll("[data-dashcard-key]");
+      dashboardCards.forEach((card) => {
+        if (card instanceof HTMLElement) {
+          // Set background color for the card container
+          card.style.backgroundColor = backgroundColor;
+
+          // Remove any box shadows that might cause grey borders
+          card.style.boxShadow = "none";
+
+          // Set a clean border if needed
+          card.style.border = "1px solid var(--mb-color-border)";
+        }
+      });
+
+      if (parametersNode instanceof HTMLElement) {
         node.insertBefore(parametersNode, node.firstChild);
       }
       node.insertBefore(pdfHeader, node.firstChild);

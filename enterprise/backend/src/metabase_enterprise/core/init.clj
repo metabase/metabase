@@ -6,4 +6,6 @@
 
   See https://metaboat.slack.com/archives/CKZEMT1MJ/p1736556522733279 for rationale behind this pattern."
   (:require
+   [metabase-enterprise.advanced-config.init]
+   [metabase-enterprise.cache.init]
    [metabase-enterprise.enhancements.init]))

@@ -21,8 +21,6 @@ import "./embedding-sdk";
 import "./snippets";
 import "./sharing";
 import "./moderation";
-import "./email_allow_list";
-import "./email_restrict_recipients";
 import "./advanced_permissions";
 import "./ai-sql-fixer";
 import "./ai-sql-generation";

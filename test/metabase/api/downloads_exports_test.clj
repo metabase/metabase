@@ -19,10 +19,10 @@
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.formatter :as formatter]
-   [metabase.public-settings :as public-settings]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.middleware.limit :as limit]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
@@ -1645,3 +1645,27 @@
         (let [res (card-download card {:export-format :xlsx :format-rows true :pivot true})]
           (is (= "Custom Title"
                  (second (first res)))))))))
+
+(deftest pivot-subtotal-formatting-in-xlsx-test
+  (testing "Pivot table subtotals in XLSX exports use formatted values as strings rather than XLSX formatting codes (#57442)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    ["CREATED_AT", "CATEGORY"]
+                                                :columns []
+                                                :values  ["sum"]}
+                                               :column_settings
+                                               {"[\"name\",\"sum\"]" {:number_style "currency"
+                                                                      :currency_in_header false}}
+                                               :pivot.show_row_totals true}
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:sum $price]]
+                                                 :breakout    [$category !year.created_at]})}]
+        (let [result       (mt/user-http-request :crowberto :post 200
+                                                 (format "card/%d/query/xlsx" pivot-card-id)
+                                                 {:format_rows   true
+                                                  :pivot_results true})
+              pivot        (read-xlsx result)
+              subtotal-row (first (filter #(str/starts-with? (first %) "Totals for") pivot))]
+          (is (= "Totals for 2016" (first subtotal-row))))))))

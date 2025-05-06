@@ -146,10 +146,8 @@ describe("scenarios > alert", () => {
       const allowedDomain = "metabase.test";
       const deniedDomain = "metabase.example";
       const deniedEmail = `mailer@${deniedDomain}`;
-      const subscriptionError =
-        "You're only allowed to email subscriptions to allowed domains";
-      const alertError =
-        "You're only allowed to email alerts to allowed domains";
+      // We're not exposing allowed domains to normal users.
+      const normalError = `The following email addresses are not allowed: ${deniedEmail}`;
       const adminSubscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
       const adminAlertError = `You're only allowed to email alerts to addresses ending in ${allowedDomain}`;
 
@@ -213,8 +211,11 @@ describe("scenarios > alert", () => {
             addEmailRecipient(deniedEmail);
           });
 
-          cy.findByText(alertError);
-          cy.button("Done").should("be.disabled");
+          cy.button("Done").click();
+        });
+        cy.findByTestId("toast-undo").within(() => {
+          cy.root().should("have.attr", "color", "error");
+          cy.findByText(normalError);
         });
 
         H.visitDashboard(ORDERS_DASHBOARD_ID);
@@ -223,9 +224,11 @@ describe("scenarios > alert", () => {
         H.sidebar().within(() => {
           addEmailRecipient(deniedEmail);
 
-          cy.button("Send email now").should("be.disabled");
-          cy.button("Done").should("be.disabled");
-          cy.findByText(subscriptionError);
+          cy.button("Done").click();
+        });
+        cy.findByTestId("toast-undo").within(() => {
+          cy.root().should("have.attr", "color", "error");
+          cy.findByText(normalError);
         });
       });
     },

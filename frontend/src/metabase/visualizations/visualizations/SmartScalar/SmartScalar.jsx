@@ -319,7 +319,7 @@ function PreviousValueComparison({
       : "var(--mb-color-text-secondary)";
 
     return (
-      <Title order={4} style={{ whiteSpace: "pre", color: detailColor }}>
+      <Title order={5} style={{ whiteSpace: "pre", color: detailColor }}>
         <Separator inTooltip={inTooltip} />
         {children}
       </Title>
@@ -363,8 +363,7 @@ function PreviousValueComparison({
 }
 
 Object.assign(SmartScalar, {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  uiName: t`Trend`,
+  getUiName: () => t`Trend`,
   identifier: "smartscalar",
   iconName: "smartscalar",
   canSavePng: true,

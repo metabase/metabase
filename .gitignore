@@ -6,6 +6,7 @@
 *.po~
 *.sqlite
 *.trace.db
+*.trace.db.old
 *.xcworkspacedata
 .DS_Store
 .\#*
@@ -43,6 +44,9 @@
 /frontend/test/snapshots/*
 /e2e/snapshots/*
 /e2e/tmp/*
+!/e2e/tmp/db_dumps
+/e2e/tmp/db_dumps/*
+!/e2e/tmp/db_dumps/.gitkeep
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot

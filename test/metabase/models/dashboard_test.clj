@@ -15,9 +15,7 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.xrays.automagic-dashboards.core :as magic]
-   [toucan2.core :as t2])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -318,7 +316,7 @@
 
 (deftest identity-hash-test
   (testing "Dashboard hashes are composed of the name and parent collection's hash"
-    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+    (let [now #t "2022-09-01T12:34:56Z"]
       (mt/with-temp [:model/Collection c1   {:name "top level" :location "/" :created_at now}
                      :model/Dashboard  dash {:name "my dashboard" :collection_id (:id c1) :created_at now}]
         (is (= "8cbf93b7"

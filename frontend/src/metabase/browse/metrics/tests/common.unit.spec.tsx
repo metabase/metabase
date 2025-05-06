@@ -13,7 +13,16 @@ describe("BrowseMetrics (OSS)", () => {
     expect(await screen.findByText("Create metric")).toBeInTheDocument();
   });
 
-  it("should not show the Create metric button if the user does not have data access", async () => {
+  it("displays a new metric header button when no metrics are found", async () => {
+    setup({ metricCount: 0 });
+
+    const header = await screen.findByTestId("browse-metrics-header");
+    expect(
+      await within(header).findByLabelText("Create a new metric"),
+    ).toBeInTheDocument();
+  });
+
+  it("should not show the Create metric button in an empty state if the user does not have data access", async () => {
     setup({ metricCount: 0, databases: [] });
     expect(
       await screen.findByText(
@@ -21,6 +30,14 @@ describe("BrowseMetrics (OSS)", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Create metric")).not.toBeInTheDocument();
+  });
+
+  it("should not show the new metric header button if the user does not have data access", async () => {
+    setup({ metricCount: 0, databases: [] });
+    const header = await screen.findByTestId("browse-metrics-header");
+    expect(
+      within(header).queryByLabelText("Create a new metric"),
+    ).not.toBeInTheDocument();
   });
 
   it("displays a link to the metrics docs", async () => {

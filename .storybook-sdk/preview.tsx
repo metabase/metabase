@@ -6,7 +6,7 @@ import { initialize, mswLoader } from "msw-storybook-addon";
 window.METABASE_REMOVE_DELAYS = true;
 
 import { storybookThemeOptions } from "embedding-sdk/test/storybook-themes";
-import { loader } from "mini-css-extract-plugin";
+import { availableLocales } from "./constants";
 
 const parameters = {
   actions: { argTypesRegex: "^on[A-Z].*" },
@@ -43,17 +43,16 @@ const globalTypes: GlobalTypes = {
       dynamicTitle: true,
     },
   },
+  locale: {
+    name: "Locale",
+    description: "Locale to be passed to the MetabaseProvider",
+    defaultValue: undefined,
+    toolbar: {
+      icon: "globe",
+      items: availableLocales,
+      showName: true,
+      dynamicTitle: true,
+    },
+  },
 };
 
-/*
- * Initializes MSW
- * See https://github.com/mswjs/msw-storybook-addon#configuring-msw
- * to learn how to customize it
- */
-
-initialize({
-  onUnhandledRequest: "bypass",
-});
-const preview = { parameters, decorators, globalTypes, loaders: [mswLoader] };
-
-export default preview;

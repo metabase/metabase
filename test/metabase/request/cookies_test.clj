@@ -2,10 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.public-settings :as public-settings]
    [metabase.request.cookies :as request.cookies]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
