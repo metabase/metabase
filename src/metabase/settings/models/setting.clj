@@ -1565,3 +1565,36 @@
   (if (= "encryption-check" (:key setting))
     setting
     (update setting :value encryption/maybe-decrypt)))
+
+(mu/defn as-binary :- [:maybe [:tuple :string bytes?]]
+  "Parses a data URL string associated with a given setting key and returns a vector containing the content type and the decoded binary data.
+  Returns nil if the setting value is not a valid data URL or cannot be parsed."
+  [setting-key :- [:or :string :keyword]]
+  (let [data-url-string (get-value-of-type :string setting-key)]
+    (when (and (string? data-url-string) (str/starts-with? data-url-string "data:"))
+      (let [[_protocol rest] (str/split data-url-string #":" 2)
+            [header body] (str/split rest #"," 2)]
+        (when-not (nil? body)
+          (let [[content-type & headers-rest] (str/split header #";")]
+            (when-not (empty? content-type)
+              (case (last headers-rest)
+                "base64" [content-type (u/decode-base64-to-bytes body)]
+                ;; otherwise assume this is UTF-8 string data (or no encoding specified)
+                [content-type (.getBytes ^String body "UTF-8")]))))))))
+
+(defn do-with-setting-access-control
+  "Impl for with-setting-access-control"
+  [thunk]
+  (try
+    (binding [*enforce-setting-access-checks* true]
+      (thunk))
+    (catch clojure.lang.ExceptionInfo e
+      ;; Throw a generic 403 for non-admins, so as to not reveal details about settings
+      (api/check-superuser)
+      (throw e))))
+
+(defmacro with-setting-access-control
+  "Executes the given body with setting access enforcement enabled, and adds some exception handling to make sure we
+   return generic 403s to non-admins who try to read or write settings they don't have access to."
+  [& body]
+  `(do-with-setting-access-control (fn [] ~@body)))

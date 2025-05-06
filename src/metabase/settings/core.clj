@@ -87,6 +87,7 @@
 
 (p/import-vars
  [metabase.settings.models.setting
+  as-binary
   admin-writable-site-wide-settings
   can-read-setting?
   current-user-readable-visibilities
@@ -119,7 +120,8 @@
   define-multi-setting
   define-multi-setting-impl]
  [metabase.settings.settings
-  application-name-for-setting-descriptions])
+  application-name-for-setting-descriptions
+  image-response])
 
 (defn database-local-values
   "Database-local Settings values (as a map of Setting name -> already-deserialized value). This comes from the value of

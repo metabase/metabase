@@ -22,6 +22,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 ;; ## TEST SETTINGS DEFINITIONS
@@ -1640,3 +1642,95 @@
           (mt/with-temporary-setting-values [test-setting-that-is-not-included-when-listing-in-api "fun-times"]
             (is (= ::not-present
                    (f :test-setting-that-is-not-included-when-listing-in-api)))))))))
+
+(defsetting test-as-binary-setting
+  "Temporary setting for testing as-binary"
+  :type :string
+  :visibility :internal
+  :encryption :no)
+
+(deftest as-binary-test
+  (testing "Valid data URL with image content type"
+    (mt/with-temporary-setting-values [test-as-binary-setting "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA"]
+      (let [decoded-expected-data (u/decode-base64-to-bytes "iVBORw0KGgoAAAANSUhEUgAAAAUA")]
+        (is (= ["image/png" (seq decoded-expected-data)]
+               (let [[ct body] (setting/as-binary :test-as-binary-setting)]
+                 [ct (seq body)]))))))
+
+  (testing "Valid data URL with text content type"
+    (mt/with-temporary-setting-values [test-as-binary-setting "data:text/plain;base64,SGVsbG8gV29ybGQ="] ; "Hello World"
+      (let [expected-data (.getBytes "Hello World" "UTF-8")]
+        (is (= ["text/plain" (seq expected-data)]
+               (let [[ct body] (setting/as-binary :test-as-binary-setting)]
+                 [ct (seq body)]))))))
+
+  (testing "Valid data URL with content type parameters"
+    (mt/with-temporary-setting-values [test-as-binary-setting "data:text/plain;charset=UTF-8;base64,SGVsbG8gV29ybGQh"] ; "Hello World!"
+      (let [expected-data (.getBytes "Hello World!" "UTF-8")]
+        (is (= ["text/plain" (seq expected-data)]
+               (let [[ct body] (setting/as-binary :test-as-binary-setting)]
+                 [ct (seq body)]))))))
+
+  (testing "Valid data URL with empty content type (just ';base64')"
+    (mt/with-temporary-setting-values [test-as-binary-setting "data:;base64,SGVsbG8="] ; "Hello"
+      (is (nil? (setting/as-binary :test-as-binary-setting)))))
+
+  (testing "Valid data URL with content type but empty body"
+    (mt/with-temporary-setting-values [test-as-binary-setting "data:text/plain;base64,"]
+      (let [expected-data (.getBytes "" "UTF-8")]
+        (is (= ["text/plain" (seq expected-data)]
+               (let [[ct body] (setting/as-binary :test-as-binary-setting)]
+                 [ct (seq body)]))))))
+
+  (testing "Setting value is not a data URL - does not start with 'data:'"
+    (mt/with-temporary-setting-values [test-as-binary-setting "http://example.com/image.png"]
+      (is (nil? (setting/as-binary :test-as-binary-setting)))))
+
+  (testing "Setting value is an invalid data URL - missing comma separator"
+    (mt/with-temporary-setting-values [test-as-binary-setting "data:image/png;base64iVBORw0KGgoAAAANSUhEUgAAAAUA"]
+      (is (nil? (setting/as-binary :test-as-binary-setting)))))
+
+  (testing "Setting value is an invalid data URL - malformed header (no comma, but body is present)"
+    (mt/with-temporary-setting-values [test-as-binary-setting "data:SGVsbG8="]
+      (is (nil? (setting/as-binary :test-as-binary-setting)))))
+
+  (testing "Setting value is nil"
+    (mt/with-temporary-setting-values [test-as-binary-setting nil]
+      (is (nil? (setting/as-binary :test-as-binary-setting)))))
+
+  (testing "Setting value is an empty string"
+    (mt/with-temporary-setting-values [test-as-binary-setting ""]
+      (is (nil? (setting/as-binary :test-as-binary-setting)))))
+
+  (testing "Data URL with only 'data:,'"
+    (mt/with-temporary-setting-values [test-as-binary-setting "data:,"]
+      (let [expected-data (.getBytes "" "UTF-8")]
+        (is (= [nil (seq expected-data)] ; content-type becomes nil
+               (let [[ct body] (setting/as-binary :test-as-binary-setting)]
+                 [ct (seq body)]))))))
+
+  (testing "Data URL with 'data:text/plain,'"
+    (mt/with-temporary-setting-values [test-as-binary-setting "data:text/plain,"]
+      (let [expected-data (.getBytes "" "UTF-8")]
+        (is (= ["text/plain" (seq expected-data)]
+               (let [[ct body] (setting/as-binary :test-as-binary-setting)]
+                 [ct (seq body)]))))))
+
+  (testing "Data URL with non-base64 data in body (assumed UTF-8)"
+    (mt/with-temporary-setting-values [test-as-binary-setting "data:text/plain,ThisIsNotBase64"]
+      (let [expected-data (.getBytes "ThisIsNotBase64" "UTF-8")]
+        (is (= ["text/plain" (seq expected-data)]
+               (let [[ct body] (setting/as-binary :test-as-binary-setting)]
+                 [ct (seq body)]))))))
+
+  (testing "Data URL with base64 encoding specified but body is not valid base64"
+    (mt/with-temporary-setting-values [test-as-binary-setting "data:text/plain;base64,Hello World"] ; "Hello World" is not valid Base64
+      (is (thrown-with-msg? java.lang.IllegalArgumentException #"Illegal base64 character"
+                            (setting/as-binary :test-as-binary-setting)))))
+
+  (testing "Data URL with special characters in base64 string"
+    (mt/with-temporary-setting-values [test-as-binary-setting "data:application/octet-stream;base64,+//="] ; Valid base64 for 3 bytes: 251, 255, 61
+      (let [decoded-expected-data (u/decode-base64-to-bytes "+//=")]
+        (is (= ["application/octet-stream" (seq decoded-expected-data)]
+               (let [[ct body] (setting/as-binary :test-as-binary-setting)]
+                 [ct (seq body)])))))))

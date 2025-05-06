@@ -7,22 +7,6 @@
    [metabase.settings.models.setting :as setting]
    [metabase.util :as u]))
 
-(defn- do-with-setting-access-control
-  [thunk]
-  (try
-    (binding [setting/*enforce-setting-access-checks* true]
-      (thunk))
-    (catch clojure.lang.ExceptionInfo e
-      ;; Throw a generic 403 for non-admins, so as to not reveal details about settings
-      (api/check-superuser)
-      (throw e))))
-
-(defmacro ^:private with-setting-access-control
-  "Executes the given body with setting access enforcement enabled, and adds some exception handling to make sure we
-   return generic 403s to non-admins who try to read or write settings they don't have access to."
-  [& body]
-  `(do-with-setting-access-control (fn [] ~@body)))
-
 ;; TODO: deprecate /api/session/properties and have a single endpoint for listing settings
 (api.macros/defendpoint :get "/"
   "Get all `Settings` and their values. You must be a superuser or have `setting` permission to do this.
@@ -40,7 +24,7 @@
   [_route-params
    _query-params
    settings :- [:map-of kebab-cased-keyword :any]]
-  (with-setting-access-control
+  (setting/with-setting-access-control
     (setting/set-many! settings))
   api/generic-204-no-content)
 
@@ -48,7 +32,7 @@
   "Fetch a single `Setting`."
   [{:keys [key]} :- [:map
                      [:key kebab-cased-keyword]]]
-  (with-setting-access-control
+  (setting/with-setting-access-control
     (setting/user-facing-value key)))
 
 (api.macros/defendpoint :put "/:key"
@@ -58,6 +42,6 @@
                      [:key kebab-cased-keyword]]
    _query-params
    {:keys [value]}]
-  (with-setting-access-control
+  (setting/with-setting-access-control
     (setting/set! key value))
   api/generic-204-no-content)
