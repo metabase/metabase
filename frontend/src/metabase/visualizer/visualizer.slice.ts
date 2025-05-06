@@ -30,7 +30,7 @@ import type {
 
 import {
   getCurrentVisualizerState,
-  getVisualizerComputedSettings,
+  getVisualizerComputedSettingsForFlatSeries,
 } from "./selectors";
 import {
   copyColumn,
@@ -191,7 +191,8 @@ export const addDataSource = createAsyncThunk(
       throw new Error(`Could not get data source or dataset for: ${sourceId}`);
     }
 
-    const computedSettings = getVisualizerComputedSettings(getState());
+    const computedSettings =
+      getVisualizerComputedSettingsForFlatSeries(getState());
 
     return maybeCombineDataset(
       {
