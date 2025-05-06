@@ -17,6 +17,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
@@ -218,26 +219,31 @@
 
 (defn filterable-columns-for-query
   "Get filterable columns for query."
-  [database-id dataset-query stage-number]
-  (-> (lib/query (lib.metadata.jvm/application-database-metadata-provider database-id) dataset-query)
-      lib/ensure-filter-stage
-      (lib/filterable-columns stage-number)))
+  [database-id card stage-number]
+  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider database-id)
+        query (if (= :question (:type card))
+                (lib/query metadata-provider (:dataset_query card))
+                (->> (lib.metadata/card metadata-provider (:id card))
+                     (lib/query metadata-provider)))]
+    (-> query
+        lib/ensure-filter-stage
+        (lib/filterable-columns stage-number))))
 
 (defn- ensure-filterable-columns-for-card
   [ctx
    {database-id   :database_id
     dataset-query :dataset_query
-    id            :id
-    :as           _card}
+    card-id       :id
+    :as           card}
    stage-number]
-  (if (get-in ctx [:card-id->filterable-columns id stage-number])
+  (if (get-in ctx [:card-id->filterable-columns card-id stage-number])
     ctx
     (if-not (and (not-empty dataset-query) (pos-int? database-id))
       ctx
       (-> ctx
-          (update :card-id->filterable-columns #(merge {id {}} %))
-          (assoc-in [:card-id->filterable-columns id stage-number]
-                    (filterable-columns-for-query database-id dataset-query stage-number))))))
+          (update :card-id->filterable-columns #(merge {card-id {}} %))
+          (assoc-in [:card-id->filterable-columns card-id stage-number]
+                    (filterable-columns-for-query database-id card stage-number))))))
 
 (defn- field-id-from-dashcards-filterable-columns
   "Update the `ctx` with `field-id`. This function is supposed to be used on params where target is a name field, in
