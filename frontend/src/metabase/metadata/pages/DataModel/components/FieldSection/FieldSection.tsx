@@ -1,4 +1,8 @@
-import { getFieldDisplayName } from "metabase/metadata/utils/field";
+import { RescanFieldButton } from "metabase/metadata/components";
+import {
+  getFieldDisplayName,
+  getRawTableFieldId,
+} from "metabase/metadata/utils/field";
 import { Stack, Title } from "metabase/ui";
 import type { DatabaseId, Field } from "metabase-types/api";
 
@@ -23,6 +27,10 @@ export const FieldSection = ({ databaseId, field }: Props) => {
         <DataSection field={field} />
         <MetadataSection databaseId={databaseId} field={field} />
         <BehaviorSection databaseId={databaseId} field={field} />
+
+        <Stack gap="sm" mt="xl">
+          <RescanFieldButton fieldId={getRawTableFieldId(field)} />
+        </Stack>
       </Stack>
     </Stack>
   );
