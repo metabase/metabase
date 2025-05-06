@@ -24,12 +24,12 @@
              (t2/select-one-fn :is_superuser :model/User :id (u/the-id user))))))
 
   (testing "it should not let you remove the last admin"
-    (mt/with-single-admin-user [{id :id}]
+    (mt/with-single-admin-user! [{id :id}]
       (is (thrown? Exception
                    (t2/delete! :model/PermissionsGroupMembership :user_id id, :group_id (u/the-id (perms-group/admin)))))))
 
   (testing "it should not let you remove the last non-archived admin"
-    (mt/with-single-admin-user [{id :id}]
+    (mt/with-single-admin-user! [{id :id}]
       (mt/with-temp [:model/User _ {:is_active    false
                                     :is_superuser true}]
         (is (thrown? Exception
