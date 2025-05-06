@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { push } from "react-router-redux";
 import { useMount } from "react-use";
 
@@ -21,7 +21,7 @@ import type {
 import { getUrl } from "../../utils";
 
 import S from "./TablePicker.module.css";
-import { getIconForType, hasChildren } from "./utils";
+import { getIconForType, hasChildren, useExpandedState } from "./utils";
 
 export function TablePicker(props: {
   databaseId?: DatabaseId;
@@ -31,16 +31,7 @@ export function TablePicker(props: {
   const { data, isLoading, isError } = useListDatabasesQuery();
 
   const dispatch = useDispatch();
-  const [expandedDatabases, setExpandedDatabases] = useState<
-    Record<DatabaseId, boolean>
-  >(databaseId ? { [databaseId]: true } : {});
-
-  useEffect(() => {
-    if (databaseId === undefined) {
-      return;
-    }
-    setExpandedDatabases((state) => ({ ...state, [databaseId]: true }));
-  }, [databaseId]);
+  const { expanded, toggle } = useExpandedState(databaseId);
 
   if (isError) {
     throw new Error("Failed to load databases");
@@ -57,7 +48,7 @@ export function TablePicker(props: {
   }
 
   const toggleDatabase = (databaseId: DatabaseId) => {
-    if (!expandedDatabases[databaseId]) {
+    if (!expanded[databaseId]) {
       dispatch(
         push(
           getUrl({
@@ -69,17 +60,14 @@ export function TablePicker(props: {
         ),
       );
     }
-    setExpandedDatabases((state) => ({
-      ...state,
-      [databaseId]: !state[databaseId],
-    }));
+    toggle(databaseId);
   };
 
   return data?.data?.map((database) => (
     <DatabaseNode
       key={database.id}
       database={database}
-      expanded={expandedDatabases[database.id]}
+      expanded={expanded[database.id]}
       onToggle={() => toggleDatabase(database.id)}
       initialSchema={database.id === databaseId ? schemaId : undefined}
     />
@@ -106,16 +94,7 @@ function DatabaseNode({
   );
 
   const dispatch = useDispatch();
-  const [expandedSchemas, setExpandedSchemas] = useState<{
-    [key: SchemaId]: boolean;
-  }>(initialSchema ? { [initialSchema]: true } : {});
-
-  useEffect(() => {
-    if (initialSchema === undefined) {
-      return;
-    }
-    setExpandedSchemas((state) => ({ ...state, [initialSchema]: true }));
-  }, [initialSchema]);
+  const { expanded: expandedSchemas, toggle } = useExpandedState(initialSchema);
 
   if (isError) {
     throw new Error("Failed to load databases");
@@ -134,8 +113,7 @@ function DatabaseNode({
         ),
       );
     }
-
-    setExpandedSchemas((state) => ({ ...state, [schemaId]: !state[schemaId] }));
+    toggle(schemaId);
   };
 
   const singleSchema = !isLoading && data?.length === 1;
