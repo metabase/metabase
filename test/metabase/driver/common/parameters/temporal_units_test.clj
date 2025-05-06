@@ -1,8 +1,7 @@
-(ns metabase.driver.common.parameters.temporal-units-test
+(ns ^:mb/driver-tests metabase.driver.common.parameters.temporal-units-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 

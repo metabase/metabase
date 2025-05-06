@@ -50,15 +50,15 @@
               (sql.params.substitution/->replacement-snippet-info driver/*driver* v)]
           [(str sql replacement-snippet) (concat args prepared-statement-args) missing])))))
 
-(defn substitute-time-grouping
-  [[sql args missing] {[k column] :args} {:keys [name value] :as v}]
+(defn- substitute-time-grouping
+  [[sql args missing] {[k column] :args} v]
   (if (and (params/TemporalUnit? v) (string? k) (string? column))
     (let [{:keys [replacement-snippet prepared-statement-args]}
           (sql.params.substitution/time-grouping->replacement-snippet-info driver/*driver* column v)]
       [(str sql replacement-snippet) (concat args prepared-statement-args args) missing])
     [sql args (conj missing k)]))
 
-(defn substitute-function-param [param->value [sql args missing] {[k] :args :keys [function-name] :as param}]
+(defn- substitute-function-param [param->value [sql args missing] {[k] :args :keys [function-name] :as param}]
   (if-not (contains? param->value k)
     [sql args (conj missing k)]
     (let [v (get param->value k)]
