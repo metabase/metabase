@@ -2,7 +2,7 @@
   (:require
    [clj-kondo.hooks-api :as hooks]
    [clojure.test :refer :all]
-   [hooks.metabase.models.setting]))
+   [hooks.metabase.settings.models.setting]))
 
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (deftest ^:parallel defsetting-test
@@ -29,6 +29,6 @@
               (defn active-users-count "Docstring." [])
               (defn active-users-count! "Docstring." [_value-or-nil]))
            (-> {:node node}
-               hooks.metabase.models.setting/defsetting
+               hooks.metabase.settings.models.setting/defsetting
                :node
                hooks/sexpr)))))
