@@ -34,7 +34,7 @@
 
 (def max-searchable-value-length
   "The maximum length of a searchable value. This is mostly driven by postgresql max-lengths on tsvector columns.
-  And is about half of postgresql's max, since we concat two values together often"
+  And is about half of postgresql's max, since we concat two values together often. That is likely aggressive, but being safe until we can better understand normal data shapes"
   500000)
 
 (defn searchable-value-trim-sql [column]
