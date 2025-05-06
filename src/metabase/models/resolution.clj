@@ -13,7 +13,7 @@
 
   Tests will check to make sure new models get included in this map."
   '{:model/Action                            metabase.actions.models
-    :model/ApiKey                            metabase.models.api-key
+    :model/ApiKey                            metabase.api-keys.models.api-key
     :model/ApplicationPermissionsRevision    metabase.models.application-permissions-revision
     :model/AuditLog                          metabase.models.audit-log
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark

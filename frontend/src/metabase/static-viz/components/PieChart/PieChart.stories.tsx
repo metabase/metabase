@@ -426,3 +426,12 @@ SunburstOtherLabel.args = {
   rawSeries: data.sunburstOtherLabel as any,
   renderingContext,
 };
+
+export const Watermark = {
+  render: Template,
+  args: {
+    rawSeries: data.allSettings as any,
+    renderingContext,
+    hasDevWatermark: true,
+  },
+};
