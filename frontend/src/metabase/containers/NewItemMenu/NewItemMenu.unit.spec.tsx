@@ -118,6 +118,17 @@ describe("NewItemMenu", () => {
     jest.restoreAllMocks();
   });
 
+  it("should properly render menu items", async () => {
+    setup();
+    expect(await screen.findByText("Question")).toBeInTheDocument();
+    expect(await screen.findByText("SQL query")).toBeInTheDocument();
+    expect(await screen.findByText("Dashboard")).toBeInTheDocument();
+    expect(await screen.findByText("Collection")).toBeInTheDocument();
+    expect(await screen.findByText("Model")).toBeInTheDocument();
+    expect(await screen.findByText("Action")).toBeInTheDocument();
+    expect(screen.queryByText("Metric")).not.toBeInTheDocument();
+  });
+
   describe("New Collection", () => {
     it("should open new collection modal on click", async () => {
       setup();
