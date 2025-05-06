@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -189,3 +190,15 @@
   "[[format-sql]] and [[fix-sql-params]] afterwards. For details see those functions."
   [driver-or-dialect-kw sql]
   (-> (format-sql driver-or-dialect-kw sql) fix-sql-params))
+
+(defn ->honeysql-parent-method
+  "Return the parent ->honeysql method for the given `parent` and arg `x`.
+
+  The three-arg arity also binds the `driver` argument of the parent method."
+  ([parent x]
+   (get-method sql.qp/->honeysql [parent (mbql.u/dispatch-by-clause-name-or-class x)]))
+  ([driver parent x]
+   (-> (->honeysql-parent-method parent x)
+       (partial driver))))
+
+
