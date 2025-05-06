@@ -12,8 +12,11 @@
 }
 
 .title {
-  cursor: pointer;
   user-select: none;
+
+  &.clickable {
+    cursor: pointer;
+  }
 }
 
 .children {
