@@ -4,7 +4,7 @@
    [instaparse.core :as insta]
    [metabase.driver.common.parameters :as params]))
 
-(insta/defparser param-grammar "
+(insta/defparser ^:private param-grammar "
 S = <whitespace> function/param <whitespace>
 param = #'.*'
 expr = string|doubleString
