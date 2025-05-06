@@ -1,5 +1,4 @@
-import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
 import {
@@ -16,6 +15,7 @@ import type {
 } from "metabase-types/api";
 
 import type {
+  TableEditingScope,
   UpdateCellValueHandlerParams,
   UpdatedRowHandlerParams,
 } from "../types";
@@ -26,22 +26,15 @@ import { getRowPkKeyValue } from "./utils";
 
 export const useTableCRUD = ({
   tableId,
+  scope,
   datasetData,
   stateUpdateStrategy,
 }: {
   tableId: ConcreteTableId;
+  scope?: TableEditingScope;
   datasetData: DatasetData | null | undefined;
   stateUpdateStrategy: TableEditingStateUpdateStrategy;
 }) => {
-  const [
-    isCreateRowModalOpen,
-    { open: openCreateRowModal, close: closeCreateRowModal },
-  ] = useDisclosure(false);
-
-  const [expandedRowIndex, setExpandedRowIndex] = useState<
-    number | undefined
-  >();
-
   const {
     cellsWithFailedUpdatesMap,
     handleCellValueUpdateError,
@@ -70,13 +63,17 @@ export const useTableCRUD = ({
   }, [tableMetadata]);
 
   const handleCellValueUpdate = useCallback(
-    async ({ updatedData, rowIndex, cellId }: UpdateCellValueHandlerParams) => {
+    async ({
+      updatedData,
+      rowIndex,
+      cellId,
+    }: UpdateCellValueHandlerParams): Promise<boolean> => {
       // mostly the same as "handleRowUpdate", but has optimistic update and special error handling
       if (!datasetData) {
         console.warn(
           "Failed to update table data - no data is loaded for a table",
         );
-        return;
+        return false;
       }
 
       const pkRecord = getRowPkKeyValue(datasetData, rowIndex);
@@ -103,11 +100,15 @@ export const useTableCRUD = ({
         if (response.data?.updated) {
           stateUpdateStrategy.onRowsUpdated(response.data.updated);
         }
+
+        return !response.error;
       } catch (e) {
         handleCellValueUpdateError(e, {
           cellId,
           patchResult: patchResult || undefined,
         });
+
+        return false;
       }
     },
     [
@@ -125,7 +126,7 @@ export const useTableCRUD = ({
         console.warn(
           "Failed to update table data - no data is loaded for a table",
         );
-        return;
+        return false;
       }
 
       const pkRecord = getRowPkKeyValue(datasetData, rowIndex);
@@ -137,6 +138,7 @@ export const useTableCRUD = ({
       const response = await updateTableRows({
         tableId: tableId,
         rows: [updatedRowWithPk],
+        scope,
       });
 
       if (!response.error && response.data) {
@@ -144,35 +146,40 @@ export const useTableCRUD = ({
       } else {
         handleGenericUpdateError(response.error);
       }
+
+      return !response.error;
     },
     [
       datasetData,
       updateTableRows,
       tableId,
+      scope,
       handleGenericUpdateError,
       stateUpdateStrategy,
     ],
   );
 
   const handleRowCreate = useCallback(
-    async (data: Record<string, RowValue>) => {
+    async (data: Record<string, RowValue>): Promise<boolean> => {
       const response = await insertTableRows({
         tableId: tableId,
         rows: [data],
+        scope,
       });
 
       if (!response.error && response.data) {
-        closeCreateRowModal();
         stateUpdateStrategy.onRowsCreated(response.data["created-rows"]);
       } else {
         handleGenericUpdateError(response.error);
       }
+
+      return !response.error;
     },
     [
       insertTableRows,
       tableId,
       handleGenericUpdateError,
-      closeCreateRowModal,
+      scope,
       stateUpdateStrategy,
     ],
   );
@@ -183,7 +190,7 @@ export const useTableCRUD = ({
         console.warn(
           "Failed to update table data - no data is loaded for a table",
         );
-        return;
+        return false;
       }
 
       const columns = datasetData.cols;
@@ -193,12 +200,11 @@ export const useTableCRUD = ({
       const pkColumn = columns[pkColumnIndex];
       const rowPkValue = rowData[pkColumnIndex];
 
-      closeCreateRowModal();
-
       const rows = [{ [pkColumn.name]: rowPkValue }];
       const response = await deleteTableRows({
         rows,
         tableId: tableId,
+        scope,
       });
 
       if (response.data?.success) {
@@ -208,30 +214,21 @@ export const useTableCRUD = ({
       if (response.error) {
         handleGenericUpdateError(response.error);
       }
+
+      return !response.error;
     },
     [
       datasetData,
-      closeCreateRowModal,
       deleteTableRows,
       tableId,
+      scope,
       stateUpdateStrategy,
       handleGenericUpdateError,
     ],
   );
 
-  const handleModalOpenAndExpandedRow = useCallback(
-    (rowIndex?: number) => {
-      setExpandedRowIndex(rowIndex);
-      openCreateRowModal();
-    },
-    [openCreateRowModal],
-  );
-
   return {
-    isCreateRowModalOpen,
-    expandedRowIndex,
     isInserting,
-    closeCreateRowModal,
     tableFieldMetadataMap,
     cellsWithFailedUpdatesMap,
 
@@ -239,6 +236,5 @@ export const useTableCRUD = ({
     handleRowCreate,
     handleRowUpdate,
     handleRowDelete,
-    handleModalOpenAndExpandedRow,
   };
 };

@@ -9,8 +9,8 @@ import {
   useGetChannelInfoQuery,
   useGetDefaultNotificationTemplateQuery,
   useGetNotificationPayloadExampleQuery,
-  useLazyPreviewNotificationTemplateQuery,
   useListChannelsQuery,
+  usePreviewNotificationTemplateQuery,
   useUpdateNotificationMutation,
 } from "metabase/api";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
@@ -48,7 +48,7 @@ import { AlertTriggerIcon } from "../../shared/components/AlertTriggerIcon";
 import { NotificationChannelsPicker } from "../../shared/components/NotificationChannels/NotificationChannelsPicker/NotificationChannelsPicker";
 
 import S from "./CreateOrEditTableNotificationModal.module.css";
-import { PreviewMessagePanel } from "./components/PreviewMessagePanel";
+import { PreviewTemplatePanel } from "./components/PreviewTemplatePanel";
 
 type TableNotificationTriggerOption = {
   value: {
@@ -224,7 +224,7 @@ const useNotificationFormState = (
     [requestBody],
   );
 
-  const handleHandlersChange = useCallback(
+  const handleChannelHandlersChange = useCallback(
     (newHandlers: NotificationHandler[]) => {
       if (requestBody) {
         setRequestBody({
@@ -239,7 +239,7 @@ const useNotificationFormState = (
   return {
     requestBody,
     handleEventNameChange,
-    handleHandlersChange,
+    handleChannelHandlersChange,
   };
 };
 
@@ -254,11 +254,33 @@ const useNotificationPreview = (
     | undefined,
 ) => {
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [channelType, setChannelType] =
+    useState<NotificationChannelType | null>(null);
+  const previewRequest = useMemo(() => {
+    if (!requestBody || !channelType) {
+      return null;
+    }
+    const handler = requestBody.handlers.find(
+      (h) => h.channel_type === channelType && h.template,
+    );
+    const currentTemplate =
+      handler?.template || defaultTemplates?.[channelType];
+    if (!currentTemplate) {
+      return null;
+    }
+    return {
+      notification: requestBody,
+      template: currentTemplate,
+    };
+  }, [requestBody, defaultTemplates, channelType]);
 
-  const [
-    getNotificationPayloadExample,
-    { data: previewData, isLoading: isPreviewLoading, error: previewError },
-  ] = useLazyPreviewNotificationTemplateQuery();
+  const {
+    data: previewData,
+    isLoading: isPreviewLoading,
+    error: previewError,
+  } = usePreviewNotificationTemplateQuery(previewRequest ?? skipToken, {
+    skip: !previewRequest,
+  });
   const handlePreviewClick = useCallback(
     (channelType: NotificationChannelType) => {
       if (previewOpen) {
@@ -273,20 +295,15 @@ const useNotificationPreview = (
 
       if (currentTemplate) {
         setPreviewOpen(true);
-
-        if (requestBody) {
-          getNotificationPayloadExample({
-            notification: requestBody,
-            template: currentTemplate,
-          });
-        }
+        setChannelType(channelType);
       }
     },
-    [requestBody, defaultTemplates, getNotificationPayloadExample, previewOpen],
+    [requestBody, defaultTemplates, previewOpen],
   );
 
   const handlePreviewClose = useCallback(() => {
     setPreviewOpen(false);
+    setChannelType(null);
   }, []);
 
   return {
@@ -410,7 +427,7 @@ export const CreateOrEditTableNotificationModal = ({
   const { data: channelSpec, isLoading: isLoadingChannelInfo } =
     useGetChannelInfoQuery();
 
-  const { requestBody, handleEventNameChange, handleHandlersChange } =
+  const { requestBody, handleEventNameChange, handleChannelHandlersChange } =
     useNotificationFormState(
       tableId,
       notification ?? null,
@@ -529,7 +546,7 @@ export const CreateOrEditTableNotificationModal = ({
               enableTemplates
               notificationHandlers={requestBody.handlers}
               channels={channelSpec ? channelSpec.channels : undefined}
-              onChange={handleHandlersChange}
+              onChange={handleChannelHandlersChange}
               templateContext={templateContext}
               defaultTemplates={defaultTemplates}
               onPreviewClick={handlePreviewClick}
@@ -542,8 +559,7 @@ export const CreateOrEditTableNotificationModal = ({
         </Stack>
 
         {previewOpen && (
-          <PreviewMessagePanel
-            opened={true}
+          <PreviewTemplatePanel
             onClose={handlePreviewClose}
             isLoading={isPreviewLoading}
             error={previewError}

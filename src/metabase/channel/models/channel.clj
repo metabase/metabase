@@ -102,12 +102,20 @@
 (mr/def ::ChannelTemplateSlackDetails
   [:merge
    [:map
-    [:type (apply ms/enum-keywords-and-strings #{:slack/handlebars-text})]]
+    [:type (apply ms/enum-keywords-and-strings #{:slack/handlebars-text :slack/handlebars-resource})]]
    [:multi {:dispatch (comp keyword :type)}
     [:slack/handlebars-resource
      [:map
       [:path string?]]]
     [:slack/handlebars-text
+     [:map
+      [:body string?]]]]])
+
+(mr/def ::ChannelTemplateHttpDetails
+  [:merge
+   [:map
+    [:type (apply ms/enum-keywords-and-strings #{:slack/handlebars-text})]
+    [:http/handlebars-text
      [:map
       [:body string?]]]]])
 

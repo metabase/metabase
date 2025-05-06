@@ -1099,7 +1099,7 @@
             :message "Ranking must have values."
             :errors {"ranking" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-not-null-constraint nil :row/created
+            :postgres actions.error/violate-not-null-constraint nil :model.row/created
             "ERROR: null value in column \"ranking\" violates not-null constraint\n  Detail: Failing row contains (3, admin, null).")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test-2
@@ -1108,7 +1108,7 @@
             :message "Ranking must have values."
             :errors {"ranking" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-not-null-constraint nil :row/created
+            :postgres actions.error/violate-not-null-constraint nil :model.row/created
             "ERROR: null value in column \"ranking\" of relation \"group\" violates not-null constraint\n  Detail: Failing row contains (57, admin, null).")))))
 
 (deftest actions-maybe-parse-sql-error-violate-unique-constraint-test
@@ -1136,7 +1136,7 @@
             :message "Unable to create a new record.",
             :errors {"group-id" "This Group-id does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-foreign-key-constraint nil :row/create
+            :postgres actions.error/violate-foreign-key-constraint nil :model.row/create
             "ERROR: insert or update on table \"user\" violates foreign key constraint \"user_group-id_group_-159406530\"\n  Detail: Key (group-id)=(999) is not present in table \"group\".")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test-2
@@ -1145,7 +1145,7 @@
             :message "Unable to update the record.",
             :errors {"id" "This Id does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-foreign-key-constraint nil :row/update
+            :postgres actions.error/violate-foreign-key-constraint nil :model.row/update
             "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test-3
@@ -1154,7 +1154,7 @@
             :message "Other tables rely on this row so it cannot be deleted.",
             :errors {}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-foreign-key-constraint nil :row/delete
+            :postgres actions.error/violate-foreign-key-constraint nil :model.row/delete
             "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
 
 ;; this contains specical tests case for postgres
@@ -1183,12 +1183,12 @@
                         :status-code 400
                         :type        actions.error/violate-unique-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/create (mt/$ids {:create-row {"id"      3
-                                                           "column1" "A"
-                                                           "column2" "A"}
-                                              :database   (:id database)
-                                              :query      {:source-table $$mytable}
-                                              :type       :query})))))
+                        :model.row/create (mt/$ids {:create-row {"id"      3
+                                                                 "column1" "A"
+                                                                 "column2" "A"}
+                                                    :database   (:id database)
+                                                    :query      {:source-table $$mytable}
+                                                    :type       :query})))))
               (testing "when updating"
                 (is (= {:errors      {"column1" "This Column1 value already exists."
                                       "column2" "This Column2 value already exists."}
@@ -1196,12 +1196,12 @@
                         :status-code 400
                         :type        actions.error/violate-unique-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/update (mt/$ids {:update-row {"column1" "A"
-                                                           "column2" "A"}
-                                              :database   (:id database)
-                                              :query      {:source-table $$mytable
-                                                           :filter       [:= $mytable.id 2]}
-                                              :type       :query}))))))))))))
+                        :model.row/update (mt/$ids {:update-row {"column1" "A"
+                                                                 "column2" "A"}
+                                                    :database   (:id database)
+                                                    :query      {:source-table $$mytable
+                                                                 :filter       [:= $mytable.id 2]}
+                                                    :type       :query}))))))))))))
 
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
 

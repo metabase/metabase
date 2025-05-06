@@ -1,9 +1,15 @@
 import cx from "classnames";
+import { useCallback, useMemo } from "react";
+import { push } from "react-router-redux";
+import { useLocation } from "react-use";
 import { t } from "ttag";
 
+import { NoDataError } from "metabase/components/errors/NoDataError";
+import { useDispatch } from "metabase/lib/redux";
 import {
   ActionIcon,
   Box,
+  Button,
   Divider,
   Flex,
   Group,
@@ -12,6 +18,7 @@ import {
   Text,
   rem,
 } from "metabase/ui";
+import { ShortMessage } from "metabase/visualizations/components/Visualization/NoResultsView/NoResultsView.styled";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import { formatRowCount } from "metabase-lib/v1/queries/utils/row-count";
@@ -25,6 +32,7 @@ import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
+import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-modal-with-object-id";
 import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-editable-column-config";
 import { useTableActions } from "./use-table-actions";
 import { useTableCRUD } from "./use-table-crud";
@@ -53,16 +61,66 @@ export const EditTableDashcardVisualization = ({
   visualizationSettings,
   question,
 }: EditTableDashcardVisualizationProps) => {
+  const dispatch = useDispatch();
+
+  const location = useLocation();
+  const objectIdParam = useMemo(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const objectIdParam = searchParams.get("objectId");
+    const parsedParams = parseModalCompositeObjectId(objectIdParam);
+
+    if (parsedParams?.dashcardId === dashcardId) {
+      return parsedParams.objectId ?? undefined;
+    }
+
+    return undefined;
+  }, [location.search, dashcardId]);
+
+  const handleCurrentObjectIdChange = useCallback(
+    (objectId?: string) => {
+      const searchParams = new URLSearchParams(location.search);
+
+      if (objectId) {
+        searchParams.set(
+          "objectId",
+          getModalCompositeObjectId(objectId, dashcardId),
+        );
+      } else {
+        searchParams.delete("objectId");
+      }
+
+      dispatch(
+        push({
+          ...location,
+          search: "?" + searchParams.toString(),
+        }),
+      );
+    },
+    [location, dispatch, dashcardId],
+  );
+
+  const {
+    state: modalState,
+    openCreateRowModal,
+    openEditRowModal,
+    closeModal,
+  } = useTableEditingModalControllerWithObjectId({
+    currentObjectId: objectIdParam,
+    datasetData: data,
+    onObjectIdChange: handleCurrentObjectIdChange,
+  });
+
   const stateUpdateStrategy = useTableEditingStateDashcardUpdateStrategy(
     dashcardId,
     cardId,
   );
 
+  const editingScope = useMemo(() => {
+    return { "dashcard-id": dashcardId };
+  }, [dashcardId]);
+
   const {
-    isCreateRowModalOpen,
-    expandedRowIndex,
     isInserting,
-    closeCreateRowModal,
     tableFieldMetadataMap,
     cellsWithFailedUpdatesMap,
 
@@ -70,12 +128,17 @@ export const EditTableDashcardVisualization = ({
     handleRowCreate,
     handleRowUpdate,
     handleRowDelete,
-    handleModalOpenAndExpandedRow,
-  } = useTableCRUD({ tableId, datasetData: data, stateUpdateStrategy });
+  } = useTableCRUD({
+    tableId,
+    scope: editingScope,
+    datasetData: data,
+    stateUpdateStrategy,
+  });
 
   const { undo, redo, isUndoLoading, isRedoLoading, currentActionLabel } =
     useTableEditingUndoRedo({
       tableId,
+      scope: editingScope,
       stateUpdateStrategy,
     });
 
@@ -129,7 +192,7 @@ export const EditTableDashcardVisualization = ({
           {hasCreateAction && (
             <ActionIcon
               size="md"
-              onClick={() => handleModalOpenAndExpandedRow()}
+              onClick={openCreateRowModal}
               disabled={shouldDisableActions}
             >
               <Icon name="add" tooltip={t`New record`} />
@@ -137,45 +200,64 @@ export const EditTableDashcardVisualization = ({
           )}
         </Group>
       </Flex>
-      <Box pos="relative" className={S.gridWrapper}>
-        <EditTableDataOverlay
-          show={shouldDisableActions}
-          message={currentActionLabel ?? ""}
-        />
-        <EditTableDataGrid
-          data={data}
-          fieldMetadataMap={tableFieldMetadataMap}
-          cellsWithFailedUpdatesMap={cellsWithFailedUpdatesMap}
-          onCellValueUpdate={handleCellValueUpdate}
-          onRowExpandClick={handleModalOpenAndExpandedRow}
-          columnsConfig={columnsConfig}
-          getColumnSortDirection={getColumnSortDirection}
-        />
-      </Box>
+      {data.rows.length === 0 ? (
+        <Stack
+          h="100%"
+          justify="center"
+          align="center"
+          c="var(--mb-color-text-tertiary)"
+        >
+          <NoDataError data-testid="no-results-image" />
+          <ShortMessage>{t`No results!`}</ShortMessage>
+          <Button
+            leftSection={<Icon name="add" />}
+            variant="filled"
+            onClick={openCreateRowModal}
+            disabled={shouldDisableActions}
+          >{t`New Record`}</Button>
+        </Stack>
+      ) : (
+        <>
+          <Box pos="relative" className={S.gridWrapper}>
+            <EditTableDataOverlay
+              show={shouldDisableActions}
+              message={currentActionLabel ?? ""}
+            />
+            <EditTableDataGrid
+              data={data}
+              fieldMetadataMap={tableFieldMetadataMap}
+              cellsWithFailedUpdatesMap={cellsWithFailedUpdatesMap}
+              onCellValueUpdate={handleCellValueUpdate}
+              onRowExpandClick={openEditRowModal}
+              columnsConfig={columnsConfig}
+              getColumnSortDirection={getColumnSortDirection}
+            />
+          </Box>
 
-      <Flex
-        p="xs"
-        px="1rem"
-        justify="flex-end"
-        align="center"
-        className={S.gridFooterDashcardVisualization}
-      >
-        <Text fz="sm" fw="bold">
-          {getEditTableRowCountMessage(data)}
-        </Text>
-      </Flex>
+          <Flex
+            p="xs"
+            px="1rem"
+            justify="flex-end"
+            align="center"
+            className={S.gridFooterDashcardVisualization}
+          >
+            <Text fz="sm" fw="bold">
+              {getEditTableRowCountMessage(data)}
+            </Text>
+          </Flex>
+        </>
+      )}
       <EditingBaseRowModal
-        opened={isCreateRowModalOpen}
+        modalState={modalState}
+        onClose={closeModal}
         hasDeleteAction={hasDeleteAction}
-        onClose={closeCreateRowModal}
         onEdit={handleRowUpdate}
         onRowCreate={handleRowCreate}
         onRowDelete={handleRowDelete}
         datasetColumns={data.cols}
-        currentRowIndex={expandedRowIndex}
         currentRowData={
-          expandedRowIndex !== undefined
-            ? data.rows[expandedRowIndex]
+          modalState.rowIndex !== undefined
+            ? data.rows[modalState.rowIndex]
             : undefined
         }
         fieldMetadataMap={tableFieldMetadataMap}
@@ -196,4 +278,28 @@ function getEditTableRowCountMessage(data: DatasetData): string {
     return t`Showing first ${HARD_ROW_LIMIT} rows`;
   }
   return t`Showing ${formatRowCount(rowCount)}`;
+}
+
+const MODAL_COMPOSITE_OBJECT_ID_SEPARATOR = "_";
+function getModalCompositeObjectId(objectId: string, dashcardId: number) {
+  return `${dashcardId}${MODAL_COMPOSITE_OBJECT_ID_SEPARATOR}${objectId}`;
+}
+
+function parseModalCompositeObjectId(compositeObjectId: string | null) {
+  if (!compositeObjectId) {
+    return undefined;
+  }
+
+  // objectId can contain separator symbol itself, so we should slice the first part
+  const separatorIndex = compositeObjectId.indexOf(
+    MODAL_COMPOSITE_OBJECT_ID_SEPARATOR,
+  );
+  if (separatorIndex === -1) {
+    return undefined;
+  }
+
+  const dashcardId = compositeObjectId.slice(0, separatorIndex);
+  const objectId = compositeObjectId.slice(separatorIndex + 1);
+
+  return { dashcardId: parseInt(dashcardId), objectId };
 }

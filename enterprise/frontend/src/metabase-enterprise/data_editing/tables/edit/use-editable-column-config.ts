@@ -38,7 +38,6 @@ export function useEditableTableColumnConfigFromVisualizationSettings(
 
     for (const column of columnSettings) {
       columnOrder.push(column.name);
-      columnOrder.push(column.name);
       columnVisibilityMap[column.name] = column.enabled;
 
       if (!column.enabled) {

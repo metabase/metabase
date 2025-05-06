@@ -24,6 +24,7 @@
 .closePreviewIcon {
   color: var(--mb-color-text-tertiary);
   cursor: pointer;
+
   &:hover {
     color: var(--mb-color-text-secondary);
   }

@@ -14,27 +14,21 @@ import {
 } from "metabase/ui";
 import type { PreviewNotificationTemplateResponse } from "metabase-types/api";
 
-import S from "./PreviewMessagePanel.module.css";
+import S from "./PreviewTemplatePanel.module.css";
 
-interface PreviewMessagePanelProps {
-  opened: boolean;
+interface PreviewTemplatePanelProps {
   onClose: () => void;
   isLoading: boolean;
   error: any;
   previewContent?: PreviewNotificationTemplateResponse["rendered"];
 }
 
-export const PreviewMessagePanel = ({
-  opened,
+export const PreviewTemplatePanel = ({
   onClose,
   isLoading,
   error,
   previewContent,
-}: PreviewMessagePanelProps) => {
-  if (!opened) {
-    return null;
-  }
-
+}: PreviewTemplatePanelProps) => {
   const htmlContent = previewContent?.body?.[0]?.content;
 
   return (
@@ -65,11 +59,14 @@ export const PreviewMessagePanel = ({
           </Flex>
         )}
         {error && (
-          <Text color="error">
-            {t`Error loading preview:`} {JSON.stringify(error)}
+          <Text c="error">
+            {t`Error during generation of template preview. Check your template.
+            We will provide better error messages soon 🙏.`}
+            {/* TODO: Un-comment this line when BE return human-readable error without stack trace */}
+            {/* {JSON.stringify(error)} */}
           </Text>
         )}
-        {previewContent ? (
+        {previewContent && !error ? (
           <Stack className={S.previewStack}>
             <Box className={S.previewHeader}>
               <Avatar>{previewContent.from || "?"}</Avatar>
@@ -105,7 +102,7 @@ export const PreviewMessagePanel = ({
           </Stack>
         ) : (
           !isLoading &&
-          !error && <Text color="text-medium">{t`No preview available.`}</Text>
+          !error && <Text c="text-medium">{t`No preview available.`}</Text>
         )}
       </Box>
     </Flex>

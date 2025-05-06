@@ -35,6 +35,7 @@ export class TableEditable extends Component<
   static disableSettingsConfig = true;
   static disableNavigateToNewCardFromDashboard = true;
   static noHeader = true;
+  static noResults = true;
 
   static additionalDashcardActionButtons = [TableEditableConfigureActionButton];
 

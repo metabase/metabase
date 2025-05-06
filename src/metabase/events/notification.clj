@@ -103,14 +103,12 @@
   (maybe-send-notification-for-topic! topic event-info))
 
 (def ^:private table-hydrate
-  [:model/Table :name])
+  [:model/Table :name :field_order])
 
 (def ^:private table-hydrate-schema [:table {:optional true}
                                      [:map
-                                      [:name
-                                       {:description "The name of the table"
-                                        :gen/return "orders"}
-                                       :string]]])
+                                      [:name :string]
+                                      [:field_order :keyword]]])
 
 (mr/def ::nano-id ms/NonBlankString)
 
@@ -153,7 +151,7 @@
                 table-id-hydrate-schemas)]
    [:row_change row-change-schema]])
 
-(def ^:private bulk-row-schema
+(def ^:private table-row-schema
   [:map {:closed true}
    [:args (into [:map
                  [:db_id pos-int?]
@@ -169,7 +167,7 @@
 (mr/def :event/row.updated single-event)
 (mr/def :event/row.deleted single-event)
 
-(def ^:private bulk-event (into bulk-row-schema actor-schema))
+(def ^:private bulk-event (into table-row-schema actor-schema))
 
 (mr/def :event/rows.created bulk-event)
 (mr/def :event/rows.updated bulk-event)

@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-editing.api
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase-enterprise.data-editing.undo :as undo]
    [metabase.actions.core :as actions]
@@ -18,19 +19,34 @@
 
 (set! *warn-on-reflection* true)
 
-;; TODO consider moving this down into the bulk/row update actions
+;; TODO consider moving this down somewhere generic, like in handle-effects!*
 (defn- invalidate-field-values! [table-id rows]
-  (let [field-name-xf (comp (mapcat keys)
-                            (distinct)
-                            (map name)
-                            (map u/lower-case-en))
-        field-names (into #{} field-name-xf rows)
-        fields (when (seq field-names)
-                 (t2/select :model/Field
-                            :table_id table-id
-                            :name [:in field-names]
-                            :has_field_values [:in ["list" "auto-list"]]))]
-    (run! field-values/create-or-update-full-field-values! fields)))
+  ;; Be conservative with respect to case sensitivity, invalidate every field when there is ambiguity.
+  (let [ln->values  (u/group-by first second (for [row rows [k v] row] [(u/lower-case-en (name k)) v]))
+        lower-names (keys ln->values)
+        ln->ids     (when (seq lower-names)
+                      (u/group-by
+                       :lower_name :id
+                       (t2/query {:select [:id [[:lower :name] :lower_name]]
+                                  :from   [(t2/table-name :model/Field)]
+                                  :where  [:and
+                                           [:= :table_id table-id]
+                                           [:in [:lower :name] lower-names]
+                                           [:in :has_field_values ["list" "auto-list"]]
+                                           [:= :semantic_type "type/Category"]]})))
+        stale-fields (->> (for [[lower-name field-ids] ln->ids
+                                :let [new-values (into #{} (filter some?) (ln->values lower-name))
+                                      old-values (into #{} cat (t2/select-fn-vec :values :model/FieldValues
+                                                                                 :field_id [:in field-ids]))]]
+                            (when (seq (set/difference new-values old-values))
+                              field-ids))
+                          (apply concat))]
+    ;; Note that for now we only rescan field values when values are *added* and not when they are *removed*.
+    (when (seq stale-fields)
+      ;; Using a future is not ideal, it would be better to use a queue and a single worker, to avoid tying up threads.
+      (future
+        (->> (t2/select :model/Field :id [:in stale-fields])
+             (run! field-values/create-or-update-full-field-values!))))))
 
 (defn require-authz?
   "Temporary hack to have auth be off by default, only on if MB_DATA_EDITING_AUTHZ=true.
@@ -61,23 +77,31 @@
   "Insert row(s) into the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
+   {:keys [rows scope]} :- [:map
+                            [:rows [:sequential {:min 1} :map]]
+                            ;; TODO make this non-optional in the future
+                            [:scope {:optional true} :map]]]
   (check-permissions)
   (let [rows' (data-editing/apply-coercions table-id rows)
-        res   (data-editing/insert! api/*current-user-id* table-id rows')]
+        scope (or scope {:table-id table-id})
+        res   (data-editing/insert! api/*current-user-id* scope table-id rows')]
     {:created-rows (invalidate-and-present! table-id (:created-rows res))}))
 
 (api.macros/defendpoint :put "/table/:table-id"
   "Update row(s) within the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
+   {:keys [rows scope]} :- [:map
+                            [:rows [:sequential {:min 1} :map]]
+                            ;; TODO make this non-optional in the future
+                            [:scope {:optional true} :map]]]
   (check-permissions)
   (if (empty? rows)
     {:updated []}
     (let [user-id api/*current-user-id*
+          scope   (or scope {:table-id table-id})
           rows    (data-editing/apply-coercions table-id rows)
-          rows    (map :after (data-editing/perform-bulk-action! :bulk/update user-id table-id rows))]
+          rows    (map :after (data-editing/perform-bulk-action! :table.row/update user-id scope table-id rows))]
       {:updated (invalidate-and-present! table-id rows)})))
 
 ;; This is a POST instead of DELETE as not all web proxies pass on the body of DELETE requests.
@@ -85,10 +109,14 @@
   "Delete row(s) from the given table"
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
+   {:keys [rows scope]} :- [:map
+                            [:rows [:sequential {:min 1} :map]]
+                            ;; make this non-optional in the future
+                            [:scope {:optional true} :map]]]
   (check-permissions)
-  (let [user-id api/*current-user-id*]
-    (data-editing/perform-bulk-action! :bulk/delete user-id table-id rows)
+  (let [user-id api/*current-user-id*
+        scope   (or scope {:table-id table-id})]
+    (data-editing/perform-bulk-action! :table.row/delete user-id scope table-id rows)
     {:success true}))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust
@@ -165,46 +193,52 @@
 
 (api.macros/defendpoint :post "/undo"
   "Undo the last change you made.
-  For now only supports tables, but in future will support editables for sure.
+  For now only supports tables, but in the future will support editables for sure.
   Maybe actions, workflows, etc.
   Could even generalize to things like edits to dashboard definitions themselves."
   [_
    _
-   {:keys [table-id no-op]}] :- [:map
-                                 [:table-id ms/PositiveInt]
-                                 [:no-op {:optional true} ms/BooleanValue]]
+   {:keys [table-id scope no-op]}] :- [:map
+                                       ;; deprecated, this will be replaced by scope
+                                       [:table-id ms/PositiveInt]
+                                       ;; TODO make this non-optional in the future
+                                       [:scope {:optional true} :map]
+                                       [:no-op {:optional true} ms/BooleanValue]]
   (check-permissions)
-  (api/check-404 (t2/select-one-pk :model/Table table-id))
-  (let [user-id api/*current-user-id*]
+  (let [user-id api/*current-user-id*
+        scope  (or scope {:table-id table-id})]
     (if no-op
-      {:batch_num (undo/next-batch-num true user-id table-id)}
+      {:batch_num (undo/next-batch-num :undo user-id scope)}
       ;; IDEA encapsulate this in an action
       ;; IDEA use generic action calling API instead of having this endpoint
       (try
-        {:result (undo/undo! user-id table-id)}
+        {:result (undo/undo! user-id scope)}
         (catch ExceptionInfo e
           (throw (translate-undo-error e)))))))
 
 (api.macros/defendpoint :post "/redo"
   "Redo the last change you made.
-  For now only supports tables, but in future will support editables for sure.
+  For now only supports tables, but in the future will support editables for sure.
   Maybe actions, workflows, etc.
   Could even generalize to things like edits to dashboard definitions themselves."
   [_
    _
-   {:keys [table-id no-op]}] :- [:map
-                                 [:table-id ms/PositiveInt]
-                                 [:no-op {:optional true} ms/BooleanValue]]
+   {:keys [table-id scope no-op]}] :- [:map
+                                         ;; deprecated, this will be replaced by scope
+                                       [:table-id ms/PositiveInt]
+                                       ;; TODO: make this non-optional in the future
+                                       [:scope {:optional true} :map]
+                                       [:no-op {:optional true} ms/BooleanValue]]
   (check-permissions)
-  (api/check-404 (t2/select-one :model/Table table-id))
-  (let [user-id api/*current-user-id*]
+  (let [user-id api/*current-user-id*
+        scope   (or scope {:table-id table-id})]
     (if no-op
-      {:batch_num (undo/next-batch-num false user-id table-id)}
+      {:batch_num (undo/next-batch-num :redo user-id scope)}
       ;; IDEA encapsulate this in an action
       ;; IDEA use generic action calling API instead of having this endpoint
       ;; TODO translate errors to http codes
       (try
-        {:result (undo/redo! user-id table-id)}
+        {:result (undo/redo! user-id scope)}
         (catch ExceptionInfo e
           (throw (translate-undo-error e)))))))
 

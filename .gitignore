@@ -135,3 +135,4 @@ modules/drivers/*/.lsp/*
 .aider*
 /config.yml
 CLAUDE.local.md
+.claude/settings.local.json

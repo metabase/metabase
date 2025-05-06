@@ -19,7 +19,7 @@
     (:email/handlebars-resource :slack/handlebars-resource)
     (render (:path details) context)
 
-    (:email/handlebars-text :slack/handlebars-text)
+    (:email/handlebars-text :slack/handlebars-text :http/handlebars-text)
     (render-string (:body details) context)
 
     (do

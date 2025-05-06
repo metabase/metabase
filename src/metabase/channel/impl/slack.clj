@@ -58,9 +58,10 @@
         {:title           (or (-> dashcard :visualization_settings :card.title)
                               card-name)
          :rendered-info   (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
-         :title_link      (urls/card-url card-id)
          :attachment-name "image.png"
-         :fallback        card-name})
+         :fallback        card-name
+         :title_link      (when-not (= :table-editable (:display card))
+                            (urls/card-url card-id))})
 
       :text
       (text->markdown-block (:text part))
@@ -74,13 +75,15 @@
   1200)
 
 (defn- mkdwn-link-text [url label]
-  (let [url-length       (count url)
-        const-length     3
-        max-label-length (- block-text-length-limit url-length const-length)
-        label' (escape-mkdwn label)]
-    (if (< max-label-length 10)
-      (truncate (str "(URL exceeds slack limits) " label') block-text-length-limit)
-      (format "<%s|%s>" url (truncate label' max-label-length)))))
+  (if url
+    (let [url-length       (count url)
+          const-length     3
+          max-label-length (- block-text-length-limit url-length const-length)
+          label' (escape-mkdwn label)]
+      (if (< max-label-length 10)
+        (truncate (str "(URL exceeds slack limits) " label') block-text-length-limit)
+        (format "<%s|%s>" url (truncate label' max-label-length))))
+    label))
 
 (defn- create-and-upload-slack-attachment!
   "Create an attachment in Slack for a given Card by rendering its content into an image and uploading it.

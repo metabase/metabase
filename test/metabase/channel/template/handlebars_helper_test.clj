@@ -52,6 +52,68 @@
     (testing "argument can be a datetime object"
       (is (= "30-01-00" (format-date (t/instant "2000-01-30T00:00:00Z")))))))
 
+(deftest string-helpers-test
+  (are [expected template context]
+       (= expected (handlebars/render-string template context))
+    ;; empty
+    "true" "{{#if (empty items)}}true{{else}}false{{/if}}" {:items ""}
+    "false" "{{#if (empty items)}}true{{else}}false{{/if}}" {:items "some"}
+    ;; contains
+    "true" "{{#if (contains text \"foo\")}}true{{else}}false{{/if}}" {:text "foo bar"}
+    "false" "{{#if (contains text \"foo\")}}true{{else}}false{{/if}}" {:text "bar baz"}
+    ;; starts with
+    "true" "{{#if (starts-with text \"foo\")}}true{{else}}false{{/if}}" {:text "foo bar"}
+    "false" "{{#if (starts-with text \"foo\")}}true{{else}}false{{/if}}" {:text "bar baz"}
+    ;; ends with
+    "true" "{{#if (ends-with text \"bar\")}}true{{else}}false{{/if}}" {:text "foo bar"}
+    "false" "{{#if (ends-with text \"bar\")}}true{{else}}false{{/if}}" {:text "bar baz"}))
+
+(deftest collection-helpers-test
+  (are [expected template context]
+       (= expected (handlebars/render-string template context))
+    ;; empty
+    "true" "{{#if (empty items)}}true{{else}}false{{/if}}" {:items []}
+    "false" "{{#if (empty items)}}true{{else}}false{{/if}}" {:items [1 2 3]}
+    "true" "{{#if (empty items)}}true{{else}}false{{/if}}" {:items nil}
+    "true" "{{#if (empty items)}}true{{else}}false{{/if}}" {:items '()}
+
+    ;; count
+    "3" "{{count items}}" {:items [1 2 3]}
+    "0" "{{count items}}" {:items []}
+    "0" "{{count items}}" {:items nil}
+    "0" "{{count items}}" {:items '()}))
+
+(deftest boolean-helpers-test
+  (are [expected template context]
+       (= expected (handlebars/render-string template context))
+    ;; eq
+    "true" "{{#if (eq product.name \"Hot Dog\")}}true{{else}}false{{/if}}" {:product {:name "Hot Dog"}}
+    "false" "{{#if (eq product.name \"Hot Dog\")}}true{{else}}false{{/if}}" {:product {:name "Pho"}}
+
+    ;; ne
+    "false" "{{#if (ne product.name \"Hot Dog\")}}true{{else}}false{{/if}}" {:product {:name "Hot Dog"}}
+    "true" "{{#if (ne product.name \"Hot Dog\")}}true{{else}}false{{/if}}" {:product {:name "Pho"}}
+
+    ;; gt
+    "false" "{{#if (gt product.price 10)}}true{{else}}false{{/if}}" {:product {:price 5}}
+    "true" "{{#if (gt product.price 10)}}true{{else}}false{{/if}}" {:product {:price 15}}
+
+    ;; gte
+    "false" "{{#if (gte product.price 10)}}true{{else}}false{{/if}}" {:product {:price 5}}
+    "true" "{{#if (gte product.price 10)}}true{{else}}false{{/if}}" {:product {:price 15}}
+
+    ;; lt
+    "true" "{{#if (lt product.price 10)}}true{{else}}false{{/if}}" {:product {:price 5}}
+    "false" "{{#if (lt product.price 10)}}true{{else}}false{{/if}}" {:product {:price 15}}
+
+    ;; lte
+    "true" "{{#if (lte product.price 10)}}true{{else}}false{{/if}}" {:product {:price 5}}
+    "false" "{{#if (lte product.price 10)}}true{{else}}false{{/if}}" {:product {:price 15}}
+
+    ;; regexp
+    "true" "{{#if (regexp text \"^foo.*\")}}true{{else}}false{{/if}}" {:text "foo bar"}
+    "false" "{{#if (regexp text \"^foo.*\")}}true{{else}}false{{/if}}" {:text "bar baz"}))
+
 (deftest now-test
   (mt/with-clock #t "2019-12-10T00:00-08:00[US/Pacific]"
     (is (= "2019-12-10T08:00:00Z" (handlebars/render-string "{{now}}" {})))))

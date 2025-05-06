@@ -1,12 +1,10 @@
 .customTemplateRoot {
   border: none;
-
   color: var(--mb-color-text-primary);
 }
 
 .customTemplateControl {
   border: none;
-
   padding: 0;
 }
 
@@ -19,6 +17,7 @@
 .customTemplateChevron {
   border: none !important;
 }
+
 .customTemplateChevron {
   margin-left: 0;
 }
@@ -26,6 +25,11 @@
 :global(.cm-line) {
   transition: opacity 200ms ease;
 }
+
 .defaultTemplate :global(.cm-editor:not(.cm-focused) .cm-line) {
   opacity: 0.5;
+
+  & * {
+    color: inherit;
+  }
 }
