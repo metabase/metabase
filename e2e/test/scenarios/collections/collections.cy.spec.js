@@ -112,11 +112,7 @@ describe("scenarios > collection defaults", () => {
 
       cy.viewport(800, 500);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("New").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Collection").click();
-
+      H.startNewCollectionFromSidebar();
       cy.findByTestId("new-collection-modal").then((modal) => {
         cy.findByPlaceholderText("My new fantastic collection").type(
           "Test collection",
@@ -923,11 +919,7 @@ describe("scenarios > collection defaults", () => {
 
     it("should create new collections within the current collection", () => {
       H.visitCollection(THIRD_COLLECTION_ID);
-      cy.findByTestId("app-bar").findByText("New").click();
-
-      H.popover().within(() => {
-        cy.findByText("Collection").click();
-      });
+      H.startNewCollectionFromSidebar();
 
       cy.findByTestId("new-collection-modal").then((modal) => {
         cy.findByText("Collection it's saved in").should("be.visible");
