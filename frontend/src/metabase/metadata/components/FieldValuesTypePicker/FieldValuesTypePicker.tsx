@@ -1,8 +1,8 @@
+import { useMemo } from "react";
+
 import { HAS_FIELD_VALUES_OPTIONS } from "metabase/lib/core";
 import { Select, type SelectProps } from "metabase/ui";
 import type { FieldValuesType } from "metabase-types/api";
-
-const DATA = getData();
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   value: FieldValuesType;
@@ -15,6 +15,8 @@ export const FieldValuesTypePicker = ({
   onChange,
   ...props
 }: Props) => {
+  const data = useMemo(() => getData(), []);
+
   const handleChange = (value: string) => {
     if (!isFieldValuesType(value)) {
       throw new Error("Unknown FieldValuesType. This should never happen");
@@ -35,7 +37,7 @@ export const FieldValuesTypePicker = ({
         position: "bottom-start",
         ...comboboxProps,
       }}
-      data={DATA}
+      data={data}
       value={value}
       onChange={handleChange}
       {...props}
