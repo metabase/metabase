@@ -88,8 +88,12 @@ export const DataModel = ({ params }: Props) => {
 
       {!isEmptyStateShown && (
         <Flex bg="accent-gray-light" flex="1">
-          <Box flex="0 0 400px">
-            <LoadingAndErrorWrapper error={error} loading={isLoading}>
+          <Box flex="0 0 400px" h="100%">
+            <LoadingAndErrorWrapper
+              className={S.contentLoadingAndErrorWrapper}
+              error={error}
+              loading={isLoading}
+            >
               {field && (
                 <FieldSection
                   databaseId={databaseId}
