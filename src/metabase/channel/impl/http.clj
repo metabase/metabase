@@ -5,6 +5,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
+   [metabase.channel.template.core :as channel.template]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -86,7 +87,7 @@
      :rows (:rows data)}))
 
 (mu/defmethod channel/render-notification [:channel/http :notification/card]
-  [_channel-type {:keys [payload creator]} _template _recipients]
+  [_channel-type _payload-type {:keys [payload creator]} _template _recipients]
   (let [{:keys [card notification_card card_part]} payload
         card_part                        (channel.shared/maybe-realize-data-rows card_part)
         request-body {:type               "alert"
@@ -110,5 +111,9 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/http :notification/system-event]
-  [_channel-type notification-payload _template _recipients]
-  [{:body notification-payload}])
+  [channel-type _payload-type {:keys [context] :as notification-payload} template _recipients]
+  (let [event-name (:event_name context)
+        template   (or template
+                       (channel.template/default-template :notification/system-event context channel-type))]
+    (assert template (str "No template found for event " event-name))
+    [{:body (json/decode (channel.template/render-template template notification-payload))}]))

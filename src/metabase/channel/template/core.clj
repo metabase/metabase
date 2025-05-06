@@ -14,13 +14,13 @@
 
 (defn render-template
   "Render a template with a payload."
-  [{:keys [details] :as _template} payload]
+  [{:keys [details] :as _template} context]
   (case (keyword (:type details))
     (:email/handlebars-resource :slack/handlebars-resource)
-    (render (:path details) payload)
+    (render (:path details) context)
 
-    (:email/handlebars-text :slack/handlebars-text)
-    (render-string (:body details) payload)
+    (:email/handlebars-text :slack/handlebars-text :http/handlebars-text)
+    (render-string (:body details) context)
 
     (do
       (log/warnf "Unknown email template type: %s" (:type details))

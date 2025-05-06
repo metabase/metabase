@@ -59,44 +59,21 @@ export const EditTableDataGrid = ({
 
   const columnOrder = useMemo(
     () =>
-      columnsConfig
-        ? columnsConfig.filter((it) => it.enabled).map(({ name }) => name)
-        : cols.map(({ name }) => name),
+      columnsConfig ? columnsConfig.columnOrder : cols.map(({ name }) => name),
     [cols, columnsConfig],
   );
 
   const columnVisibility = useMemo(
-    () =>
-      columnsConfig
-        ? columnsConfig.reduce(
-            (acc, { name, enabled }) => ({
-              ...acc,
-              [name]: enabled,
-            }),
-            {},
-          )
-        : undefined,
+    () => (columnsConfig ? columnsConfig.columnVisibilityMap : undefined),
     [columnsConfig],
   );
-
-  // if columnsConfig is not provided, all columns are editable and columnsConfiguredForEditing is undefined
-  const columnsConfiguredForEditing = useMemo(() => {
-    if (!columnsConfig) {
-      return undefined;
-    }
-
-    return new Set(
-      columnsConfig.filter((it) => it.editable).map(({ name }) => name),
-    );
-  }, [columnsConfig]);
 
   const columnSizingMap = useMemo(() => ({}), []);
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
     return cols.map((column, columnIndex) => {
       const isEditableColumn =
-        !columnsConfiguredForEditing ||
-        columnsConfiguredForEditing.has(column.name);
+        !columnsConfig || !columnsConfig.isColumnReadonly(column.name);
 
       const sortDirection = getColumnSortDirection?.(column);
 
@@ -147,7 +124,7 @@ export const EditTableDataGrid = ({
     onCellValueUpdate,
     onCellEditCancel,
     editingCellId,
-    columnsConfiguredForEditing,
+    columnsConfig,
   ]);
 
   const rowId: RowIdColumnOptions = useMemo(
@@ -184,10 +161,7 @@ export const EditTableDataGrid = ({
     ) => {
       const field = fieldMetadataMap?.[columnId];
 
-      if (
-        columnsConfiguredForEditing &&
-        !columnsConfiguredForEditing.has(columnId)
-      ) {
+      if (columnsConfig && columnsConfig.isColumnReadonly(columnId)) {
         return;
       }
 
@@ -202,12 +176,7 @@ export const EditTableDataGrid = ({
         onCellClickToEdit(cellId);
       }
     },
-    [
-      onCellClickToEdit,
-      editingCellId,
-      fieldMetadataMap,
-      columnsConfiguredForEditing,
-    ],
+    [onCellClickToEdit, editingCellId, fieldMetadataMap, columnsConfig],
   );
 
   return (

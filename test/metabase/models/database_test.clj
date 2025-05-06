@@ -62,6 +62,22 @@
           (is (= nil
                  (trigger-for-db db-id))))))))
 
+(deftest check-health!-test
+  (mt/test-drivers (mt/normal-drivers)
+    (with-redefs [quick-task/submit-task! (fn [task] (task))
+                  t2/select (fn [model & args]
+                              (if (and (= model :model/Database) (nil? args))
+                                [(mt/db)]
+                                (apply t2/select model args)))]
+      (binding [h2/*allow-testing-h2-connections* true]
+        (testing "status gauge resets"
+          (mt/with-prometheus-system! [_ system]
+            (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
+              (database/check-health!)
+              (is (== 1.0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})))
+              (database/check-health!)
+              (is (== 1.0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true}))))))))))
+
 (deftest health-check-database-test
   (mt/test-drivers (mt/normal-drivers)
     (with-redefs [quick-task/submit-task! (fn [task] (task))]
@@ -70,41 +86,47 @@
           (mt/with-prometheus-system! [_ system]
             (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
               (database/health-check-database! (mt/db))
-              (is (== 1 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
-              (is (== 0 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy"))))
+              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"})) "unhealthy user-input")
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception"})) "unhealthy exception"))))
 
         (testing "skip audit"
           (mt/with-prometheus-system! [_ system]
             (database/health-check-database! (assoc (mt/db) :is_audit true))
-            (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
-            (is (== 0 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy")))
+            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
+            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"})) "unhealthy user-input")
+            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception"})) "unhealthy exception")))
 
         (testing "skip sample"
           (mt/with-prometheus-system! [_ system]
             (database/health-check-database! (assoc (mt/db) :is_sample true))
-            (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
-            (is (== 0 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy")))
+            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
+            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"})) "unhealthy user-input")
+            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception"})) "unhealthy exception")))
 
         (testing "failures for timeout"
           (mt/with-prometheus-system! [_ system]
             (mt/with-temporary-setting-values [db-connection-timeout-ms 0]
               (database/health-check-database! (mt/db))
-              (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
-              (is (== 1 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy"))))
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"})) "unhealthy user-input")
+              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception"})) "unhealthy exception"))))
 
         (testing "failures for bad connections"
           (when-let [bad-conn (tx/bad-connection-details driver/*driver*)]
             (mt/with-prometheus-system! [_ system]
               (database/health-check-database! (update (mt/db) :details merge bad-conn))
-              (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
-              (is (== 1 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy"))))
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
+              (is (or (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"}))
+                      (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception"}))) "unhealthy user-input or exception"))))
 
         (testing "failures for exception"
           (with-redefs [driver/can-connect? (fn [& _args] (throw (Exception. "boom")))]
             (mt/with-prometheus-system! [_ system]
               (database/health-check-database! (mt/db))
-              (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
-              (is (== 1 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy"))))))))
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"})) "unhealthy user-input")
+              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception"})) "unhealthy exception"))))))))
 
 (deftest can-read-database-setting-test
   (let [encode-decode (comp json/decode json/encode)

@@ -13,11 +13,15 @@ import type {
 const DEFAULT_ACTIONS = [
   {
     id: "row/create" as const,
-    label: t`Create a new record`,
+    get label() {
+      return t`Create a new record`;
+    },
   },
   {
     id: "row/delete" as const,
-    label: t`Delete a record`,
+    get label() {
+      return t`Delete a record`;
+    },
   },
 ];
 

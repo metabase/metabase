@@ -10,7 +10,8 @@ import CodeMirror, {
   type ReactCodeMirrorRef,
 } from "@uiw/react-codemirror";
 import cx from "classnames";
-import React, { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
 import type { CodeLanguage } from "metabase/components/CodeBlock/types";
@@ -36,6 +37,7 @@ export interface TemplateEditorProps
     | "basicSetup"
     | "value"
     | "onBlur"
+    | "onFocus"
     | "minHeight"
   > {
   variant?: "textarea" | "textinput";
@@ -43,6 +45,7 @@ export interface TemplateEditorProps
   defaultValue?: string;
   onChange?: (value: string) => void;
   onBlur?: (value: string) => void;
+  onFocus?: (value: string) => void;
   minHeight?: string;
   placeholder?: string;
   templateContext?: Record<string, any>;
@@ -87,26 +90,29 @@ export const TemplateEditor = ({
   onChange,
   minHeight = "5rem",
   language = "html",
-  placeholder: propsPlaceholder,
+  placeholder,
   className,
   variant = "textarea",
   error,
   templateContext,
   onBlur,
+  onFocus,
   ...rest
 }: TemplateEditorProps) => {
   const helpers = useSetting("default-handlebars-helpers");
   const ref = useRef<ReactCodeMirrorRef>(null);
   const [internalValue, setInternalValue] = useState(defaultValue);
 
-  const handleChange = React.useCallback(
-    (val: string) => {
-      setInternalValue(val);
-      if (onChange) {
-        onChange(val);
-      }
-    },
-    [onChange],
+  useEffect(() => {
+    setInternalValue(defaultValue);
+  }, [defaultValue]);
+
+  // TODO: Consider refactoring into a custom hook
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const onChangeDebounced = useMemo(
+    () => _.debounce((value: string) => onChangeRef.current?.(value), 500),
+    [onChangeRef],
   );
 
   const blurEventHandlerExtension = useMemo(() => {
@@ -162,11 +168,24 @@ export const TemplateEditor = ({
             ref.current.view?.focus();
           }
         }}
+        onFocus={() => {
+          onFocus?.(internalValue);
+        }}
+        onKeyDown={(e) => {
+          // Prevent Escape key from propagating to the modal
+          if (e.key === "Escape") {
+            e.stopPropagation();
+          }
+        }}
         ref={ref}
         value={internalValue}
-        onChange={handleChange}
+        onChange={(value) => {
+          setInternalValue(value);
+          onChangeDebounced(value);
+        }}
         extensions={combinedExtensions}
         minHeight={isTextArea && minHeight ? minHeight : undefined}
+        placeholder={placeholder}
         basicSetup={{
           lineNumbers: false,
           foldGutter: false,
@@ -177,6 +196,7 @@ export const TemplateEditor = ({
           [S.hasError]: error && typeof error === "string",
           [S.textInputVariant]: isTextInput,
         })}
+        indentWithTab={isTextArea}
         {...rest}
       />
       {typeof error === "string" && error && (

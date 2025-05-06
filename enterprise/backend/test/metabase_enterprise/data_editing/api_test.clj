@@ -513,18 +513,27 @@
         (let [table-id     @table
               url          (data-editing.tu/table-url table-id)
               field-id     (t2/select-one-fn :id :model/Field :table_id table-id :name "n")
+              _            (t2/update! :model/Field {:id field-id} {:semantic_type "type/Category"})
               field-values #(vec (:values (field-values/get-latest-full-field-values field-id)))
               create!      #(mt/user-http-request :crowberto :post 200 url {:rows %})
               update!      #(mt/user-http-request :crowberto :put  200 url {:rows %})]
           (is (= [] (field-values)))
           (create! [{:n "a"}])
+          ;; It's async
+          (Thread/sleep 10)
           (is (= ["a"] (field-values)))
           (create! [{:n "b"} {:n "c"}])
+          ;; It's async
+          (Thread/sleep 10)
           (is (= ["a" "b" "c"] (field-values)))
           (update! [{:id 2, :n "d"}])
+          ;; It's async
+          (Thread/sleep 10)
           (is (= ["a" "c" "d"] (field-values)))
           (create! [{:n "a"}])
           (update! [{:id 1, :n "e"}])
+          ;; It's async
+          (Thread/sleep 10)
           (is (= ["a" "c" "d" "e"] (field-values))))))))
 
 (deftest get-row-action-test
@@ -593,3 +602,89 @@
                        (->> body
                             :parameters
                             (map :slug))))))))))))
+
+(deftest row-action-execute-test
+  (let [url #(format "ee/data-editing/row-action/%s/execute" %)
+        req #(apply mt/user-http-request-full-response
+                    (:user %)
+                    :post
+                    (url (:action-id %))
+                    (:body %)
+                    (mapcat identity (:query-params %)))]
+    (mt/with-premium-features #{:table-data-editing}
+      (mt/test-drivers #{:h2 :postgres}
+        (data-editing.tu/toggle-data-editing-enabled! true)
+        (mt/with-actions-enabled
+          (testing "no dashcard"
+            (mt/with-temp [:model/Card   model  {:type     :model}
+                           :model/Action action {:type     :query
+                                                 :name     "test_action"
+                                                 :model_id (:id model)}]
+              (testing "not specified"
+                (is (= 400 (:status (req {:user :crowberto, :action-id (:id action), :body {:pk {}, :params {}}})))))
+              (testing "specified but does not exist"
+                (is (= 404 (:status (req {:user         :crowberto
+                                          :action-id    (:id action)
+                                          :body         {:pk {}, :params {}}
+                                          :query-params {:dashcard-id 999999}})))))))
+          (testing "no action"
+            (mt/with-temp [:model/Dashboard     dash     {}
+                           :model/DashboardCard dashcard {:dashboard_id (:id dash)}]
+              (is (= 404 (:status (req {:user         :crowberto
+                                        :post         999999
+                                        :body         {:pk {}, :params {}}
+                                        :query-params {:dashcard-id (:id dashcard)}}))))
+              (testing "no dashcard still results in 400"
+                (is (= 400 (:status (req {:user :crowberto, :post 999999, :body {:pk {}, :params {}}})))))))
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (with-open [test-table (data-editing.tu/open-test-table! {:id 'auto-inc-type
+                                                                      :name [:text]
+                                                                      :status [:text]}
+                                                                     {:primary-key [:id]})]
+              (mt/with-temp [:model/Card          model    {:type           :model
+                                                            :table_id       @test-table
+                                                            :database_id    (mt/id)
+                                                            :dataset_query  {:database (mt/id)
+                                                                             :type :query
+                                                                             :query {:source-table @test-table}}}
+                             :model/Action        action   {:type           :implicit
+                                                            :name           "update"
+                                                            :model_id       (:id model)
+                                                            :parameters     [{:id "a"
+                                                                              :name "Id"
+                                                                              :slug "id"}
+                                                                             {:id "b"
+                                                                              :name "Name"
+                                                                              :slug "name"}
+                                                                             {:id "c"
+                                                                              :name "Status"
+                                                                              :slug "status"}]}
+
+                             :model/ImplicitAction _       {:action_id      (:id action)
+                                                            :kind           "row/update"}
+                             :model/Dashboard     dash     {}
+                             :model/DashboardCard dashcard {:dashboard_id   (:id dash)
+                                                            :card_id        (:id model)}]
+                (testing "no access to the model"
+                  (is (= 403 (:status (req {:user         :rasta
+                                            :action-id    (:id action)
+                                            :body         {:pk {:id 1}
+                                                           :params {:status "approved"}}
+                                            :query-params {:dashcard-id (:id dashcard)}})))))
+                (testing "row does not exist, action not executed"
+                  (is (= 404 (:status (req {:user         :crowberto
+                                            :action-id    (:id action)
+                                            :body         {:pk {:id 1}
+                                                           :params {:status "approved"}}
+                                            :query-params {:dashcard-id (:id dashcard)}})))))
+                (testing "row exists, action executed"
+                  (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
+                                        {:rows [{:name "Widgets", :status "waiting"}]})
+                  (is (= {:status 200
+                          :body {:rows-updated 1}}
+                         (-> (req {:user         :crowberto
+                                   :action-id    (:id action)
+                                   :body         {:pk {:id 1}
+                                                  :params {:status "approved"}}
+                                   :query-params {:dashcard-id (:id dashcard)}})
+                             (select-keys [:status :body])))))))))))))

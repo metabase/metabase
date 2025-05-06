@@ -391,7 +391,7 @@
         ;; this test only check that channel will send, the content are tested in [[metabase.notification.payload.impl.card-test]]
         (testing "send to all handlers"
           (is (=? {:channel/email [{:message    (mt/malli=? some?)
-                                    :recipients ["crowberto@metabase.com"]}]
+                                    :bcc        ["crowberto@metabase.com"]}]
                    :channel/slack [{:attachments (mt/malli=? some?)
                                     :channel-id  "#general"}]
                    :channel/http [{:body (mt/malli=? some?)}]}
@@ -415,8 +415,8 @@
                                                                                                :breakout    [$category]})}]
     (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
       (testing "send to all handlers"
-        (is (=? {:channel/email [{:message    (mt/malli=? some?)
-                                  :recipients ["crowberto@metabase.com"]}]
+        (is (=? {:channel/email [{:message (mt/malli=? some?)
+                                  :bcc     ["crowberto@metabase.com"]}]
                  :channel/slack [{:attachments (mt/malli=? some?)
                                   :channel-id  "#general"}]
                  :channel/http  [{:body (mt/malli=? some?)}]}
@@ -838,11 +838,11 @@
   (let [table-id (mt/id :categories)]
     (notification.tu/with-system-event-notification!
       [{noti-id-1 :id} {:notification-system-event {:event_name :event/action.success
-                                                    :action     :row/create
+                                                    :action     :model.row/create
                                                     :table_id   table-id}}]
       (notification.tu/with-system-event-notification!
         [{noti-id-2 :id} {:notification-system-event {:event_name :event/action.success
-                                                      :action :row/create
+                                                      :action :model.row/create
                                                       :table_id   table-id}}]
         (testing "returns notifications for the given table"
           (is (= #{noti-id-1 noti-id-2}
@@ -1051,7 +1051,7 @@
           notification (mt/user-http-request :crowberto :post 200 "notification"
                                              {:payload_type :notification/system-event
                                               :payload      {:table_id   table-id
-                                                             :action     :row/create
+                                                             :action     :model.row/create
                                                              :event_name :event/action.success}
                                               :creator_id   (mt/user->id :crowberto)
                                               :condition    [:= [:context "event_info" "table_id"] table-id]
@@ -1060,7 +1060,7 @@
         (is (=? {:condition     ["=" ["context" "event_info" "table_id"] table-id]
                  :payload       {:event_name "event/action.success"
                                  :table_id   table-id
-                                 :action     "row/create"}
+                                 :action     "model.row/create"}
                  :creator_id    (mt/user->id :crowberto)
                  :payload_type  "notification/system-event"}
                 notification))
@@ -1086,5 +1086,5 @@
            :channel/slack (mt/malli=? :map)}
           (mt/user-http-request :crowberto :post 200 "notification/default_template"
                                 {:notification {:payload_type :notification/system-event
-                                                :payload      {:event_name :event/rows.created}}
+                                                :payload      {:event_name :event/row.created}}
                                  :channel_types ["channel/email" "channel/slack"]}))))

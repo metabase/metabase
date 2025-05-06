@@ -11,6 +11,7 @@
   :def-fn                       {:level :warning}
   :dynamic-var-not-earmuffed    {:level :warning}
   :equals-expected-position     {:level :warning, :only-in-test-assertion true}
+  :equals-true                  {:level :warning}
   :keyword-binding              {:level :warning}
   :main-without-gen-class       {:level :warning}
   :minus-one                    {:level :warning}
@@ -42,7 +43,6 @@
 
   #_:docstring-leading-trailing-whitespace
   #_:equals-false
-  #_:equals-true
   #_:used-underscored-binding
 
   ;;
@@ -587,6 +587,7 @@
   metabase.test/with-user-in-groups                                                     clojure.core/let
   metabase.test.gentest/defgentest                                                      clojure.test/deftest
   metabase.upload-test/with-upload-table!                                               clojure.core/let
+  metabase.util/for-map                                                                 clojure.core/for
   metabase.util/with-timer-ms                                                           clojure.core/fn
   metabase.util.files/with-open-path-to-resource                                        clojure.core/let
   metabase.util.malli.defn/defn                                                         schema.core/defn

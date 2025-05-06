@@ -119,5 +119,5 @@
       (test-select-identical model))))
 
 (deftest has-post-insert?-test
-  (is (= true
-         (#'upsert/has-post-insert? :model/User))))
+  (is (true?
+       (#'upsert/has-post-insert? :model/User))))

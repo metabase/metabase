@@ -57,7 +57,7 @@
           ;; this `category_id` -- it's an FK constraint violation.
           (mt/as-admin
             (is (thrown-with-msg? Exception #"Referential integrity constraint violation:.*"
-                                  (actions/perform-action! :row/delete (mt/mbql-query categories {:filter [:= $id 58]})))))
+                                  (actions/perform-action-with-single-input-and-output :model.row/delete (mt/mbql-query categories {:filter [:= $id 58]})))))
           (testing "Make sure our impl was actually called."
             (is @parse-sql-error-called?)))))))
 
@@ -79,7 +79,7 @@
   Used to test error message when executing implicit action for SQL DBs."
   [& args]
   (try
-    (apply actions/perform-action! args)
+    (apply actions/perform-action-with-single-input-and-output args)
     (catch Exception e
       (ex-data e))))
 
@@ -103,10 +103,10 @@
                :errors      {"ranking" "You must provide a value."}
                :type        actions.error/violate-not-null-constraint
                :status-code 400}
-              (perform-action-ex-data :row/create (mt/$ids {:create-row {group-name "admin"}
-                                                            :database   db-id
-                                                            :query      {:source-table $$group}
-                                                            :type       :query}))))))))
+              (perform-action-ex-data :model.row/create (mt/$ids {:create-row {group-name "admin"}
+                                                                  :database   db-id
+                                                                  :query      {:source-table $$group}
+                                                                  :type       :query}))))))))
 
 (deftest action-error-handling-not-null-constraint-creating-test-2
   (test-action-error-handling!
@@ -117,10 +117,10 @@
                  :errors      {"ranking" "You must provide a value."}
                  :type        actions.error/violate-not-null-constraint
                  :status-code 400}
-                (perform-action-ex-data :row/create (mt/$ids {:create-row {group-name "admin"}
-                                                              :database   db-id
-                                                              :query      {:source-table $$group}
-                                                              :type       :query})))))))))
+                (perform-action-ex-data :model.row/create (mt/$ids {:create-row {group-name "admin"}
+                                                                    :database   db-id
+                                                                    :query      {:source-table $$group}
+                                                                    :type       :query})))))))))
 
 (deftest action-error-handling-not-null-constraint-updating-test
   (test-action-error-handling!
@@ -131,11 +131,11 @@
                  :errors      {"ranking" "You must provide a value."}
                  :type        actions.error/violate-not-null-constraint
                  :status-code 400}
-                (perform-action-ex-data :row/update (mt/$ids {:update-row {group-ranking nil}
-                                                              :database   db-id
-                                                              :query      {:filter       [:= $group.id 1]
-                                                                           :source-table $$group}
-                                                              :type       :query})))))))))
+                (perform-action-ex-data :model.row/update (mt/$ids {:update-row {group-ranking nil}
+                                                                    :database   db-id
+                                                                    :query      {:filter       [:= $group.id 1]
+                                                                                 :source-table $$group}
+                                                                    :type       :query})))))))))
 
 (deftest action-error-handling-unique-constraint-creating-test
   (test-action-error-handling!
@@ -146,11 +146,11 @@
                  :errors      {"ranking" "This Ranking value already exists."}
                  :type        actions.error/violate-unique-constraint
                  :status-code 400}
-                (perform-action-ex-data :row/create (mt/$ids {:create-row {group-name    "new"
-                                                                           group-ranking 1}
-                                                              :database   db-id
-                                                              :query      {:source-table $$group}
-                                                              :type       :query})))))))))
+                (perform-action-ex-data :model.row/create (mt/$ids {:create-row {group-name    "new"
+                                                                                 group-ranking 1}
+                                                                    :database   db-id
+                                                                    :query      {:source-table $$group}
+                                                                    :type       :query})))))))))
 
 (deftest action-error-handling-unique-constraint-updating-test
   (test-action-error-handling!
@@ -161,11 +161,11 @@
                  :errors      {"ranking" "This Ranking value already exists."}
                  :type        actions.error/violate-unique-constraint
                  :status-code 400}
-                (perform-action-ex-data :row/update (mt/$ids {:update-row {group-ranking 2}
-                                                              :database   db-id
-                                                              :query      {:filter [:= $group.id 1]
-                                                                           :source-table $$group}
-                                                              :type       :query})))))))))
+                (perform-action-ex-data :model.row/update (mt/$ids {:update-row {group-ranking 2}
+                                                                    :database   db-id
+                                                                    :query      {:filter [:= $group.id 1]
+                                                                                 :source-table $$group}
+                                                                    :type       :query})))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::action-error-handling-incorrect-type-error-message]
   [_driver _feature _database]
@@ -190,11 +190,11 @@
                                    (mt/db))
                                 {"ranking" "This value should be of type Integer."}
                                 {})}
-                (perform-action-ex-data :row/create (mt/$ids {:create-row {group-name    "new"
-                                                                           group-ranking "S"}
-                                                              :database   db-id
-                                                              :query      {:source-table $$group}
-                                                              :type       :query})))))))))
+                (perform-action-ex-data :model.row/create (mt/$ids {:create-row {group-name    "new"
+                                                                                 group-ranking "S"}
+                                                                    :database   db-id
+                                                                    :query      {:source-table $$group}
+                                                                    :type       :query})))))))))
 
 (deftest action-error-handling-incorrect-type-updating-test
   (test-action-error-handling!
@@ -210,11 +210,11 @@
                                    (mt/db))
                                 {"ranking" "This value should be of type Integer."}
                                 {})}
-                (perform-action-ex-data :row/update (mt/$ids {:update-row {group-ranking "S"}
-                                                              :database   db-id
-                                                              :query      {:filter [:= $group.id 1]
-                                                                           :source-table $$group}
-                                                              :type       :query})))))))))
+                (perform-action-ex-data :model.row/update (mt/$ids {:update-row {group-ranking "S"}
+                                                                    :database   db-id
+                                                                    :query      {:filter [:= $group.id 1]
+                                                                                 :source-table $$group}
+                                                                    :type       :query})))))))))
 
 (deftest action-error-handling-fk-constraint-creating-test
   (test-action-error-handling!
@@ -225,11 +225,11 @@
                  :errors      {"group_id" "This Group-id does not exist."}
                  :type        actions.error/violate-foreign-key-constraint
                  :status-code 400}
-                (perform-action-ex-data :row/create (mt/$ids {:create-row {user-name    "new"
-                                                                           user-group-id 999}
-                                                              :database   db-id
-                                                              :query      {:source-table $$user}
-                                                              :type       :query})))))))))
+                (perform-action-ex-data :model.row/create (mt/$ids {:create-row {user-name    "new"
+                                                                                 user-group-id 999}
+                                                                    :database   db-id
+                                                                    :query      {:source-table $$user}
+                                                                    :type       :query})))))))))
 
 (deftest action-error-handling-fk-constraint-updating-test
   (test-action-error-handling!
@@ -240,11 +240,11 @@
                  :errors      {"group_id" "This Group-id does not exist."}
                  :type        actions.error/violate-foreign-key-constraint
                  :status-code 400}
-                (perform-action-ex-data :row/update (mt/$ids {:update-row {user-group-id 999}
-                                                              :database   db-id
-                                                              :query      {:filter [:= $user.id 1]
-                                                                           :source-table $$user}
-                                                              :type       :query})))))))))
+                (perform-action-ex-data :model.row/update (mt/$ids {:update-row {user-group-id 999}
+                                                                    :database   db-id
+                                                                    :query      {:filter [:= $user.id 1]
+                                                                                 :source-table $$user}
+                                                                    :type       :query})))))))))
 
 (deftest action-error-handling-fk-constraint-deleting-test
   (test-action-error-handling!
@@ -255,7 +255,7 @@
                  :errors {}
                  :type        actions.error/violate-foreign-key-constraint
                  :status-code 400}
-                (perform-action-ex-data :row/delete (mt/$ids {:database db-id
-                                                              :query    {:filter [:= $group.id 1]
-                                                                         :source-table $$group}
-                                                              :type     :query})))))))))
+                (perform-action-ex-data :model.row/delete (mt/$ids {:database db-id
+                                                                    :query    {:filter [:= $group.id 1]
+                                                                               :source-table $$group}
+                                                                    :type     :query})))))))))

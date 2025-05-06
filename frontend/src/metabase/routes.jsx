@@ -282,7 +282,7 @@ export const getRoutes = (store) => {
                   component={PLUGIN_DATA_EDITING.VIEW_PAGE_COMPONENT}
                 />
                 <Route
-                  path="databases/:dbId/tables/:tableId/edit"
+                  path="databases/:dbId/tables/:tableId/edit(/:objectId)"
                   component={PLUGIN_DATA_EDITING.EDIT_PAGE_COMPONENT}
                 />
               </>

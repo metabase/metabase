@@ -12,7 +12,6 @@ import {
   Flex,
   Group,
   Icon,
-  Loader,
   Stack,
   Title,
 } from "metabase/ui";
@@ -58,6 +57,8 @@ export const EditTableDataHeader = ({
     { open: onExpandFilters, close: onCollapseFilters },
   ] = useDisclosure(hasFilters);
 
+  const shouldDisableActions = isUndoLoading || isRedoLoading;
+
   return (
     <Stack gap={0}>
       <Flex
@@ -82,7 +83,8 @@ export const EditTableDataHeader = ({
           <Button
             leftSection={<Icon name="add" />}
             variant="filled"
-            onClick={onCreate}
+            onClick={() => onCreate()}
+            disabled={shouldDisableActions}
           >{t`New record`}</Button>
           <Flex gap="xs">
             <RunButtonWithTooltip
@@ -97,24 +99,18 @@ export const EditTableDataHeader = ({
             <ActionIcon
               onClick={onUndo}
               size="lg"
-              disabled={isUndoLoading || isRedoLoading}
+              loading={isUndoLoading}
+              disabled={shouldDisableActions}
             >
-              {isUndoLoading ? (
-                <Loader size="xs" color="currentColor" />
-              ) : (
-                <Icon name="undo" tooltip={t`Undo changes`} />
-              )}
+              <Icon name="undo" tooltip={t`Undo changes`} />
             </ActionIcon>
             <ActionIcon
               onClick={onRedo}
               size="lg"
-              disabled={isUndoLoading || isRedoLoading}
+              loading={isRedoLoading}
+              disabled={shouldDisableActions}
             >
-              {isRedoLoading ? (
-                <Loader size="xs" color="currentColor" />
-              ) : (
-                <Icon name="redo" tooltip={t`Redo changes`} />
-              )}
+              <Icon name="redo" tooltip={t`Redo changes`} />
             </ActionIcon>
           </Flex>
         </Group>

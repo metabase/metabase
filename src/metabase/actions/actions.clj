@@ -1,23 +1,22 @@
 (ns metabase.actions.actions
   "Code related to the new writeback Actions."
   (:require
-   [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [metabase.actions.events :as actions.events]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.setting :as setting]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [nano-id.core :as nano-id]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (clojure.lang ExceptionInfo)))
 
 (setting/defsetting database-enable-actions
   (i18n/deferred-tru "Whether to enable Actions for a specific Database.")
@@ -47,7 +46,7 @@
 (defmulti action-arg-map-spec
   "Return the appropriate spec to use to validate the arg map passed to [[perform-action!*]].
 
-    (action-arg-map-spec :row/create) => :actions.args.crud/row.create"
+    (action-arg-map-spec :model.row/create) => :actions.args.crud/row.create"
   {:arglists '([action]), :added "0.44.0"}
   keyword)
 
@@ -56,23 +55,10 @@
   any?)
 
 (defmulti perform-action!*
-  "Multimethod for doing an Action. The specific `action` is a keyword like `:row/create` or `:bulk/create`; the shape
+  "Multimethod for doing an Action. The specific `action` is a keyword like `:model.row/create` or `:table.row/create`; the shape
   of each input depends on the action being performed. [[action-arg-map-spec]] returns the appropriate spec to use to
   validate the inputs for a given action. When implementing a new action type, be sure to implement both this method
   and [[action-arg-map-spec]].
-
-  // AS FAR AS I CAN TELL THERE ARE NO APIS LIKE THIS, AT LEAST NOT ANYMORE.
-
-  At the time of this writing Actions are performed with either `POST /api/action/:action-namespace/:action-name`,
-  which passes in the request body as `args-map` directly, or `POST
-  /api/action/:action-namespace/:action-name/:table-id`, which passes in an `args-map` like
-
-    {:table-id <table-id>, :arg <request-body>}
-
-  The former endpoint is currently used for the various `:row/*` Actions while the version with `:table-id` as part of
-  the route is currently used for `:bulk/*` Actions.
-
-  // END OF LIES
 
   DON'T CALL THIS METHOD DIRECTLY TO PERFORM ACTIONS -- use [[perform-action!]] instead which does normalization,
   validation, and binds Database-local values."
@@ -177,6 +163,17 @@
   [action-or-id]
   (check-actions-enabled-for-database! (api/check-404 (database-for-action action-or-id))))
 
+(defmulti handle-effects!*
+  "Trigger bulk side effects in response to individual effects within actions, e.g. table row modified system events."
+  {:arglists '([effect-type context payloads]), :added "internal-tools"}
+  (fn [effect-type _context _payloads]
+    (keyword effect-type)))
+
+(defn- handle-effects! [{:keys [effects] :as context}]
+  (let [sans-effects (dissoc context :effects)]
+    (doseq [[event-type payloads] (u/group-by first second effects)]
+      (handle-effects!* event-type sans-effects payloads))))
+
 (mu/defn perform-action-internal!
   "A more modern version of [[perform-action!]] that takes an existing context, and multiple arg-maps.
    Assumes (for now) that the schemas have been checked and args coerced, etc. Also doesn't do perms checks yet.
@@ -188,13 +185,15 @@
    & {:as _opts}]
   (let [invocation-id  (nano-id/nano-id)
         context-before (-> (assoc ctx :invocation-id invocation-id)
-                           (update :invocation-scope u/conjv invocation-id))]
+                           (update :invocation-stack u/conjv [action-kw invocation-id]))]
     (actions.events/publish-action-invocation! action-kw context-before inputs)
     (try
       (u/prog1 (perform-action!* action-kw context-before inputs)
         (let [{context-after :context, :keys [outputs]} <>]
-          (doseq [k [:invocation-id :invocation-scope :user-id]]
+          (doseq [k [:invocation-id :invocation-stack :user-id]]
             (assert (= (k context-before) (k context-after)) (format "Output context must not change %s" k)))
+          ;; We might in future want effects to propagate all the up to the root scope ¯\_(ツ)_/¯
+          (handle-effects! context-after)
           (actions.events/publish-action-success! action-kw context-after outputs)))
       ;; Err on the side of visibility. We may want to handle Errors differently when we polish Internal Tools.
       (catch Throwable e
@@ -227,63 +226,65 @@
   `action` being performed. [[action-arg-map-spec]] returns the specific spec used to validate `arg-map` for a given
   `action`."
   [action
-   arg-map
-   & {:keys [policy]
+   scope
+   arg-map-or-maps
+   & {:keys [policy existing-context]
       :or   {policy :model-action}}]
   (let [action-kw (keyword action)
+        arg-maps  (if (map? arg-map-or-maps) [arg-map-or-maps] arg-map-or-maps)
         spec      (action-arg-map-spec action-kw)
-        arg-map   (normalize-action-arg-map action-kw arg-map)] ; is arg-map always just a regular query?
-    (when (s/invalid? (s/conform spec arg-map))
-      (throw (ex-info (format "Invalid Action arg map for %s: %s" action-kw (s/explain-str spec arg-map))
-                      (s/explain-data spec arg-map))))
-    (let [{driver :engine :as db} (api/check-404 (cached-database (:database arg-map)))]
+        arg-maps  (map (partial normalize-action-arg-map action-kw) arg-maps)
+        errors    (for [arg-map arg-maps
+                        :when (s/invalid? (s/conform spec arg-map))]
+                    {:message (format "Invalid Action arg map for %s: %s" action-kw (s/explain-str spec arg-map))
+                     :data    (s/explain-data spec arg-map)})
+        _         (when (seq errors)
+                    (throw (ex-info (str "Invalid Action arg map(s) for " action-kw)
+                                    {::schema-errors errors})))
+        dbs       (map (comp api/check-404 cached-database) (distinct (keep :database arg-maps)))
+        _         (when-not (= 1 (count dbs))
+                    (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
+                                    {:status-code  400
+                                     :database-ids (map :id dbs)})))
+        db        (first dbs)
+        driver    (:engine db)]
+    ;; The action might not be database-centric (e.g., call a webhook)
+    (when db
       (case policy
         :model-action
         (check-actions-enabled-for-database! db)
         :data-editing
-        (check-data-editing-enabled-for-database! db))
-      (binding [*misc-value-cache* (atom {:databases {(:id db) db}})]
-        (when (= :model-action policy)
-          (qp.perms/check-query-action-permissions* arg-map))
-        (driver/with-driver driver
-          (let [context {:user-id api/*current-user-id*
-                         ;; Legacy drivers dispatch on this, for now.
-                         ;; TODO As far as I'm aware we only have :sql-jdbc defined actions, so can stop dispatching
-                         ;;      on this and just fail if the dynamically determined driver is incompatible.
-                         :driver  driver}
-                {:keys [outputs]} (perform-action-internal! action-kw context [arg-map])]
-            ;; TODO perhaps we can have a standard way of wrapping them for new actions
-            ;;      or define a per-action reduction (e.g. totally the number of rows updated, for bulk events)
-            (assert (= 1 (count outputs)) "The legacy action APIs do not support multiple outputs")
-            (first outputs)))))))
+        (check-data-editing-enabled-for-database! db)))
+    (binding [*misc-value-cache* (atom {:databases (zipmap (map :id dbs) dbs)})]
+      (when (= :model-action policy)
+        (doseq [arg-map arg-maps]
+          (qp.perms/check-query-action-permissions* arg-map)))
+      ;; TODO fix tons of tests which execute without user scope
+      (let [result (let [context (or existing-context {:user-id (identity #_api/check-500 api/*current-user-id*)
+                                                       :scope   scope})]
+                     (if-not driver
+                       (perform-action-internal! action-kw context arg-maps)
+                       (driver/with-driver driver
+                         (let [context (assoc context
+                                              ;; Legacy drivers dispatch on this, for now.
+                                              ;; TODO As far as I'm aware we only have :sql-jdbc defined actions, so can stop dispatching
+                                              ;;      on this and just fail if the dynamically determined driver is incompatible.
+                                              :driver driver)]
+                           (perform-action-internal! action-kw context arg-maps)))))]
+        {:effects (:effects (:context result))
+         :outputs (:outputs result)}))))
 
-;; TODO will fix requiring-resolve when we remove all this table-action specific stuff, which has NO place here
-#_{:clj-kondo/ignore [:metabase/modules]}
-(defn perform-with-effects!
-  "Fire the expected events used to send notifications if the underlying actions modified table data."
-  [action-kw args-map & {:as opts}]
-  (let [qry-context       ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/qry-context) args-map)
-        pk->db-row-before ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/query-previous-rows) action-kw qry-context)]
-    (u/prog1 (perform-action! action-kw args-map opts)
-      ;; process the "data has changed" side effects
-      (let [pk->db-row-after ((requiring-resolve 'metabase-enterprise.data-editing.data-editing/query-latest-rows) action-kw qry-context <>)
-            all-pks          (set/union (set (keys pk->db-row-before))
-                                        (set (keys pk->db-row-after)))
-            row-changes      (for [pk all-pks
-                                   :let [before (get pk->db-row-before pk)
-                                         after  (get pk->db-row-after pk)]
-                                   :when (not= before after)]
-                               {:pk     pk
-                                :before before
-                                :after  after})]
-        (->> {:actor_id    api/*current-user-id*
-              :row-changes row-changes
-              :args        (u/snake-keys args-map)}
-             (events/publish-event!
-              (case action-kw
-                :bulk/create :event/rows.created
-                :bulk/update :event/rows.updated
-                :bulk/delete :event/rows.deleted)))))))
+(mu/defn perform-action-with-single-input-and-output
+  "This is the Old School version of [[perform-action!], before we returned effects and used bulk chaining."
+  [action arg-map & {:as opts}]
+  (try (let [scope             {:non-undoable-scope :execute-implicit-action}
+             {:keys [outputs]} (perform-action! action scope [arg-map] opts)]
+         (assert (= 1 (count outputs)) "The legacy action APIs do not support multiple outputs")
+         (first outputs))
+       (catch ExceptionInfo e
+         (if-let [{:keys [message data]} (first (::schema-errors (ex-data e)))]
+           (throw (ex-info message data))
+           (throw e)))))
 
 ;;;; Action definitions.
 
@@ -317,7 +318,7 @@
    :actions.args/common
    (s/keys :req-un [:actions.args.crud.row.common/query])))
 
-;;;; `:row/create`
+;;;; `:model.row/create`
 
 ;;; row/create requires at least
 ;;;
@@ -325,7 +326,7 @@
 ;;;     :query      {:source-table <id>, :filter <mbql-filter-clause>}
 ;;;     :create-row <map>}
 
-(defmethod normalize-action-arg-map :row/create
+(defmethod normalize-action-arg-map :model.row/create
   [_action query]
   (mbql.normalize/normalize-or-throw query))
 
@@ -337,11 +338,11 @@
    :actions.args.crud.row/common
    (s/keys :req-un [:actions.args.crud.row.create/create-row])))
 
-(defmethod action-arg-map-spec :row/create
+(defmethod action-arg-map-spec :model.row/create
   [_action]
   :actions.args.crud/row.create)
 
-;;;; `:row/update`
+;;;; `:model.row/update`
 
 ;;; row/update requires at least
 ;;;
@@ -349,7 +350,7 @@
 ;;;     :query      {:source-table <id>, :filter <mbql-filter-clause>}
 ;;;     :update-row <map>}
 
-(defmethod normalize-action-arg-map :row/update
+(defmethod normalize-action-arg-map :model.row/update
   [_action query]
   (mbql.normalize/normalize-or-throw query))
 
@@ -370,18 +371,18 @@
    (s/keys :req-un [:actions.args.crud.row.update/update-row
                     :actions.args.crud.row.update/query])))
 
-(defmethod action-arg-map-spec :row/update
+(defmethod action-arg-map-spec :model.row/update
   [_action]
   :actions.args.crud/row.update)
 
-;;;; `:row/delete`
+;;;; `:model.row/delete`
 
 ;;; row/delete requires at least
 ;;;
 ;;;    {:database <id>
 ;;;     :query    {:source-table <id>, :filter <mbql-filter-clause>}}
 
-(defmethod normalize-action-arg-map :row/delete
+(defmethod normalize-action-arg-map :model.row/delete
   [_action query]
   (mbql.normalize/normalize-or-throw query))
 
@@ -398,7 +399,7 @@
    :actions.args.crud.row/common
    (s/keys :req-un [:actions.args.crud.row.delete/query])))
 
-(defmethod action-arg-map-spec :row/delete
+(defmethod action-arg-map-spec :model.row/delete
   [_action]
   :actions.args.crud/row.delete)
 
@@ -408,17 +409,17 @@
 ;;;
 ;;;    {:database <id>, :table-id <id>, :rows [{<key> <value>} ...]}
 
-(s/def :actions.args.crud.bulk.common/table-id
+(s/def :actions.args.crud.table.common/table-id
   :actions.args/id)
 
-(s/def :actions.args.crud.bulk/rows
+(s/def :actions.args.crud.table/rows
   (s/cat :rows (s/+ (s/map-of string? any?))))
 
-(s/def :actions.args.crud.bulk/common
+(s/def :actions.args.crud.table/common
   (s/merge
    :actions.args/common
-   (s/keys :req-un [:actions.args.crud.bulk.common/table-id
-                    :actions.args.crud.bulk/rows])))
+   (s/keys :req-un [:actions.args.crud.table.common/table-id
+                    :actions.args.crud.table/rows])))
 
 ;;; The request bodies for the bulk CRUD actions are all the same. The body of a request to `POST
 ;;; /api/action/:action-namespace/:action-name/:table-id` is just a vector of rows but the API endpoint itself calls
@@ -430,30 +431,39 @@
 ;;;
 ;;;     {:database <database-id>, :table-id <table-id>, :rows <request-body>}
 
-;;;; `:bulk/create`, `:bulk/delete`, `:bulk/update` -- these all have the exact same shapes
+;;;; `:table.row/create`, `:table.row/delete`, `:table.row/update` -- these all have the exact same shapes
 
-(defn- normalize-bulk-crud-action-arg-map
-  [{:keys [database table-id], rows :arg, :as _arg-map}]
-  {:type :query, :query {:source-table table-id}
-   :database database, :table-id table-id, :rows (map #(update-keys % u/qualified-name) rows)})
+(defn- normalize-table-crud-action-arg-map
+  [{:keys [database table-id row], row-or-rows :arg, :as _arg-map}]
+  {;; TODO get rid of these first two
+   :type     :query
+   :query    {:source-table table-id}
+   :database database
+   :table-id table-id
+   ;; TODO stop overloading this and always take singular
+   :rows     (map #(update-keys % u/qualified-name)
+                  (or (when row [row])
+                      (if (map? row-or-rows)
+                        [row-or-rows]
+                        row-or-rows)))})
 
-(defmethod normalize-action-arg-map :bulk/create
+(defmethod normalize-action-arg-map :table.row/create
   [_action arg-map]
-  (normalize-bulk-crud-action-arg-map arg-map))
+  (normalize-table-crud-action-arg-map arg-map))
 
-(defmethod action-arg-map-spec :bulk/create
+(defmethod action-arg-map-spec :table.row/create
   [_action]
-  :actions.args.crud.bulk/common)
+  :actions.args.crud.table/common)
 
-(defmethod normalize-action-arg-map :bulk/update
+(defmethod normalize-action-arg-map :table.row/update
   [_action arg-map]
-  (normalize-bulk-crud-action-arg-map arg-map))
+  (normalize-table-crud-action-arg-map arg-map))
 
-(defmethod action-arg-map-spec :bulk/update
+(defmethod action-arg-map-spec :table.row/update
   [_action]
-  :actions.args.crud.bulk/common)
+  :actions.args.crud.table/common)
 
-;;;; `:bulk/delete`
+;;;; `:table.row/delete`
 
 ;;; Request-body should look like:
 ;;;
@@ -464,10 +474,10 @@
 ;;;    ;; multiple pks, one row
 ;;;    [{"PK1": 1, "PK2": "john"}]
 
-(defmethod normalize-action-arg-map :bulk/delete
+(defmethod normalize-action-arg-map :table.row/delete
   [_action arg-map]
-  (normalize-bulk-crud-action-arg-map arg-map))
+  (normalize-table-crud-action-arg-map arg-map))
 
-(defmethod action-arg-map-spec :bulk/delete
+(defmethod action-arg-map-spec :table.row/delete
   [_action]
-  :actions.args.crud.bulk/common)
+  :actions.args.crud.table/common)

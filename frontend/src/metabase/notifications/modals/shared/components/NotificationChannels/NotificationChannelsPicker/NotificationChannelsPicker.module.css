@@ -1,12 +1,10 @@
 .customTemplateRoot {
-  --mb-color-border: transparent;
-
+  border: none;
   color: var(--mb-color-text-primary);
 }
 
 .customTemplateControl {
-  --mb-color-border: transparent;
-
+  border: none;
   padding: 0;
 }
 
@@ -15,10 +13,23 @@
   color: var(--mb-color-text-primary);
 }
 
-.customTemplateIcon {
-  color: var(--mb-color-text-primary);
+.customTemplateItem,
+.customTemplateChevron {
+  border: none !important;
+}
 
-  path {
-    stroke-width: 0.75;
+.customTemplateChevron {
+  margin-left: 0;
+}
+
+:global(.cm-line) {
+  transition: opacity 200ms ease;
+}
+
+.defaultTemplate :global(.cm-editor:not(.cm-focused) .cm-line) {
+  opacity: 0.5;
+
+  & * {
+    color: inherit;
   }
 }

@@ -132,12 +132,8 @@ export function Editor(props: EditorProps) {
       return;
     }
 
-    const text =
-      clause.args.length > 0 ? `${clause.displayName}()` : clause.displayName;
-    const len =
-      clause.args.length > 0
-        ? clause.displayName.length + 1 // + 1 for the parenthesis
-        : clause.displayName.length;
+    const text = `${clause.displayName}()`;
+    const len = clause.displayName.length + 1; // + 1 for the parenthesis
 
     view?.focus();
     view?.dispatch(

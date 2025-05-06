@@ -49,7 +49,7 @@
                                               [:context :map]
                                               [:payload :map]])
               renders           (atom [])]
-          (mt/with-dynamic-fn-redefs [channel/render-notification (fn [channel-type notification-payload template recipients]
+          (mt/with-dynamic-fn-redefs [channel/render-notification (fn [channel-type payload-type notification-payload template recipients]
                                                                     (swap! renders conj {:channel-type channel-type
                                                                                          :notification-payload notification-payload
                                                                                          :template template
@@ -180,10 +180,11 @@
            :numberOfSuccessfulCallsWithoutRetryAttempt])))
 
 (def ^:private fake-email-notification
-  {:subject      "test-message"
-   :recipients   ["whoever@example.com"]
-   :message-type :text
-   :message      "test message body"})
+  {:subject "test-message"
+   :from    "hi@metabase.com"
+   :to      ["whoever@example.com"]
+   :body    [{:type "text/html"
+              :content "test message"}]})
 
 (def ^:private test-retry-configuration
   (assoc @#'notification.send/default-retry-config
@@ -675,21 +676,23 @@
           (is (> (count consumer-counts) 1))
           (is (every? pos? consumer-counts)))))))
 
-(deftest send-notification-condition-properly-skip-test
+(deftest send-condition-queue-test
   (doseq [[condition-passed? condition-creator-id] [[true (mt/user->id :crowberto)]
                                                     [false (mt/user->id :rasta)]]]
     (notification.tu/with-temp-notification
       [notification {:notification {:payload_type :notification/testing
                                     :creator_id   (mt/user->id :crowberto)
-                                    :condition    ["=" ["context" "creator" "id"] condition-creator-id]}
-                     :handlers     [notification.tu/default-testing-handler]}]
-      (let [channel-messages (notification.tu/with-captured-channel-send!
-                               (#'notification.send/send-notification-sync! notification))]
+                                    :condition    ["=" ["context" "creator_id"] condition-creator-id]}}]
+      (let [queued? (atom false)]
+        (with-redefs [notification.send/send-notification-sync! (fn [_notification] (reset! queued? true))]
+          (#'notification.send/send-notification!
+           notification
+           :notification/sync? true))
         (if condition-passed?
-          (testing "received message when condition returns true"
-            (is (= {:channel/metabase-test 1} (update-vals channel-messages count))))
-          (testing "no messages received when condition returns false"
-            (is (empty? channel-messages))))))))
+          (testing "queued when condition returns true"
+            (is (true? @queued?)))
+          (testing "not queued when condition returns false"
+            (is (false? @queued?))))))))
 
 (deftest cutoff-notification-env-test
   (let [send-went-through? (fn [notification]

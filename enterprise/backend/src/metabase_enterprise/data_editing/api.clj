@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-editing.api
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase-enterprise.data-editing.undo :as undo]
    [metabase.actions.core :as actions]
@@ -18,18 +19,34 @@
 
 (set! *warn-on-reflection* true)
 
+;; TODO consider moving this down somewhere generic, like in handle-effects!*
 (defn- invalidate-field-values! [table-id rows]
-  (let [field-name-xf (comp (mapcat keys)
-                            (distinct)
-                            (map name)
-                            (map u/lower-case-en))
-        field-names (into #{} field-name-xf rows)
-        fields (when (seq field-names)
-                 (t2/select :model/Field
-                            :table_id table-id
-                            :name [:in field-names]
-                            :has_field_values [:in ["list" "auto-list"]]))]
-    (run! field-values/create-or-update-full-field-values! fields)))
+  ;; Be conservative with respect to case sensitivity, invalidate every field when there is ambiguity.
+  (let [ln->values  (u/group-by first second (for [row rows [k v] row] [(u/lower-case-en (name k)) v]))
+        lower-names (keys ln->values)
+        ln->ids     (when (seq lower-names)
+                      (u/group-by
+                       :lower_name :id
+                       (t2/query {:select [:id [[:lower :name] :lower_name]]
+                                  :from   [(t2/table-name :model/Field)]
+                                  :where  [:and
+                                           [:= :table_id table-id]
+                                           [:in [:lower :name] lower-names]
+                                           [:in :has_field_values ["list" "auto-list"]]
+                                           [:= :semantic_type "type/Category"]]})))
+        stale-fields (->> (for [[lower-name field-ids] ln->ids
+                                :let [new-values (into #{} (filter some?) (ln->values lower-name))
+                                      old-values (into #{} cat (t2/select-fn-vec :values :model/FieldValues
+                                                                                 :field_id [:in field-ids]))]]
+                            (when (seq (set/difference new-values old-values))
+                              field-ids))
+                          (apply concat))]
+    ;; Note that for now we only rescan field values when values are *added* and not when they are *removed*.
+    (when (seq stale-fields)
+      ;; Using a future is not ideal, it would be better to use a queue and a single worker, to avoid tying up threads.
+      (future
+        (->> (t2/select :model/Field :id [:in stale-fields])
+             (run! field-values/create-or-update-full-field-values!))))))
 
 (defn require-authz?
   "Temporary hack to have auth be off by default, only on if MB_DATA_EDITING_AUTHZ=true.
@@ -41,76 +58,66 @@
   (when (require-authz?)
     (api/check-superuser)))
 
+(defn- invalidate-and-present!
+  "We invalidate the field-values, in case any new category values were added.
+  The FE also expects data to be formatted according to PQ logic, e.g. considering semantic types.
+  Actions, however, return raw values, since lossy coercions would limit composition.
+  So, we apply the coercions here."
+  [table-id rows]
+  ;; We could optimize this significantly:
+  ;; 1. Skip if no category fields were changes on update.
+  ;; 2. Check whether all corresponding categorical field values are already in the database.
+  (invalidate-field-values! table-id rows)
+  ;; right now the FE works off qp outputs, which coerce output row data
+  ;; still feels messy, revisit this
+  (let [pk-fields (data-editing/select-table-pk-fields table-id)]
+    (data-editing/query-db-rows table-id pk-fields rows)))
+
 (api.macros/defendpoint :post "/table/:table-id"
   "Insert row(s) into the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
+   {:keys [rows scope]} :- [:map
+                            [:rows [:sequential {:min 1} :map]]
+                            ;; TODO make this non-optional in the future
+                            [:scope {:optional true} :map]]]
   (check-permissions)
-  (let [rows'      (data-editing/apply-coercions table-id rows)
-        res        (data-editing/insert! api/*current-user-id* table-id rows')
-        pk-fields  (data-editing/select-table-pk-fields table-id)
-        ;; actions code does not return coerced values
-        ;; right now the FE works off qp outputs, which coerce output row data
-        ;; still feels messy, revisit this
-        pks->db-row (data-editing/query-db-rows table-id pk-fields (map #(update-keys % keyword) (:created-rows res)))]
-    (invalidate-field-values! table-id rows')
-    {:created-rows (vals pks->db-row)}))
+  (let [rows' (data-editing/apply-coercions table-id rows)
+        scope (or scope {:table-id table-id})
+        res   (data-editing/insert! api/*current-user-id* scope table-id rows')]
+    {:created-rows (invalidate-and-present! table-id (:created-rows res))}))
 
 (api.macros/defendpoint :put "/table/:table-id"
   "Update row(s) within the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
+   {:keys [rows scope]} :- [:map
+                            [:rows [:sequential {:min 1} :map]]
+                            ;; TODO make this non-optional in the future
+                            [:scope {:optional true} :map]]]
   (check-permissions)
   (if (empty? rows)
     {:updated []}
-    (let [rows'        (data-editing/apply-coercions table-id rows)
-          pk-fields    (data-editing/select-table-pk-fields table-id)
-          pks->db-row  (data-editing/query-db-rows table-id pk-fields rows')
-          user-id      api/*current-user-id*]
-      ;; If this fails, we probably have another bug like the type-mismatch issue we had here:
-      ;; https://linear.app/metabase/issue/WRK-281/undo-deletes-a-record-instead-of-reverting-the-edits
-      ;; TODO this bombs in [[metabase-enterprise.data-editing.api-test/editing-allowed-test]] because we
-      ;;      haven't done the perms check yet.
-      #_(assert (every? (fn [row] (get pks->db-row (data-editing/get-row-pks pk-fields row))) rows')
-                "Able to look up the existing values of these rows, for system events")
-      (data-editing/perform-bulk-action! :bulk/update table-id rows')
-      ;; TODO this should also become a subscription to the "data written" system event
-      (let [row-pk->old-new-values (->> (for [row rows']
-                                          (let [pks (data-editing/get-row-pks pk-fields row)]
-                                            [pks [(get pks->db-row pks)
-                                                  row]]))
-                                        (into {}))]
-        (undo/track-change! user-id {table-id row-pk->old-new-values}))
-
-      (invalidate-field-values! table-id rows')
-      {:updated (vals (data-editing/query-db-rows table-id pk-fields rows'))})))
+    (let [user-id api/*current-user-id*
+          scope   (or scope {:table-id table-id})
+          rows    (data-editing/apply-coercions table-id rows)
+          rows    (map :after (data-editing/perform-bulk-action! :table.row/update user-id scope table-id rows))]
+      {:updated (invalidate-and-present! table-id rows)})))
 
 ;; This is a POST instead of DELETE as not all web proxies pass on the body of DELETE requests.
 (api.macros/defendpoint :post "/table/:table-id/delete"
   "Delete row(s) from the given table"
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
+   {:keys [rows scope]} :- [:map
+                            [:rows [:sequential {:min 1} :map]]
+                            ;; make this non-optional in the future
+                            [:scope {:optional true} :map]]]
   (check-permissions)
-  (let [pk-fields              (data-editing/select-table-pk-fields table-id)
-        pks->db-rows           (data-editing/query-db-rows table-id pk-fields rows)
-        ;; If this fails, we probably have another bug like the type-mismatch issue we had here:
-        ;; https://linear.app/metabase/issue/WRK-281/undo-deletes-a-record-instead-of-reverting-the-edits
-        ;; TODO this bombs in [[metabase-enterprise.data-editing.api-test/editing-allowed-test]] because we
-        ;;      haven't done the perms check yet.
-        _                      nil #_(assert (every? (fn [row] (get pks->db-rows (data-editing/get-row-pks pk-fields row))) rows)
-                                             "Able to look up the existing values of these rows, for system events")
-        res                    (data-editing/perform-bulk-action! :bulk/delete table-id rows)
-        user-id                api/*current-user-id*
-        row-pk->old-new-values (->> (for [row rows]
-                                      (let [pks (data-editing/get-row-pks pk-fields row)]
-                                        [pks [(get pks->db-rows pks) nil]]))
-                                    (into {}))]
-    ;; TODO this should also become a subscription to the "data written" system event
-    (undo/track-change! user-id {table-id row-pk->old-new-values})
-    res))
+  (let [user-id api/*current-user-id*
+        scope   (or scope {:table-id table-id})]
+    (data-editing/perform-bulk-action! :table.row/delete user-id scope table-id rows)
+    {:success true}))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust
 ;; model (e.g are admins trusted with writing arbitrary SQL cases anyway, will non admins ever call this?)
@@ -186,46 +193,52 @@
 
 (api.macros/defendpoint :post "/undo"
   "Undo the last change you made.
-  For now only supports tables, but in future will support editables for sure.
+  For now only supports tables, but in the future will support editables for sure.
   Maybe actions, workflows, etc.
   Could even generalize to things like edits to dashboard definitions themselves."
   [_
    _
-   {:keys [table-id no-op]}] :- [:map
-                                 [:table-id ms/PositiveInt]
-                                 [:no-op {:optional true} ms/BooleanValue]]
+   {:keys [table-id scope no-op]}] :- [:map
+                                       ;; deprecated, this will be replaced by scope
+                                       [:table-id ms/PositiveInt]
+                                       ;; TODO make this non-optional in the future
+                                       [:scope {:optional true} :map]
+                                       [:no-op {:optional true} ms/BooleanValue]]
   (check-permissions)
-  (api/check-404 (t2/select-one-pk :model/Table table-id))
-  (let [user-id api/*current-user-id*]
+  (let [user-id api/*current-user-id*
+        scope  (or scope {:table-id table-id})]
     (if no-op
-      {:batch_num (undo/next-batch-num true user-id table-id)}
+      {:batch_num (undo/next-batch-num :undo user-id scope)}
       ;; IDEA encapsulate this in an action
       ;; IDEA use generic action calling API instead of having this endpoint
       (try
-        {:result (undo/undo! user-id table-id)}
+        {:result (undo/undo! user-id scope)}
         (catch ExceptionInfo e
           (throw (translate-undo-error e)))))))
 
 (api.macros/defendpoint :post "/redo"
   "Redo the last change you made.
-  For now only supports tables, but in future will support editables for sure.
+  For now only supports tables, but in the future will support editables for sure.
   Maybe actions, workflows, etc.
   Could even generalize to things like edits to dashboard definitions themselves."
   [_
    _
-   {:keys [table-id no-op]}] :- [:map
-                                 [:table-id ms/PositiveInt]
-                                 [:no-op {:optional true} ms/BooleanValue]]
+   {:keys [table-id scope no-op]}] :- [:map
+                                         ;; deprecated, this will be replaced by scope
+                                       [:table-id ms/PositiveInt]
+                                       ;; TODO: make this non-optional in the future
+                                       [:scope {:optional true} :map]
+                                       [:no-op {:optional true} ms/BooleanValue]]
   (check-permissions)
-  (api/check-404 (t2/select-one :model/Table table-id))
-  (let [user-id api/*current-user-id*]
+  (let [user-id api/*current-user-id*
+        scope   (or scope {:table-id table-id})]
     (if no-op
-      {:batch_num (undo/next-batch-num false user-id table-id)}
+      {:batch_num (undo/next-batch-num :redo user-id scope)}
       ;; IDEA encapsulate this in an action
       ;; IDEA use generic action calling API instead of having this endpoint
       ;; TODO translate errors to http codes
       (try
-        {:result (undo/redo! user-id table-id)}
+        {:result (undo/redo! user-id scope)}
         (catch ExceptionInfo e
           (throw (translate-undo-error e)))))))
 
@@ -256,15 +269,43 @@
   Later when evaluated as a row action using /row-action/:action-id/execute, you will also be able to omit these parameters."
   [{:keys [action-id]}   :- [:map [:action-id   :string]]
    {:keys [dashcard-id]} :- [:map [:dashcard-id ms/PositiveInt]]]
-  (let [action             (-> (actions/select-action :id (parse-long action-id) :archived false)
-                               (t2/hydrate :creator)
-                               api/read-check)
-        card-id            (api/check-404 (t2/select-one-fn :card_id [:model/DashboardCard :card_id] dashcard-id))
-        table-id           (api/check-404 (t2/select-one-fn :table_id [:model/Card :table_id] card-id))
-        fields             (t2/select [:model/Field :name] :table_id table-id)
-        field-names        (set (map :name fields))
-        include?           #(not (contains? field-names (:slug %)))]
+  (let [action      (-> (actions/select-action :id (parse-long action-id) :archived false)
+                        (t2/hydrate :creator)
+                        api/read-check)
+        card-id     (api/check-404 (t2/select-one-fn :card_id [:model/DashboardCard :card_id] dashcard-id))
+        table-id    (api/check-404 (t2/select-one-fn :table_id [:model/Card :table_id] card-id))
+        fields      (t2/select [:model/Field :name] :table_id table-id)
+        field-names (set (map :name fields))
+        include?    #(not (contains? field-names (:slug %)))]
     (update action :parameters #(some->> % (filterv include?)))))
+
+(api.macros/defendpoint :post "/row-action/:action-id/execute"
+  "Executes an action as a row action. The allows action parameters sharing a name with column names to be derived from a specific row.
+  The caller is still able to supply parameters, which will be preferred to those derived from the row.
+  Discovers the table via the provided dashcard-id, assumes a model/editable for now."
+  [{:keys [action-id]}   :- [:map [:action-id :string]]
+   {:keys [dashcard-id]} :- [:map [:dashcard-id ms/PositiveInt]]
+   {:keys [pk params]}   :- [:map
+                             [:pk :any]
+                             [:params :any]]]
+  (let [action      (-> (actions/select-action :id (parse-long action-id) :archived false)
+                        (t2/hydrate :creator)
+                        api/read-check)
+        card-id     (api/check-404 (t2/select-one-fn :card_id [:model/DashboardCard :card_id] dashcard-id))
+        table-id    (api/check-404 (t2/select-one-fn :table_id [:model/Card :table_id] card-id))
+        fields      (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
+        field-names (set (map :name fields))
+        pk-fields   (filter #(= :type/PK (:semantic_type %)) fields)
+        [row]       (data-editing/query-db-rows table-id pk-fields [pk])
+        _           (api/check-404 row)
+        row-params  (->> (:parameters action)
+                         (keep (fn [{:keys [id slug]}]
+                                 (when (contains? field-names (or slug id))
+                                   [id (row (keyword (or slug id)))])))
+                         (into {}))
+        param-id    (u/index-by (some-fn :slug :id) :id (:parameters action))
+        provided    (update-keys params #(api/check-400 (param-id (name %)) "Unexpected parameter provided"))]
+    (actions/execute-action! action (merge row-params provided))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."

@@ -14,6 +14,7 @@ import {
   TextInput,
   useCombobox,
 } from "metabase/ui";
+import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import type { FieldValue } from "metabase-types/api";
 
 import type { EditingBodyPrimitiveProps } from "./types";
@@ -101,11 +102,30 @@ export const EditingBodyCellCategorySelect = ({
     }
 
     if (value) {
-      // Type safety, should always be present
+      // Lookup ad-hoc search results (e.g. might be different from the initial value)
       if (value in optionValueToOptionMap) {
         return getSelectedLabelText(optionValueToOptionMap[value]);
       }
 
+      // Lookup column remapped values (usually when FK value is not presented in the current search results)
+      const maybeHydratedDatasetColumn =
+        datasetColumn as RemappingHydratedDatasetColumn;
+      const intValue = parseInt(value, 10);
+      if (
+        maybeHydratedDatasetColumn.remapping?.has(value) ||
+        maybeHydratedDatasetColumn.remapping?.has(intValue)
+      ) {
+        const remappedValue =
+          maybeHydratedDatasetColumn.remapping.get(value) ??
+          maybeHydratedDatasetColumn.remapping.get(intValue);
+
+        return getSelectedLabelText({
+          value: value,
+          label: remappedValue,
+        });
+      }
+
+      // Fallback to the raw value instead of a label
       return value;
     }
 
@@ -116,10 +136,12 @@ export const EditingBodyCellCategorySelect = ({
     optionValueToOptionMap,
     inputProps?.placeholder,
     getSelectedLabelText,
+    datasetColumn,
   ]);
 
   const isNullable = field?.database_is_nullable;
-  const shouldDisplayClearButton = isNullable && !!value;
+  const shouldDisplayClearButton =
+    isNullable && !!value && !inputProps?.disabled;
 
   return (
     <Combobox

@@ -22,12 +22,15 @@
 
 (deftest magic-groups-test
   (testing "check that we can get the magic permissions groups through the helper functions\n"
-    (doseq [[group-name group] {"All Users"      (perms-group/all-users)
-                                "Administrators" (perms-group/admin)}]
+    (doseq [[group-name group magic-group-type]
+            [["All Users"      (perms-group/all-users) perms-group/all-users-magic-group-type]
+             ["Administrators" (perms-group/admin)     perms-group/admin-magic-group-type]]]
       (testing group-name
         (is (mi/instance-of? :model/PermissionsGroup group))
         (is (= group-name
                (:name group)))
+        (is (= magic-group-type
+               (:magic_group_type group)))
         (testing "make sure we're not allowed to delete the magic groups"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo

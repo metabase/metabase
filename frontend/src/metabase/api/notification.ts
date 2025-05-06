@@ -8,6 +8,8 @@ import type {
   ListNotificationsRequest,
   Notification,
   NotificationId,
+  PreviewNotificationTemplateRequest,
+  PreviewNotificationTemplateResponse,
   TableNotification,
   UpdateNotificationRequest,
 } from "metabase-types/api/notification";
@@ -93,13 +95,52 @@ export const notificationApi = Api.injectEndpoints({
         body,
       }),
     }),
-    getNotificationPayloadExample: builder.mutation<
-      GetNotificationPayloadExampleResponse,
+    getNotificationPayloadExample: builder.query<
+      GetNotificationPayloadExampleResponse["payload"],
       GetNotificationPayloadExampleRequest
     >({
       query: (body) => ({
         method: "POST",
         url: `/api/notification/payload`,
+        body,
+      }),
+      transformResponse(response: GetNotificationPayloadExampleResponse) {
+        return response.payload;
+      },
+    }),
+    getDefaultNotificationTemplate: builder.query<
+      Record<
+        string,
+        {
+          channel_type: string;
+          details: {
+            type: string;
+            subject?: string;
+            body: string;
+          };
+        }
+      >,
+      {
+        notification: {
+          payload_type: string;
+          payload: Record<string, unknown>;
+        };
+        channel_types: string[];
+      }
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/notification/default_template",
+        body,
+      }),
+    }),
+    previewNotificationTemplate: builder.query<
+      PreviewNotificationTemplateResponse,
+      PreviewNotificationTemplateRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/notification/preview_template",
         body,
       }),
     }),
@@ -117,7 +158,10 @@ export const {
   useUpdateNotificationMutation,
   useUnsubscribeFromNotificationMutation,
   useSendUnsavedNotificationMutation,
-  useGetNotificationPayloadExampleMutation,
+  useGetNotificationPayloadExampleQuery,
+  useGetDefaultNotificationTemplateQuery,
+  usePreviewNotificationTemplateQuery,
+  useLazyPreviewNotificationTemplateQuery,
 } = notificationApi;
 
 export const useTableNotificationsQuery = (

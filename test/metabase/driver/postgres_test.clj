@@ -21,7 +21,9 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.lib.core :as lib]
@@ -1097,7 +1099,7 @@
             :message "Ranking must have values."
             :errors {"ranking" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-not-null-constraint nil :row/created
+            :postgres actions.error/violate-not-null-constraint nil :model.row/created
             "ERROR: null value in column \"ranking\" violates not-null constraint\n  Detail: Failing row contains (3, admin, null).")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test-2
@@ -1106,7 +1108,7 @@
             :message "Ranking must have values."
             :errors {"ranking" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-not-null-constraint nil :row/created
+            :postgres actions.error/violate-not-null-constraint nil :model.row/created
             "ERROR: null value in column \"ranking\" of relation \"group\" violates not-null constraint\n  Detail: Failing row contains (57, admin, null).")))))
 
 (deftest actions-maybe-parse-sql-error-violate-unique-constraint-test
@@ -1134,7 +1136,7 @@
             :message "Unable to create a new record.",
             :errors {"group-id" "This Group-id does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-foreign-key-constraint nil :row/create
+            :postgres actions.error/violate-foreign-key-constraint nil :model.row/create
             "ERROR: insert or update on table \"user\" violates foreign key constraint \"user_group-id_group_-159406530\"\n  Detail: Key (group-id)=(999) is not present in table \"group\".")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test-2
@@ -1143,7 +1145,7 @@
             :message "Unable to update the record.",
             :errors {"id" "This Id does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-foreign-key-constraint nil :row/update
+            :postgres actions.error/violate-foreign-key-constraint nil :model.row/update
             "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test-3
@@ -1152,7 +1154,7 @@
             :message "Other tables rely on this row so it cannot be deleted.",
             :errors {}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-foreign-key-constraint nil :row/delete
+            :postgres actions.error/violate-foreign-key-constraint nil :model.row/delete
             "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
 
 ;; this contains specical tests case for postgres
@@ -1181,12 +1183,12 @@
                         :status-code 400
                         :type        actions.error/violate-unique-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/create (mt/$ids {:create-row {"id"      3
-                                                           "column1" "A"
-                                                           "column2" "A"}
-                                              :database   (:id database)
-                                              :query      {:source-table $$mytable}
-                                              :type       :query})))))
+                        :model.row/create (mt/$ids {:create-row {"id"      3
+                                                                 "column1" "A"
+                                                                 "column2" "A"}
+                                                    :database   (:id database)
+                                                    :query      {:source-table $$mytable}
+                                                    :type       :query})))))
               (testing "when updating"
                 (is (= {:errors      {"column1" "This Column1 value already exists."
                                       "column2" "This Column2 value already exists."}
@@ -1194,12 +1196,12 @@
                         :status-code 400
                         :type        actions.error/violate-unique-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/update (mt/$ids {:update-row {"column1" "A"
-                                                           "column2" "A"}
-                                              :database   (:id database)
-                                              :query      {:source-table $$mytable
-                                                           :filter       [:= $mytable.id 2]}
-                                              :type       :query}))))))))))))
+                        :model.row/update (mt/$ids {:update-row {"column1" "A"
+                                                                 "column2" "A"}
+                                                    :database   (:id database)
+                                                    :query      {:source-table $$mytable
+                                                                 :filter       [:= $mytable.id 2]}
+                                                    :type       :query}))))))))))))
 
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
 
@@ -1604,6 +1606,22 @@
                             "REVOKE ALL PRIVILEGES ON SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"
                             "DROP ROLE privilege_rows_test_example_role;"]]
                 (jdbc/execute! conn-spec stmt)))))))))
+
+(deftest query-canceled?-test
+  (testing "Recognizes timeout exceptions from postgres"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (let [long-sleep-sql "select pg_sleep(5)"]
+          (sql-jdbc.execute/do-with-connection-with-options
+           :postgres (mt/db) nil
+           (fn [conn]
+             (with-open [stmt (sql-jdbc.sync.common/prepare-statement :postgres conn long-sleep-sql [])]
+               (try (doto stmt
+                      (.setQueryTimeout 1)
+                      (.execute))
+                    (throw (ex-info "Query successfully executed. Should sleep for 5s with a timeout of 1s" {}))
+                    (catch Throwable e
+                      (is (driver/query-canceled? :postgres e))))))))))))
 
 (deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"
@@ -2228,3 +2246,18 @@
               (is (= :type/BigInteger (-> cols first :base_type)))
               (doseq [[casted-value _equals? _uncasted-value] rows]
                 (is (int? casted-value))))))))))
+
+(deftest have-select-privelege?-timeout-test
+  (mt/test-driver :postgres
+    (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+      (qp.store/with-metadata-provider (mt/id)
+        (testing "checking select privilege defaults to allow on timeout (#56737)"
+          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT pg_sleep(3)"])]
+            (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
+              (sql-jdbc.execute/do-with-connection-with-options
+               driver/*driver*
+               (mt/db)
+               nil
+               (fn [^java.sql.Connection conn]
+                 (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                             driver/*driver* conn schema table-name))))))))))))

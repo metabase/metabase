@@ -89,15 +89,18 @@
   [_route-params
    _query-params
    query :- [:map
-             [:database {:optional true} [:maybe :int]]]]
+             [:database {:optional true} [:maybe :int]]
+             [:context  {:optional true} [:maybe :keyword]]]]
   ;; TODO augment the response with a boolean indicating whether the query is editable, probably through middleware
   ;;      also we want to indicate which columns are editable (e.g. not a custom expression)
   ;;      we should also consider whether the column is configured as editable, for "editables"
   ;;      ... this information might still be in the visualization settings only (:-c)
   (run-streaming-query
    (-> query
+       (dissoc :context)
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
-       qp/userland-query-with-default-constraints)))
+       qp/userland-query-with-default-constraints)
+   (select-keys query [:context])))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 

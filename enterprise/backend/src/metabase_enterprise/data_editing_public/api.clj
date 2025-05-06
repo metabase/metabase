@@ -23,7 +23,10 @@
     (api/check-400 (seq rows) "Please supply at least one row.")
     (api/check-400 (every? seq rows) "Every row should not be empty.")
     ;; TODO just call the action directly once we have it, get rid of this `insert!` method.
-    {:created (count (:created-rows (data-editing/insert! (:creator_id hook) (:table_id hook) rows)))}))
+    {:created (count (:created-rows (data-editing/insert! (:creator_id hook)
+                                                          {:webhook-id (:id hook)}
+                                                          (:table_id hook)
+                                                          rows)))}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."

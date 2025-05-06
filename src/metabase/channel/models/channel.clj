@@ -102,7 +102,7 @@
 (mr/def ::ChannelTemplateSlackDetails
   [:merge
    [:map
-    [:type (apply ms/enum-keywords-and-strings #{:slack/handlebars-text})]]
+    [:type (apply ms/enum-keywords-and-strings #{:slack/handlebars-text :slack/handlebars-resource})]]
    [:multi {:dispatch (comp keyword :type)}
     [:slack/handlebars-resource
      [:map
@@ -111,11 +111,19 @@
      [:map
       [:body string?]]]]])
 
+(mr/def ::ChannelTemplateHttpDetails
+  [:merge
+   [:map
+    [:type (apply ms/enum-keywords-and-strings #{:slack/handlebars-text})]
+    [:http/handlebars-text
+     [:map
+      [:body string?]]]]])
+
 (mr/def ::ChannelTemplate
   "Channel Template schema."
   [:merge
    [:map
-    [:channel_type [:fn #(= "channel" (-> % keyword namespace))]]]
+    [:channel_type {:decode/string keyword} [:fn #(= "channel" (-> % keyword namespace))]]]
    [:multi {:dispatch :channel_type}
     [:channel/email
      [:map

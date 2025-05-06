@@ -203,7 +203,7 @@
                (is (not= \v (first schema-name)))))))))))
 
 (deftest have-select-privilege?-test
-  (testing "cheking select privilege works with and without auto commit (#36040)"
+  (testing "checking select privilege works with and without auto commit (#36040)"
     (let [default-have-slect-privilege?
           #(identical? (get-method sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc)
                        (get-method sql-jdbc.sync.interface/have-select-privilege? %))]

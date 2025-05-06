@@ -14,8 +14,7 @@
          site-name          "Metabase Test"
          site-url           "https://metabase.com"
          admin-email        "ngoc@metabase.com"]
-        (is (= {:payload_type :notification/system-event
-                :payload      {:foo          :bar
+        (is (= {:payload      {:foo          :bar
                                :event_name   :event/user-joined}
                 :context      {:application_name     "Metabase Test"
                                :application_color    "#509EE3"

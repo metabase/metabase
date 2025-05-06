@@ -23,9 +23,9 @@
   check-data-editing-enabled-for-database!
   cached-database
   cached-database-via-table-id
+  handle-effects!*
   perform-action!
-  perform-action!*
-  perform-with-effects!]
+  perform-action!*]
  [metabase.actions.error
   incorrect-value-type
   violate-foreign-key-constraint

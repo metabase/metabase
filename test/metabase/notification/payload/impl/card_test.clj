@@ -28,10 +28,9 @@
 (defn- construct-email
   [& [data]]
   (merge {:subject        (format "Alert: %s has results" notification.tu/default-card-name)
-          :recipients     #{"rasta@metabase.com"}
-          :message-type   :attachments
-          :recipient-type nil
-          :message        [{notification.tu/default-card-name true}
+          :bcc            #{"rasta@metabase.com"}
+          :from           "notifications@metabase.com"
+          :body           [{notification.tu/default-card-name true}
                            ;; icon
                            notification.tu/png-attachment
                            notification.tu/csv-attachment]}
@@ -59,12 +58,12 @@
                {:channel/email
                 (fn [[email]]
                   (is (= (construct-email
-                          {:message [{notification.tu/default-card-name true
-                                      "Manage your subscriptions"       true
-                                      card-content                      true}
-                                     ;; icon
-                                     notification.tu/png-attachment
-                                     notification.tu/csv-attachment]})
+                          {:body [{notification.tu/default-card-name true
+                                   "Manage your subscriptions"       true
+                                   card-content                      true}
+                                  ;; icon
+                                  notification.tu/png-attachment
+                                  notification.tu/csv-attachment]})
                          (mt/summarize-multipart-single-email
                           email
                           card-name-regex
@@ -114,13 +113,13 @@
        {:channel/email
         (fn [[email]]
           (is (= (construct-email
-                  {:message [{notification.tu/default-card-name true
-                              "Manage your subscriptions"       true}
-                             ;; static viz
-                             notification.tu/png-attachment
-                             ;; icon
-                             notification.tu/png-attachment
-                             notification.tu/csv-attachment]})
+                  {:body [{notification.tu/default-card-name true
+                           "Manage your subscriptions"       true}
+                          ;; static viz
+                          notification.tu/png-attachment
+                          ;; icon
+                          notification.tu/png-attachment
+                          notification.tu/csv-attachment]})
                  (mt/summarize-multipart-single-email
                   email
                   card-name-regex
@@ -161,11 +160,11 @@
                  {:channel/email
                   (fn [[email]]
                     (is (= (construct-email
-                            {:message [{notification.tu/default-card-name true
-                                        "Manage your subscriptions"       true}
-                                      ;; icon
-                                       notification.tu/png-attachment
-                                       notification.tu/csv-attachment]})
+                            {:body [{notification.tu/default-card-name true
+                                     "Manage your subscriptions"       true}
+                                           ;; icon
+                                    notification.tu/png-attachment
+                                    notification.tu/csv-attachment]})
                            (mt/summarize-multipart-single-email
                             email
                             card-name-regex
@@ -225,7 +224,7 @@
             ;; this will fail if the query has a limit
             ;; follow up in https://metaboat.slack.com/archives/C064QMXEV9N/p1734522146075659
             (is (= 11
-                   (some->> email :message (m/find-first #(= "text/csv" (:content-type %))) :content slurp str/split-lines count))))})))))
+                   (some->> email :body (m/find-first #(= "text/csv" (:content-type %))) :content slurp str/split-lines count))))})))))
 
 (deftest multiple-email-recipients-test
   (notification.tu/with-card-notification
@@ -243,7 +242,7 @@
       (fn [emails]
         (is (= #{#{"ngoc@metabase.com"} #{"crowberto@metabase.com" "rasta@metabase.com"}}
                (->> emails
-                    (map (comp set :recipients))
+                    (map (comp set :bcc))
                     set))))})))
 
 (deftest send-condition-has-result-test
@@ -286,22 +285,22 @@
         goal-met?           (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
     (testing "Progress bar"
       (testing "alert above"
-        (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (progress-result 4)))))
-        (testing "value equals goal" (is (=  true (goal-met? alert-above-pulse (progress-result 5)))))
-        (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (progress-result 6))))))
+        (testing "value below goal"  (is (= false  (goal-met? alert-above-pulse (progress-result 4)))))
+        (testing "value equals goal" (is (true?    (goal-met? alert-above-pulse (progress-result 5)))))
+        (testing "value above goal"  (is (true?    (goal-met? alert-above-pulse (progress-result 6))))))
       (testing "alert below"
-        (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (progress-result 4)))))
-        (testing "value equals goal (#10899)" (is (= false (goal-met? alert-below-pulse (progress-result 5)))))
-        (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (progress-result 6)))))))
+        (testing "value below goal"  (is (true?    (goal-met? alert-below-pulse (progress-result 4)))))
+        (testing "value equals goal (#10899)" (is (= false  (goal-met? alert-below-pulse (progress-result 5)))))
+        (testing "value above goal"  (is (= false  (goal-met? alert-below-pulse (progress-result 6)))))))
     (testing "Timeseries"
       (testing "alert above"
-        (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (=  true (goal-met? alert-above-pulse (timeseries-result 5)))))
-        (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (timeseries-result 6))))))
+        (testing "value below goal"  (is (= false  (goal-met? alert-above-pulse (timeseries-result 4)))))
+        (testing "value equals goal" (is (true?    (goal-met? alert-above-pulse (timeseries-result 5)))))
+        (testing "value above goal"  (is (true?    (goal-met? alert-above-pulse (timeseries-result 6))))))
       (testing "alert below"
-        (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (= false (goal-met? alert-below-pulse (timeseries-result 5)))))
-        (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (timeseries-result 6)))))))))
+        (testing "value below goal"  (is (true?    (goal-met? alert-below-pulse (timeseries-result 4)))))
+        (testing "value equals goal" (is (= false  (goal-met? alert-below-pulse (timeseries-result 5)))))
+        (testing "value above goal"  (is (= false  (goal-met? alert-below-pulse (timeseries-result 6)))))))))
 
 (deftest send-condition-above-goal-test
   (testing "skip is the goal is not met"
@@ -344,7 +343,7 @@
         (fn [[email]]
           (is (= (construct-email
                   {:subject "Alert: Card notification test card has reached its goal"
-                   :message [{notification.tu/default-card-name true
+                   :body    [{notification.tu/default-card-name true
                               "This question has reached its goal of 5\\.9\\." true}
                              notification.tu/png-attachment
                              notification.tu/png-attachment
@@ -395,7 +394,7 @@
         (fn [[email]]
           (is (= (construct-email
                   {:subject "Alert: Card notification test card has gone below its goal"
-                   :message [{notification.tu/default-card-name true
+                   :body    [{notification.tu/default-card-name true
                               "This question has gone below its goal of 1\\.1\\." true}
                              notification.tu/png-attachment
                              notification.tu/png-attachment
@@ -408,14 +407,15 @@
 (deftest send-once-archive-on-first-successful-send
   (notification.tu/with-card-notification
     [notification {:notification-card {:send_once true}}]
-    (testing "do not archive if the send fail for any reason"
-      (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _args] (throw (ex-info "error" {})))]
-        (u/ignore-exceptions (notification/send-notification! notification))
-        (is (true? (t2/select-one-fn :active :model/Notification (:id notification))))))
+    (let [notification (t2/select-one :model/Notification (:id notification))]
+      (testing "do not archive if the send fail for any reason"
+        (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _args] (throw (ex-info "error" {})))]
+          (u/ignore-exceptions (notification/send-notification! notification))
+          (is (true? (t2/select-one-fn :active :model/Notification (:id notification))))))
 
-    (testing "archive if the send is successful"
-      (notification/send-notification! notification)
-      (is (false? (t2/select-one-fn :active :model/Notification (:id notification)))))))
+      (testing "archive if the send is successful"
+        (notification/send-notification! notification)
+        (is (false? (t2/select-one-fn :active :model/Notification (:id notification))))))))
 
 (deftest non-user-email-test
   (notification.tu/with-card-notification
@@ -428,12 +428,12 @@
       (fn [[email]]
         (testing "email is sent correctly"
           (is (= (construct-email
-                  {:recipients #{"ngoc@metabase.com"}
-                   :message [{notification.tu/default-card-name true
-                              "Manage your subscriptions"       false
-                              "Unsubscribe"                     true}
-                             notification.tu/png-attachment
-                             notification.tu/csv-attachment]})
+                  {:bcc  #{"ngoc@metabase.com"}
+                   :body [{notification.tu/default-card-name true
+                           "Manage your subscriptions"       false
+                           "Unsubscribe"                     true}
+                          notification.tu/png-attachment
+                          notification.tu/csv-attachment]})
                  (mt/summarize-multipart-single-email
                   email
                   card-name-regex
@@ -441,7 +441,7 @@
                   #"Unsubscribe"))))
 
         (testing "the unsubscribe url is correct"
-          (let [url    (re-find #"https://[^/]+/unsubscribe[^\"]*" (-> email :message first :content))
+          (let [url    (re-find #"https://[^/]+/unsubscribe[^\"]*" (-> email :body first :content))
                 params (codec/form-decode (second (str/split url #"\?")))]
             (is (int? (parse-long (get params "notification-handler-id"))))
             (is (= "ngoc@metabase.com" (get params "email")))
@@ -515,7 +515,7 @@
 
 (defn- email->attachment-line-count
   [email]
-  (let [attachment (m/find-first #(= "text/csv" (:content-type %)) (:message email))]
+  (let [attachment (m/find-first #(= "text/csv" (:content-type %)) (:body email))]
     (if attachment
       (with-open [rdr (io/reader (:content attachment))]
         (count (line-seq rdr)))
@@ -564,3 +564,19 @@
            {:channel/email
             (fn [emails]
               (is (= 11 (email->attachment-line-count (first emails)))))}))))))
+
+(deftest audit-alert-send-event-test
+  (testing "When we send an alert, we also log the event:"
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:audit-app}
+       (notification.tu/with-card-notification [notification {:handlers [{:channel_type :channel/email,
+                                                                          :recipients [{:type :notification-recipient/user
+                                                                                        :user_id (mt/user->id :rasta)}]}]}]
+         (notification/send-notification! notification :notification/sync? true)
+         (is (=? {:topic    :alert-send
+                  :user_id  (mt/user->id :crowberto)
+                  :model    "Pulse"
+                  :model_id (:id notification)
+                  :details  {:recipients [{:id (mt/user->id :rasta)}]
+                             :filters    nil}}
+                 (mt/latest-audit-log-entry :alert-send (:id notification)))))))))

@@ -9,15 +9,19 @@ import {
 } from "metabase-enterprise/api/table-data-edit";
 import type { ConcreteTableId, RowValue } from "metabase-types/api";
 
+import type { TableEditingScope } from "../types";
+
 import type { TableEditingStateUpdateStrategy } from "./use-table-state-update-strategy";
 
 type UseTableEditingUndoRedoProps = {
   tableId: ConcreteTableId;
+  scope?: TableEditingScope;
   stateUpdateStrategy: TableEditingStateUpdateStrategy;
 };
 
 export function useTableEditingUndoRedo({
   tableId,
+  scope,
   stateUpdateStrategy,
 }: UseTableEditingUndoRedoProps) {
   const [undoMutation, { isLoading: isUndoLoading }] = useTableUndoMutation();
@@ -87,14 +91,20 @@ export function useTableEditingUndoRedo({
     [dispatch, stateUpdateStrategy, tableId],
   );
   const undo = useCallback(async () => {
-    const response = await undoMutation({ tableId });
+    const response = await undoMutation({ tableId, scope });
     handleResponse("undo", response);
-  }, [undoMutation, tableId, handleResponse]);
+  }, [undoMutation, tableId, scope, handleResponse]);
 
   const redo = useCallback(async () => {
-    const response = await redoMutation({ tableId });
+    const response = await redoMutation({ tableId, scope });
     handleResponse("redo", response);
-  }, [redoMutation, tableId, handleResponse]);
+  }, [redoMutation, tableId, scope, handleResponse]);
 
-  return { undo, redo, isUndoLoading, isRedoLoading };
+  const currentActionLabel = isUndoLoading
+    ? t`Undoing actions...`
+    : isRedoLoading
+      ? t`Redoing actions...`
+      : undefined;
+
+  return { undo, redo, isUndoLoading, isRedoLoading, currentActionLabel };
 }

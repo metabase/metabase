@@ -68,5 +68,5 @@
       (mt/with-temp [:model/Collection         coll    {:name "field-db" :namespace :snippets :location "/" :created_at now}
                      :model/NativeQuerySnippet snippet {:name "my snippet" :collection_id (:id coll) :created_at now}]
         (is (= "7ac51ad0"
-               (serdes/raw-hash ["my snippet" (serdes/identity-hash coll) now])
+               (serdes/raw-hash ["my snippet" (serdes/identity-hash coll) (:created_at snippet)])
                (serdes/identity-hash snippet)))))))

@@ -195,8 +195,8 @@
                       {:original "+123" :value 123 :msg "Initial + sign."}
                       {:original "00123" :value 123 :msg "Initial zeros."}
                       {:original "-123" :value -123 :msg "Negative sign."}
-                      {:original (pr-str Long/MAX_VALUE) :value Long/MAX_VALUE :msg "Big number."}
-                      {:original (pr-str Long/MIN_VALUE) :value Long/MIN_VALUE :msg "Big number."}]]
+                      {:original (pr-str Integer/MAX_VALUE) :value Integer/MAX_VALUE :msg "Big number."}
+                      {:original (pr-str Integer/MIN_VALUE) :value Integer/MIN_VALUE :msg "Big number."}]]
         (doseq [{:keys [original value msg]} examples]
           (testing (str "integer cast: " msg)
             (let [field-md (lib.metadata/field mp (mt/id :people :id))

@@ -2,10 +2,12 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/components/ConfirmModal";
+import type { ModalProps } from "metabase/ui";
 
 export type ConfirmationState = {
   title: string;
   message?: string;
+  size?: ModalProps["size"];
   onConfirm: () => void;
   confirmButtonText?: string;
   cancelButtonText?: string;
@@ -30,7 +32,9 @@ export const useConfirmation = () => {
       data-testid="confirm-modal"
       title={confirmationState.title}
       message={confirmationState?.message}
+      size={confirmationState?.size}
       confirmButtonText={confirmationState.confirmButtonText}
+      closeButtonText={confirmationState.cancelButtonText}
     />
   ) : null;
 
@@ -40,6 +44,7 @@ export const useConfirmation = () => {
     onConfirm,
     confirmButtonText = t`Confirm`,
     cancelButtonText = t`Cancel`,
+    size,
   }: ConfirmationState) =>
     setConfirmationState({
       title,
@@ -47,6 +52,7 @@ export const useConfirmation = () => {
       onConfirm,
       confirmButtonText,
       cancelButtonText,
+      size,
     });
 
   return { modalContent, show };

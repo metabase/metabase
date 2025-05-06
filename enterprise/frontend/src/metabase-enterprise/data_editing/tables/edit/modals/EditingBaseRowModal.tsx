@@ -30,16 +30,17 @@ import type { EditableTableColumnConfig } from "../use-editable-column-config";
 
 import { DeleteRowConfirmationModal } from "./DeleteRowConfirmationModal";
 import S from "./EditingBaseRowModal.module.css";
+import type { TableEditingModalState } from "./use-table-modal";
+import { TableEditingModalAction } from "./use-table-modal";
 
 interface EditingBaseRowModalProps {
   datasetColumns: DatasetColumn[];
   datasetTable?: Table;
+  modalState: TableEditingModalState;
   onClose: () => void;
-  onEdit: (data: UpdatedRowCellsHandlerParams) => void;
-  onRowCreate: (data: Record<string, RowValue>) => void;
-  onRowDelete: (rowIndex: number) => void;
-  opened: boolean;
-  currentRowIndex?: number;
+  onEdit: (data: UpdatedRowCellsHandlerParams) => Promise<boolean>;
+  onRowCreate: (data: Record<string, RowValue>) => Promise<boolean>;
+  onRowDelete: (rowIndex: number) => Promise<boolean>;
   currentRowData?: RowValues;
   fieldMetadataMap: Record<FieldWithMetadata["name"], FieldWithMetadata>;
   hasDeleteAction: boolean;
@@ -51,12 +52,11 @@ type EditingFormValues = Record<string, RowValue>;
 
 export function EditingBaseRowModal({
   datasetColumns,
+  modalState,
   onClose,
   onEdit,
   onRowCreate,
   onRowDelete,
-  opened,
-  currentRowIndex,
   currentRowData,
   fieldMetadataMap,
   hasDeleteAction,
@@ -87,6 +87,16 @@ export function EditingBaseRowModal({
     [fieldMetadataMap, datasetColumns],
   );
 
+  const onSubmit = useCallback(
+    async (values: EditingFormValues) => {
+      const success = await onRowCreate(values);
+      if (success) {
+        onClose();
+      }
+    },
+    [onClose, onRowCreate],
+  );
+
   const {
     isValid,
     resetForm,
@@ -96,49 +106,41 @@ export function EditingBaseRowModal({
     validateForm: revalidateForm,
   } = useFormik({
     initialValues: {} as EditingFormValues,
-    onSubmit: onRowCreate,
+    onSubmit,
     validate: validateForm,
     validateOnMount: true,
   });
 
   // Clear new row data when modal is opened
   useEffect(() => {
-    if (opened) {
+    if (modalState.action === TableEditingModalAction.Create) {
       resetForm();
       revalidateForm();
     }
-  }, [opened, resetForm, revalidateForm]);
+  }, [modalState.action, resetForm, revalidateForm]);
 
   const handleValueEdit = useCallback(
     (key: string, value: RowValue) => {
-      if (currentRowIndex != null && isEditingMode) {
+      if (modalState.rowIndex != null && isEditingMode) {
         onEdit({
-          rowIndex: currentRowIndex,
+          rowIndex: modalState.rowIndex,
           updatedData: {
             [key]: value,
           },
         });
       }
     },
-    [isEditingMode, currentRowIndex, onEdit],
+    [isEditingMode, modalState.rowIndex, onEdit],
   );
 
-  const handleDeleteConfirmation = useCallback(() => {
-    if (currentRowIndex !== undefined) {
-      onRowDelete(currentRowIndex);
+  const handleDeleteConfirmation = useCallback(async () => {
+    if (modalState.rowIndex !== undefined) {
       closeDeletionModal();
-    }
-  }, [currentRowIndex, closeDeletionModal, onRowDelete]);
+      onClose();
 
-  const disabledColumnNames = useMemo(() => {
-    if (!columnsConfig) {
-      return undefined;
+      await onRowDelete(modalState.rowIndex);
     }
-
-    return new Set(
-      columnsConfig.filter((it) => !it.editable).map(({ name }) => name),
-    );
-  }, [columnsConfig]);
+  }, [closeDeletionModal, onRowDelete, modalState.rowIndex, onClose]);
 
   // Columns might be reordered to match the order in `columnsConfig`
   const orderedDatasetColumns = useMemo(() => {
@@ -146,9 +148,8 @@ export function EditingBaseRowModal({
       return datasetColumns;
     }
 
-    return columnsConfig
-      .filter((it) => it.enabled)
-      .map(({ name }) => datasetColumns.find((it) => it.name === name))
+    return columnsConfig.columnOrder
+      .map((name) => datasetColumns.find((it) => it.name === name))
       .filter((it): it is DatasetColumn => it !== undefined);
   }, [columnsConfig, datasetColumns]);
 
@@ -178,7 +179,7 @@ export function EditingBaseRowModal({
   }
 
   return (
-    <Modal.Root opened={opened} onClose={onClose}>
+    <Modal.Root opened={modalState.action !== null} onClose={onClose}>
       <Modal.Overlay />
       <Modal.Content>
         <form onSubmit={handleSubmit}>
@@ -229,7 +230,7 @@ export function EditingBaseRowModal({
                     onSubmitValue={handleValueEdit}
                     onChangeValue={setFieldValue}
                     error={!isEditingMode && !!errors[column.name]}
-                    disabled={disabledColumnNames?.has(column.name)}
+                    disabled={columnsConfig?.isColumnReadonly(column.name)}
                   />
                 </Fragment>
               );

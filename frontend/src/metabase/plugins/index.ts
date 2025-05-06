@@ -183,7 +183,9 @@ export const PLUGIN_ADMIN_USER_FORM_FIELDS = {
 };
 
 // menu items in people management tab
-export const PLUGIN_ADMIN_USER_MENU_ITEMS = [];
+export const PLUGIN_ADMIN_USER_MENU_ITEMS = [] as Array<
+  (user: User) => { title: string; link: string }
+>;
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 
 // auth settings
@@ -653,6 +655,7 @@ export const PLUGIN_DATA_EDITING = {
     location: Location<{ filter?: string }>;
   }>,
   CARD_TABLE_COMPONENT: PluginPlaceholder as ComponentType<{
+    title: string;
     dashcardId: number;
     cardId: number;
     data: DatasetData;

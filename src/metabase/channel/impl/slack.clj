@@ -58,9 +58,10 @@
         {:title           (or (-> dashcard :visualization_settings :card.title)
                               card-name)
          :rendered-info   (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
-         :title_link      (urls/card-url card-id)
          :attachment-name "image.png"
-         :fallback        card-name})
+         :fallback        card-name
+         :title_link      (when-not (= :table-editable (:display card))
+                            (urls/card-url card-id))})
 
       :text
       (text->markdown-block (:text part))
@@ -74,13 +75,15 @@
   1200)
 
 (defn- mkdwn-link-text [url label]
-  (let [url-length       (count url)
-        const-length     3
-        max-label-length (- block-text-length-limit url-length const-length)
-        label' (escape-mkdwn label)]
-    (if (< max-label-length 10)
-      (truncate (str "(URL exceeds slack limits) " label') block-text-length-limit)
-      (format "<%s|%s>" url (truncate label' max-label-length)))))
+  (if url
+    (let [url-length       (count url)
+          const-length     3
+          max-label-length (- block-text-length-limit url-length const-length)
+          label' (escape-mkdwn label)]
+      (if (< max-label-length 10)
+        (truncate (str "(URL exceeds slack limits) " label') block-text-length-limit)
+        (format "<%s|%s>" url (truncate label' max-label-length))))
+    label))
 
 (defn- create-and-upload-slack-attachment!
   "Create an attachment in Slack for a given Card by rendering its content into an image and uploading it.
@@ -129,7 +132,7 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/card] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload]} _template recipients]
+  [_channel-type _payload-type {:keys [payload]} _template recipients]
   (let [attachments [{:blocks [{:type "header"
                                 :text {:type "plain_text"
                                        :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)
@@ -181,7 +184,7 @@
     attachment))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload creator]} _template recipients]
+  [_channel-type _payload-type {:keys [payload creator]} _template recipients]
   (let [parameters (:parameters payload)
         dashboard  (:dashboard payload)]
     (for [channel-id (map notification-recipient->channel-id recipients)]
@@ -195,14 +198,12 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/system-event] :- [:sequential SlackMessage]
-  [channel-type {:keys [context] :as notification-payload} template recipients]
+  [channel-type _payload-type {:keys [context] :as notification-payload} template recipients]
   (let [event-name (:event_name context)
         template    (or template
                         ;; TODO: the context here does not nescessarily have the same shape as payload, needs to rethink this
                         (channel.template/default-template :notification/system-event context channel-type))]
     (assert template (str "No template found for event " event-name))
-    (if-not template
-      []
-      (for [channel-id (map notification-recipient->channel-id recipients)]
-        {:channel-id  channel-id
-         :attachments [(text->markdown-block (channel.template/render-template template notification-payload))]}))))
+    (for [channel-id (map notification-recipient->channel-id recipients)]
+      {:channel-id  channel-id
+       :attachments [(text->markdown-block (channel.template/render-template template notification-payload))]})))

@@ -142,6 +142,23 @@
   "How should we order fields."
   [[:position :asc] [:%lower.name :asc]])
 
+(defn ordered-fields
+  "Return the fields of a table in the order specified by `:field_order`."
+  [table-id field-order]
+  (t2/select :model/Field
+             :table_id  table-id
+             {:order-by (case field-order
+                          :custom       [[:custom_position :asc]]
+                          :smart        [[[:case
+                                           (mdb.query/isa :semantic_type :type/PK)       0
+                                           (mdb.query/isa :semantic_type :type/Name)     1
+                                           (mdb.query/isa :semantic_type :type/Temporal) 2
+                                           :else                                         3]
+                                          :asc]
+                                         [:%lower.name :asc]]
+                          :database     [[:database_position :asc]]
+                          :alphabetical [[:%lower.name :asc]])}))
+
 (defn update-field-positions!
   "Update `:position` of field belonging to table `table` accordingly to `:field_order`"
   [table]
@@ -149,19 +166,7 @@
    (map-indexed (fn [new-position field]
                   (t2/update! :model/Field (u/the-id field) {:position new-position}))
                 ;; Can't use `select-field` as that returns a set while we need an ordered list
-                (t2/select [:model/Field :id]
-                           :table_id  (u/the-id table)
-                           {:order-by (case (:field_order table)
-                                        :custom       [[:custom_position :asc]]
-                                        :smart        [[[:case
-                                                         (mdb.query/isa :semantic_type :type/PK)       0
-                                                         (mdb.query/isa :semantic_type :type/Name)     1
-                                                         (mdb.query/isa :semantic_type :type/Temporal) 2
-                                                         :else                                     3]
-                                                        :asc]
-                                                       [:%lower.name :asc]]
-                                        :database     [[:database_position :asc]]
-                                        :alphabetical [[:%lower.name :asc]])}))))
+                (ordered-fields (:id table) (:field_order table)))))
 
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
