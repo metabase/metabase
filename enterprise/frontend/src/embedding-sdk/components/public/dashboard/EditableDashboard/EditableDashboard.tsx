@@ -5,7 +5,6 @@ import {
   DashboardNotFoundError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { StyledPublicComponentWrapper } from "embedding-sdk/components/public/InteractiveDashboard/EditableDashboard.styled";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -21,11 +20,12 @@ import { getIsEditing } from "metabase/dashboard/selectors";
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 
-import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
+import type { DrillThroughQuestionProps } from "../../InteractiveQuestion/InteractiveQuestion";
+import { ConnectedDashboard } from "../ConnectedDashboard";
+import { InteractiveDashboardProvider } from "../InteractiveDashboard/context";
+import { useCommonDashboardParams } from "../use-common-dashboard-params";
 
-import { ConnectedDashboard } from "./ConnectedDashboard";
-import { InteractiveDashboardProvider } from "./context";
-import { useCommonDashboardParams } from "./use-common-dashboard-params";
+import { StyledPublicComponentWrapper } from "./EditableDashboard.styled.tsx";
 
 /**
  * @interface
