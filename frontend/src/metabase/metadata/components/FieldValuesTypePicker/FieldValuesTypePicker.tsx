@@ -55,11 +55,11 @@ function isFieldValuesType(value: string): value is FieldValuesType {
    * Using a Record, so that this gives compilation error when FieldValuesType is extended,
    * so that whoever changes that type does not forget to update this type guard.
    */
-  const visibilityTypesMap: Record<FieldValuesType, boolean> = {
+  const fieldValuesTypesMap: Record<FieldValuesType, boolean> = {
     list: true,
     search: true,
     none: true,
   };
 
-  return Object.keys(visibilityTypesMap).includes(value);
+  return Object.keys(fieldValuesTypesMap).includes(value);
 }
