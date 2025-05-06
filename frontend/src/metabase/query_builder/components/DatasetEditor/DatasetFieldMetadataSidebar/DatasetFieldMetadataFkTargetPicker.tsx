@@ -2,7 +2,6 @@ import { useField } from "formik";
 
 import { useListDatabaseIdFieldsQuery } from "metabase/api";
 import { FkTargetPicker } from "metabase/metadata/components";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DatabaseId, Field, FieldId } from "metabase-types/api";
 
 interface Props {
@@ -19,7 +18,6 @@ export const DatasetFieldMetadataFkTargetPicker = ({
   const [formField, _meta, { setValue }] = useField("fk_target_field_id");
   const { data: idFields = [] } = useListDatabaseIdFieldsQuery({
     id: databaseId,
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   });
 
   const handleChange = (value: FieldId | null) => {
