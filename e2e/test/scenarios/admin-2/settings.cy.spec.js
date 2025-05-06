@@ -152,16 +152,16 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
 
     cy.visit("/admin/settings/localization");
 
-    cy.findByTestId("custom-formatting-setting")
+    cy.findByTestId("date_style-formatting-setting")
       .findByDisplayValue("January 31, 2018")
       .click({ force: true });
 
     H.popover().findByText("2018/1/31").click({ force: true });
     cy.wait("@saveFormatting");
 
-    cy.findByTestId("chart-settings-widget-date_style")
-      .findByTestId("chart-setting-select")
-      .should("have.value", "2018/1/31");
+    cy.findByTestId("date_style-formatting-setting").findByDisplayValue(
+      "2018/1/31",
+    );
 
     cy.findByTestId("custom-formatting-setting")
       .findByText("17:24 (24-hour clock)")

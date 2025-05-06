@@ -17,6 +17,21 @@ import { SettingHeader } from "../SettingHeader";
 
 import { SetByEnvVar } from "./AdminSettingInput";
 
+const DEFAULT_FORMATTING_SETTINGS: FormattingSettings = {
+  "type/Temporal": {
+    date_style: "MMMM D, YYYY",
+    time_style: "h:mm A",
+    date_abbreviate: false,
+  },
+  "type/Number": {
+    number_separators: ".,",
+  },
+  "type/Currency": {
+    currency: "USD",
+    currency_style: "symbol",
+  },
+};
+
 export function FormattingWidget() {
   const {
     value: initialValue,
@@ -25,9 +40,10 @@ export function FormattingWidget() {
     isLoading,
     settingDetails,
   } = useAdminSetting("custom-formatting");
-  const [localValue, setLocalValue] = useState<FormattingSettings | undefined>(
-    initialValue,
-  );
+  const [localValue, setLocalValue] = useState<FormattingSettings | undefined>({
+    ...DEFAULT_FORMATTING_SETTINGS,
+    ...initialValue,
+  });
 
   if (isLoading) {
     return null;
@@ -218,7 +234,7 @@ function FormattingInput({
   };
 
   return (
-    <Stack gap="sm">
+    <Stack gap="sm" data-testid={`${id}-formatting-setting`}>
       <Text htmlFor={id} component="label" fw="bold" display="block">
         {label}
       </Text>
