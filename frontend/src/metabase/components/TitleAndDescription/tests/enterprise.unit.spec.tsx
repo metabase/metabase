@@ -6,7 +6,11 @@ import { dictionaryWithGermanPhrases } from "./constants";
 import { type SetupOpts, setup as baseSetup } from "./setup";
 
 function setup(opts: SetupOpts) {
-  return baseSetup({ hasEnterprisePlugins: true, ...opts });
+  return baseSetup({
+    hasEnterprisePlugins: true,
+    tokenFeatures: { content_translation: true },
+    ...opts,
+  });
 }
 
 describe("TitleAndDescription Component (EE without token feature)", () => {
@@ -18,7 +22,7 @@ describe("TitleAndDescription Component (EE without token feature)", () => {
     await userEvent.hover(screen.getByLabelText("info icon"));
     expect(
       await screen.findByRole("tooltip", {
-        name: "Sample description", // FIXME use translated text here
+        name: "Beispielbeschreibung",
       }),
     ).toBeInTheDocument();
   });
