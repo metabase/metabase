@@ -10,33 +10,39 @@ function setup(opts: SetupOpts) {
 }
 
 describe("TitleAndDescription Component (OSS)", () => {
-  it("displays untranslated question title and description when locale is English", async () => {
-    setup({ localeCode: "en", dictionary });
+  describe("when a German content translation dictionary is provided", () => {
+    it("displays untranslated question title and description when locale is English", async () => {
+      setup({ localeCode: "en", dictionary });
 
-    expect(await screen.findByRole("heading", { level: 2 })).toHaveTextContent(
-      dictionary[0].msgid,
-    );
+      expect(
+        await screen.findByRole("heading", {
+          name: dictionary[0].msgid,
+        }),
+      ).toBeInTheDocument();
 
-    await userEvent.hover(screen.getByLabelText("info icon"));
-    expect(
-      await screen.findByRole("tooltip", {
-        name: dictionary[1].msgid,
-      }),
-    ).toBeInTheDocument();
-  });
+      await userEvent.hover(screen.getByLabelText("info icon"));
+      expect(
+        await screen.findByRole("tooltip", {
+          name: dictionary[1].msgid,
+        }),
+      ).toBeInTheDocument();
+    });
 
-  it("displays untranslated question title and description when locale is German", async () => {
-    setup({ localeCode: "de", dictionary });
+    it("displays untranslated question title and description when locale is German", async () => {
+      setup({ localeCode: "de", dictionary });
 
-    expect(await screen.findByRole("heading", { level: 2 })).toHaveTextContent(
-      dictionary[0].msgid,
-    );
+      expect(
+        await screen.findByRole("heading", {
+          name: dictionary[0].msgid,
+        }),
+      ).toBeInTheDocument();
 
-    await userEvent.hover(screen.getByLabelText("info icon"));
-    expect(
-      await screen.findByRole("tooltip", {
-        name: dictionary[1].msgid,
-      }),
-    ).toBeInTheDocument();
+      await userEvent.hover(screen.getByLabelText("info icon"));
+      expect(
+        await screen.findByRole("tooltip", {
+          name: dictionary[1].msgid,
+        }),
+      ).toBeInTheDocument();
+    });
   });
 });
