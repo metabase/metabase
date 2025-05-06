@@ -1,5 +1,10 @@
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { createMockField, createMockTable } from "metabase-types/api/mocks";
+import MetabaseSettings from "metabase/lib/settings";
+import {
+  createMockDatabase,
+  createMockField,
+  createMockTable,
+} from "metabase-types/api/mocks";
 import {
   createOrdersProductIdField,
   createPeopleCreatedAtField,
@@ -9,8 +14,11 @@ import {
 import {
   areFieldsComparable,
   canCoerceFieldType,
+  canFieldUnfoldJson,
+  getFieldCurrency,
   getFieldDisplayName,
   getRawTableFieldId,
+  isFieldJsonUnfolded,
 } from "./field";
 
 describe("areFieldsComparable", () => {
@@ -69,6 +77,54 @@ describe("getRawTableFieldId", () => {
     expect(() => getRawTableFieldId(field)).toThrow(
       "getRawFieldId supports only raw table fields",
     );
+  });
+});
+
+describe("getFieldCurrency", () => {
+  it("returns currency from field settings when available", () => {
+    const field = createMockField({
+      settings: {
+        currency: "EUR",
+      },
+    });
+
+    expect(getFieldCurrency(field)).toBe("EUR");
+  });
+
+  it("returns currency from global settings when field settings are not available", () => {
+    MetabaseSettings.set("custom-formatting", {
+      "type/Currency": {
+        currency: "GBP",
+      },
+    });
+
+    const field = createMockField();
+
+    expect(getFieldCurrency(field)).toBe("GBP");
+  });
+
+  it("returns USD as default when no currency is specified", () => {
+    MetabaseSettings.set("custom-formatting", {});
+
+    const field = createMockField();
+
+    expect(getFieldCurrency(field)).toBe("USD");
+  });
+
+  it("prioritizes field settings over global settings", () => {
+    MetabaseSettings.set("custom-formatting", {
+      "type/Currency": {
+        currency: "GBP",
+      },
+    });
+
+    const field = createMockField({
+      settings: {
+        currency: "JPY",
+      },
+    });
+
+    expect(getFieldCurrency(field)).toBe("JPY");
   });
 });
 
@@ -153,5 +209,83 @@ describe("getFieldDisplayName", () => {
     expect(getFieldDisplayName(field, table, schema)).toBe(
       "Public.My table → My field",
     );
+  });
+});
+
+describe("canFieldUnfoldJson", () => {
+  it("returns true when field is JSON type and database supports nested fields", () => {
+    const field = createMockField({ base_type: "type/JSON" });
+    const database = createMockDatabase({
+      features: ["nested-field-columns"],
+    });
+
+    expect(canFieldUnfoldJson(field, database)).toBe(true);
+  });
+
+  it("returns false when field is not JSON type", () => {
+    const field = createMockField({ base_type: "type/Text" });
+    const database = createMockDatabase({
+      features: ["nested-field-columns"],
+    });
+
+    expect(canFieldUnfoldJson(field, database)).toBe(false);
+  });
+
+  it("returns false when database doesn't support nested fields", () => {
+    const field = createMockField({ base_type: "type/JSON" });
+    const database = createMockDatabase({
+      features: ["basic-aggregations"],
+    });
+
+    expect(canFieldUnfoldJson(field, database)).toBe(false);
+  });
+});
+
+describe("isFieldJsonUnfolded", () => {
+  it("returns field's json_unfolding value when set", () => {
+    const field = createMockField({ json_unfolding: false });
+    const database = createMockDatabase();
+
+    expect(isFieldJsonUnfolded(field, database)).toBe(false);
+  });
+
+  it("returns database's json-unfolding value when field's value is not set", () => {
+    const field = createMockField({ json_unfolding: null });
+    const database = createMockDatabase({
+      details: {
+        "json-unfolding": false,
+      },
+    });
+
+    expect(isFieldJsonUnfolded(field, database)).toBe(false);
+  });
+
+  it("returns true when neither field nor database have values set", () => {
+    const field = createMockField({ json_unfolding: null });
+    const database = createMockDatabase();
+
+    expect(isFieldJsonUnfolded(field, database)).toBe(true);
+  });
+
+  it("returns true when database's json-unfolding is not a boolean", () => {
+    const field = createMockField();
+    const database = createMockDatabase({
+      details: {
+        "json-unfolding": "xyz",
+      },
+    });
+
+    expect(isFieldJsonUnfolded(field, database)).toBe(true);
+  });
+
+  it("prioritizes field's json_unfolding over database setting", () => {
+    const field = createMockField({ json_unfolding: false });
+    const database = createMockDatabase({
+      details: {
+        "json-unfolding": true,
+      },
+    });
+
+    expect(isFieldJsonUnfolded(field, database)).toBe(false);
   });
 });

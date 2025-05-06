@@ -46,7 +46,7 @@ export function getFieldCurrency(field: Field): string {
     return field.settings.currency;
   }
 
-  const settings: FieldFormattingSettings = getGlobalSettingsForColumn(field);
+  const settings: FieldFormattingSettings = getGlobalSettingsForColumn();
 
   if (settings.currency) {
     return settings.currency;
