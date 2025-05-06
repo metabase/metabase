@@ -314,3 +314,43 @@
                           :data
                           (map (juxt :model :id))
                           set))))))))))
+
+(deftest limit-correct-with-permissions
+  (let [search-term "permissions-filtering"]
+    (mt/with-temp
+      [:model/Dashboard _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}]
+      (testing "searching with limit"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (with-redefs [search.impl/check-permissions-for-model (fn [_search-ctx search-result]
+                                                                  (and (= "card" (:model search-result))
+                                                                       (= 0 (mod (:id search-result) 2))))]
+            (let [result (->> (search.impl/search (search.impl/search-context
+                                                   {:search-string      search-term
+                                                    :limit              4
+                                                    :search-engine      "in-place"
+                                                    :archived           false
+                                                    :models             search.config/all-models
+                                                    :current-user-id    (mt/user->id :crowberto)
+                                                    :is-superuser?      true
+                                                    :current-user-perms @api/*current-user-permissions-set*}))
+                              :data
+                              (map (juxt :model :id))
+                              set)]
+              (is (= 4 (count result)))
+              (doseq [[model id] result]
+                (is (= "card" model))
+                (is (= 0 (mod id 2)))))))))))
