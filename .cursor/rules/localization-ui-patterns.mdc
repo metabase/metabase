@@ -1,0 +1,146 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+ ---
+description: UI patterns for localization settings in Metabase admin interfaces
+globs: "**/*.{jsx,tsx}"
+---
+<rule>
+name: localization_ui_patterns
+description: Standards for implementing localization settings UI in Metabase admin interfaces
+
+filters:
+  # Apply to React component files
+  - type: file_extension
+    pattern: "\\.(jsx|tsx)$"
+  # Focus on files related to settings or localization
+  - type: path
+    pattern: ".*(settings|localization|admin).*"
+
+You are implementing localization settings UI for Metabase admin interfaces. Follow these UI patterns to maintain consistency:
+
+Core components structure:
+- Use Card components with consistent styling for each section
+- Use clear hierarchy with Title and section headers
+- Provide descriptive help text for each setting
+- Group related settings together
+
+Standard layout pattern:
+```tsx
+<Card p="xl" mt="2rem" bg={color("bg-light")} withBorder shadow="none">
+  <Title order={2} mb="xs">{t`Section Title`}</Title>
+  <Text mb="lg">{t`Section description text.`}</Text>
+  <Divider mb="xl" />
+
+  <Stack gap="lg">
+    {/* Form elements here */}
+  </Stack>
+
+  <Box mt="xl">
+    <Button>{t`Save changes`}</Button>
+  </Box>
+</Card>
+```
+
+For language selection:
+```tsx
+<Select
+  label={t`Instance language`}
+  description={jt`The default language for all users across the ${getApplicationName()} UI.`}
+  placeholder="Select a language"
+  defaultValue="en"
+  data={localeOptions}
+/>
+```
+
+For timezone selection:
+```tsx
+<Select
+  label={t`Report Timezone`}
+  description={
+    <>
+      <Text size="sm" mb="xs">{t`Connection timezone for queries.`}</Text>
+      <Text size="sm">{t`Additional information if needed.`}</Text>
+    </>
+  }
+  placeholder="Select a timezone"
+  data={timezoneOptions}
+  searchable
+/>
+```
+
+For date and time formatting:
+```tsx
+<Box>
+  <Text fw={600} mb="xs">{t`Date Style`}</Text>
+  <Text size="sm" mb="sm" c={color("text-medium")}>
+    {jt`How would you like dates to be displayed throughout ${getApplicationName()}?`}
+  </Text>
+  <Group>
+    <Button variant="outline">MM/DD/YYYY</Button>
+    <Button variant="outline">DD/MM/YYYY</Button>
+    <Button variant="filled">YYYY-MM-DD</Button>
+  </Group>
+</Box>
+```
+
+For toggle options:
+```tsx
+<Switch
+  label={t`Option name`}
+  description={t`Description of what this option does.`}
+/>
+```
+
+For radio selections:
+```tsx
+<Box>
+  <Text fw={600} mb="xs">{t`Option Group Name`}</Text>
+  <Radio.Group defaultValue="default">
+    <Stack mt="xs">
+      <Radio value="option1" label={t`First option`} />
+      <Radio value="option2" label={t`Second option`} />
+    </Stack>
+  </Radio.Group>
+</Box>
+```
+
+Currency formatting:
+```tsx
+<Select
+  label={t`Unit of Currency`}
+  description={t`The default currency for displaying monetary values.`}
+  placeholder="Select a currency"
+  defaultValue="USD"
+  data={[
+    { value: "USD", label: "US Dollar ($)" },
+    { value: "EUR", label: "Euro (€)" },
+    { value: "GBP", label: "British Pound (£)" },
+  ] as Array<{ value: string; label: string }>}
+  searchable
+/>
+```
+
+Best practices:
+1. Add proper spacing between sections (use mt="2rem")
+2. Use consistent styling for all cards
+3. Group related settings logically
+4. Provide clear descriptions for each setting
+5. Use appropriate form components for each setting type
+6. Add proper handling for internationalization
+7. Include proper type casting for dropdown options
+
+Common pitfalls to avoid:
+1. Inconsistent spacing between sections
+2. Missing help text for complex settings
+3. Improper internationalization of user-facing strings
+4. Unclear grouping of related settings
+5. Inconsistent button styling
+6. Missing type assertions for dropdowns with mixed values
+
+metadata:
+  priority: high
+  version: 1.0
+</rule>

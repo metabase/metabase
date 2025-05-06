@@ -45,6 +45,23 @@
       background-color: var(--mb-color-bg-medium);
     }
   }
+
+  &[data-variant="admin"] {
+    color: #4646a4;
+
+    &:hover {
+      background-color: #eef;
+    }
+
+    &[data-active] {
+      &,
+      .NavLinkLabel {
+        color: #4646a4;
+      }
+
+      background-color: #eef;
+    }
+  }
 }
 
 .NavLinkLabel {
