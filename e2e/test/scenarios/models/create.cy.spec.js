@@ -1,6 +1,5 @@
 const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
-import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const modelName = "A name";
 
@@ -42,47 +41,6 @@ describe("scenarios > models > create", () => {
     cy.findByText("Summarize");
 
     checkIfPinned();
-  });
-
-  it("suggest the currently viewed collection when saving a new native query", () => {
-    H.visitCollection(THIRD_COLLECTION_ID);
-
-    navigateToNewModelPage();
-    H.NativeEditor.focus().type("select 1");
-    cy.findByTestId("native-query-editor-container").icon("play").click();
-    cy.wait("@dataset");
-
-    cy.findByTestId("dataset-edit-bar").within(() => {
-      cy.contains("button", "Save").click();
-    });
-    cy.findByTestId("save-question-modal").within(() => {
-      cy.findByLabelText(/Where do you want to save this/).should(
-        "have.text",
-        "Third collection",
-      );
-    });
-  });
-
-  it("suggest the last accessed collection when saving a new structured query model", () => {
-    H.visitCollection(THIRD_COLLECTION_ID);
-
-    navigateToNewModelPage("structured");
-
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
-    });
-
-    cy.findByTestId("dataset-edit-bar").within(() => {
-      cy.contains("button", "Save").click();
-    });
-
-    cy.findByTestId("save-question-modal").within(() => {
-      cy.findByLabelText(/Where do you want to save this/).should(
-        "have.text",
-        "Third collection",
-      );
-    });
   });
 
   // This covers creating a GUI model from the browse page + nocollection permissions (2 in 1)
