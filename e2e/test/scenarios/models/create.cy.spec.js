@@ -1,8 +1,6 @@
 const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 
-const modelName = "A name";
-
 describe("scenarios > models > create", () => {
   beforeEach(() => {
     H.restore();
@@ -10,8 +8,8 @@ describe("scenarios > models > create", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it("creates a native query model via the New button", () => {
-    cy.visit("/");
+  it("creates a native query model", () => {
+    const modelName = "m42";
 
     navigateToNewModelPage();
 
@@ -25,22 +23,21 @@ describe("scenarios > models > create", () => {
     // Clicking on metadata should not work until we run a query
     cy.findByTestId("editor-tabs-metadata").should("be.disabled");
 
-    H.NativeEditor.focus().type("select * from ORDERS");
-
+    H.NativeEditor.focus().type("select 42");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
     cy.findByTestId("dataset-edit-bar").button("Save").click();
-    cy.findByPlaceholderText("What is the name of your model?").type(modelName);
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByLabelText("Name").type(modelName);
+      cy.button("Save").click();
+    });
 
     // After saving, we land on view mode for the model
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Summarize");
+    cy.location("pathname").should("match", /^\/model\/\d+-.*$/);
+    cy.findByTestId("question-row-count").should("have.text", "Showing 1 row");
 
-    checkIfPinned();
+    checkIfPinned(modelName);
   });
 
   // This covers creating a GUI model from the browse page + nocollection permissions (2 in 1)
@@ -108,13 +105,14 @@ function navigateToNewModelPage(queryType = "native") {
   }
 }
 
-function checkIfPinned() {
-  H.visitCollection("root");
+function checkIfPinned(modelName) {
+  cy.findByTestId("app-bar").findByText("Our analytics").click();
+  cy.location("pathname").should("eq", "/collection/root");
 
   cy.findByText(modelName)
     .closest("a")
     .find(".Icon-ellipsis")
     .click({ force: true });
 
-  cy.findByText("Unpin").should("be.visible");
+  H.popover().findByText("Unpin").should("be.visible");
 }
