@@ -31,7 +31,7 @@ export const FieldSection = ({ databaseId, field }: Props) => {
         <MetadataSection databaseId={databaseId} field={field} />
         <BehaviorSection databaseId={databaseId} field={field} />
 
-        <Stack gap="sm" mt="xl">
+        <Stack gap="sm" mt="lg">
           <RescanFieldButton fieldId={getRawTableFieldId(field)} />
           <DiscardFieldValuesButton fieldId={getRawTableFieldId(field)} />
         </Stack>
