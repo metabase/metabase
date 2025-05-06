@@ -12,8 +12,7 @@ import {
 
 const MockDashboardContextProvider = connector(DashboardContext.Provider);
 
-export type MockDashboardContextProps = DashboardContextProps &
-  Partial<ReduxProps>;
+export type MockDashboardContextProps = DashboardContextProps & ReduxProps;
 
 export const MockDashboardContext = ({
   children,
