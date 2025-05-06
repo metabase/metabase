@@ -33,9 +33,11 @@
 (deftest premium-feature-test
   (testing "Endpoints require the :ai-entity-analysis premium feature"
     (mt/with-premium-features #{}
-      (is (= "The chart analysis feature requires a Metabase commercial license."
-             (mt/user-http-request :rasta :post 402 "ee/ai-entity-analysis/analyze-chart"
-                                   {:image_base64 "base64encodedimage"})))
-      (is (= "The dashboard analysis feature requires a Metabase commercial license."
-             (mt/user-http-request :rasta :post 402 "ee/ai-entity-analysis/analyze-dashboard"
-                                   {:image_base64 "base64encodedimage"}))))))
+      (is (= {:status "error-premium-feature-not-available"}
+             (select-keys (mt/user-http-request :rasta :post 402 "ee/ai-entity-analysis/analyze-chart"
+                                                {:image_base64 "base64encodedimage"})
+                          [:status])))
+      (is (= {:status "error-premium-feature-not-available"}
+             (select-keys (mt/user-http-request :rasta :post 402 "ee/ai-entity-analysis/analyze-dashboard"
+                                                {:image_base64 "base64encodedimage"})
+                          [:status]))))))
