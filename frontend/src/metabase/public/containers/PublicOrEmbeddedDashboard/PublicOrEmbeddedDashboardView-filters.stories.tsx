@@ -1,10 +1,6 @@
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
 
-import {
-  MockDashboardContext,
-  type MockDashboardContextProps,
-} from "__support__/context/dashboard";
 import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
@@ -13,6 +9,10 @@ import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
+import {
+  MockDashboardContext,
+  type MockDashboardContextProps,
+} from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { publicReducers } from "metabase/reducers-public";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";

@@ -29,7 +29,6 @@ export type PublicOrEmbeddedDashboardProps = Pick<
   | "onLoadWithoutCards"
   | "cardTitled"
   | "withFooter"
-  | "navigateToNewCardFromDashboard"
   | "onError"
   | "getClickActionMode"
   | "navigateToNewCardFromDashboard"

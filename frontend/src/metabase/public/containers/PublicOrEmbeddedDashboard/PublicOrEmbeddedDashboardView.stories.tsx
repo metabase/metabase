@@ -3,16 +3,16 @@ import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
 import { useEffect, useMemo } from "react";
 
-import {
-  MockDashboardContext,
-  type MockDashboardContextProps,
-} from "__support__/context/dashboard";
 import { getStore } from "__support__/entities-store";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
+import {
+  MockDashboardContext,
+  type MockDashboardContextProps,
+} from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { publicReducers } from "metabase/reducers-public";
 import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
