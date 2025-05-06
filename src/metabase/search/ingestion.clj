@@ -33,8 +33,17 @@
   "search-index-update")
 
 (def max-searchable-value-length
-  "The maximum length of a searchable value. This is mostly driven by postgresql max-lengths on tsvector columns."
+  "The maximum length of a searchable value. This is mostly driven by postgresql max-lengths on tsvector columns.
+  And is about half of postgresql's max, since we concat two values together often"
   500000)
+
+(defn searchable-value-trim-sql [column]
+  "Returns the honeysql expression to trim a searchable value to the max length.
+  The passed column should be a keyword that is qualified as needed.
+  Uses a slightly larger value that what will be stored in the db so we can better use word boundaries on the actual end"
+  [:left
+   column
+   [:cast (+ max-searchable-value-length 100) :integer]])
 
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
@@ -57,11 +66,10 @@
        :legacy_input (dissoc m :pinned :view_count :last_viewed_at :native_query)
        :searchable_text (searchable-text m))))
 
-(defn- attrs->select-items [attrs exclude-attrs]
+(defn- attrs->select-items [attrs]
   (for [[k v] attrs :when v]
-    (when-not (some #{k} exclude-attrs)
-      (let [as (keyword (u/->snake_case_en (name k)))]
-        (if (true? v) as [v as])))))
+    (let [as (keyword (u/->snake_case_en (name k)))]
+      (if (true? v) as [v as]))))
 
 (defn- spec-index-query*
   [search-model]
@@ -69,13 +77,14 @@
     (u/remove-nils
      {:select    (search.spec/qualify-columns :this
                                               (concat
-                                               (map (fn [term] [[:left
-                                                                 (keyword (str "this." (name term)))
-                                                                 ;; Select lightly more than the max length
-                                                                 ;; so we can better determine the word boundaries when we actually trim
-                                                                 [:cast (+ max-searchable-value-length 100) :integer]] term])
+                                               (map (fn [term] [(searchable-value-trim-sql (keyword (str "this." (name term))))
+                                                                term])
                                                     (:search-terms spec))
-                                               (mapcat (fn [k] (attrs->select-items (get spec k) (:search-terms spec)))
+                                               (mapcat (fn [k] (attrs->select-items
+                                                                (let [search-terms (set (:search-terms spec))]
+                                                                  (->> k
+                                                                       (get spec)
+                                                                       (remove (comp search-terms key))))))
                                                        [:attrs :render-terms])))
       :from      [[(t2/table-name (:model spec)) :this]]
       :where     (:where spec [:inline [:= 1 1]])
