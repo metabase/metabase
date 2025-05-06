@@ -4,7 +4,6 @@ import { formatValue } from "metabase/lib/formatting";
 import * as Lib from "metabase-lib";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
-  canRemapFieldValues,
   getFields,
   hasFields,
 } from "metabase-lib/v1/parameters/utils/parameter-fields";
@@ -68,7 +67,7 @@ export function formatParameterValue(
       // when a parameter targets multiple fields we won't know
       // which parameter the value is associated with, meaning we
       // are unable to remap the value to the correct field
-      const remap = canRemapFieldValues(fields);
+      const remap = fields.length === 1;
       return formatValue(value as string, {
         column: firstField,
         maximumFractionDigits: 20,

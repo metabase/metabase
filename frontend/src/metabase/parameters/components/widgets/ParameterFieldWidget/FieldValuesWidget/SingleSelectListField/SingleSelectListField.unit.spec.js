@@ -1,5 +1,4 @@
 import { render, screen } from "__support__/ui";
-import { canRemapFieldValues } from "metabase-lib/v1/parameters/utils/parameter-fields";
 
 import ValueComponent from "../../Value";
 
@@ -12,13 +11,17 @@ const options = [[firstOption], [secondOption]];
 const fields = [];
 const formatOptions = {};
 
+function showRemapping(fields) {
+  return fields.length === 1;
+}
+
 function renderValue(fields, formatOptions, value, options) {
   return (
     <ValueComponent
       value={value}
       column={fields[0]}
       maximumFractionDigits={20}
-      remap={canRemapFieldValues(fields)}
+      remap={showRemapping(fields)}
       {...formatOptions}
       {...options}
     />

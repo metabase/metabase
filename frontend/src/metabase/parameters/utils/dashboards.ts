@@ -5,6 +5,7 @@ import { slugify } from "metabase/lib/formatting";
 import { isNotNull } from "metabase/lib/types";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import Question from "metabase-lib/v1/Question";
+import type Field from "metabase-lib/v1/metadata/Field";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   FieldFilterUiParameter,
@@ -194,21 +195,26 @@ export function getDashboardQuestions(
 function buildSavedDashboardParameter(
   parameter: Parameter,
   mappings: ExtendedMapping[],
-  parameterFields: Dashboard["param_fields"],
+  fields: Dashboard["param_fields"],
   metadata: Metadata,
 ) {
-  const fields = (parameterFields?.[parameter.id] ?? [])
-    .map((field) => metadata.field(field.id))
-    .filter(isNotNull);
-  const hasVariableTemplateTagTarget = mappings.some(
-    (mapping) =>
-      mapping.parameter_id === parameter.id &&
-      isParameterVariableTarget(mapping.target),
+  const parameterMappings = mappings.filter(
+    (mapping) => mapping.parameter_id === parameter.id,
   );
+  const hasNativeQueryTarget = parameterMappings.some(
+    (mapping) => mapping.card.dataset_query?.type === "native",
+  );
+  const hasVariableTemplateTagTarget = parameterMappings.some((mapping) =>
+    isParameterVariableTarget(mapping.target),
+  );
+  const parameterFields = (fields?.[parameter.id] ?? [])
+    .map((field) => metadata.field(field.id))
+    .filter(isNotNull)
+    .map((field) => (hasNativeQueryTarget ? field : (field.target ?? field)));
 
   return {
     ...parameter,
-    fields,
+    fields: parameterFields,
     hasVariableTemplateTagTarget,
   };
 }
@@ -238,12 +244,21 @@ function buildUnsavedDashboardParameter(
   const mappedFields = uniqueMappingsForParameters.map((mapping) => {
     const { target, card } = mapping;
     if (!isQuestionCard(card)) {
-      return null;
+      return {
+        field: null,
+        shouldResolveFkField: false,
+      };
     }
 
     const question = questions[card.id] ?? new Question(card, metadata);
     try {
-      return getParameterTargetField(question, parameter, target);
+      const field = getParameterTargetField(question, parameter, target);
+
+      return {
+        field,
+        // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
+        shouldResolveFkField: card.dataset_query?.type === "query",
+      };
     } catch (e) {
       console.error("Error getting a field from a card", { card });
       throw e;
@@ -254,7 +269,18 @@ function buildUnsavedDashboardParameter(
     return isParameterVariableTarget(mapping.target);
   });
 
-  const fields = mappedFields.filter(isNotNull);
+  const fields = mappedFields
+    .filter(
+      (
+        mappedField,
+      ): mappedField is { field: Field; shouldResolveFkField: boolean } => {
+        return mappedField.field != null;
+      },
+    )
+    .map(({ field, shouldResolveFkField }) => {
+      return shouldResolveFkField ? (field.target ?? field) : field;
+    });
+
   return {
     ...parameter,
     fields: _.uniq(fields, (field) => field.id),
