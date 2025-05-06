@@ -23,17 +23,23 @@ describe("AuthenticationSettingsPage (EE)", () => {
     expect(await screen.findByText("API Keys")).toBeInTheDocument();
   });
 
-  it("Authentication tab should contain enterprise auth providers", async () => {
-    await setup();
+  it("Authentication tab should contain enterprise auth options", async () => {
+    await setup({
+      "google-auth-enabled": true, // this has to be enabled to see the password auth option
+    });
 
     expect(await screen.findByText("SAML")).toBeInTheDocument();
     expect(await screen.findByText("JWT")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Enable password authentication"),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Session timeout")).toBeInTheDocument();
   });
 
-  it("Authentication tabs should also include OSS auth providers", async () => {
+  it("Authentication tab should also include OSS auth providers", async () => {
     await setup();
 
-    expect(await screen.findByText("Google Sign-in")).toBeInTheDocument();
+    expect(await screen.findByText("Sign in with Google")).toBeInTheDocument();
     expect(await screen.findByText("LDAP")).toBeInTheDocument();
   });
 

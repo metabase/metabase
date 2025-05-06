@@ -73,7 +73,7 @@ function AuthenticationTab() {
         hidden={!canDisablePasswordLogin || !hasAnySsoProviderEnabled}
         name="enable-password-login"
         inputType="boolean"
-        title={t`Enable password Authentication`}
+        title={t`Enable password authentication`}
         description={t`When enabled, users can additionally log in with email and password.`}
       />
       <SessionTimeoutSetting />

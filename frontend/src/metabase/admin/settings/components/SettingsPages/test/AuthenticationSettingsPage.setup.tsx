@@ -71,6 +71,8 @@ export const setup = async (
       sso_saml: isEnterprise,
       sso_jwt: isEnterprise,
       sso_ldap: isEnterprise,
+      disable_password_login: isEnterprise,
+      session_timeout_config: isEnterprise,
     }),
     ...extraSettings,
   });
