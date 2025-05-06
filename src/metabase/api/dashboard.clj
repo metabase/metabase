@@ -1010,7 +1010,22 @@
                                                                (map (fn [card]
                                                                       (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
                                                                         (assoc card :dashboard_tab_id real-tab-id)
-                                                                        card))))
+                                                                        card)))
+                                                               true
+                                                               (map (fn [dashcard]
+                                                                      (cond
+                                                                        (pos-int? (:action_id dashcard))
+                                                                        (u/update-if-exists dashcard :visualization_settings dissoc :table_action)
+                                                                        (neg-int? (:action_id dashcard))
+                                                                        (let [[op param] (actions/unpack-primitive-action-id (:action_id dashcard))]
+                                                                          (-> dashcard
+                                                                              (assoc-in [:visualization_settings :table_action]
+                                                                                        {:kind (u/qualified-name op)
+                                                                                         :table_id param})
+                                                                              (dissoc :action_id)))
+                                                                        :else
+                                                                        dashcard))))
+
                    new-dashcards                             (init-editable-table-cards! id new-dashcards)
                    dashcards-changes-stats                   (do-update-dashcards! hydrated-current-dash current-dashcards new-dashcards)]
                (reset! changes-stats

@@ -40,6 +40,8 @@
  [metabase.actions.models
   dashcard->action
   select-action
-  select-actions]
+  select-actions
+  table-primitive-action
+  unpack-primitive-action-id]
  [metabase.actions.events
   publish-action-success!])
