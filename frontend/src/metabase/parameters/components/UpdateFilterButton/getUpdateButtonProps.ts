@@ -2,12 +2,9 @@ import { t } from "ttag";
 
 import { areParameterValuesIdentical } from "metabase-lib/v1/parameters/utils/parameter-values";
 
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const UPDATE = t`Update filter`;
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const ADD = t`Add filter`;
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const RESET = t`Set to default`;
+const getUpdateLabel = () => t`Update filter`;
+const getAddLabel = () => t`Add filter`;
+const getResetLabel = () => t`Set to default`;
 
 /**
  * This is used to show the correct button when picking filter values.
@@ -28,8 +25,8 @@ export function getUpdateButtonProps(
       label:
         !hasValue(unsavedValue) ||
         areParameterValuesIdentical(unsavedValue, defaultValue)
-          ? RESET
-          : UPDATE,
+          ? getResetLabel()
+          : getUpdateLabel(),
       isDisabled:
         areParameterValuesIdentical(unsavedValue, value) &&
         hasValue(unsavedValue),
@@ -39,14 +36,14 @@ export function getUpdateButtonProps(
   if (hasValue(defaultValue)) {
     return {
       label: areParameterValuesIdentical(unsavedValue, defaultValue)
-        ? RESET
-        : UPDATE,
+        ? getResetLabel()
+        : getUpdateLabel(),
       isDisabled: areParameterValuesIdentical(value, unsavedValue),
     };
   }
 
   return {
-    label: hasValue(value) ? UPDATE : ADD,
+    label: hasValue(value) ? getUpdateLabel() : getAddLabel(),
     isDisabled: areParameterValuesIdentical(value, unsavedValue),
   };
 }

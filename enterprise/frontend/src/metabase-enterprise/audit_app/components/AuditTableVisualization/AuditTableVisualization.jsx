@@ -47,6 +47,7 @@ export class AuditTableVisualization extends Component {
   static identifier = "audit-table";
   static noHeader = true;
   static hidden = true;
+  static getUiName = () => "Audit Table";
 
   // copy Table's settings and columnSettings
   static settings = Table.settings;

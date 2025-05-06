@@ -23,8 +23,8 @@ export const ChartTypeDropdown = (menuProps: MenuProps) => {
     visualizationType: CardDisplayType,
   ): {
     value: CardDisplayType;
-    label: Visualization["uiName"];
     iconName: Visualization["iconName"];
+    label: ReturnType<Visualization["getUiName"]>;
   } | null => {
     const visualization = visualizations.get(visualizationType);
     if (!visualization) {
@@ -33,7 +33,7 @@ export const ChartTypeDropdown = (menuProps: MenuProps) => {
 
     return {
       value: visualizationType,
-      label: visualization.uiName,
+      label: visualization.getUiName(),
       iconName: visualization.iconName,
     };
   };

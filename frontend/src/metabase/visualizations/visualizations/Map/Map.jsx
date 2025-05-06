@@ -39,7 +39,7 @@ import { CustomMapFooter } from "./CustomMapFooter";
 const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
 export class Map extends Component {
-  static uiName = t`Map`;
+  static getUiName = () => t`Map`;
   static identifier = "map";
   static iconName = "pinmap";
 
