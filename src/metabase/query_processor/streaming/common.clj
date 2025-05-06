@@ -196,6 +196,9 @@
   [{column-name :name metadata-column-settings :settings :keys [field_ref] :as col} viz-settings]
   (let [{::mb.viz/keys [global-column-settings] :as viz-settings} (ensure-global-viz-settings viz-settings)
         [ref-type field-id-or-name] field_ref
+        field-id-or-name (or (and (:remapped_from col) (:fk_field_id col))
+                             (or field-id-or-name (:id col))
+                             (:name col))
         all-cols-settings           (-> viz-settings
                                         ::mb.viz/column-settings
                                         ;; update the keys so that they will have only the :field-id or :column-name
