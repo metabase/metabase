@@ -60,7 +60,7 @@ export const getDefaultCellTemplate = <TRow, TValue>(
         wrap={wrap}
         className={cx(
           getCellClassName?.(value, row.index),
-          getCellClassNameByCellId?.(cell.id),
+          getCellClassNameByCellId?.(cellContext),
         )}
         style={getCellStyle?.(value, row.index)}
       />

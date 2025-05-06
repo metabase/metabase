@@ -1,16 +1,17 @@
 import { useCallback, useMemo, useState } from "react";
 
-import type { DataGridCellId } from "metabase/data-grid";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 
+import type { CellUniqKey, RowPkValue } from "../types";
+
 import { ErrorUpdateToast } from "./ErrorUpdateToast";
 import type { OptimisticUpdatePatchResult } from "./use-table-state-update-strategy";
-import { getUpdateApiErrorMessage } from "./utils";
+import { getCellUniqKey, getUpdateApiErrorMessage } from "./utils";
 
 export const useTableCrudOptimisticUpdate = () => {
   const [cellsWithFailedUpdatesMap, setCellsWithFailedUpdatesMap] = useState<
-    Record<DataGridCellId, number>
+    Record<CellUniqKey, number>
   >({});
 
   const dispatch = useDispatch();
@@ -22,7 +23,7 @@ export const useTableCrudOptimisticUpdate = () => {
           result[key] = true;
           return result;
         },
-        {} as Record<DataGridCellId, true>,
+        {} as Record<CellUniqKey, true>,
       ),
     [cellsWithFailedUpdatesMap],
   );
@@ -31,11 +32,14 @@ export const useTableCrudOptimisticUpdate = () => {
     (
       error: unknown,
       cellUpdateContext: {
-        cellId: DataGridCellId;
+        rowPkValue: RowPkValue;
+        columnName: string;
         patchResult: OptimisticUpdatePatchResult | undefined;
       },
     ) => {
-      const { cellId, patchResult } = cellUpdateContext;
+      const { columnName, rowPkValue, patchResult } = cellUpdateContext;
+
+      const cellUniqKey = getCellUniqKey(rowPkValue, columnName);
 
       patchResult?.revert();
 
@@ -48,14 +52,14 @@ export const useTableCrudOptimisticUpdate = () => {
           undo: false,
           onDismiss: () => {
             setCellsWithFailedUpdatesMap((prevState) => {
-              const currentFailedUpdatesCount = prevState[cellId];
+              const currentFailedUpdatesCount = prevState[cellUniqKey];
               const newCount = currentFailedUpdatesCount - 1;
               const newMap = { ...prevState };
 
               if (newCount === 0) {
-                delete newMap[cellId];
+                delete newMap[cellUniqKey];
               } else {
-                newMap[cellId] = newCount;
+                newMap[cellUniqKey] = newCount;
               }
 
               return newMap;
@@ -64,11 +68,12 @@ export const useTableCrudOptimisticUpdate = () => {
         }),
       );
 
-      const currentFailedUpdatesCount = cellsWithFailedUpdatesMap[cellId] || 0;
+      const currentFailedUpdatesCount =
+        cellsWithFailedUpdatesMap[cellUniqKey] || 0;
 
       setCellsWithFailedUpdatesMap({
         ...cellsWithFailedUpdatesMap,
-        [cellId]: currentFailedUpdatesCount + 1,
+        [cellUniqKey]: currentFailedUpdatesCount + 1,
       });
     },
     [cellsWithFailedUpdatesMap, dispatch],

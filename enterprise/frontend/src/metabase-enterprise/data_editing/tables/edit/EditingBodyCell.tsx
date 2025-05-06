@@ -30,7 +30,6 @@ export const EditingBodyCellWrapper = (
     column,
     field,
     cellContext: {
-      cell,
       getValue,
       column: { id: columnName },
       row: { index: rowIndex },
@@ -45,21 +44,14 @@ export const EditingBodyCellWrapper = (
         onCellValueUpdate({
           updatedData: { [columnName]: value },
           rowIndex,
-          cellId: cell.id,
+          columnName,
         });
       }
 
       // Hide the editing cell after submitting the value
       onCellEditCancel();
     },
-    [
-      initialValue,
-      onCellEditCancel,
-      onCellValueUpdate,
-      columnName,
-      rowIndex,
-      cell.id,
-    ],
+    [initialValue, onCellEditCancel, onCellValueUpdate, columnName, rowIndex],
   );
 
   return (

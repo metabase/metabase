@@ -15,6 +15,7 @@ import type {
 } from "metabase-types/api";
 
 import type {
+  RowPkValue,
   TableEditingScope,
   UpdateCellValueHandlerParams,
   UpdatedRowHandlerParams,
@@ -66,7 +67,7 @@ export const useTableCRUD = ({
     async ({
       updatedData,
       rowIndex,
-      cellId,
+      columnName,
     }: UpdateCellValueHandlerParams): Promise<boolean> => {
       // mostly the same as "handleRowUpdate", but has optimistic update and special error handling
       if (!datasetData) {
@@ -82,6 +83,8 @@ export const useTableCRUD = ({
         ...pkRecord,
       };
 
+      const rowPkValue = Object.values(pkRecord)[0] as RowPkValue;
+
       const patchResult = stateUpdateStrategy.onRowsUpdated([updatedRowWithPk]);
 
       try {
@@ -92,7 +95,8 @@ export const useTableCRUD = ({
 
         if (response.error) {
           handleCellValueUpdateError(response.error, {
-            cellId,
+            columnName,
+            rowPkValue,
             patchResult: patchResult || undefined,
           });
         }
@@ -104,7 +108,8 @@ export const useTableCRUD = ({
         return !response.error;
       } catch (e) {
         handleCellValueUpdateError(e, {
-          cellId,
+          columnName,
+          rowPkValue,
           patchResult: patchResult || undefined,
         });
 

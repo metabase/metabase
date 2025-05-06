@@ -82,7 +82,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
   getCellStyle?: (value: TValue, rowIndex: number) => React.CSSProperties;
 
   /** Function to determine CSS class names for cells */
-  getCellClassNameByCellId?: (cellId: string) => string | undefined;
+  getCellClassNameByCellId?: (
+    cellContext: CellContext<TRow, TValue>,
+  ) => string | undefined;
 
   /** Visual style of the header cell */
   headerVariant?: HeaderCellVariant;
