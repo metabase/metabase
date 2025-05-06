@@ -11330,6 +11330,11 @@ databaseChangeLog:
       id: v55.2025-05-05T21:03:09
       author: bshepherdson
       comment: FK constraint and index for Card.metadata_analysis_blocker
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - foreignKeyConstraintExists:
+            - foreignKeyName: fk_report_card_metadata_analysis_blocker_ref_report_card_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_card
