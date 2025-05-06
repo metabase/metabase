@@ -129,7 +129,7 @@ const NewItemMenu = ({
         action: () => dispatch(setOpenModal("action")),
       });
     }
-    
+
     return items;
   }, [
     hasDataAccess,
