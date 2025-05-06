@@ -20,20 +20,20 @@ export function getUrl(params: ParsedRouteParams): string {
     tableId != null &&
     fieldId != null
   ) {
-    return `/admin/datamodel-v2/database/${databaseId}/schema/${schemaId}/table/${tableId}/field/${fieldId}`;
+    return `/admin/datamodel/database/${databaseId}/schema/${encodeURIComponent(schemaId)}/table/${tableId}/field/${fieldId}`;
   }
 
   if (databaseId != null && schemaId != null && tableId != null) {
-    return `/admin/datamodel-v2/database/${databaseId}/schema/${schemaId}/table/${tableId}`;
+    return `/admin/datamodel/database/${databaseId}/schema/${encodeURIComponent(schemaId)}/table/${tableId}`;
   }
 
   if (databaseId != null && schemaId != null) {
-    return `/admin/datamodel-v2/database/${databaseId}/schema/${schemaId}`;
+    return `/admin/datamodel/database/${databaseId}/schema/${encodeURIComponent(schemaId)}`;
   }
 
   if (databaseId != null) {
-    return `/admin/datamodel-v2/database/${databaseId}`;
+    return `/admin/datamodel/database/${databaseId}`;
   }
 
-  return `/admin/datamodel-v2`;
+  return `/admin/datamodel`;
 }

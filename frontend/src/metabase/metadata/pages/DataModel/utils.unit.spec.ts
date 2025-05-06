@@ -58,7 +58,7 @@ describe("getUrl", () => {
     };
 
     expect(getUrl(params)).toBe(
-      "/admin/datamodel-v2/database/1/schema/public/table/2/field/3",
+      "/admin/datamodel/database/1/schema/public/table/2/field/3",
     );
   });
 
@@ -71,7 +71,7 @@ describe("getUrl", () => {
     };
 
     expect(getUrl(params)).toBe(
-      "/admin/datamodel-v2/database/1/schema/public/table/2",
+      "/admin/datamodel/database/1/schema/public/table/2",
     );
   });
 
@@ -83,7 +83,7 @@ describe("getUrl", () => {
       fieldId: undefined,
     };
 
-    expect(getUrl(params)).toBe("/admin/datamodel-v2/database/1/schema/public");
+    expect(getUrl(params)).toBe("/admin/datamodel/database/1/schema/public");
   });
 
   it("should generate URL with database", () => {
@@ -94,7 +94,7 @@ describe("getUrl", () => {
       fieldId: undefined,
     };
 
-    expect(getUrl(params)).toBe("/admin/datamodel-v2/database/1");
+    expect(getUrl(params)).toBe("/admin/datamodel/database/1");
   });
 
   it("should generate base URL when no params are provided", () => {
@@ -105,7 +105,7 @@ describe("getUrl", () => {
       fieldId: undefined,
     };
 
-    expect(getUrl(params)).toBe("/admin/datamodel-v2");
+    expect(getUrl(params)).toBe("/admin/datamodel");
   });
 
   it("should not include field param when there is no table param", () => {
@@ -116,7 +116,7 @@ describe("getUrl", () => {
       fieldId: 3,
     };
 
-    expect(getUrl(params)).toBe("/admin/datamodel-v2/database/1/schema/public");
+    expect(getUrl(params)).toBe("/admin/datamodel/database/1/schema/public");
   });
 
   it("should not include schema, table, and field params when there is no database param", () => {
@@ -127,6 +127,6 @@ describe("getUrl", () => {
       fieldId: 3,
     };
 
-    expect(getUrl(params)).toBe("/admin/datamodel-v2");
+    expect(getUrl(params)).toBe("/admin/datamodel");
   });
 });
