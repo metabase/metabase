@@ -12,6 +12,8 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import TitleAndDescription from "../TitleAndDescription";
 
+import { dictionaryWithGermanPhrases } from "./constants";
+
 export interface SetupOpts {
   localeCode: string;
   hasEnterprisePlugins?: boolean;
@@ -40,8 +42,8 @@ export function setup({
 
   return renderWithProviders(
     <TitleAndDescription
-      title="Sample text"
-      description="Sample description"
+      title={dictionaryWithGermanPhrases[0].msgid}
+      description={dictionaryWithGermanPhrases[1].msgid}
     />,
     { storeInitialState },
   );

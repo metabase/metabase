@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
 
-import { dictionaryWithGermanPhrases } from "./constants";
+import { dictionaryWithGermanPhrases as dictionary } from "./constants";
 import { type SetupOpts, setup as baseSetup } from "./setup";
 
 function setup(opts: SetupOpts) {
@@ -10,15 +10,32 @@ function setup(opts: SetupOpts) {
 }
 
 describe("TitleAndDescription Component (OSS)", () => {
-  it("displays 'Sample text' and 'Sample description' untranslated", async () => {
-    setup({ localeCode: "de", dictionary: dictionaryWithGermanPhrases });
-    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
-      "Sample text",
+  it("displays untranslated question title and description when locale is English", async () => {
+    setup({ localeCode: "en", dictionary });
+
+    expect(await screen.findByRole("heading", { level: 2 })).toHaveTextContent(
+      dictionary[0].msgid,
     );
+
     await userEvent.hover(screen.getByLabelText("info icon"));
     expect(
       await screen.findByRole("tooltip", {
-        name: "Sample description", // FIXME use translated text here
+        name: dictionary[1].msgid,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("displays untranslated question title and description when locale is German", async () => {
+    setup({ localeCode: "de", dictionary });
+
+    expect(await screen.findByRole("heading", { level: 2 })).toHaveTextContent(
+      dictionary[0].msgid,
+    );
+
+    await userEvent.hover(screen.getByLabelText("info icon"));
+    expect(
+      await screen.findByRole("tooltip", {
+        name: dictionary[1].msgid,
       }),
     ).toBeInTheDocument();
   });
