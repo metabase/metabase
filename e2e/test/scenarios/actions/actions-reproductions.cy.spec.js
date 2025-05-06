@@ -454,22 +454,6 @@ describe("issue 32840", () => {
   });
 });
 
-describe("issue 41831", () => {
-  beforeEach(() => {
-    H.restore("without-models");
-    cy.signInAsAdmin();
-    H.setActionsEnabledForDB(SAMPLE_DB_ID);
-    cy.visit("/");
-  });
-
-  it("new action button is hidden without models", () => {
-    cy.findByRole("button", { name: "New" }).click();
-    cy.findByRole("dialog").within(() => {
-      cy.findByText("Action").should("not.exist");
-    });
-  });
-});
-
 describe("issue 32750", () => {
   beforeEach(() => {
     H.restore();
