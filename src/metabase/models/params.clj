@@ -244,8 +244,8 @@
   "Update the `ctx` with `field-id`. This function is supposed to be used on params where target is a name field, in
   reducing step of [[field-id-into-context-rf]], when it is certain that param target is no integer id field."
   [ctx param-dashcard-info stage-number]
-  (let [param-id           (get-in param-dashcard-info [:parameter-mapping :parameter_id])
-        param-target       (get-in param-dashcard-info [:parameter-mapping :target])
+  (let [param-id           (get-in param-dashcard-info [:param-mapping :parameter_id])
+        param-target       (get-in param-dashcard-info [:param-mapping :target])
         card-id            (get-in param-dashcard-info [:dashcard :card :id])
         filterable-columns (get-in ctx [:card-id->filterable-columns card-id stage-number])]
     (if-some [field-id (lib.util.match/match-one param-target
