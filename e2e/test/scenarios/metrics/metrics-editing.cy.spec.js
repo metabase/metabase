@@ -114,9 +114,11 @@ describe("scenarios > metrics > editing", () => {
     });
 
     it("should pin new metrics automatically", () => {
-      cy.visit("/");
-      cy.findByTestId("app-bar").findByText("New").click();
-      H.popover().findByText("Metric").click();
+      cy.visit("/browse/metrics");
+      cy.findByTestId("browse-metrics-header")
+        .findByLabelText("Create a new metric")
+        .click();
+
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
