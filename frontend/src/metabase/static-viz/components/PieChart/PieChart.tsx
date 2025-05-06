@@ -7,6 +7,7 @@ import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/forma
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
 import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
 
+import Watermark from "../../watermark.svg?component";
 import type { StaticChartProps } from "../StaticVisualization";
 
 import { getPieChartLegend } from "./legend";
@@ -16,6 +17,7 @@ export function PieChart({
   renderingContext,
   settings,
   isStorybook,
+  hasDevWatermark = false,
 }: StaticChartProps) {
   const chartModel = getPieChartModel(
     rawSeries,
@@ -49,16 +51,23 @@ export function PieChart({
     isStorybook ?? false,
   );
 
+  const height =
+    DIMENSIONS.maxSideLength + DIMENSIONS.padding.legend + legendHeight;
+  const width = DIMENSIONS.maxSideLength;
+
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={DIMENSIONS.maxSideLength}
-      height={
-        DIMENSIONS.maxSideLength + DIMENSIONS.padding.legend + legendHeight
-      }
-    >
+    <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height}>
       <Group dangerouslySetInnerHTML={{ __html: chartSvg }}></Group>
       <Legend />
+      {hasDevWatermark && (
+        <Watermark
+          x="0"
+          y="0"
+          height={height}
+          width={width}
+          preserveAspectRatio="xMinYMin slice"
+        />
+      )}
     </svg>
   );
 }

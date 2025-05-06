@@ -13,7 +13,7 @@
    [metabase.util.json :as json])
   (:import
    (org.apache.batik.anim.dom SVGOMDocument)
-   (org.graalvm.polyglot Context Value)
+   (org.graalvm.polyglot Value)
    (org.w3c.dom Element Node)))
 
 (set! *warn-on-reflection* true)
@@ -91,6 +91,7 @@
                                           "progress"
                                           (json/encode {:value value :goal goal})
                                           (json/encode settings)
+                                          (json/encode {})
                                           (json/encode {})))]
         (validate-svg-string :progress svg-string)))))
 
