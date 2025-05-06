@@ -265,6 +265,7 @@ export const {
   useGetDatabaseHealthQuery,
   useGetDatabaseMetadataQuery,
   useListDatabaseSchemasQuery,
+  usePrefetch: useDatabasePrefetch,
   useListSyncableDatabaseSchemasQuery,
   useListDatabaseSchemaTablesQuery,
   useListVirtualDatabaseTablesQuery,
