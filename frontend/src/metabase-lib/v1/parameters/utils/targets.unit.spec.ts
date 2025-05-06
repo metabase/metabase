@@ -9,10 +9,11 @@ import {
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
+import type Table from "metabase-lib/v1/metadata/Table";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
-  getNativeQuestionParameterTargetField,
   getParameterColumns,
+  getParameterTargetField,
   getTemplateTagFromTarget,
   isParameterVariableTarget,
 } from "metabase-lib/v1/parameters/utils/targets";
@@ -31,6 +32,7 @@ import {
 } from "metabase-types/api/mocks";
 import {
   PRODUCTS,
+  PRODUCTS_ID,
   REVIEWS_ID,
   SAMPLE_DB_ID,
   createOrdersCreatedAtField,
@@ -51,6 +53,7 @@ const metadata = createMockMetadata({
 });
 
 const db = metadata.database(SAMPLE_DB_ID) as Database;
+const productsTable = metadata.table(PRODUCTS_ID) as Table;
 
 const queryOrders = createQuery();
 
@@ -207,7 +210,7 @@ describe("parameters/utils/targets", () => {
     });
   });
 
-  describe("getNativeQuestionParameterTargetField", () => {
+  describe("getParameterTargetField", () => {
     it("should return null when the target is not a dimension", () => {
       const question = db.nativeQuestion({
         query: "select * from PRODUCTS where CATEGORY = {{foo}}",
@@ -217,9 +220,10 @@ describe("parameters/utils/targets", () => {
           }),
         },
       });
+      const parameter = createMockParameter();
 
       expect(
-        getNativeQuestionParameterTargetField(question, [
+        getParameterTargetField(question, parameter, [
           "variable",
           ["template-tag", "foo"],
         ]),
@@ -240,7 +244,23 @@ describe("parameters/utils/targets", () => {
           }),
         },
       });
-      expect(getNativeQuestionParameterTargetField(question, target)).toEqual(
+      const parameter = createMockParameter();
+
+      expect(getParameterTargetField(question, parameter, target)).toEqual(
+        expect.objectContaining({
+          id: PRODUCTS.CATEGORY,
+        }),
+      );
+    });
+
+    it("should return the target field", () => {
+      const question = productsTable.question();
+      const parameter = createMockParameter();
+      const target: ParameterDimensionTarget = [
+        "dimension",
+        ["field", PRODUCTS.CATEGORY, null],
+      ];
+      expect(getParameterTargetField(question, parameter, target)).toEqual(
         expect.objectContaining({
           id: PRODUCTS.CATEGORY,
         }),

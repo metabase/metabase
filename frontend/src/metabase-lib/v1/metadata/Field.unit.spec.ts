@@ -1,5 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { Database, Field, Table } from "metabase-types/api";
 import {
@@ -8,7 +7,6 @@ import {
   createMockFieldDimension,
   createMockTable,
 } from "metabase-types/api/mocks";
-import { ORDERS, PEOPLE } from "metabase-types/api/mocks/presets";
 
 const FIELD_ID = 1;
 
@@ -322,7 +320,7 @@ describe("Field", () => {
     });
   });
 
-  describe("remappedExternalField", () => {
+  describe("remappedField", () => {
     it("should return the 'human readable' field tied to the field's dimension", () => {
       const field = setup({
         fields: [
@@ -370,13 +368,6 @@ describe("Field", () => {
       });
 
       expect(field.remappedExternalField()).toBe(null);
-    });
-
-    it("should return the type/Name field of the FK target", () => {
-      const field = SAMPLE_METADATA.field(ORDERS.USER_ID);
-      expect(field?.remappedExternalField()).toMatchObject({
-        id: PEOPLE.NAME,
-      });
     });
   });
 

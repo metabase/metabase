@@ -210,6 +210,7 @@ function buildSavedDashboardParameter(
   const parameterFields = (fields?.[parameter.id] ?? [])
     .map((field) => metadata.field(field.id))
     .filter(isNotNull)
+    // TODO we need to preserve this hack until remapping is migrated to the BE. See #57571
     .map((field) => (hasNativeQueryTarget ? field : (field.target ?? field)));
 
   return {
