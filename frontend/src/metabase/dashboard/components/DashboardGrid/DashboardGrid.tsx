@@ -2,7 +2,6 @@ import cx from "classnames";
 import type { ComponentType, ForwardedRef } from "react";
 import {
   forwardRef,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -75,28 +74,6 @@ export type ExplicitSizeProps = {
   height: number;
 };
 
-export interface DashboardGridInnerState {
-  visibleCardIds: Set<number>;
-  initialCardSizes: { [key: string]: { w: number; h: number } };
-  layouts: {
-    desktop: ReactGridLayout.Layout[];
-    mobile: ReactGridLayout.Layout[];
-  };
-  addSeriesModalDashCard: BaseDashboardCard | null;
-  replaceCardModalDashCard: BaseDashboardCard | null;
-  isDragging: boolean;
-  isAnimationPaused: boolean;
-  dashcardCountByCardId: Record<CardId, number>;
-  _lastProps?: LastProps;
-}
-
-/** Props from the previous render to use for comparison in getDerivedStateFromProps */
-type LastProps = {
-  dashboard: Dashboard;
-  isEditing: boolean;
-  selectedTabId: DashboardTabId | null;
-};
-
 const mapStateToProps = (state: State) => ({
   dashcardData: getDashcardDataMap(state),
 });
@@ -152,7 +129,29 @@ type DashboardGridInnerProps = Required<DashboardGridProps> &
   ExplicitSizeProps & {
     forwardedRef?: ForwardedRef<HTMLDivElement>;
   };
-
+// Helper function to correctly compare two Sets
+function areSetsEqual<T>(
+  setA: Set<T> | undefined | null,
+  setB: Set<T> | undefined | null,
+): boolean {
+  if (setA === setB) {
+    // Handles cases where both are null/undefined or same instance
+    return true;
+  }
+  if (!setA || !setB) {
+    // If one is null/undefined and the other isn't
+    return false;
+  }
+  if (setA.size !== setB.size) {
+    return false;
+  }
+  for (const item of setA) {
+    if (!setB.has(item)) {
+      return false;
+    }
+  }
+  return true;
+}
 export const DashboardGrid = forwardRef<
   HTMLDivElement,
   DashboardGridInnerProps
@@ -187,18 +186,13 @@ export const DashboardGrid = forwardRef<
   const dashcardData = useSelector(getDashcardDataMap);
   const dispatch = useDispatch();
   const contentViewportElement = useContext(ContentViewportContext);
-  const initialVisibleIds = useMemo(
-    () => getVisibleCardIds(dashboard.dashcards, dashcardData),
-    [dashboard.dashcards, dashcardData],
+  const initialSizes = useMemo(() => {
+    return getInitialCardSizes(dashboard.dashcards, undefined);
+  }, [dashboard.dashcards]); // Depends on initial props
+
+  const [visibleCardIds, setVisibleCardIds] = useState<Set<DashCardId>>(() =>
+    getVisibleCardIds(dashboard.dashcards, dashcardData),
   );
-
-  const initialSizes = useMemo(
-    () => getInitialCardSizes(dashboard.dashcards, undefined),
-    [dashboard.dashcards],
-  ); // Depends on initial props
-
-  const [visibleCardIds, setVisibleCardIds] =
-    useState<Set<DashCardId>>(initialVisibleIds);
 
   const getDashcardCountByCardId = (cards: BaseDashboardCard[]) =>
     _.countBy(cards, "card_id");
@@ -270,48 +264,39 @@ export const DashboardGrid = forwardRef<
   }, [dashboard.dashcards]);
 
   useEffect(() => {
-    const nextVisibleCardIds = !isEditing
-      ? getVisibleCardIds(dashboard.dashcards, dashcardData, visibleCardIds)
-      : new Set(dashboard.dashcards.map((card) => card.id));
-
-    if (!_.isEqual(nextVisibleCardIds, visibleCardIds)) {
-      setVisibleCardIds(nextVisibleCardIds);
-    }
-  }, [isEditing, dashboard.dashcards, dashcardData, visibleCardIds]);
-
-  const _getVisibleCards = useCallback(
-    (
-      cards = dashboard.dashcards,
-      _visibleCardIds = visibleCardIds,
-      _isEditing = isEditing,
-      _selectedTabId = selectedTabId,
-    ) => {
-      return getVisibleCards(
-        cards,
-        _visibleCardIds,
-        _isEditing ?? false,
-        _selectedTabId,
-      ) as DashboardCard[];
-    },
-    [dashboard.dashcards, isEditing, selectedTabId, visibleCardIds],
-  );
-
-  const visibleCards = useMemo(
-    () =>
-      _getVisibleCards(
+    let calculatedNextVisibleCardIds: Set<DashCardId>;
+    if (isEditing) {
+      // When editing, all cards are "visible" for layout purposes
+      calculatedNextVisibleCardIds = new Set(
+        dashboard.dashcards.map((card) => card.id),
+      );
+    } else {
+      // When not editing, calculate visible cards from scratch
+      calculatedNextVisibleCardIds = getVisibleCardIds(
         dashboard.dashcards,
-        visibleCardIds,
-        isEditing,
-        selectedTabId,
-      ),
-    [
-      _getVisibleCards,
+        dashcardData,
+      );
+    }
+
+    // Use the custom areSetsEqual function for comparison
+    const setsAreDifferent = !areSetsEqual(
+      calculatedNextVisibleCardIds,
+      visibleCardIds,
+    );
+
+    if (setsAreDifferent) {
+      setVisibleCardIds(calculatedNextVisibleCardIds);
+    }
+  }, [isEditing, dashboard.dashcards, dashcardData, visibleCardIds]); // Dependencies remain the same
+
+  const visibleCards = useMemo(() => {
+    return getVisibleCards(
       dashboard.dashcards,
+      visibleCardIds, // This will now use the correctly updated visibleCardIds
       isEditing,
       selectedTabId,
-      visibleCardIds,
-    ],
-  );
+    );
+  }, [dashboard.dashcards, isEditing, selectedTabId, visibleCardIds]);
 
   // --- initialCardSizes Effect ---
   const prevVisibleCards = usePrevious(visibleCards);
@@ -344,18 +329,6 @@ export const DashboardGrid = forwardRef<
     return getLayouts(visibleCards, initialCardSizes);
   }, [visibleCards, initialCardSizes]);
 
-  useEffect(() => {
-    const nextVisibleCardIds = !isEditing
-      ? getVisibleCardIds(dashboard.dashcards, dashcardData, visibleCardIds) // Pass current state here
-      : new Set(dashboard.dashcards.map((card) => card.id));
-
-    // Prevent infinite loops if the value hasn't actually changed
-    if (!_.isEqual(nextVisibleCardIds, visibleCardIds)) {
-      setVisibleCardIds(nextVisibleCardIds);
-    }
-    // Dependencies: Everything read inside the effect
-  }, [isEditing, dashboard.dashcards, dashcardData, visibleCardIds]); // <-- Correct dependencies for this calculation
-
   const onLayoutChange = ({
     layout,
     breakpoint,
@@ -373,9 +346,12 @@ export const DashboardGrid = forwardRef<
     const changes: SetDashCardAttributesOpts[] = [];
 
     layout.forEach((layoutItem) => {
-      const dashboardCard = _getVisibleCards().find(
-        (card) => String(card.id) === layoutItem.i,
-      );
+      const dashboardCard = getVisibleCards(
+        dashboard.dashcards,
+        visibleCardIds,
+        isEditing,
+        selectedTabId,
+      ).find((card) => String(card.id) === layoutItem.i);
       if (dashboardCard) {
         const keys = ["h", "w", "x", "y"];
         const changed = !_.isEqual(

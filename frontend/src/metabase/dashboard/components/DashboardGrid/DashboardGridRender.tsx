@@ -37,6 +37,7 @@ export type DashboardGridRenderProps = Pick<
     | "downloadsEnabled"
   > & {
     width: number;
+    height: number;
     rowHeight: number;
     isEditingLayout: boolean;
     isDragging: boolean;
