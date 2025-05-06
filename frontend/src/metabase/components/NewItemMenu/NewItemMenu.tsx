@@ -136,21 +136,8 @@ const NewItemMenu = ({
         action: () => dispatch(setOpenModal("action")),
       });
     }
-
-    if (hasDataAccess && !isEmbeddingIframe) {
-      items.push({
-        title: t`Metric`,
-        icon: "metric",
-        link: Urls.newQuestion({
-          mode: "query",
-          cardType: "metric",
-          collectionId,
-        }),
-        onClose: onCloseNavbar,
-      });
-    }
-
-    return items.concat(appendMenuItems || []);
+    
+    return items;
   }, [
     hasDataAccess,
     hasNativeWrite,
