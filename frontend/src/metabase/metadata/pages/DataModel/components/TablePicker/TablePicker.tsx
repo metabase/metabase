@@ -29,10 +29,9 @@ export function TablePicker(props: {
   tableId?: TableId;
 }) {
   const dispatch = useDispatch();
-  const { data, isError } = useTreeData();
+  const { data, isError } = useTreeData(props);
 
   const tree = useTree({
-    multiple: false,
     initialExpandedState: getTreeExpandedState(data, [
       JSON.stringify(props),
       JSON.stringify({ ...props, tableId: undefined }),
@@ -40,16 +39,22 @@ export function TablePicker(props: {
     ]),
     onNodeExpand(value) {
       const data = JSON.parse(value) as NodeData;
-      dispatch(
-        push(
-          getUrl({
-            databaseId: data.databaseId,
-            schemaId: data.schemaId,
-            tableId: data.tableId,
-            fieldId: undefined,
-          }),
-        ),
-      );
+      if (
+        data.databaseId !== props.databaseId &&
+        data.schemaId !== props.schemaId &&
+        data.tableId !== props.tableId
+      ) {
+        dispatch(
+          push(
+            getUrl({
+              databaseId: data.databaseId,
+              schemaId: data.schemaId,
+              tableId: data.tableId,
+              fieldId: undefined,
+            }),
+          ),
+        );
+      }
     },
   });
 
@@ -72,9 +77,7 @@ export function TablePicker(props: {
 function renderNode({ node, expanded, elementProps }: RenderTreeNodePayload) {
   const { type, label, width, loading } = node as TreeNode;
 
-  const icon = getIconForType(type);
-  const childCount = node.children?.length ?? 0;
-  const hasChildren = childCount > 0;
+  const hasChildren = type !== "table";
 
   return (
     <Group
@@ -91,7 +94,10 @@ function renderNode({ node, expanded, elementProps }: RenderTreeNodePayload) {
           color="var(--mb-color-text-light)"
         />
       )}
-      <Icon name={icon} color="var(--mb-color-text-placeholder)" />
+      <Icon
+        name={getIconForType(type)}
+        color="var(--mb-color-text-placeholder)"
+      />
       {loading ? <Skeleton height={10} width={width} /> : label}
     </Group>
   );

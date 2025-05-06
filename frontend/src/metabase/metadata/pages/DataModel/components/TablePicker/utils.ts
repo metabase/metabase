@@ -1,101 +1,156 @@
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 
-import { useListDatabasesQuery } from "metabase/api";
+import {
+  useLazyListDatabaseSchemaTablesQuery,
+  useLazyListDatabaseSchemasQuery,
+  useLazyListDatabasesQuery,
+} from "metabase/api";
 import type { IconName, TreeNodeData } from "metabase/ui";
-import type {
-  Database,
-  DatabaseId,
-  SchemaId,
-  TableId,
-} from "metabase-types/api";
+import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+
+type NodeType = "database" | "schema" | "table";
 
 export type TreeNode = TreeNodeData & {
-  type: "database" | "schema" | "table";
+  type: NodeType;
   loading?: boolean;
   width?: string;
+  children?: TreeNode[];
 };
 
 export type NodeData = {
-  databaseId: DatabaseId;
+  databaseId?: DatabaseId;
   schemaId?: SchemaId;
   tableId?: TableId;
 };
 
-export function useTreeData() {
-  const {
-    isLoading,
-    isError,
-    data: queryData,
-  } = useListDatabasesQuery({
-    include: "tables",
-  });
-
-  const data = useMemo(() => {
-    if (isLoading) {
-      return [
-        getLoadingNode({ type: "database", width: "50%" }),
-        getLoadingNode({ type: "database", width: "70%" }),
-        getLoadingNode({ type: "database", width: "35%" }),
-      ];
-    }
-
-    return getTreeData(queryData?.data ?? []);
-  }, [queryData, isLoading]);
-
-  return { data, isError };
+async function delay<T>(promise: Promise<T>) {
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  return promise;
 }
 
-function getTreeData(database: Database[]): TreeNode[] {
-  return database.map((database) => {
-    const tables = database.tables ?? [];
-    const schemas = new Set(tables.map((table) => table.schema));
+export function useTreeData({ databaseId, schemaId }: NodeData) {
+  const [data, setData] = useState<TreeNode[] | undefined>(undefined);
 
-    const res = getTreeNode({
-      type: "database",
-      label: database.name,
-      data: { databaseId: database.id },
-      children: Array.from(schemas).map((schema) =>
-        getTreeNode({
-          type: "schema",
-          label: schema,
-          data: {
-            databaseId: database.id,
-            schemaId: schema,
-          },
-          children: tables
-            .filter((table) => table.schema === schema)
-            .map((table) =>
-              getTreeNode({
-                type: "table",
-                label: table.name,
-                data: {
-                  databaseId: database.id,
-                  schemaId: schema,
-                  tableId: table.id,
-                },
-              }),
-            ),
+  const [fetchDatabases, databasesResult] = useLazyListDatabasesQuery();
+  const [fetchSchemas, schemasResult] = useLazyListDatabaseSchemasQuery();
+  const [fetchTables, tablesResult] = useLazyListDatabaseSchemaTablesQuery();
+
+  useEffect(() => {
+    (async function () {
+      const [databases, schemas, tables] = await Promise.all([
+        delay(fetchDatabases()),
+        databaseId ? delay(fetchSchemas({ id: databaseId })) : null,
+        databaseId && schemaId
+          ? delay(fetchTables({ id: databaseId, schema: schemaId }))
+          : null,
+      ]);
+
+      const tree: TreeNode[] | undefined = databases.data?.data.map(
+        (database) => ({
+          type: "database",
+          label: database.name,
+          value: JSON.stringify({ databaseId: database.id }),
+          children:
+            database.id === databaseId
+              ? schemas?.data?.map((schemaId_) => ({
+                  type: "schema",
+                  label: schemaId_,
+                  value: JSON.stringify({
+                    databaseId: database.id,
+                    schemaId: schemaId_,
+                  }),
+                  children:
+                    schemaId === schemaId_
+                      ? tables?.data?.map((table) => ({
+                          type: "table",
+                          label: table.name,
+                          value: JSON.stringify({
+                            databaseId: database.id,
+                            schemaId: schemaId_,
+                            tableId: table.id,
+                          }),
+                        }))
+                      : undefined,
+                }))
+              : undefined,
         }),
-      ),
-    });
+      );
 
-    if (res.children?.length === 1) {
-      // There is only one schema, so lift the tables to the top-level
-      // Lift the tables from the only schema to the top-level
-      res.children = res.children[0].children ?? [];
-    }
+      setData((prev) => merge(prev, tree));
+    })();
+  }, [databaseId, schemaId, fetchTables, fetchSchemas, fetchDatabases]);
 
-    return res;
-  });
+  const isError =
+    databasesResult.isError || schemasResult.isError || tablesResult.isError;
+
+  return {
+    isError,
+    data: liftSingleSchemaTables(addLoadingStates(data)),
+  };
 }
 
-function getTreeNode(
-  node: Omit<TreeNode, "value"> & { data: NodeData },
-): TreeNode {
-  return {
+function merge(
+  a: TreeNode[] | undefined,
+  b: TreeNode[] | undefined,
+): TreeNode[] | undefined {
+  if (a === undefined) {
+    return b;
+  }
+  if (b === undefined) {
+    return a;
+  }
+
+  const len = Math.max(a.length, b.length);
+  const res = [];
+  for (let index = 0; index < len; index++) {
+    const aa = a[index];
+    const bb = b[index];
+
+    res.push({
+      ...aa,
+      ...bb,
+      children: merge(aa?.children, bb?.children),
+    });
+  }
+  return res;
+}
+
+function addLoadingStates(
+  tree: TreeNode[] | undefined,
+  type: NodeType | null = "database",
+): TreeNode[] {
+  if (type == null) {
+    return tree ?? [];
+  }
+
+  if (tree === undefined) {
+    return getLoadingNodes(type);
+  }
+
+  return tree.map((node) => ({
     ...node,
-    value: JSON.stringify(node.data),
-  };
+    children: addLoadingStates(node.children, childType(node.type)),
+  }));
+}
+
+function liftSingleSchemaTables(tree: TreeNode[]): TreeNode[] {
+  return tree?.map(function (node) {
+    if (
+      node.type !== "database" ||
+      node.children?.length !== 1 ||
+      node.children?.[0].type !== "schema" ||
+      !node.children?.[0]?.children?.every(
+        (child: TreeNode) => child.type !== "table",
+      )
+    ) {
+      return node;
+    }
+
+    return {
+      ...node,
+      children: node.children?.[0].children,
+    };
+  });
 }
 
 export function getIconForType(
@@ -107,18 +162,37 @@ export function getIconForType(
   return type;
 }
 
+function childType(type: NodeType): NodeType | null {
+  switch (type) {
+    case "database":
+      return "schema";
+    case "schema":
+      return "table";
+    default:
+      return null;
+  }
+}
+
+function getLoadingNodes(type: NodeType): TreeNode[] {
+  return [
+    getLoadingNode({ type, width: "30%" }),
+    getLoadingNode({ type, width: "80%" }),
+    getLoadingNode({ type, width: "60%" }),
+  ];
+}
+
 function getLoadingNode({
   type,
   width,
 }: {
-  type: "database" | "schema" | "table";
+  type: NodeType;
   width: string;
 }): TreeNode {
   return {
     type,
-    width,
+    label: "",
     loading: true,
     value: `loading-type-${Math.random()}`,
-    label: "",
+    width,
   };
 }
