@@ -10,6 +10,7 @@ import {
   FIRST_COLLECTION_ENTITY_ID,
   FIRST_COLLECTION_ID,
   ORDERS_QUESTION_ID,
+  READ_ONLY_PERSONAL_COLLECTION_ID,
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -27,6 +28,74 @@ describe("scenarios > collection defaults", () => {
     cy.intercept("GET", "/api/**/items?pinned_state*").as("getPinnedItems");
     cy.intercept("GET", "/api/collection/tree**").as("getTree");
     cy.intercept("GET", "/api/collection/*/items?**").as("getCollectionItems");
+  });
+
+  describe("new collection button", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsNormalUser();
+    });
+
+    it("should show the new collection button in the root collection", () => {
+      cy.intercept("POST", "/api/collection").as("createCollection");
+
+      visitRootCollection();
+      cy.findByTestId("collection-menu")
+        .findByLabelText("Create a new collection")
+        .click();
+      cy.findByTestId("new-collection-modal").within(() => {
+        cy.findByLabelText("Name").type("MCL");
+        cy.findByTestId("collection-picker-button").should(
+          "contain",
+          "Our analytics",
+        );
+        cy.button("Create").click();
+        cy.wait("@createCollection");
+      });
+      cy.location("pathname").should("match", /^\/collection\/\d+-mcl/);
+      cy.findByTestId("collection-empty-state").should("be.visible");
+
+      cy.log(
+        "Newly created collection should also have the new collection button",
+      );
+      cy.findByTestId("collection-menu")
+        .findByLabelText("Create a new collection")
+        .should("be.visible");
+    });
+
+    it("user without curate permissions should only be allowed to create a new collection inside their personal collection scope", () => {
+      cy.intercept("POST", "/api/collection").as("createCollection");
+
+      cy.signIn("readonly");
+      visitRootCollection();
+      cy.findByTestId("collection-menu")
+        .findByLabelText("Create a new collection")
+        .should("not.exist");
+
+      H.visitCollection(READ_ONLY_PERSONAL_COLLECTION_ID);
+
+      cy.findByTestId("collection-menu")
+        .findByLabelText("Create a new collection")
+        .click();
+      cy.findByTestId("new-collection-modal").within(() => {
+        cy.findByLabelText("Name").type("sub");
+        cy.findByTestId("collection-picker-button").should(
+          "contain",
+          "Read Only Tableton's Personal Collection",
+        );
+        cy.button("Create").click();
+        cy.wait("@createCollection");
+      });
+      cy.location("pathname").should("match", /^\/collection\/\d+-sub/);
+      cy.findByTestId("collection-empty-state").should("be.visible");
+
+      cy.log(
+        "Newly created personal sub-collection should also have the new collection button",
+      );
+      cy.findByTestId("collection-menu")
+        .findByLabelText("Create a new collection")
+        .should("be.visible");
+    });
   });
 
   describe("new collection modal", () => {
