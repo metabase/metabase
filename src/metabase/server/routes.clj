@@ -11,6 +11,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.server.auth-wrapper :as auth-wrapper]
    [metabase.server.routes.index :as index]
+   [metabase.settings.core :as setting]
    [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -71,6 +72,7 @@
   ;; ^/app/ -> static files under frontend_client/app
   (context "/app" []
     (route/resources "/" {:root "frontend_client/app"})
+    (GET "/img/:key" [key] (setting/image-response key))
     ;; return 404 for anything else starting with ^/app/ that doesn't exist
     (route/not-found {:status 404, :body "Not found."}))
   ;; ^/public/ -> Public frontend and download routes

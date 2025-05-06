@@ -76,6 +76,7 @@
    [metabase.settings.models.setting]
    [metabase.settings.models.setting.cache]
    [metabase.settings.models.setting.multi-setting]
+   [metabase.util.log :as log]
    [potemkin :as p]))
 
 (comment
@@ -85,6 +86,7 @@
 
 (p/import-vars
  [metabase.settings.models.setting
+  as-binary
   admin-writable-site-wide-settings
   can-read-setting?
   current-user-readable-visibilities
@@ -155,3 +157,17 @@
   [new-values & body]
   `(binding [metabase.settings.models.setting/*user-local-values* ~new-values]
      ~@body))
+
+(defn image-response
+  "Returns a the requested setting as a binary ring response if the setting is a data-url encoded string, such as an image."
+  [key]
+  (try
+    (metabase.settings.models.setting/with-setting-access-control
+      (when-let [[content-type body] (metabase.settings.models.setting/as-binary key)]
+        {:status 200
+         :headers {"content-type" content-type}
+         :body body}))
+    (catch Throwable e
+      (log/errorf e "Setting %s not found" key)
+      ;; Return nil on failure to try the next handler
+      nil)))
