@@ -90,7 +90,7 @@
                              "\n\n"
                              "You can remove it with"
                              "\n"
-                             (pr-str (list 'swap! `defined-hydration-methods 'dissoc hydration-key)))
+                             (pr-str (list 'swap! `(deref ~#'defined-hydration-methods) 'dissoc hydration-key)))
                         {:hydration-key       hydration-key
                          :existing-definition existing-fn-symb}))))
     (swap! defined-hydration-methods assoc hydration-key fn-symb))

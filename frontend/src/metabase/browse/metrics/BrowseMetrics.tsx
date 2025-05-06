@@ -3,18 +3,19 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import NoResults from "assets/img/metrics_bot.svg";
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
-import { skipToken } from "metabase/api";
-import { useDatabaseListQuery, useDocsUrl } from "metabase/common/hooks";
+import { skipToken, useListDatabasesQuery } from "metabase/api";
+import { useDocsUrl } from "metabase/common/hooks";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import EmptyState from "metabase/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import Link from "metabase/core/components/Link";
+import Link, { ForwardRefLink } from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { getHasDataAccess } from "metabase/selectors/data";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
+  ActionIcon,
   Box,
   Button,
   Flex,
@@ -23,6 +24,7 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "metabase/ui";
 
 import {
@@ -42,12 +44,24 @@ const {
 } = PLUGIN_CONTENT_VERIFICATION;
 
 export function BrowseMetrics() {
+  const { data } = useListDatabasesQuery();
   const [metricFilters, setMetricFilters] = useMetricFilterSettings();
   const { isLoading, error, metrics, hasVerifiedMetrics } =
     useFilteredMetrics(metricFilters);
 
   const isEmpty = !isLoading && !error && !metrics?.length;
   const titleId = useMemo(() => _.uniqueId("browse-metrics"), []);
+
+  const newMetricLink = Urls.newQuestion({
+    mode: "query",
+    cardType: "metric",
+  });
+
+  const databases = data?.data ?? [];
+  const hasDataAccess = getHasDataAccess(databases);
+  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
+
+  const canCreateMetric = !isEmbeddingIframe && hasDataAccess;
 
   return (
     <BrowseContainer aria-labelledby={titleId}>
@@ -60,7 +74,7 @@ export function BrowseMetrics() {
             justify="space-between"
             align="center"
           >
-            <Title order={1} c="text-dark" id={titleId}>
+            <Title order={2} c="text-dark" id={titleId}>
               <Group gap="sm">
                 <Icon
                   size={24}
@@ -70,12 +84,27 @@ export function BrowseMetrics() {
                 {t`Metrics`}
               </Group>
             </Title>
-            {hasVerifiedMetrics && (
-              <MetricFilterControls
-                metricFilters={metricFilters}
-                setMetricFilters={setMetricFilters}
-              />
-            )}
+            <Group gap="xs">
+              {canCreateMetric && (
+                <Tooltip label={t`Create a new metric`} position="bottom">
+                  <ActionIcon
+                    aria-label={t`Create a new metric`}
+                    size={32}
+                    variant="viewHeader"
+                    component={ForwardRefLink}
+                    to={newMetricLink}
+                  >
+                    <Icon name="add" />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {hasVerifiedMetrics && (
+                <MetricFilterControls
+                  metricFilters={metricFilters}
+                  setMetricFilters={setMetricFilters}
+                />
+              )}
+            </Group>
           </Flex>
         </BrowseSection>
       </BrowseHeader>
@@ -83,7 +112,10 @@ export function BrowseMetrics() {
         <BrowseSection>
           <Stack mb="lg" gap="md" w="100%">
             {isEmpty ? (
-              <MetricsEmptyState />
+              <MetricsEmptyState
+                canCreateMetric={canCreateMetric}
+                newMetricLink={newMetricLink}
+              />
             ) : (
               <DelayedLoadingAndErrorWrapper
                 error={error}
@@ -101,18 +133,13 @@ export function BrowseMetrics() {
   );
 }
 
-function MetricsEmptyState() {
-  const isLoggedIn = Boolean(useSelector(getCurrentUser));
-  const { data: databases = [] } = useDatabaseListQuery({
-    enabled: isLoggedIn,
-  });
-  const hasDataAccess = getHasDataAccess(databases);
-
-  const newMetricLink = Urls.newQuestion({
-    mode: "query",
-    cardType: "metric",
-  });
-
+function MetricsEmptyState({
+  canCreateMetric,
+  newMetricLink,
+}: {
+  canCreateMetric: boolean;
+  newMetricLink: string;
+}) {
   const { url: metricsDocsLink, showMetabaseLinks } = useDocsUrl(
     "data-modeling/metrics",
   );
@@ -135,7 +162,7 @@ function MetricsEmptyState() {
                     variant="brandBold"
                   >{t`Read the docs`}</Link>
                 )}
-                {hasDataAccess && (
+                {canCreateMetric && (
                   <Button
                     component={Link}
                     to={newMetricLink}

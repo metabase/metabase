@@ -22,6 +22,7 @@
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.test-util :as premium-features.test-util]
@@ -232,6 +233,9 @@
 
    :model/PermissionsGroup
    (fn [_] {:name (u.random/random-name)})
+
+   :model/PermissionsGroupMembership
+   (fn [_] {:__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships true})
 
    :model/Pulse
    (fn [_] (default-timestamped

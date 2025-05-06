@@ -141,5 +141,5 @@
   (api/check-superuser)
   {:status 200
    :body (merge
-          (open-api/root-open-api-object @(requiring-resolve 'metabase.api.routes/routes))
+          (open-api/root-open-api-object @(requiring-resolve 'metabase.api-routes.core/routes))
           {:servers [{:url "" :description "Metabase API"}]})})

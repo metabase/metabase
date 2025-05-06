@@ -9,9 +9,7 @@
    [metabase.events.cards-notification-deleted-on-card-save]
    [metabase.events.driver-notifications]
    [metabase.events.last-login]
-   [metabase.events.notification]
    [metabase.events.schema]
-   [metabase.events.slack]
    [metabase.events.view-log]))
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

@@ -3,11 +3,13 @@ import {
   InteractiveQuestion,
   type MetabaseQuestion,
 } from "@metabase/embedding-sdk-react";
-import type { ComponentProps } from "react";
+import { type ComponentProps, useState } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  FIRST_COLLECTION_ENTITY_ID,
   FIRST_COLLECTION_ID,
+  SECOND_COLLECTION_ENTITY_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
@@ -409,5 +411,44 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     cy.log("Visualize");
     H.visualize();
     H.cartesianChartCircle().should("have.length", LIMIT);
+  });
+
+  it("can change target collection to a different entity id without crashing (metabase#57438)", () => {
+    const TestComponent = () => {
+      const [targetCollection, setTargetCollection] = useState<string | null>(
+        FIRST_COLLECTION_ENTITY_ID!,
+      );
+
+      return (
+        <div>
+          <div>id = {targetCollection}</div>
+
+          <InteractiveQuestion
+            questionId="new"
+            targetCollection={targetCollection}
+            onSave={() => {}}
+            isSaveEnabled
+          />
+
+          <div
+            onClick={() => setTargetCollection(SECOND_COLLECTION_ENTITY_ID!)}
+          >
+            use second collection
+          </div>
+        </div>
+      );
+    };
+
+    mountSdkContent(<TestComponent />);
+
+    getSdkRoot().within(() => {
+      cy.findByText(`id = ${FIRST_COLLECTION_ENTITY_ID}`).should("exist");
+      cy.findByText("use second collection").click();
+      cy.findByText(`id = ${SECOND_COLLECTION_ENTITY_ID}`).should("exist");
+
+      cy.log("ensure that the interactive question still works");
+      H.popover().findByRole("link", { name: "Orders" }).click();
+      cy.findByRole("button", { name: "Visualize" }).should("be.visible");
+    });
   });
 });

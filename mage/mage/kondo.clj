@@ -1,6 +1,5 @@
 (ns mage.kondo
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.shell :as shell]
    [mage.util :as u]))
@@ -61,8 +60,8 @@
                             (list* "-M:kondo" "--lint" args))
         _ (u/debug "command: " command)]
     (println "Running Kondo on:" args)
-    (apply shell/sh* "clojure" command)
-    (System/exit 0)))
+    (let [{:keys [exit], :or {exit -1}} (apply shell/sh* "clojure" command)]
+      (System/exit exit))))
 
 (defn kondo
   "Run Kondo against our project. With no args, runs Kondo against everything we normally lint. Otherwise args are

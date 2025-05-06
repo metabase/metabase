@@ -7,6 +7,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+;;; TODO -- move these into appropriate modules.
+
 (mu/defn event-schema
   "Get the Malli schema we should use for events of `topic`. By default, this looks in our registry for a schema
   matching the event topic name; if it fails to find one, it falls back to `:map`."

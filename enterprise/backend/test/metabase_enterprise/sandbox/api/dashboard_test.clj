@@ -2,7 +2,6 @@
   "Tests for special behavior of `/api/metabase/dashboard` endpoints in the Metabase Enterprise Edition."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.models.field-values :as field-values]
@@ -12,53 +11,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
-
-(deftest params-values-test
-  (testing "Return sandboxed `param_values` for Fields to which the current User only has sandboxed access."
-    (met/with-gtaps! {:gtaps      {:venues
-                                   {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}
-                                    :query      (mt.tu/restricted-column-query (mt/id))}}
-                      :attributes {:cat 50}}
-      (mt/with-no-data-perms-for-all-users!
-        (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
-        (data-perms/set-table-permission! &group (mt/id :categories) :perms/create-queries :query-builder)
-        (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
-                       :model/Card          {card-id :id}      {:name "Dashboard Test Card"}
-                       :model/DashboardCard {_ :id}            {:dashboard_id       dashboard-id
-                                                                :card_id            card-id
-                                                                :parameter_mappings [{:card_id      card-id
-                                                                                      :parameter_id "foo"
-                                                                                      :target       [:dimension
-                                                                                                     [:field (mt/id :venues :name) nil]]}
-                                                                                     ;; should be returned normally since user has non-sandbox perms
-                                                                                     {:card_id      card-id
-                                                                                      :parameter_id "bar"
-                                                                                      :target       [:dimension
-                                                                                                     [:field (mt/id :categories :name) nil]]}
-                                                                                     ;; shouldn't be returned since user has no perms
-                                                                                     {:card_id      card-id
-                                                                                      :parameter_id "bax"
-                                                                                      :target       [:dimension
-                                                                                                     [:field (mt/id :users :name) nil]]}]}]
-          ;; Manually activate Field values since they are not created during sync (#53387)
-          (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
-          (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name)))
-          (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :users :name)))
-
-          (is (= {(mt/id :venues :name) {:values   ["Garaje"
-                                                    "Gordo Taqueria"
-                                                    "La Tortilla"]
-                                         :human_readable_values []
-                                         :field_id (mt/id :venues :name)}
-
-                  (mt/id :categories :name) {:values                ["African"
-                                                                     "American"
-                                                                     "Artisan"]
-                                             :human_readable_values []
-                                             :field_id              (mt/id :categories :name)}}
-                 (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id)))]
-                   (into {} (for [[field-id m] response]
-                              [field-id (update m :values (partial take 3))]))))))))))
 
 (deftest chain-filter-sandboxed-field-values-test
   (testing "When chain filter endpoints would normally return cached FieldValues (#13832), make sure sandboxing is respected"
