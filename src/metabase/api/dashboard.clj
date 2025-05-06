@@ -1105,6 +1105,8 @@
     (keyword (name type))
     :=))
 
+;; TODO this needs to call [[lib/ensure-filter-stage]] and take `stage-number` from the parameter mapping into account
+;; TODO this duplicates code in params.clj
 (mu/defn- param->fields
   [{:keys [mappings] :as param} :- mbql.s/Parameter]
   (let [cards (into {}

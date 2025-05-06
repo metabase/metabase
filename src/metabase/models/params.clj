@@ -219,11 +219,9 @@
 (defn filterable-columns-for-query
   "Get filterable columns for query."
   [database-id dataset-query stage-number]
-  (let [query (lib/query (lib.metadata.jvm/application-database-metadata-provider database-id)
-                         dataset-query)
-        ;; if
-        query (if (neg-int? stage-number) query (lib/ensure-filter-stage query))]
-    (lib/filterable-columns query stage-number)))
+  (-> (lib/query (lib.metadata.jvm/application-database-metadata-provider database-id) dataset-query)
+      lib/ensure-filter-stage
+      (lib/filterable-columns stage-number)))
 
 (defn- ensure-filterable-columns-for-card
   [ctx
@@ -248,11 +246,13 @@
   (let [param-id           (get-in param-dashcard-info [:param-mapping :parameter_id])
         param-target       (get-in param-dashcard-info [:param-mapping :target])
         card-id            (get-in param-dashcard-info [:dashcard :card :id])
-        filterable-columns (get-in ctx [:card-id->filterable-columns card-id stage-number])]
-    (if-some [field-id (lib.util.match/match-one param-target
+        filterable-columns (get-in ctx [:card-id->filterable-columns card-id stage-number])
+        [_ dimension]      (->> (mbql.normalize/normalize-tokens param-target :ignore-path)
+                                (mbql.u/check-clause :dimension))]
+    (if-some [field-id (lib.util.match/match-one dimension
                          [:field (field-name :guard string?) _]
                          (->> filterable-columns
-                              (m/find-first #(= field-name ((some-fn :lib/desired-column-alias :name) %)))
+                              (lib/find-matching-column (lib/->pMBQL dimension))
                               :id))]
       (-> ctx
           (update :param-id->field-ids #(merge {param-id #{}} %))
