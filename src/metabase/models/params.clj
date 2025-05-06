@@ -221,6 +221,7 @@
   [database-id dataset-query stage-number]
   (let [query (lib/query (lib.metadata.jvm/application-database-metadata-provider database-id)
                          dataset-query)
+        ;; if
         query (if (neg-int? stage-number) query (lib/ensure-filter-stage query))]
     (lib/filterable-columns query stage-number)))
 
