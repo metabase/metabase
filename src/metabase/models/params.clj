@@ -218,31 +218,36 @@
 
 (defn filterable-columns-for-query
   "Get filterable columns for query."
-  [database-id dataset-query]
-  (-> (lib/query (lib.metadata.jvm/application-database-metadata-provider database-id)
-                 dataset-query)
-      (lib/filterable-columns)))
+  [database-id dataset-query stage-number]
+  (let [query (lib/query (lib.metadata.jvm/application-database-metadata-provider database-id)
+                         dataset-query)
+        query (if (neg-int? stage-number) query (lib/ensure-filter-stage query))]
+    (lib/filterable-columns query stage-number)))
 
 (defn- ensure-filterable-columns-for-card
-  [ctx {database-id   :database_id
-        dataset-query :dataset_query
-        id            :id
-        :as           _card}]
-  (if (contains? (get ctx :card-id->filterable-columns) id)
+  [ctx
+   {database-id   :database_id
+    dataset-query :dataset_query
+    id            :id
+    :as           _card}
+   stage-number]
+  (if (get-in ctx [:card-id->filterable-columns id stage-number])
     ctx
     (if-not (and (not-empty dataset-query) (pos-int? database-id))
       ctx
-      (assoc-in ctx [:card-id->filterable-columns id]
-                (filterable-columns-for-query database-id dataset-query)))))
+      (-> ctx
+          (update :card-id->filterable-columns #(merge {id {}} %))
+          (assoc-in [:card-id->filterable-columns id stage-number]
+                    (filterable-columns-for-query database-id dataset-query stage-number))))))
 
 (defn- field-id-from-dashcards-filterable-columns
   "Update the `ctx` with `field-id`. This function is supposed to be used on params where target is a name field, in
   reducing step of [[field-id-into-context-rf]], when it is certain that param target is no integer id field."
-  [ctx param-dashcard-info]
+  [ctx param-dashcard-info stage-number]
   (let [param-id           (get-in param-dashcard-info [:parameter-mapping :parameter_id])
         param-target       (get-in param-dashcard-info [:parameter-mapping :target])
         card-id            (get-in param-dashcard-info [:dashcard :card :id])
-        filterable-columns (get-in ctx [:card-id->filterable-columns card-id])]
+        filterable-columns (get-in ctx [:card-id->filterable-columns card-id stage-number])]
     (if-some [field-id (lib.util.match/match-one param-target
                          [:field (field-name :guard string?) _]
                          (->> filterable-columns
@@ -289,7 +294,8 @@
    (if-not param-target-field
      ctx
      (let [card (get-in param-dashcard-info [:dashcard :card])
-           param-id (:parameter_id param-mapping)]
+           param-id (:parameter_id param-mapping)
+           stage-number (get-in param-mapping [:target 2 :stage-number] -1)]
        ;; Get the field id from the field-clause if it contains it. This is the common case
        ;; for mbql queries.
        (if-some [field-id (lib.util.match/match-one param-target-field [:field (id :guard integer?) _] id)]
@@ -300,8 +306,8 @@
          ;; aggregates a native query model with a field that was mapped to a db field), we need to load metadata in
          ;; [[ensure-filterable-columns-for-card]] to find the originating field. (#42829)
          (-> ctx
-             (ensure-filterable-columns-for-card card)
-             (field-id-from-dashcards-filterable-columns param-dashcard-info)))))))
+             (ensure-filterable-columns-for-card card stage-number)
+             (field-id-from-dashcards-filterable-columns param-dashcard-info stage-number)))))))
 
 (mu/defn dashcards->param-field-ids* :- [:map-of ms/NonBlankString [:set ms/PositiveInt]]
   "Return map of parameter ids to mapped field ids."
