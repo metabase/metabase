@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { type ReactNode, useState } from "react";
+import { push } from "react-router-redux";
 import { useMount } from "react-use";
 
 import {
@@ -8,8 +9,16 @@ import {
   useListDatabaseSchemasQuery,
   useListDatabasesQuery,
 } from "metabase/api";
+import { useDispatch } from "metabase/lib/redux";
 import { Box, Flex, Icon, Skeleton } from "metabase/ui";
-import type { Database, DatabaseId, SchemaId } from "metabase-types/api";
+import type {
+  Database,
+  DatabaseId,
+  SchemaId,
+  TableId,
+} from "metabase-types/api";
+
+import { getUrl } from "../../utils";
 
 import S from "./TablePicker.module.css";
 import { getIconForType, hasChildren } from "./utils";
@@ -21,6 +30,7 @@ export function TablePicker(props: {
   const { databaseId, schemaId } = props;
   const { data, isLoading, isError } = useListDatabasesQuery();
 
+  const dispatch = useDispatch();
   const [expandedDatabases, setExpandedDatabases] = useState<
     Record<DatabaseId, boolean>
   >(databaseId ? { [databaseId]: true } : {});
@@ -40,6 +50,18 @@ export function TablePicker(props: {
   }
 
   const toggleDatabase = (databaseId: DatabaseId) => {
+    if (!expandedDatabases[databaseId]) {
+      dispatch(
+        push(
+          getUrl({
+            databaseId,
+            schemaId: undefined,
+            tableId: undefined,
+            fieldId: undefined,
+          }),
+        ),
+      );
+    }
     setExpandedDatabases((state) => ({
       ...state,
       [databaseId]: !state[databaseId],
@@ -76,6 +98,7 @@ function DatabaseNode({
       : skipToken,
   );
 
+  const dispatch = useDispatch();
   const [expandedSchemas, setExpandedSchemas] = useState<{
     [key: SchemaId]: boolean;
   }>(initialSchema ? { [initialSchema]: true } : {});
@@ -85,6 +108,19 @@ function DatabaseNode({
   }
 
   const onToggleSchema = (schemaId: SchemaId) => {
+    if (!expandedSchemas[schemaId]) {
+      dispatch(
+        push(
+          getUrl({
+            databaseId: database.id,
+            schemaId,
+            tableId: undefined,
+            fieldId: undefined,
+          }),
+        ),
+      );
+    }
+
     setExpandedSchemas((state) => ({ ...state, [schemaId]: !state[schemaId] }));
   };
 
@@ -137,6 +173,7 @@ function SchemaNode({
   onToggle: () => void;
   flatten?: boolean;
 }) {
+  const dispatch = useDispatch();
   const { data, isLoading, isError } = useListDatabaseSchemaTablesQuery(
     expanded
       ? {
@@ -150,8 +187,26 @@ function SchemaNode({
     throw new Error("Failed to load databases");
   }
 
+  function toggleTable(tableId: TableId) {
+    dispatch(
+      push(
+        getUrl({
+          databaseId,
+          schemaId,
+          tableId,
+          fieldId: undefined,
+        }),
+      ),
+    );
+  }
+
   const tables = data?.map((table) => (
-    <Node key={table.id} type="table" name={table.display_name ?? table.name} />
+    <Node
+      key={table.id}
+      type="table"
+      name={table.display_name ?? table.name}
+      onToggle={() => toggleTable(table.id)}
+    />
   ));
 
   if (flatten) {
