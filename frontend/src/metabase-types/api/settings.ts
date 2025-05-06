@@ -246,6 +246,7 @@ export const tokenFeatures = [
   "ai_sql_fixer",
   "ai_sql_generation",
   "database_routing",
+  "development-mode",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];

@@ -95,18 +95,11 @@ const NewItemMenu = ({
       });
     }
 
-    items.push(
-      {
-        title: t`Dashboard`,
-        icon: "dashboard",
-        action: () => dispatch(setOpenModal("dashboard")),
-      },
-      {
-        title: t`Collection`,
-        icon: "folder",
-        action: () => dispatch(setOpenModal("collection")),
-      },
-    );
+    items.push({
+      title: t`Dashboard`,
+      icon: "dashboard",
+      action: () => dispatch(setOpenModal("dashboard")),
+    });
 
     if (
       hasNativeWrite &&

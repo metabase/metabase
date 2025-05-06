@@ -495,3 +495,13 @@
                               :target [:variable [:template-tag "date"]]
                               :value  "2024-07-02"}]
                 :middleware {:format-rows? false}})))))))
+
+(deftest ^:parallel dont-query-pg-enum-test
+  (testing "Make sure redshift doesn't try to grab postgres enums. (#56992)"
+    (mt/test-driver
+      :redshift
+      (is (= 1
+             (->> (mt/native-query {:query "SELECT usename FROM pg_user limit 1;"})
+                  qp/process-query
+                  mt/rows
+                  count))))))
