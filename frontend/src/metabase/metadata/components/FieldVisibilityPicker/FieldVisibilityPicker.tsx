@@ -28,7 +28,7 @@ export const FieldVisibilityPicker = ({
 }: Props) => {
   const handleChange = (value: string) => {
     if (!isFieldVisibilityType(value)) {
-      throw new Error("Unknown 'visibilityType'. This should never happen");
+      throw new Error("Unknown FieldVisibilityType. This should never happen");
     }
 
     onChange(value);

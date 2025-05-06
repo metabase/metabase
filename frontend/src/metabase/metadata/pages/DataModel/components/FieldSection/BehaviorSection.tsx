@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
-import { FieldVisibilityPicker } from "metabase/metadata/components";
+import {
+  FieldValuesTypePicker,
+  FieldVisibilityPicker,
+} from "metabase/metadata/components";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Stack } from "metabase/ui";
 import type { Field } from "metabase-types/api";
@@ -30,6 +33,18 @@ export const BehaviorSection = ({ field }: Props) => {
           updateField({
             id,
             visibility_type: visibilityType,
+          });
+        }}
+      />
+
+      <FieldValuesTypePicker
+        description={t`How this field should be filtered`}
+        label={t`Filtering`}
+        value={field.has_field_values}
+        onChange={(hasFieldValues) => {
+          updateField({
+            id,
+            has_field_values: hasFieldValues,
           });
         }}
       />
