@@ -5,8 +5,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [mb.hawk.init]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test.initialize :as initialize]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -51,8 +51,8 @@
         (t2/delete! :model/User (:id temp-admin))
         (when (seq existing-admin-ids)
           (t2/update! (t2/table-name :model/User) {:id [:in existing-admin-ids]} {:is_superuser true}))
-        (perms-group-membership/add-users-to-groups! (for [{:keys [user_id group_id is_group_manager]} existing-admin-memberships]
-                                                       {:user user_id :group group_id :is-group-manager? is_group_manager}))))))
+        (perms/add-users-to-groups! (for [{:keys [user_id group_id is_group_manager]} existing-admin-memberships]
+                                      {:user user_id :group group_id :is-group-manager? is_group_manager}))))))
 
 (defmacro with-single-admin-user!
   "Creates an admin user (with details described in the `options-map`) and (temporarily) removes the administrative

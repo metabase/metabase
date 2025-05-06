@@ -86,7 +86,7 @@
     (dissoc membership
             :__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships)))
 
-(mu/defn add-users-to-groups-sql
+(mu/defn- add-users-to-groups-sql
   "Generates SQL for adding users to groups"
   [user-id-group-id->is-group-manager? :- [:map-of
                                            [:tuple pos-int? pos-int?]

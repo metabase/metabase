@@ -473,7 +473,6 @@
            metabase.permissions.models.data-permissions
            metabase.permissions.models.permissions
            metabase.permissions.models.permissions-group
-           metabase.permissions.models.permissions-group-membership
            metabase.permissions.util}
    :uses #{api audit config db models plugins premium-features request server settings util}}
 

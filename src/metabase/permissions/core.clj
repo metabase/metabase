@@ -50,6 +50,11 @@
  [metabase.permissions.models.permissions-group
   non-magic-groups]
  [metabase.permissions.models.permissions-group-membership
+  add-users-to-groups!
+  add-user-to-groups!
+  add-user-to-group!
+  remove-user-from-group!
+  remove-user-from-groups!
   allow-changing-all-users-group-members
   fail-to-remove-last-admin-msg
   throw-if-last-admin!]
