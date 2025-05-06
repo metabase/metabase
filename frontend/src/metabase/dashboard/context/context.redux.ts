@@ -140,6 +140,14 @@ const mapDispatchToProps = {
   moveDashboardToCollection,
 };
 
-export const connector = connect(mapStateToProps, mapDispatchToProps);
+export const connector = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+  (stateProps, dispatchProps, ownProps) => ({
+    ...stateProps,
+    ...dispatchProps,
+    ...ownProps,
+  }),
+);
 
 export type ReduxProps = ConnectedProps<typeof connector>;

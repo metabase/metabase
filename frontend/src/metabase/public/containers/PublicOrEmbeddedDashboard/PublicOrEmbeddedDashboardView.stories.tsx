@@ -152,14 +152,11 @@ function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<MockDashboardContextProps> = (args) => {
-  return (
-    <MockDashboardContext {...args}>
-      <PublicOrEmbeddedDashboardView />
-    </MockDashboardContext>
-  );
-};
-
+const Template: StoryFn<MockDashboardContextProps> = (args) => (
+  <MockDashboardContext {...args}>
+    <PublicOrEmbeddedDashboardView />
+  </MockDashboardContext>
+);
 const defaultArgs: Partial<MockDashboardContextProps> = {
   dashboard: createDashboard(),
   downloadsEnabled: { pdf: true, results: true },

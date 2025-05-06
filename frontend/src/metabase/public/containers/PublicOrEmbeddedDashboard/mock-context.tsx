@@ -21,30 +21,29 @@ const DashboardContextWithReduxProps = (
       DashboardContextOwnResult &
       DashboardControls
   >,
-) => {
-  // Create the full context value by combining all props
-  const contextValue = {
-    ...props,
-    isLoading: !props.dashboard,
-  };
-
-  // Render the actual context provider with our combined value
-  return (
-    <DashboardContext.Provider value={contextValue}>
-      {props.children}
-    </DashboardContext.Provider>
-  );
-};
+) => (
+  <DashboardContext.Provider value={{ isLoading: !props.dashboard, ...props }}>
+    {props.children}
+  </DashboardContext.Provider>
+);
 
 // Connect the component to Redux to get all the Redux props
 const ConnectedDashboardContextWithReduxProps = connector(
   DashboardContextWithReduxProps,
 );
 
-// This is our public-facing component that accepts partial Redux props
 export type MockDashboardContextProps = DashboardContextProps &
   Partial<ReduxProps>;
 
+/*
+ * NOTE: DO NOT USE THIS IN REAL COMPONENTS. This is specifically for the storybook stories for the
+ * PublicOrEmbeddedDashboardView. We were relying on hard-coded redux values passed directly into
+ * the component, but this is different now with the dashboard context.
+ *
+ * TODO: Adapt PublicOrEmbeddedDashboardView stories to new dashboard context code by adding data
+ * directly to the redux store instead of overriding data. Then we can maybe even use the
+ * actual context for our stories.
+ * */
 export const MockDashboardContext = ({
   children,
   dashboardId,
