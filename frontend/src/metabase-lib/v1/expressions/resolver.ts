@@ -3,9 +3,8 @@ import _ from "underscore";
 
 import * as Lib from "metabase-lib";
 
-import { EDITOR_FK_SYMBOLS } from "./config";
 import { CompileError } from "./errors";
-import { getDisplayNameWithSeparator } from "./identifier";
+import { EDITOR_FK_SYMBOLS, getDisplayNameWithSeparator } from "./identifier";
 import type { Node } from "./pratt";
 import type { ExpressionType } from "./types";
 

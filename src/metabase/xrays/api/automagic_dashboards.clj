@@ -114,10 +114,6 @@
   [_entity-type encoded-query]
   (adhoc-query-read-check (query/adhoc-query (decode-base64-json encoded-query))))
 
-(defmethod ->entity :metric
-  [_entity-type metric-id-str]
-  (api/read-check (t2/select-one :model/LegacyMetric :id (ensure-int metric-id-str))))
-
 (defmethod ->entity :field
   [_entity-type field-id-str]
   (api/read-check (t2/select-one :model/Field :id (ensure-int field-id-str))))

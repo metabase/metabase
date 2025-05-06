@@ -4,6 +4,10 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.55.0
+
+- `POST /api/card/from-csv` has been renamed to `POST /api/upload/csv`.
+
 ## Metabase 0.54.0
 
 - The alert system has been migrated from the legacy pulse infrastructure to the new notification system. This migration includes the following changes:

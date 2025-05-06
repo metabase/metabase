@@ -1,10 +1,7 @@
 import fs from "fs";
 
-import path from "path";
-
 import { shell } from "../../cypress-runner-utils";
-
-const E2E_TMP_FOLDER_PATH = path.resolve(__dirname, "../../../tmp");
+import { E2E_TMP_FOLDER_PATH } from "../constants/e2e-tmp-folder-path";
 
 export function fetchApp({
   appName,
