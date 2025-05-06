@@ -80,14 +80,6 @@ export const AdminNavbar = ({
 
       <MobileHide>
         <AdminNavbarItems data-testid="admin-navbar-items">
-          {/* TODO: remove this at the end of Milestone 1 */}
-          {/* https://linear.app/metabase/project/up-level-admin-metadata-editing-0399213bee40 */}
-          <AdminNavItem
-            name="Table Metadata v2"
-            path="/admin/datamodel-v2"
-            currentPath={currentPath}
-          />
-
           {adminPaths.map(({ name, key, path }) => (
             <AdminNavItem
               name={name}

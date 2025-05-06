@@ -78,7 +78,12 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
         </Route>
       </Route>
-      <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
+      {/* TODO: remove this at the end of Milestone 1 */}
+      {/* https://linear.app/metabase/project/up-level-admin-metadata-editing-0399213bee40 */}
+      <Route
+        path="datamodel-v1"
+        component={createAdminRouteGuard("data-model")}
+      >
         <Route title={t`Table Metadata`} component={DataModelApp}>
           {getMetadataRoutes()}
           <Route path="segments" component={SegmentListApp} />
@@ -87,12 +92,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           <Route path="segment/:id/revisions" component={RevisionHistoryApp} />
         </Route>
       </Route>
-      {/* TODO: replace this at the end of Milestone 1 */}
-      {/* https://linear.app/metabase/project/up-level-admin-metadata-editing-0399213bee40 */}
-      <Route
-        path="datamodel-v2"
-        component={createAdminRouteGuard("data-model")}
-      >
+      <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
         <Route title={t`Table Metadata`} component={DataModelApp}>
           <IndexRedirect to="database" />
           <Route path="database" component={DataModel} />

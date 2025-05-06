@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
-import { useGetTableQueryMetadataQuery } from "metabase/api";
+import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -31,11 +31,15 @@ export const DataModel = ({ params }: Props) => {
     data: table,
     error,
     isLoading,
-  } = useGetTableQueryMetadataQuery({
-    id: tableId,
-    include_sensitive_fields: true,
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-  });
+  } = useGetTableQueryMetadataQuery(
+    tableId == null
+      ? skipToken
+      : {
+          id: tableId,
+          include_sensitive_fields: true,
+          ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+        },
+  );
   const field = table?.fields?.find((field) => field.id === fieldId);
 
   return (
