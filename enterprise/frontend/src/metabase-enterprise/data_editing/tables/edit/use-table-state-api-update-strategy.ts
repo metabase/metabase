@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 
 import { datasetApi } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetQuery, RowValue } from "metabase-types/api";
 
@@ -13,16 +14,14 @@ import {
 } from "./use-table-state-update-strategy";
 
 export function useTableEditingStateApiUpdateStrategy(
-  adhocQuery: DatasetQuery | undefined,
+  nullableAdhocQuery: DatasetQuery | undefined,
 ): TableEditingStateUpdateStrategy {
   // "metabase-api" state is not typed, so we need to use the `any` type
   const dispatch = useDispatch() as ThunkDispatch<any, any, UnknownAction>;
 
   const onRowsCreated = useCallback(
-    (rows?: Record<string, RowValue>[]) => {
-      if (!rows || !adhocQuery) {
-        return;
-      }
+    (rows: Record<string, RowValue>[]) => {
+      const adhocQuery = checkNotNull(nullableAdhocQuery);
 
       dispatch(
         datasetApi.util.updateQueryData(
@@ -36,16 +35,14 @@ export function useTableEditingStateApiUpdateStrategy(
         ),
       );
     },
-    [dispatch, adhocQuery],
+    [dispatch, nullableAdhocQuery],
   );
 
   const onRowsUpdated = useCallback(
-    (rows?: Record<string, RowValue>[]) => {
-      if (!rows || !adhocQuery) {
-        return;
-      }
+    (rows: Record<string, RowValue>[]) => {
+      const adhocQuery = checkNotNull(nullableAdhocQuery);
 
-      dispatch(
+      const patchResult = dispatch(
         datasetApi.util.updateQueryData(
           "getAdhocQuery",
           adhocQuery,
@@ -72,15 +69,17 @@ export function useTableEditingStateApiUpdateStrategy(
           },
         ),
       );
+
+      return {
+        revert: patchResult.undo,
+      };
     },
-    [dispatch, adhocQuery],
+    [dispatch, nullableAdhocQuery],
   );
 
   const onRowsDeleted = useCallback(
-    (rows?: Record<string, RowValue>[]) => {
-      if (!rows || !adhocQuery) {
-        return;
-      }
+    (rows: Record<string, RowValue>[]) => {
+      const adhocQuery = checkNotNull(nullableAdhocQuery);
 
       dispatch(
         datasetApi.util.updateQueryData(
@@ -98,7 +97,7 @@ export function useTableEditingStateApiUpdateStrategy(
         ),
       );
     },
-    [dispatch, adhocQuery],
+    [dispatch, nullableAdhocQuery],
   );
 
   return useMemo(

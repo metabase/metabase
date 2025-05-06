@@ -141,9 +141,13 @@ export function UndoToast({
           <CardContent>
             <CardContentSide maw="75ch">
               {undo.icon && <CardIcon name={undo.icon} color="text-white" />}
-              <Ellipsified showTooltip={false}>
-                {renderMessage(undo)}
-              </Ellipsified>
+              {undo.renderChildren ? (
+                undo.renderChildren(undo)
+              ) : (
+                <Ellipsified showTooltip={false}>
+                  {renderMessage(undo)}
+                </Ellipsified>
+              )}
             </CardContentSide>
             <ControlsCardContent>
               {undo.actions && undo.actions.length > 0 && (
@@ -189,7 +193,10 @@ export function UndoListing() {
           key={undo._domId}
           undo={undo}
           onUndo={() => dispatch(performUndo(undo.id))}
-          onDismiss={() => dispatch(dismissUndo({ undoId: undo.id }))}
+          onDismiss={() => {
+            undo.onDismiss?.(undo.id);
+            dispatch(dismissUndo({ undoId: undo.id }));
+          }}
         />
       ))}
     </UndoListOverlay>

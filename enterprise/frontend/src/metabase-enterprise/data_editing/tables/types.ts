@@ -6,6 +6,10 @@ import type {
 
 export type RowCellsWithPkValue = Record<DatasetColumn["name"], RowValue>;
 
+export type RowPkValue = string | number;
+
+export type CellUniqKey = string;
+
 export type TableEditingScope =
   | { "table-id": ConcreteTableId }
   | { "dashcard-id": number };
@@ -36,8 +40,14 @@ export type TableDeleteRowsRequest = {
 
 export type TableDeleteRowsResponse = { success: boolean };
 
-export type UpdatedRowCellsHandlerParams = {
-  updatedData: Record<DatasetColumn["name"], RowValue>;
+export type UpdateCellValueHandlerParams = {
+  updatedData: RowCellsWithPkValue;
+  rowIndex: number;
+  columnName: string;
+};
+
+export type UpdatedRowHandlerParams = {
+  updatedData: RowCellsWithPkValue;
   rowIndex: number;
 };
 

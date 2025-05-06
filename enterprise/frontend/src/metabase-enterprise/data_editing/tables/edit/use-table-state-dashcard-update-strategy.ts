@@ -23,8 +23,8 @@ export function useTableEditingStateDashcardUpdateStrategy(
   );
 
   const onRowsCreated = useCallback(
-    (rows?: Record<string, RowValue>[]) => {
-      if (!cardData || !rows) {
+    (rows: Record<string, RowValue>[]) => {
+      if (!cardData) {
         return;
       }
 
@@ -45,8 +45,8 @@ export function useTableEditingStateDashcardUpdateStrategy(
   );
 
   const onRowsUpdated = useCallback(
-    (rows?: Record<string, RowValue>[]) => {
-      if (!cardData || !rows) {
+    (rows: Record<string, RowValue>[]) => {
+      if (!cardData) {
         return;
       }
 
@@ -55,18 +55,22 @@ export function useTableEditingStateDashcardUpdateStrategy(
       const primaryKeyToUpdatedRowObjectMap =
         createPrimaryKeyToUpdatedRowObjectMap(pkColumnName, rows);
 
+      const originalRowsPkMap: Map<RowValue, RowValue[]> = new Map();
+
       dispatch(
         updateCardData(cardId, dashcardId, {
           ...cardData,
           data: {
             ...cardData.data,
             rows: cardData.data.rows.map((row) => {
-              const updatedRowObject = primaryKeyToUpdatedRowObjectMap.get(
-                row[pkColumnIndex],
-              );
+              const rowPkValue = row[pkColumnIndex];
+              const updatedRowObject =
+                primaryKeyToUpdatedRowObjectMap.get(rowPkValue);
 
               if (updatedRowObject) {
-                return row.map((value, index) => {
+                originalRowsPkMap.set(rowPkValue, row);
+
+                const updatedRow = row.map((value, index) => {
                   const columnName = cardData.data.cols[index].name;
 
                   if (columnName in updatedRowObject) {
@@ -75,6 +79,10 @@ export function useTableEditingStateDashcardUpdateStrategy(
 
                   return value;
                 });
+
+                primaryKeyToUpdatedRowObjectMap.delete(rowPkValue);
+
+                return updatedRow;
               }
 
               return row;
@@ -82,13 +90,30 @@ export function useTableEditingStateDashcardUpdateStrategy(
           },
         }),
       );
+
+      return {
+        revert: () =>
+          dispatch(
+            updateCardData(cardId, dashcardId, {
+              ...cardData,
+              data: {
+                ...cardData.data,
+                rows: cardData.data.rows.map((row) => {
+                  const rowPkValue = row[pkColumnIndex];
+                  const originalRowObject = originalRowsPkMap.get(rowPkValue);
+                  return originalRowObject || row;
+                }),
+              },
+            }),
+          ),
+      };
     },
     [cardData, dashcardId, cardId, dispatch],
   );
 
   const onRowsDeleted = useCallback(
-    (rows?: Record<string, RowValue>[]) => {
-      if (!cardData || !rows) {
+    (rows: Record<string, RowValue>[]) => {
+      if (!cardData) {
         return;
       }
 
