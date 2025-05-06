@@ -48,32 +48,6 @@
                  :text {:type "mrkdwn"
                         :text (truncate mrkdwn block-text-length-limit)}}]})))
 
-(defn- part->attachment-data
-  [part]
-  (let [part (channel.shared/maybe-realize-data-rows part)]
-    (case (:type part)
-      :card
-      (let [{:keys [card dashcard result]}         part
-            {card-id :id card-name :name :as card} card]
-        {:title           (or (-> dashcard :visualization_settings :card.title)
-                              card-name)
-         :rendered-info   (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
-         :attachment-name "image.png"
-         :fallback        card-name
-         :title_link      (when-not (= :table-editable (:display card))
-                            (urls/card-url card-id))})
-
-      :text
-      (text->markdown-block (:text part))
-
-      :tab-title
-      (text->markdown-block (format "# %s" (:text part))))))
-
-(def ^:private slack-width
-  "Maximum width of the rendered PNG of HTML to be sent to Slack. Content that exceeds this width (e.g. a table with
-  many columns) is truncated."
-  1200)
-
 (defn- mkdwn-link-text [url label]
   (if url
     (let [url-length       (count url)
@@ -85,37 +59,54 @@
         (format "<%s|%s>" url (truncate label' max-label-length))))
     label))
 
-(defn- create-and-upload-slack-attachment!
-  "Create an attachment in Slack for a given Card by rendering its content into an image and uploading it.
-  Attachments containing `:blocks` lists containing text cards are returned unmodified."
-  [{:keys [title title_link attachment-name rendered-info blocks] :as attachment-data}]
-  (cond
-    blocks attachment-data
+(def ^:private slack-width
+  "Maximum width of the rendered PNG of HTML to be sent to Slack. Content that exceeds this width (e.g. a table with
+  many columns) is truncated."
+  1200)
 
-    (:render/text rendered-info)
-    {:blocks [{:type "section"
-               :text {:type     "mrkdwn"
-                      :text     (mkdwn-link-text title_link title)
-                      :verbatim true}}
-              {:type "section"
-               :text {:type "plain_text"
-                      :text (:render/text rendered-info)}}]}
+(defn- part->blocks!
+  "Converts a notification part directly into Slack Block Kit blocks."
+  [part]
+  (let [part (channel.shared/maybe-realize-data-rows part)]
+    (case (:type part)
+      :card
+      (let [{:keys [card dashcard result]}         part
+            {card-id :id card-name :name :as card} card
+            title (or (-> dashcard :visualization_settings :card.title)
+                      card-name)
+            rendered-info (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
+            title-link (when-not (= :table-editable (:display card))
+                         (urls/card-url card-id))]
+        (cond
+          (:render/text rendered-info)
+          [{:type "section"
+            :text {:type     "mrkdwn"
+                   :text     (mkdwn-link-text title-link title)
+                   :verbatim true}}
+           {:type "section"
+            :text {:type "plain_text"
+                   :text (:render/text rendered-info)}}]
 
-    :else
-    (let [image-bytes   (channel.render/png-from-render-info rendered-info slack-width)
-          {file-id :id} (slack/upload-file! image-bytes attachment-name)]
-      {:blocks [{:type "section"
-                 :text {:type     "mrkdwn"
-                        :text     (mkdwn-link-text title_link title)
-                        :verbatim true}}
-                {:type       "image"
-                 :slack_file {:id file-id}
-                 :alt_text   title}]})))
+          :else
+          (let [image-bytes (channel.render/png-from-render-info rendered-info slack-width)
+                {file-id :id} (slack/upload-file! image-bytes "image.png")]
+            [{:type "section"
+              :text {:type     "mrkdwn"
+                     :text     (mkdwn-link-text title-link title)
+                     :verbatim true}}
+             {:type       "image"
+              :slack_file {:id file-id}
+              :alt_text   title}])))
+
+      :text
+      (-> part :text text->markdown-block :blocks)
+
+      :tab-title
+      (-> part :text (format "# %s") text->markdown-block :blocks))))
 
 (def ^:private SlackMessage
   [:map {:closed true}
    [:channel :string]
-   ;; TODO add support for :attachments and :text
    [:blocks  [:sequential :map]]])
 
 (mu/defmethod channel/send! :channel/slack
@@ -129,12 +120,11 @@
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/card] :- [:sequential SlackMessage]
   [_channel-type _payload-type {:keys [payload]} _template recipients]
-  (let [attachments [{:blocks [{:type "header"
-                                :text {:type "plain_text"
-                                       :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)
-                                       :emoji true}}]}
-                     (part->attachment-data (:card_part payload))]
-        blocks      (mapcat :bocks (mapv create-and-upload-slack-attachment! attachments))]
+  (let [blocks (concat [{:type "header"
+                         :text {:type "plain_text"
+                                :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)
+                                :emoji true}}]
+                       (part->blocks! (:card_part payload)))]
     (for [channel (map notification-recipient->channel recipients)]
       {:channel channel
        :blocks  blocks})))
@@ -170,26 +160,16 @@
         filter-section  (when (seq filter-fields)
                           {:type   "section"
                            :fields filter-fields})]
-    {:blocks (filter some? [header-section filter-section link-section])}))
-
-(defn- create-slack-attachment-data
-  "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
-  [parts]
-  (for [part  parts
-        :let  [attachment (part->attachment-data part)]
-        :when attachment]
-    attachment))
+    (filter some? [header-section filter-section link-section])))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard] :- [:sequential SlackMessage]
   [_channel-type _payload-type {:keys [payload creator]} _template recipients]
   (let [parameters (:parameters payload)
         dashboard  (:dashboard payload)
         blocks     (->> [(slack-dashboard-header dashboard (:common_name creator) parameters)
-                         (create-slack-attachment-data (:dashboard_parts payload))]
+                         (mapcat part->blocks! (:dashboard_parts payload))]
                         flatten
-                        (remove nil?)
-                        (mapv create-and-upload-slack-attachment!)
-                        (mapcat :blocks))]
+                        (remove nil?))]
     (for [channel-id (map notification-recipient->channel recipients)]
       {:channel channel-id
        :blocks  blocks})))
@@ -202,7 +182,6 @@
   [channel-type _payload-type {:keys [context] :as notification-payload} template recipients]
   (let [event-name (:event_name context)
         template   (or template
-                       ;; TODO: the context here does not nescessarily have the same shape as payload, needs to rethink this
                        (channel.template/default-template :notification/system-event context channel-type))
         blocks     (:blocks (text->markdown-block (channel.template/render-template template notification-payload)))]
     (assert template (str "No template found for event " event-name))
