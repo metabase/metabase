@@ -2,6 +2,7 @@ import { getFieldDisplayName } from "metabase/metadata/utils/field";
 import { Stack, Title } from "metabase/ui";
 import type { DatabaseId, Field } from "metabase-types/api";
 
+import { BehaviorSection } from "./BehaviorSection";
 import { DataSection } from "./DataSection";
 import S from "./FieldSection.module.css";
 import { MetadataSection } from "./MetadataSection";
@@ -21,6 +22,7 @@ export const FieldSection = ({ databaseId, field }: Props) => {
       <Stack className={S.container} gap="xl" h="100%" pb="lg" px="xl">
         <DataSection field={field} />
         <MetadataSection databaseId={databaseId} field={field} />
+        <BehaviorSection field={field} />
       </Stack>
     </Stack>
   );

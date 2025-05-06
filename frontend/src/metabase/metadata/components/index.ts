@@ -2,6 +2,7 @@ export * from "./CoercionStrategyPicker";
 export * from "./CurrencyPicker";
 export * from "./DiscardTableFieldValuesButton";
 export * from "./FieldOrderPicker";
+export * from "./FieldVisibilityPicker";
 export * from "./FkTargetPicker";
 export * from "./NameDescriptionInput";
 export * from "./RescanTableFieldsButton";
