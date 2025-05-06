@@ -44,9 +44,9 @@
   [text]
   (let [mrkdwn (markdown/process-markdown text :slack)]
     (when (not (str/blank? mrkdwn))
-      [{:type "section"
-        :text {:type "mrkdwn"
-               :text (truncate mrkdwn block-text-length-limit)}}])))
+      {:type "section"
+       :text {:type "mrkdwn"
+              :text (truncate mrkdwn block-text-length-limit)}})))
 
 (defn- mkdwn-link-text [url label]
   (if url
@@ -64,7 +64,7 @@
   many columns) is truncated."
   1200)
 
-(defn- part->blocks!
+(defn- part->sections!
   "Converts a notification part directly into Slack Block Kit blocks."
   [part]
   (let [part (channel.shared/maybe-realize-data-rows part)]
@@ -72,37 +72,31 @@
       :card
       (let [{:keys [card dashcard result]}         part
             {card-id :id card-name :name :as card} card
-            title (or (-> dashcard :visualization_settings :card.title)
-                      card-name)
-            rendered-info (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
-            title-link (when-not (= :table-editable (:display card))
-                         (urls/card-url card-id))]
-        (cond
-          (:render/text rendered-info)
-          [{:type "section"
-            :text {:type     "mrkdwn"
-                   :text     (mkdwn-link-text title-link title)
-                   :verbatim true}}
-           {:type "section"
-            :text {:type "plain_text"
-                   :text (:render/text rendered-info)}}]
-
-          :else
-          (let [image-bytes (channel.render/png-from-render-info rendered-info slack-width)
-                {file-id :id} (slack/upload-file! image-bytes "image.png")]
-            [{:type "section"
-              :text {:type     "mrkdwn"
-                     :text     (mkdwn-link-text title-link title)
-                     :verbatim true}}
-             {:type       "image"
-              :slack_file {:id file-id}
-              :alt_text   title}])))
+            title                                  (or (-> dashcard :visualization_settings :card.title)
+                                                       card-name)
+            rendered-info                          (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
+            title-link                             (when-not (= :table-editable (:display card))
+                                                     (urls/card-url card-id))]
+        (conj [{:type "section"
+                :text {:type     "mrkdwn"
+                       :text     (mkdwn-link-text title-link title)
+                       :verbatim true}}]
+              (if (:render/text rendered-info)
+                {:type "section"
+                 :text {:type "plain_text"
+                        :text (:render/text rendered-info)}}
+                {:type       "image"
+                 :slack_file {:id (-> rendered-info
+                                      (channel.render/png-from-render-info slack-width)
+                                      (slack/upload-file! (format "%s.png" title))
+                                      :id)}
+                 :alt_text   title})))
 
       :text
-      (text->markdown-section (:text part))
+      [(text->markdown-section (:text part))]
 
       :tab-title
-      (text->markdown-section (format "# %s" (:text part))))))
+      [(text->markdown-section (format "# %s" (:text part)))])))
 
 (def ^:private SlackMessage
   [:map {:closed true}
@@ -124,7 +118,7 @@
                          :text {:type "plain_text"
                                 :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)
                                 :emoji true}}]
-                       (part->blocks! (:card_part payload)))]
+                       (part->sections! (:card_part payload)))]
     (for [channel (map notification-recipient->channel recipients)]
       {:channel channel
        :blocks  blocks})))
@@ -167,7 +161,7 @@
   (let [parameters (:parameters payload)
         dashboard  (:dashboard payload)
         blocks     (->> [(slack-dashboard-header dashboard (:common_name creator) parameters)
-                         (mapcat part->blocks! (:dashboard_parts payload))]
+                         (mapcat part->sections! (:dashboard_parts payload))]
                         flatten
                         (remove nil?))]
     (for [channel-id (map notification-recipient->channel recipients)]
@@ -183,8 +177,8 @@
   (let [event-name (:event_name context)
         template   (or template
                        (channel.template/default-template :notification/system-event context channel-type))
-        blocks     (text->markdown-section (channel.template/render-template template notification-payload))]
+        sections    [(text->markdown-section (channel.template/render-template template notification-payload))]]
     (assert template (str "No template found for event " event-name))
     (for [channel (map notification-recipient->channel recipients)]
       {:channel channel
-       :blocks  blocks})))
+       :blocks  sections})))
