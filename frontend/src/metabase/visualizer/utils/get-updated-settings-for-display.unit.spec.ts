@@ -75,11 +75,7 @@ describe("updateSettingsForDisplay", () => {
       "bar",
       "line",
     );
-    expect(result).toStrictEqual({
-      columnValuesMapping,
-      columns,
-      settings: { "graph.dimensions": [], "graph.metrics": [] },
-    });
+    expect(result).toBeUndefined();
   });
 
   describe("cartesian → cartesian", () => {
@@ -94,14 +90,7 @@ describe("updateSettingsForDisplay", () => {
         "line",
         "bar",
       );
-      expect(result).toEqual({
-        columnValuesMapping,
-        columns,
-        settings: {
-          "graph.metrics": ["COLUMN_1", "COLUMN_3"],
-          "graph.dimensions": ["COLUMN_2"],
-        },
-      });
+      expect(result).toBeUndefined();
     });
   });
 

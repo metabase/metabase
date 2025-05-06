@@ -3,7 +3,6 @@ import _ from "underscore";
 import { isNotNull } from "metabase/lib/types";
 import {
   getMaxDimensionsSupported,
-  getMaxMetricsSupported,
   isCartesianChart,
 } from "metabase/visualizations";
 import type {
@@ -39,12 +38,7 @@ export function getUpdatedSettingsForDisplay(
 
   if (sourceIsCartesian) {
     if (targetIsCartesian) {
-      return cartesianToCartesian(
-        columnValuesMapping,
-        columns,
-        settings,
-        targetDisplay,
-      );
+      return;
     }
     if (targetDisplay === "pie") {
       return cartesianToPie(columnValuesMapping, columns, settings);
@@ -84,40 +78,6 @@ export function getUpdatedSettingsForDisplay(
     settings: _.pick(settings, "card.title"),
   };
 }
-
-const cartesianToCartesian = (
-  columnValuesMapping: ColumnValuesMapping,
-  columns: DatasetColumn[],
-  settings: VisualizationSettings,
-  targetDisplay: VisualizationDisplay,
-) => {
-  const maxMetrics = getMaxMetricsSupported(targetDisplay);
-  const maxDimensions = getMaxDimensionsSupported(targetDisplay);
-
-  const {
-    "graph.metrics": metrics = [],
-    "graph.dimensions": dimensions = [],
-    ...otherSettings
-  } = settings;
-
-  const nextMetrics = metrics.slice(0, maxMetrics);
-  const removedMetrics = metrics.slice(maxMetrics);
-
-  const nextDimensions = dimensions.slice(0, maxDimensions);
-  const removedDimensions = dimensions.slice(maxDimensions);
-
-  const removedColumns = [...removedMetrics, ...removedDimensions];
-
-  return {
-    columns: columns.filter((column) => !removedColumns.includes(column.name)),
-    columnValuesMapping: _.omit(columnValuesMapping, removedColumns),
-    settings: {
-      ...otherSettings,
-      "graph.metrics": nextMetrics,
-      "graph.dimensions": nextDimensions,
-    },
-  };
-};
 
 const cartesianToPie = (
   columnValuesMapping: ColumnValuesMapping,
