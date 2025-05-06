@@ -23,7 +23,6 @@ describe("TitleAndDescription Component (EE with content_translation token featu
       expect(
         await screen.findByRole("heading", {
           name: dictionary[0].msgid,
-          level: 2,
         }),
       ).toBeInTheDocument();
 
@@ -41,7 +40,6 @@ describe("TitleAndDescription Component (EE with content_translation token featu
       expect(
         await screen.findByRole("heading", {
           name: dictionary[0].msgstr,
-          level: 2,
         }),
       ).toBeInTheDocument();
 

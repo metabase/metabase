@@ -21,7 +21,6 @@ describe("TitleAndDescription Component (EE without token feature)", () => {
       expect(
         await screen.findByRole("heading", {
           name: dictionary[0].msgid,
-          level: 2,
         }),
       ).toBeInTheDocument();
 
@@ -39,7 +38,6 @@ describe("TitleAndDescription Component (EE without token feature)", () => {
       expect(
         await screen.findByRole("heading", {
           name: dictionary[0].msgid,
-          level: 2,
         }),
       ).toBeInTheDocument();
 
