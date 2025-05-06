@@ -15,9 +15,7 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.xrays.automagic-dashboards.core :as magic]
-   [toucan2.core :as t2])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
