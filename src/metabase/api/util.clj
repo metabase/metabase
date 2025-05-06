@@ -11,18 +11,13 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.config :as config]
-   [metabase.db :as mdb]
-   [metabase.driver :as driver]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.logger :as logger]
-   [metabase.premium-features.core :as premium-features]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.system-info :as u.system-info]
-   [ring.util.response :as response]
-   [toucan2.core :as t2]))
+   [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
 
