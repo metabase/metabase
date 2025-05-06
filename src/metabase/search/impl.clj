@@ -54,6 +54,8 @@
     ;; We filter what we can (i.e., everything in a collection) out already when querying
     true))
 
+;; TODO: remove this implementation now that we check permissions in the SQL, leaving it in for now to guard against
+;; issue with new pure sql implementation
 (defmethod check-permissions-for-model :table
   [search-ctx instance]
   ;; we've already filtered out tables w/o collection permissions in the query itself.

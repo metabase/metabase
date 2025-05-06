@@ -88,6 +88,10 @@
                :default        "[Default Value]"}]
              (fetch-test-settings [:test-setting-1 :test-setting-2 :test-setting-3]))))
 
+    (testing "Check that fetching Settings does not return settings marked as :include-in-list?=false"
+      (is (empty?
+           (fetch-test-settings [:test-setting-that-is-not-included-when-listing-in-api]))))
+
     (testing "Check that non-admin setting managers can fetch Settings with `:visibility :settings-manager`"
       (test-settings-manager-visibility! nil)
       (with-mocked-settings-manager-access!

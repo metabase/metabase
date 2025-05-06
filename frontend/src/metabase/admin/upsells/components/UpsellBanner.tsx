@@ -47,7 +47,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
       <Flex align="center" gap="md" wrap="nowrap">
         <UpsellGem />
         <Box>
-          <Title lh={1.25} order={2} size="md">
+          <Title lh={1.25} order={3} size="md">
             {title}
           </Title>
           <Text lh="1rem" size="sm">
