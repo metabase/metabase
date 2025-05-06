@@ -1,13 +1,11 @@
-(ns metabase.driver.sql.query-processor.boolean-is-comparison
+(ns metabase.driver.sql.query-processor.boolean-to-comparison
   "In Oracle and some other databases, boolean literals cannot appear in the top-level of WHERE clauses or expressions
   like AND, OR, NOT, and CASE. These instead require a comparison operator, so boolean constants like 0 and 1 must be
   replaced with equivalent expressions like 1 = 1 or 0 = 1.
 
-  Drivers can derive from this abstract driver to use an alternate implementation(s) of SQL QP method(s) that treat
-  boolean literals as comparison expressions in filter clauses and logical operators."
+  Drivers can call boolean->comparison or one of the convenience functions logical-op->honeysql or case->honeysql to convert
+  boolean literals and refs into comparison expressions in those clauses. See the sqlserver or oracle drivers for examples."
   (:require
-   [honey.sql.helpers :as sql.helpers]
-   [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
@@ -18,17 +16,13 @@
 ;;
 ;; - SELECT 1 WHERE 1
 ;; - SELECT 1 WHERE 1 AND 1
-;; - SELECT 1 WHERE 0 OR 1
+;; - SELECT CASE WHEN 1 THEN 1 ELSE 0 END
 ;;
 ;; But these are:
 ;;
 ;; - SELECT 1 WHERE (1 = 1)
 ;; - SELECT 1 WHERE (1 = 1) AND (1 = 1)
-;; - SELECT 1 WHERE (0 = 1) OR  (1 = 1)
-;;
-;; At the same time, we can't simply override the `->honeysql` method for Boolean, because in some contexts the boolean
-;; constants are required. For example in SQLServer `SELECT (1 = 1) AS MyTrue ...` is invalid, but `SELECT
-;; 1 AS MyTrue ...` is OK.
+;; - SELECT CASE WHEN (1 = 1) THEN 1 ELSE 0 END
 ;;
 ;; https://learn.microsoft.com/en-us/sql/t-sql/data-types/constants-transact-sql#boolean-constants
 ;; https://learn.microsoft.com/en-us/sql/t-sql/language-elements/comparison-operators-transact-sql#boolean-data-type
@@ -37,7 +31,6 @@
 ;; https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/About-SQL-Conditions.html#GUID-E9EC8434-CD48-4C01-B01B-85E5359D8DD7
 ;; https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/Data-Types.html#GUID-285FFCA8-390D-4FA9-9A51-47B84EF5F83A
 ;; https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/Logical-Conditions.html
-(driver/register! ::boolean-is-comparison, :abstract? true)
 
 (defn- some-isa? [child parents]
   (some #(isa? child %) parents))
@@ -78,10 +71,13 @@
        (or (boolean-typed-clause? clause)
            (boolean-value-clause? (mbql.u/expression-with-name sql.qp/*inner-query* (second clause))))))
 
-(defn- boolean->comparison
+(defn boolean->comparison
   "Convert boolean field refs or expression literals to equivalent boolean comparison expressions.
 
-  The input `clause` is MBQL. The output is a compiled honeysql form."
+  This function expects to be called in a context where sql.qp/*inner-query* is bound, so that it can lookup
+  expression refs by name, if necessary, to determine whether their value is a boolean literal.
+
+  Both the input `clause` and the output are MBQL."
   [clause]
   (if (or (boolean? clause)
           (boolean-value-clause? clause)
@@ -90,40 +86,18 @@
     [:= clause true]
     clause))
 
-(defmethod sql.qp/apply-top-level-clause [::boolean-is-comparison :filter]
-  [driver _ honeysql-form {clause :filter}]
-  (sql.helpers/where honeysql-form (->> (boolean->comparison clause)
-                                        (sql.qp/->honeysql driver))))
+(defn logical-op->honeysql
+  "Compile a logical op like AND, OR, or NOT, replacing booleans with comparisons."
+  [->honeysql clause]
+  (->> clause
+       (mapv boolean->comparison)
+       ->honeysql))
 
-(prefer-method sql.qp/apply-top-level-clause [::boolean-is-comparison :filter] [:sql :filter])
-
-(defn- compile-logical-op [driver [tag & _ :as clause]]
-  (let [parent-method (get-method sql.qp/->honeysql [:sql tag])]
-    (->> (mapv boolean->comparison clause)
-         (parent-method driver))))
-
-(defmethod sql.qp/->honeysql [::boolean-is-comparison :and]
-  [driver clause]
-  (compile-logical-op driver clause))
-
-(defmethod sql.qp/->honeysql [::boolean-is-comparison :or]
-  [driver clause]
-  (compile-logical-op driver clause))
-
-(defmethod sql.qp/->honeysql [::boolean-is-comparison :not]
-  [driver clause]
-  (compile-logical-op driver clause))
-
-;; The following expressions compile down to :case and should therefore also
-;; work: :if, :sum-where, :count-where, :distinct-where.
-(defmethod sql.qp/->honeysql [::boolean-is-comparison :case]
-  [driver [_ cond-cases :as clause]]
-  (let [parent-method (get-method sql.qp/->honeysql [:sql :case])]
-    (->> cond-cases
-         (mapv (fn [[e1 e2]]
-                 [(boolean->comparison e1) e2]))
-         (assoc clause 1)
-         (parent-method driver))))
-
-(doseq [tag [:and :or :not :case]]
-  (prefer-method sql.qp/->honeysql [::boolean-is-comparison tag] [:sql tag]))
+(defn case->honeysql
+  "Compile a CASE clause, replacing booleans with comparisons."
+  [->honeysql [_ cond-cases :as clause]]
+  (->> cond-cases
+       (mapv (fn [[e1 e2]]
+               [(boolean->comparison e1) e2]))
+       (assoc clause 1)
+       ->honeysql))
