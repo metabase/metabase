@@ -14,8 +14,8 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
 }
 
 export const CoercionStrategyPicker = ({
-  comboboxProps,
   baseType,
+  comboboxProps,
   value,
   onChange,
   ...props

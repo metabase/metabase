@@ -53,15 +53,14 @@ export const MetadataSection = ({ databaseId, field }: Props) => {
       />
 
       <TextareaBlurChange
-        component="textarea"
         label={t`Description`}
         mih={80}
+        placeholder={t`What is this field about?`}
         styles={{
           input: {
             minHeight: 80,
           },
         }}
-        placeholder={t`What is this field about?`}
         value={field.description ?? ""}
         onBlurChange={(event) => {
           const newValue = event.target.value;
