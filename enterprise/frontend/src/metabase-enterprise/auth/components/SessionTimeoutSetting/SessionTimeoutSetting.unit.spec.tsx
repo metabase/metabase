@@ -16,7 +16,10 @@ import {
 
 const DEFAULT_VALUE = { amount: 30, unit: "minutes" };
 
-const setup = async (value: TimeoutValue | null = DEFAULT_VALUE) => {
+const setup = async (
+  value: TimeoutValue | null = DEFAULT_VALUE,
+  setByEnvVar = false,
+) => {
   setupPropertiesEndpoints(
     createMockSettings({
       "session-timeout": value,
@@ -25,7 +28,14 @@ const setup = async (value: TimeoutValue | null = DEFAULT_VALUE) => {
       }),
     }),
   );
-  setupSettingsEndpoints([]);
+  setupSettingsEndpoints([
+    {
+      key: "session-timeout",
+      value,
+      is_env_setting: setByEnvVar,
+      env_name: "MB_SESSION_TIMEOUT",
+    },
+  ]);
   setupUpdateSettingEndpoint();
   renderWithProviders(<SessionTimeoutSetting />);
   await screen.findByText("Session timeout");
@@ -104,5 +114,10 @@ describe("SessionTimeoutSetting", () => {
   it("should render a populated value as enabled", async () => {
     await setup({ amount: 1, unit: "minutes" });
     expect(screen.getByText("Enabled")).toBeInTheDocument();
+  });
+
+  it("should show a notice if it's set by environment variable", async () => {
+    await setup({ amount: 1, unit: "minutes" }, true);
+    expect(screen.getByText("MB_SESSION_TIMEOUT")).toBeInTheDocument();
   });
 });

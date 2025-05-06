@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import {
+  BasicAdminSettingInput,
+  SetByEnvVar,
+} from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useAdminSetting } from "metabase/api/utils";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { Flex, Select, Stack, Text, TextInput } from "metabase/ui";
@@ -40,6 +43,7 @@ export const SessionTimeoutSetting = () => {
     value: settingValue,
     updateSetting,
     updateSettingsResult,
+    settingDetails,
   } = useAdminSetting("session-timeout");
   const [localValue, setLocalValue] = useState<TimeoutValue | null>(
     settingValue ?? DEFAULT_VALUE,
@@ -89,6 +93,19 @@ export const SessionTimeoutSetting = () => {
 
   if (!hasSessionTimeoutFeature) {
     return null;
+  }
+
+  if (settingDetails?.is_env_setting && !!settingDetails.env_name) {
+    return (
+      <Stack gap="sm">
+        <SettingHeader
+          id="session-timeout"
+          title={t`Session timeout`}
+          description={t`Time before inactive users are logged out.`}
+        />
+        <SetByEnvVar varName={settingDetails.env_name} />
+      </Stack>
+    );
   }
 
   return (

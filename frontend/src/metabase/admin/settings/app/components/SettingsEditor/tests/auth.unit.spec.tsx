@@ -1,3 +1,4 @@
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupGroupsEndpoint } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
 import {
@@ -9,11 +10,13 @@ import type { SetupOpts } from "./setup";
 import { setup } from "./setup";
 
 const setupPremium = async (feature: string, opts?: SetupOpts) => {
+  setupEnterprisePlugins();
   setupGroupsEndpoint([createMockGroup()]);
   await setup({
     ...opts,
     tokenFeatures: createMockTokenFeatures({
       [feature]: true,
+      sso_google: true,
     }),
     hasEnterprisePlugins: true,
   });
@@ -74,7 +77,6 @@ describe("SettingsEditorApp", () => {
     await setupPremium("session_timeout_config", {
       initialRoute: "/admin/settings/authentication",
     });
-
     expect(await screen.findByText("Session timeout")).toBeInTheDocument();
   });
 });
