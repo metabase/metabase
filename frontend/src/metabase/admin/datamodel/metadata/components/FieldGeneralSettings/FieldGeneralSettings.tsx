@@ -201,7 +201,6 @@ const FieldTypeSection = ({
         onUpdateField={(_field, updates) => {
           onUpdateField(field, updates);
         }}
-        hasSeparator
       />
     </MetadataSection>
   );

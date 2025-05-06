@@ -1,10 +1,12 @@
 import { is_coerceable } from "cljs/metabase.types";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { isTypeFK, isa } from "metabase-lib/v1/types/utils/isa";
 import type {
   Database,
   Field,
+  FieldFormattingSettings,
   FieldId,
   SchemaName,
   Table,
@@ -37,6 +39,20 @@ export function getRawTableFieldId(field: Field): FieldId {
   }
 
   return field.id;
+}
+
+export function getFieldCurrency(field: Field): string {
+  if (field.settings?.currency) {
+    return field.settings.currency;
+  }
+
+  const settings: FieldFormattingSettings = getGlobalSettingsForColumn(field);
+
+  if (settings.currency) {
+    return settings.currency;
+  }
+
+  return "USD";
 }
 
 export function getFieldDisplayName(

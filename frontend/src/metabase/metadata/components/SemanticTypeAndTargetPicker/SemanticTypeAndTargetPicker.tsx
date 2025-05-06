@@ -1,21 +1,18 @@
-import { Box, Flex, Icon, type SelectProps } from "metabase/ui";
-import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
+import { getFieldCurrency } from "metabase/metadata/utils/field";
+import { Flex, type SelectProps, Stack } from "metabase/ui";
 import { isCurrency, isFK } from "metabase-lib/v1/types/utils/isa";
-import type {
-  Field,
-  FieldFormattingSettings,
-  FieldId,
-} from "metabase-types/api";
+import type { Field, FieldId } from "metabase-types/api";
 
 import { CurrencyPicker } from "../CurrencyPicker";
 import { FkTargetPicker } from "../FkTargetPicker";
 import { SemanticTypePicker } from "../SemanticTypePicker";
 
+import SubInputIllustration from "./illustrations/sub-input.svg?component";
+
 interface SemanticTypeAndTargetPickerProps {
   className?: string;
   description?: string;
   field: Field;
-  hasSeparator?: boolean;
   idFields: Field[];
   label?: string;
   selectProps?: Omit<SelectProps, "data" | "value" | "onChange">;
@@ -33,7 +30,6 @@ export const SemanticTypeAndTargetPicker = ({
   field,
   idFields,
   label,
-  hasSeparator,
   selectProps,
   onUpdateField,
 }: SemanticTypeAndTargetPickerProps) => {
@@ -67,11 +63,7 @@ export const SemanticTypeAndTargetPicker = ({
   };
 
   return (
-    <Flex
-      align="center"
-      data-testid="semantic-type-target-picker"
-      display={hasSeparator ? "flex" : "block"}
-    >
+    <Stack data-testid="semantic-type-target-picker" gap={0}>
       <SemanticTypePicker
         {...selectProps}
         className={className}
@@ -82,53 +74,37 @@ export const SemanticTypeAndTargetPicker = ({
         onChange={handleChangeSemanticType}
       />
 
-      {showCurrencyTypeSelect && hasSeparator && (
-        <Box color="text-medium" px="md">
-          <Icon name="chevronright" size={12} />
-        </Box>
-      )}
-
       {showCurrencyTypeSelect && (
-        <CurrencyPicker
-          {...selectProps}
-          className={className}
-          mt={hasSeparator ? 0 : "xs"}
-          value={getFieldCurrency(field)}
-          onChange={handleChangeCurrency}
-        />
-      )}
+        <>
+          <Flex ml={12}>
+            <SubInputIllustration />
+          </Flex>
 
-      {showFKTargetSelect && hasSeparator && (
-        <Box color="text-medium" px="md">
-          <Icon name="chevronright" size={12} />
-        </Box>
+          <CurrencyPicker
+            {...selectProps}
+            className={className}
+            value={getFieldCurrency(field)}
+            onChange={handleChangeCurrency}
+          />
+        </>
       )}
 
       {showFKTargetSelect && (
-        <FkTargetPicker
-          {...selectProps}
-          className={className}
-          field={field}
-          idFields={idFields}
-          mt={hasSeparator ? 0 : "xs"}
-          value={field.fk_target_field_id}
-          onChange={handleChangeTarget}
-        />
+        <>
+          <Flex ml={12}>
+            <SubInputIllustration />
+          </Flex>
+
+          <FkTargetPicker
+            {...selectProps}
+            className={className}
+            field={field}
+            idFields={idFields}
+            value={field.fk_target_field_id}
+            onChange={handleChangeTarget}
+          />
+        </>
       )}
-    </Flex>
+    </Stack>
   );
-};
-
-const getFieldCurrency = (field: Field) => {
-  if (field.settings?.currency) {
-    return field.settings.currency;
-  }
-
-  const settings: FieldFormattingSettings = getGlobalSettingsForColumn(field);
-
-  if (settings.currency) {
-    return settings.currency;
-  }
-
-  return "USD";
 };
