@@ -331,8 +331,7 @@ describe("issue 51020", () => {
       createTemporaryTable();
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "foo" });
 
-      cy.visit("/");
-      H.newButton("Model").click();
+      cy.visit("/model/new");
       cy.findByTestId("new-model-options")
         .findByText("Use the notebook editor")
         .click();
