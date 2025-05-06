@@ -9,15 +9,15 @@ import {
   type SelectProps,
   Text,
 } from "metabase/ui";
-import type { Field, FieldVisibilityType } from "metabase-types/api";
+import type { FieldVisibilityType } from "metabase-types/api";
 
 import S from "./FieldVisibilityPicker.module.css";
 
 const DATA = getData();
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
-  value: Field["visibility_type"];
-  onChange: (visibilityType: Field["visibility_type"]) => void;
+  value: FieldVisibilityType;
+  onChange: (visibilityType: FieldVisibilityType) => void;
 }
 
 export const FieldVisibilityPicker = ({
