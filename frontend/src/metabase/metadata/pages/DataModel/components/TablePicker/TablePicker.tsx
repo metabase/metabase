@@ -15,7 +15,7 @@ import type {
 
 import { getUrl } from "../../utils";
 
-import { Delay, LoadingNode, Node } from "./Node";
+import { Node, renderLoading } from "./Node";
 import { SearchInput, SearchResults } from "./Search";
 import { useExpandedState, usePrefetch } from "./utils";
 
@@ -55,13 +55,7 @@ function RootNode({
   }
 
   if (isLoading) {
-    return (
-      <Delay>
-        <LoadingNode type="database" />
-        <LoadingNode type="database" />
-        <LoadingNode type="database" />
-      </Delay>
-    );
+    return renderLoading();
   }
 
   return data?.data?.map((database) => (
@@ -129,15 +123,7 @@ function DatabaseNode({
         fieldId: undefined,
       })}
     >
-      {isLoading ? (
-        <Delay>
-          <LoadingNode type="schema" />
-          <LoadingNode type="schema" />
-          <LoadingNode type="schema" />
-        </Delay>
-      ) : (
-        schemas
-      )}
+      {isLoading ? renderLoading() : schemas}
     </Node>
   );
 }
@@ -195,15 +181,7 @@ function SchemaNode({
         fieldId: undefined,
       })}
     >
-      {isLoading ? (
-        <Delay>
-          <LoadingNode type="table" />
-          <LoadingNode type="table" />
-          <LoadingNode type="table" />
-        </Delay>
-      ) : (
-        tables
-      )}
+      {isLoading ? renderLoading() : tables}
     </Node>
   );
 }

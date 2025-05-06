@@ -21,7 +21,7 @@ export function Node({
   expanded?: boolean;
   onToggle?: () => void;
   href?: string;
-  children?: ReactNode;
+  children?: ReactNode[];
 }) {
   return (
     <Box my="md" className={S.node}>
@@ -72,10 +72,12 @@ export function LoadingNode({
 }) {
   const w = 20 + Math.random() * 80;
   return (
-    <Node
-      type={type}
-      name={<Skeleton height={10} width={`${w}%`} radius="sm" />}
-    />
+    <Delay>
+      <Node
+        type={type}
+        name={<Skeleton height={10} width={`${w}%`} radius="sm" />}
+      />
+    </Delay>
   );
 }
 
@@ -100,4 +102,10 @@ export function Delay({
   }
 
   return children;
+}
+
+export function renderLoading(count: number = 3) {
+  return Array(count)
+    .fill(null)
+    .map((_, index) => <LoadingNode key={index} type="table" />);
 }
