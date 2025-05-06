@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
+import { FieldVisibilityPicker } from "metabase/metadata/components";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Stack } from "metabase/ui";
 import type { Field } from "metabase-types/api";
@@ -19,6 +20,16 @@ export const BehaviorSection = ({ field }: Props) => {
     <Stack gap="md">
       <Box>
         <SectionPill icon="filter" title={t`Behavior`} />
+
+        <FieldVisibilityPicker
+          value={field.visibility_type}
+          onChange={(visibilityType) => {
+            updateField({
+              id,
+              visibility_type: visibilityType,
+            });
+          }}
+        />
       </Box>
     </Stack>
   );

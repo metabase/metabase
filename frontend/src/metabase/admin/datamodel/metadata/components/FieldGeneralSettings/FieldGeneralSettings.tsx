@@ -148,7 +148,16 @@ const FieldVisibilitySection = ({
         description={t`Where this field will appear throughout Metabase`}
       />
       <div style={{ maxWidth: 400 }}>
-        <FieldVisibilityPicker field={field} onUpdateField={onUpdateField} />
+        <FieldVisibilityPicker
+          comboboxProps={{
+            width: 300,
+          }}
+          fw="bold"
+          value={field.visibility_type}
+          onChange={(visibilityType) => {
+            onUpdateField(field, { visibility_type: visibilityType });
+          }}
+        />
       </div>
     </MetadataSection>
   );

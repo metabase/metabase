@@ -101,9 +101,16 @@ const MetadataTableColumn = ({
             <div className={cx(CS.pl1, CS.flexAuto)}>
               <LabelPlaceholder />
               <FieldVisibilityPicker
-                className={CS.block}
-                field={field}
-                onUpdateField={onUpdateField}
+                comboboxProps={{
+                  width: 300,
+                }}
+                fw="bold"
+                value={field.visibility_type}
+                onChange={(visibilityType) => {
+                  onUpdateField(field, {
+                    visibility_type: visibilityType,
+                  });
+                }}
               />
             </div>
             <div className={cx(CS.flexAuto, CS.px1)}>
