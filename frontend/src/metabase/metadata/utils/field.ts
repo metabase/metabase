@@ -69,6 +69,11 @@ export function canFieldUnfoldJson(field: Field, database: Database): boolean {
   );
 }
 
-export function isFieldJsonUnfolded(field: Field, database: Database) {
-  return field.json_unfolding ?? database.details?.["json-unfolding"] ?? true;
+export function isFieldJsonUnfolded(field: Field, database: Database): boolean {
+  const databaseJsonUnfolding = database.details?.["json-unfolding"];
+
+  return (
+    field.json_unfolding ??
+    (typeof databaseJsonUnfolding === "boolean" ? databaseJsonUnfolding : true)
+  );
 }
