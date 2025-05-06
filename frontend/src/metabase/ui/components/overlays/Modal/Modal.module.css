@@ -5,6 +5,7 @@
 .title {
   font-size: var(--mantine-font-size-xl);
   font-weight: var(--mantine-heading-font-weight);
+  line-height: var(--mantine-line-height-md);
 }
 
 .overlay {
