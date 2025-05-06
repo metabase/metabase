@@ -6,7 +6,7 @@
    [kixi.stats.core :as stats]
    [kixi.stats.math :as math]
    [medley.core :as m]
-   [metabase.analyze.classifiers.name :as classifiers.name]
+   [metabase.analyze.classifiers.name]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -239,15 +239,15 @@
   - leading character [: assume valid json unless its of the form [ident] where ident is not a boolean."
   [x]
   (u/ignore-exceptions
-    (when (and x (string? x))
-      (let [matcher (case (first x)
-                      \[ (fn bracket-matcher [s]
-                           (cond (re-find #"^\[\s*(?:true|false)" s) true
-                                 (re-find #"^\[\s*[a-zA-Z]" s) false
-                                 :else true))
-                      \{ (constantly true)
-                      (constantly false))]
-        (matcher x)))))
+   (when (and x (string? x))
+     (let [matcher (case (first x)
+                     \[ (fn bracket-matcher [s]
+                          (cond (re-find #"^\[\s*(?:true|false)" s) true
+                                (re-find #"^\[\s*[a-zA-Z]" s) false
+                                :else true))
+                     \{ (constantly true)
+                     (constantly false))]
+       (matcher x)))))
 
 (deffingerprinter :type/Text
   ((map str) ; we cast to str to support `field-literal` type overwriting:
@@ -259,12 +259,11 @@
                  :percent-state  (stats/share u/state?)
                  :average-length ((map count) stats/mean)})))
 
+#_{:clj-kondo/ignore [:unused-binding]}
 (defn fingerprint-fields
-  "Return a transducer for fingerprinting a resultset with fields `fields`."
+  "Return a transducer for fingerprinting a batch of fields. Takes a sequence of tuples of field metadata and a sequence of
+  row values for that field. Returns a fingerprint for each field. If a fingerprinter was not available for that field,
+  or an error occurred, the fingerprint will be nil."
   [fields]
-  (apply col-wise (for [field fields]
-                    (fingerprinter
-                     (cond-> field
-                       ;; Try to get a better guestimate of what we're dealing with on first sync
-                       (every? nil? ((juxt :semantic_type :last_analyzed) field))
-                       (assoc :semantic_type (classifiers.name/infer-semantic-type-by-name field)))))))
+  ;; Just return minimal fingerprints, actual classification is in fingerprint-fields!
+  (map (constantly nil)))
