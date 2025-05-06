@@ -106,11 +106,15 @@
 (defn- assoc-attachment-booleans [part-configs parts]
   (for [{{result-card-id :id} :card :as result} parts
         :let [result-dashboard-card-id (:id (:dashcard result))
-              ;; We match on both the card id and the dashboard card id to support visualizer dashcards
-              noti-dashcard (m/find-first (fn [config]
-                                            (and (= (:card_id config) result-card-id)
-                                                 (= (:dashboard_card_id config) result-dashboard-card-id)))
-                                          part-configs)]]
+              ;; First attempt an exact match on both card_id and dashboard_card_id if both exist
+              noti-dashcard (or (m/find-first (fn [config]
+                                                (and (= (:card_id config) result-card-id)
+                                                     (= (:dashboard_card_id config) result-dashboard-card-id)))
+                                              part-configs)
+                                ;; Fall back to just matching on card_id
+                                (m/find-first (fn [config]
+                                                (= (:card_id config) result-card-id))
+                                              part-configs))]]
     (if result-card-id
       (update result :card merge (select-keys noti-dashcard [:include_csv :include_xls :format_rows :pivot_results]))
       result)))
@@ -189,6 +193,7 @@
                             (first (assoc-attachment-booleans
                                     [(assoc notification_card :include_csv true :format_rows true)]
                                     [card_part])))
+        _ (def result-attachments result-attachments)
         attachments        (concat [icon-attachment] card-attachments result-attachments)
         html-content       (html (:content rendered-card))
         goal               (ui-logic/find-goal-value payload)
