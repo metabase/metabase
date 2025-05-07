@@ -1,5 +1,6 @@
 (ns metabase.search.permissions
   (:require
+   [metabase.db :as mdb]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -47,7 +48,9 @@
   [{:keys [current-user-id is-superuser?]} :- SearchContext table-id-col :- :keyword]
   (mi/visible-filter-clause
    :model/Table
-   table-id-col
+   [:cast table-id-col (case (mdb/app-db)
+                         :mysql :signed
+                         :integer)]
    {:user-id current-user-id
     :is-superuser? is-superuser?}
    {:perms/view-data :unrestricted
