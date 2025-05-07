@@ -42,15 +42,15 @@ import type {
   UserId,
 } from "metabase-types/api";
 
-import { ChannelSetupModal } from "../../shared/ChannelSetupModal";
-import { AlertModalSettingsBlock } from "../../shared/components/AlertModalSettingsBlock/AlertModalSettingsBlock";
-import { AlertTriggerIcon } from "../../shared/components/AlertTriggerIcon";
-import { NotificationChannelsPicker } from "../../shared/components/NotificationChannels/NotificationChannelsPicker/NotificationChannelsPicker";
+import { ChannelSetupModal } from "../../../../../../../../frontend/src/metabase/notifications/modals/shared/ChannelSetupModal";
+import { AlertModalSettingsBlock } from "../../../../../../../../frontend/src/metabase/notifications/modals/shared/components/AlertModalSettingsBlock/AlertModalSettingsBlock";
+import { AlertTriggerIcon } from "../../../../../../../../frontend/src/metabase/notifications/modals/shared/components/AlertTriggerIcon";
+import { NotificationChannelsPicker } from "../../../../../../../../frontend/src/metabase/notifications/modals/shared/components/NotificationChannels/NotificationChannelsPicker/NotificationChannelsPicker";
 
 import S from "./CreateOrEditTableNotificationModal.module.css";
 import {
   AlertConditionBuilder,
-  AlertConditionExpression,
+  type AlertConditionExpression,
 } from "./components/AlertConditionBuilder/AlertConditionBuilder";
 import { PreviewTemplatePanel } from "./components/PreviewTemplatePanel/PreviewTemplatePanel";
 
