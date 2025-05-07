@@ -35,7 +35,7 @@
   :audit      :never
   :setter     :none
   :getter     (fn []
-                ((requiring-resolve 'metabase.premium-features.settings/-token-status))))
+                ((requiring-resolve 'metabase.premium-features.token-check/-token-status))))
 
 ;;; TODO - rename this to premium-features-token?
 (defsetting premium-embedding-token
