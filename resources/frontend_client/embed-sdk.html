@@ -54,70 +54,9 @@
     </script>
 
     <!-- If you modify this script, make sure you update the whitelisted Content-Security-Policy hash in metabase.server.middleware.security -->
-    <script type="text/javascript">
-      {
-        {
-          {
-            bootstrapJS;
-          }
-        }
-      }
-    </script>
-    <script type="text/javascript">
-      {
-        {
-          {
-            assetOnErrorJS;
-          }
-        }
-      }
-    </script>
-    <script
-      defer
-      src="http://localhost:8080/app/dist/runtime.hot.bundle.js"
-      onerror="Metabase.AssetErrorLoad(this)"
-    ></script>
-    <script
-      defer
-      src="http://localhost:8080/app/dist/vendor.hot.bundle.js"
-      onerror="Metabase.AssetErrorLoad(this)"
-    ></script>
-    <script
-      defer
-      src="http://localhost:8080/app/dist/vendor-styles.hot.bundle.js"
-      onerror="Metabase.AssetErrorLoad(this)"
-    ></script>
-    <script
-      defer
-      src="http://localhost:8080/app/dist/styles.hot.bundle.js"
-      onerror="Metabase.AssetErrorLoad(this)"
-    ></script>
-    <script
-      defer
-      src="http://localhost:8080/app/dist/html2canvas.hot.bundle.js"
-      onerror="Metabase.AssetErrorLoad(this)"
-    ></script>
-    <script
-      defer
-      src="http://localhost:8080/app/dist/jspdf.hot.bundle.js"
-      onerror="Metabase.AssetErrorLoad(this)"
-    ></script>
-    <script
-      defer
-      src="http://localhost:8080/app/dist/app-embed-sdk.hot.bundle.js"
-      onerror="Metabase.AssetErrorLoad(this)"
-    ></script>
-    <link href="http://localhost:8080/app/dist/vendor.css" rel="stylesheet" />
-    <link
-      href="http://localhost:8080/app/dist/vendor-styles.css"
-      rel="stylesheet"
-    />
-    <link href="http://localhost:8080/app/dist/styles.css" rel="stylesheet" />
-    <link
-      href="http://localhost:8080/app/dist/app-embed-sdk.css"
-      rel="stylesheet"
-    />
-  </head>
+    <script type="text/javascript">{{{bootstrapJS}}}</script>
+    <script type="text/javascript">{{{assetOnErrorJS}}}</script>
+  <script defer src="http://localhost:8080/app/dist/runtime.hot.bundle.js" onerror="Metabase.AssetErrorLoad(this)"></script><script defer src="http://localhost:8080/app/dist/vendor.hot.bundle.js" onerror="Metabase.AssetErrorLoad(this)"></script><script defer src="http://localhost:8080/app/dist/vendor-styles.hot.bundle.js" onerror="Metabase.AssetErrorLoad(this)"></script><script defer src="http://localhost:8080/app/dist/styles.hot.bundle.js" onerror="Metabase.AssetErrorLoad(this)"></script><script defer src="http://localhost:8080/app/dist/app-embed-sdk.hot.bundle.js" onerror="Metabase.AssetErrorLoad(this)"></script><link href="http://localhost:8080/app/dist/vendor.css" rel="stylesheet"><link href="http://localhost:8080/app/dist/vendor-styles.css" rel="stylesheet"><link href="http://localhost:8080/app/dist/styles.css" rel="stylesheet"></head>
 
   <body dir="ltr" class="mb-wrapper">
     <div id="root"></div>

@@ -37,7 +37,7 @@
 ;; /embed/question/:token.:export-format redirects to /api/public/card/:token/query/:export-format
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private ^{:arglists '([request respond raise])} embed-routes
-  (GET "sdk" [] index/embed-sdk)
+  (GET "/sdk" [] index/embed-sdk)
   (GET ["/question/:token.:export-format", :export-format api.dataset/export-format-regex]
     [token export-format]
     (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (system/site-url) token export-format)))
