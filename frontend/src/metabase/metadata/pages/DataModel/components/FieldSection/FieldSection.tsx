@@ -23,7 +23,7 @@ interface Props {
 export const FieldSection = ({ databaseId, field }: Props) => {
   return (
     <Stack gap={0} h="100%">
-      <Title order={2} px="xl" py="lg" pb="md">
+      <Title order={2} pb="md" px="xl" py="lg">
         {getFieldDisplayName(field)}
       </Title>
 
