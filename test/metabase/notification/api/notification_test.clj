@@ -1074,12 +1074,12 @@
                   (:handlers (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
                                                    (assoc notification :handlers [notification.tu/default-slack-handler]))))))))))
 
-#_(deftest notification-payload-card-test
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders {:limit 1})}]
-      (mt/user-http-request :crowberto :post 200 "notification/payload"
-                            {:payload_type :notification/card
-                             :payload      {:card_id card-id}
-                             :creator_id   (mt/user->id :crowberto)})))
+(deftest notification-payload-card-test
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders {:limit 1})}]
+    (mt/user-http-request :crowberto :post 200 "notification/payload"
+                          {:payload_type :notification/card
+                           :payload      {:card_id card-id}
+                           :creator_id   (mt/user->id :crowberto)})))
 
 (deftest get-default-template-test
   (is (=? {:channel/email (mt/malli=? :map)

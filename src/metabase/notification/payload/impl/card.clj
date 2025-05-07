@@ -86,3 +86,7 @@
                                                      (mapcat :recipients)
                                                      (map #(or (:user %) (:email %))))
                                     :filters    (-> notification-info :alert :parameters)}}))
+
+(defmethod notification.payload/notification-payload-schema :notification/card
+  [_notification-info]
+  :any)
