@@ -3,6 +3,8 @@ import { noop } from "underscore";
 
 import {
   DashboardContext,
+  type DashboardContextErrorState,
+  type DashboardContextLoadingState,
   type DashboardContextOwnProps,
   type DashboardContextOwnResult,
   type DashboardContextProps,
@@ -16,7 +18,9 @@ import {
 import { connect } from "metabase/lib/redux";
 
 export type MockDashboardContextProps = DashboardContextProps &
-  Partial<ReduxProps>;
+  Partial<ReduxProps> &
+  DashboardContextLoadingState &
+  DashboardContextErrorState;
 
 // Create a component that accepts all redux props and passes them into DashboardContext
 const DashboardContextWithReduxProps = (
@@ -27,7 +31,9 @@ const DashboardContextWithReduxProps = (
       DashboardControls
   >,
 ) => (
-  <DashboardContext.Provider value={{ isLoading: !props.dashboard, ...props }}>
+  <DashboardContext.Provider
+    value={{ isLoading: !props.dashboard, error: null, ...props }}
+  >
     {props.children}
   </DashboardContext.Provider>
 );
