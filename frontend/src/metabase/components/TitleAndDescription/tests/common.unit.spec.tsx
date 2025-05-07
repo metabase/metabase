@@ -2,47 +2,143 @@ import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
 
-import { dictionaryWithGermanPhrases as dictionary } from "./constants";
-import { type SetupOpts, setup as baseSetup } from "./setup";
+import type { RetrievedDictionaryArrayRow } from "metabase-types/api/content-translation";
 
-function setup(opts: SetupOpts) {
-  return baseSetup({ hasEnterprisePlugins: false, ...opts });
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupContentTranslationEndpoints } from "__support__/server-mocks/content-translation";
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders } from "__support__/ui";
+import type { TokenFeatures } from "metabase-types/api";
+import {
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
+
+import TitleAndDescription from "../TitleAndDescription";
+
+interface SetupOpts {
+  localeCode: string;
+  hasEnterprisePlugins?: boolean;
+  tokenFeatures?: Partial<TokenFeatures>;
+  dictionary?: RetrievedDictionaryArrayRow[];
 }
 
-describe("TitleAndDescription Component (OSS)", () => {
-  describe("when a German content translation dictionary is provided", () => {
-    it("displays untranslated question title and description when locale is English", async () => {
-      setup({ localeCode: "en", dictionary });
+const dictionary: RetrievedDictionaryArrayRow[] = [
+  { id: 0, locale: "de", msgid: "Sample text", msgstr: "Beispieltext" },
+  {
+    id: 1,
+    locale: "de",
+    msgid: "Sample description",
+    msgstr: "Beispielbeschreibung",
+  },
+];
 
-      expect(
-        await screen.findByRole("heading", {
-          name: dictionary[0].msgid,
-        }),
-      ).toBeInTheDocument();
+const baseSetup = ({
+  localeCode,
+  hasEnterprisePlugins,
+  tokenFeatures = {},
+  dictionary = [],
+}: SetupOpts) => {
+  const storeInitialState = createMockState({
+    settings: mockSettings({
+      "token-features": createMockTokenFeatures(tokenFeatures),
+    }),
+    currentUser: createMockUser({ locale: localeCode }),
+  });
 
-      await userEvent.hover(screen.getByLabelText("info icon"));
-      expect(
-        await screen.findByRole("tooltip", {
-          name: dictionary[1].msgid,
-        }),
-      ).toBeInTheDocument();
+  if (hasEnterprisePlugins) {
+    setupEnterprisePlugins();
+  }
+
+  setupContentTranslationEndpoints({ dictionary });
+
+  return renderWithProviders(
+    <TitleAndDescription
+      title={dictionary[0].msgid}
+      description={dictionary[1].msgid}
+    />,
+    { storeInitialState },
+  );
+};
+
+const assertStringsArePresent = async ({
+  shouldBeTranslated,
+}: {
+  shouldBeTranslated: boolean;
+}) => {
+  const key = shouldBeTranslated ? "msgstr" : "msgid";
+  expect(
+    await screen.findByRole("heading", {
+      name: dictionary[0][key],
+    }),
+  ).toBeInTheDocument();
+
+  await userEvent.hover(screen.getByLabelText("info icon"));
+  expect(
+    await screen.findByRole("tooltip", {
+      name: dictionary[1][key],
+    }),
+  ).toBeInTheDocument();
+};
+
+describe("TitleAndDescription component", () => {
+  describe("OSS", () => {
+    const setup = (opts: SetupOpts) =>
+      baseSetup({ hasEnterprisePlugins: false, ...opts });
+
+    describe("when a German content translation dictionary is provided", () => {
+      it("displays untranslated question title and description when locale is English", async () => {
+        setup({ localeCode: "en", dictionary });
+        assertStringsArePresent({ shouldBeTranslated: false });
+      });
+
+      it("displays untranslated question title and description when locale is German", async () => {
+        setup({ localeCode: "de", dictionary });
+        assertStringsArePresent({ shouldBeTranslated: false });
+      });
     });
+  });
 
-    it("displays untranslated question title and description when locale is German", async () => {
-      setup({ localeCode: "de", dictionary });
+  describe("EE without token feature", () => {
+    const setup = (opts: SetupOpts) =>
+      baseSetup({
+        hasEnterprisePlugins: true,
+        tokenFeatures: { content_translation: false },
+        ...opts,
+      });
 
-      expect(
-        await screen.findByRole("heading", {
-          name: dictionary[0].msgid,
-        }),
-      ).toBeInTheDocument();
+    describe("when a German content translation dictionary is provided", () => {
+      it("displays untranslated question title and description when locale is English", async () => {
+        setup({ localeCode: "en", dictionary });
+        assertStringsArePresent({ shouldBeTranslated: false });
+      });
 
-      await userEvent.hover(screen.getByLabelText("info icon"));
-      expect(
-        await screen.findByRole("tooltip", {
-          name: dictionary[1].msgid,
-        }),
-      ).toBeInTheDocument();
+      it("displays untranslated question title and description when locale is German", async () => {
+        setup({ localeCode: "de", dictionary });
+        assertStringsArePresent({ shouldBeTranslated: false });
+      });
+    });
+  });
+
+  describe("EE with token", () => {
+    const setup = (opts: SetupOpts) =>
+      baseSetup({
+        hasEnterprisePlugins: true,
+        tokenFeatures: { content_translation: true },
+        ...opts,
+      });
+
+    describe("when a German content translation dictionary is provided", () => {
+      it("displays untranslated question title and description when locale is English", async () => {
+        setup({ localeCode: "en", dictionary });
+        assertStringsArePresent({ shouldBeTranslated: false });
+      });
+
+      it("displays translated question title and description when locale is German", async () => {
+        setup({ localeCode: "de", dictionary });
+        assertStringsArePresent({ shouldBeTranslated: true });
+      });
     });
   });
 });
