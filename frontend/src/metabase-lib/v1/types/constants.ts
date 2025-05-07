@@ -33,7 +33,6 @@ export const TYPE_HIERARCHIES = {
   [TEMPORAL]: {
     base: [TYPE.Temporal],
     effective: [TYPE.Temporal],
-    semantic: [TYPE.Temporal],
   },
   [NUMBER]: {
     base: [TYPE.Number],
@@ -47,7 +46,6 @@ export const TYPE_HIERARCHIES = {
   [STRING]: {
     base: [TYPE.Text],
     effective: [TYPE.Text],
-    semantic: [TYPE.Text, TYPE.Category],
   },
   [STRING_LIKE]: {
     base: [TYPE.TextLike],
