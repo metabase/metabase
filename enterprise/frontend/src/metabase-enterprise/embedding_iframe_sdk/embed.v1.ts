@@ -72,7 +72,7 @@ class MetabaseEmbed {
       ),
     );
 
-    this._sendMessage("metabase.embed.updateSettings", allowedSettings);
+    this._sendMessage("metabase.embed.setSettings", allowedSettings);
   }
 
   private _setup() {

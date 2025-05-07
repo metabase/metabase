@@ -7,7 +7,7 @@ export type SdkIframeEmbedTagMessage = {
 
 /** Events that the sdk embed route listens for */
 export type SdkIframeEmbedMessage = {
-  type: "metabase.embed.updateSettings";
+  type: "metabase.embed.setSettings";
   data: SdkIframeEmbedSettings;
 };
 
