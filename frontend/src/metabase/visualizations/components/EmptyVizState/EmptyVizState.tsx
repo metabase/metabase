@@ -67,13 +67,15 @@ export const EmptyVizState = ({
       justify="center"
       data-testid="visualization-placeholder"
     >
-      <Box maw="20rem" mb="3rem">
-        <img
-          src={imgSrc}
-          alt={c("{0} refers to the chart type")
-            .t`${emptyVizChart} chart example illustration`}
-        />
-      </Box>
+      {imgSrc && (
+        <Box maw="20rem" mb="3rem">
+          <img
+            src={imgSrc}
+            alt={c("{0} refers to the chart type")
+              .t`${emptyVizChart} chart example illustration`}
+          />
+        </Box>
+      )}
       <Stack gap="0.75rem" maw="25rem" ta="center" align="center">
         {isDocsCTA && (
           <>
