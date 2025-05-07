@@ -10,7 +10,6 @@ import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { CreateOrEditTableNotificationModal } from "metabase/notifications/modals";
 import type { UserWithApplicationPermissions } from "metabase/plugins";
 import type {
   ChannelApiResponse,
@@ -29,6 +28,8 @@ import {
   createMockNotificationRecipientUser,
 } from "metabase-types/api/mocks/notification";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+import { CreateOrEditTableNotificationModal } from "./CreateOrEditTableNotificationModal";
 
 describe("CreateOrEditTableNotificationModal", () => {
   beforeEach(() => {

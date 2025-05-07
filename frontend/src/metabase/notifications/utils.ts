@@ -149,6 +149,7 @@ export const getDefaultTableNotificationRequest = ({
       currentUserId,
       userCanAccessSettings,
     }),
+    // TODO: Extract to generateExpression after code reorganization
     condition: ["=", ["context", "args", "table_id"], tableId],
   };
 };

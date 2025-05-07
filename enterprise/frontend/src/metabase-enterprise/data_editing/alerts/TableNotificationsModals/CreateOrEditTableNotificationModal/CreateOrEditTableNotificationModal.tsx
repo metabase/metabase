@@ -24,6 +24,10 @@ import {
   getHasConfiguredEmailChannel,
 } from "metabase/lib/pulse";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { ChannelSetupModal } from "metabase/notifications/modals/shared/ChannelSetupModal";
+import { AlertModalSettingsBlock } from "metabase/notifications/modals/shared/components/AlertModalSettingsBlock/AlertModalSettingsBlock";
+import { AlertTriggerIcon } from "metabase/notifications/modals/shared/components/AlertTriggerIcon";
+import { NotificationChannelsPicker } from "metabase/notifications/modals/shared/components/NotificationChannels/NotificationChannelsPicker/NotificationChannelsPicker";
 import { getDefaultTableNotificationRequest } from "metabase/notifications/utils";
 import { addUndo } from "metabase/redux/undo";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
@@ -31,6 +35,7 @@ import { Button, Flex, Modal, Stack, rem } from "metabase/ui";
 import type {
   ChannelApiResponse,
   ChannelTemplate,
+  ConditionalAlertExpression,
   CreateTableNotificationRequest,
   NotificationChannelType,
   NotificationHandler,
@@ -42,13 +47,9 @@ import type {
   UserId,
 } from "metabase-types/api";
 
-import { ChannelSetupModal } from "../../shared/ChannelSetupModal";
-import { AlertModalSettingsBlock } from "../../shared/components/AlertModalSettingsBlock/AlertModalSettingsBlock";
-import { AlertTriggerIcon } from "../../shared/components/AlertTriggerIcon";
-import { NotificationChannelsPicker } from "../../shared/components/NotificationChannels/NotificationChannelsPicker/NotificationChannelsPicker";
-
 import S from "./CreateOrEditTableNotificationModal.module.css";
-import { PreviewTemplatePanel } from "./components/PreviewTemplatePanel";
+import { AlertConditionBuilder } from "./components/AlertConditionBuilder/AlertConditionBuilder";
+import { PreviewTemplatePanel } from "./components/PreviewTemplatePanel/PreviewTemplatePanel";
 
 type TableNotificationTriggerOption = {
   value: {
@@ -109,7 +110,7 @@ interface CreateOrEditTableNotificationModalProps {
 
 // Custom hooks to encapsulate logic from the modal.
 // Fetch necessary data.
-const useNotificationData = (
+const useNotificationTemplates = (
   requestBody:
     | CreateTableNotificationRequest
     | UpdateTableNotificationRequest
@@ -162,7 +163,6 @@ const useNotificationData = (
   };
 };
 
-// Manage the form state
 const useNotificationFormState = (
   tableId: TableId,
   notification: TableNotification | null,
@@ -205,46 +205,64 @@ const useNotificationFormState = (
     userCanAccessSettings,
   ]);
 
-  const handleEventNameChange = useCallback(
-    (value: string | null) => {
-      if (value && requestBody) {
-        const selectedOption =
-          NOTIFICATION_TRIGGER_OPTIONS_MAP[value as NotificationTriggerEvent];
-        if (selectedOption) {
-          setRequestBody({
-            ...requestBody,
-            payload: {
-              ...requestBody.payload,
-              event_name: selectedOption.value.eventName,
-            },
-          });
-        }
+  const handleEventNameChange = useCallback((value: string | null) => {
+    if (value) {
+      const selectedOption =
+        NOTIFICATION_TRIGGER_OPTIONS_MAP[value as NotificationTriggerEvent];
+      if (selectedOption) {
+        setRequestBody((requestBody) =>
+          requestBody
+            ? {
+                ...requestBody,
+                payload: {
+                  ...requestBody.payload,
+                  event_name: selectedOption.value.eventName,
+                },
+              }
+            : null,
+        );
       }
-    },
-    [requestBody],
-  );
+    }
+  }, []);
 
   const handleChannelHandlersChange = useCallback(
     (newHandlers: NotificationHandler[]) => {
-      if (requestBody) {
-        setRequestBody({
-          ...requestBody,
-          handlers: newHandlers,
-        });
-      }
+      setRequestBody((requestBody) =>
+        requestBody
+          ? {
+              ...requestBody,
+              handlers: newHandlers,
+            }
+          : null,
+      );
     },
-    [requestBody],
+    [],
+  );
+
+  const handleConditionChange = useCallback(
+    (newCondition: ConditionalAlertExpression) => {
+      setRequestBody((requestBody) =>
+        requestBody
+          ? {
+              ...requestBody,
+              condition: newCondition,
+            }
+          : null,
+      );
+    },
+    [],
   );
 
   return {
     requestBody,
     handleEventNameChange,
     handleChannelHandlersChange,
+    handleConditionChange,
   };
 };
 
 // Manage the preview panel state and data fetching
-const useNotificationPreview = (
+const useNotificationTemplatePreview = (
   requestBody:
     | CreateTableNotificationRequest
     | UpdateTableNotificationRequest
@@ -324,14 +342,12 @@ const useNotificationSave = (
     | null,
   notification: TableNotification | null,
   isEditMode: boolean,
-  onClose: () => void,
   onNotificationCreated?: () => void,
   onNotificationUpdated?: () => void,
 ) => {
   const dispatch = useDispatch();
   const [createNotification] = useCreateNotificationMutation();
   const [updateNotification] = useUpdateNotificationMutation();
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
   const hasChanges = useMemo(
     () => notification && !isEqual(requestBody, notification),
@@ -384,6 +400,62 @@ const useNotificationSave = (
     onNotificationUpdated,
   ]);
 
+  return {
+    hasChanges,
+    onCreateOrEditAlert,
+  };
+};
+
+export const CreateOrEditTableNotificationModal = ({
+  tableId,
+  notification,
+  onNotificationCreated,
+  onNotificationUpdated,
+  onClose,
+}: CreateOrEditTableNotificationModalProps) => {
+  const user = useSelector(getUser);
+  const userCanAccessSettings = useSelector(canAccessSettings);
+  const isEditMode = !!notification?.id;
+
+  const { data: channelSpec, isLoading: isLoadingChannelInfo } =
+    useGetChannelInfoQuery();
+
+  const {
+    requestBody,
+    handleEventNameChange,
+    handleChannelHandlersChange,
+    handleConditionChange,
+  } = useNotificationFormState(
+    tableId,
+    notification ?? null,
+    user,
+    channelSpec,
+    userCanAccessSettings,
+  );
+
+  const { defaultTemplates, templateContext } = useNotificationTemplates(
+    requestBody,
+    user,
+  );
+
+  const {
+    previewOpen,
+    previewData,
+    isPreviewLoading,
+    previewError,
+    handlePreviewClick,
+    handlePreviewClose,
+  } = useNotificationTemplatePreview(requestBody, defaultTemplates);
+
+  const { hasChanges, onCreateOrEditAlert } = useNotificationSave(
+    requestBody,
+    notification ?? null,
+    isEditMode,
+    onNotificationCreated,
+    onNotificationUpdated,
+  );
+
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const handleCloseAttempt = useCallback(() => {
     if (isConfirmModalOpen) {
       return;
@@ -402,69 +474,6 @@ const useNotificationSave = (
   }, [onClose]);
 
   useEscapeToCloseModal(handleCloseAttempt, { capture: false });
-
-  return {
-    isConfirmModalOpen,
-    hasChanges,
-    onCreateOrEditAlert,
-    handleCloseAttempt,
-    handleConfirmDiscard,
-    setIsConfirmModalOpen, // Export setter for direct control if needed
-  };
-};
-
-export const CreateOrEditTableNotificationModal = ({
-  tableId,
-  notification,
-  onNotificationCreated,
-  onNotificationUpdated,
-  onClose,
-}: CreateOrEditTableNotificationModalProps) => {
-  const user = useSelector(getUser);
-  const userCanAccessSettings = useSelector(canAccessSettings);
-  const isEditMode = !!notification?.id;
-
-  const { data: channelSpec, isLoading: isLoadingChannelInfo } =
-    useGetChannelInfoQuery();
-
-  const { requestBody, handleEventNameChange, handleChannelHandlersChange } =
-    useNotificationFormState(
-      tableId,
-      notification ?? null,
-      user,
-      channelSpec,
-      userCanAccessSettings,
-    );
-
-  const { defaultTemplates, templateContext } = useNotificationData(
-    requestBody,
-    user,
-  );
-
-  const {
-    previewOpen,
-    previewData,
-    isPreviewLoading,
-    previewError,
-    handlePreviewClick,
-    handlePreviewClose,
-  } = useNotificationPreview(requestBody, defaultTemplates);
-
-  const {
-    isConfirmModalOpen,
-    hasChanges,
-    onCreateOrEditAlert,
-    handleCloseAttempt,
-    handleConfirmDiscard,
-    setIsConfirmModalOpen,
-  } = useNotificationSave(
-    requestBody,
-    notification ?? null,
-    isEditMode,
-    onClose,
-    onNotificationCreated,
-    onNotificationUpdated,
-  );
 
   const hasConfiguredAnyChannel = useMemo(
     () => getHasConfiguredAnyChannel(channelSpec),
@@ -530,6 +539,14 @@ export const CreateOrEditTableNotificationModal = ({
                     handleEventNameChange(value);
                   }
                 }}
+              />
+            </Flex>
+            <Flex mt="md">
+              <AlertConditionBuilder
+                tableId={tableId}
+                eventType={requestBody?.payload.event_name}
+                onChange={handleConditionChange}
+                initialExpression={notification?.condition}
               />
             </Flex>
           </AlertModalSettingsBlock>
