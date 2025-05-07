@@ -10,6 +10,7 @@
    [metabase.channel.models.channel :as models.channel]
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.util :as render.util]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.models.params.shared :as shared.params]
@@ -106,11 +107,14 @@
 (defn- assoc-attachment-booleans [part-configs parts]
   (for [{{result-card-id :id} :card :as result} parts
         :let [result-dashboard-card-id (:id (:dashcard result))
-              ;; First attempt an exact match on both card_id and dashboard_card_id if both exist
-              noti-dashcard (or (m/find-first (fn [config]
-                                                (and (= (:card_id config) result-card-id)
-                                                     (= (:dashboard_card_id config) result-dashboard-card-id)))
-                                              part-configs)
+              is-visualizer-part (render.util/is-visualizer-dashcard? (:dashcard result))
+              ;; For visualizer dashcards we match on both card_id and dashboard_card_id
+              ;; To disambiguate between regulard cards and regular cards that were turned into visualizer dashcards
+              noti-dashcard (or (and is-visualizer-part
+                                     (m/find-first (fn [config]
+                                                     (and (= (:card_id config) result-card-id)
+                                                          (= (:dashboard_card_id config) result-dashboard-card-id)))
+                                                   part-configs))
                                 ;; Fall back to just matching on card_id
                                 (m/find-first (fn [config]
                                                 (= (:card_id config) result-card-id))
@@ -193,7 +197,6 @@
                             (first (assoc-attachment-booleans
                                     [(assoc notification_card :include_csv true :format_rows true)]
                                     [card_part])))
-        _ (def result-attachments result-attachments)
         attachments        (concat [icon-attachment] card-attachments result-attachments)
         html-content       (html (:content rendered-card))
         goal               (ui-logic/find-goal-value payload)
