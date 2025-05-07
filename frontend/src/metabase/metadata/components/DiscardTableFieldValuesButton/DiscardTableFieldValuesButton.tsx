@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { useDiscardTableFieldValuesMutation } from "metabase/api";
@@ -29,6 +30,10 @@ export const DiscardTableFieldValuesButton = ({ tableId }: Props) => {
       timeoutIdRef.current = window.setTimeout(() => setStarted(false), 2000);
     }
   };
+
+  useUnmount(() => {
+    window.clearTimeout(timeoutIdRef.current);
+  });
 
   useEffect(() => {
     if (error) {
