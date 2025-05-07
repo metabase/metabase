@@ -16,7 +16,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import TitleAndDescription from "../TitleAndDescription";
 
-import { type SetupOpts, sampleDictionary } from "./constants";
+import { sampleDictionary } from "./constants";
 
 export interface SetupOpts {
   localeCode: string;
