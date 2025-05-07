@@ -68,8 +68,7 @@
 
 (defn- filter-for-card
   [card field]
-  (some->> ((:fk-map field) (:table_id card))
-           (vector :dimension)))
+  [:dimension ((:fk-map field) (:table_id card)) {:stage-number 0}])
 
 (defn- add-filter
   [dashcard filter-id field]
