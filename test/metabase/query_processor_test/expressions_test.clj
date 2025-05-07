@@ -825,7 +825,7 @@
 
 (deftest ^:parallel literal-boolean-expressions-and-fields-in-conditions-test
   (testing "literal boolean expression and field references in filter and case clauses"
-    ;; Test boolean->comparison conversion for drivers that need it. See boolean_is_comparison.clj. Other drivers
+    ;; Test boolean->comparison conversion for drivers that need it. See boolean_to_comparison.clj. Other drivers
     ;; should support these queries without rewriting top-level booleans in conditions.
     (let [true-value  (get standard-literal-expression-defs "MyTrue")
           false-value (get standard-literal-expression-defs "MyFalse")]
@@ -849,7 +849,7 @@
 
 (deftest ^:parallel nested-and-joined-literal-boolean-expressions-in-conditions-test
   (testing "nested and joined literal boolean expression references in filter and case clauses"
-    ;; Test boolean->comparison conversion for drivers that need it. See boolean_is_comparison.clj. Other drivers
+    ;; Test boolean->comparison conversion for drivers that need it. See boolean_to_comparison.clj. Other drivers
     ;; should support these queries without rewriting top-level booleans in conditions.
     (let [true-value  (get standard-literal-expression-defs "MyTrue")
           false-value (get standard-literal-expression-defs "MyFalse")]
@@ -893,7 +893,7 @@
 
 (deftest ^:parallel nested-literal-boolean-expression-with-name-collisions-in-conditions-test
   (testing "nested literal boolean expression references with name collisions in filter and case clauses"
-    ;; Test boolean->comparison conversion for drivers that need it. See boolean_is_comparison.clj. Other drivers
+    ;; Test boolean->comparison conversion for drivers that need it. See boolean_to_comparison.clj. Other drivers
     ;; should support these queries without rewriting top-level booleans in conditions.
     (let [true-value  (get standard-literal-expression-defs "MyTrue")
           false-value (get standard-literal-expression-defs "MyFalse")]
