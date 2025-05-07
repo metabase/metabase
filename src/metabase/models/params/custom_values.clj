@@ -159,6 +159,19 @@
                     {:status-code 400
                      :parameter parameter}))))
 
+(defn pk-field-of-fk-pk-pair
+  "Check if the collection `_field-ids` contains the ID of a FK field and the ID of the corresponding PK field
+  and nothing else.
+  Return the PK field if `_field-ids` is such a pair."
+  [[field-id1 field-id2 & others :as _field-ids]]
+  (when (and (nil? others)
+             (pos-int? field-id1)
+             (pos-int? field-id2))
+    (let [[field1 field2 :as fields] (t2/select :model/Field :id [:in [field-id1 field-id2]])]
+      (when (= (count fields) 2)
+        (cond (= (:fk_target_field_id field1) (:id field2)) field2
+              (= (:fk_target_field_id field2) (:id field1)) field1)))))
+
 (defn parameter-remapped-value
   "Fetch the remapped value for the given `value` of parameter `param` with default values provided by
   the function `default-case-thunk`.

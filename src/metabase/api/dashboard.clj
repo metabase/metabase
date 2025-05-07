@@ -1301,16 +1301,6 @@
     (binding [qp.perms/*param-values-query* true]
       (param-values dashboard param-key constraint-param-key->value query))))
 
-(defn- fk-pk-pair?
-  [[field-id1 field-id2 & others]]
-  (when (and (nil? others)
-             (pos-int? field-id1)
-             (pos-int? field-id2))
-    (let [[field1 field2 :as fields] (t2/select :model/Field :id [:in [field-id1 field-id2]])]
-      (and (= (count fields) 2)
-           (or (= (:fk_target_field_id field1) (:id field2))
-               (= (:fk_target_field_id field2) (:id field1)))))))
-
 (defn dashboard-param-remapped-value
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `dashboard`."
   ([dashboard param-key value]
@@ -1330,7 +1320,7 @@
       value
       #(let [field-ids (into #{} (map :field-id (param->fields param)))]
          (when (or (= (count field-ids) 1)
-                   (fk-pk-pair? field-ids))
+                   (custom-values/pk-field-of-fk-pk-pair field-ids))
            (-> (chain-filter dashboard param-key (assoc constraint-param-key->value param-key value))
                :values
                first)))))))
