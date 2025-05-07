@@ -143,7 +143,7 @@ function FunctionBrowserItem({
     >
       <dt>
         <Text size="md" pb="xs" fw="bold" className={S.name}>
-          {clause.structure}
+          {clause.displayName}
         </Text>
       </dt>
       <dd className={S.description}>

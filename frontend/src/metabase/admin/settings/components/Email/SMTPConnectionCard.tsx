@@ -6,11 +6,11 @@ import { Box, Button, Flex, Paper, Title } from "metabase/ui";
 
 export const SMTPConnectionCard = () => {
   return (
-    <Box data-testid="smtp-connection-card" w="100%" mb="2.5rem" ml="1rem">
+    <Box data-testid="smtp-connection-card" w="100%">
       <Paper shadow="sm" withBorder w="34rem" maw="100%" p="1.75rem">
         <Flex justify="space-between" align="center">
           <Flex align="center" gap="sm">
-            <Title>{t`SMTP`}</Title>
+            <Title order={2}>{t`SMTP`}</Title>
             <Paper
               fw="bold"
               c={color("brand")}

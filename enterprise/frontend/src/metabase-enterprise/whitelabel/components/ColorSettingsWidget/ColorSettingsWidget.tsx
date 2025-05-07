@@ -1,44 +1,41 @@
-import { useCallback, useMemo, useRef } from "react";
-import _ from "underscore";
+import { useDebouncedCallback } from "@mantine/hooks";
 
+import { SetByEnvVar } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { useAdminSetting } from "metabase/api/utils";
 import { originalColors } from "metabase/lib/colors/palette";
+import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
 
 import { ColorSettings } from "../ColorSettings";
 
-import type { ColorSetting } from "./types";
+export const ColorSettingsWidget = () => {
+  const {
+    value: colorSettings,
+    updateSetting,
+    settingDetails,
+  } = useAdminSetting("application-colors");
 
-export interface ColorSettingsWidget {
-  setting: ColorSetting;
-  onChange: (value: Record<string, string>) => void;
-}
+  const handleChange = (newValue: ColorSettingsType) => {
+    updateSetting({
+      key: "application-colors",
+      value: newValue,
+    });
+  };
 
-const ColorSettingsWidget = ({
-  setting,
-  onChange,
-}: ColorSettingsWidget): JSX.Element => {
-  const onChangeDebounced = useDebounce(onChange, 400);
+  const onChangeDebounced = useDebouncedCallback(handleChange, 400);
+
+  if (!colorSettings) {
+    return null;
+  }
+
+  if (settingDetails?.is_env_setting && settingDetails?.env_name) {
+    return <SetByEnvVar varName={settingDetails.env_name} />;
+  }
 
   return (
     <ColorSettings
-      initialColors={setting.value}
+      initialColors={colorSettings}
       originalColors={originalColors}
       onChange={onChangeDebounced}
     />
   );
 };
-
-const useDebounce = function <T>(func: (value: T) => void, wait: number) {
-  const ref = useRef(func);
-  ref.current = func;
-
-  const callback = useCallback((value: T) => {
-    return ref.current?.(value);
-  }, []);
-
-  return useMemo(() => {
-    return _.debounce(callback, wait);
-  }, [callback, wait]);
-};
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ColorSettingsWidget;

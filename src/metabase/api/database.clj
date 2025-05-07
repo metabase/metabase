@@ -27,7 +27,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
-   [metabase.sample-data :as sample-data]
+   [metabase.sample-data.core :as sample-data]
    [metabase.server.streaming-response]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.settings.deprecated-grab-bag :as public-settings]
