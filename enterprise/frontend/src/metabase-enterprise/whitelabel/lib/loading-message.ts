@@ -21,6 +21,6 @@ export const LOADING_MESSAGE_BY_SETTING = {
 
 export const getLoadingMessageOptions = () =>
   Object.entries(LOADING_MESSAGE_BY_SETTING).map(([value, option]) => ({
-    name: option.name,
+    label: option.name,
     value,
   }));

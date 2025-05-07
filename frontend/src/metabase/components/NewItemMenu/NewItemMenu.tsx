@@ -93,18 +93,11 @@ const NewItemMenu = ({
       });
     }
 
-    items.push(
-      {
-        title: t`Dashboard`,
-        icon: "dashboard",
-        action: () => dispatch(setOpenModal("dashboard")),
-      },
-      {
-        title: t`Collection`,
-        icon: "folder",
-        action: () => dispatch(setOpenModal("collection")),
-      },
-    );
+    items.push({
+      title: t`Dashboard`,
+      icon: "dashboard",
+      action: () => dispatch(setOpenModal("dashboard")),
+    });
 
     if (
       hasNativeWrite &&
@@ -132,19 +125,6 @@ const NewItemMenu = ({
         title: t`Action`,
         icon: "bolt",
         action: () => dispatch(setOpenModal("action")),
-      });
-    }
-
-    if (hasDataAccess && !isEmbeddingIframe) {
-      items.push({
-        title: t`Metric`,
-        icon: "metric",
-        link: Urls.newQuestion({
-          mode: "query",
-          cardType: "metric",
-          collectionId,
-        }),
-        onClose: onCloseNavbar,
       });
     }
 

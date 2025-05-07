@@ -9,7 +9,6 @@
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.style :as style]
    [metabase.channel.settings :as channel.settings]
-   [metabase.channel.slack :as slack]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
    [metabase.notification.test-util :as notification.tu]
@@ -34,7 +33,7 @@
 (defn- user-details [user]
   (select-keys
    user
-   [:email :first_name :last_login :is_qbnewb :is_superuser :id :last_name :date_joined :common_name :locale]))
+   [:email :first_name :last_login :is_qbnewb :is_superuser :id :last_name :date_joined :common_name :locale :tenant_id]))
 
 (defn- pulse-card-details [card]
   (-> (select-keys card [:id :collection_id :name :description :display])

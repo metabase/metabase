@@ -416,6 +416,31 @@ describe("collection permissions", () => {
     );
     cy.findByTestId("permission-table");
   });
+
+  it("should show the new collection button in a sidebar even to users without collection access", () => {
+    cy.intercept("POST", "/api/collection").as("createCollection");
+
+    cy.signIn("nocollection");
+    cy.visit("/");
+    H.navigationSidebar()
+      .findByLabelText("Create a new collection")
+      .should("be.visible")
+      .click();
+
+    cy.findByTestId("new-collection-modal").within(() => {
+      cy.findByLabelText("Name").type("Foo");
+      cy.log(
+        "The only possible location to save the new collection is this user's personal collection",
+      );
+      cy.findByTestId("collection-picker-button").should(
+        "contain",
+        "No Collection Tableton's Personal Collection",
+      );
+      cy.button("Create").click();
+      cy.wait("@createCollection");
+    });
+    cy.location("pathname").should("match", /^\/collection\/\d+-foo/);
+  });
 });
 
 function clickButton(name) {

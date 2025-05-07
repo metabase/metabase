@@ -499,12 +499,13 @@
           changeset-id (last (map :id (jdbc/query {:connection conn} [changeset-query])))]
       (some-> changeset-id extract-numbers first))))
 
-(defn rollback-major-version
-  "Roll back migrations later than given Metabase major version. If force is true, it will ignore any checks and always roll back"
+(defn rollback-major-version!
+  "Roll back migrations later than given Metabase major version. If force is true, it will ignore any checks and always
+  roll back"
   ;; default rollback to previous version
   ([conn liquibase force]
    ;; get current major version of Metabase we are running
-   (rollback-major-version conn liquibase force (dec (config/current-major-version))))
+   (rollback-major-version! conn liquibase force (dec (config/current-major-version))))
 
   ;; with explicit target version
   ([conn ^Liquibase liquibase force target-version]
@@ -513,7 +514,8 @@
              (format "target version must be a number between 44 and the previous major version (%d), inclusive"
                      (config/current-major-version)))))
    (with-scope-locked liquibase
-    ;; count and rollback only the applied change set ids which come after the target version (only the "v..." IDs need to be considered)
+    ;; count and rollback only the applied change set ids which come after the target version (only the "v..." IDs need
+    ;; to be considered)
      (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ID ASC" (changelog-table-name liquibase))
            changeset-ids   (map :id (jdbc/query {:connection conn} [changeset-query]))
            ;; IDs in changesets do not include the leading 0/1 digit, so the major version is the first number
