@@ -5,7 +5,7 @@ import { NodeModulesPolyfillPlugin } from "@esbuild-plugins/node-modules-polyfil
 import { commonjs } from "@hyrious/esbuild-plugin-commonjs";
 import { transform } from "@svgr/core";
 import babel from "esbuild-plugin-babel";
-import fixReactVirtualized from "esbuild-plugin-react-virtualized";
+import fixReactVirtualizedPlugin from "esbuild-plugin-react-virtualized";
 import { createGenerateScopedName } from "hash-css-selector";
 import path from "path";
 import postcss from "postcss";
@@ -297,7 +297,7 @@ await build({
   },
   esbuildPlugins: [
     cssModulesPlugin(),
-    fixReactVirtualized,
+    fixReactVirtualizedPlugin,
     // To properly apply @emotion plugin before `requireToImport`
     babel({ filter: /\.[jt]s?x/ }),
     commonjs({
