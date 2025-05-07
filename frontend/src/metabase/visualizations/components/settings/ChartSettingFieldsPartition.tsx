@@ -33,7 +33,7 @@ const AddBreakoutPopover = ({ query }: AddBreakoutPopoverProps) => {
   const [opened, { close, toggle }] = useDisclosure();
 
   return (
-    <Popover opened={opened} onClose={close}>
+    <Popover opened={opened} onClose={close} position={"right-start"}>
       <Popover.Target>
         <Button
           variant="subtle"
@@ -56,7 +56,7 @@ const AddBreakoutPopover = ({ query }: AddBreakoutPopoverProps) => {
           breakoutIndex={undefined}
           onAddBreakout={() => {}}
           onUpdateBreakoutColumn={() => {}}
-          onClose={() => {}}
+          onClose={close}
         />
       </Popover.Dropdown>
     </Popover>
