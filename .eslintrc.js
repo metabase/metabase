@@ -202,6 +202,8 @@ module.exports = {
         "e2e/**/*",
         "**/tests/*",
         "release/**/*",
+        "webpack.config.js",
+        "rspack.config.js",
       ],
       rules: {
         "no-color-literals": "off",
