@@ -18,6 +18,8 @@ const ALLOWED_EMBED_SETTING_KEYS = [
   "locale",
 ] as const satisfies EmbedSettingKey[];
 
+type AllowedEmbedSettingKey = (typeof ALLOWED_EMBED_SETTING_KEYS)[number];
+
 class MetabaseEmbed {
   static readonly VERSION = "1.0.0";
 
@@ -52,8 +54,7 @@ class MetabaseEmbed {
     }
 
     this._validateEmbedSettings(settings);
-    this._settings = { ...this._settings, ...settings };
-    this._setEmbedSettings(settings);
+    this._setEmbedSettings(this._settings);
   }
 
   public destroy() {
@@ -68,11 +69,12 @@ class MetabaseEmbed {
   private _setEmbedSettings(settings: Partial<SdkIframeEmbedSettings>) {
     const allowedSettings = Object.fromEntries(
       Object.entries(settings).filter(([key]) =>
-        ALLOWED_EMBED_SETTING_KEYS.includes(key as EmbedSettingKey),
+        ALLOWED_EMBED_SETTING_KEYS.includes(key as AllowedEmbedSettingKey),
       ),
     );
 
-    this._sendMessage("metabase.embed.setSettings", allowedSettings);
+    this._settings = { ...this._settings, ...allowedSettings };
+    this._sendMessage("metabase.embed.setSettings", this._settings);
   }
 
   private _setup() {
