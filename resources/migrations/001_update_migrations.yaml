@@ -11181,6 +11181,63 @@ databaseChangeLog:
                     unique: false
                     nullable: true
 
+  - changeSet:
+      id: v55.2025-05-02T08:21:44
+      author: lbrdnk
+      comment: Migrate hacked semantic types
+      rollback:
+        - update:
+            tableName: metabase_field
+            # set columns to NULL
+            columns:
+              - column:
+                  name: coercion_strategy
+              - column:
+                  name: effective_type
+            where: coercion_strategy = 'Coercion/String->Float'
+      changes:
+        - update:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: coercion_strategy
+                  value: 'Coercion/String->Float'
+              - column:
+                  name: effective_type
+                  value: 'type/Float'
+            where: |
+              (
+                select metabase_database.engine
+                from metabase_table
+                join metabase_database on metabase_table.db_id = metabase_database.id
+                where metabase_field.table_id = metabase_table.id
+              ) in (
+                'mysql',
+                'sqlite',
+                'sqlserver',
+                'snowflake',
+                'h2',
+                'oracle'
+              )
+              AND base_type = 'type/Text'
+              AND semantic_type in (
+                'type/Longitude',
+                'type/Discount',
+                'type/Currency',
+                'type/Cost',
+                'type/Quantity',
+                'type/Duration',
+                'type/Latitude',
+                'type/Coordinate',
+                'type/GrossMargin',
+                'type/Percentage',
+                'type/Share',
+                'type/Price',
+                'type/Income',
+                'type/Score',
+                'type/Number'
+              )
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
