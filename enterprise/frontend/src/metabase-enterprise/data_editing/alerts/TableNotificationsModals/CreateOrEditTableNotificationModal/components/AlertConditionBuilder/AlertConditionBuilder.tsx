@@ -20,7 +20,7 @@ import { EditingBodyCellConditional } from "metabase-enterprise/data_editing/tab
 import * as Lib from "metabase-lib";
 import type {
   ComparisonOperator,
-  Expression,
+  ConditionalAlertExpression,
   FieldId,
   FieldWithMetadata,
   Literal,
@@ -74,8 +74,8 @@ interface ConditionRow {
 interface AlertConditionBuilderProps {
   tableId: TableId;
   eventType: NotificationTriggerEvent;
-  onChange?: (expression: Expression) => void;
-  initialExpression?: Expression;
+  onChange?: (expression: ConditionalAlertExpression) => void;
+  initialExpression?: ConditionalAlertExpression;
 }
 
 // Define operators outside of component to avoid recreation on each render
@@ -520,7 +520,7 @@ export const AlertConditionBuilder = ({
 
 // Parse initial expression into condition rows
 function parseInitialExpression(
-  initialExpression: Expression | undefined,
+  initialExpression: ConditionalAlertExpression | undefined,
   columns: ConditionBuilderColumn[],
 ): { conditions: ConditionRow[]; logicalOperator: LogicalOperator } {
   const defaultCondition = {
@@ -652,8 +652,8 @@ function generateExpression(
   conditions?: ConditionRow[],
   logicalOperator?: LogicalOperator,
   eventType?: NotificationTriggerEvent,
-): Expression {
-  const baseExpression: Expression = [
+): ConditionalAlertExpression {
+  const baseExpression: ConditionalAlertExpression = [
     "=",
     ["context", "args", "table_id"],
     tableId,
@@ -694,7 +694,7 @@ function generateExpression(
         condition.operator as ComparisonOperator,
         [...payloadPath, condition.columnName],
         condition.value,
-      ] as Expression,
+      ] as ConditionalAlertExpression,
     ];
   }
 
@@ -710,7 +710,7 @@ function generateExpression(
             condition.operator as ComparisonOperator,
             [...payloadPath, condition.columnName],
             condition.value,
-          ] as Expression,
+          ] as ConditionalAlertExpression,
       ),
     ],
   ];
@@ -739,8 +739,8 @@ function getColumnIcon(column: ConditionBuilderColumn) {
 }
 
 function doesExpressionHaveClientSideConditions(
-  expression?: Expression,
-): expression is Expression {
+  expression?: ConditionalAlertExpression,
+): expression is ConditionalAlertExpression {
   return Array.isArray(expression) && Array.isArray(expression[2]);
 }
 

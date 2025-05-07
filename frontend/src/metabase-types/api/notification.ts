@@ -168,7 +168,7 @@ export type CreateAlertNotificationRequest = NotificationCardPayload & {
 
 export type CreateTableNotificationRequest = NotificationSystemEventPayload & {
   handlers: NotificationHandler[];
-  condition: Condition;
+  condition: ConditionalAlertExpression;
 };
 
 export type CreateNotificationRequest =
@@ -186,7 +186,7 @@ export type UpdateTableNotificationRequest = NotificationSystemEventPayload & {
   id: NotificationId;
   active: boolean;
   handlers: NotificationHandler[];
-  condition: Condition;
+  condition: ConditionalAlertExpression;
 };
 
 export type UpdateNotificationRequest =
@@ -222,7 +222,7 @@ export type AlertNotification = BaseNotification &
 
 export type TableNotification = BaseNotification &
   NotificationSystemEventPayload & {
-    condition: Condition;
+    condition: ConditionalAlertExpression;
   };
 
 export type Notification = AlertNotification | TableNotification;
@@ -262,10 +262,10 @@ export type FunctionName =
 export type Path = Array<string>;
 export type Literal = string | number | boolean | null;
 
-export type Expression = [
+type ConditionalExpression = [
   FunctionName,
-  Path | Expression,
-  Literal | Expression | Expression[],
+  Path | ConditionalExpression,
+  Literal | ConditionalExpression | ConditionalExpression[],
 ];
 
-export type Condition = Expression;
+export type ConditionalAlertExpression = ConditionalExpression;

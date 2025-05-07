@@ -24,6 +24,10 @@ import {
   getHasConfiguredEmailChannel,
 } from "metabase/lib/pulse";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { ChannelSetupModal } from "metabase/notifications/modals/shared/ChannelSetupModal";
+import { AlertModalSettingsBlock } from "metabase/notifications/modals/shared/components/AlertModalSettingsBlock/AlertModalSettingsBlock";
+import { AlertTriggerIcon } from "metabase/notifications/modals/shared/components/AlertTriggerIcon";
+import { NotificationChannelsPicker } from "metabase/notifications/modals/shared/components/NotificationChannels/NotificationChannelsPicker/NotificationChannelsPicker";
 import { getDefaultTableNotificationRequest } from "metabase/notifications/utils";
 import { addUndo } from "metabase/redux/undo";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
@@ -31,6 +35,7 @@ import { Button, Flex, Modal, Stack, rem } from "metabase/ui";
 import type {
   ChannelApiResponse,
   ChannelTemplate,
+  ConditionalAlertExpression,
   CreateTableNotificationRequest,
   NotificationChannelType,
   NotificationHandler,
@@ -42,16 +47,8 @@ import type {
   UserId,
 } from "metabase-types/api";
 
-import { ChannelSetupModal } from "../../../../../../../../frontend/src/metabase/notifications/modals/shared/ChannelSetupModal";
-import { AlertModalSettingsBlock } from "../../../../../../../../frontend/src/metabase/notifications/modals/shared/components/AlertModalSettingsBlock/AlertModalSettingsBlock";
-import { AlertTriggerIcon } from "../../../../../../../../frontend/src/metabase/notifications/modals/shared/components/AlertTriggerIcon";
-import { NotificationChannelsPicker } from "../../../../../../../../frontend/src/metabase/notifications/modals/shared/components/NotificationChannels/NotificationChannelsPicker/NotificationChannelsPicker";
-
 import S from "./CreateOrEditTableNotificationModal.module.css";
-import {
-  AlertConditionBuilder,
-  type AlertConditionExpression,
-} from "./components/AlertConditionBuilder/AlertConditionBuilder";
+import { AlertConditionBuilder } from "./components/AlertConditionBuilder/AlertConditionBuilder";
 import { PreviewTemplatePanel } from "./components/PreviewTemplatePanel/PreviewTemplatePanel";
 
 type TableNotificationTriggerOption = {
@@ -243,7 +240,7 @@ const useNotificationFormState = (
   );
 
   const handleConditionChange = useCallback(
-    (newCondition: AlertConditionExpression) => {
+    (newCondition: ConditionalAlertExpression) => {
       setRequestBody((requestBody) =>
         requestBody
           ? {
