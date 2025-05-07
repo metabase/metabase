@@ -93,7 +93,7 @@ export function addMissingCardBreakouts(
   return updateValueWithCurrentColumns(setting, availableColumns);
 }
 
-export function isColumnValid(col: DatasetColumn) {
+export function isPreaggregatedPivotColumn(col: DatasetColumn) {
   return (
     col.source === "aggregation" ||
     col.source === "breakout" ||
