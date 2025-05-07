@@ -159,6 +159,10 @@
   "Metabase link with UTM params related to the branding exports campaign"
   "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=slack")
 
+(def metabase-branding-copy
+  "Human visible Markdown content that we use for branding purposes in Slack links"
+  "Made with Metabase :blue_heart:")
+
 (defn- slack-dashboard-header
   "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
   Slack dashboard subscription"
@@ -180,7 +184,7 @@
                                     {:type "mrkdwn"
                                      :text (mkdwn-link-text
                                             metabase-branding-link
-                                            "Made with Metabase :blue_heart:")}))}
+                                            metabase-branding-copy)}))}
 
         filter-fields   (for [filter parameters]
                           {:type "mrkdwn"
