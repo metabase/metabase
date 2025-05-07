@@ -1,5 +1,12 @@
-import { type ChangeEvent, type ReactNode, useCallback, useRef } from "react";
-import { useState, Dispatch, SetStateAction } from "react";
+import {
+  type ChangeEvent,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  useCallback,
+  useRef,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
@@ -12,7 +19,7 @@ import {
   FormSubmitButton,
   useFormContext,
 } from "metabase/forms";
-import { List, Group, Icon, Loader, Stack, Text } from "metabase/ui";
+import { Group, Icon, List, Loader, Stack, Text } from "metabase/ui";
 import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
 
 export const ContentTranslationConfiguration = () => {
