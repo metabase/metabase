@@ -37,10 +37,11 @@
   And is about half of postgresql's max, since we concat two values together often. That is likely aggressive, but being safe until we can better understand normal data shapes"
   500000)
 
-(defn searchable-value-trim-sql [column]
+(defn searchable-value-trim-sql
   "Returns the honeysql expression to trim a searchable value to the max length.
   The passed column should be a keyword that is qualified as needed.
   Uses a slightly larger value that what will be stored in the db so we can better use word boundaries on the actual end"
+  [column]
   [:left
    column
    [:cast (+ max-searchable-value-length 100) :integer]])
