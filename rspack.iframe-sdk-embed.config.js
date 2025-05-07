@@ -22,7 +22,6 @@ module.exports = {
     library: "metabase.embed",
     libraryTarget: "umd",
     globalObject: "this",
-    publicPath: "app/",
   },
   devServer: { hot: false },
   module: {
