@@ -35,6 +35,7 @@ import type {
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/core/components/Link";
 import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
+import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
@@ -531,6 +532,8 @@ export const PLUGIN_MODEL_PERSISTENCE = {
 export const PLUGIN_EMBEDDING = {
   isEnabled: () => false,
   isInteractiveEmbeddingEnabled: (_state: State) => false,
+  SimpleDataPicker: (_props: SimpleDataPickerProps) => null,
+  DataSourceSelector: (_props: DataSourceSelectorProps) => null,
 };
 
 export interface SimpleDataPickerProps {
@@ -544,7 +547,6 @@ export interface SimpleDataPickerProps {
 
 export const PLUGIN_EMBEDDING_SDK = {
   isEnabled: () => false,
-  SimpleDataPicker: (_props: SimpleDataPickerProps) => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
