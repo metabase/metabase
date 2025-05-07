@@ -17,7 +17,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as channel.slack]
    [metabase.config :as config]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.notification.send :as notification.send]

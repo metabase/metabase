@@ -1,7 +1,7 @@
 (ns metabase.notification.events.notification-test
   (:require
    [clojure.test :refer :all]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.events.schema :as events.schema]
    [metabase.notification.core :as notification]
    [metabase.notification.events.notification :as events.notification]

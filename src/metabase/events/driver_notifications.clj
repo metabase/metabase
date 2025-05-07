@@ -7,7 +7,7 @@
   (:require
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
 
