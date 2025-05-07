@@ -21,7 +21,6 @@ export interface BaseEmbedTestPageOptions {
   locale?: string;
 
   // Options for the test page
-  skipPageVisit?: boolean;
   insertHtml?: {
     head?: string;
     beforeEmbed?: string;
@@ -32,10 +31,9 @@ export interface BaseEmbedTestPageOptions {
 /**
  * Creates and loads a test fixture for SDK iframe embedding tests
  */
-export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
-  skipPageVisit = false,
-  ...options
-}: T) {
+export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>(
+  options: T,
+) {
   return cy.get("@apiKey").then((apiKey) => {
     const testPageSource = getSdkIframeEmbedHtml({
       target: "#metabase-embed-container",
@@ -48,10 +46,6 @@ export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
       body: testPageSource,
       headers: { "content-type": "text/html" },
     }).as("dynamicPage");
-
-    if (skipPageVisit) {
-      return;
-    }
 
     cy.visit("/sdk-iframe-test-page");
 
