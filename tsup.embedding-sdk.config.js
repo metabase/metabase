@@ -275,7 +275,7 @@ await build({
   sourcemap: isDevMode,
   minify: !isDevMode,
   clean: true,
-  metafile: false,
+  metafile: true,
   // We have to generate `dts` via `tsc` to emit files on `dts` type errors
   dts: false,
   noExternal: [
@@ -337,7 +337,7 @@ await build({
         import.meta.dirname,
         "node_modules/icepick/icepick.min",
       ),
-      "ee-plugins": path.join(ENTERPRISE_SRC_PATH, "plugins"),
+      "ee-plugins": path.join(ENTERPRISE_SRC_PATH, "sdk-plugins"),
       "ee-overrides": path.join(ENTERPRISE_SRC_PATH, "overrides"),
       "embedding-sdk": SDK_SRC_PATH,
       "moment-timezone":

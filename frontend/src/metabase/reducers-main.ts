@@ -5,7 +5,6 @@ import { combineReducers } from "@reduxjs/toolkit";
 import admin from "metabase/admin/admin";
 import * as pulse from "metabase/notifications/pulse/reducers";
 import { PLUGIN_REDUCERS } from "metabase/plugins";
-import * as qb from "metabase/query_builder/reducers";
 import revisions from "metabase/redux/revisions";
 import reference from "metabase/reference/reference";
 import { reducer as setup } from "metabase/setup/reducers";
@@ -25,7 +24,6 @@ export function makeMainReducers() {
     ...commonReducers,
     // main app reducers
     pulse: combineReducers(pulse),
-    qb: combineReducers(qb),
     reference,
     revisions,
     setup,
