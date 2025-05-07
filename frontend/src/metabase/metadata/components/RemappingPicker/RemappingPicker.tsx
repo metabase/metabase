@@ -10,21 +10,30 @@ import {
 } from "metabase/api";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import type { SelectProps } from "metabase/ui";
+import { FieldDataSelector } from "metabase/query_builder/components/DataSelector";
+import { Flex, Select, type SelectProps, Stack } from "metabase/ui";
 import { getRemappings } from "metabase-lib/v1/queries/utils/field";
 import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
-import type { Field, FieldId } from "metabase-types/api";
+import type { Database, Field, FieldId } from "metabase-types/api";
 
 import {
   DisplayValuesPicker,
   type RemappingValue,
 } from "../DisplayValuesPicker";
 
+import SubInputIllustration from "./illustrations/sub-input.svg?component";
+
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
+  database: Database;
   field: Field;
 }
 
-export const RemappingPicker = ({ comboboxProps, field, ...props }: Props) => {
+export const RemappingPicker = ({
+  comboboxProps,
+  database,
+  field,
+  ...props
+}: Props) => {
   const id = getRawTableFieldId(field);
   const { data: fkTargetField } = useGetFieldQuery(
     field.fk_target_field_id == null
@@ -39,11 +48,23 @@ export const RemappingPicker = ({ comboboxProps, field, ...props }: Props) => {
     () => getOptions(field, fkTargetField),
     [field, fkTargetField],
   );
+  const isFKMapping = value === "foreign";
+
+  const fkRemappingFieldId = field.dimensions?.[0]?.human_readable_field_id;
+  const hasFKMappingValue = isFKMapping && fkRemappingFieldId !== null;
+  const { data: fkRemappingField } = useGetFieldQuery(
+    hasFKMappingValue
+      ? {
+          id: fkRemappingFieldId,
+          ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+        }
+      : skipToken,
+  );
 
   const [createFieldDimension] = useCreateFieldDimensionMutation();
   const [deleteFieldDimension] = useDeleteFieldDimensionMutation();
 
-  const handleChange = (value: RemappingValue) => {
+  const handleDisplayValueChange = (value: RemappingValue) => {
     if (value === "original") {
       deleteFieldDimension(id);
     } else if (value === "foreign") {
@@ -76,13 +97,53 @@ export const RemappingPicker = ({ comboboxProps, field, ...props }: Props) => {
     }
   };
 
+  const handelFkRemappingFieldChange = (_fkRemappingFieldId: FieldId) => {};
+
   return (
-    <DisplayValuesPicker
-      options={options}
-      value={value}
-      onChange={handleChange}
-      {...props}
-    />
+    <Stack gap={0}>
+      <DisplayValuesPicker
+        options={options}
+        value={value}
+        onChange={handleDisplayValueChange}
+        {...props}
+      />
+
+      {value === "foreign" && (
+        <>
+          <Flex ml={12}>
+            <SubInputIllustration />
+          </Flex>
+
+          <FieldDataSelector
+            // isInitiallyOpen={isChoosingInitialFkTarget}
+            databases={[database]}
+            selectedDatabase={database}
+            selectedDatabaseId={database.id}
+            selectedTable={fkTargetField?.table}
+            selectedTableId={fkTargetField?.table?.id}
+            selectedField={fkRemappingField}
+            selectedFieldId={fkRemappingField?.id}
+            triggerElement={
+              <Select
+                data={[
+                  {
+                    label: fkRemappingField?.display_name ?? t`Choose a field`,
+                    value: "hack",
+                  },
+                ]}
+                dropdownOpened={false}
+                onClick={(event) => event.preventDefault()}
+                value="hack"
+                w="100%"
+                // hasValue={hasFKMappingValue}
+                // hasError={!fkRemappingField}
+              />
+            }
+            setFieldFn={handelFkRemappingFieldChange}
+          />
+        </>
+      )}
+    </Stack>
   );
 };
 
