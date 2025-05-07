@@ -108,7 +108,6 @@ export function EmbeddingDataPicker({
       databaseQuery={{ saved: true }}
       canSelectModel={entityTypes.includes("model")}
       canSelectTable={entityTypes.includes("table")}
-      canSelectMetric={false}
       canSelectSavedQuestion={false}
       triggerElement={
         <DataPickerTarget

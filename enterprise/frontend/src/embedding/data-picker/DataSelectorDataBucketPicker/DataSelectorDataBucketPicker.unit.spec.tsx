@@ -19,7 +19,6 @@ describe("DataSelectorDataBucketPicker", () => {
     const dataTypes = getDataTypes({
       hasModels: true,
       hasTables: true,
-      hasMetrics: false,
       hasSavedQuestions: true,
       hasNestedQueriesEnabled: true,
     });

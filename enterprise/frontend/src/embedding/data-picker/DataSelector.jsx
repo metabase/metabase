@@ -106,7 +106,6 @@ export class UnconnectedDataSelector extends Component {
     containerClassName: PropTypes.string,
     canSelectModel: PropTypes.bool,
     canSelectTable: PropTypes.bool,
-    canSelectMetric: PropTypes.bool,
     canSelectSavedQuestion: PropTypes.bool,
 
     // from search entity list loader
@@ -138,7 +137,6 @@ export class UnconnectedDataSelector extends Component {
     isMantine: false,
     canSelectModel: true,
     canSelectTable: true,
-    canSelectMetric: false,
     canSelectSavedQuestion: true,
   };
 
@@ -389,9 +387,6 @@ export class UnconnectedDataSelector extends Component {
       case selectedDataBucketId === DATA_BUCKET.MODELS ||
         savedEntityType === "model":
         return "model";
-      case selectedDataBucketId === DATA_BUCKET.METRICS ||
-        savedEntityType === "metric":
-        return "metric";
       default:
         return "question";
     }
@@ -405,20 +400,6 @@ export class UnconnectedDataSelector extends Component {
   hasUsableModels = () => {
     // As models are actually saved questions, nested queries must be enabled
     return this.hasModels() && this.props.hasNestedQueriesEnabled;
-  };
-
-  hasMetrics = () => {
-    const { availableModels, canSelectMetric, loaded } = this.props;
-    return loaded && canSelectMetric && availableModels.includes("metric");
-  };
-
-  hasUsableMetrics = () => {
-    // As metrics are actually saved questions, nested queries must be enabled
-    return this.hasMetrics() && this.props.hasNestedQueriesEnabled;
-  };
-
-  hasUsableModelsOrMetrics = () => {
-    return this.hasUsableModels() || this.hasUsableMetrics();
   };
 
   hasSavedQuestions = () => {
@@ -437,7 +418,7 @@ export class UnconnectedDataSelector extends Component {
     // So it should be excluded from a regular databases list
     const shouldRemoveSavedQuestionDatabaseFromList =
       !this.props.hasNestedQueriesEnabled ||
-      this.hasUsableModelsOrMetrics() ||
+      this.hasUsableModels() ||
       !this.props.canSelectSavedQuestion;
 
     return shouldRemoveSavedQuestionDatabaseFromList
@@ -464,10 +445,7 @@ export class UnconnectedDataSelector extends Component {
       await this.switchToStep(TABLE_STEP);
     } else if (this.state.selectedDatabaseId && steps.includes(SCHEMA_STEP)) {
       await this.switchToStep(SCHEMA_STEP);
-    } else if (
-      steps[0] === DATA_BUCKET_STEP &&
-      !this.hasUsableModelsOrMetrics()
-    ) {
+    } else if (steps[0] === DATA_BUCKET_STEP && !this.hasUsableModels()) {
       await this.switchToStep(steps[1]);
     } else {
       await this.switchToStep(steps[0]);
@@ -537,8 +515,8 @@ export class UnconnectedDataSelector extends Component {
       index -= 1;
     }
 
-    // data bucket step doesn't make a lot of sense when there're no models or metrics
-    if (steps[index] === DATA_BUCKET_STEP && !this.hasUsableModelsOrMetrics()) {
+    // data bucket step doesn't make a lot of sense when there're no models
+    if (steps[index] === DATA_BUCKET_STEP && !this.hasUsableModels()) {
       return null;
     }
 
@@ -806,12 +784,6 @@ export class UnconnectedDataSelector extends Component {
     if (selectedDataBucketId === DATA_BUCKET.MODELS || this.hasUsableModels()) {
       this.previousStep();
     }
-    if (
-      selectedDataBucketId === DATA_BUCKET.METRICS ||
-      this.hasUsableMetrics()
-    ) {
-      this.previousStep();
-    }
     this.setState({ isSavedEntityPickerShown: false, savedEntityType: null });
   };
 
@@ -823,7 +795,7 @@ export class UnconnectedDataSelector extends Component {
     const hasBackButton =
       hasPreviousStep &&
       steps.includes(DATA_BUCKET_STEP) &&
-      this.hasUsableModelsOrMetrics();
+      this.hasUsableModels();
 
     const props = {
       ...this.state,
@@ -853,7 +825,6 @@ export class UnconnectedDataSelector extends Component {
                 hasTables: this.props.canSelectTable,
                 hasNestedQueriesEnabled,
                 hasSavedQuestions: this.hasSavedQuestions(),
-                hasMetrics: this.hasMetrics(),
               })}
               {...props}
             />
@@ -992,14 +963,14 @@ const DataSelector = _.compose(
     loadingAndErrorWrapper: false,
     listName: "allDatabases",
   }),
-  // If there is at least one model or metric,
+  // If there is at least one model,
   // we want to display a slightly different data picker view
   // (see DATA_BUCKET step)
   Search.loadList({
     query: {
       calculate_available_models: true,
       limit: 0,
-      models: ["dataset", "metric"],
+      models: ["dataset"],
     },
     loadingAndErrorWrapper: false,
   }),

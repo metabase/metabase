@@ -8,7 +8,6 @@ export const DATA_BUCKET: Record<string, DataPickerDataType> = {
   MODELS: "models",
   RAW_DATA: "raw-data",
   SAVED_QUESTIONS: "questions",
-  METRICS: "metrics",
 } as const;
 
 export const MODELS_INFO_ITEM: DataTypeInfoItem = {
@@ -41,16 +40,5 @@ export const SAVED_QUESTIONS_INFO_ITEM: DataTypeInfoItem = {
   },
   get description() {
     return t`Use any question’s results to start a new question.`;
-  },
-};
-
-export const METRICS_INFO_ITEM: DataTypeInfoItem = {
-  id: DATA_BUCKET.METRICS,
-  icon: "metric",
-  get name() {
-    return t`Metrics`;
-  },
-  get description() {
-    return t`Trustworthy definitions to start from.`;
   },
 };

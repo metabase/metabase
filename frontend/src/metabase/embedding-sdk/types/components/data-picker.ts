@@ -11,7 +11,6 @@ export interface DataSourceSelectorProps {
   databaseQuery: { saved: boolean };
   canSelectModel: boolean;
   canSelectTable: boolean;
-  canSelectMetric: boolean;
   canSelectSavedQuestion: boolean;
   triggerElement: JSX.Element;
   setSourceTableFn: (tableId: TableId) => void;
