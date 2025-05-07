@@ -2,8 +2,8 @@ import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { TableNotificationsListModal } from "metabase/notifications/modals/TableNotificationsModals/TableNotificationsListModal/TableNotificationsListModal";
 import type { UserWithApplicationPermissions } from "metabase/plugins";
+import { TableNotificationsListModal } from "metabase-enterprise/data_editing/alerts/TableNotificationsModals/TableNotificationsListModal/TableNotificationsListModal";
 import type { TableNotification, User } from "metabase-types/api";
 import {
   createMockTableNotification,

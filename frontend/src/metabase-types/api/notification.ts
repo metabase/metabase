@@ -168,7 +168,7 @@ export type CreateAlertNotificationRequest = NotificationCardPayload & {
 
 export type CreateTableNotificationRequest = NotificationSystemEventPayload & {
   handlers: NotificationHandler[];
-  condition: Condition;
+  condition: ConditionalAlertExpression;
 };
 
 export type CreateNotificationRequest =
@@ -186,7 +186,7 @@ export type UpdateTableNotificationRequest = NotificationSystemEventPayload & {
   id: NotificationId;
   active: boolean;
   handlers: NotificationHandler[];
-  condition: Condition;
+  condition: ConditionalAlertExpression;
 };
 
 export type UpdateNotificationRequest =
@@ -222,7 +222,7 @@ export type AlertNotification = BaseNotification &
 
 export type TableNotification = BaseNotification &
   NotificationSystemEventPayload & {
-    condition: Condition;
+    condition: ConditionalAlertExpression;
   };
 
 export type Notification = AlertNotification | TableNotification;
@@ -250,10 +250,22 @@ export type PreviewNotificationTemplateResponse = {
 
 // Initial schema for conditional expression.
 // Will be updated later.
-type Operator = "=" | ">" | "<" | ">=" | "<=" | "!=" | "and" | "or";
-type Path = Array<string>;
-type Value = string | number | boolean;
+export type ComparisonOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
+export type LogicalOperator = "and" | "or";
+export type FunctionName =
+  | ComparisonOperator
+  | LogicalOperator
+  | "max"
+  | "min"
+  | "count"
+  | "context";
+export type Path = Array<string>;
+export type Literal = string | number | boolean | null;
 
-type Expression = [Operator, Path | Expression, Value | Expression];
+type ConditionalExpression = [
+  FunctionName,
+  Path | ConditionalExpression,
+  Literal | ConditionalExpression | ConditionalExpression[],
+];
 
-type Condition = Expression;
+export type ConditionalAlertExpression = ConditionalExpression;
