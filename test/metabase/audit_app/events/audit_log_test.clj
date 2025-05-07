@@ -6,7 +6,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.audit-app.events.audit-log :as events.audit-log]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]

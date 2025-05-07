@@ -2,7 +2,7 @@
   "This namespace is responsible for publishing events to the audit log. "
   (:require
    [metabase.audit-app.models.audit-log :as audit-log]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))

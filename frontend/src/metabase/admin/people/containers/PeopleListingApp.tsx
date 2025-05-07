@@ -34,8 +34,8 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
   const headingContent = (
     <div className={cx(CS.mb2, CS.flex, CS.alignCenter)}>
       <Input
-        miw="18rem"
-        mr="1rem"
+        miw="14rem"
+        mr="2rem"
         fz="sm"
         type="text"
         placeholder={t`Find someone`}
@@ -44,11 +44,12 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
         leftSection={<Icon c="text-secondary" name="search" size={16} />}
         rightSectionPointerEvents="all"
         rightSection={
-          searchInputValue === "" ? null : (
+          searchInputValue === "" ? (
+            <div /> // rendering null causes width change
+          ) : (
             <Input.ClearButton
               c={"text-secondary"}
               onClick={() => updateSearchInputValue("")}
-              style={{ zIndex: 1 }}
             />
           )
         }

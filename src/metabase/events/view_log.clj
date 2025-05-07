@@ -4,7 +4,7 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.query.permissions :as query-perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]

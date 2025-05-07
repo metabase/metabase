@@ -134,7 +134,7 @@
    :uses #{api config db events models plugins premium-features settings task task-history util}}
 
   auth-provider
-  {:api  #{metabase.auth-provider}
+  {:api  #{metabase.auth-provider.core}
    :uses #{premium-features}}
 
   bookmarks
@@ -283,7 +283,8 @@
            util}}
 
   events
-  {:api  #{metabase.events metabase.events.init}
+  {:api  #{metabase.events.core
+           metabase.events.init}
    :uses #{api audit-app channel driver models premium-features util}}
 
   formatter
@@ -380,7 +381,6 @@
           metabase.models.database
           metabase.models.dispatch
           metabase.models.field
-          metabase.models.field-usage
           metabase.models.field-values
           metabase.models.humanization
           metabase.models.init
@@ -728,9 +728,9 @@
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api enterprise/impersonation lib models permissions premium-features query-processor util}}
 
-  enterprise/airgap
+  enterprise/analytics
   {:api  #{}
-   :uses #{premium-features util}}
+   :uses #{driver premium-features enterprise/advanced-config enterprise/scim enterprise/sso}}
 
   enterprise/api
   {:api  #{metabase-enterprise.api.routes
@@ -810,6 +810,10 @@
   {:api  #{metabase-enterprise.llm.api}
    :uses #{analytics analyze api query-processor settings util}}
 
+  enterprise/premium-features
+  {:api  #{}
+   :uses #{premium-features util}}
+
   enterprise/query-reference-validation
   {:api  #{metabase-enterprise.query-reference-validation.api}
    :uses #{api models query-analysis request util}}
@@ -857,12 +861,17 @@
    :uses #{api channel embedding events notification premium-features request session settings sso util enterprise/scim}}
 
   enterprise/stale
-  {:api  #{metabase-enterprise.stale.routes}
+  {:api  #{metabase-enterprise.stale.api
+           metabase-enterprise.stale.init}
    :uses #{analytics api embedding models premium-features request settings util}}
 
   enterprise/stats
   {:api  #{}
    :uses #{driver premium-features enterprise/advanced-config enterprise/scim enterprise/sso}}
+
+  enterprise/task
+  {:api  #{metabase-enterprise.task.truncate-audit-tables}
+   :uses #{premium-features}}
 
   enterprise/upload-management
   {:api  #{metabase-enterprise.upload-management.api}
