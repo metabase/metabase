@@ -292,4 +292,37 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
       H.horizontalWell().findAllByTestId("well-item").should("have.length", 0);
     });
   });
+
+  it("should initialize a scalar funnel when opening a scalar card (VIZ-678)", () => {
+    const { LANDING_PAGE_VIEWS, CHECKOUT_PAGE_VIEWS, PAYMENT_DONE_PAGE_VIEWS } =
+      SCALAR_CARD;
+
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(LANDING_PAGE_VIEWS.name);
+
+    H.modal().within(() => {
+      cy.findByText(LANDING_PAGE_VIEWS.name).realHover();
+      cy.findAllByLabelText("Remove").eq(0).click();
+      cy.findByText("Funnel").click();
+      H.switchToAddMoreData();
+      H.selectDataset(LANDING_PAGE_VIEWS.name);
+      H.addDataset(CHECKOUT_PAGE_VIEWS.name);
+      H.addDataset(PAYMENT_DONE_PAGE_VIEWS.name);
+
+      H.verticalWell().within(() => {
+        cy.findByText("METRIC").should("exist");
+        cy.findAllByTestId("well-item").should("have.length", 1);
+      });
+      H.horizontalWell().within(() => {
+        cy.findByText("DIMENSION").should("exist");
+        cy.findByText(LANDING_PAGE_VIEWS.name).should("exist");
+        cy.findByText(CHECKOUT_PAGE_VIEWS.name).should("exist");
+        cy.findByText(PAYMENT_DONE_PAGE_VIEWS.name).should("exist");
+        cy.findAllByTestId("well-item").should("have.length", 4);
+      });
+    });
+  });
 });

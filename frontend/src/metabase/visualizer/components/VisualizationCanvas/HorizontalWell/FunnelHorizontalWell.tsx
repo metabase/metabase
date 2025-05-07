@@ -14,6 +14,7 @@ import {
   arrayMove,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { useMemo } from "react";
 
 import { Sortable } from "metabase/core/components/Sortable";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -23,10 +24,12 @@ import {
   getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
+import { isDraggedColumnItem } from "metabase/visualizer/utils";
 import {
   removeColumn,
   updateSettings,
 } from "metabase/visualizer/visualizer.slice";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { WellItem, type WellItemProps } from "../WellItem";
 
@@ -35,7 +38,7 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
   const columns = useSelector(getVisualizerDatasetColumns);
   const dispatch = useDispatch();
 
-  const { active, setNodeRef, isOver } = useDroppable({
+  const { active, setNodeRef } = useDroppable({
     id: DROPPABLE_ID.X_AXIS_WELL,
   });
 
@@ -49,6 +52,14 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
 
   const rows = settings?.["funnel.rows"] ?? [];
   const rowKeys = rows.map((row) => row.key);
+
+  const isHighlighted = useMemo(() => {
+    if (!active || !isDraggedColumnItem(active)) {
+      return false;
+    }
+    const { column } = active.data.current;
+    return isDimension(column) && !isMetric(column);
+  }, [active]);
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     const newIndex = rows.findIndex((row) => row.key === over?.id);
@@ -76,7 +87,7 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
   return (
     <Flex
       {...props}
-      bg={active ? "var(--mb-color-brand-light)" : "bg-light"}
+      bg={isHighlighted ? "var(--mb-color-brand-light)" : "bg-light"}
       p="sm"
       wrap="nowrap"
       style={{
@@ -85,11 +96,11 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
         overflowX: "auto",
         overflowY: "hidden",
         borderRadius: "var(--border-radius-xl)",
-        border: `1px ${borderStyle} ${active ? "var(--mb-color-brand)" : "var(--border-color)"}`,
-        transform: active ? "scale(1.025)" : "scale(1)",
+        border: `1px ${borderStyle} ${isHighlighted ? "var(--mb-color-brand)" : "var(--border-color)"}`,
+        transform: isHighlighted ? "scale(1.025)" : "scale(1)",
         transition:
           "transform 0.2s ease-in-out 0.2s, border-color 0.2s ease-in-out 0.2s, background 0.2s ease-in-out 0.2s",
-        outline: isOver ? "1px solid var(--mb-color-brand)" : "none",
+        outline: isHighlighted ? "1px solid var(--mb-color-brand)" : "none",
       }}
       ref={setNodeRef}
     >
