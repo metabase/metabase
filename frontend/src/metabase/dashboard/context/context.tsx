@@ -27,51 +27,47 @@ import type {
 
 import { type ReduxProps, connector } from "./context.redux";
 
-export type DashboardContextLoadingState = {
+type DashboardLoadingState = {
   isLoading: boolean;
 };
 
-export type DashboardContextErrorState = {
-  error: FailedFetchDashboardResult | Error | null;
+type DashboardErrorState = {
+  error: FailedFetchDashboardResult;
 };
 
-export type DashboardContextOwnProps = {
+type OwnProps = {
   dashboardId: DashboardId;
   parameterQueryParams?: Query;
   onLoad?: (dashboard: Dashboard) => void;
-  onError?: (error: FailedFetchDashboardResult | Error) => void;
+  onError?: (error: FailedFetchDashboardResult) => void;
   onLoadWithoutCards?: (dashboard: Dashboard) => void;
   navigateToNewCardFromDashboard:
     | ((opts: NavigateToNewCardFromDashboardOpts) => void)
     | null;
 };
 
-export type DashboardContextOwnResult = {
+type OwnResult = {
   shouldRenderAsNightMode: boolean;
 };
 
-export type DashboardControls = DashboardFullscreenControls &
+type DashboardControls = DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
   UseAutoScrollToDashcardResult &
   EmbedDisplayParams &
   EmbedThemeControls;
 
-export type DashboardContextProps = PropsWithChildren<
-  DashboardContextOwnProps & Partial<DashboardControls>
->;
+export type DashboardContextProps = OwnProps & Partial<DashboardControls>;
 
 type ContextProps = DashboardContextProps & ReduxProps;
 
-type DashboardContextReturned = DashboardContextOwnResult &
-  DashboardContextOwnProps &
+type ContextReturned = OwnResult &
+  OwnProps &
   ReduxProps &
   Required<DashboardControls> &
-  DashboardContextLoadingState &
-  DashboardContextErrorState;
+  DashboardLoadingState &
+  DashboardErrorState;
 
-export const DashboardContext = createContext<
-  DashboardContextReturned | undefined
->(undefined);
+const DashboardContext = createContext<ContextReturned | undefined>(undefined);
 
 const DashboardContextProviderInner = ({
   dashboardId,
@@ -79,8 +75,10 @@ const DashboardContextProviderInner = ({
   onLoad,
   onLoadWithoutCards,
   onError,
-  navigateToNewCardFromDashboard,
+
   children,
+
+  // url params
   isFullscreen = false,
   onFullscreenChange = noop,
   hasNightModeToggle = false,
@@ -102,121 +100,145 @@ const DashboardContextProviderInner = ({
   cardTitled = true,
   getClickActionMode = undefined,
   withFooter = true,
+
+  // redux selectors
   dashboard,
   selectedTabId,
   isEditing,
   isNavigatingBackToDashboard,
   parameterValues,
+  isLoading,
+  isLoadingWithoutCards,
 
   // redux actions
+  addCardToDashboard,
   cancelFetchDashboardCardData,
   fetchDashboard,
   fetchDashboardCardData,
   initialize,
+  setEditingDashboard,
+  toggleSidebar,
   reset,
   closeDashboard,
+  navigateToNewCardFromDashboard,
   ...reduxProps
-}: ContextProps) => {
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<FailedFetchDashboardResult | Error | null>(
-    null,
-  );
+}: PropsWithChildren<ContextProps>) => {
+  const [error, setError] = useState<FailedFetchDashboardResult | null>(null);
+  const previousIsLoading = usePrevious(isLoading);
+  const previousIsLoadingWithoutCards = usePrevious(isLoadingWithoutCards);
 
+  const previousDashboard = usePrevious(dashboard);
   const previousDashboardId = usePrevious(dashboardId);
-  const previousSelectedTabId = usePrevious(selectedTabId);
+  const previousTabId = usePrevious(selectedTabId);
   const previousParameterValues = usePrevious(parameterValues);
 
   const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
 
-  const handleLoadDashboard = useCallback(async () => {
-    initialize({ clearCache: !isNavigatingBackToDashboard });
-    const dashboardResult = await fetchDashboard({
-      dashId: dashboardId,
-      queryParams: parameterQueryParams,
-      options: {
-        clearCache: !isNavigatingBackToDashboard,
-        preserveParameters: isNavigatingBackToDashboard,
-      },
-    });
+  const handleLoadDashboard = useCallback(
+    async (dashboardId: DashboardId) => {
+      initialize({ clearCache: !isNavigatingBackToDashboard });
 
-    if (isSuccessfulFetchDashboardResult(dashboardResult)) {
-      const dashboard = dashboardResult.payload.dashboard;
-      onLoadWithoutCards?.(dashboard);
-      await fetchDashboardCardData({ reload: false, clearCache: true });
-      onLoad?.(dashboard);
-    } else if (isFailedFetchDashboardResult(dashboardResult)) {
-      setError(dashboardResult);
-      onError?.(dashboardResult);
-    }
-  }, [
-    dashboardId,
-    fetchDashboard,
-    fetchDashboardCardData,
-    initialize,
-    isNavigatingBackToDashboard,
-    onError,
-    onLoad,
-    onLoadWithoutCards,
-    parameterQueryParams,
-  ]);
+      const result = await fetchDashboard({
+        dashId: dashboardId,
+        queryParams: parameterQueryParams,
+        options: {
+          clearCache: !isNavigatingBackToDashboard,
+          preserveParameters: isNavigatingBackToDashboard,
+        },
+      });
 
-  const handleLoadCardData = useCallback(async () => {
-    await fetchDashboardCardData();
-    if (dashboard) {
-      onLoad?.(dashboard);
-    }
-  }, [dashboard, fetchDashboardCardData, onLoad]);
+      return result;
+    },
+    [
+      fetchDashboard,
+      initialize,
+      isNavigatingBackToDashboard,
+      parameterQueryParams,
+    ],
+  );
+
+  const handleError = useCallback(
+    (err: FailedFetchDashboardResult | Error) => {
+      const error = err instanceof Error ? { error: err, payload: err } : err;
+      onError?.(error);
+      setError(error);
+    },
+    [onError],
+  );
 
   useEffect(() => {
-    const shouldFetchDashboard = dashboardId !== previousDashboardId;
-
-    const shouldFetchCardData =
-      selectedTabId !== previousSelectedTabId ||
-      !isEqual(parameterValues, previousParameterValues);
-
-    if (isLoading) {
+    const hasDashboardChanged = dashboardId !== previousDashboardId;
+    if (hasDashboardChanged) {
+      setError(null);
+      handleLoadDashboard(dashboardId)
+        .then((result) => {
+          if (isFailedFetchDashboardResult(result)) {
+            handleError(result);
+          }
+        })
+        .catch((err) => {
+          handleError(err);
+        });
       return;
     }
 
+    if (!dashboard) {
+      return;
+    }
+
+    const hasDashboardLoaded = !previousDashboard;
+    const hasTabChanged = selectedTabId !== previousTabId;
+    const hasParameterValueChanged = !isEqual(
+      parameterValues,
+      previousParameterValues,
+    );
+
     try {
-      if (shouldFetchDashboard) {
-        setIsLoading(true);
-        setError(null);
-        handleLoadDashboard();
-      } else if (shouldFetchCardData && dashboard) {
-        setIsLoading(true);
-        setError(null);
-        handleLoadCardData();
+      if (hasDashboardLoaded) {
+        fetchDashboardCardData({ reload: false, clearCache: true });
+      } else if (hasTabChanged || hasParameterValueChanged) {
+        fetchDashboardCardData();
       }
     } catch (e) {
-      const caughtError =
-        e instanceof Error ? e : new Error("An unknown error occurred");
-      setError(caughtError);
-      onError?.({ error: caughtError, payload: error });
-    } finally {
-      setIsLoading(false);
+      handleError?.(e as Error);
     }
   }, [
-    dashboardId,
-    selectedTabId,
-    parameterValues,
     dashboard,
-    previousDashboardId,
-    previousSelectedTabId,
-    previousParameterValues,
-    fetchDashboard,
+    dashboardId,
     fetchDashboardCardData,
-    initialize,
-    onLoad,
-    onLoadWithoutCards,
-    onError,
-    isNavigatingBackToDashboard,
-    parameterQueryParams,
-    error,
-    isLoading,
+    handleError,
     handleLoadDashboard,
-    handleLoadCardData,
+    onError,
+    parameterValues,
+    previousDashboard,
+    previousDashboardId,
+    previousParameterValues,
+    previousTabId,
+    selectedTabId,
   ]);
+
+  useEffect(() => {
+    if (
+      !isLoadingWithoutCards &&
+      previousIsLoadingWithoutCards &&
+      !error &&
+      dashboard
+    ) {
+      onLoadWithoutCards?.(dashboard);
+    }
+  }, [
+    previousIsLoadingWithoutCards,
+    dashboard,
+    onLoadWithoutCards,
+    error,
+    isLoadingWithoutCards,
+  ]);
+
+  useEffect(() => {
+    if (!isLoading && previousIsLoading && !error && dashboard) {
+      onLoad?.(dashboard);
+    }
+  }, [isLoading, previousIsLoading, dashboard, onLoad, error]);
 
   useUnmount(() => {
     cancelFetchDashboardCardData();
@@ -224,53 +246,62 @@ const DashboardContextProviderInner = ({
     closeDashboard();
   });
 
-  const contextValue: DashboardContextReturned = {
-    dashboardId,
-    parameterQueryParams,
-    onLoad,
-    onLoadWithoutCards,
-    onError,
-    isLoading,
-    error,
-    navigateToNewCardFromDashboard,
-    shouldRenderAsNightMode,
-    isFullscreen,
-    onFullscreenChange,
-    hasNightModeToggle,
-    onNightModeChange,
-    isNightMode,
-    refreshPeriod,
-    setRefreshElapsedHook,
-    onRefreshPeriodChange,
-    background,
-    bordered,
-    titled,
-    font,
-    theme,
-    setTheme,
-    hideParameters,
-    downloadsEnabled,
-    autoScrollToDashcardId,
-    reportAutoScrolledToDashcard,
-    cardTitled,
-    getClickActionMode,
-    withFooter,
-    dashboard,
-    selectedTabId,
-    isEditing,
-    isNavigatingBackToDashboard,
-    parameterValues,
-    cancelFetchDashboardCardData,
-    fetchDashboard,
-    fetchDashboardCardData,
-    initialize,
-    reset,
-    closeDashboard,
-    ...reduxProps,
-  };
-
   return (
-    <DashboardContext.Provider value={contextValue}>
+    <DashboardContext.Provider
+      value={{
+        dashboardId,
+        parameterQueryParams,
+        onLoad,
+        onError,
+
+        navigateToNewCardFromDashboard,
+        isLoading,
+        isLoadingWithoutCards,
+        error,
+
+        isFullscreen,
+        onFullscreenChange,
+        hasNightModeToggle,
+        onNightModeChange,
+        isNightMode,
+        shouldRenderAsNightMode,
+        refreshPeriod,
+        setRefreshElapsedHook,
+        onRefreshPeriodChange,
+        background,
+        bordered,
+        titled,
+        font,
+        theme,
+        setTheme,
+        hideParameters,
+        downloadsEnabled,
+        autoScrollToDashcardId,
+        reportAutoScrolledToDashcard,
+        cardTitled,
+        getClickActionMode,
+        withFooter,
+
+        // redux selectors
+        dashboard,
+        selectedTabId,
+        isEditing,
+        isNavigatingBackToDashboard,
+        parameterValues,
+
+        // redux actions
+        addCardToDashboard,
+        cancelFetchDashboardCardData,
+        fetchDashboard,
+        fetchDashboardCardData,
+        initialize,
+        setEditingDashboard,
+        toggleSidebar,
+        reset,
+        closeDashboard,
+        ...reduxProps,
+      }}
+    >
       {children}
     </DashboardContext.Provider>
   );
@@ -290,7 +321,6 @@ export function useDashboardContext() {
   return context;
 }
 
-// Helper functions exactly as provided in your first snippet
 export function isSuccessfulFetchDashboardResult(
   result: FetchDashboardResult,
 ): result is SuccessfulFetchDashboardResult {

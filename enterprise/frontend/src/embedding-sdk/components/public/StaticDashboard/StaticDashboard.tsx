@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import _ from "underscore";
 
 import {
@@ -12,16 +12,19 @@ import {
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import { getEventHandlers } from "embedding-sdk/store/selectors";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import CS from "metabase/css/core/index.css";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
+import { useSelector } from "metabase/lib/redux";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { Box } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import type { Dashboard } from "metabase-types/api";
 
 import { StaticQuestionSdkMode } from "../StaticQuestion/mode";
 
@@ -46,6 +49,32 @@ export const StaticDashboardInner = ({
   style,
   className,
 }: StaticDashboardProps) => {
+  const sdkEventHandlers = useSelector(getEventHandlers);
+  // Hack: since we're storing functions in the redux store there are issues
+  // with timing and serialization. We'll need to do something about this in the future
+  const sdkEventHandlersRef = useRef(sdkEventHandlers);
+
+  useEffect(() => {
+    sdkEventHandlersRef.current = sdkEventHandlers;
+  }, [sdkEventHandlers]);
+
+  // Use the ref in your callbacks
+  const handleLoadWithoutCards = useCallback(
+    (dashboard: Dashboard) => {
+      onLoadWithoutCards?.(dashboard);
+      sdkEventHandlersRef.current?.onDashboardLoadWithoutCards?.(dashboard);
+    },
+    [onLoadWithoutCards],
+  );
+
+  const handleLoad = useCallback(
+    (dashboard: Dashboard) => {
+      onLoad?.(dashboard);
+      sdkEventHandlersRef.current?.onDashboardLoad?.(dashboard);
+    },
+    [onLoad],
+  );
+
   const {
     displayOptions,
     ref,
@@ -86,8 +115,8 @@ export const StaticDashboardInner = ({
         onRefreshPeriodChange={onRefreshPeriodChange}
         setRefreshElapsedHook={setRefreshElapsedHook}
         bordered={displayOptions.bordered}
-        onLoad={onLoad}
-        onLoadWithoutCards={onLoadWithoutCards}
+        onLoad={handleLoad}
+        onLoadWithoutCards={handleLoadWithoutCards}
         downloadsEnabled={{ pdf: withDownloads, results: withDownloads }}
         isNightMode={false}
         onNightModeChange={_.noop}

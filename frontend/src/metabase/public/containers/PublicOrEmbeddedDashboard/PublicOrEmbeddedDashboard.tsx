@@ -2,7 +2,6 @@ import {
   type DashboardContextProps,
   DashboardContextProvider,
 } from "metabase/dashboard/context";
-import { LocaleProvider } from "metabase/public/LocaleProvider";
 import type { EmbeddingAdditionalHashOptions } from "metabase/public/lib/types";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
@@ -40,8 +39,6 @@ export const PublicOrEmbeddedDashboard = ({
   ...contextProps
 }: PublicOrEmbeddedDashboardProps) => (
   <DashboardContextProvider {...contextProps}>
-    <LocaleProvider locale={locale} shouldWaitForLocale>
-      <PublicOrEmbeddedDashboardView />
-    </LocaleProvider>
+    <PublicOrEmbeddedDashboardView />
   </DashboardContextProvider>
 );
