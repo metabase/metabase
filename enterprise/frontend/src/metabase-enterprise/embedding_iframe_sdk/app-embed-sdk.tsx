@@ -13,17 +13,11 @@ function _init() {
     return;
   }
 
-  try {
-    const root = createRoot(rootElement);
-
-    root.render(
-      <StrictMode>
-        <SdkIframeEmbedRoute />
-      </StrictMode>,
-    );
-  } catch (error) {
-    console.error(error);
-  }
+  createRoot(rootElement).render(
+    <StrictMode>
+      <SdkIframeEmbedRoute />
+    </StrictMode>,
+  );
 }
 
 if (document.readyState !== "loading") {
