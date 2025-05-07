@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import type { IconName } from "metabase/ui";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
@@ -15,7 +17,7 @@ import type { ColumnItem } from "./types";
 export function getColumnItems(
   columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
-  tc?: ContentTranslationFunction,
+  tc: ContentTranslationFunction = _.identity,
 ): ColumnItem[] {
   const columnIndexes = findColumnIndexesForColumnSettings(
     columns,
@@ -26,10 +28,11 @@ export function getColumnItems(
     const columnIndex = columnIndexes[columnSettingIndex];
     const column = columns[columnIndex];
 
-    column.display_name = tc ? tc(column.display_name) : column.display_name;
+    column.display_name = tc(column.display_name);
+    column.name = tc(column.name);
 
     return {
-      name: tc ? column.name : column.name,
+      name: column.name,
       enabled: columnSetting.enabled,
       index: columnSettingIndex,
       icon: getIconForField(column) as IconName,
