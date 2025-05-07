@@ -496,6 +496,21 @@
 
 ;; date()
 
+(defn- date-type? [col]
+  (some #(types/field-is-type? % col) [:type/DateTime ;; some databases return datetimes for date (e.g., Oracle)
+                                       :type/Text ;; sqlite uses text :(
+                                       :type/Date]))
+
+(defn- parse-date [s]
+  (try
+    (let [instant (-> s java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")))]
+      (is (zero? (.getHour   instant)))
+      (is (zero? (.getMinute instant)))
+      (is (zero? (.getSecond instant)))
+      (.toLocalDate instant))
+    (catch Exception _
+      (-> s java.time.LocalDate/parse))))
+
 (deftest ^:parallel date-parse-table-fields
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/date)
     (let [mp (mt/metadata-provider)]
@@ -510,10 +525,10 @@
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (types/field-is-type? :type/Date (last cols)))
+            (is (date-type? (last cols)))
             (doseq [[uncasted-value casted-value] rows]
-              (let [cd (-> casted-value java.time.Instant/parse)
-                    ud (-> uncasted-value java.time.Instant/parse)]
+              (let [cd (parse-date casted-value)
+                    ud (parse-date uncasted-value)]
                 (is (= ud cd))))))))))
 
 (deftest ^:parallel date-parse-custom-expressions
@@ -531,13 +546,10 @@
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (types/field-is-type? :type/Date (last cols)))
+            (is (date-type? (last cols)))
             (doseq [[_ uncasted-value casted-value] rows]
-              (let [cd (-> casted-value java.time.Instant/parse)
-                    ud (-> uncasted-value
-                           java.time.LocalDate/parse
-                           (.atStartOfDay (java.time.ZoneId/of "UTC"))
-                           .toInstant)]
+              (let [cd (parse-date casted-value)
+                    ud (parse-date uncasted-value)]
                 (is (= ud cd))))))))))
 
 (deftest ^:parallel date-parse-table-fields-aggregation
@@ -555,10 +567,10 @@
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (types/field-is-type? :type/Date (last cols)))
+            (is (date-type? (last cols)))
             (doseq [[uncasted-value casted-value] rows]
-              (let [cd (-> casted-value java.time.Instant/parse)
-                    ud (-> uncasted-value java.time.Instant/parse)]
+              (let [cd (parse-date casted-value)
+                    ud (parse-date uncasted-value)]
                 (is (= ud cd))))))))))
 
 (deftest ^:parallel date-truncate-datetime
@@ -576,12 +588,9 @@
                 result (-> query qp/process-query)
                 rows (mt/rows result)]
             (doseq [[uncasted-value casted-value] rows]
-              (let [cd (-> casted-value   java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")))
-                    ud (-> uncasted-value java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")))]
-                (is (= (.toLocalDate ud) (.toLocalDate cd)))
-                (is (zero? (.getHour   cd)))
-                (is (zero? (.getMinute cd)))
-                (is (zero? (.getSecond cd)))))))))))
+              (let [cd (parse-date casted-value)
+                    ud (-> uncasted-value java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")) .toLocalDate)]
+                (is (= ud cd))))))))))
 
 ;; text()
 
