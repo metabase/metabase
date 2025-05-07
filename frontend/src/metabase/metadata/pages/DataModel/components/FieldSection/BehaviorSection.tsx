@@ -4,6 +4,7 @@ import { useGetDatabaseQuery, useUpdateFieldMutation } from "metabase/api";
 import {
   FieldValuesTypePicker,
   FieldVisibilityPicker,
+  RemappingPicker,
   UnfoldJsonPicker,
 } from "metabase/metadata/components";
 import {
@@ -35,6 +36,7 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
       <Box>
         <SectionPill icon="filter" title={t`Behavior`} />
       </Box>
+
       <FieldVisibilityPicker
         description={t`Where this field should be displayed`}
         label={t`Visibility`}
@@ -46,6 +48,7 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
           });
         }}
       />
+
       <FieldValuesTypePicker
         description={t`How this field should be filtered`}
         label={t`Filtering`}
@@ -57,7 +60,13 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
           });
         }}
       />
-      Display values
+
+      <RemappingPicker
+        description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
+        label={t`Display values`}
+        field={field}
+      />
+
       {database != null && canFieldUnfoldJson(field, database) && (
         <UnfoldJsonPicker
           description={t`Unfold JSON into component fields, where each JSON key becomes a column. You can turn this off if performance is slow.`}
