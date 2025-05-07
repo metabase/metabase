@@ -93,7 +93,9 @@ function MainNavbarContainer({
     data: trashCollection,
     isLoading,
     error,
-  } = useGetCollectionQuery({ id: "trash" });
+  } = useGetCollectionQuery({
+    id: "trash",
+  });
 
   const { data: collections = [] } = useListCollectionsTreeQuery({
     "exclude-other-user-collections": true,

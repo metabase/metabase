@@ -775,6 +775,35 @@
                    (dissoc :user_group_memberships)
                    mt/boolean-ids-and-timestamps)))))))
 
+(deftest login-attributes-cannot-start-with-at-symbol
+  (testing "PUT /api/user/:id"
+    (testing "We can't create login attributes starting with `@`"
+      (mt/with-temp [:model/User {user-id :id} {:first_name   "Test"
+                                                :last_name    "User"
+                                                :email        "testuser@metabase.com"
+                                                :is_superuser true}]
+        (is (= {:specific-errors {:login_attributes {(keyword "@foo") ["login attribute keys must not start with `@`, received: \"@foo\""]}},
+                :errors
+                {:login_attributes
+                 "nullable map from <login attribute keys must be a keyword or string, and login attribute keys must not start with `@`> to <anything>"}}
+               (mt/user-http-request :crowberto :put 400 (str "user/" user-id)
+                                     {:email            "testuser@metabase.com"
+                                      :login_attributes {"@foo" "foo"}}))))))
+  (testing "POST /api/user"
+    (let [user-name (mt/random-name)
+          email     (mt/random-email)]
+      (mt/with-model-cleanup [:model/User]
+        (mt/with-fake-inbox
+          (is (= {:specific-errors {:login_attributes {(keyword "@foo") ["login attribute keys must not start with `@`, received: \"@foo\""]}},
+                  :errors
+                  {:login_attributes
+                   "nullable map from <login attribute keys must be a keyword or string, and login attribute keys must not start with `@`> to <anything>"}}
+                 (mt/user-http-request :crowberto :post 400 "user"
+                                       {:first_name       user-name
+                                        :last_name        user-name
+                                        :email            email
+                                        :login_attributes {"@foo" "bar"}}))))))))
+
 (deftest ^:parallel updated-user-name-test
   (testing "Test that `metabase.users.api/updated-user-name` works as intended."
     (let [names     {:first_name "Test" :last_name "User"} ;; in a real user map, `:first_name` and `:last_name` will always be present
@@ -1313,3 +1342,64 @@
                              :previous {:first_name "John"
                                         :last_name "Cena"}}}
                  (mt/latest-audit-log-entry :user-update id))))))))
+
+(deftest list-users-can-list-tenant-users
+  (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Tenant" :slug "tenant-slug"}
+                 :model/Tenant {other-tenant-id :id} {:name "Other Tenant" :slug "other-tenant-slug"}
+                 :model/User {tenant-user-id :id} {:tenant_id tenant-id}
+                 :model/User {other-tenant-user-id :id} {:tenant_id other-tenant-id}
+                 :model/User {normal-user-id :id} {}]
+    (let [get-users (fn [& query-params]
+                      (->> (mt/user-http-request :crowberto :get 200 (apply str "user?" query-params))
+                           :data
+                           (filter #(contains? #{tenant-user-id normal-user-id other-tenant-user-id} (:id %)))
+                           (sort-by :id)))]
+      (is (=? [{:id normal-user-id :tenant_id nil}] (get-users)))
+      (is (=? [{:id tenant-user-id :tenant_id tenant-id}] (get-users "tenant_id=" tenant-id)))
+      (is (=? [{:id other-tenant-user-id :tenant_id other-tenant-id}] (get-users "tenant_id=" other-tenant-id)))
+      (is (=? [{:id normal-user-id}] (get-users "tenancy=internal")))
+      (is (=? [{:id tenant-user-id}
+               {:id other-tenant-user-id}
+               {:id normal-user-id}]
+              (get-users "tenancy=all")))
+      (is (=? [{:id tenant-user-id}
+               {:id other-tenant-user-id}]
+              (get-users "tenancy=external")))
+      (is (= "You cannot specify both `tenancy` and `tenant_id`"
+             ;; even though this makes sense as a query (it's just redundant), let's just prohibit specifying both
+             (mt/user-http-request :crowberto :get 400 (str "user?tenancy=external&tenant_id=" tenant-id)))))))
+
+(deftest tenant-users-can-only-list-tenant-recipients
+  (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Tenant" :slug "tenant-slug"}
+                 :model/Tenant {other-tenant-id :id} {:name "Other Tenant" :slug "other-tenant-slug"}
+                 :model/User {tenant-user-id :id} {:tenant_id tenant-id}
+                 :model/User {other-tenant-user-id :id} {:tenant_id other-tenant-id}
+                 :model/User {normal-user-id :id} {}]
+    (let [get-recipient-ids (fn [user-id]
+                              (->> (mt/user-http-request user-id :get 200 "user/recipients")
+                                   :data
+                                   (filter #(contains? #{tenant-user-id normal-user-id other-tenant-user-id} (:id %)))
+                                   (map :id)
+                                   (into #{})))]
+      (mt/with-temporary-setting-values [user-visibility :all]
+        (is (=? #{normal-user-id} (get-recipient-ids normal-user-id)))
+        (is (=? #{tenant-user-id} (get-recipient-ids tenant-user-id)))
+        (is (=? #{other-tenant-user-id} (get-recipient-ids other-tenant-user-id)))
+        ;; note that even superusers only see recipients in the same tenant - maybe revisit this?
+        (is (=? #{tenant-user-id
+                  other-tenant-user-id
+                  normal-user-id} (get-recipient-ids :crowberto))))
+      (mt/with-temporary-setting-values [user-visibility :group]
+        (is (=? #{normal-user-id} (get-recipient-ids normal-user-id)))
+        (is (=? #{tenant-user-id} (get-recipient-ids tenant-user-id)))
+        (is (=? #{other-tenant-user-id} (get-recipient-ids other-tenant-user-id)))
+        (is (=? #{tenant-user-id
+                  other-tenant-user-id
+                  normal-user-id} (get-recipient-ids :crowberto))))
+      (mt/with-temporary-setting-values [user-visibility :none]
+        (is (=? #{normal-user-id} (get-recipient-ids normal-user-id)))
+        (is (=? #{tenant-user-id} (get-recipient-ids tenant-user-id)))
+        (is (=? #{other-tenant-user-id} (get-recipient-ids other-tenant-user-id)))
+        (is (=? #{tenant-user-id
+                  other-tenant-user-id
+                  normal-user-id} (get-recipient-ids :crowberto)))))))
