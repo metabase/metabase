@@ -100,7 +100,12 @@
       {:type "id"
        :sectionId "id"}
       {:type "number/="
-       :sectionId "number"})))
+       :sectionId "number"})
+
+    ;; TODO this needs to be `boolean/=` once we introduce boolean parameters in #57435
+    (isa? effective_type :type/Boolean)
+    {:type "string/="
+     :sectionId "string"}))
 
 (def ^:private ^{:arglists '([dimensions])} remove-unqualified
   (partial remove (fn [{:keys [fingerprint]}]
