@@ -3,13 +3,14 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
+import { Messages } from "metabase/admin/permissions/constants/messages";
 import { getDefaultGroupHasHigherAccessText } from "metabase/admin/permissions/selectors/confirmations";
 import {
-  getAdminGroup,
+  getDefaultGroup,
   getOrderedGroups,
 } from "metabase/admin/permissions/selectors/data-permissions/groups";
 import { getGroupNameLocalized, isAdminGroup } from "metabase/lib/groups";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { Group } from "metabase-types/api";
 
 import { APPLICATION_PERMISSIONS_OPTIONS } from "./constants";
@@ -63,6 +64,8 @@ const getPermission = (
   groupId: number,
   defaultGroup: Group,
   permissionKey: ApplicationPermissionKey,
+  isDisabled: boolean,
+  tooltip: string | null = null,
 ) => {
   const value = getApplicationPermission(permissions, groupId, permissionKey);
   const defaultGroupValue = getApplicationPermission(
@@ -75,9 +78,11 @@ const getPermission = (
 
   return {
     permission: permissionKey,
-    isDisabled: isAdmin,
+    isDisabled,
     warning,
-    disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
+    disabledTooltip: isAdmin
+      ? Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
+      : tooltip,
     value: getApplicationPermission(permissions, groupId, permissionKey),
     options: [
       APPLICATION_PERMISSIONS_OPTIONS.yes,
@@ -90,14 +95,23 @@ export const getApplicationPermissionEditor = createSelector(
   (state: ApplicationPermissionsState) =>
     state.plugins.applicationPermissionsPlugin?.applicationPermissions,
   getOrderedGroups,
-  getAdminGroup,
+  getDefaultGroup,
   (permissions, groups: Group[][], defaultGroup?: Group) => {
     if (!permissions || groups == null || !defaultGroup) {
       return null;
     }
 
-    const entities = groups.flat().map((group) => {
+    const allGroups = groups.flat();
+
+    const externalUsersGroup = _.find(
+      allGroups,
+      PLUGIN_TENANTS.isExternalUsersGroup,
+    );
+
+    const entities = allGroups.map((group) => {
       const isAdmin = isAdminGroup(group);
+      const isExternal =
+        !!externalUsersGroup && PLUGIN_TENANTS.isExternalUsersGroup(group);
 
       return {
         id: group.id,
@@ -107,22 +121,27 @@ export const getApplicationPermissionEditor = createSelector(
             permissions,
             isAdmin,
             group.id,
-            defaultGroup,
+            isExternal ? externalUsersGroup : defaultGroup,
             "setting",
+            isAdmin || isExternal,
+            isExternal ? Messages.EXTERNAL_USERS_NO_ACCESS_SETTINGS : null,
           ),
           getPermission(
             permissions,
             isAdmin,
             group.id,
-            defaultGroup,
+            isExternal ? externalUsersGroup : defaultGroup,
             "monitoring",
+            isAdmin || isExternal,
+            isExternal ? Messages.EXTERNAL_USERS_NO_ACCESS_MONITORING : null,
           ),
           getPermission(
             permissions,
             isAdmin,
             group.id,
-            defaultGroup,
+            isExternal ? externalUsersGroup : defaultGroup,
             "subscription",
+            isAdmin,
           ),
         ],
       };

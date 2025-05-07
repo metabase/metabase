@@ -82,7 +82,7 @@
 
 (mu/defn- fetch-or-create-user! :- [:maybe [:map [:key ms/UUIDString]]]
   "Returns a Session for the given `email`. Will create the user if needed."
-  [{:keys [first-name last-name email group-names user-attributes device-info]}]
+  [{:keys [first-name last-name email group-names user-attributes device-info tenant_id]}]
   (when-not (sso-settings/saml-enabled)
     (throw (IllegalArgumentException. (tru "Can''t create new SAML user when SAML is not enabled"))))
   (when-not email
@@ -97,7 +97,8 @@
                   :last_name        last-name
                   :email            email
                   :sso_source       :saml
-                  :login_attributes user-attributes}]
+                  :login_attributes user-attributes
+                  :tenant_id        tenant_id}]
     (when-let [user (or (sso-utils/fetch-and-update-login-attributes! new-user (sso-settings/saml-user-provisioning-enabled?))
                         (sso-utils/check-user-provisioning :saml)
                         (sso-utils/create-new-sso-user! new-user))]
@@ -290,7 +291,8 @@
                             :email           email
                             :group-names     groups
                             :user-attributes attrs
-                            :device-info     (request/device-info request)})
+                            :device-info     (request/device-info request)
+                            :tenant_id       nil})
             response      (response/redirect (or continue-url (system/site-url)))]
         (if token-value
           (saml-utils/create-token-response session origin clean-continue-url)

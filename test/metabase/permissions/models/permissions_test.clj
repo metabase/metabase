@@ -231,13 +231,14 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot grant application permission to a tenant group\."
                           (perms/grant-application-permissions! tenant-group-id :subscription)))))
 
-(deftest cannot-grant-write-permissions-to-tenant-group
+(deftest cannot-grant-collection-permissions-to-tenant-group
+  ;; right now, with no tenant collections, you can't grant any permissions on any collection to a tenant group
   (mt/with-temp [:model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}
-                 :model/Collection {coll-id :id} {:location "/"}]
-    ;; just call grant/revoke to show that nothing here throws
-    (perms/grant-collection-read-permissions! tenant-group-id coll-id)
+                 :model/Collection {coll-id :id} {:location "/" :type "tenant-collection"}]
     (perms/revoke-collection-permissions! tenant-group-id coll-id)
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant Groups cannot have write access to any collections\."
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot receive access to non-tenant collections\."
+                          (perms/grant-collection-read-permissions! tenant-group-id coll-id)))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot have write access to any collections\."
                           (perms/grant-collection-readwrite-permissions! tenant-group-id coll-id)))))
 
 (deftest cannot-grant-read-or-write-permissions-on-analytics-to-tenant-group
@@ -245,7 +246,7 @@
                  :model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}
                  :model/PermissionsGroup {normal-group-id :id} {:is_tenant_group false}]
     (with-redefs [audit.impl/is-collection-id-audit? (constantly true)]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant Groups cannot receive any access to the audit collection\."
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot receive access to non-tenant collections\."
                             (perms/grant-collection-read-permissions! tenant-group-id coll-id)))
       ;; does not throw - it's not a tenant group
       (perms/grant-collection-read-permissions! normal-group-id coll-id))))

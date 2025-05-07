@@ -42,3 +42,18 @@ export const RedirectToAllowedSettings = connect(
   mapStateToProps,
   mapDispatchToProps,
 )(_RedirectToAllowedSettings);
+
+export const createTenantsRouteGuard = () => {
+  const Wrapper = connectedReduxRedirect({
+    wrapperDisplayName: "CanAccessTenants",
+    redirectPath: "/admin/people",
+    allowRedirectBack: false,
+    authenticatedSelector: (state) =>
+      getAdminPaths(state)?.find((path) => path.key === "people") != null &&
+      state.settings.values["use-tenants"],
+    redirectAction: routerActions.replace,
+    context: MetabaseReduxContext,
+  });
+
+  return Wrapper(({ children }) => children);
+};

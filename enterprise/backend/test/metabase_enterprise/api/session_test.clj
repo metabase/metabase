@@ -46,6 +46,7 @@
                               :whitelabel
                               :collection-cleanup
                               :database-routing
+                              :tenants
                               :cloud-custom-smtp}
     (is (= {:advanced_permissions           true
             :attached_dwh                   true
@@ -85,6 +86,7 @@
             :whitelabel                     true
             :collection_cleanup             true
             :database_routing               true
+            :tenants                        true
             :cloud_custom_smtp              true
             :etl_connections                false
             :etl_connections_pg             false}

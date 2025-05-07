@@ -13,9 +13,13 @@ import { UserForm } from "../forms/UserForm";
 
 interface NewUserModalProps {
   onClose: () => void;
+  external?: boolean;
 }
 
-export const NewUserModal = ({ onClose }: NewUserModalProps) => {
+export const NewUserModal = ({
+  onClose,
+  external = false,
+}: NewUserModalProps) => {
   const dispatch = useDispatch();
 
   const [createUser] = useCreateUserMutation();
@@ -32,12 +36,18 @@ export const NewUserModal = ({ onClose }: NewUserModalProps) => {
         : { password: generatePassword() }),
     }).unwrap();
 
-    dispatch(push(Urls.newUserSuccess(user.id)));
+    dispatch(push(Urls.newUserSuccess(user)));
   };
 
   return (
-    <Modal opened title={t`Create user`} padding="xl" onClose={onClose}>
+    <Modal
+      opened
+      title={external ? t`Create External user` : t`Create user`}
+      padding="xl"
+      onClose={onClose}
+    >
       <UserForm
+        external={external}
         initialValues={{}}
         submitText={t`Create`}
         onCancel={onClose}

@@ -13,10 +13,12 @@ export const getFeatureLevelDataPermissions = (
   entityId: EntityId,
   groupId: number,
   isAdmin: boolean,
+  isExternal: boolean,
   permissions: GroupsPermissions,
   dataAccessPermissionValue: DataPermissionValue,
   defaultGroup: Group,
   permissionSubject: PermissionSubject,
+  permissionView?: "group" | "database",
 ) => {
   const downloadPermission = buildDownloadPermission(
     entityId,
@@ -28,23 +30,29 @@ export const getFeatureLevelDataPermissions = (
     permissionSubject,
   );
 
-  const dataModelPermission = buildDataModelPermission(
-    entityId,
-    groupId,
-    isAdmin,
-    permissions,
-    defaultGroup,
-    permissionSubject,
-  );
+  const dataModelPermission =
+    (!isExternal || permissionView === "database") &&
+    buildDataModelPermission(
+      entityId,
+      groupId,
+      isAdmin,
+      isExternal,
+      permissions,
+      defaultGroup,
+      permissionSubject,
+    );
 
-  const detailsPermission = buildDetailsPermission(
-    entityId,
-    groupId,
-    isAdmin,
-    permissions,
-    defaultGroup,
-    permissionSubject,
-  );
+  const detailsPermission =
+    (!isExternal || permissionView === "database") &&
+    buildDetailsPermission(
+      entityId,
+      groupId,
+      isAdmin,
+      isExternal,
+      permissions,
+      defaultGroup,
+      permissionSubject,
+    );
 
   return [downloadPermission, dataModelPermission, detailsPermission].filter(
     Boolean,

@@ -54,8 +54,7 @@
   graph)
 
 (mu/defn ellide? :- :boolean
-  "If a table has the least permissive value for a perm type, leave it out,
-   Unless it's :data perms, in which case, leave it out only if it's no-self-service"
+  "If a table has the least permissive value for a perm type, leave it out."
   [type :- data-perms/PermissionType
    value :- data-perms/PermissionValue]
   (= (data-perms/least-permissive-value type) value))

@@ -31,6 +31,7 @@ const getPermissionGraph = (value = "all"): GroupsPermissions =>
 
 const isAdmin = true;
 const isNotAdmin = false;
+const isNotExternal = false;
 
 const defaultGroup: Group = {
   id: defaultGroupId,
@@ -43,6 +44,7 @@ describe("buildDataModelPermission", () => {
       { databaseId },
       groupId,
       isNotAdmin,
+      isNotExternal,
       getPermissionGraph(),
       defaultGroup,
       "schemas",
@@ -58,6 +60,7 @@ describe("buildDataModelPermission", () => {
       { databaseId },
       groupId,
       isAdmin,
+      isNotExternal,
       getPermissionGraph(),
       defaultGroup,
       "schemas",
@@ -74,6 +77,7 @@ describe("buildDataModelPermission", () => {
       { databaseId },
       groupId,
       isNotAdmin,
+      isNotExternal,
       getPermissionGraph(),
       defaultGroup,
       "schemas",
@@ -89,6 +93,7 @@ describe("buildDataModelPermission", () => {
         { databaseId },
         groupId,
         isNotAdmin,
+        isNotExternal,
         getPermissionGraph(),
         defaultGroup,
         "schemas",
@@ -98,6 +103,7 @@ describe("buildDataModelPermission", () => {
         { databaseId, schemaName: "schema" },
         groupId,
         isNotAdmin,
+        isNotExternal,
         getPermissionGraph(),
         defaultGroup,
         "tables",
@@ -118,6 +124,7 @@ describe("buildDataModelPermission", () => {
         { databaseId, schemaName: "schema", tableId: 1 },
         groupId,
         isNotAdmin,
+        isNotExternal,
         getPermissionGraph(),
         defaultGroup,
         "fields",
@@ -138,6 +145,7 @@ describe("buildDataModelPermission", () => {
         { databaseId },
         groupId,
         isNotAdmin,
+        isNotExternal,
         getPermissionGraph(),
         defaultGroup,
         "schemas",
@@ -156,6 +164,7 @@ describe("buildDataModelPermission", () => {
         { databaseId },
         groupId,
         isNotAdmin,
+        isNotExternal,
         getPermissionGraph("none"),
         defaultGroup,
         "schemas",
@@ -175,6 +184,7 @@ describe("buildDataModelPermission", () => {
         { databaseId },
         groupId,
         isNotAdmin,
+        isNotExternal,
         getPermissionGraph("block"),
         defaultGroup,
         "schemas",

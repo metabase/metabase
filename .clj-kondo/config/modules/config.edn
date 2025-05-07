@@ -1217,6 +1217,11 @@
            task
            util}}
 
+  tenants
+  {:team "Admin Webapp"
+   :api #{metabase.tenants.core}
+   :uses #{premium-features}}
+
   testing-api
   {:team "DevEx"
    :api  #{metabase.testing-api.api
@@ -1302,6 +1307,7 @@
            config
            events
            models
+           notification
            permissions
            premium-features
            request
@@ -1310,6 +1316,7 @@
            setup
            sso
            system
+           tenants
            util
            enterprise/advanced-permissions}}
 
@@ -1736,6 +1743,7 @@
            query-permissions
            query-processor
            request
+           tenants
            users
            util
            warehouse-schema
@@ -1814,6 +1822,7 @@
            settings
            sso
            system
+           tenants
            users
            util
            enterprise/scim}}
@@ -1828,6 +1837,18 @@
            embedding
            premium-features
            queries
+           request
+           settings
+           util}}
+
+  enterprise/tenants
+  {:team "Admin Webapp"
+   :api #{}
+   :uses #{api
+           audit-app
+           events
+           models
+           premium-features
            request
            settings
            util}}

@@ -10,6 +10,7 @@
    [metabase.permissions.models.permissions-group]
    [metabase.permissions.models.permissions-group-membership]
    [metabase.permissions.path]
+   [metabase.permissions.settings]
    [metabase.permissions.user]
    [metabase.permissions.util]
    [metabase.permissions.validation]
@@ -43,6 +44,7 @@
   sandboxes-for-user
   schema-permission-for-user
   set-database-permission!
+  set-external-group-permissions!
   set-new-database-permissions!
   set-new-table-permissions!
   set-table-permission!
@@ -110,6 +112,8 @@
   graph
   update-graph!])
 
+(p/import-vars [metabase.permissions.settings use-tenants])
+
 ;;; import these vars with different names to make their purpose more obvious. These actually do have docstrings but
 ;;; Kondo gets tripped up here.
 
@@ -124,3 +128,6 @@
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.permissions.models.collection-permission-graph-revision/latest-id latest-collection-permissions-revision-id)
+
+#_{:clj-kondo/ignore [:missing-docstring]}
+(p/import-def metabase.permissions.models.permissions-group/all-external-users all-external-users-group)

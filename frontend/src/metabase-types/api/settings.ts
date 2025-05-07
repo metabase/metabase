@@ -263,6 +263,7 @@ export const tokenFeatures = [
   "development_mode",
   "etl_connections",
   "etl_connections_pg",
+  "tenants",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -491,6 +492,7 @@ interface PublicSettings {
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
   "non-table-chart-generated": boolean;
+  "use-tenants": boolean;
 }
 
 export type UserSettings = {

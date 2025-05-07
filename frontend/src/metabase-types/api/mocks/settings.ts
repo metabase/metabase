@@ -134,6 +134,7 @@ export const createMockTokenFeatures = (
   ai_sql_generation: false,
   database_routing: false,
   development_mode: false,
+  tenants: false,
   ...opts,
 });
 
@@ -380,5 +381,6 @@ export const createMockSettings = (
   "trial-banner-dismissal-timestamp": null,
   "license-token-missing-banner-dismissal-timestamp": [],
   "sdk-iframe-embed-setup-settings": null,
+  "use-tenants": false,
   ...opts,
 });

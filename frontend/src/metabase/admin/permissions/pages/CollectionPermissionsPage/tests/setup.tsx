@@ -12,7 +12,7 @@ import { renderWithProviders } from "__support__/ui";
 import type {
   Collection,
   CollectionPermissionsGraph,
-  Group,
+  GroupInfo,
   TokenFeatures,
 } from "metabase-types/api";
 import {
@@ -67,10 +67,15 @@ export const defaultRootCollection = createMockCollection({
   children: [collectionOne, collectionTwo],
 });
 
-const defaultPermissionGroups: Omit<Group, "members">[] = [
-  { id: 1, name: "All Users", member_count: 40 },
-  { id: 2, name: "Administrators", member_count: 2 },
-  { id: 3, name: "Other Users", member_count: 33 },
+export const defaultPermissionGroups: GroupInfo[] = [
+  {
+    id: 1,
+    name: "All Internal Users",
+    member_count: 40,
+    magic_group_type: "all-internal-users",
+  },
+  { id: 2, name: "Administrators", member_count: 2, magic_group_type: "admin" },
+  { id: 3, name: "Other Users", member_count: 33, magic_group_type: null },
 ];
 
 export const defaultPermissionsGraph: CollectionPermissionsGraph = {
@@ -108,12 +113,12 @@ interface SetupOptions {
   collections?: Collection[];
   rootCollection?: Collection;
   permissionsGraph?: CollectionPermissionsGraph;
-  permissionGroups?: Omit<Group, "members">[];
+  permissionGroups?: GroupInfo[];
   tokenFeatures?: Partial<TokenFeatures>;
 }
 
 export function setup({
-  initialRoute = "/admin/permissions/collections/root",
+  initialRoute = "/admin/permissions/collections",
   collections = defaultCollections,
   rootCollection = defaultRootCollection,
   permissionsGraph = defaultPermissionsGraph,
@@ -144,7 +149,7 @@ export function setup({
   renderWithProviders(
     <>
       <Route
-        path="/admin/permissions/collections/root"
+        path="/admin/permissions/collections"
         component={CollectionPermissionsPage}
       />
       <Route

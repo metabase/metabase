@@ -39,3 +39,8 @@ export const getUserPersonalCollectionId = createSelector(
   [getUser],
   (user) => user?.personal_collection_id,
 );
+
+export const getUserCanWriteToCollections = createSelector(
+  [getUser],
+  (user) => user?.can_write_any_collection,
+);
