@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   skipToken,
@@ -103,6 +103,18 @@ function DatabaseNode({
 
   const singleSchema = !isLoading && data?.length === 1;
 
+  useEffect(() => {
+    // Open the schema by default if it's the only one
+    if (singleSchema) {
+      const schemaId = `${database.id}:${data[0]}`;
+      if (!expandedSchemas[schemaId]) {
+        toggle(schemaId);
+      }
+    }
+    // Ignore changes to expandedSchemas
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [singleSchema, database, data]);
+
   const schemas = data?.map((name) => {
     const slug = `${database.id}:${name}`;
     return (
@@ -110,9 +122,8 @@ function DatabaseNode({
         key={name}
         databaseId={database.id}
         schemaId={name}
-        expanded={singleSchema || expandedSchemas[slug]}
+        expanded={expandedSchemas[slug]}
         onToggle={() => toggle(slug)}
-        flatten={singleSchema}
       />
     );
   });
@@ -140,13 +151,11 @@ function SchemaNode({
   schemaId,
   expanded,
   onToggle,
-  flatten,
 }: {
   databaseId: DatabaseId;
   schemaId: SchemaId;
   expanded?: boolean;
   onToggle: () => void;
-  flatten?: boolean;
 }) {
   const { data, isLoading, isError } = useListDatabaseSchemaTablesQuery(
     expanded
@@ -170,10 +179,6 @@ function SchemaNode({
       tableId={table.id}
     />
   ));
-
-  if (flatten) {
-    return tables;
-  }
 
   return (
     <Node
