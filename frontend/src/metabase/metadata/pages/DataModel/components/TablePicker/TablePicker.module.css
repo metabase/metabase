@@ -1,0 +1,11 @@
+.tablePicker {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 200px;
+}
+
+.tablePickerContent {
+  overflow: auto;
+  flex-grow: 0;
+  flex-shrink: 1;
+}

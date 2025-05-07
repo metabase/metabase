@@ -6,6 +6,7 @@ import {
   useListDatabaseSchemasQuery,
   useListDatabasesQuery,
 } from "metabase/api";
+import { Box, Stack } from "metabase/ui";
 import type {
   Database,
   DatabaseId,
@@ -17,6 +18,7 @@ import { getUrl } from "../../utils";
 
 import { Node, renderLoading } from "./Node";
 import { SearchInput, SearchResults } from "./Search";
+import S from "./TablePicker.module.css";
 import { useExpandedState, usePrefetch } from "./utils";
 
 export function TablePicker(props: {
@@ -26,14 +28,19 @@ export function TablePicker(props: {
   const [searchValue, setSearchValue] = useState("");
 
   return (
-    <>
-      <SearchInput value={searchValue} onChange={setSearchValue} />
-      {searchValue === "" ? (
-        <RootNode {...props} />
-      ) : (
-        <SearchResults searchValue={searchValue} />
-      )}
-    </>
+    <Stack className={S.tablePicker}>
+      <Box px="xl">
+        <SearchInput value={searchValue} onChange={setSearchValue} />
+      </Box>
+
+      <Box className={S.tablePickerContent} px="xl" pb="lg">
+        {searchValue === "" ? (
+          <RootNode {...props} />
+        ) : (
+          <SearchResults searchValue={searchValue} />
+        )}
+      </Box>
+    </Stack>
   );
 }
 

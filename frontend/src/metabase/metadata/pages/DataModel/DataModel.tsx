@@ -54,8 +54,8 @@ export const DataModel = ({ params }: Props) => {
           {t`Data model`}
         </Title>
 
-        <Box className={S.tableSectionContainer} h="100%" pb="lg" px="xl">
-          {tableId ? (
+        {tableId ? (
+          <Box className={S.tableSectionContainer} h="100%" pb="lg" px="xl">
             <LoadingAndErrorWrapper error={error} loading={isLoading}>
               {table && (
                 <TableSection
@@ -69,10 +69,10 @@ export const DataModel = ({ params }: Props) => {
                 />
               )}
             </LoadingAndErrorWrapper>
-          ) : (
-            <TablePicker databaseId={databaseId} schemaId={schemaId} />
-          )}
-        </Box>
+          </Box>
+        ) : (
+          <TablePicker databaseId={databaseId} schemaId={schemaId} />
+        )}
       </Stack>
 
       {isEmptyStateShown && (
