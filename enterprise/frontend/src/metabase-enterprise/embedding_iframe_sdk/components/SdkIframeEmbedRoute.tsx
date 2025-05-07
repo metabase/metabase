@@ -9,8 +9,8 @@ import {
 import { MetabaseProvider } from "embedding-sdk/components/public/MetabaseProvider";
 import { Box, Center, Loader, ThemeProvider } from "metabase/ui";
 
-import { useSdkIframeEmbedEventBus } from "../../hooks/use-sdk-iframe-embed-event-bus";
-import type { SdkIframeEmbedSettings } from "../../types/embed";
+import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
+import type { SdkIframeEmbedSettings } from "../types/embed";
 
 export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus();
