@@ -1,3 +1,17 @@
+## [0.55.5-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.4-metabot...embedding-sdk-0.55.5-metabot) (2025-05-07)
+
+
+### Bug Fixes
+
+* **sdk:** clicking on "and X more" in chart legend throws error ([#57175](https://github.com/metabase/metabase/issues/57175)) ([6b427ef](https://github.com/metabase/metabase/commit/6b427efbfcf2dfc114cdc892a4bf9ec9cee3f38d))
+* **sdk:** custom GeoJSON maps does not load due to wrong domain ([#57539](https://github.com/metabase/metabase/issues/57539)) ([7f92780](https://github.com/metabase/metabase/commit/7f92780e9e1641fb79054e4f9b99c7819f5d9833))
+* **sdk:** Ensure that questions don't flicker when fetching entity IDs ([#57073](https://github.com/metabase/metabase/issues/57073)) ([af0188a](https://github.com/metabase/metabase/commit/af0188ade10002d948efe3199839cb3f000f164d))
+* **sdk:** manual fixes for module level ttag calls causing broken translations ([#57391](https://github.com/metabase/metabase/issues/57391)) ([2adc027](https://github.com/metabase/metabase/commit/2adc0271787a0a07b1ec5e704198432166071ac3))
+* **sdk:** updating collection's entity id crashes InteractiveQuestion and CollectionBrowser ([#57529](https://github.com/metabase/metabase/issues/57529)) ([92fac6c](https://github.com/metabase/metabase/commit/92fac6cabb08e59ef39a80a5c589df458c749cb5))
+* **sdk:** use background color in sankey chart text outline ([#57135](https://github.com/metabase/metabase/issues/57135)) ([dd76006](https://github.com/metabase/metabase/commit/dd76006c42a5220db0097bdc583ffd110cf174ae))
+
+
+
 ## [0.55.4-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.3-metabot...embedding-sdk-0.55.4-metabot) (2025-04-23)
 
 
