@@ -44,21 +44,6 @@
 
       :else false)))
 
-(defn ^:export field-type
-  "Return the category `column` belongs to.
-  The possible categories are the keys in [[metabase.lib.types.constants/type-hierarchies]]."
-  [column]
-  (m/find-first #(field-type? % column)
-                [::lib.types.constants/temporal
-                 ::lib.types.constants/location
-                 ::lib.types.constants/coordinate
-                 ::lib.types.constants/foreign_key
-                 ::lib.types.constants/primary_key
-                 ::lib.types.constants/boolean
-                 ::lib.types.constants/string
-                 ::lib.types.constants/string_like
-                 ::lib.types.constants/number]))
-
 (defn ^:export temporal?
   "Is `column` of a temporal type?"
   [column]
