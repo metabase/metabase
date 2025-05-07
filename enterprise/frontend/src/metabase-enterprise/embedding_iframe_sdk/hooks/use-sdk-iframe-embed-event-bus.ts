@@ -23,7 +23,7 @@ export function useSdkIframeEmbedEventBus(): {
       }
 
       match(event.data).with(
-        { type: "metabase.embed.updateSettings" },
+        { type: "metabase.embed.setSettings" },
         ({ data }) => setEmbedSettings(data),
       );
     };
