@@ -105,6 +105,7 @@ const config = {
     "app-main": "./app-main.js",
     "app-public": "./app-public.js",
     "app-embed": "./app-embed.js",
+    "app-embed-sdk": "./app-embed-sdk.js",
     "vendor-styles": "./css/vendor.css",
     styles: "./css/index.module.css",
   },
@@ -278,6 +279,12 @@ const config = {
       filename: "../../embed.html",
       chunksSortMode: "manual",
       chunks: ["vendor", "vendor-styles", "styles", "app-embed"],
+      template: __dirname + "/resources/frontend_client/index_template.html",
+    }),
+    new HtmlWebpackPlugin({
+      filename: "../../embed-sdk.html",
+      chunksSortMode: "manual",
+      chunks: ["vendor", "vendor-styles", "styles", "app-embed-sdk"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new rspack.BannerPlugin({

@@ -32,10 +32,13 @@
     (redirect-including-query-string (format "%s/api/public/card/%s/query/%s" (system/site-url) uuid export-format)))
   (GET "*" [] index/public))
 
-;; /embed routes. /embed/question/:token.:export-format redirects to /api/public/card/:token/query/:export-format
+;; /embed routes.
+;; /embed/sdk -> new iframe embedding based on embedding sdk components
+;; /embed/question/:token.:export-format redirects to /api/public/card/:token/query/:export-format
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private ^{:arglists '([request respond raise])} embed-routes
-  (GET ["/question/:token.:export-format", :export-format qp.schema/export-formats-regex]
+  (GET "sdk" [] index/embed-sdk)
+  (GET ["/question/:token.:export-format", :export-format api.dataset/export-format-regex]
     [token export-format]
     (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (system/site-url) token export-format)))
   (GET "*" [] index/embed))
@@ -76,7 +79,7 @@
     (route/not-found {:status 404, :body "Not found."}))
   ;; ^/public/ -> Public frontend and download routes
   (context "/public" [] public-routes)
-  ;; ^/emebed/ -> Embed frontend and download routes
+  ;; ^/embed/ -> Embed frontend and download routes
   (context "/embed" [] embed-routes)
   ;; Anything else (e.g. /user/edit_current) should serve up index.html; React app will handle the rest
   (GET "*" [] index/index))
