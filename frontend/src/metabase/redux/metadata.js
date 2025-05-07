@@ -11,6 +11,7 @@ import { entityCompatibleQuery } from "metabase/lib/entities";
 import { createThunkAction, fetchData } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { RevisionsApi } from "metabase/services";
+import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 // NOTE: All of these actions are deprecated. Use metadata entities directly.
 
@@ -244,7 +245,7 @@ export const fetchRemapping = createThunkAction(
       } else if (parameter != null) {
         const remapping = await entityCompatibleQuery(
           {
-            parameter,
+            parameter: normalizeParameter(parameter),
             field_ids: [fieldId],
             value,
           },
