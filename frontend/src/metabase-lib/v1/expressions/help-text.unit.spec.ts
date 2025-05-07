@@ -5,7 +5,7 @@ import { createMockDatabase } from "metabase-types/api/mocks/database";
 
 import { MBQL_CLAUSES } from "./config";
 import { formatExpressionParts } from "./formatter";
-import { getHelpText } from "./helper-text-strings";
+import { getHelpText } from "./help-text";
 
 describe("getHelpText", () => {
   const reportTimezone = "US/Hawaii";
@@ -18,7 +18,7 @@ describe("getHelpText", () => {
       reportTimezone,
     );
 
-    expect(helpText).toBeUndefined();
+    expect(helpText).toBeNull();
   });
 
   describe("should return help text if a supported name is passed", () => {
@@ -26,21 +26,21 @@ describe("getHelpText", () => {
       const { database } = setup();
       const helpText = getHelpText("count", database, reportTimezone);
 
-      expect(helpText?.structure).toBe("Count");
+      expect(helpText?.displayName).toBe("Count");
       expect(helpText?.example).toEqual({
         operator: "count",
         options: {},
         args: [],
       });
       expect(helpText?.description).toMatch(/returns the count of rows/i);
-      expect(helpText?.args).toBe(undefined);
+      expect(helpText?.args).toEqual([]);
     });
 
     it("percentile", () => {
       const { database } = setup();
       const helpText = getHelpText("percentile", database, reportTimezone);
 
-      expect(helpText?.structure).toBe("Percentile");
+      expect(helpText?.displayName).toBe("Percentile");
       expect(helpText?.example).toEqual({
         operator: "percentile",
         options: {},
@@ -67,7 +67,7 @@ describe("getHelpText", () => {
         reportTimezone,
       );
 
-      expect(helpText?.structure).toEqual("convertTimezone");
+      expect(helpText?.displayName).toEqual("convertTimezone");
       expect(helpText?.description).toEqual(
         expect.not.stringContaining("https"),
       );
@@ -77,7 +77,7 @@ describe("getHelpText", () => {
       const { database } = setup();
       const helpText = getHelpText("offset", database, reportTimezone);
 
-      expect(helpText?.structure).toBe("Offset");
+      expect(helpText?.displayName).toBe("Offset");
       expect(helpText?.example).toEqual({
         operator: "offset",
         options: {},
