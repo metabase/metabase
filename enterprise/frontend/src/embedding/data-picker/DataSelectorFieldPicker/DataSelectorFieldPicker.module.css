@@ -1,0 +1,17 @@
+.Container {
+  overflow-y: auto;
+}
+
+.HeaderContainer {
+  align-items: center;
+  color: var(--mb-color-text-medium);
+  cursor: pointer;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.HeaderName {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  word-wrap: anywhere;
+}

@@ -1,7 +1,7 @@
 (ns metabase.notification.payload.impl.system-event-test
   (:require
    [clojure.test :refer :all]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.settings.deprecated-grab-bag :as public-settings]

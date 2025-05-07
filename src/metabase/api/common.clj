@@ -80,7 +80,7 @@
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require
    [metabase.api.open-api :as open-api]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]

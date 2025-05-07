@@ -37,7 +37,6 @@
     :model/DatabaseRouter                    metabase-enterprise.database-routing.model
     :model/Dimension                         metabase.models.dimension
     :model/Field                             metabase.models.field
-    :model/FieldUsage                        metabase.models.field-usage
     :model/FieldValues                       metabase.models.field-values
     :model/GroupTableAccessPolicy            metabase-enterprise.sandbox.models.group-table-access-policy
     :model/HTTPAction                        metabase.actions.models
@@ -77,7 +76,6 @@
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
     :model/Table                             metabase.models.table
-    :model/TablePrivileges                   metabase.models.table-privileges
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event

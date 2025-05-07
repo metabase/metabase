@@ -3,7 +3,7 @@
   (:require
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.api.common :as api]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as m]
