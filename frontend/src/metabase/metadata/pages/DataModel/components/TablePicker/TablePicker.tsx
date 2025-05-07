@@ -10,8 +10,14 @@ import { getUrl } from "../../utils";
 
 import { SearchInput, SearchResults } from "./Search";
 import S from "./TablePicker.module.css";
-import { type Item, flatten, useExpandedState, useTableLoader } from "./load";
-import { getIconForType, hasChildren } from "./utils";
+import {
+  type Item,
+  flatten,
+  getIconForType,
+  hasChildren,
+  useExpandedState,
+  useTableLoader,
+} from "./utils";
 
 export function TablePicker(props: {
   databaseId?: DatabaseId;
