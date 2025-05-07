@@ -1,13 +1,9 @@
 /* eslint-disable react/prop-types */
 
-import { updateIn } from "icepick";
 import { t } from "ttag";
-import * as Yup from "yup";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
-import { FormSwitch } from "metabase/forms";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
@@ -16,12 +12,15 @@ import {
   PLUGIN_LDAP_FORM_FIELDS,
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
-import { Stack } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { createSessionMiddleware } from "../auth/middleware/session-middleware";
 
 import { AuthSettingsPage } from "./components/AuthSettingsPage";
+import {
+  LdapGroupMembershipFilter,
+  LdapUserProvisioning,
+} from "./components/Ldap";
 import SettingsJWTForm from "./components/SettingsJWTForm";
 import SettingsSAMLForm from "./components/SettingsSAMLForm";
 import { SsoButton } from "./components/SsoButton";
@@ -214,49 +213,9 @@ if (hasPremiumFeature("disable_password_login")) {
 
 if (hasPremiumFeature("sso_ldap")) {
   Object.assign(PLUGIN_LDAP_FORM_FIELDS, {
-    formFieldAttributes: ["ldap-user-provisioning-enabled?"],
-    defaultableFormFieldAttributes: ["ldap-user-provisioning-enabled?"],
-    formFieldsSchemas: {
-      "ldap-user-provisioning-enabled?": Yup.boolean().default(null),
-    },
-    UserProvisioning: ({ fields, settings }) => (
-      <Stack gap="0.75rem" m="2.5rem 0">
-        <SettingHeader
-          id="ldap-user-provisioning-enabled?"
-          title={settings["ldap-user-provisioning-enabled?"].display_name}
-          description={settings["ldap-user-provisioning-enabled?"].description}
-        />
-        <FormSwitch
-          id="ldap-user-provisioning-enabled?"
-          name={fields["ldap-user-provisioning-enabled?"].name}
-          defaultChecked={fields["ldap-user-provisioning-enabled?"].default}
-        />
-      </Stack>
-    ),
+    LdapGroupMembershipFilter,
+    LdapUserProvisioning,
   });
-
-  PLUGIN_ADMIN_SETTINGS_UPDATES.push((sections) =>
-    updateIn(sections, ["authentication/ldap", "settings"], (settings) => [
-      {
-        key: "ldap-user-provisioning-enabled?",
-        display_name: t`User Provisioning`,
-        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
-        description: t`When a user logs in via LDAP, create a Metabase account for them automatically if they don't have one.`,
-        type: "boolean",
-      },
-      ...settings,
-      {
-        key: "ldap-group-membership-filter",
-        display_name: t`Group membership filter`,
-        type: "string",
-      },
-      {
-        key: "ldap-sync-admin-group",
-        display_name: t`Sync Administrator group`,
-        type: "boolean",
-      },
-    ]),
-  );
 }
 
 if (hasPremiumFeature("session_timeout_config")) {
