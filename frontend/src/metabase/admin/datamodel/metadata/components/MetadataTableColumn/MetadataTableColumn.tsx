@@ -9,13 +9,14 @@ import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
+import {
+  FieldVisibilityPicker,
+  SemanticTypeAndTargetPicker,
+} from "metabase/metadata/components";
 import { Button, Icon, Text } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
-
-import { FieldVisibilityPicker } from "../FieldVisibilityPicker";
 
 import { ColumnContainer, ColumnInput } from "./MetadataTableColumn.styled";
 
@@ -100,9 +101,16 @@ const MetadataTableColumn = ({
             <div className={cx(CS.pl1, CS.flexAuto)}>
               <LabelPlaceholder />
               <FieldVisibilityPicker
-                className={CS.block}
-                field={field}
-                onUpdateField={onUpdateField}
+                comboboxProps={{
+                  width: 300,
+                }}
+                fw="bold"
+                value={field.visibility_type}
+                onChange={(visibilityType) => {
+                  onUpdateField(field, {
+                    visibility_type: visibilityType,
+                  });
+                }}
               />
             </div>
             <div className={cx(CS.flexAuto, CS.px1)}>

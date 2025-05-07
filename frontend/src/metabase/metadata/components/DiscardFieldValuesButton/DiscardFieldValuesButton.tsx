@@ -2,26 +2,25 @@ import { useEffect, useRef, useState } from "react";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
 
-import { useDiscardTableFieldValuesMutation } from "metabase/api";
+import { useDiscardFieldValuesMutation } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Button } from "metabase/ui";
-import type { TableId } from "metabase-types/api";
+import type { FieldId } from "metabase-types/api";
 
 interface Props {
-  tableId: TableId;
+  fieldId: FieldId;
 }
 
-export const DiscardTableFieldValuesButton = ({ tableId }: Props) => {
+export const DiscardFieldValuesButton = ({ fieldId }: Props) => {
   const dispatch = useDispatch();
 
   const [started, setStarted] = useState(false);
   const timeoutIdRef = useRef<number>();
-  const [discardTableFieldValues, { error }] =
-    useDiscardTableFieldValuesMutation();
+  const [discardFieldValues, { error }] = useDiscardFieldValuesMutation();
 
   const handleClick = async () => {
-    const response = await discardTableFieldValues(tableId);
+    const response = await discardFieldValues(fieldId);
 
     if (!response.error) {
       setStarted(true);

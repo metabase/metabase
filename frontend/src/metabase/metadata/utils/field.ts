@@ -1,8 +1,18 @@
 import { is_coerceable } from "cljs/metabase.types";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
-import type { Field, FieldId, SchemaName, Table } from "metabase-types/api";
+import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
+import { TYPE } from "metabase-lib/v1/types/constants";
+import { isTypeFK, isa } from "metabase-lib/v1/types/utils/isa";
+import type {
+  Database,
+  Field,
+  FieldFormattingSettings,
+  FieldId,
+  SchemaName,
+  Table,
+} from "metabase-types/api";
 
+import { hasDatabaseFeature } from "./database";
 import { getSchemaDisplayName } from "./schema";
 
 /**
@@ -31,6 +41,20 @@ export function getRawTableFieldId(field: Field): FieldId {
   return field.id;
 }
 
+export function getFieldCurrency(field: Field): string {
+  if (field.settings?.currency) {
+    return field.settings.currency;
+  }
+
+  const settings: FieldFormattingSettings = getGlobalSettingsForColumn();
+
+  if (settings.currency) {
+    return settings.currency;
+  }
+
+  return "USD";
+}
+
 export function getFieldDisplayName(
   field: Field,
   table?: Table | undefined,
@@ -51,4 +75,21 @@ export function getFieldDisplayName(
   }
 
   return fieldDisplayName;
+}
+
+export function canFieldUnfoldJson(field: Field, database: Database): boolean {
+  return (
+    isa(field.base_type, TYPE.JSON) &&
+    database != null &&
+    hasDatabaseFeature(database, "nested-field-columns")
+  );
+}
+
+export function isFieldJsonUnfolded(field: Field, database: Database): boolean {
+  const databaseJsonUnfolding = database.details?.["json-unfolding"];
+
+  return (
+    field.json_unfolding ??
+    (typeof databaseJsonUnfolding === "boolean" ? databaseJsonUnfolding : true)
+  );
 }

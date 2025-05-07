@@ -1,46 +1,52 @@
 import { t } from "ttag";
 
 import { FIELD_VISIBILITY_TYPES } from "metabase/lib/core";
-import { Flex, Icon, Select, SelectItem, Text } from "metabase/ui";
-import type Field from "metabase-lib/v1/metadata/Field";
+import {
+  Flex,
+  Icon,
+  Select,
+  SelectItem,
+  type SelectProps,
+  Text,
+} from "metabase/ui";
 import type { FieldVisibilityType } from "metabase-types/api";
 
 import S from "./FieldVisibilityPicker.module.css";
 
 const DATA = getData();
 
-interface FieldVisibilityPickerProps {
-  className?: string;
-  field: Field;
-  onUpdateField: (field: Field, updates: Partial<Field>) => void;
+interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
+  value: FieldVisibilityType;
+  onChange: (value: FieldVisibilityType) => void;
 }
 
 export const FieldVisibilityPicker = ({
-  className,
-  field,
-  onUpdateField,
-}: FieldVisibilityPickerProps) => {
-  const value = field.visibility_type;
-
-  const handleChange = (visibilityType: string) => {
-    if (!isFieldVisibilityType(visibilityType)) {
-      throw new Error("Unknown 'visibilityType'. This should never happen");
+  comboboxProps,
+  value,
+  onChange,
+  ...props
+}: Props) => {
+  const handleChange = (value: string) => {
+    if (!isFieldVisibilityType(value)) {
+      throw new Error("Unknown FieldVisibilityType. This should never happen");
     }
 
-    onUpdateField(field, {
-      visibility_type: visibilityType,
-    });
+    onChange(value);
   };
 
   return (
     <Select
-      className={className}
       comboboxProps={{
+        middlewares: {
+          flip: true,
+          size: {
+            padding: 6,
+          },
+        },
         position: "bottom-start",
-        width: 300,
+        ...comboboxProps,
       }}
       data={DATA}
-      fw="bold"
       placeholder={t`Select a field visibility`}
       renderOption={(item) => {
         const selected = item.option.value === value;
@@ -68,6 +74,7 @@ export const FieldVisibilityPicker = ({
       }}
       value={value}
       onChange={handleChange}
+      {...props}
     />
   );
 };

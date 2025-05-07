@@ -5,3 +5,7 @@
 .tableSectionContainer {
   overflow: auto;
 }
+
+.contentLoadingAndErrorWrapper {
+  height: 100%;
+}
