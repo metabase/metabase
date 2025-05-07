@@ -385,7 +385,7 @@ if (devMode) {
   );
 }
 
-const configs = [];
+const additionalRspackConfig = [];
 
 if (process.env.MB_EDITION === "ee") {
   const SDK_IFRAME_EMBED_PLUGIN_PATH = `${ENTERPRISE_SRC_PATH}/embedding_iframe_sdk`;
@@ -396,11 +396,9 @@ if (process.env.MB_EDITION === "ee") {
   }
 
   // Build the embed.js script for the sdk iframe embedding
-  configs.push(
+  additionalRspackConfig.push(
     require(`${SDK_IFRAME_EMBED_PLUGIN_PATH}/rspack.embed.config.js`),
   );
 }
 
-configs.push(config);
-
-module.exports = configs;
+module.exports = [config, ...additionalRspackConfig];
