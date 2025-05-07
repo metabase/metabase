@@ -5,17 +5,10 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
-import * as domUtils from "metabase/lib/dom";
 import { NewModals } from "metabase/new/components/NewModals/NewModals";
 import type { Database } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import {
-  createMockEmbedOptions,
-  createMockEmbedState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import NewItemMenu from "./NewItemMenu";
 
@@ -25,43 +18,22 @@ console.error = jest.fn();
 type SetupOpts = {
   databases?: Database[];
   hasModels?: boolean;
-  isEmbeddingIframe?: boolean;
-  entityTypes?: EmbeddingEntityType[];
 };
 
 const SAMPLE_DATABASE = createSampleDatabase();
 const COLLECTION = createMockCollection();
 
-async function setup({
-  databases = [SAMPLE_DATABASE],
-  isEmbeddingIframe,
-  entityTypes,
-}: SetupOpts = {}) {
+async function setup({ databases = [SAMPLE_DATABASE] }: SetupOpts = {}) {
   setupDatabasesEndpoints(databases);
   setupCollectionByIdEndpoint({
     collections: [COLLECTION],
   });
-
-  if (isEmbeddingIframe) {
-    jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
-  }
 
   renderWithProviders(
     <>
       <NewItemMenu trigger={<button>New</button>} />
       <NewModals />
     </>,
-    entityTypes
-      ? {
-          storeInitialState: createMockState({
-            embed: createMockEmbedState({
-              options: createMockEmbedOptions({
-                entity_types: entityTypes,
-              }),
-            }),
-          }),
-        }
-      : undefined,
   );
   await userEvent.click(screen.getByText("New"));
 }
