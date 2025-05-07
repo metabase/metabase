@@ -106,7 +106,6 @@ export class UnconnectedDataSelector extends Component {
     containerClassName: PropTypes.string,
     canSelectModel: PropTypes.bool,
     canSelectTable: PropTypes.bool,
-    canSelectSavedQuestion: PropTypes.bool,
 
     // from search entity list loader
     allError: PropTypes.bool,
@@ -137,7 +136,6 @@ export class UnconnectedDataSelector extends Component {
     isMantine: false,
     canSelectModel: true,
     canSelectTable: true,
-    canSelectSavedQuestion: true,
   };
 
   isPopoverOpen() {
@@ -402,36 +400,17 @@ export class UnconnectedDataSelector extends Component {
     return this.hasModels() && this.props.hasNestedQueriesEnabled;
   };
 
-  hasSavedQuestions = () => {
-    const { canSelectSavedQuestion } = this.props;
-    return (
-      this.state.databases.some((database) => database.is_saved_questions) &&
-      canSelectSavedQuestion
-    );
-  };
-
   getDatabases = () => {
     const { databases } = this.state;
 
-    // When there is at least one dataset,
-    // "Saved Questions" are presented in a different picker step
-    // So it should be excluded from a regular databases list
-    const shouldRemoveSavedQuestionDatabaseFromList =
-      !this.props.hasNestedQueriesEnabled ||
-      this.hasUsableModels() ||
-      !this.props.canSelectSavedQuestion;
-
-    return shouldRemoveSavedQuestionDatabaseFromList
-      ? databases.filter((db) => !db.is_saved_questions)
-      : databases;
+    return databases.filter((db) => !db.is_saved_questions);
   };
 
   async hydrateActiveStep() {
     const { steps } = this.props;
     if (
       this.isSavedEntitySelected() ||
-      this.state.selectedDataBucketId === DATA_BUCKET.MODELS ||
-      this.state.selectedDataBucketId === DATA_BUCKET.SAVED_QUESTIONS
+      this.state.selectedDataBucketId === DATA_BUCKET.MODELS
     ) {
       await this.switchToStep(DATABASE_STEP);
     } else if (this.state.selectedTableId && steps.includes(FIELD_STEP)) {
@@ -824,7 +803,6 @@ export class UnconnectedDataSelector extends Component {
                 hasModels: this.hasModels(),
                 hasTables: this.props.canSelectTable,
                 hasNestedQueriesEnabled,
-                hasSavedQuestions: this.hasSavedQuestions(),
               })}
               {...props}
             />
