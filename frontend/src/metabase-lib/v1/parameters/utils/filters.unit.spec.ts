@@ -57,6 +57,7 @@ describe("parameters/utils/field-filters", () => {
           type: "location",
           field: () => ({
             ...field,
+            isString: () => true,
             isAddress: () => true,
             isCity: () => true,
           }),

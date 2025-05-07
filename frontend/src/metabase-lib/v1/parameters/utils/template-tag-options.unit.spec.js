@@ -79,7 +79,11 @@ describe("parameters/utils/template-tag-options", () => {
     });
 
     it("should return string options for an address field", () => {
-      const addressField = { ...field, isAddress: () => true };
+      const addressField = {
+        ...field,
+        isString: () => true,
+        isAddress: () => true,
+      };
       const availableOptions = getParameterOptionsForField(addressField);
       expect(
         availableOptions.length > 0 &&
