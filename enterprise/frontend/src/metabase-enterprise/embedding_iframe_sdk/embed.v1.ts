@@ -54,7 +54,7 @@ class MetabaseEmbed {
     }
 
     this._validateEmbedSettings(settings);
-    this._setEmbedSettings(this._settings);
+    this._setEmbedSettings(settings);
   }
 
   public destroy() {
