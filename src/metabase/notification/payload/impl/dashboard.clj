@@ -51,6 +51,14 @@
                (every? notification.execute/is-card-empty? dashboard_parts))
       :empty)))
 
+(defn handlers->audit-recipients
+  "Given an handlers, return a list of recipients that can be used for auditing."
+  [handlers]
+  (->> handlers
+       (mapcat :recipients)
+       (map #(or (not-empty (select-keys (:user %) [:id :first_name :last_name :email]))
+                 (get-in % [:details :value])))))
+
 (defmethod notification.send/do-after-notification-sent :notification/dashboard
   [{:keys [id creator_id handlers] :as notification-info} notification-payload]
   ;; clean up all the temp files that we created for this notification
