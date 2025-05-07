@@ -76,3 +76,6 @@
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.permissions.models.permissions-group/admin admin-group)
+
+#_{:clj-kondo/ignore [:missing-docstring]}
+(p/import-def metabase.permissions.models.permissions-group/all-external-users all-external-users-group)
