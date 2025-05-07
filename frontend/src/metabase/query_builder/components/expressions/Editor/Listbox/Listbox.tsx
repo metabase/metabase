@@ -6,6 +6,7 @@ import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import cx from "classnames";
 import { type MouseEvent, useCallback, useEffect, useRef } from "react";
+import { c } from "ttag";
 
 import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import { Box, DelayGroup, Icon, type IconName } from "metabase/ui";
@@ -15,7 +16,6 @@ import type { Completion } from "metabase-lib/v1/expressions/complete";
 import S from "./Listbox.module.css";
 import { MatchText } from "./MatchText";
 import { useCompletions } from "./util";
-
 export function Listbox({
   state,
   view,
@@ -137,9 +137,12 @@ function Footer() {
     <Box className={S.footer}>
       <KeyIcon name="arrow_up" />
       <KeyIcon name="arrow_down" />
-      to navigate.
+      {c("used when explaining keyboard shortcuts, as in `{key} to navigate.`")
+        .t`to navigate.`}
       <span />
-      <KeyIcon name="enter_or_return" /> to select.
+      <KeyIcon name="enter_or_return" />{" "}
+      {c("used when explaining keyboard shortcuts, as in `{key} to navigate.`")
+        .t`to select.`}
     </Box>
   );
 }

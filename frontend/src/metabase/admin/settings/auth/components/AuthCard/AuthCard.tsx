@@ -66,7 +66,7 @@ const AuthCard = ({
 
   const footer = isEnvSetting ? (
     <Text>
-      Set with env var{" "}
+      {t`Set with env var`}{" "}
       <Anchor href={docsUrl} target="_blank">{`$${setting.env_name}`}</Anchor>
     </Text>
   ) : null;

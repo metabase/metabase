@@ -204,7 +204,7 @@ export const MoveQuestionModal = ({
         onClose={onClose}
         title={
           <Title fz="1.25rem" lh={1.5}>
-            Moving this question to another dashboard will remove it from{" "}
+            {t`Moving this question to another dashboard will remove it from`}{" "}
             <Icon name="dashboard" style={{ marginBottom: -2 }} size={20} />{" "}
             <Dashboards.Name id={question.dashboardId()} />
           </Title>
