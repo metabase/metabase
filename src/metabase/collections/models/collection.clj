@@ -71,6 +71,40 @@
     []
     (assoc (get-trash) :name (deferred-tru "Trash"))))
 
+(def ^:private ^:constant tenant-root-collection-type "tenant")
+
+(def ^{:arglists '([])} tenant-root-collection
+  "Memoized copy of the tenant root collection from the DB"
+  (mdb/memoize-for-application-db
+   (fn []
+     (u/prog1 (t2/select-one :model/Collection :type tenant-root-collection-type)
+       (when-not <>
+         (throw (ex-info "Fatal error: tenant root collection not found." {})))))))
+
+(defn tenant-root-collection-id
+  "The ID representing the Tenant Root collection"
+  []
+  (u/the-id (tenant-root-collection)))
+
+(defn tenant-root-path
+  "The fixed location path for the tenant collection."
+  []
+  (str "/" (tenant-root-collection-id) "/"))
+
+(defn is-tenant-collection?
+  "Whether or not a collection is a tenant collection. Placeholder for now."
+  [_collection]
+  ;; right now nothing is a tenant collection
+  false
+  #_(str/starts-with? location (tenant-root-path)))
+
+(defn- tenant-collection-where-clause
+  "Returns a clause that will be true if this is a tenant collection, false otherwise."
+  [& [_location-column]]
+  ;; right now nothing is a tenant collection
+  #_[:like (or location-column :location) (str tenant-root-path "%")]
+  [:= [:inline 1] [:inline 0]])
+
 (defn trash-collection-id
   "The ID representing the Trash collection."
   [] (u/the-id (trash-collection)))
@@ -136,9 +170,11 @@
 
 (mu/defmethod mi/can-read? :model/Collection
   ([instance]
-   (perms/can-read-audit-helper :model/Collection instance))
+   (or (is-trash? instance)
+       (perms/can-read-audit-helper :model/Collection instance)))
   ([_model pk :- pos-int?]
-   (mi/can-read? (t2/select-one :model/Collection :id pk))))
+   (or (is-trash? pk)
+       (mi/can-read? (t2/select-one :model/Collection :id pk)))))
 
 (def AuthorityLevel
   "Malli Schema for valid collection authority levels."
@@ -399,7 +435,9 @@
 (mu/defn user->personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."
   [user-or-id]
-  (when-not (api-key/is-api-key-user? (u/the-id user-or-id))
+  ;; API key users and tenant users do not get personal collections
+  (when-not (or (api-key/is-api-key-user? (u/the-id user-or-id))
+                (t2/select-one-fn :tenant_id :model/User (u/the-id user-or-id)))
     (or (user->existing-personal-collection user-or-id)
         (try
           (first (t2/insert-returning-instances! :model/Collection
@@ -460,6 +498,12 @@
         (assoc user :personal_collection_id (when (contains? non-api-user-ids (u/the-id user))
                                               (or (get user-id->collection-id (u/the-id user))
                                                   (user->personal-collection-id (u/the-id user)))))))))
+
+(mi/define-simple-hydration-method is-tenant-collection
+  :is_tenant_collection
+  "Hydrate the `is_tenant_collection` property of collections - whether or not they're a tenant coll."
+  [collection]
+  (is-tenant-collection? collection))
 
 (mi/define-batched-hydration-method collection-is-personal
   :is_personal
@@ -618,6 +662,9 @@
               :c])]
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
+            (when-not (perms/use-tenants)
+              [:not (tenant-collection-where-clause)])
+
             ;; hiding the trash collection when desired...
             (when-not (:include-trash-collection? visibility-config)
               [:not= [:inline (trash-collection-id)] :c.id])

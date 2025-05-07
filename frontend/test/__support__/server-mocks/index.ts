@@ -41,6 +41,7 @@ export * from "./slack";
 export * from "./store";
 export * from "./table";
 export * from "./task";
+export * from "./tenant";
 export * from "./timeline";
 export * from "./user";
 export * from "./user-key-value";

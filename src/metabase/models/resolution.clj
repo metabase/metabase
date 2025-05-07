@@ -81,6 +81,7 @@
     :model/Setting                           metabase.settings.models.setting
     :model/Table                             metabase.warehouse-schema.models.table
     :model/TaskHistory                       metabase.task-history.models.task-history
+    :model/Tenant                            metabase-enterprise.tenants.model
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
     :model/User                              metabase.users.models.user

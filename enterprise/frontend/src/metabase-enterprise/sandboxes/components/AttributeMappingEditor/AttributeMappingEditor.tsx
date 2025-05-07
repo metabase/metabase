@@ -2,12 +2,13 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { MappingEditor } from "metabase/common/components/MappingEditor";
-import type { SelectChangeEvent } from "metabase/common/components/Select";
-import Select, { Option } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
-import { Icon, Tooltip } from "metabase/ui";
+import { Icon, Select, Tooltip } from "metabase/ui";
 import type { GroupTableAccessPolicyDraft } from "metabase-enterprise/sandboxes/types";
-import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
+import {
+  getRawDataQuestionForTable,
+  renderUserAttributesForSelect,
+} from "metabase-enterprise/sandboxes/utils";
 import type {
   GroupTableAccessPolicy,
   Table,
@@ -100,8 +101,8 @@ const AttributeMappingEditor = ({
 export default AttributeMappingEditor;
 
 interface AttributePickerProps {
-  value: any;
-  onChange: (value: any) => void;
+  value: string;
+  onChange?: (value: string) => void;
   attributesOptions: UserAttribute[];
 }
 
@@ -109,23 +110,21 @@ const AttributePicker = ({
   value,
   onChange,
   attributesOptions,
-}: AttributePickerProps) => (
-  <div style={{ minWidth: 200 }}>
-    <Select
-      value={value}
-      onChange={(e: SelectChangeEvent<string>) => onChange(e.target.value)}
-      placeholder={
-        attributesOptions.length === 0
-          ? t`No user attributes`
-          : t`Pick a user attribute`
-      }
-      disabled={attributesOptions.length === 0}
-    >
-      {attributesOptions.map((attributesOption) => (
-        <Option key={attributesOption} value={attributesOption}>
-          {attributesOption}
-        </Option>
-      ))}
-    </Select>
-  </div>
-);
+}: AttributePickerProps) => {
+  return (
+    <div style={{ minWidth: 200 }}>
+      <Select
+        value={value}
+        onChange={(value) => onChange?.(value)}
+        placeholder={
+          attributesOptions.length === 0
+            ? t`No user attributes`
+            : t`Pick a user attribute`
+        }
+        disabled={attributesOptions.length === 0}
+        data={attributesOptions}
+        renderOption={renderUserAttributesForSelect}
+      ></Select>
+    </div>
+  );
+};

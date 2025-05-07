@@ -24,6 +24,11 @@ export type GroupInfo = {
   id: GroupId;
   name: string;
   member_count: number;
+  magic_group_type:
+    | "all-internal-users"
+    | "admin"
+    | "all-external-users"
+    | null;
 };
 
 export type Group = GroupInfo & {

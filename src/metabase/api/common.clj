@@ -125,6 +125,11 @@
   more information about the Metabase permissions system."
   (atom #{}))
 
+(defn current-user-attributes
+  "Returns the attributes that can be used for DB routing, sandboxing, impersonation, etc."
+  []
+  (:attributes @*current-user*))
+
 ;;; ---------------------------------------- Precondition checking helper fns ----------------------------------------
 
 (defn- check-one [condition code message]

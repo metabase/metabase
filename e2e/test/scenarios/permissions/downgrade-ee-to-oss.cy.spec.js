@@ -92,7 +92,7 @@ describe("scenarios > admin > permissions > downgrade ee to oss", () => {
       H.popover().within(() => {
         cy.findByText(colName).click();
       });
-      cy.findByText("Pick a user attribute").click();
+      cy.findByPlaceholderText("Pick a user attribute").click();
       H.popover().within(() => {
         cy.findByText("attr_uid").click();
       });

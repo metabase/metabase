@@ -27,6 +27,7 @@
                               :last_name        "User"
                               :email            "create-new-sso-user-test@metabase.com"
                               :sso_source       :jwt
+                              :tenant_id        nil
                               :login_attributes {:foo "bar"}})
 
 (deftest create-new-sso-user-test
