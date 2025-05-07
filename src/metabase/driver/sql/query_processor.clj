@@ -124,7 +124,31 @@
   (and (vector? honeysql-expr)
        (= (first honeysql-expr) :inline)))
 
+(defn- untyped-inline-value [h2x]
+  (let [unwrapped (h2x/unwrap-typed-honeysql-form h2x)]
+    (cond
+      (or (float?   unwrapped)
+          (string?  unwrapped)
+          (integer? unwrapped))
+      unwrapped
+
+      (inline? unwrapped)
+      (second unwrapped)
+
+      :else
+      nil)))
+
 ;; this is the primary way to override behavior for a specific clause or object class.
+
+(defmulti integer-dbtype
+  "Return the name of the integer type we convert to in this database."
+  {:added "0.55.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod integer-dbtype :sql
+  [_driver]
+  :BIGINT)
 
 (defmulti ->integer
   "Cast to integer"
@@ -133,8 +157,32 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod ->integer :sql
-  [_ value]
-  (h2x/->integer value))
+  [driver value]
+  (h2x/maybe-cast (integer-dbtype driver) value))
+
+(defn coerce-integer
+  "Convert honeysql numbers or text to integer, being smart about converting inline constants at compile-time."
+  [driver h2x-expr]
+  (let [inline (untyped-inline-value h2x-expr)]
+    (cond
+      (nil? h2x-expr)
+      nil
+
+      (not inline)
+      (->integer driver h2x-expr)
+
+      (float? inline)
+      (h2x/with-database-type-info (inline-num (Math/round ^Double inline)) (integer-dbtype driver))
+
+      (integer? inline)
+      (h2x/with-database-type-info (inline-num inline) (integer-dbtype driver))
+
+      (string? inline)
+      (h2x/with-database-type-info (inline-num (Long/parseLong inline)) (integer-dbtype driver))
+
+      :else
+      (ex-info (str "Cannot convert " (pr-str h2x-expr) " to integer.")
+               {:value h2x-expr}))))
 
 (defmulti float-dbtype
   "Return the name of the floating point type we convert to in this database."
@@ -142,24 +190,19 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmethod float-dbtype :sql
+  [_driver]
+  :double)
+
 (defmulti ->float
   "Cast to float."
   {:changelog-test/ignore true :added "0.45.0" :arglists '([driver honeysql-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod float-dbtype :sql
-  [_driver]
-  :double)
-
 (defmethod ->float :sql
   [driver value]
   (h2x/maybe-cast (float-dbtype driver) value))
-
-(defn- untyped-inline-value [h2x]
-  (let [unwrapped (h2x/unwrap-typed-honeysql-form h2x)]
-    (when (inline? unwrapped)
-      (second unwrapped))))
 
 (defn coerce-float
   "Convert honeysql numbers/strings to floats, being smart about converting inlines and constants at compile-time."
@@ -170,9 +213,6 @@
     (cond
       (nil? value)
       nil
-
-      (h2x/is-of-type? value (float-dbtype driver))
-      value
 
       (not inline)
       (->float driver value)
@@ -186,6 +226,19 @@
       :else
       (ex-info (str "Cannot convert " (pr-str value) " to float.")
                {:value value}))))
+
+(defn ->integer-with-round
+  "Helper function for drivers that need to round before converting to integer.
+
+  Used in implementations of ->integer."
+  [driver value]
+  ;; value can be either string or float
+  ;; if it's a float, coversion to float does nothing
+  ;; if it's a string, we can't round, so we need to convert to float first
+  (->> value
+       (->float driver)
+       (vector :round)
+       (h2x/maybe-cast (integer-dbtype driver))))
 
 (defmulti ^clojure.lang.MultiFn inline-value
   "Return an inline value (as a raw SQL string) for an object `x`, e.g.
@@ -344,7 +397,7 @@
   [driver _ honeysql-expr]
   (week-of-year driver honeysql-expr :us))
 
-;; First week begins on 1st Jan, the 2nd week will begins on the 1st [[metabase.public-settings/start-of-week]]
+;; First week begins on 1st Jan, the 2nd week will begins on the 1st [[metabase.settings.deprecated-grab-bag/start-of-week]]
 (defmethod date [:sql :week-of-year-instance]
   [driver _ honeysql-expr]
   (week-of-year driver honeysql-expr :instance))
@@ -383,7 +436,7 @@
       (truncate-fn expr))))
 
 (mu/defn adjust-day-of-week
-  "Adjust day of week to respect the [[metabase.public-settings/start-of-week]] Setting.
+  "Adjust day of week to respect the [[metabase.settings.deprecated-grab-bag/start-of-week]] Setting.
 
   The value a `:day-of-week` extract should return depends on the value of `start-of-week`, by default Sunday.
 
@@ -687,6 +740,12 @@
                [:type/Text (:isa? :Coercion/String->Float)]
                (->float driver honeysql-form)
 
+               [:type/Text (:isa? :Coercion/String->Integer)]
+               (->integer driver honeysql-form)
+
+               [:type/Float (:isa? :Coercion/Float->Integer)]
+               (->integer driver honeysql-form)
+
                :else honeysql-form)
       (when-not (= <> honeysql-form)
         (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>))))))
@@ -759,8 +818,7 @@
   nil)
 
 (defmethod ->honeysql [:sql :field]
-  [driver [_ id-or-name {:keys [database-type] :as options}
-           :as field-clause]]
+  [driver [_ id-or-name options :as field-clause]]
   (try
     (let [source-table-aliases (field-source-table-aliases field-clause)
           source-nfc-path      (field-nfc-path field-clause)
@@ -773,20 +831,20 @@
                                  (lib.metadata/field (qp.store/metadata-provider) id-or-name))
           allow-casting?       (and field-metadata
                                     (not (:qp/ignore-coercion options)))
-          database-type        (or database-type
-                                   (:database-type field-metadata))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
                                           (concat source-table-aliases (->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
                                    (with-meta (meta field-clause)))
           identifier           (->honeysql driver identifier)
+          casted-field         (cast-field-if-needed driver field-metadata identifier)
+          database-type        (or (h2x/database-type casted-field)
+                                   (:database-type field-metadata))
           maybe-add-db-type    (fn [expr]
                                  (if (h2x/type-info->db-type (h2x/type-info expr))
                                    expr
                                    (h2x/with-database-type-info expr database-type)))]
       (u/prog1
-        (cond->> identifier
-          allow-casting?           (cast-field-if-needed driver field-metadata)
+        (cond->> (if allow-casting? casted-field identifier)
           ;; only add type info if it wasn't added by [[cast-field-if-needed]]
           database-type            maybe-add-db-type
           (:temporal-unit options) (apply-temporal-bucketing driver options)
@@ -850,6 +908,12 @@
   (cond-> agg
     (and (vector? agg) (= (first agg) :aggregation-options)) second))
 
+(defn- contains-clause?
+  [clause-pred form]
+  (boolean (and (vector? form)
+                (or (clause-pred (first form))
+                    (m/find-first (partial contains-clause? clause-pred) (rest form))))))
+
 (defn- over-order-bys
   "Returns a vector containing the `aggregations` specified by `order-bys` compiled to
   honeysql expressions for `driver` suitable for ordering in the over clause of a window function."
@@ -860,7 +924,7 @@
                   (if (aggregation? expr)
                     (let [[_aggregation index] expr
                           agg (unwrap-aggregation-option (aggregations index))]
-                      (when-not (#{:cum-count :cum-sum :offset} (first agg))
+                      (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
                         [(->honeysql driver agg) direction]))
                     [(->honeysql driver expr) direction])))
           order-bys)))
@@ -1077,6 +1141,10 @@
     (into [:/ numerator]
           (map safe-denominator)
           denominators)))
+
+(defmethod ->honeysql [:sql :integer]
+  [driver [_ value]]
+  (coerce-integer driver (->honeysql driver value)))
 
 (defmethod ->honeysql [:sql :float]
   [driver [_ value]]

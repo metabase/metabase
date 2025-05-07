@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.notification.condition :refer [evaluate-expression]]))
 
+#_{:clj-kondo/ignore [:equals-true]}
 (deftest evaluate-literal-values-test
   (testing "literal values"
     (are [expected expression context] (= expected (evaluate-expression expression context))
@@ -11,6 +12,7 @@
       true true {}
       false false {})))
 
+#_{:clj-kondo/ignore [:equals-true]}
 (deftest evaluate-logical-operators-test
   (testing "logical operators"
     (are [expected expression context] (= expected (evaluate-expression expression context))
@@ -32,6 +34,7 @@
       true ["not" false] {}
       false ["not" ["not" false]] {})))
 
+#_{:clj-kondo/ignore [:equals-true]}
 (deftest evaluate-comparison-operators-test
   (testing "comparison operators"
     (are [expected expression context] (= expected (evaluate-expression expression context))
@@ -79,6 +82,7 @@
       true ["<=" 1 2 2] {}
       false ["<=" 2 1 1] {})))
 
+#_{:clj-kondo/ignore [:equals-true]}
 (deftest evaluate-context-access-test
   (testing "context access"
     (are [expected expression context] (= expected (evaluate-expression expression context))
@@ -106,6 +110,7 @@
       3 ["max" 3 2 1] {}
       6 ["max" ["context" "a"] ["context" "b"]] {:a 4, :b 6})))
 
+#_{:clj-kondo/ignore [:equals-true]}
 (deftest evaluate-nested-expressions-test
   (testing "nested expressions"
     (are [expected expression context] (= expected (evaluate-expression expression context))

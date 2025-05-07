@@ -1,7 +1,7 @@
 (ns metabase.channel.email
   (:require
    [metabase.analytics.core :as analytics]
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]

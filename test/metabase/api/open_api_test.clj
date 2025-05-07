@@ -1,9 +1,9 @@
 (ns metabase.api.open-api-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api-routes.core :as routes]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
-   [metabase.api.routes :as routes]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 

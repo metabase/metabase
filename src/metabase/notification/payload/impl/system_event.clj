@@ -10,7 +10,7 @@
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.sample :as payload.sample]
    [metabase.notification.send :as notification.send]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]

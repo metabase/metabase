@@ -56,8 +56,6 @@
    "GroupTableAccessPolicy"
    "HTTPAction"
    "ImplicitAction"
-   "LegacyMetric"
-   "LegacyMetricImportantField"
    "LoginHistory"
    "ModelIndex"
    "ModelIndexValue"

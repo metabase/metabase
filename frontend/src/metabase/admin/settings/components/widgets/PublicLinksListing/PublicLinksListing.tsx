@@ -22,7 +22,7 @@ export const PublicLinksListing = <
   "data-testid": dataTestId,
 }: {
   data?: T[];
-  isLoading: boolean;
+  isLoading?: boolean;
   revoke?: (item: T) => Promise<unknown>;
   getUrl: (item: T) => string;
   getPublicUrl?: (item: T) => string | null;

@@ -21,8 +21,6 @@ import "./embedding-sdk";
 import "./snippets";
 import "./sharing";
 import "./moderation";
-import "./email_allow_list";
-import "./email_restrict_recipients";
 import "./advanced_permissions";
 import "./audit_app";
 import "./license";

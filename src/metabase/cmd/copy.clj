@@ -170,7 +170,7 @@
     ;; For security purposes, do NOT copy connection details for H2 Databases by default; replace them with an empty map.
     ;; Why? Because this is a potential pathway to injecting sneaky H2 connection parameters that cause RCEs. For the
     ;; Sample Database, the correct details are reset automatically on every
-    ;; launch (see [[metabase.sample-data/update-sample-database-if-needed!]]), and we don't support connecting other H2
+    ;; launch (see [[metabase.sample-data.impl/update-sample-database-if-needed!]]), and we don't support connecting other H2
     ;; Databases in prod anyway, so this ultimately shouldn't cause anyone any problems.
     (map (fn [database]
            (cond-> database

@@ -22,7 +22,8 @@
 
 (p/import-vars
  [events.schema
-  event-schema])
+  event-schema
+  hydrated-schemas])
 
 (set! *warn-on-reflection* true)
 

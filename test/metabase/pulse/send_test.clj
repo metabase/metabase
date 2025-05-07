@@ -8,7 +8,6 @@
    [metabase.channel.core :as channel]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.body :as body]
-   [metabase.channel.render.core :as channel.render]
    [metabase.channel.render.js.svg]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.models.pulse :as models.pulse]

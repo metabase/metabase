@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
 
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 
@@ -16,6 +17,10 @@ const setupEnterprise = async (opts?: Partial<SetupOpts>) => {
 };
 
 describe("PublicOrEmbeddedDashboardPage", () => {
+  beforeEach(() => {
+    setupLastDownloadFormatEndpoints();
+  });
+
   describe("downloads flag", () => {
     it("should show the 'Download as PDF' button even when titled=false and there's one tab", async () => {
       await setupEnterprise({ hash: { titled: "false" }, numberOfTabs: 1 });

@@ -879,8 +879,8 @@
 
 (defn- raw-setting
   "Get raw setting directly from DB.
-  For some reasons during data-migration [[metabase.models.setting/get]] return the default value defined in
-  [[metabase.models.setting/defsetting]] instead of value from Setting table."
+  For some reasons during data-migration [[metabase.settings.models.setting/get]] return the default value defined in
+  [[metabase.settings.models.setting/defsetting]] instead of value from Setting table."
   [k]
   (t2/select-one-fn :value :setting :key (name k)))
 
