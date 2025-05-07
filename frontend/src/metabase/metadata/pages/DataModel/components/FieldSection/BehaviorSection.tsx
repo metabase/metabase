@@ -63,8 +63,8 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
 
       <RemappingPicker
         description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
-        label={t`Display values`}
         field={field}
+        label={t`Display values`}
       />
 
       {database != null && canFieldUnfoldJson(field, database) && (

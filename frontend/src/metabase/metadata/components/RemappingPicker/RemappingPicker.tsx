@@ -2,18 +2,25 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { skipToken, useGetFieldQuery } from "metabase/api";
+import {
+  skipToken,
+  useCreateFieldDimensionMutation,
+  useDeleteFieldDimensionMutation,
+  useGetFieldQuery,
+} from "metabase/api";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Select, type SelectProps } from "metabase/ui";
 import { getRemappings } from "metabase-lib/v1/queries/utils/field";
-import { isFK } from "metabase-lib/v1/types/utils/isa";
-import type { Field } from "metabase-types/api";
+import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
+import type { Field, FieldId } from "metabase-types/api";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   field: Field;
 }
 
 export const RemappingPicker = ({ comboboxProps, field, ...props }: Props) => {
+  const id = getRawTableFieldId(field);
   const { data: fkTargetField } = useGetFieldQuery(
     field.fk_target_field_id == null
       ? skipToken
@@ -22,14 +29,48 @@ export const RemappingPicker = ({ comboboxProps, field, ...props }: Props) => {
           ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
         },
   );
+
+  const [createFieldDimension] = useCreateFieldDimensionMutation();
+  const [deleteFieldDimension] = useDeleteFieldDimensionMutation();
   const value = useMemo(() => getValue(field), [field]);
   const data = useMemo(
     () => getData(field, fkTargetField, value),
     [field, fkTargetField, value],
   );
 
-  const handleChange = (_value: string) => {
-    // onChange(value === "true" ? true : false);
+  const handleChange = (value: string) => {
+    const newValue = value as RemappingValue;
+
+    if (newValue === "original") {
+      deleteFieldDimension(id);
+    } else if (newValue === "foreign") {
+      // Try to find a entity name field from target table and choose it as remapping target field if it exists
+      const entityNameFieldId = getFKTargetTableEntityNameOrNull(field);
+
+      if (entityNameFieldId) {
+        createFieldDimension({
+          id,
+          type: "external",
+          name: field.display_name,
+          human_readable_field_id: entityNameFieldId,
+        });
+      } else {
+        // Enter a special state where we are choosing an initial value for FK target
+        // this.setState({
+        //   hasChanged: true,
+        //   isChoosingInitialFkTarget: true,
+        // });
+      }
+    } else if (newValue === "custom") {
+      createFieldDimension({
+        id,
+        type: "internal",
+        name: field.display_name,
+        human_readable_field_id: null,
+      });
+    } else {
+      throw new Error(t`Unrecognized mapping type`);
+    }
   };
 
   return (
@@ -121,4 +162,10 @@ function hasMappableNumeralValues(field: Field): boolean {
       (key) => typeof key === "number" || key === null,
     )
   );
+}
+
+function getFKTargetTableEntityNameOrNull(field: Field): FieldId | undefined {
+  const fkTargetFields = getForeignKeyTargetFields(field);
+  const nameField = fkTargetFields.find((field) => isEntityName(field));
+  return nameField ? getRawTableFieldId(nameField) : undefined;
 }

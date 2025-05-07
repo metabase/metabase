@@ -169,7 +169,7 @@ export interface CreateFieldDimensionRequest {
   id: FieldId;
   type: FieldDimensionType;
   name: string;
-  human_readable_field_id?: FieldId;
+  human_readable_field_id?: FieldId | null;
 }
 
 export interface UpdateFieldValuesRequest {
