@@ -189,5 +189,3 @@
   "[[format-sql]] and [[fix-sql-params]] afterwards. For details see those functions."
   [driver-or-dialect-kw sql]
   (-> (format-sql driver-or-dialect-kw sql) fix-sql-params))
-
-
