@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { t } from "ttag";
 
 import {
   skipToken,
@@ -98,7 +99,7 @@ function DatabaseNode({
   const { expanded: expandedSchemas, toggle } = useExpandedState(initialSchema);
 
   if (isError) {
-    throw new Error("Failed to load databases");
+    throw new Error(t`Failed to load databases`);
   }
 
   const singleSchema = !isLoading && data?.length === 1;
@@ -167,7 +168,7 @@ function SchemaNode({
   );
 
   if (isError) {
-    throw new Error("Failed to load databases");
+    throw new Error(t`Failed to load schemas`);
   }
 
   const tables = data?.map((table) => (
