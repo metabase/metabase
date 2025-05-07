@@ -1,26 +1,16 @@
-import { useDeferredValue, useEffect, useState } from "react";
-import { t } from "ttag";
+import cx from "classnames";
+import { useDeferredValue, useState } from "react";
 
-import {
-  skipToken,
-  useListDatabaseSchemaTablesQuery,
-  useListDatabaseSchemasQuery,
-  useListDatabasesQuery,
-} from "metabase/api";
-import { Box, Stack } from "metabase/ui";
-import type {
-  Database,
-  DatabaseId,
-  SchemaId,
-  TableId,
-} from "metabase-types/api";
+import Link from "metabase/core/components/Link";
+import { Box, Flex, Icon, Stack } from "metabase/ui";
+import type { DatabaseId, SchemaId } from "metabase-types/api";
 
 import { getUrl } from "../../utils";
 
-import { Node, renderLoading } from "./Node";
 import { SearchInput, SearchResults } from "./Search";
 import S from "./TablePicker.module.css";
-import { useExpandedState, usePrefetch } from "./utils";
+import { type Item, flatten, useExpandedState, useTableLoader } from "./load";
+import { getIconForType, hasChildren } from "./utils";
 
 export function TablePicker(props: {
   databaseId?: DatabaseId;
@@ -28,6 +18,10 @@ export function TablePicker(props: {
 }) {
   const [searchValue, setSearchValue] = useState("");
   const deferredSearchValue = useDeferredValue(searchValue);
+
+  const { isExpanded, toggle } = useExpandedState(props);
+  const { tree } = useTableLoader(props);
+  const flat = flatten(tree, isExpanded);
 
   return (
     <Stack className={S.tablePicker}>
@@ -37,7 +31,7 @@ export function TablePicker(props: {
 
       <Box className={S.tablePickerContent} px="xl" pb="lg">
         {deferredSearchValue === "" ? (
-          <RootNode {...props} />
+          <Results items={flat} toggle={toggle} isExpanded={isExpanded} />
         ) : (
           <SearchResults searchValue={searchValue} />
         )}
@@ -46,181 +40,47 @@ export function TablePicker(props: {
   );
 }
 
-function RootNode({
-  databaseId,
-  schemaId,
+function Results({
+  items,
+  toggle,
+  isExpanded,
 }: {
-  databaseId?: DatabaseId;
-  schemaId?: SchemaId;
+  items: Item[];
+  toggle: (key: string) => void;
+  isExpanded: (key: string) => boolean;
 }) {
-  const { data, isLoading, isError } = useListDatabasesQuery();
-
-  usePrefetch({ databaseId, schemaId });
-
-  const { expanded, toggle } = useExpandedState(databaseId);
-
-  if (isError) {
-    throw new Error("Failed to load databases");
-  }
-
-  if (isLoading) {
-    return renderLoading();
-  }
-
-  return data?.data?.map((database) => (
-    <DatabaseNode
-      key={database.id}
-      database={database}
-      expanded={expanded[database.id]}
-      onToggle={() => toggle(database.id)}
-      initialSchema={database.id === databaseId ? schemaId : undefined}
-    />
-  ));
-}
-
-function DatabaseNode({
-  database,
-  expanded,
-  onToggle,
-  initialSchema,
-}: {
-  database: Database;
-  expanded?: boolean;
-  onToggle: () => void;
-  initialSchema?: SchemaId;
-}) {
-  const { data, isLoading, isError } = useListDatabaseSchemasQuery(
-    expanded
-      ? {
-          id: database.id,
-        }
-      : skipToken,
-  );
-
-  const { expanded: expandedSchemas, toggle } = useExpandedState(initialSchema);
-
-  if (isError) {
-    throw new Error(t`Failed to load databases`);
-  }
-
-  const singleSchema = !isLoading && data?.length === 1;
-
-  useEffect(() => {
-    // Open the schema by default if it's the only one
-    if (singleSchema) {
-      const schemaId = `${database.id}:${data[0]}`;
-      if (!expandedSchemas[schemaId]) {
-        toggle(schemaId);
-      }
+  return items.map((item) => {
+    if (item.type === "root") {
+      return null;
     }
-    // Ignore changes to expandedSchemas
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [singleSchema, database, data]);
-
-  const schemas = data?.map((name) => {
-    const slug = `${database.id}:${name}`;
     return (
-      <SchemaNode
-        key={name}
-        databaseId={database.id}
-        schemaId={name}
-        expanded={expandedSchemas[slug]}
-        onToggle={() => toggle(slug)}
-      />
+      <Box className={cx(S.item, S[item.type])} key={item.key}>
+        <Link
+          to={getUrl({
+            databaseId: undefined,
+            fieldId: undefined,
+            schemaId: undefined,
+            tableId: undefined,
+            ...item.value,
+          })}
+          onClick={() => toggle(item.key)}
+        >
+          <Flex align="center" gap="sm" direction="row" mb="xs">
+            {hasChildren(item.type) ? (
+              <Icon
+                name="chevronright"
+                size={10}
+                color="var(--mb-color-text-light)"
+                className={cx(S.chevron, {
+                  [S.expanded]: isExpanded(item.key),
+                })}
+              />
+            ) : null}
+            <Icon name={getIconForType(item.type)} />
+            {item.label}
+          </Flex>
+        </Link>
+      </Box>
     );
   });
-
-  return (
-    <Node
-      type="database"
-      name={database.name}
-      expanded={expanded}
-      onToggle={onToggle}
-      href={getUrl({
-        databaseId: database.id,
-        schemaId: undefined,
-        tableId: undefined,
-        fieldId: undefined,
-      })}
-    >
-      {isLoading ? renderLoading() : schemas}
-    </Node>
-  );
-}
-
-function SchemaNode({
-  databaseId,
-  schemaId,
-  expanded,
-  onToggle,
-}: {
-  databaseId: DatabaseId;
-  schemaId: SchemaId;
-  expanded?: boolean;
-  onToggle: () => void;
-}) {
-  const { data, isLoading, isError } = useListDatabaseSchemaTablesQuery(
-    expanded
-      ? {
-          id: databaseId,
-          schema: schemaId,
-        }
-      : skipToken,
-  );
-
-  if (isError) {
-    throw new Error(t`Failed to load schemas`);
-  }
-
-  const tables = data?.map((table) => (
-    <TableNode
-      key={table.id}
-      name={table.display_name ?? table.name}
-      databaseId={databaseId}
-      schemaId={schemaId}
-      tableId={table.id}
-    />
-  ));
-
-  return (
-    <Node
-      type="schema"
-      name={schemaId}
-      expanded={expanded}
-      onToggle={onToggle}
-      href={getUrl({
-        databaseId,
-        schemaId,
-        tableId: undefined,
-        fieldId: undefined,
-      })}
-    >
-      {isLoading ? renderLoading() : tables}
-    </Node>
-  );
-}
-
-function TableNode({
-  name,
-  databaseId,
-  schemaId,
-  tableId,
-}: {
-  name: string;
-  databaseId: DatabaseId;
-  schemaId: SchemaId;
-  tableId: TableId;
-}) {
-  return (
-    <Node
-      type="table"
-      name={name}
-      href={getUrl({
-        databaseId,
-        schemaId,
-        tableId,
-        fieldId: undefined,
-      })}
-    />
-  );
 }
