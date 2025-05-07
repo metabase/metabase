@@ -32,6 +32,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -50,11 +51,31 @@
 
 (defn drop-if-exists-and-create-db!
   "Drop a MySQL database named `db-name` if it already exists; then create a new empty one with that name."
-  [db-name]
+  [db-name & [just-drop]]
   (let [spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
-    (doseq [sql [(format "DROP DATABASE IF EXISTS %s;" db-name)
-                 (format "CREATE DATABASE %s;" db-name)]]
-      (jdbc/execute! spec [sql]))))
+    (jdbc/execute! spec
+                   [(format "DROP DATABASE IF EXISTS %s;" (sql.tx/qualify-and-quote :mysql db-name))]
+                   {:transaction? false})
+    (when (not= just-drop :mysql/just-drop)
+      (jdbc/execute! spec
+                     [(format "CREATE DATABASE %s;" (sql.tx/qualify-and-quote :mysql db-name))]
+                     {:transaction? false}))))
+
+(defn with-temp-database-fn!
+  "Creates a new database (dropping first if necessary), runs `f`, then drops the db"
+  [db-name f]
+  (try
+    (drop-if-exists-and-create-db! db-name)
+    (f)
+    (finally
+      (drop-if-exists-and-create-db! db-name :mysql/just-drop))))
+
+(defmacro with-temp-database!
+  "Creates a new database, dropping it first if necessary, that will be dropped after execution"
+  [db-name & body]
+  `(with-temp-database-fn!
+     ~db-name
+     (fn [] ~@body)))
 
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
