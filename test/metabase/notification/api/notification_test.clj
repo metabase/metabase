@@ -1081,13 +1081,20 @@
                            :payload      {:card_id card-id}
                            :creator_id   (mt/user->id :crowberto)})))
 
+(deftest default-template-notification-card-test
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders {:limit 1})}]
+    (mt/user-http-request :crowberto :post 200 "notification/default_template"
+                          {:channel_types ["channel/slack"]
+                           :notification {:payload_type :notification/card
+                                          :payload      {:card_id card-id}
+                                          :creator_id   (mt/user->id :crowberto)}})))
+
 (deftest get-default-template-test
   (is (=? {:channel/email (mt/malli=? :map)
            :channel/slack (mt/malli=? :map)}
           (mt/user-http-request :crowberto :post 200 "notification/default_template"
                                 {:notification {:payload_type :notification/system-event
-                                                :payload      {:event_name :event/row.created}}
-                                 :channel_types ["channel/email" "channel/slack"]}))))
+                                                :payload      {:event_name :event/row.created}}}))))
 
 (deftest validate-email-domains-test
   (mt/when-ee-evailable
