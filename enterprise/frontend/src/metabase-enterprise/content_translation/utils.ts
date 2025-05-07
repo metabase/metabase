@@ -1,4 +1,4 @@
-import type { DictionaryArray } from "metabase/i18n/types";
+import type { DictionaryArray } from "metabase-types/api";
 
 /** Translate a user-generated string
  *
