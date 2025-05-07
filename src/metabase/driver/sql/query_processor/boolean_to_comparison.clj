@@ -86,18 +86,10 @@
     [:= clause true]
     clause))
 
-(defn logical-op->honeysql
-  "Compile a logical op like AND, OR, or NOT, replacing booleans with comparisons."
-  [->honeysql clause]
-  (->> clause
-       (mapv boolean->comparison)
-       ->honeysql))
-
-(defn case->honeysql
-  "Compile a CASE clause, replacing booleans with comparisons."
-  [->honeysql [_ cond-cases :as clause]]
+(defn case-boolean->comparison
+  "Replace booleans with comparisons in a CASE clause."
+  [[_ cond-cases :as clause]]
   (->> cond-cases
        (mapv (fn [[e1 e2]]
                [(boolean->comparison e1) e2]))
-       (assoc clause 1)
-       ->honeysql))
+       (assoc clause 1)))

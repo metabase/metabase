@@ -539,23 +539,23 @@
 
 (defmethod sql.qp/->honeysql [:sqlserver :and]
   [driver clause]
-  (-> (sql.u/->honeysql-parent-method driver :sql-jdbc clause)
-      (sql.qp.boolean-to-comparison/logical-op->honeysql clause)))
+  (->> (mapv sql.qp.boolean-to-comparison/boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :and]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :or]
   [driver clause]
-  (-> (sql.u/->honeysql-parent-method driver :sql-jdbc clause)
-      (sql.qp.boolean-to-comparison/logical-op->honeysql clause)))
+  (->> (mapv sql.qp.boolean-to-comparison/boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :or]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :not]
   [driver clause]
-  (-> (sql.u/->honeysql-parent-method driver :sql-jdbc clause)
-      (sql.qp.boolean-to-comparison/logical-op->honeysql clause)))
+  (->> (mapv sql.qp.boolean-to-comparison/boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :not]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :case]
   [driver clause]
-  (-> (sql.u/->honeysql-parent-method driver :sql-jdbc clause)
-      (sql.qp.boolean-to-comparison/case->honeysql clause)))
+  (->> (sql.qp.boolean-to-comparison/case-boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :case]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver Time]
   [_ time-value]
