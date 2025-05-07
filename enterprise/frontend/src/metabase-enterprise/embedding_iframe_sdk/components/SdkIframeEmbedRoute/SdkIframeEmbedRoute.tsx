@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 
 import {
@@ -6,23 +6,13 @@ import {
   InteractiveQuestion,
   defineMetabaseAuthConfig,
 } from "embedding-sdk";
-import { MetabaseProviderInternal } from "embedding-sdk/components/public/MetabaseProvider";
-import { getSdkStore } from "embedding-sdk/store";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { MetabaseProvider } from "embedding-sdk/components/public/MetabaseProvider";
 import { Box, Center, Loader } from "metabase/ui";
 
 import { useSdkIframeEmbedEventBus } from "../../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../../types/embed";
-import type { StoreWithSdkState } from "../../types/store";
-
-import S from "./SdkIframeEmbedRoute.module.css";
 
 export const SdkIframeEmbedRoute = () => {
-  const storeRef = useRef<StoreWithSdkState | undefined>(undefined);
-  if (!storeRef.current) {
-    storeRef.current = getSdkStore();
-  }
-
   const { embedSettings } = useSdkIframeEmbedEventBus();
 
   const authConfig = useMemo(() => {
@@ -52,19 +42,11 @@ export const SdkIframeEmbedRoute = () => {
   const { theme, locale } = embedSettings;
 
   return (
-    <MetabaseReduxProvider store={storeRef.current}>
-      <MetabaseProviderInternal
-        authConfig={authConfig}
-        theme={theme}
-        locale={locale}
-        store={storeRef.current}
-        classNames={{ portalContainer: S.SdkIframeEmbedPortalContainer }}
-      >
-        <Box h="100vh" bg={theme?.colors?.background}>
-          <SdkIframeEmbedView settings={embedSettings} />
-        </Box>
-      </MetabaseProviderInternal>
-    </MetabaseReduxProvider>
+    <MetabaseProvider authConfig={authConfig} theme={theme} locale={locale}>
+      <Box h="100vh" bg={theme?.colors?.background}>
+        <SdkIframeEmbedView settings={embedSettings} />
+      </Box>
+    </MetabaseProvider>
   );
 };
 
