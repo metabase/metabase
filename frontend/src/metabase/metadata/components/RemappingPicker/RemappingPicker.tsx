@@ -10,10 +10,15 @@ import {
 } from "metabase/api";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Select, type SelectProps } from "metabase/ui";
+import type { SelectProps } from "metabase/ui";
 import { getRemappings } from "metabase-lib/v1/queries/utils/field";
 import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId } from "metabase-types/api";
+
+import {
+  DisplayValuesPicker,
+  type RemappingValue,
+} from "../DisplayValuesPicker";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   field: Field;
@@ -33,17 +38,15 @@ export const RemappingPicker = ({ comboboxProps, field, ...props }: Props) => {
   const [createFieldDimension] = useCreateFieldDimensionMutation();
   const [deleteFieldDimension] = useDeleteFieldDimensionMutation();
   const value = useMemo(() => getValue(field), [field]);
-  const data = useMemo(
-    () => getData(field, fkTargetField, value),
+  const options = useMemo(
+    () => getOptions(field, fkTargetField, value),
     [field, fkTargetField, value],
   );
 
-  const handleChange = (value: string) => {
-    const newValue = value as RemappingValue;
-
-    if (newValue === "original") {
+  const handleChange = (value: RemappingValue) => {
+    if (value === "original") {
       deleteFieldDimension(id);
-    } else if (newValue === "foreign") {
+    } else if (value === "foreign") {
       // Try to find a entity name field from target table and choose it as remapping target field if it exists
       const entityNameFieldId = getFKTargetTableEntityNameOrNull(field);
 
@@ -61,7 +64,7 @@ export const RemappingPicker = ({ comboboxProps, field, ...props }: Props) => {
         //   isChoosingInitialFkTarget: true,
         // });
       }
-    } else if (newValue === "custom") {
+    } else if (value === "custom") {
       createFieldDimension({
         id,
         type: "internal",
@@ -74,18 +77,8 @@ export const RemappingPicker = ({ comboboxProps, field, ...props }: Props) => {
   };
 
   return (
-    <Select
-      comboboxProps={{
-        middlewares: {
-          flip: true,
-          size: {
-            padding: 6,
-          },
-        },
-        position: "bottom-start",
-        ...comboboxProps,
-      }}
-      data={data}
+    <DisplayValuesPicker
+      options={options}
       value={value}
       onChange={handleChange}
       {...props}
@@ -93,35 +86,22 @@ export const RemappingPicker = ({ comboboxProps, field, ...props }: Props) => {
   );
 };
 
-type RemappingValue = "original" | "foreign" | "custom";
-
-function getData(
+function getOptions(
   field: Field,
   fkTargetField: Field | undefined,
   value: RemappingValue,
 ) {
-  const data = [
-    {
-      label: t`Use original value`,
-      value: "original",
-    },
-  ];
+  const options: RemappingValue[] = ["original"];
 
-  if (hasForeignKeyTargetFields(field, fkTargetField) || value === "foreign") {
-    data.push({
-      label: t`Use foreign key`,
-      value: "foreign",
-    });
+  if (hasForeignKeyTargetFields(field, fkTargetField)) {
+    options.push("foreign");
   }
 
   if (hasMappableNumeralValues(field) || value === "custom") {
-    data.push({
-      label: t`Custom mapping`,
-      value: "custom",
-    });
+    options.push("custom");
   }
 
-  return data;
+  return options;
 }
 
 function getValue(field: Field): RemappingValue {
