@@ -308,7 +308,8 @@ const CONVERSION = defineClauses(
       displayName: "date",
       type: "datetime",
       requiresFeature: "expressions/date",
-      description: () => t`Converts a datetime or an ISO 8601 datetime string to a date. Time part is truncated.`,
+      description: () =>
+        t`Converts a datetime or an ISO 8601 datetime string to a date. Time part is truncated.`,
       args: () => [
         {
           name: t`value`,
