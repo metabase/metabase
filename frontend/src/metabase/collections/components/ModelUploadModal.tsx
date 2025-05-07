@@ -157,7 +157,7 @@ export function ModelUploadModal({
       </Stack>
 
       <Flex justify="flex-end" gap="sm">
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button onClick={handleUpload} variant="filled" disabled={!isFormValid}>
           {buttonText}
         </Button>

@@ -27,7 +27,7 @@ const DefaultViewTitleText = ({
   <Stack gap="xs">
     {originalName && withResetButton && isQuestionChanged && (
       <Text fw={600} size="sm">
-        Return to
+        {t`Return to`}
         <Anchor size="sm" ml="xs" color="brand" onClick={onReset}>
           {originalName}
         </Anchor>
