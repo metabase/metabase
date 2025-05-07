@@ -12,6 +12,7 @@
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]
    [metabase.sso.ldap-test-util :as ldap.test]
+   [metabase.tenants.core :as tenants]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -534,4 +535,73 @@
         (is (= {"user_attr" "user_value"} (:login_attributes result)))
         (is (= {"jwt_attr" "jwt_value"
                 "user_attr" "user_value"}
-               (:attributes result)))))))
+               (:attributes result))))))
+  (testing "tenant attributes"
+
+    (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
+      (let [user {:login_attributes {"user_attr" "user_value"}
+                  :email "test@example.com"}
+            result (user/add-attributes user)]
+        (is (= {"tenant_attr" "tenant_value"
+                "user_attr" "user_value"}
+               (:attributes result)))
+        (is (= user (dissoc result :attributes)))))
+
+    (testing "should handle nil login_attributes"
+      (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
+        (let [user {:email "test@example.com"}
+              result (user/add-attributes user)]
+          (is (= {"tenant_attr" "tenant_value"}
+                 (:attributes result))))))
+
+    (testing "should handle empty login_attributes"
+      (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
+        (let [user {:login_attributes {}
+                    :email "test@example.com"}
+              result (user/add-attributes user)]
+          (is (= {"tenant_attr" "tenant_value"}
+                 (:attributes result))))))
+
+    (testing "should handle nil tenant attributes"
+      (with-redefs [tenants/login-attributes (constantly nil)]
+        (let [user {:login_attributes {"user_attr" "user_value"}
+                    :email "test@example.com"}
+              result (user/add-attributes user)]
+          (is (= {"user_attr" "user_value"}
+                 (:attributes result))))))
+
+    (testing "should handle both nil tenant and user attributes"
+      (with-redefs [tenants/login-attributes (constantly nil)]
+        (let [user {:email "test@example.com"}
+              result (user/add-attributes user)]
+          (is (= {}
+                 (:attributes result))))))
+
+    (testing "user attributes should override tenant attributes with same keys"
+      (with-redefs [tenants/login-attributes (constantly {"shared_key" "tenant_value"
+                                                          "tenant_only" "tenant_val"})]
+        (let [user {:login_attributes {"shared_key" "user_value"
+                                       "user_only" "user_val"}
+                    :email "test@example.com"}
+              result (user/add-attributes user)]
+          (is (= {"shared_key" "user_value"
+                  "tenant_only" "tenant_val"
+                  "user_only" "user_val"}
+                 (:attributes result))))))
+
+    (testing "should preserve all other user fields"
+      (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
+        (let [user {:id 123
+                    :email "test@example.com"
+                    :first_name "John"
+                    :last_name "Doe"
+                    :login_attributes {"user_attr" "user_value"}}
+              result (user/add-attributes user)]
+          (is (= 123 (:id result)))
+          (is (= "test@example.com" (:email result)))
+          (is (= "John" (:first_name result)))
+          (is (= "Doe" (:last_name result)))
+          (is (= {"user_attr" "user_value"} (:login_attributes result)))
+          (is (= {"tenant_attr" "tenant_value"
+                  "user_attr" "user_value"}
+                 (:attributes result))))))))

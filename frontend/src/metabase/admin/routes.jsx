@@ -51,6 +51,7 @@ import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_METABOT,
   PLUGIN_TRANSFORMS,
+  PLUGIN_TENANTS,
 } from "metabase/plugins";
 
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
@@ -59,7 +60,11 @@ import { PerformanceTabId } from "./performance/types";
 import { InteractiveEmbeddingUpsellPage } from "./settings/components/EmbeddingSettings/InteractiveEmbeddingUpsellPage";
 import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
-import { RedirectToAllowedSettings, createAdminRouteGuard } from "./utils";
+import {
+  RedirectToAllowedSettings,
+  createAdminRouteGuard,
+  createTenantsRouteGuard,
+} from "./utils";
 
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
   <Route path="/admin" component={CanAccessSettings}>
@@ -129,6 +134,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
 
           <Route path="" component={PeopleListingApp}>
             <ModalRoute path="new" modal={NewUserModal} noWrap />
+            {PLUGIN_TENANTS.userStrategyRoute}
           </Route>
 
           <Route path=":userId" component={PeopleListingApp}>
@@ -209,6 +215,12 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       <Route path="permissions" component={IsAdmin}>
         {getAdminPermissionsRoutes(store)}
       </Route>
+
+      {/* Tenants */}
+      <Route path="tenants" component={createTenantsRouteGuard()}>
+        {PLUGIN_TENANTS.tenantsRoutes}
+      </Route>
+
       {/* PERFORMANCE */}
       <Route
         path="performance"

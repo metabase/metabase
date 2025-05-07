@@ -52,6 +52,7 @@ export * from "./store";
 export * from "./subscription";
 export * from "./table";
 export * from "./task";
+export * from "./tenants";
 export * from "./timeline";
 export * from "./transform";
 export * from "./user";

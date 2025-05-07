@@ -11,7 +11,10 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_USER_FORM_FIELDS,
+  PLUGIN_TENANTS,
+} from "metabase/plugins";
 import { Button } from "metabase/ui";
 import type { User, UserId } from "metabase-types/api";
 
@@ -26,6 +29,8 @@ interface UserFormProps {
   onSubmit: (val: Partial<User>) => void;
   onCancel: () => void;
   submitText?: string;
+  external?: boolean;
+  edit?: boolean;
   userId?: UserId | null;
 }
 
@@ -34,6 +39,8 @@ export const UserForm = ({
   onSubmit,
   onCancel,
   submitText = t`Update`,
+  external = false,
+  edit = false,
   userId,
 }: UserFormProps) => {
   return (
@@ -70,7 +77,18 @@ export const UserForm = ({
             required
             mb="md"
           />
-          <FormGroupsWidget name="user_group_memberships" />
+          <FormGroupsWidget
+            name="user_group_memberships"
+            external={external}
+            title={external ? t`Tenant Groups` : t`Groups`}
+          />
+          {external && (
+            <PLUGIN_TENANTS.FormTenantWidget
+              required
+              name="tenant_id"
+              disabled={edit}
+            />
+          )}
           <PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes userId={userId} />
           <FormFooter>
             <FormErrorMessage inline />

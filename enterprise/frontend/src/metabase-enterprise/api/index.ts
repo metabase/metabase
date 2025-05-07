@@ -14,6 +14,7 @@ export * from "./metabot";
 export * from "./saml";
 export * from "./scim";
 export * from "./tags";
+export * from "./tenants";
 export * from "./transform";
 export * from "./transform-job";
 export * from "./transform-tag";

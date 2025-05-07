@@ -1,8 +1,4 @@
-import {
-  NATIVE_PERMISSION_REQUIRES_DATA_ACCESS,
-  UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
-  UNABLE_TO_CHANGE_LEGACY_PERMISSIONS,
-} from "metabase/admin/permissions/constants/messages";
+import { Messages } from "metabase/admin/permissions/constants/messages";
 import { isRestrictivePermission } from "metabase/admin/permissions/utils/graph";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 
@@ -13,7 +9,7 @@ export const getNativePermissionDisabledTooltip = (
   accessPermissionValue: DataPermissionValue,
 ) => {
   if (isAdmin) {
-    return UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
+    return Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
   }
 
   // prevent tooltip from being disabled when the user can't modify the view data column
@@ -22,11 +18,11 @@ export const getNativePermissionDisabledTooltip = (
   }
 
   if (accessPermissionValue === DataPermissionValue.LEGACY_NO_SELF_SERVICE) {
-    return UNABLE_TO_CHANGE_LEGACY_PERMISSIONS;
+    return Messages.UNABLE_TO_CHANGE_LEGACY_PERMISSIONS;
   }
 
   if (isRestrictivePermission(accessPermissionValue)) {
-    return NATIVE_PERMISSION_REQUIRES_DATA_ACCESS;
+    return Messages.NATIVE_PERMISSION_REQUIRES_DATA_ACCESS;
   }
 
   return null;

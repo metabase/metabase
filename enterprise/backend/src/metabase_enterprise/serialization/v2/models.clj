@@ -107,6 +107,7 @@
    "SemanticSearchTokenTracking"
    "Session"
    "TaskHistory"
+   "Tenant"
    "TransformJobRun"
    "TransformRun"
    "TransformRunCancelation"

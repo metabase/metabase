@@ -22,9 +22,17 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
-import type { Bookmark } from "metabase-types/api";
+import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
+import {
+  ActionIcon,
+  Flex,
+  Icon,
+  type IconName,
+  type IconProps,
+  Tooltip
+} from "metabase/ui";
+import type { Bookmark, Collection } from "metabase-types/api";
+import { getUserCanWriteToCollections } from "metabase/selectors/user";
 
 import {
   PaddedSidebarLink,
@@ -223,24 +231,7 @@ export function MainNavbarView({
                 handleCreateNewCollection={handleCreateNewCollection}
               />
 
-              <Tree
-                data={regularCollections}
-                selectedId={collectionItem?.id}
-                onSelect={onItemSelect}
-                TreeNode={SidebarCollectionLink}
-                role="tree"
-                aria-label="collection-tree"
-              />
-              {showOtherUsersCollections && (
-                <PaddedSidebarLink
-                  icon="group"
-                  url={OTHER_USERS_COLLECTIONS_URL}
-                >
-                  {t`Other users' personal collections`}
-                </PaddedSidebarLink>
-              )}
-            </ErrorBoundary>
-          </SidebarSection>
+          <PLUGIN_TENANTS.MainNavSharedCollections />
 
           <SidebarSection>
             <ErrorBoundary>
@@ -283,21 +274,26 @@ interface CollectionSectionHeadingProps {
 function CollectionSectionHeading({
   handleCreateNewCollection,
 }: CollectionSectionHeadingProps) {
+  const canWriteToCollection = useSelector(getUserCanWriteToCollections);
+
   return (
     <Flex align="center" justify="space-between">
       <SidebarHeading>{t`Collections`}</SidebarHeading>
-      <Tooltip label={t`Create a new collection`}>
-        <ActionIcon
-          aria-label={t`Create a new collection`}
-          color="var(--mb-color-text-medium)"
-          onClick={() => {
-            trackNewCollectionFromNavInitiated();
-            handleCreateNewCollection();
-          }}
-        >
-          <Icon name="add" />
-        </ActionIcon>
-      </Tooltip>
+      {canWriteToCollection && (
+        <Tooltip label={t`Create a new collection`}>
+          <ActionIcon
+            data-testid="navbar-new-collection-button"
+            aria-label={t`Create a new collection`}
+            color="text-medium"
+            onClick={() => {
+              trackNewCollectionFromNavInitiated();
+              handleCreateNewCollection();
+            }}
+          >
+            <Icon name="add" />
+          </ActionIcon>
+        </Tooltip>
+      )}
     </Flex>
   );
 }
