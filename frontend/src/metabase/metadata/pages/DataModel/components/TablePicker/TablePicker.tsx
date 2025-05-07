@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -27,6 +27,7 @@ export function TablePicker(props: {
   schemaId?: SchemaId;
 }) {
   const [searchValue, setSearchValue] = useState("");
+  const deferredSearchValue = useDeferredValue(searchValue);
 
   return (
     <Stack className={S.tablePicker}>
@@ -35,7 +36,7 @@ export function TablePicker(props: {
       </Box>
 
       <Box className={S.tablePickerContent} px="xl" pb="lg">
-        {searchValue === "" ? (
+        {deferredSearchValue === "" ? (
           <RootNode {...props} />
         ) : (
           <SearchResults searchValue={searchValue} />
