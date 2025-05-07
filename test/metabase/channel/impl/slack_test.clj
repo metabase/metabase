@@ -179,10 +179,12 @@
                 processed    (with-redefs [slack/upload-file! (constantly {:url "a.com", :id "id"})]
                                (channel/render-notification :channel/slack notification nil [recipient]))]
             (-> processed first :attachments first :blocks)))
-        link-section (last (render-dashboard-header))]
+        link-count (fn []
+                     (let [link-section (last (render-dashboard-header))]
+                       (count (:fields link-section))))]
     (testing "When whitelabeling is enabled, branding link should not be included"
       (mt/with-premium-features #{:whitelabel}
-        (is (= 1 (count link-section)))))
+        (is (= 1 (link-count)))))
     (testing "When whitelabeling is disabled, branding link should be included"
       (mt/with-premium-features #{}
-        (is (= 2 (count link-section)))))))
+        (is (= 2 (link-count)))))))
