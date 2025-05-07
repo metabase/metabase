@@ -519,9 +519,16 @@
                  :where  [:<= [:raw "rownum"] [:inline (+ offset items)]]}]
        :where  [:> :__rownum__ offset]})))
 
+(def ^:private boolean-field-types #{:type/Boolean :type/Decimal})
+
+;; Oracle 23+ supports booleans in conditional expressions. Once Oracle 21c is no longer supported, we can
+;; drop these boolean->comparison conversions.
+(defn- boolean->comparison [clause]
+  (sql.qp.boolean-to-comparison/boolean->comparison clause boolean-field-types))
+
 (defmethod sql.qp/apply-top-level-clause [:oracle :filter]
   [driver _ honeysql-form {clause :filter}]
-  (sql.helpers/where honeysql-form (->> (sql.qp.boolean-to-comparison/boolean->comparison clause)
+  (sql.helpers/where honeysql-form (->> (boolean->comparison clause)
                                         (sql.qp/->honeysql driver))))
 
 ;; Oracle doesn't support `TRUE`/`FALSE`; use `1`/`0`, respectively; convert these booleans to numbers.
@@ -529,26 +536,24 @@
   [_ bool]
   [:inline (if bool 1 0)])
 
-;; Oracle 23+ supports booleans in conditional expressions. Once Oracle 21c is no longer supported, we can
-;; drop these boolean->comparison conversions.
 (defmethod sql.qp/->honeysql [:oracle :and]
   [driver clause]
-  (->> (mapv sql.qp.boolean-to-comparison/boolean->comparison clause)
+  (->> (mapv boolean->comparison clause)
        ((get-method sql.qp/->honeysql [:sql-jdbc :and]) driver)))
 
 (defmethod sql.qp/->honeysql [:oracle :or]
   [driver clause]
-  (->> (mapv sql.qp.boolean-to-comparison/boolean->comparison clause)
+  (->> (mapv boolean->comparison clause)
        ((get-method sql.qp/->honeysql [:sql-jdbc :or]) driver)))
 
 (defmethod sql.qp/->honeysql [:oracle :not]
   [driver clause]
-  (->> (mapv sql.qp.boolean-to-comparison/boolean->comparison clause)
+  (->> (mapv boolean->comparison clause)
        ((get-method sql.qp/->honeysql [:sql-jdbc :not]) driver)))
 
 (defmethod sql.qp/->honeysql [:oracle :case]
   [driver clause]
-  (->> (sql.qp.boolean-to-comparison/case-boolean->comparison clause)
+  (->> (sql.qp.boolean-to-comparison/case-boolean->comparison clause boolean-field-types)
        ((get-method sql.qp/->honeysql [:sql-jdbc :case]) driver)))
 
 (defmethod sql.qp/->honeysql [:sql ::sql.qp/cast-to-text]
