@@ -4,7 +4,7 @@ import { useDeferredValue, useRef, useState } from "react";
 import { Box, Stack } from "metabase/ui";
 import type { DatabaseId, SchemaId } from "metabase-types/api";
 
-import { ItemRow } from "./Item";
+import { ITEM_MIN_HEIGHT, ItemRow } from "./Item";
 import { SearchInput, SearchResults } from "./Search";
 import S from "./TablePicker.module.css";
 import { type Item, flatten, useExpandedState, useTableLoader } from "./utils";
@@ -30,7 +30,7 @@ export function TablePicker(props: {
       {deferredSearchValue === "" ? (
         <Results items={flat} toggle={toggle} isExpanded={isExpanded} />
       ) : (
-        <Box className={S.tablePickerContent} px="xl" pb="lg">
+        <Box className={S.tablePickerItemWrapper} px="xl" pb="lg">
           <SearchResults searchValue={searchValue} />
         </Box>
       )}
@@ -50,23 +50,14 @@ function Results({
   const ref = useRef<HTMLDivElement>(null);
 
   const virtual = useVirtualizer({
-    estimateSize: () => 36,
+    estimateSize: () => ITEM_MIN_HEIGHT,
     count: items.length,
     getScrollElement: () => ref.current,
     overscan: 5,
   });
 
   return (
-    <Box
-      ref={ref}
-      style={{
-        position: "relative",
-        overflow: "auto",
-        height: "100%",
-      }}
-      px="xl"
-      pb="lg"
-    >
+    <Box ref={ref} px="xl" pb="lg" className={S.tablePickerItemWrapper}>
       <Box
         style={{
           height: virtual.getTotalSize(),
@@ -82,6 +73,7 @@ function Results({
               {...item}
               key={item.key}
               type={type}
+              ref={virtual.measureElement}
               onClick={() => {
                 toggle(item.key);
                 virtual.measure();
@@ -89,7 +81,6 @@ function Results({
               style={{
                 position: "absolute",
                 top: virtualItem.start,
-                minHeight: virtualItem.size,
               }}
               isExpanded={isExpanded(item.key)}
             />

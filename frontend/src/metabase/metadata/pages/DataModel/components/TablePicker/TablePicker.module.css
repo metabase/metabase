@@ -4,28 +4,8 @@
   min-height: 200px;
 }
 
-.tablePickerContent {
+.tablePickerItemWrapper {
+  position: relative;
   overflow: auto;
-  flex-grow: 0;
-  flex-shrink: 1;
-}
-
-.item {
-  padding: var(--mantine-spacing-xs);
-}
-
-.schema {
-  padding-left: var(--mantine-spacing-md);
-}
-
-.table {
-  padding-left: calc(2 * var(--mantine-spacing-md));
-}
-
-.chevron {
-  transition: transform 100ms ease-in-out;
-
-  &.expanded {
-    transform: rotate(90deg);
-  }
+  height: 100%;
 }
