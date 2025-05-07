@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { splice } from "icepick";
 import { useMemo } from "react";
 import {
@@ -10,9 +11,12 @@ import _ from "underscore";
 
 import { DragDropContext } from "metabase/core/components/DragDropContext";
 import CS from "metabase/css/core/index.css";
-import { Box, Button, Flex, Icon, Text } from "metabase/ui";
+import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
+import { Box, Button, Flex, Icon, Popover, Text } from "metabase/ui";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import type { Partition } from "metabase/visualizations/visualizations/PivotTable/partitions";
+import type * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   ColumnNameColumnSplitSetting,
@@ -20,6 +24,44 @@ import type {
 } from "metabase-types/api";
 
 import { ColumnItem } from "./ColumnItem";
+
+type AddBreakoutPopoverProps = {
+  query: Lib.Query;
+};
+
+const AddBreakoutPopover = ({ query }: AddBreakoutPopoverProps) => {
+  const [opened, { close, toggle }] = useDisclosure();
+
+  return (
+    <Popover opened={opened} onClose={close}>
+      <Popover.Target>
+        <Button
+          variant="subtle"
+          leftSection={<Icon name="add" />}
+          size="compact-md"
+          onClick={toggle}
+          styles={{
+            root: { paddingInline: 0 },
+          }}
+        >
+          {t`Add`}
+        </Button>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <BreakoutPopover
+          query={query}
+          stageIndex={-1}
+          isMetric={false}
+          breakout={undefined}
+          breakoutIndex={undefined}
+          onAddBreakout={() => {}}
+          onUpdateBreakoutColumn={() => {}}
+          onClose={() => {}}
+        />
+      </Popover.Dropdown>
+    </Popover>
+  );
+};
 
 const columnMove = (columns: string[], from: number, to: number) => {
   const columnCopy = [...columns];
@@ -48,8 +90,9 @@ type ChartSettingFieldPartitionProps = {
     ref: HTMLElement | undefined,
   ) => void;
   getColumnTitle: (column: DatasetColumn) => string;
-  columns: RemappingHydratedDatasetColumn[];
+  question: Question;
   partitions: Partition[];
+  columns: RemappingHydratedDatasetColumn[];
   canEditColumns: boolean;
 };
 
@@ -58,6 +101,7 @@ export const ChartSettingFieldsPartition = ({
   onChange,
   onShowWidget,
   getColumnTitle,
+  question,
   partitions,
   columns,
   canEditColumns,
@@ -143,7 +187,7 @@ export const ChartSettingFieldsPartition = ({
   );
 
   // TODO: disambiguate from columnAdd above
-  const handleColumnAdd = () => {};
+  //const handleColumnAdd = () => { };
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
@@ -155,17 +199,7 @@ export const ChartSettingFieldsPartition = ({
             <Flex align="center" justify="space-between">
               <Text c="text-medium">{title}</Text>
               {canEditColumns && (
-                <Button
-                  variant="subtle"
-                  leftSection={<Icon name="add" />}
-                  size="compact-md"
-                  onClick={handleColumnAdd}
-                  styles={{
-                    root: { paddingInline: 0 },
-                  }}
-                >
-                  {t`Add`}
-                </Button>
+                <AddBreakoutPopover query={question.query()} />
               )}
             </Flex>
             <Droppable
