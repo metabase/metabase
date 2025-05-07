@@ -8,7 +8,7 @@ const { admin } = USERS;
 // we're testing for one known (en) and one unknown (xx) locale
 const locales = ["en", "xx"];
 
-describe.skip("scenarios > setup", () => {
+describe("scenarios > setup", () => {
   locales.forEach((locale) => {
     beforeEach(() => H.restore("blank"));
 
@@ -406,7 +406,7 @@ describe.skip("scenarios > setup", () => {
   });
 });
 
-describe.skip("scenarios > setup (EE)", () => {
+describe("scenarios > setup (EE)", () => {
   beforeEach(() => H.restore("blank"));
 
   it("should ask for a license token on self-hosted", () => {
