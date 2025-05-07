@@ -12,6 +12,7 @@ import type { DatabaseId, Field } from "metabase-types/api";
 import { BehaviorSection } from "./BehaviorSection";
 import { DataSection } from "./DataSection";
 import S from "./FieldSection.module.css";
+import { FormattingSection } from "./FormattingSection";
 import { MetadataSection } from "./MetadataSection";
 
 interface Props {
@@ -30,6 +31,7 @@ export const FieldSection = ({ databaseId, field }: Props) => {
         <DataSection field={field} />
         <MetadataSection databaseId={databaseId} field={field} />
         <BehaviorSection databaseId={databaseId} field={field} />
+        <FormattingSection field={field} />
 
         <Stack gap="sm" mt="lg">
           <RescanFieldButton fieldId={getRawTableFieldId(field)} />
