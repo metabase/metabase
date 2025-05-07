@@ -12,6 +12,7 @@
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
+   [metabase.tenants.core :as tenants]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
@@ -115,6 +116,7 @@
     (when superuser?
       (log/infof "Adding User %s to All Users permissions group..." user-id))
     (let [groups (filter some? [(when-not (:tenant_id user) (perms/all-users-group))
+                                (when (:tenant_id user) (perms/all-external-users-group))
                                 (when superuser? (perms/admin-group))])]
       (perms/allow-changing-all-users-group-members
         (perms/without-is-superuser-sync-on-add-to-admin-group
@@ -278,9 +280,15 @@
 
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
-  (mu/with-api-error-message
-   [:map-of ms/KeywordOrString :any]
-   (deferred-tru "login attribute keys must be a keyword or string")))
+  [:map-of
+   [:and
+    (mu/with-api-error-message
+     ms/KeywordOrString
+     (deferred-tru "login attribute keys must be a keyword or string"))
+    (mu/with-api-error-message
+     [:fn (fn [k] (re-matches #"^(?!@).*" (name k)))]
+     (deferred-tru "login attribute keys must not start with `@`"))]
+   :any])
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
@@ -292,7 +300,8 @@
    [:login_attributes {:optional true} [:maybe LoginAttributes]]
    [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
    [:locale           {:optional true} [:maybe ms/KeywordOrString]]
-   [:type             {:optional true} [:maybe ms/KeywordOrString]]])
+   [:type             {:optional true} [:maybe ms/KeywordOrString]]
+   [:tenant_id        {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
@@ -393,3 +402,8 @@
         (perms/remove-user-from-groups! user-id to-remove)
         (perms/add-user-to-groups! user-id to-add)))
     true))
+
+(defn add-attributes
+  "Adds the `:attributes` key to a user."
+  [{:keys [login_attributes] :as user}]
+  (assoc user :attributes (merge login_attributes (tenants/login-attributes user))))

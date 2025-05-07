@@ -252,6 +252,7 @@ export const tokenFeatures = [
   "ai_entity_analysis",
   "database_routing",
   "development_mode",
+  "tenants",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -471,6 +472,7 @@ interface PublicSettings {
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
   "non-table-chart-generated": boolean;
+  "use-tenants": boolean;
 }
 
 export type UserSettings = {

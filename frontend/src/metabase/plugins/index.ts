@@ -15,7 +15,7 @@ import {
   strategies,
 } from "metabase/admin/performance/constants/complex";
 import type { ModelWithClearableCache } from "metabase/admin/performance/types";
-import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
+import { Messages } from "metabase/admin/permissions/constants/messages";
 import {
   type DataPermission,
   DataPermissionValue,
@@ -194,7 +194,7 @@ export const PLUGIN_ADMIN_USER_FORM_FIELDS = {
 export const PLUGIN_ADMIN_USER_MENU_ITEMS = [] as Array<
   (user: User) => React.ReactNode
 >;
-export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
+export const PLUGIN_ADMIN_USER_MENU_ROUTES = [] as (() => ReactNode)[];
 
 // authentication providers
 
@@ -312,7 +312,8 @@ export const PLUGIN_COLLECTIONS = {
     AUTHORITY_LEVEL_REGULAR,
   useGetDefaultCollectionId: null as GetCollectionIdType | null,
   CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "" as BaseEntityId | "",
-  INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE: UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
+  INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE:
+    Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
@@ -467,14 +468,17 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
     _entityId: DatabaseEntityId,
     _groupId: number,
     _isAdmin: boolean,
+    _isExternal: boolean,
     _permissions: GroupsPermissions,
     _dataAccessPermissionValue: DataPermissionValue,
     _defaultGroup: Group,
     _permissionSubject: PermissionSubject,
+    _permissionView?: "group" | "database",
   ) => {
     return [] as any;
   },
-  getDataColumns: (_subject: PermissionSubject) => [] as any,
+  getDataColumns: (_subject: PermissionSubject, _isExternal?: boolean) =>
+    [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,
   dataModelQueryProps: {} as any,
@@ -769,4 +773,18 @@ export const PLUGIN_API = {
     parameterId: ParameterId,
   ) =>
     `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
+};
+
+export const PLUGIN_TENANTS = {
+  userStrategyRoute: null as React.ReactElement | null,
+  tenantsRoutes: null as React.ReactElement | null,
+  EditUserStrategySettingsButton: PluginPlaceholder,
+  FormTenantWidget: (_props: any) => null as React.ReactElement | null,
+  TenantDisplayName: (_props: any) => null as React.ReactElement | null,
+  isExternalUsersGroup: (_group: Pick<Group, "magic_group_type">) => false,
+  isExternalUser: (_user?: Pick<User, "tenant_id">) => false,
+  isTenantCollection: (_collection: Collection) => false,
+  PeopleNav: null as React.ReactElement | null,
+  ReactivateExternalUserButton: ({ user: _user }: { user: User }) =>
+    null as React.ReactElement | null,
 };

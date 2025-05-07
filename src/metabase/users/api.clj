@@ -11,11 +11,14 @@
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
+   [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
+   [metabase.tenants.core :as tenants]
    [metabase.users.models.user :as user]
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
@@ -135,24 +138,33 @@
     :else
     user/non-admin-or-self-visible-columns))
 
-(defn- user-clauses
+(mu/defn- user-clauses
   "Honeysql clauses for filtering on users
   - with a status,
   - with a query,
   - with a group_id,
   - with include_deactivated"
-  [status query group_ids include_deactivated]
+  [{:keys [status query group-ids include-deactivated tenant-clause]}
+   :- [:map
+       [:status {:optional true} [:maybe :string]]
+       [:query {:optional true} [:maybe :string]]
+       [:group-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+       [:include-deactivated {:optional true} [:maybe ms/BooleanValue]]
+       [:tenant {:optional true} [:maybe
+                                  [:map
+                                   [:id [:maybe ms/PositiveInt]]]]]]]
   (cond-> {}
     true                                    (sql.helpers/where [:= :core_user.type "personal"])
-    true                                    (sql.helpers/where (status-clause status include_deactivated))
+    true                                    (sql.helpers/where (status-clause status include-deactivated))
+    true                                    (sql.helpers/where tenant-clause)
     ;; don't send the internal user
     (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
     (some? query)                           (sql.helpers/where (query-clause query))
-    (some? group_ids)                       (sql.helpers/right-join
+    (some? group-ids)                       (sql.helpers/right-join
                                              :permissions_group_membership
                                              [:= :core_user.id :permissions_group_membership.user_id])
-    (some? group_ids)                       (sql.helpers/where
-                                             [:in :permissions_group_membership.group_id group_ids])
+    (some? group-ids)                       (sql.helpers/where
+                                             [:in :permissions_group_membership.group_id group-ids])
     (some? (request/limit))                 (sql.helpers/limit (request/limit))
     (some? (request/offset))                (sql.helpers/offset (request/offset))))
 
@@ -171,6 +183,7 @@
    `status` and `include_deactivated` requires superuser permissions.
    - `include_deactivated` is a legacy alias for `status` and will be removed in a future release, users are advised to use `status` for better support and flexibility.
    If both params are passed, `status` takes precedence.
+  - if a `tenant_id` is passed, only users with that tenant_id will be returned.
 
   For users with segmented permissions, return only themselves.
 
@@ -178,20 +191,42 @@
   Takes `query` for filtering on first name, last name, email.
   Also takes `group_id`, which filters on group id."
   [_route-params
-   {:keys [status query group_id include_deactivated]}
+   {:keys [status query group_id include_deactivated tenant_id tenancy] :as params}
    :- [:map
        [:status              {:optional true} [:maybe :string]]
        [:query               {:optional true} [:maybe :string]]
        [:group_id            {:optional true} [:maybe ms/PositiveInt]]
-       [:include_deactivated {:default false} [:maybe ms/BooleanValue]]]]
+       [:include_deactivated {:default false} [:maybe ms/BooleanValue]]
+       [:tenancy             {:optional true} [:maybe
+                                               [:enum :all :internal :external]]]
+       [:tenant_id           {:optional true} [:maybe ms/PositiveInt]]]]
+  (api/check-400 (not (and (contains? params :tenancy)
+                           (contains? params :tenant_id)))
+                 (tru "You cannot specify both `tenancy` and `tenant_id`"))
   (or
    api/*is-superuser?*
    (if group_id
      (perms/check-manager-of-group group_id)
      (perms/check-group-manager)))
-  (let [include_deactivated include_deactivated
-        group-id-clause     (when group_id [group_id])
-        clauses             (user-clauses status query group-id-clause include_deactivated)]
+  (let [clauses (user-clauses {:status              status
+                               :query               query
+                               :group-ids           (when group_id [group_id])
+                               :include-deactivated include_deactivated
+                               :tenant-clause       (cond
+                                                      (not api/*is-superuser?*)
+                                                      [:= :tenant_id (:tenant_id @api/*current-user*)]
+
+                                                      (contains? params :tenant_id)
+                                                      [:= :tenant_id tenant_id]
+
+                                                      (= tenancy :all)
+                                                      [:inline [:= 1 1]]
+
+                                                      (= tenancy :external)
+                                                      [:not= :tenant_id nil]
+
+                                                      :else
+                                                      [:= :tenant_id nil])})]
     {:data (cond-> (t2/select
                     (vec (cons :model/User (user-visible-columns)))
                     (sql.helpers/order-by clauses
@@ -206,7 +241,7 @@
                  api/*is-group-manager?*)
              (t2/hydrate :group_ids)
              ;; if there is a group_id clause, make sure the list is deduped in case the same user is in multiple gropus
-             group-id-clause
+             group_id
              distinct)
      :total  (-> (t2/query
                   (merge {:select [[[:count [:distinct :core_user.id]] :count]]
@@ -239,14 +274,16 @@
    - If user-visibility is :none or the user is sandboxed, include only themselves."
   []
   ;; defining these functions so the branching logic below can be as clear as possible
-  (letfn [(all [] (let [clauses (-> (user-clauses nil nil nil nil)
+  (letfn [(all [] (let [clauses (-> (user-clauses {:tenant-clause (when-not api/*is-superuser?*
+                                                                    [:= :tenant_id (:tenant_id @api/*current-user*)])})
                                     (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                     {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
                      :total  (t2/count :model/User (filter-clauses-without-paging clauses))
                      :limit  (request/limit)
                      :offset (request/offset)}))
           (within-group [] (let [user-ids (same-groups-user-ids api/*current-user-id*)
-                                 clauses  (cond-> (user-clauses nil nil nil nil)
+                                 clauses  (cond-> (user-clauses {:tenant-clause (when-not api/*is-superuser?*
+                                                                                  [:= :tenant_id (:tenant_id @api/*current-user*)])})
                                             (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
                                             true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                              {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
@@ -326,6 +363,19 @@
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))
 
+(defn- add-can-write-any-collection
+  "Adds a key to the user reflecting whether they have permission to write *any* collection in the instance so that the
+  FE can appropriately hide/show elements (e.g., we shouldn't try to let them save a new question if they don't have
+  anywhere to save *to*)"
+  [user]
+  (assoc user :can_write_any_collection
+         (or (:is_superuser user)
+             (t2/exists? :model/Collection {:where (collection/visible-collection-filter-clause
+                                                    :id
+                                                    {:include-trash-collection? false
+                                                     :include-archived-items :exclude
+                                                     :permission-level :write})}))))
+
 (api.macros/defendpoint :get "/current"
   "Fetch the current `User`."
   []
@@ -335,7 +385,8 @@
       add-first-login
       maybe-add-advanced-permissions
       maybe-add-sso-source
-      add-custom-homepage-info))
+      add-custom-homepage-info
+      add-can-write-any-collection))
 
 (api.macros/defendpoint :get "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
@@ -358,12 +409,19 @@
   (api/check-superuser)
   (api/checkp (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
               "email" (tru "Email address already in use."))
+  (api/checkp (not (and (:tenant_id body)
+                        (not (setting/get :use-tenants))))
+              "tenant_id"
+              (tru "Cannot create a Tenant User as Tenants are not enabled for this instance."))
   (t2/with-transaction [_conn]
-    (let [new-user-id (u/the-id (user/create-and-invite-user!
-                                 (u/select-keys-when body
-                                                     :non-nil [:first_name :last_name :email :password :login_attributes])
-                                 @api/*current-user*
-                                 false))]
+    (let [new-user-data (u/select-keys-when body
+                                            :non-nil [:first_name :last_name :email :password :login_attributes :tenant_id])
+          create-user-fn (if (:tenant_id body)
+                           ;; don't send user invited emails for tenant users
+                           #(notification/with-skip-sending-notification true
+                              (user/create-and-invite-user! new-user-data @api/*current-user* false))
+                           #(user/create-and-invite-user! new-user-data @api/*current-user* false))
+          new-user-id (u/the-id (create-user-fn))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)
       (analytics/track-event! :snowplow/invite
                               {:event           :invite-sent
@@ -381,7 +439,8 @@
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
-            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]]]
+            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]
+            [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]]]
   (invite-user body))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -489,13 +548,15 @@
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (check-not-internal-user id)
-  (let [user (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source]
+  (let [user (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source :tenant_id]
                             :type :personal
                             :id id)]
     (api/check-404 user)
     ;; Can only reactivate inactive users
     (api/check (not (:is_active user))
                [400 {:message (tru "Not able to reactivate an active user")}])
+    (api/check (tenants/tenant-is-active? (:tenant_id user))
+               [400 {:message (tru "Not able to reactivate a user in a deactivated tenant")}])
     (events/publish-event! :event/user-reactivated {:object user :user-id api/*current-user-id*})
     (reactivate-user! (dissoc user [:email :first_name :last_name]))))
 

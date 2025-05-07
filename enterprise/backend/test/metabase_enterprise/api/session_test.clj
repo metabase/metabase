@@ -45,7 +45,8 @@
                               :upload-management
                               :whitelabel
                               :collection-cleanup
-                              :database-routing}
+                              :database-routing
+                              :tenants}
     (is (= {:advanced_permissions           true
             :attached_dwh                   true
             :audit_app                      true
@@ -83,5 +84,6 @@
             :upload_management              true
             :whitelabel                     true
             :collection_cleanup             true
-            :database_routing               true}
+            :database_routing               true
+            :tenants                        true}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

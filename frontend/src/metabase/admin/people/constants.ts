@@ -1,6 +1,6 @@
-export type UserStatus = "active" | "deactivated";
+export type ActiveStatus = "active" | "deactivated";
 
-export const USER_STATUS: Record<string, UserStatus> = {
+export const ACTIVE_STATUS: Record<string, ActiveStatus> = {
   active: "active",
   deactivated: "deactivated",
 };
