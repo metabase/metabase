@@ -1,7 +1,7 @@
 (ns metabase.events.audit-log
   "This namespace is responsible for publishing events to the audit log. "
   (:require
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.audit-log :as audit-log]
    [metabase.util :as u]
    [methodical.core :as methodical]
