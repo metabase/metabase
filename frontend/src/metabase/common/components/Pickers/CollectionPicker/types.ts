@@ -1,6 +1,7 @@
 import type {
   CardId,
   CollectionId,
+  CollectionItem,
   CollectionItemModel,
   CollectionType,
   DashboardId,
@@ -45,7 +46,7 @@ export type CollectionPickerItem = TypeWithModel<
     here?: CollectionItemModel[];
     below?: CollectionItemModel[];
     type?: CollectionType;
-  };
+  } & Pick<CollectionItem, "is_tenant_collection" | "is_tenant_dashboard">;
 
 /**
  * Returns the collection type for an item.

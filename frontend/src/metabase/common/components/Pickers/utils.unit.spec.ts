@@ -161,4 +161,49 @@ describe("getCollectionIdPath", () => {
 
     expect(path).toEqual(["root", 6, 7, 8, -9]);
   });
+
+  it("should detect tenant collections", () => {
+    const path = getCollectionIdPath(
+      {
+        id: 9,
+        location: "/4/5/6/7/8/",
+        effective_location: "/6/7/8/",
+        model: "collection",
+        type: "shared-tenant-collection",
+      },
+      1337,
+    );
+
+    expect(path).toEqual(["tenant", 6, 7, 8, 9]);
+  });
+
+  it("should detect tenant collection items - collections", () => {
+    const path = getCollectionIdPath(
+      {
+        id: 9,
+        location: "/4/5/6/7/8/",
+        effective_location: "/6/7/8/",
+        model: "collection",
+        is_tenant_collection: true,
+      },
+      1337,
+    );
+
+    expect(path).toEqual(["tenant", 6, 7, 8, 9]);
+  });
+
+  it("should detect tenant collection items - dashboards", () => {
+    const path = getCollectionIdPath(
+      {
+        id: 9,
+        location: "/4/5/6/7/8/",
+        effective_location: "/6/7/8/",
+        model: "collection",
+        is_tenant_dashboard: true,
+      },
+      1337,
+    );
+
+    expect(path).toEqual(["tenant", 6, 7, 8, 9]);
+  });
 });

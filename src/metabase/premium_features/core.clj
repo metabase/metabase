@@ -38,6 +38,7 @@
   can-disable-password-login?
   define-premium-feature
   development-mode?
+  enable-tenants?
   enable-advanced-permissions?
   enable-ai-entity-analysis?
   enable-ai-sql-fixer?

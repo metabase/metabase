@@ -24,6 +24,7 @@ export type CollectionId =
   | "root"
   | "personal"
   | "users"
+  | "tenant"
   | "trash";
 
 export type CollectionContentModel = "card" | "dataset" | "metric";
@@ -37,6 +38,7 @@ export type CollectionType =
   | "library"
   | "library-models"
   | "library-metrics"
+  | "shared-tenant-collection"
   | null;
 
 export type LastEditInfo = Pick<
@@ -151,6 +153,8 @@ export interface CollectionItem {
     collection: Pick<Collection, "id"> | Pick<Dashboard, "id">,
   ) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;
+  is_tenant_collection?: boolean;
+  is_tenant_dashboard?: boolean;
 }
 
 export interface CollectionListQuery {
@@ -201,10 +205,11 @@ export interface UpdateCollectionRequest {
 
 export interface CreateCollectionRequest {
   name: string;
-  description?: string;
+  description?: string | null;
   parent_id?: CollectionId | null;
   namespace?: string;
   authority_level?: CollectionAuthorityLevel;
+  type?: "shared-tenant-collection";
 }
 
 export interface ListCollectionsRequest {
@@ -222,6 +227,7 @@ export interface ListCollectionsTreeRequest {
   shallow?: boolean;
   "collection-id"?: RegularCollectionId | null;
   collection_type?: CollectionType;
+  "include-tenant-collections"?: boolean;
 }
 
 export interface DeleteCollectionRequest {

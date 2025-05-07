@@ -54,6 +54,34 @@ export function setupCollectionsEndpoints({
   fetchMock.get("path:/api/collection", collections, {
     name: "collection-list",
   });
+
+  fetchMock.get(
+    {
+      url: "path:/api/collection/tree",
+      overwriteRoutes: false,
+      name: "collection_tree",
+    },
+    (uri) => {
+      const url = new URL(uri);
+      const excludeArchived =
+        url.searchParams.get("exclude-archived") === "true";
+      const includeTenantCollections =
+        url.searchParams.get("include-tenant-collections") === "true";
+
+      return collections.filter((collection) => {
+        if (excludeArchived && collection.archived) {
+          return false;
+        }
+        if (
+          includeTenantCollections &&
+          collection.type !== "shared-tenant-collection"
+        ) {
+          return false;
+        }
+        return true;
+      });
+    },
+  );
 }
 
 function getCollectionVirtualSchemaURLs(collection: Collection) {
@@ -90,6 +118,33 @@ export function setupCollectionVirtualSchemaEndpoints(
   });
 }
 
+function handleCollectionItemsResponse({
+  uri,
+  collectionItems,
+  modelsParam,
+}: {
+  uri: string;
+  collectionItems: CollectionItem[];
+  modelsParam?: string[];
+}) {
+  const url = new URL(uri);
+  const models = modelsParam ?? url.searchParams.getAll("models");
+  const matchedItems = collectionItems.filter(({ model }) =>
+    models.includes(model),
+  );
+
+  const limit = Number(url.searchParams.get("limit")) || matchedItems.length;
+  const offset = Number(url.searchParams.get("offset")) || 0;
+
+  return {
+    data: matchedItems.slice(offset, offset + limit),
+    total: matchedItems.length,
+    models,
+    limit,
+    offset,
+  };
+}
+
 export function setupCollectionItemsEndpoint({
   collection,
   collectionItems = [],
@@ -99,28 +154,20 @@ export function setupCollectionItemsEndpoint({
   collectionItems: CollectionItem[];
   models?: string[];
 }) {
-  fetchMock.get(
-    `path:/api/collection/${collection.id}/items`,
-    (call) => {
-      const url = new URL(call.url);
-      const models = modelsParam ?? url.searchParams.getAll("models");
-      const matchedItems = models?.length
-        ? collectionItems.filter(({ model }) => models.includes(model))
-        : collectionItems;
+  fetchMock.get(`path:/api/collection/${collection.id}/items`, (uri) =>
+    handleCollectionItemsResponse({ uri, collectionItems, modelsParam }),
+  );
+}
 
-      const limit =
-        Number(url.searchParams.get("limit")) || matchedItems.length;
-      const offset = Number(url.searchParams.get("offset")) || 0;
-
-      return {
-        data: matchedItems.slice(offset, offset + limit),
-        total: matchedItems.length,
-        models,
-        limit,
-        offset,
-      };
-    },
-    { name: `collection-${collection.id}-items` },
+export function setupTenantRootCollectionItemsEndpoint({
+  collectionItems = [],
+  models: modelsParam,
+}: {
+  collectionItems: CollectionItem[];
+  models?: string[];
+}) {
+  fetchMock.get(`path:/api/ee/tenant/collection/root/items`, (uri) =>
+    handleCollectionItemsResponse({ uri, collectionItems, modelsParam }),
   );
 }
 

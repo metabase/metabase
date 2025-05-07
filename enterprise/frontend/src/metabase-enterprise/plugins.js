@@ -43,6 +43,7 @@ import { initializePlugin as initializeSmtpOverride } from "./smtp-override";
 import { initializePlugin as initializeSnippets } from "./snippets";
 import { initializePlugin as initializeSupport } from "./support";
 import { initializePlugin as initializeTableEditing } from "./table-editing";
+import { initializePlugin as initializeTenants } from "./tenants";
 import { initializePlugin as initializeTools } from "./tools";
 import { initializePlugin as initializeTransforms } from "./transforms";
 import { initializePlugin as initializeTransformsPython } from "./transforms-python";
@@ -95,4 +96,5 @@ export function initializePlugins() {
   initializeTransformsPython?.();
   initializePublicSharing?.();
   initializeSupport?.();
+  initializeTenants?.();
 }

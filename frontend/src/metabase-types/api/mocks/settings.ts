@@ -145,6 +145,7 @@ export const createMockTokenFeatures = (
   "transforms-python": false,
   data_studio: false,
   "support-users": false,
+  tenants: false,
   ...opts,
 });
 
@@ -289,6 +290,7 @@ export const createMockSettings = (
   "jwt-attribute-firstname": null,
   "jwt-attribute-lastname": null,
   "jwt-attribute-groups": null,
+  "jwt-attribute-tenant": null,
   "jwt-group-sync": false,
   "ldap-configured?": false,
   "ldap-enabled": false,
@@ -396,5 +398,6 @@ export const createMockSettings = (
   "trial-banner-dismissal-timestamp": null,
   "license-token-missing-banner-dismissal-timestamp": [],
   "sdk-iframe-embed-setup-settings": null,
+  "use-tenants": false,
   ...opts,
 });

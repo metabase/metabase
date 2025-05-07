@@ -12,6 +12,7 @@
    [metabase.permissions.models.permissions-group-membership]
    [metabase.permissions.models.permissions-revision]
    [metabase.permissions.path]
+   [metabase.permissions.settings]
    [metabase.permissions.user]
    [metabase.permissions.util]
    [metabase.permissions.validation]
@@ -46,6 +47,7 @@
   sandboxes-for-user
   schema-permission-for-user
   set-database-permission!
+  set-external-group-permissions!
   set-new-database-permissions!
   set-new-table-permissions!
   set-table-permission!
@@ -79,12 +81,14 @@
   set-has-full-permissions-for-set?
   set-has-full-permissions?]
  [metabase.permissions.models.permissions-group
-  non-magic-groups]
+  non-magic-groups
+  all-users-magic-group-type]
  [metabase.permissions.models.permissions-group-membership
   add-users-to-groups!
   add-user-to-groups!
   add-user-to-group!
   allow-changing-all-users-group-members
+  allow-changing-all-external-users-group-members
   fail-to-remove-last-admin-msg
   remove-user-from-group!
   remove-user-from-groups!
@@ -116,11 +120,13 @@
   graph
   update-graph!])
 
-;;; import these vars with different names to make their purpose more obvious.
+(p/import-vars [metabase.permissions.settings use-tenants])
 
+;;; import these vars with different names to make their purpose more obvious.
 (p/import-def metabase.permissions.models.permissions-group/all-users                    all-users-group)
 (p/import-def metabase.permissions.models.permissions-group/admin                        admin-group)
 (p/import-def metabase.permissions.models.application-permissions-revision/latest-id     latest-application-permissions-revision-id)
 (p/import-def metabase.permissions.models.collection-permission-graph-revision/latest-id latest-collection-permissions-revision-id)
 (p/import-def metabase.permissions.models.permissions-revision/latest-id                 latest-permissions-revision-id)
 (p/import-def metabase.permissions.models.data-permissions/least-permissive-value        least-permissive-data-perms-value)
+(p/import-def metabase.permissions.models.permissions-group/all-external-users           all-external-users-group)
