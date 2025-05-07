@@ -131,7 +131,7 @@
   audit-app
   {:api  #{metabase.audit-app.core
            metabase.audit-app.init}
-   :uses #{api config db events models plugins premium-features settings task task-history util}}
+   :uses #{api db events models premium-features settings task task-history util}}
 
   auth-provider
   {:api  #{metabase.auth-provider.core}
@@ -522,7 +522,6 @@
           metabase.query-processor.middleware.annotate
           metabase.query-processor.middleware.cache-backend.db
           metabase.query-processor.middleware.constraints
-          metabase.query-processor.middleware.fetch-source-query
           metabase.query-processor.middleware.fetch-source-query-legacy
           metabase.query-processor.middleware.limit
           metabase.query-processor.middleware.permissions
@@ -864,14 +863,6 @@
   {:api  #{metabase-enterprise.stale.api
            metabase-enterprise.stale.init}
    :uses #{analytics api embedding models premium-features request settings util}}
-
-  enterprise/stats
-  {:api  #{}
-   :uses #{driver premium-features enterprise/advanced-config enterprise/scim enterprise/sso}}
-
-  enterprise/task
-  {:api  #{metabase-enterprise.task.truncate-audit-tables}
-   :uses #{premium-features}}
 
   enterprise/upload-management
   {:api  #{metabase-enterprise.upload-management.api}
