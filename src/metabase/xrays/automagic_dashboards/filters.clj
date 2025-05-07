@@ -95,7 +95,7 @@
     "string/="
 
     (isa? effective_type :type/Number)
-    (if (or (isa? semantic_type :type/PK) (isa? semantic_type :type/FK)) "id" "number")))
+    (if (or (isa? semantic_type :type/PK) (isa? semantic_type :type/FK)) "id" "number/=")))
 
 (defn- filter-section-id
   "Return filter section id for a given field. Only available for certain fields."
