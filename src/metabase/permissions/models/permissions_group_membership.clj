@@ -1,7 +1,6 @@
 (ns metabase.permissions.models.permissions-group-membership
   (:require
    [medley.core :as m]
-   [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.util :as u]
@@ -87,7 +86,7 @@
     (dissoc membership
             :__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships)))
 
-(mu/defn add-users-to-groups-sql
+(mu/defn- add-users-to-groups-sql
   "Generates SQL for adding users to groups"
   [user-id-group-id->is-group-manager? :- [:map-of
                                            [:tuple pos-int? pos-int?]
@@ -112,6 +111,7 @@
                                                      [:not= :u.tenant_id nil]]]))]}]}))
 
 (mu/defn add-users-to-groups!
+  "Creates permission group memberships from aa sequence of maps of users, groups and is-group-manager?."
   [pgms :- [:sequential
             [:map
              [:group [:or
@@ -124,7 +124,7 @@
               :boolean]]]]
   (when (seq pgms)
     (let [pgms (->> pgms
-                    (map (fn [{:keys [user group is-group-manager?] :as pgm}]
+                    (map (fn [{:keys [user group is-group-manager?]}]
                            {:user-id (u/the-id user)
                             :group-id (u/the-id group)
                             :is-group-manager? is-group-manager?})))
