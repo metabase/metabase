@@ -141,9 +141,9 @@ export function ModelUploadModal({
         </Radio.Group>
         {uploadMode !== UploadMode.create && (
           <Select
-            aria-label="Select a model"
+            aria-label={t`Select a model`}
             leftSection={<Icon name="model" />}
-            placeholder="Select a model"
+            placeholder={t`Select a model`}
             value={tableId ? String(tableId) : ""}
             data={
               uploadableModels.map((model) => ({
