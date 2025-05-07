@@ -1,7 +1,9 @@
-import type { SetupOpts } from "metabase/components/Schedule/test-utils";
-
 import { sampleDictionary } from "./constants";
-import { assertStringsArePresent, setup as baseSetup } from "./utils";
+import {
+  type SetupOpts,
+  assertStringsArePresent,
+  setup as baseSetup,
+} from "./utils";
 
 describe("TitleAndDescription component (OSS)", () => {
   const setup = (opts: SetupOpts) =>
