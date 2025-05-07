@@ -4,6 +4,7 @@ import { useGetDatabaseQuery, useUpdateFieldMutation } from "metabase/api";
 import {
   FieldValuesTypePicker,
   FieldVisibilityPicker,
+  RemappingPicker,
   UnfoldJsonPicker,
 } from "metabase/metadata/components";
 import {
@@ -59,6 +60,15 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
           });
         }}
       />
+
+      {database != null && (
+        <RemappingPicker
+          database={database}
+          description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
+          field={field}
+          label={t`Display values`}
+        />
+      )}
 
       {database != null && canFieldUnfoldJson(field, database) && (
         <UnfoldJsonPicker
