@@ -7,16 +7,13 @@ import {
   defineMetabaseAuthConfig,
 } from "embedding-sdk";
 import { MetabaseProvider } from "embedding-sdk/components/public/MetabaseProvider";
-import settings from "metabase/lib/settings";
 import { Box } from "metabase/ui";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../types/embed";
 
-import {
-  SdkIframeInvalidLicenseError,
-  SdkIframeLoading,
-} from "./SdkIframeStatus";
+import { SdkIframeInvalidLicenseError } from "./SdkIframeError";
 
 export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus();
@@ -37,12 +34,12 @@ export const SdkIframeEmbedRoute = () => {
     });
   }, [embedSettings]);
 
+  // The SDK will show its own loading indicator, so we don't need to show it twice.
   if (embedSettings === null || !authConfig) {
-    return <SdkIframeLoading />;
+    return null;
   }
 
-  const tokenFeatures = settings.get("token-features");
-  const hasEmbedTokenFeature = tokenFeatures?.embedding_iframe_sdk;
+  const hasEmbedTokenFeature = hasPremiumFeature("embedding_iframe_sdk");
 
   // If the parent page is not running on localhost and
   // the token feature is not present, we show an error message
