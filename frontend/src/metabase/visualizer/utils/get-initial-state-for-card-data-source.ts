@@ -6,6 +6,7 @@ import {
   getDefaultMetricFilter,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
 import type {
   Card,
   Dataset,
@@ -15,6 +16,12 @@ import type {
 import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
 import {
+  createDimensionColumn,
+  createMetricColumn,
+} from "../visualizations/funnel";
+
+import {
+  addColumnMapping,
   copyColumn,
   createVisualizerColumnReference,
   extractReferencedColumns,
@@ -23,7 +30,7 @@ import {
   DEFAULT_VISUALIZER_DISPLAY,
   isVisualizerSupportedVisualization,
 } from "./dashboard-card-supports-visualizer";
-import { createDataSource } from "./data-source";
+import { createDataSource, createDataSourceNameRef } from "./data-source";
 import { getColumnVizSettings } from "./viz-settings";
 
 function pickColumnsFromTableToBarChart(
@@ -94,6 +101,38 @@ export function getInitialStateForCardDataSource(
   };
 
   const dataSource = createDataSource("card", card.id, card.name);
+
+  if (card.display === "scalar") {
+    const numericColumn = originalColumns.find((col) =>
+      Lib.isNumeric(Lib.legacyColumnTypeInfo(col)),
+    );
+    if (numericColumn) {
+      const columnRef = createVisualizerColumnReference(
+        dataSource,
+        numericColumn,
+        [],
+      );
+
+      state.columns.push(
+        createMetricColumn("METRIC", numericColumn.effective_type),
+        createDimensionColumn("DIMENSION"),
+      );
+
+      state.columnValuesMapping["METRIC"] = addColumnMapping(
+        state.columnValuesMapping["METRIC"],
+        columnRef,
+      );
+      state.columnValuesMapping["DIMENSION"] = addColumnMapping(
+        state.columnValuesMapping["DIMENSION"],
+        createDataSourceNameRef(dataSource.id),
+      );
+
+      state.settings["funnel.metric"] = "METRIC";
+      state.settings["funnel.dimension"] = "DIMENSION";
+
+      return state;
+    }
+  }
 
   const columns = pickColumns(card.display, originalColumns);
 

@@ -9,6 +9,7 @@ import {
   createMockDashboardCard,
   createMockDataset,
   createMockDatasetData,
+  createMockNumericColumn,
 } from "metabase-types/api/mocks";
 
 import { getInitialStateForCardDataSource } from "./get-initial-state-for-card-data-source";
@@ -38,7 +39,7 @@ describe("getInitialStateForCardDataSource", () => {
   const dataset = createMockDataset({
     data: createMockDatasetData({
       cols: [
-        createMockColumn({ name: "Foo" }),
+        createMockNumericColumn({ name: "Foo" }),
         createMockColumn({ name: "Bar" }),
       ],
     }),
@@ -101,12 +102,46 @@ describe("getInitialStateForCardDataSource", () => {
     });
   });
 
-  it("should pick funnel as the display if the original card is a scalar", () => {
+  it("should return scalar funnel initial state if the original card is a scalar", () => {
     const initialState = getInitialStateForCardDataSource(
       createMockCard({ display: "scalar" }),
       dataset,
     );
 
-    expect(initialState.display).toEqual("funnel");
+    expect(initialState).toEqual({
+      display: "funnel",
+      columns: [
+        {
+          name: "METRIC",
+          display_name: "METRIC",
+          base_type: "type/Integer",
+          effective_type: "type/Integer",
+          field_ref: ["field", "METRIC", { "base-type": "type/Integer" }],
+          source: "artificial",
+        },
+        {
+          name: "DIMENSION",
+          display_name: "DIMENSION",
+          base_type: "type/Text",
+          effective_type: "type/Text",
+          field_ref: ["field", "DIMENSION", { "base-type": "type/Text" }],
+          source: "artificial",
+        },
+      ],
+      columnValuesMapping: {
+        METRIC: [
+          {
+            name: "COLUMN_1",
+            originalName: "Foo",
+            sourceId: "card:1",
+          },
+        ],
+        DIMENSION: ["$_card:1_name"],
+      },
+      settings: {
+        "funnel.metric": "METRIC",
+        "funnel.dimension": "DIMENSION",
+      },
+    });
   });
 });
