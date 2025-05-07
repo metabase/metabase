@@ -8,7 +8,7 @@
   (:require
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.query :as query]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
