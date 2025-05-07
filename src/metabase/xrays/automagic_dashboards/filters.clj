@@ -83,8 +83,8 @@
       (nil? (:card dashcard)) dashcard
       mappings                (update dashcard :parameter_mappings concat mappings))))
 
-(defn- filter-type-info
-  "Return filter type and section id for a given field."
+(defn- parameter-type-info
+  "Return parameter type and section id for a given field."
   [{:keys [effective_type semantic_type] :as _field}]
   (cond
     (or (isa? effective_type :type/Date) (isa? effective_type :type/DateTime))
@@ -129,15 +129,16 @@
             (let [filter-id     (-> candidate ((juxt :id :name :unit)) hash str)
                   candidate     (assoc candidate :fk-map (build-fk-map fks candidate))
                   dashcards     (:dashcards dashboard)
-                  dashcards-new (keep #(add-filter % filter-id candidate) dashcards)]
-              ;; Only add filters that apply to all cards.
-              (if (= (count dashcards) (count dashcards-new))
+                  dashcards-new (keep #(add-filter % filter-id candidate) dashcards)
+                  type-info     (parameter-type-info candidate)]
+              ;; Only add filters that apply to all cards and when we have a parameter type for the field
+              (if (and (= (count dashcards) (count dashcards-new)) (some? filter-info))
                 (-> dashboard
                     (assoc :dashcards dashcards-new)
                     (update :parameters conj (merge {:id   filter-id
                                                      :name (:display_name candidate)
                                                      :slug (:name candidate)}
-                                                    (filter-type-info candidate))))
+                                                    type-info)))
                 dashboard)))
           dashboard))))
 
