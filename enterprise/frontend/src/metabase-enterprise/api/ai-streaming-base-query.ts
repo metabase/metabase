@@ -213,9 +213,7 @@ export async function aiStreamingQuery(
   const response = await fetch(url, requestInit);
 
   if (!response || !response.body) {
-    return {
-      error: { status: "FETCH_ERROR", error: "No Response" },
-    };
+    throw new Error("No Response");
   }
 
   const parsedStreamParts: ParsedStreamPart[] = [];
@@ -224,74 +222,59 @@ export async function aiStreamingQuery(
   const chunks: Uint8Array[] = [];
   let totalLength = 0;
 
-  try {
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const { value } = await reader.read();
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { value } = await reader.read();
 
-      if (value) {
-        chunks.push(value);
-        totalLength += value.length;
-        if (value[value.length - 1] !== NEWLINE) {
-          // if the last character is not a newline, we have not read the whole JSON value
-          continue;
-        }
-      }
-
-      if (chunks.length === 0) {
-        break; // we have reached the end of the stream
-      }
-
-      const concatenatedChunks = concatChunks(chunks, totalLength);
-      totalLength = 0;
-
-      const streamParts = decoder
-        .decode(concatenatedChunks, { stream: true })
-        .split("\n")
-        .filter((line) => line !== "") // splitting leaves an empty string at the end
-        .map(parseDataStreamPart);
-
-      for (const streamPart of streamParts) {
-        parsedStreamParts.push(streamPart);
-        if (streamPart.name === "text" && config?.onTextPart) {
-          config.onTextPart(streamPart);
-        }
-        if (streamPart.name === "data" && config?.onDataPart) {
-          config.onDataPart(streamPart);
-        }
-        if (streamPart.name === "tool_call" && config?.onToolCallPart) {
-          config.onToolCallPart(streamPart);
-        }
-        if (streamPart.name === "tool_result" && config?.onToolResultPart) {
-          config.onToolResultPart(streamPart);
-        }
-
-        if (streamPart.name === "error") {
-          return {
-            error: {
-              status: "FETCH_ERROR",
-              error: streamPart.value,
-            },
-          };
-        }
-      }
-
-      const accumulated = accumulateStreamParts(parsedStreamParts);
-      if (config?.onStreamStateUpdate) {
-        config.onStreamStateUpdate(accumulated);
+    if (value) {
+      chunks.push(value);
+      totalLength += value.length;
+      if (value[value.length - 1] !== NEWLINE) {
+        // if the last character is not a newline, we have not read the whole JSON value
+        continue;
       }
     }
-  } catch (e) {
-    console.error(e);
-    return {
-      error: {
-        status: "FETCH_ERROR",
-        error: "Unable to parse response",
-      },
-    };
+
+    if (chunks.length === 0) {
+      break; // we have reached the end of the stream
+    }
+
+    const concatenatedChunks = concatChunks(chunks, totalLength);
+    totalLength = 0;
+
+    const streamParts = decoder
+      .decode(concatenatedChunks, { stream: true })
+      .split("\n")
+      .filter((line) => line !== "") // splitting leaves an empty string at the end
+      .map(parseDataStreamPart);
+
+    for (const streamPart of streamParts) {
+      parsedStreamParts.push(streamPart);
+      if (streamPart.name === "text" && config?.onTextPart) {
+        config.onTextPart(streamPart);
+      }
+      if (streamPart.name === "data" && config?.onDataPart) {
+        config.onDataPart(streamPart);
+      }
+      if (streamPart.name === "tool_call" && config?.onToolCallPart) {
+        config.onToolCallPart(streamPart);
+      }
+      if (streamPart.name === "tool_result" && config?.onToolResultPart) {
+        config.onToolResultPart(streamPart);
+      }
+
+      if (streamPart.name === "error") {
+        throw new Error(
+          streamPart.value ? `${streamPart.value}` : "Unknown error",
+        );
+      }
+    }
+
+    const accumulated = accumulateStreamParts(parsedStreamParts);
+    if (config?.onStreamStateUpdate) {
+      config.onStreamStateUpdate(accumulated);
+    }
   }
 
-  return {
-    data: accumulateStreamParts(parsedStreamParts),
-  };
+  return accumulateStreamParts(parsedStreamParts);
 }
