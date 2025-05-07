@@ -403,7 +403,8 @@
 (mu/defn post-chat-message!
   "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel.
   message-blocks if provided should be a map containing slack message blocks
-  e.g [{:type \"section\", :text {:type \"plain_text\", :text \"Hello, world!\"}}]"
+  e.g [{:type \"section\", :text {:type \"plain_text\", :text \"Hello, world!\"}}]
+  See: https://app.slack.com/block-kit-builder"
   [message-content :- [:map {:closed true}
                        [:channel                      :string]
                        [:blocks      {:optional true} [:sequential :map]]
