@@ -22,6 +22,7 @@ import {
 } from "../actions";
 import EditSandboxingModal from "../components/EditSandboxingModal";
 import type { GroupTableAccessPolicyParams, SandboxesState } from "../types";
+import { useListUserAttributesQuery } from "metabase/api";
 
 interface EditSandboxingModalContainerProps {
   policy: GroupTableAccessPolicy;
