@@ -88,7 +88,7 @@ export const cardApi = Api.injectEndpoints({
           provideCardQueryTags(cardId),
       }),
       getRemappedCardParameterValue: builder.query<
-        FieldValue | null,
+        FieldValue,
         GetRemappedCardParameterValueRequest
       >({
         query: ({ card_id, parameter_id, ...params }) => ({

@@ -82,7 +82,7 @@ export const dashboardApi = Api.injectEndpoints({
           metadata ? provideDashboardQueryMetadataTags(metadata) : [],
       }),
       getRemappedDashboardParameterValue: builder.query<
-        FieldValue | null,
+        FieldValue,
         GetRemappedDashboardParameterValueRequest
       >({
         query: ({ dashboard_id, parameter_id, ...params }) => ({

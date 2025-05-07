@@ -39,7 +39,7 @@ export const datasetApi = Api.injectEndpoints({
       }),
     }),
     getRemappedParameterValue: builder.query<
-      FieldValue | null,
+      FieldValue,
       GetRemappedParameterValueRequest
     >({
       query: (body) => ({

@@ -764,6 +764,10 @@ function RemappedValue({
 
   const remappedValue = getValue(remappedData);
   const remappedLabel = getLabel(remappedData);
+  if (remappedLabel == null) {
+    return value;
+  }
+
   return (
     <MultiAutocompleteValue
       value={String(remappedValue)}
