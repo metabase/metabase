@@ -1,14 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
-
-import type { RetrievedDictionaryArrayRow } from "metabase-types/api/content-translation";
-
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupContentTranslationEndpoints } from "__support__/server-mocks/content-translation";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
+import type { RetrievedDictionaryArrayRow } from "metabase-types/api/content-translation";
 import {
   createMockTokenFeatures,
   createMockUser,
