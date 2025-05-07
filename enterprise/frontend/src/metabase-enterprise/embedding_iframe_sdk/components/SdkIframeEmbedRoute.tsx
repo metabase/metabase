@@ -7,10 +7,16 @@ import {
   defineMetabaseAuthConfig,
 } from "embedding-sdk";
 import { MetabaseProvider } from "embedding-sdk/components/public/MetabaseProvider";
-import { Box, Center, Loader, ThemeProvider } from "metabase/ui";
+import settings from "metabase/lib/settings";
+import { Box } from "metabase/ui";
 
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../types/embed";
+
+import {
+  SdkIframeInvalidLicenseError,
+  SdkIframeLoading,
+} from "./SdkIframeStatus";
 
 export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus();
@@ -32,13 +38,16 @@ export const SdkIframeEmbedRoute = () => {
   }, [embedSettings]);
 
   if (embedSettings === null || !authConfig) {
-    return (
-      <ThemeProvider>
-        <Center h="100%" mih="100vh">
-          <Loader />
-        </Center>
-      </ThemeProvider>
-    );
+    return <SdkIframeLoading />;
+  }
+
+  const tokenFeatures = settings.get("token-features");
+  const hasEmbedTokenFeature = tokenFeatures?.embedding_iframe_sdk;
+
+  // If the parent page is not running on localhost and
+  // the token feature is not present, we show an error message
+  if (!embedSettings._isLocalhost && !hasEmbedTokenFeature) {
+    return <SdkIframeInvalidLicenseError />;
   }
 
   const { theme, locale } = embedSettings;
