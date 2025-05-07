@@ -6,5 +6,6 @@ export const createMockGroup = (
   id: 1,
   name: "All Users",
   member_count: 1,
+  magic_group_type: "all-internal-users",
   ...opts,
 });

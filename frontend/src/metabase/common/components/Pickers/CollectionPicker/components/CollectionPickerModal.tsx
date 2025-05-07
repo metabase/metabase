@@ -27,7 +27,7 @@ import type {
 } from "../types";
 import { getCollectionType } from "../types";
 
-import { CollectionPicker } from "./CollectionPicker";
+import { CollectionPicker } from "./CollectionPicker/CollectionPicker";
 import { NewCollectionDialog } from "./NewCollectionDialog";
 
 export interface CollectionPickerModalProps {

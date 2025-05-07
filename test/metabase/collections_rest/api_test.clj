@@ -2517,7 +2517,7 @@
                    :namespace "snippets"}
                   (mt/user-http-request :crowberto :post 200 "collection"
                                         {:name       collection-name
-                                         :descrption "My SQL Snippets"
+                                         :description "My SQL Snippets"
                                          :namespace  "snippets"})))
           (finally
             (t2/delete! :model/Collection :name collection-name)))))))

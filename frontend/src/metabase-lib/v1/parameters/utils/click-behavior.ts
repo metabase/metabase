@@ -65,7 +65,7 @@ export function getDataFromClicked({
 }: {
   extraData?: {
     dashboard?: Dashboard;
-    parameterValuesBySlug?: ParameterValuesMap;
+    parameterValuesBySlug?: Record<string, ParameterValueOrArray>;
     userAttributes?: UserAttributeMap | null;
   };
   dimensions?: DimensionType[];

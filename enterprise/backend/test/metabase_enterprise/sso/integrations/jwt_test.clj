@@ -611,6 +611,284 @@
                                                  :last_name "User"}
                                                 default-jwt-secret)))))))))
 
+(deftest jwt-data->login-attributes-works
+  (mt/with-additional-premium-features #{:tenants}
+    (mt/with-temporary-setting-values [jwt-attribute-email "email"
+                                       jwt-attribute-firstname "first_name"
+                                       jwt-attribute-lastname "last_name"
+                                       jwt-attribute-tenant "tenant"
+                                       use-tenants true]
+      (is (= {:something "else"}
+             (#'mt.jwt/jwt-data->login-attributes {:email "foo"
+                                                   :first_name "bar"
+                                                   :last_name "bin"
+                                                   :tenant "baz"
+                                                   :something "else"
+                                                   ;; registered claims in the JWT standard
+                                                   :iss "a"
+                                                   :iat "b"
+                                                   :sub "c"
+                                                   :aud "d"
+                                                   :exp "e"
+                                                   :nbf "f"
+                                                   :jti "g"})))
+      (testing "If tenants are not enabled, tenant is interpreted as a user attribute."
+        (is (= {:tenant "baz"
+                :something "else"}
+               (mt/with-temporary-setting-values [use-tenants false]
+                 (#'mt.jwt/jwt-data->login-attributes {:email "foo"
+                                                       :first_name "bar"
+                                                       :last_name "bin"
+                                                       :tenant "baz"
+                                                       :something "else"
+                                                       ;; registered claims in the JWT standard
+                                                       :iss "a"
+                                                       :iat "b"
+                                                       :sub "c"
+                                                       :aud "d"
+                                                       :exp "e"
+                                                       :nbf "f"
+                                                       :jti "g"}))))))))
+
+(deftest tenants-can-be-auto-provisioned
+  (mt/with-model-cleanup [:model/Tenant]
+    (with-jwt-default-setup!
+      (mt/with-additional-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-temp [:model/PermissionsGroup _my-group {:name (str ::my-group)}]
+            (with-users-with-email-deleted "newuser@metabase.com"
+              (let [response    (client/client-real-response :get 302 "/auth/sso"
+                                                             {:request-options {:redirect-strategy :none}}
+                                                             :return_to default-redirect-uri
+                                                             :jwt
+                                                             (jwt/sign
+                                                              {:email      "newuser@metabase.com"
+                                                               :tenant     "tenant-mctenantson"
+                                                               :first_name "New"
+                                                               :last_name  "User"}
+                                                              default-jwt-secret))]
+                (is (saml-test/successful-login? response))
+                (is (some? (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com")))
+                (is (t2/exists? :model/Tenant :slug "tenant-mctenantson")))
+              (testing "they should be able to log in again"
+                (let [response    (client/client-real-response :get 302 "/auth/sso"
+                                                               {:request-options {:redirect-strategy :none}}
+                                                               :return_to default-redirect-uri
+                                                               :jwt
+                                                               (jwt/sign
+                                                                {:email      "newuser@metabase.com"
+                                                                 :tenant     "tenant-mctenantson"
+                                                                 :first_name "New"
+                                                                 :last_name  "User"}
+                                                                default-jwt-secret))]
+                  (is (saml-test/successful-login? response)))))))))))
+
+(deftest new-users-should-be-set-to-the-correct-tenant
+  (with-jwt-default-setup!
+    (mt/with-additional-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/PermissionsGroup _my-group {:name (str ::my-group)}
+                       :model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
+                                                      :name "Tenant McTenantson"}]
+          (with-users-with-email-deleted "newuser@metabase.com"
+            (let [response    (client/client-real-response :get 302 "/auth/sso"
+                                                           {:request-options {:redirect-strategy :none}}
+                                                           :return_to default-redirect-uri
+                                                           :jwt
+                                                           (jwt/sign
+                                                            {:email      "newuser@metabase.com"
+                                                             :tenant     "tenant-mctenantson"
+                                                             :first_name "New"
+                                                             :last_name  "User"}
+                                                            default-jwt-secret))]
+              (is (saml-test/successful-login? response))
+              (is
+               (= tenant-id (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com"))))
+            (testing "they should be able to log in again"
+              (let [response    (client/client-real-response :get 302 "/auth/sso"
+                                                             {:request-options {:redirect-strategy :none}}
+                                                             :return_to default-redirect-uri
+                                                             :jwt
+                                                             (jwt/sign
+                                                              {:email      "newuser@metabase.com"
+                                                               :tenant     "tenant-mctenantson"
+                                                               :first_name "New"
+                                                               :last_name  "User"}
+                                                              default-jwt-secret))]
+                (is (saml-test/successful-login? response))
+                (is
+                 (= tenant-id (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com")))))))))))
+
+(deftest new-users-are-not-assigned-a-tenant-if-tenants-is-not-enabled
+  (with-jwt-default-setup!
+    (mt/with-temporary-setting-values [use-tenants true]
+      (mt/with-temp [:model/PermissionsGroup _my-group {:name (str ::my-group)}
+                     :model/Tenant _ {:slug "tenant-mctenantson"
+                                      :name "Tenant McTenantson"}]
+        (with-users-with-email-deleted "newuser@metabase.com"
+          (mt/with-temporary-setting-values [use-tenants false]
+            (let [response    (client/client-real-response :get 302 "/auth/sso"
+                                                           {:request-options {:redirect-strategy :none}}
+                                                           :return_to default-redirect-uri
+                                                           :jwt
+                                                           (jwt/sign
+                                                            {:email      "newuser@metabase.com"
+                                                             :tenant     "tenant-mctenantson"
+                                                             :first_name "New"
+                                                             :last_name  "User"}
+                                                            default-jwt-secret))]
+              (is (saml-test/successful-login? response))
+              (is
+               (nil? (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com")))))
+          (testing "they should be able to log in again"
+            (let [response    (client/client-real-response :get 302 "/auth/sso"
+                                                           {:request-options {:redirect-strategy :none}}
+                                                           :return_to default-redirect-uri
+                                                           :jwt
+                                                           (jwt/sign
+                                                            {:email      "newuser@metabase.com"
+                                                             :tenant     "tenant-mctenantson"
+                                                             :first_name "New"
+                                                             :last_name  "User"}
+                                                            default-jwt-secret))]
+              (is (saml-test/successful-login? response))
+              (is
+               (nil? (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com"))))))))))
+
+(deftest name-does-not-get-overwritten-on-new-login
+  (with-jwt-default-setup!
+    (mt/with-additional-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/PermissionsGroup _my-group {:name (str ::my-group)}
+                       :model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
+                                                      :name "Tenant McTenantson"}
+                       :model/User {email      :email
+                                    first-name :first_name
+                                    last-name  :last_name} {:tenant_id  tenant-id
+                                                            :first_name (mt/random-name)
+                                                            :last_name  (mt/random-name)}]
+          (mt/with-temporary-setting-values [use-tenants true]
+            (testing "they should be able to log in without specifying a name"
+              (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                          {:request-options {:redirect-strategy :none}}
+                                                          :return_to default-redirect-uri
+                                                          :jwt
+                                                          (jwt/sign
+                                                           {:email  email
+                                                            :tenant "tenant-mctenantson"}
+                                                           default-jwt-secret))]
+                (is (saml-test/successful-login? response))
+                (testing "their name is unchanged"
+                  (is (= [first-name last-name] (t2/select-one-fn (juxt :first_name :last_name) :model/User :email email))))))))))))
+
+(deftest a-user-cannot-log-in-with-a-deactivated-tenant
+  (with-jwt-default-setup!
+    (mt/with-additional-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/PermissionsGroup _my-group {:name (str ::my-group)}
+                       :model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
+                                                      :name "Tenant McTenantson"
+                                                      :is_active false}
+                       :model/User {existing-email :email} {:tenant_id tenant-id}]
+          (mt/with-temporary-setting-values [use-tenants true]
+            (testing "a new user fails to log in"
+              (with-users-with-email-deleted "newuser@metabase.com"
+                (let [response    (client/client-real-response :get 400 "/auth/sso"
+                                                               {:request-options {:redirect-strategy :none}}
+                                                               :return_to default-redirect-uri
+                                                               :jwt
+                                                               (jwt/sign
+                                                                {:email      "newuser@metabase.com"
+                                                                 :tenant     "tenant-mctenantson"
+                                                                 :first_name "New"
+                                                                 :last_name  "User"}
+                                                                default-jwt-secret))]
+                  (is (not (saml-test/successful-login? response))))))
+            (testing "an existing user also fails to log in"
+              (let [response    (client/client-real-response :get 400 "/auth/sso"
+                                                             {:request-options {:redirect-strategy :none}}
+                                                             :return_to default-redirect-uri
+                                                             :jwt
+                                                             (jwt/sign
+                                                              {:email      existing-email
+                                                               :tenant     "tenant-mctenantson"
+                                                               :first_name "Existing"
+                                                               :last_name  "User"}
+                                                              default-jwt-secret))]
+                (is (not (saml-test/successful-login? response)))))))))))
+
+;; not yet - we need to figure out what to do about personal collections here first
+#_(deftest existing-users-can-be-updated-with-a-tenant
+    (with-jwt-default-setup!
+      (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
+                                                    :name "Tenant McTenantson"}]
+        (mt/with-temporary-setting-values [use-tenants true]
+          (with-users-with-email-deleted "newuser@metabase.com"
+            (testing "log in without a tenant"
+              (let [response    (client/client-real-response :get 302 "/auth/sso"
+                                                             {:request-options {:redirect-strategy :none}}
+                                                             :return_to default-redirect-uri
+                                                             :jwt
+                                                             (jwt/sign
+                                                              {:email      "newuser@metabase.com"
+                                                               :first_name "New"
+                                                               :last_name  "User"}
+                                                              default-jwt-secret))]
+                (is (saml-test/successful-login? response))
+                (is (nil? (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com")))))
+            (testing "now log in WITH a tenant"
+              (let [response    (client/client-real-response :get 302 "/auth/sso"
+                                                             {:request-options {:redirect-strategy :none}}
+                                                             :return_to default-redirect-uri
+                                                             :jwt
+                                                             (jwt/sign
+                                                              {:email      "newuser@metabase.com"
+                                                               :tenant     "tenant-mctenantson"
+                                                               :first_name "New"
+                                                               :last_name  "User"}
+                                                              default-jwt-secret))]
+                (is (saml-test/successful-login? response))
+                (is
+                 (= tenant-id (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com"))))))))))
+
+(deftest a-tenant-cannot-be-changed-once-set
+  (with-jwt-default-setup!
+    (mt/with-additional-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
+                                                      :name "Tenant McTenantson"}
+                       :model/Tenant _ {:slug "other"
+                                        :name "Other"}
+                       :model/User {email-without-tenant :email} {}
+                       :model/User {email-with-tenant :email} {:tenant_id tenant-id}]
+          (testing "tenant -> other tenant fails"
+            (let [response (client/client-real-response :get 403 "/auth/sso"
+                                                        {:request-options {:redirect-strategy :none}}
+                                                        :return_to default-redirect-uri
+                                                        :jwt
+                                                        (jwt/sign {:email email-with-tenant :tenant "other"}
+                                                                  default-jwt-secret))]
+              (is (not (saml-test/successful-login? response)))))
+          (testing "tenant -> no tenant fails"
+            (let [response (client/client-real-response :get 403 "/auth/sso"
+                                                        {:request-options {:redirect-strategy :none}}
+                                                        :return_to default-redirect-uri
+                                                        :jwt
+                                                        (jwt/sign
+                                                         {:email email-with-tenant}
+                                                         default-jwt-secret))]
+              (is (not (saml-test/successful-login? response)))))
+          (testing "no tenant -> tenant fails"
+            (let [response (client/client-real-response :get 403 "/auth/sso"
+                                                        {:request-options {:redirect-strategy :none}}
+                                                        :return_to default-redirect-uri
+                                                        :jwt
+                                                        (jwt/sign
+                                                         {:email email-without-tenant
+                                                          :tenant "tenant-mctenantson"}
+                                                         default-jwt-secret))]
+              (is (not (saml-test/successful-login? response))))))))))
+
 (deftest create-new-jwt-user-no-user-provisioning-test
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-jwt-default-setup!
