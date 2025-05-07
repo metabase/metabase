@@ -26,11 +26,11 @@ import type {
 
 import { type ReduxProps, connector } from "./context.redux";
 
-type DashboardLoadingState = {
+export type DashboardLoadingState = {
   isLoading: boolean;
 };
 
-type OwnProps = {
+export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
   parameterQueryParams?: Query;
   onLoad?: (dashboard: Dashboard) => void;
@@ -41,27 +41,30 @@ type OwnProps = {
     | null;
 };
 
-type OwnResult = {
+export type DashboardContextOwnResult = {
   shouldRenderAsNightMode: boolean;
 };
 
-type DashboardControls = DashboardFullscreenControls &
+export type DashboardControls = DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
   UseAutoScrollToDashcardResult &
   EmbedDisplayParams &
   EmbedThemeControls;
 
-export type DashboardContextProps = OwnProps & Partial<DashboardControls>;
+export type DashboardContextProps = DashboardContextOwnProps &
+  Partial<DashboardControls>;
 
 type ContextProps = DashboardContextProps & ReduxProps;
 
-type ContextReturned = OwnResult &
-  OwnProps &
+type ContextReturned = DashboardContextOwnResult &
+  DashboardContextOwnProps &
   ReduxProps &
   Required<DashboardControls> &
   DashboardLoadingState;
 
-const DashboardContext = createContext<ContextReturned | undefined>(undefined);
+export const DashboardContext = createContext<ContextReturned | undefined>(
+  undefined,
+);
 
 const DashboardContextProviderInner = ({
   dashboardId,

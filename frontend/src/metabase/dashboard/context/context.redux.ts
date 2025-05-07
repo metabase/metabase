@@ -72,7 +72,7 @@ import {
   getTabs,
 } from "../selectors";
 
-const mapStateToProps = (state: State) => ({
+export const mapStateToProps = (state: State) => ({
   dashboard: getDashboardComplete(state),
   parameters: getParameters(state),
   tabs: getTabs(state),
@@ -98,7 +98,7 @@ const mapStateToProps = (state: State) => ({
   isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
 });
 
-const mapDispatchToProps = {
+export const mapDispatchToProps = {
   initialize,
   cancelFetchDashboardCardData,
   addCardToDashboard,
