@@ -69,15 +69,6 @@
   :type       :boolean
   :audit      :never)
 
-(defn- turn-off-tenants! []
-  ;; TODO: when we have `:model/Tenant`, make sure none exist
-  (when (t2/exists? :model/User :tenant_id [:not= nil])
-    (throw (ex-info (tru "Tenants cannot be turned off, a tenant user exists") {})))
-  (perms-group/delete-all-external-users!))
-
-(defn- turn-on-tenants! []
-  (perms-group/create-all-external-users!))
-
 (defsetting use-tenants
   (deferred-tru
    "Turn on the Tenants feature, allowing users to be assigned to a particular Tenant.")
@@ -85,14 +76,7 @@
   :visibility :admin
   :export? false
   :default false
-  :feature :tenants
-  :can-read-from-env? false
-  :setter (fn [new-value]
-            (when-not new-value
-              (turn-off-tenants!))
-            (when new-value
-              (turn-on-tenants!))
-            (setting/set-value-of-type! :boolean :use-tenants new-value)))
+  #_#_:feature :tenants)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GRAPH ENDPOINTS                                           |
@@ -221,6 +205,26 @@
     (for [group groups]
       (assoc group :member_count (get group-id->num-members (u/the-id group) 0)))))
 
+(defn- maybe-fix-name
+  "With Tenants enabled, we refer to the `all-internal-users` group as \"All Internal Users\", but
+   if Tenants is disabled we should call it \"All Users\".
+
+  Actually changing the name brings a whole host of problems, and we very rarely actually present the names of
+  Permissions Groups to users. (These are the only endpoints that reveal them.) So I think it makes sense to just
+  adjust them here."
+  [{:keys [magic_group_type] :as group} using-tenants?]
+  (update group :name (fn [n]
+                        (if (and (= magic_group_type perms-group/all-users-magic-group-type)
+                                 using-tenants?)
+                          "All Internal Users"
+                          n))))
+
+(defn- maybe-fix-names
+  "See [[maybe-fix-name]] for details."
+  [groups]
+  (let [using-tenants? (setting/get :use-tenants)]
+    (map #(maybe-fix-name % using-tenants?) groups)))
+
 (api.macros/defendpoint :get "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group.
   This API requires superuser or group manager of more than one group.
@@ -231,16 +235,21 @@
     (validation/check-group-manager)
     (catch clojure.lang.ExceptionInfo _e
       (validation/check-has-application-permission :setting)))
-  (let [query (when (and (not api/*is-superuser?*)
-                         (premium-features/enable-advanced-permissions?)
-                         api/*is-group-manager?*)
-                [:in :id {:select [:group_id]
-                          :from   [:permissions_group_membership]
-                          :where  [:and
-                                   [:= :user_id api/*current-user-id*]
-                                   [:= :is_group_manager true]]}])]
-    (-> (ordered-groups (request/limit) (request/offset) query)
-        (t2/hydrate :member_count))))
+  (let [where
+        [:and
+         (when (and (not api/*is-superuser?*)
+                    (premium-features/enable-advanced-permissions?)
+                    api/*is-group-manager?*)
+           [:in :id {:select [:group_id]
+                     :from   [:permissions_group_membership]
+                     :where  [:and
+                              [:= :user_id api/*current-user-id*]
+                              [:= :is_group_manager true]]}])
+         (when-not (setting/get :use-tenants)
+           [:not :is_tenant_group])]]
+    (-> (ordered-groups (request/limit) (request/offset) where)
+        (t2/hydrate :member_count)
+        (maybe-fix-names))))
 
 (api.macros/defendpoint :get "/group/:id"
   "Fetch the details for a certain permissions group."
@@ -249,7 +258,8 @@
   (validation/check-group-manager id)
   (api/check-404
    (-> (t2/select-one :model/PermissionsGroup :id id)
-       (t2/hydrate :members))))
+       (t2/hydrate :members)
+       maybe-fix-name)))
 
 (api.macros/defendpoint :post "/group"
   "Create a new `PermissionsGroup`."
