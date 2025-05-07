@@ -1,6 +1,9 @@
 import { t } from "ttag";
 
-import { ID_OPTION } from "metabase-lib/v1/parameters/constants";
+import {
+  BOOLEAN_OPTION,
+  ID_OPTION,
+} from "metabase-lib/v1/parameters/constants";
 import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
 import { buildTypedOperatorOptions } from "metabase-lib/v1/parameters/utils/operators";
 import type { ParameterMappingOptions } from "metabase-types/api";
@@ -54,13 +57,7 @@ export function getDashboardParameterSections(): ParameterSection[] {
       id: "boolean",
       name: t`Boolean`,
       description: t`True, false…`,
-      options: [
-        {
-          name: t`Boolean`,
-          type: "boolean/=",
-          sectionId: "boolean",
-        },
-      ],
+      options: [{ ...BOOLEAN_OPTION, sectionId: "boolean" }],
     },
     {
       id: "id",
