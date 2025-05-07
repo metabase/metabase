@@ -26,19 +26,14 @@
 (deftest assoc-attachment-booleans-test
   (testing "assoc-attachment-booleans function"
     (testing "handles visualizer dashcards by matching on both card_id and dashboard_card_id"
-      (let [;; Create a visualizer dashcard
-            visualizer-dashcard {:id 100
+      (let [visualizer-dashcard {:id 100
                                  :visualization_settings {:visualization {}}}
-            ;; Create a part with visualizer dashcard
             visualizer-part {:card {:id 1 :name "Visualizer Card"}
                              :dashcard visualizer-dashcard}
-            ;; Create a part config that matches on both card_id and dashboard_card_id
             matching-part-config {:card_id 1
                                   :dashboard_card_id 100
                                   :include_csv true
                                   :include_xls true}
-            ;; Call the function
-            ;; Use with-redefs to mock is-visualizer-dashcard? to return true
             result (with-redefs [render.util/is-visualizer-dashcard? (constantly true)]
                      (#'email.impl/assoc-attachment-booleans [matching-part-config] [visualizer-part]))]
 
@@ -48,17 +43,13 @@
             "Should include XLS attachment setting from matching part config")))
 
     (testing "falls back to matching on card_id only when no perfect visualizer match is found"
-      (let [;; Create a regular dashcard (not a visualizer)
-            regular-dashcard {:id 200}
-            ;; Create a part with regular dashcard
+      (let [regular-dashcard {:id 200}
             regular-part {:card {:id 2 :name "Regular Card"}
                           :dashcard regular-dashcard}
-            ;; Create a part config that matches on card_id only
             matching-part-config {:card_id 2
                                   :dashboard_card_id 999 ;; Different from the dashcard.id
                                   :include_csv true
                                   :format_rows true}
-            ;; Call the function
             result (#'email.impl/assoc-attachment-booleans [matching-part-config] [regular-part])]
 
         (is (= true (-> result first :card :include_csv))
