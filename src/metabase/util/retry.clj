@@ -3,7 +3,7 @@
   (:require
    [malli.util :as mut]
    [metabase.config :as config]
-   [metabase.models.setting :refer [defsetting]]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])

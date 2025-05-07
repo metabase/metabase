@@ -7,7 +7,7 @@ export interface Undo {
   id: string | number;
   type?: string;
   action?: (() => void) | null;
-  message?: string | ((undo: Undo) => string);
+  message?: ReactNode | ((undo: Undo) => ReactNode);
   timeout?: number;
   initialTimeout?: number;
   actions?: (() => void)[];

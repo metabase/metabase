@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { getClauseDefinition, getMBQLName } from "../../config";
+import { getClauseDefinition, getMBQLName } from "../../clause";
 import { GROUP, IDENTIFIER, type Token } from "../../pratt";
 import { error } from "../utils";
 

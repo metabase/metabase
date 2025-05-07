@@ -4,8 +4,8 @@
   (:require
    [clojure.string :as str]
    [metabase.api.auth :as api.auth]
-   [metabase.models.setting :as setting]
    [metabase.request.core :as request]
+   [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [deferred-trs]]))
 
 (comment

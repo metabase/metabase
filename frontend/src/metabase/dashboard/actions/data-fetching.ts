@@ -36,7 +36,7 @@ import {
   getDashboardQuestions,
   getDashboardUiParameters,
 } from "metabase/parameters/utils/dashboards";
-import { addFields, addParamValues } from "metabase/redux/metadata";
+import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   AutoApi,
@@ -750,9 +750,6 @@ export const fetchDashboard = createAsyncThunk(
         });
       }
 
-      if (result.param_values) {
-        await dispatch(addParamValues(result.param_values));
-      }
       if (result.param_fields) {
         await dispatch(addFields(result.param_fields));
       }

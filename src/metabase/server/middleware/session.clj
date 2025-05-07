@@ -16,12 +16,12 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
+   [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models.api-key :as api-key]
    [metabase.models.user :as user]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
@@ -239,7 +239,7 @@
 
 (defn bind-current-user
   "Middleware that binds [[metabase.api.common/*current-user*]], [[*current-user-id*]], [[*is-superuser?*]],
-  [[*current-user-permissions-set*]], and [[metabase.models.setting/*user-local-values*]].
+  [[*current-user-permissions-set*]], and [[metabase.settings.models.setting/*user-local-values*]].
 
   *  `*current-user-id*`                int ID or nil of user associated with request
   *  `*current-user*`                   delay that returns current user (or nil) from DB

@@ -1,6 +1,6 @@
 (ns metabase-enterprise.data-editing.events
   (:require
-   [metabase.events.notification :as events.notification]))
+   [metabase.notification.events.notification :as events.notification]))
 
 (derive ::event :metabase/event)
 

@@ -10,10 +10,10 @@
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.setup.core :as setup]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -110,23 +110,18 @@
     (let [current-version (:tag config/mb-version-info)]
       (log/infof "Setting User %s's last_acknowledged_version to %s, the current version" user-id current-version)
       ;; Can't use mw.session/with-current-user due to circular require
-      (binding [api/*current-user-id*       user-id
-                setting/*user-local-values* (delay (atom (user-local-settings user)))]
-        (setting/set! :last-acknowledged-version current-version)))
+      (binding [api/*current-user-id* user-id]
+        (setting/with-user-local-values (delay (atom (user-local-settings user)))
+          (setting/set! :last-acknowledged-version current-version))))
     ;; add the newly created user to the magic perms groups.
     (log/infof "Adding User %s to All Users permissions group..." user-id)
     (when superuser?
       (log/infof "Adding User %s to All Users permissions group..." user-id))
-    (let [groups (filter some? [(perms/all-users-group)
+    (let [groups (filter some? [(when-not (:tenant_id user) (perms/all-users-group))
                                 (when superuser? (perms/admin-group))])]
       (perms/allow-changing-all-users-group-members
-        ;; do a 'simple' insert against the Table name so we don't trigger the after-insert behavior
-        ;; for [[metabase.permissions.models.permissions-group-membership]]... we don't want it recursively trying to update
-        ;; the user
-        (t2/insert! (t2/table-name :model/PermissionsGroupMembership)
-                    (for [group groups]
-                      {:user_id  user-id
-                       :group_id (u/the-id group)}))))))
+        (perms/without-is-superuser-sync-on-add-to-admin-group
+         (perms/add-user-to-groups! user-id (map u/the-id groups)))))))
 
 (t2/define-before-update :model/User
   [{:keys [id] :as user}]
@@ -146,16 +141,14 @@
       (cond
         (and superuser?
              (not in-admin-group?))
-        (t2/insert! (t2/table-name :model/PermissionsGroupMembership)
-                    :group_id (u/the-id (perms/admin-group))
-                    :user_id  id)
+        (perms/without-is-superuser-sync-on-add-to-admin-group
+         (perms/add-user-to-group! id (u/the-id (perms/admin-group))))
         ;; don't use [[t2/delete!]] here because that does the opposite and tries to update this user which leads to a
         ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
         (and (not superuser?)
              in-admin-group?)
-        (t2/delete! (t2/table-name :model/PermissionsGroupMembership)
-                    :group_id (u/the-id (perms/admin-group))
-                    :user_id  id)))
+        (perms/without-is-superuser-sync-on-add-to-admin-group
+         (perms/remove-user-from-group! id (u/the-id (perms/admin-group))))))
     ;; make sure email and locale are valid if set
     (when email
       (assert (u/email? email)))
@@ -195,7 +188,7 @@
 
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
-  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
+  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb :tenant_id])
 
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
@@ -419,14 +412,8 @@
         [to-remove to-add] (data/diff old-group-ids new-group-ids)]
     (when (seq (concat to-remove to-add))
       (t2/with-transaction [_conn]
-        (when (seq to-remove)
-          (t2/delete! :model/PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
-       ;; a little inefficient, but we need to do a separate `insert!` for each group we're adding membership to,
-       ;; because `insert-many!` does not currently trigger methods such as `pre-insert`. We rely on those methods to
-       ;; do things like automatically set the `is_superuser` flag for a User
-       ;; TODO use multipel insert here
-        (doseq [group-id to-add]
-          (t2/insert! :model/PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
+        (perms/remove-user-from-groups! user-id to-remove)
+        (perms/add-user-to-groups! user-id to-add)))
     true))
 
 ;;; ## ---------------------------------------- USER SETTINGS ----------------------------------------

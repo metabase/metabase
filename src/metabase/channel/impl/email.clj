@@ -14,7 +14,7 @@
    [metabase.channel.template.core :as channel.template]
    [metabase.models.params.shared :as shared.params]
    [metabase.notification.models :as models.notification]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]
