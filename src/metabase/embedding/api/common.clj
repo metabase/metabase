@@ -424,6 +424,51 @@
                       (u/pprint-to-str (u/all-ex-data e)))
           (throw e))))))
 
+(defn card-param-remapped-value
+  "Get the remapped value of card parameter value. Does security checks to ensure the parameter is on the card,
+  and then gets the remapped parameter value according to [[api.card/param-remapped-value]]."
+  [{:keys [unsigned-token card param-key value]}]
+  (let [slug-token-params   (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+        parameters          (or (seq (:parameters card))
+                                (card/template-tag-parameters card))
+        id->slug            (into {} (map (juxt :id :slug) parameters))
+        slug->id            (into {} (map (juxt :slug :id) parameters))
+        searched-param-slug (get id->slug param-key)
+        embedding-params    (:embedding_params card)]
+    (try
+      (when-not (= (get embedding-params (keyword searched-param-slug)) "enabled")
+        (throw (ex-info (tru "Cannot get remapped value for parameter: {0} is not an enabled parameter."
+                             (pr-str searched-param-slug))
+                        {:status-code 400})))
+      (when (get slug-token-params (keyword searched-param-slug))
+        (throw (ex-info (tru "You can''t specify a value for {0} if it''s already set in the JWT."
+                             (pr-str searched-param-slug))
+                        {:status-code 400})))
+      (try
+        (binding [api/*current-user-permissions-set* (atom #{"/"})
+                  api/*is-superuser?* true]
+          (api.card/param-remapped-value card param-key value))
+        (catch Throwable e
+          (throw (ex-info (.getMessage e)
+                          {:card-id   (u/the-id card)
+                           :param-key param-key
+                           :value     value}
+                          e))))
+      (catch Throwable e
+        (let [e (ex-info (.getMessage e)
+                         {:card-id (u/the-id card)
+                          :card-params (:parametres card)
+                          :allowed-param-slugs embedding-params
+                          :slug->id            slug->id
+                          :id->slug            id->slug
+                          :param-id            param-key
+                          :param-slug          searched-param-slug
+                          :token-params        slug-token-params}
+                         e)]
+          (log/errorf e "embedded card-param-values error\n%s"
+                      (u/pprint-to-str (u/all-ex-data e)))
+          (throw e))))))
+
 (defn- unsigned-token->dashboard-id
   [unsigned-token]
   (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])

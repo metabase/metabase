@@ -7,6 +7,7 @@
   "
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.ident :as lib.ident]
    [metabase.models.interface :as mi]
@@ -157,3 +158,18 @@
     (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type parameter))
                     {:status-code 400
                      :parameter parameter}))))
+
+(defn parameter-remapped-value
+  "Fetch the remapped value for the given `value` of parameter `param` with default values provided by
+  the function `default-case-thunk`.
+
+  `default-case-thunk` is a 0-arity function that returns values list when :values_source_type = nil."
+  [param value default-case-thunk]
+  (case (:values_source_type param)
+    "static-list" (m/find-first #(and (vector? %) (= (count %) 2) (= (first %) value))
+                                (get-in param [:values_source_config :values]))
+    "card"        nil
+    nil           (default-case-thunk)
+    (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type param))
+                    {:status-code 400
+                     :parameter param}))))

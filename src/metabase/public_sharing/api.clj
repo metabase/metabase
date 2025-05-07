@@ -629,6 +629,16 @@
     (request/as-admin
       (api.card/param-values card param-key query))))
 
+(api.macros/defendpoint :get "/card/:uuid/params/:param-key/remapping"
+  "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of card with UUID `uuid`."
+  [{:keys [uuid param-key]} :- [:map
+                                [:uuid      ms/UUIDString]
+                                [:param-key ms/NonBlankString]]
+   {:keys [value]}          :- [:map [:value :any]]]
+  (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
+    (request/as-admin
+      (api.card/param-remapped-value card param-key value))))
+
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
   [{:keys [uuid param-key]} :- [:map

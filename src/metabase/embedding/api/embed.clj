@@ -316,6 +316,21 @@
                                          :param-key      param-key
                                          :search-prefix  prefix})))
 
+(api.macros/defendpoint :get "/card/:token/params/:param-key/remapping"
+  "Embedded version of api.card filter values endpoint."
+  [{:keys [token param-key]} :- [:map
+                                 [:token     string?]
+                                 [:param-key string?]]
+   {:keys [value]}           :- [:map [:value :any]]]
+  (let [unsigned (unsign-and-translate-ids token)
+        card-id  (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :question])
+        card     (t2/select-one :model/Card :id card-id)]
+    (api.embed.common/check-embedding-enabled-for-card card-id)
+    (api.embed.common/card-param-remapped-value {:unsigned-token unsigned
+                                                 :card           card
+                                                 :param-key      param-key
+                                                 :value          value})))
+
 (api.macros/defendpoint :get "/pivot/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 

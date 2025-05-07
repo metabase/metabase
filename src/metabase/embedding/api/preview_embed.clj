@@ -49,6 +49,21 @@
      :constraints      {:max-results max-results}
      :query-params     (api.embed.common/parse-query-params query-params))))
 
+(api.macros/defendpoint :get "/card/:token/params/:param-key/remapping"
+  "Embedded version of api.card filter values endpoint."
+  [{:keys [token param-key]} :- [:map
+                                 [:token     string?]
+                                 [:param-key string?]]
+   {:keys [value]}           :- [:map [:value :any]]]
+  (let [unsigned-token (check-and-unsign token)
+        card           (api.embed.common/card-for-unsigned-token
+                        unsigned-token
+                        :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))]
+    (api.embed.common/card-param-remapped-value {:unsigned-token unsigned-token
+                                                 :card           card
+                                                 :param-key      param-key
+                                                 :value          value})))
+
 (api.macros/defendpoint :get "/dashboard/:token"
   "Fetch a Dashboard you're considering embedding by passing a JWT `token`. "
   [{:keys [token]} :- [:map

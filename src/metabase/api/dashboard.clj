@@ -1325,19 +1325,15 @@
                        ;; whatever the param's type, we want an equality constraint
                        (m/update-existing-in [:resolved-params param-key] assoc :type :id))
          param     (get-in dashboard [:resolved-params param-key])]
-     (case (:values_source_type param)
-       "static-list" (m/find-first #(and (vector? %) (= (count %) 2) (= (first %) value))
-                                   (get-in param [:values_source_config :values]))
-       "card"        nil
-       nil           (let [field-ids (into #{} (map :field-id (param->fields param)))]
-                       (when (or (= (count field-ids) 1)
-                                 (fk-pk-pair? field-ids))
-                         (-> (chain-filter dashboard param-key (assoc constraint-param-key->value param-key value))
-                             :values
-                             first)))
-       (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type param))
-                       {:status-code 400
-                        :parameter param}))))))
+     (custom-values/parameter-remapped-value
+      param
+      value
+      #(let [field-ids (into #{} (map :field-id (param->fields param)))]
+         (when (or (= (count field-ids) 1)
+                   (fk-pk-pair? field-ids))
+           (-> (chain-filter dashboard param-key (assoc constraint-param-key->value param-key value))
+               :values
+               first)))))))
 
 (api.macros/defendpoint :get "/:id/params/:param-key/remapping"
   "Fetch the remapped value for a given value of the parameter with ID `:param-key`.
