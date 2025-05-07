@@ -1,5 +1,5 @@
-import { DataSourceSelector } from "embedding-sdk/components/private/data-picker/DataSelector";
-import { SimpleDataPicker } from "embedding-sdk/components/private/data-picker/SimpleDataPicker";
+import { DataSourceSelector } from "embedding/data-picker/DataSelector";
+import { SimpleDataPicker } from "embedding/data-picker/SimpleDataPicker";
 import { PLUGIN_ADMIN_SETTINGS, PLUGIN_EMBEDDING } from "metabase/plugins";
 import { isInteractiveEmbeddingEnabled } from "metabase-enterprise/embedding/selectors";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
