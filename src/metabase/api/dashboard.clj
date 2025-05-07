@@ -1316,7 +1316,7 @@
   ([dashboard param-key value]
    (dashboard-param-remapped-value dashboard param-key value nil))
   ([dashboard param-key value constraint-param-key->value]
-   (when (find constraint-param-key->value param-key)
+   (when (contains? constraint-param-key->value param-key)
      (throw (ex-info (tru "Getting the remapped value for a constrained parameter is not supported")
                      {:status-code 400
                       :parameter param-key})))
