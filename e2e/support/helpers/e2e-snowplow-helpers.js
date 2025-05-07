@@ -36,13 +36,14 @@ export const expectGoodSnowplowEvent = (eventData, count = 1) => {
   retrySnowplowRequest(
     "micro/good",
     ({ body }) => {
-      lastReceivedEvent = body?.[0].event?.unstruct_event?.data?.data;
-      lastFoundEventCount = body.filter((snowplowEvent) =>
-        isDeepMatch(
-          snowplowEvent?.event?.unstruct_event?.data?.data,
-          eventData,
-        ),
-      ).length;
+      lastReceivedEvent = body?.[0]?.event?.unstruct_event?.data?.data;
+      lastFoundEventCount =
+        body?.filter((snowplowEvent) =>
+          isDeepMatch(
+            snowplowEvent?.event?.unstruct_event?.data?.data,
+            eventData,
+          ),
+        )?.length ?? 0;
       return lastFoundEventCount === count;
     },
     () =>
@@ -140,7 +141,9 @@ const retrySnowplowRequest = (
         typeof messageOrMessageFn === "function"
           ? messageOrMessageFn()
           : messageOrMessageFn;
-      throw new Error("Snowplow retry timeout " + message);
+      throw new Error(
+        "Snowplow retry timeout" + (message ? ` ${message}` : ""),
+      );
     }
   });
 };
