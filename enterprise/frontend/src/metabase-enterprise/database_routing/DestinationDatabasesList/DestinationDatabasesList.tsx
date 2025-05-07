@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "react-router";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { DatabaseConnectionHealthInfo } from "metabase/admin/databases/components/DatabaseConnectionHealthInfo";
 import { useListDatabasesQuery } from "metabase/api";
@@ -61,7 +61,8 @@ export const DestinationDatabasesList = ({
                 td="underline"
                 to={Urls.viewDestinationDatabases(primaryDatabaseId)}
               >
-                {t`View all ${destinationDatabases.length}`}
+                {c("{0} is a number")
+                  .t`View all ${destinationDatabases.length}`}
               </Text>
             )}
           </>

@@ -119,7 +119,7 @@ const PasswordSuccess = ({
           to="/admin/settings/email"
           className={cx(CS.link, CS.textBold)}
         >
-          {t`Email Settings`}
+          {t`Email settings`}
         </Link>
       )} page.`}
     </div>
