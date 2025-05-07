@@ -195,9 +195,7 @@ export type UpdateNotificationRequest =
 
 export type GetNotificationPayloadExampleRequest = {
   payload_type: NotificationPayloadType;
-  payload: {
-    event_name: NotificationTriggerEvent;
-  };
+  payload: Record<string, unknown>;
   creator_id: UserId;
 };
 
