@@ -39,6 +39,7 @@ export const FormattingSection = ({ field }: Props) => {
         denylist={denyList}
         extraData={{ forAdminSettings: true }}
         inheritedSettings={inheritedSettings}
+        style={{ maxWidth: undefined }}
         value={field.settings ?? {}}
         onChange={(settings: FieldSettings) => {
           updateField({ id, settings });
