@@ -359,10 +359,14 @@
   (api/check-superuser)
   (api/checkp (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
               "email" (tru "Email address already in use."))
+  (api/checkp (not (and (:tenant_id body)
+                        (not (setting/get :use-tenants))))
+              "tenant_id"
+              (tru "Cannot create a Tenant User as Tenants are not enabled for this instance."))
   (t2/with-transaction [_conn]
     (let [new-user-id (u/the-id (user/create-and-invite-user!
                                  (u/select-keys-when body
-                                                     :non-nil [:first_name :last_name :email :password :login_attributes])
+                                                     :non-nil [:first_name :last_name :email :password :login_attributes :tenant_id])
                                  @api/*current-user*
                                  false))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)
@@ -382,7 +386,8 @@
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
-            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]]]
+            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]
+            [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]]]
   (invite-user body))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -54,7 +54,17 @@
         (testing "Should not be added to Admin group"
           (is (not (t2/exists? :model/PermissionsGroupMembership
                                :user_id  user-id
-                               :group_id (u/the-id (perms-group/admin))))))))))
+                               :group_id (u/the-id (perms-group/admin))))))))
+    (testing "tenant user"
+      (mt/with-temp [:model/User {user-id :id} {:tenant_id 123}]
+        (testing "Should NOT be added to the 'All Users' group"
+          (is (not (t2/exists? :model/PermissionsGroupMembership
+                               :user_id user-id
+                               :group_id (u/the-id (perms-group/all-users))))))
+        (testing "Should be added to the 'All External Users' group"
+          (is (t2/exists? :model/PermissionsGroupMembership
+                          :user_id user-id
+                          :group_id (u/the-id (perms-group/all-external-users)))))))))
 
 (deftest ^:parallel new-users-test-2
   (testing "newly created users should get added to the appropriate magic groups"

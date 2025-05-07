@@ -72,10 +72,8 @@
 (defsetting use-tenants
   (deferred-tru
    "Turn on the Tenants feature, allowing users to be assigned to a particular Tenant.")
-  :type               :boolean
-  :visibility         :admin
-  :export?            false
-  :default            false
-  :feature            :tenants
-  :can-read-from-env? false
-  :setter             #'-use-tenants!)
+  :type :boolean
+  :visibility :admin
+  :export? false
+  :default false
+  #_#_:feature :tenants)
