@@ -894,13 +894,6 @@ See [fonts](../configuring-metabase/fonts.md).")
                     id)))
   :doc        false)
 
-(defsetting sql-parsing-enabled
-  (deferred-tru "SQL Parsing is disabled")
-  :visibility :internal
-  :export?    false
-  :default    true
-  :type       :boolean)
-
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!
 ;;; !!                         DO NOT ADD ANY MORE SETTINGS IN THIS NAMESPACE                         !!

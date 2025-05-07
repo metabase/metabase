@@ -8,7 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]

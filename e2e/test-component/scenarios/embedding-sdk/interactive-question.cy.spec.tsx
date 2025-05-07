@@ -67,6 +67,20 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
+  it("should show a watermark in development mode", () => {
+    cy.intercept("/api/session/properties", (req) => {
+      req.continue((res) => {
+        res.body["token-features"]["development-mode"] = true;
+      });
+    });
+
+    mountInteractiveQuestion();
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("development-watermark").should("exist");
+    });
+  });
+
   it("should not fail on aggregated question drill", () => {
     mountInteractiveQuestion();
 
