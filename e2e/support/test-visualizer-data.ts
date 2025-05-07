@@ -88,6 +88,24 @@ export const ORDERS_COUNT_BY_PRODUCT_CATEGORY: StructuredQuestionDetailsWithName
     },
   };
 
+export const ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY: StructuredQuestionDetailsWithName =
+  {
+    display: "line",
+    name: "Orders by Created At (Month) & Category",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+        ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+      ],
+    },
+    visualization_settings: {
+      "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+      "graph.metrics": ["count"],
+    },
+  };
+
 export const PRODUCTS_COUNT_BY_CREATED_AT: StructuredQuestionDetailsWithName = {
   display: "bar",
   name: "Products by Created At (Month)",
@@ -101,6 +119,21 @@ export const PRODUCTS_COUNT_BY_CREATED_AT: StructuredQuestionDetailsWithName = {
     "graph.metrics": ["count"],
   },
 };
+
+export const PRODUCTS_AVERAGE_BY_CREATED_AT: StructuredQuestionDetailsWithName =
+  {
+    display: "bar",
+    name: "Products average by Created At (Month)",
+    query: {
+      "source-table": PRODUCTS_ID,
+      aggregation: [["avg", ["field", PRODUCTS.PRICE, null]]],
+      breakout: [["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }]],
+    },
+    visualization_settings: {
+      "graph.dimensions": ["CREATED_AT"],
+      "graph.metrics": ["count"],
+    },
+  };
 
 export const PRODUCTS_COUNT_BY_CATEGORY: StructuredQuestionDetailsWithName = {
   display: "bar",

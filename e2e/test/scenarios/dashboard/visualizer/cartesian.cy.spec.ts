@@ -3,8 +3,10 @@ const { H } = cy;
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   ORDERS_COUNT_BY_CREATED_AT,
+  ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY,
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
   PIVOT_TABLE_CARD,
+  PRODUCTS_AVERAGE_BY_CREATED_AT,
   PRODUCTS_COUNT_BY_CATEGORY,
   PRODUCTS_COUNT_BY_CATEGORY_PIE,
   PRODUCTS_COUNT_BY_CREATED_AT,
@@ -34,8 +36,16 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       idAlias: "ordersCountByProductCategoryQuestionId",
       wrapId: true,
     });
+    H.createQuestion(ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY, {
+      idAlias: "ordersCountByCreatedAtAndProductCategoryQuestionId",
+      wrapId: true,
+    });
     H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT, {
       idAlias: "productsCountByCreatedAtQuestionId",
+      wrapId: true,
+    });
+    H.createQuestion(PRODUCTS_AVERAGE_BY_CREATED_AT, {
+      idAlias: "productsAvgByCreatedAtQuestionId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY, {
@@ -159,6 +169,74 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       });
 
       H.chartLegendItems().should("have.length", 2);
+    });
+  });
+
+  it("should work with more than two datasets (VIZ-693)", () => {
+    H.createDashboard().then(({ body: { id: dashboardId } }) => {
+      H.visitDashboard(dashboardId);
+    });
+
+    H.editDashboard();
+
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
+
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.addDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
+      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+    });
+
+    H.saveDashcardVisualizerModal("create");
+    H.saveDashboard();
+
+    // Making sure the card renders
+    H.getDashboardCard(0).within(() => {
+      cy.findByText(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).should(
+        "exist",
+      );
+      cy.findByText("Created At: Month").should("exist");
+    });
+  });
+
+  it("should not drop dimensions when changing viz type to another cartesian chart (VIZ-648)", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.openQuestionsSidebar();
+
+    H.clickVisualizeAnotherWay(
+      ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY.name,
+    );
+
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+      H.switchToColumnsList();
+
+      H.selectVisualization("area");
+
+      H.assertDataSourceColumnSelected(
+        ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY.name,
+        "Count",
+      );
+      H.assertDataSourceColumnSelected(
+        ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY.name,
+        "Created At: Month",
+      );
+      H.assertDataSourceColumnSelected(
+        ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY.name,
+        "Product → Category",
+      );
+
+      H.assertDataSourceColumnSelected(
+        PRODUCTS_COUNT_BY_CREATED_AT.name,
+        "Count",
+      );
+      H.assertDataSourceColumnSelected(
+        PRODUCTS_COUNT_BY_CREATED_AT.name,
+        "Created At: Month",
+      );
     });
   });
 

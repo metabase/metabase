@@ -46,7 +46,11 @@ export const funnelDropHandler = (
     extractReferencedColumns(state.columnValuesMapping),
   );
 
-  if (over.id === DROPPABLE_ID.X_AXIS_WELL) {
+  if (
+    over.id === DROPPABLE_ID.X_AXIS_WELL &&
+    isDimension(column) &&
+    !isMetric(column)
+  ) {
     let dimensionColumnName = state.settings["funnel.dimension"];
     if (!dimensionColumnName) {
       dimensionColumnName = columnRef.name;
@@ -74,7 +78,7 @@ export const funnelDropHandler = (
     }
   }
 
-  if (over.id === DROPPABLE_ID.Y_AXIS_WELL && isNumeric(column)) {
+  if (over.id === DROPPABLE_ID.Y_AXIS_WELL && isMetric(column)) {
     let metricColumnName = state.settings["funnel.metric"];
     if (!metricColumnName) {
       metricColumnName = columnRef.name;

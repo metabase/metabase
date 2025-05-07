@@ -194,12 +194,19 @@ export const getVisualizerTransformedSeries = createSelector(
     const { series } = getVisualizationTransformed(
       extractRemappings(rawSeries),
     );
+
     return series;
   },
 );
 
 export const getVisualizerComputedSettings = createSelector(
   [getVisualizerTransformedSeries],
+  (series): ComputedVisualizationSettings =>
+    series.length > 0 ? getComputedSettingsForSeries(series) : {},
+);
+
+export const getVisualizerComputedSettingsForFlatSeries = createSelector(
+  [getVisualizerFlatRawSeries],
   (series): ComputedVisualizationSettings =>
     series.length > 0 ? getComputedSettingsForSeries(series) : {},
 );
