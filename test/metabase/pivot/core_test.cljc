@@ -381,6 +381,35 @@
                :value 2.5}]
              (:row-tree result))))))
 
+(deftest build-pivot-trees-non-existant-paths
+  (testing "build-pivot-trees does not collapse paths from the viz settings that are not present in the tree (#57054)"
+    (let [rows [[1 "A" "Y" 0 10]
+                [1 "B" "Z" 0 20]
+                [2 "A" "Y" 0 30]
+                [2 "B" "Z" 0 40]]
+          cols [{:name "col0" :source "breakout"}
+                {:name "col1" :source "breakout"}
+                {:name "col2" :source "breakout"}
+                {:name "pivot-grouping" :source "breakout"}
+                {:name "count" :source "aggregation"}]
+          row-indexes [0 1]
+          col-indexes [2]
+          val-indexes [4]
+          col-settings [{} {} {} {} {}]
+          ;; Specify paths that do not exist in the data
+          settings {:pivot_table.collapsed_rows {:value ["[3]" "[1,\"C\"]"]}}
+          result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
+      (is (= [{:children [{:children [] :isCollapsed false :value "A"}
+                          {:children [] :isCollapsed false :value "B"}]
+               :isCollapsed false
+               :value 1}
+              {:children [{:children [] :isCollapsed false :value "A"}
+                          {:children [] :isCollapsed false :value "B"}]
+               :isCollapsed false
+               :value 2}]
+             (:row-tree result))
+          "Row tree should not have any collapsed nodes for paths that don't exist in the data"))))
+
 (deftest create-row-section-getter-test
   (testing "Returns a function that correctly retrieves cell values"
     (let [values-by-key {["A" 1] {:values [10 20]
