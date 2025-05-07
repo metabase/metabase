@@ -32,8 +32,8 @@ import type {
 import { partitions } from "./partitions";
 import {
   addMissingCardBreakouts,
-  isColumnValid,
   isFormattablePivotColumn,
+  isPreaggregatedPivotColumn,
   updateValueWithCurrentColumns,
 } from "./utils";
 
@@ -78,9 +78,7 @@ export const settings = {
     },
     widget: "fieldsPartition",
     persistDefault: true,
-    getHidden: ([{ data }]: [{ data: DatasetData }]) =>
-      // hide the setting widget if there are invalid columns
-      !data || data.cols.some((col) => !isColumnValid(col)),
+    getHidden: ([{ data }]: [{ data: DatasetData }]) => !data,
     getProps: (
       [{ data }]: [{ data: DatasetData }],
       settings: VisualizationSettings,
@@ -95,7 +93,9 @@ export const settings = {
       getColumnTitle: (column: DatasetColumn) => {
         return getTitleForColumn(column, settings);
       },
-      canEditColumns: true,
+      // If there are any columns that might be part of a pre-aggregated pivot table,
+      // disable adding/removing columns.
+      canEditColumns: !data.cols.some((col) => isPreaggregatedPivotColumn(col)),
     }),
     getValue: (
       [{ data }]: [{ data: DatasetData; card: Card }],
