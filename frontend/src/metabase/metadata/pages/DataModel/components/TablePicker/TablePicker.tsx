@@ -1,23 +1,13 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import cx from "classnames";
 import { useDeferredValue, useRef, useState } from "react";
 
-import Link from "metabase/core/components/Link";
-import { Box, Flex, Icon, Stack } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 import type { DatabaseId, SchemaId } from "metabase-types/api";
 
-import { getUrl } from "../../utils";
-
+import { ItemRow } from "./Item";
 import { SearchInput, SearchResults } from "./Search";
 import S from "./TablePicker.module.css";
-import {
-  type Item,
-  flatten,
-  getIconForType,
-  hasChildren,
-  useExpandedState,
-  useTableLoader,
-} from "./utils";
+import { type Item, flatten, useExpandedState, useTableLoader } from "./utils";
 
 export function TablePicker(props: {
   databaseId?: DatabaseId;
@@ -83,49 +73,26 @@ function Results({
         }}
       >
         {virtual.getVirtualItems().map((virtualItem) => {
-          const item = items[virtualItem.index];
-          if (item.type === "root") {
+          const { type, ...item } = items[virtualItem.index];
+          if (type === "root") {
             return null;
           }
           return (
-            <Box
-              className={cx(S.item, S[item.type])}
+            <ItemRow
+              {...item}
               key={item.key}
+              type={type}
+              onClick={() => {
+                toggle(item.key);
+                virtual.measure();
+              }}
               style={{
                 position: "absolute",
                 top: virtualItem.start,
                 minHeight: virtualItem.size,
               }}
-            >
-              <Link
-                to={getUrl({
-                  databaseId: undefined,
-                  fieldId: undefined,
-                  schemaId: undefined,
-                  tableId: undefined,
-                  ...item.value,
-                })}
-                onClick={() => {
-                  toggle(item.key);
-                  virtual.measure();
-                }}
-              >
-                <Flex align="center" gap="sm" direction="row" mb="xs">
-                  {hasChildren(item.type) ? (
-                    <Icon
-                      name="chevronright"
-                      size={10}
-                      color="var(--mb-color-text-light)"
-                      className={cx(S.chevron, {
-                        [S.expanded]: isExpanded(item.key),
-                      })}
-                    />
-                  ) : null}
-                  <Icon name={getIconForType(item.type)} />
-                  {item.label}
-                </Flex>
-              </Link>
-            </Box>
+              isExpanded={isExpanded(item.key)}
+            />
           );
         })}
       </Box>

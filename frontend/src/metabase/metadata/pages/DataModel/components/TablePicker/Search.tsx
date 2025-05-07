@@ -6,7 +6,8 @@ import EmptyState from "metabase/components/EmptyState";
 import { Box, Icon, Input } from "metabase/ui";
 import type { DatabaseId, SchemaId, SearchResponse } from "metabase-types/api";
 
-import { Node } from "./Node";
+import { ItemRow } from "./Item";
+import { type Item, toKey } from "./utils";
 
 export function SearchInput({
   value,
@@ -31,20 +32,57 @@ export function SearchResults({ searchValue }: { searchValue: string }) {
     models: ["table"],
   });
 
-  type Tree = {
-    [databaseName: string]: {
-      id: DatabaseId;
-      name: string;
-      schemas: {
-        [schemaName: string]: {
-          id: SchemaId;
-          name: string;
-          tables: SearchResponse["data"][number][];
-        };
+  const items = data ? flatten(data) : [];
+  const isEmpty = !isLoading && items.length === 0;
+
+  if (isEmpty) {
+    return (
+      <Box p="md">
+        <EmptyState
+          title={t`No results`}
+          illustrationElement={<img src={NoResults} />}
+        />
+      </Box>
+    );
+  }
+
+  return (
+    <div>
+      {items?.map(
+        (item) =>
+          item.type !== "root" && (
+            <ItemRow
+              type={item.type}
+              label={item.label}
+              key={toKey(item.value)}
+              value={item.value}
+              isExpanded
+            />
+          ),
+      )}
+    </div>
+  );
+}
+
+function byName(a: { name: string }, b: { name: string }) {
+  return a.name.localeCompare(b.name);
+}
+
+type Tree = {
+  [databaseName: string]: {
+    id: DatabaseId;
+    name: string;
+    schemas: {
+      [schemaName: string]: {
+        id: SchemaId;
+        name: string;
+        tables: SearchResponse["data"][number][];
       };
     };
   };
+};
 
+function flatten(data: SearchResponse): Omit<Item, "key">[] {
   const tree: Tree = {};
   data?.data.forEach((result) => {
     if (
@@ -68,45 +106,40 @@ export function SearchResults({ searchValue }: { searchValue: string }) {
     tree[result.database_id].schemas[result.table_schema].tables.push(result);
   });
 
-  const isEmpty = !isLoading && Object.keys(tree).length === 0;
-
-  if (isEmpty) {
-    return (
-      <Box p="md">
-        <EmptyState
-          title={t`No results`}
-          illustrationElement={<img src={NoResults} />}
-        />
-      </Box>
-    );
-  }
-
-  return (
-    <div>
-      {Object.keys(tree)
-        .sort()
-        .map((id) => tree[id])
-        .map((database) => (
-          <Node key={database.id} type="database" name={database.name} expanded>
-            {Object.keys(database.schemas)
-              .sort()
-              .map((schemaName) => database.schemas[schemaName])
-              .map((schema) => (
-                <Node key={schema.id} type="schema" name={schema.name} expanded>
-                  {schema.tables.sort(byName).map((result) => (
-                    <Node key={result.id} type="table" name={result.name} />
-                  ))}
-                </Node>
-              ))}
-          </Node>
-        ))}
-    </div>
-  );
-}
-
-function byName(
-  a: SearchResponse["data"][number],
-  b: SearchResponse["data"][number],
-) {
-  return a.name.localeCompare(b.name);
+  return Object.values(tree)
+    .sort(byName)
+    .flatMap((database) => [
+      {
+        type: "database" as const,
+        label: database.name,
+        value: {
+          databaseId: database.id,
+        },
+      },
+      ...Object.values(database.schemas)
+        .sort(byName)
+        .flatMap((schema) => [
+          {
+            type: "schema" as const,
+            label: schema.name,
+            value: {
+              databaseId: database.id,
+              schemaId: schema.id,
+            },
+          },
+          ...Object.values(schema.tables)
+            .sort(byName)
+            .flatMap((table) => [
+              {
+                type: "table" as const,
+                label: table.name,
+                value: {
+                  databaseId: database.id,
+                  schemaId: schema.id,
+                  tableId: table.id,
+                },
+              },
+            ]),
+        ]),
+    ]);
 }
