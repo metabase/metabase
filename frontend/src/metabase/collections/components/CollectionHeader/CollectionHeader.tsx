@@ -12,6 +12,7 @@ import CollectionBookmark from "./CollectionBookmark";
 import { CollectionCaption } from "./CollectionCaption";
 import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 import { CollectionInfoSidebarToggle } from "./CollectionInfoSidebarToggle";
+import { CollectionNewButton } from "./CollectionNewButton";
 import { CollectionPermissions } from "./CollectionPermissions";
 import CollectionTimeline from "./CollectionTimeline";
 import { CollectionUpload } from "./CollectionUpload";
@@ -45,6 +46,7 @@ const CollectionHeader = ({
   const showUploadButton =
     collection.can_write && (canUpload || !uploadsEnabled);
   const isInstanceAnalytics = isInstanceAnalyticsCollection(collection);
+  const hasCuratePermissions = !!collection?.can_write;
 
   return (
     <HeaderRoot>
@@ -54,6 +56,9 @@ const CollectionHeader = ({
       />
       {!isTrash && (
         <HeaderActions data-testid="collection-menu">
+          {!isInstanceAnalytics && hasCuratePermissions && (
+            <CollectionNewButton />
+          )}
           {showUploadButton && (
             <CollectionUpload
               collection={collection}

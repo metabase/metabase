@@ -8,8 +8,7 @@ import {
 import { Heading } from "./Heading";
 
 const HeadingWrapper = Object.assign(Heading, {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  uiName: t`Heading`,
+  getUiName: () => t`Heading`,
   identifier: "heading",
   iconName: "heading",
   canSavePng: false,

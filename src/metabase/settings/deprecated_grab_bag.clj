@@ -140,7 +140,8 @@
   :getter     (fn []
                 (let [raw-vi (setting/get-value-of-type :json :version-info)
                       current-major (config/current-major-version)]
-                  (version-info* raw-vi {:current-major current-major :upgrade-threshold-value (upgrade-threshold)}))))
+                  (version-info* raw-vi {:current-major current-major :upgrade-threshold-value (upgrade-threshold)})))
+  :include-in-list? false)
 
 (defsetting version-info-last-checked
   (deferred-tru "Indicates when Metabase last checked for new versions.")
@@ -741,14 +742,6 @@ See [fonts](../configuring-metabase/fonts.md).")
   :getter     (comp sort t/available-zone-ids)
   :doc        false)
 
-(defsetting has-sample-database?
-  "Whether this instance has a Sample Database database"
-  :type       :boolean
-  :visibility :authenticated
-  :setter     :none
-  :getter     (fn [] (t2/exists? :model/Database, :is_sample true))
-  :doc        false)
-
 (defsetting password-complexity
   "Current password complexity requirements"
   :visibility :public
@@ -900,13 +893,6 @@ See [fonts](../configuring-metabase/fonts.md).")
                   (when (and id (t2/exists? :model/Dashboard :id id :archived false))
                     id)))
   :doc        false)
-
-(defsetting sql-parsing-enabled
-  (deferred-tru "SQL Parsing is disabled")
-  :visibility :internal
-  :export?    false
-  :default    true
-  :type       :boolean)
 
 (defsetting bug-reporting-enabled
   (deferred-tru "Enable bug report submissions.")

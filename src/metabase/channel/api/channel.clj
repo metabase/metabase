@@ -7,7 +7,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.channel.core :as channel]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]

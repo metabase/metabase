@@ -21,7 +21,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]

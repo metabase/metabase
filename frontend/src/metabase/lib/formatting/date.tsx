@@ -736,7 +736,7 @@ export function getDateFormatFromStyle(
     if (DATE_STYLE_TO_FORMAT[style][unit]) {
       format = replaceSeparators(DATE_STYLE_TO_FORMAT[style][unit]);
     }
-  } else {
+  } else if (style !== "") {
     console.warn("Unknown date style", style);
   }
 

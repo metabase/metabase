@@ -1,5 +1,5 @@
 diff --git a/node_modules/kbar/lib/InternalEvents.js b/node_modules/kbar/lib/InternalEvents.js
-index 7900f50..6121c06 100644
+index 7900f50..a298b91 100644
 --- a/node_modules/kbar/lib/InternalEvents.js
 +++ b/node_modules/kbar/lib/InternalEvents.js
 @@ -1,7 +1,11 @@
@@ -39,6 +39,15 @@ index 7900f50..6121c06 100644
              _a[shortcut] = function (event) {
                  var _a, _b, _c, _d;
                  if (event.defaultPrevented)
+@@ -221,7 +222,7 @@ function useShortcuts() {
+                     (_c = (_b = options.callbacks) === null || _b === void 0 ? void 0 : _b.onOpen) === null || _c === void 0 ? void 0 : _c.call(_b);
+                 }
+                 else {
+-                    (_d = action.command) === null || _d === void 0 ? void 0 : _d.perform();
++                    (_d = action.command) === null || _d === void 0 ? void 0 : _d.perform(event);
+                     (_f = (_e = options.callbacks) === null || _e === void 0 ? void 0 : _e.onSelectAction) === null || _f === void 0 ? void 0 : _f.call(_e, action);
+                 }
+             });
 @@ -230,7 +231,7 @@ function useShortcuts() {
              var action = actionsWithShortcuts_1[_b];
              _loop_1(action);
@@ -208,7 +217,7 @@ index 9788f03..5f64608 100644
      if (k2 === undefined) k2 = k;
      o[k2] = m[k];
 diff --git a/node_modules/kbar/lib/action/ActionImpl.js b/node_modules/kbar/lib/action/ActionImpl.js
-index 42fddf4..5cfcf4f 100644
+index 42fddf4..05557e3 100644
 --- a/node_modules/kbar/lib/action/ActionImpl.js
 +++ b/node_modules/kbar/lib/action/ActionImpl.js
 @@ -13,7 +13,7 @@ var utils_1 = require("../utils");
@@ -220,6 +229,15 @@ index 42fddf4..5cfcf4f 100644
  };
  var ActionImpl = /** @class */ (function () {
      function ActionImpl(action, options) {
+@@ -30,7 +30,7 @@ var ActionImpl = /** @class */ (function () {
+         this.command =
+             perform &&
+                 new Command_1.Command({
+-                    perform: function () { return perform(_this); },
++                    perform: function (e) { return perform(_this, e); },
+                 }, {
+                     history: options.history,
+                 });
 @@ -38,7 +38,7 @@ var ActionImpl = /** @class */ (function () {
          this.perform = (_a = this.command) === null || _a === void 0 ? void 0 : _a.perform;
          if (action.parent) {
@@ -243,19 +261,23 @@ index 05b2b78..4ed855c 100644
              this.actions[action.id] = ActionImpl_1.ActionImpl.create(action, {
                  history: this.options.historyManager,
 diff --git a/node_modules/kbar/lib/action/Command.js b/node_modules/kbar/lib/action/Command.js
-index 8003f6d..8d3a4bf 100644
+index 8003f6d..9f49978 100644
 --- a/node_modules/kbar/lib/action/Command.js
 +++ b/node_modules/kbar/lib/action/Command.js
-@@ -3,8 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
+@@ -3,10 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
  exports.Command = void 0;
  var Command = /** @class */ (function () {
      function Command(command, options) {
 -        var _this = this;
          if (options === void 0) { options = {}; }
+-        this.perform = function () {
+-            var negate = command.perform();
 +        var _this = this;
-         this.perform = function () {
-             var negate = command.perform();
++        this.perform = function (e) {
++            var negate = command.perform(e);
              // no need for history if non negatable
+             if (typeof negate !== "function")
+                 return;
 diff --git a/node_modules/kbar/lib/action/index.js b/node_modules/kbar/lib/action/index.js
 index 5c43cfe..ed5855d 100644
 --- a/node_modules/kbar/lib/action/index.js
@@ -601,7 +623,7 @@ index 97d1fb3..0596765 100644
 -exports.default = keybindings;
 +exports.tinykeys = tinykeys;
 diff --git a/node_modules/kbar/lib/types.d.ts b/node_modules/kbar/lib/types.d.ts
-index 0f55bc8..f02213a 100644
+index 0f55bc8..ee411f2 100644
 --- a/node_modules/kbar/lib/types.d.ts
 +++ b/node_modules/kbar/lib/types.d.ts
 @@ -1,12 +1,12 @@
@@ -621,7 +643,12 @@ index 0f55bc8..f02213a 100644
      id: ActionId;
      name: string;
      shortcut?: string[];
-@@ -18,8 +18,8 @@ export declare type Action = {
+@@ -14,12 +14,12 @@ export declare type Action = {
+     section?: ActionSection;
+     icon?: string | React.ReactElement | React.ReactNode;
+     subtitle?: string;
+-    perform?: (currentActionImpl: ActionImpl) => any;
++    perform?: (currentActionImpl: ActionImpl, event?: KeyboardEvent) => any;
      parent?: ActionId;
      priority?: Priority;
  };
@@ -759,7 +786,7 @@ index d515424..2663d65 100644
      if (k2 === undefined) k2 = k;
      o[k2] = m[k];
 diff --git a/node_modules/kbar/src/InternalEvents.tsx b/node_modules/kbar/src/InternalEvents.tsx
-index 652ce9b..d77fd30 100644
+index 652ce9b..f1a7236 100644
 --- a/node_modules/kbar/src/InternalEvents.tsx
 +++ b/node_modules/kbar/src/InternalEvents.tsx
 @@ -1,6 +1,6 @@
@@ -770,6 +797,51 @@ index 652ce9b..d77fd30 100644
  import { VisualState } from "./types";
  import { useKBar } from "./useKBar";
  import { getScrollbarWidth, shouldRejectKeystrokes } from "./utils";
+@@ -218,7 +218,7 @@ function useShortcuts() {
+           query.toggle();
+           options.callbacks?.onOpen?.();
+         } else {
+-          action.command?.perform();
++          action.command?.perform(event);
+           options.callbacks?.onSelectAction?.(action);
+         }
+       });
+diff --git a/node_modules/kbar/src/action/ActionImpl.ts b/node_modules/kbar/src/action/ActionImpl.ts
+index 07a4d00..ef8b9a7 100644
+--- a/node_modules/kbar/src/action/ActionImpl.ts
++++ b/node_modules/kbar/src/action/ActionImpl.ts
+@@ -2,6 +2,7 @@ import invariant from "tiny-invariant";
+ import { Command } from "./Command";
+ import type { Action, ActionStore, History } from "../types";
+ import { Priority } from "../utils";
++import { KeyboardEvent } from "react";
+ 
+ interface ActionImplOptions {
+   store: ActionStore;
+@@ -49,7 +50,7 @@ export class ActionImpl implements Action {
+       perform &&
+       new Command(
+         {
+-          perform: () => perform(this),
++          perform: (e?: KeyboardEvent) => perform(this, e),
+         },
+         {
+           history: options.history,
+diff --git a/node_modules/kbar/src/action/Command.ts b/node_modules/kbar/src/action/Command.ts
+index 34f954d..625a0b8 100644
+--- a/node_modules/kbar/src/action/Command.ts
++++ b/node_modules/kbar/src/action/Command.ts
+@@ -18,8 +18,8 @@ export class Command {
+     command: { perform: Command["perform"] },
+     options: CommandOptions = {}
+   ) {
+-    this.perform = () => {
+-      const negate = command.perform();
++    this.perform = (e?: KeyboardEvent) => {
++      const negate = command.perform(e);
+       // no need for history if non negatable
+       if (typeof negate !== "function") return;
+       // return if no history enabled
 diff --git a/node_modules/kbar/src/tinykeys.ts b/node_modules/kbar/src/tinykeys.ts
 index 0ba405f..942f15d 100644
 --- a/node_modules/kbar/src/tinykeys.ts
@@ -1145,3 +1217,16 @@ index 0ba405f..942f15d 100644
 +		target.removeEventListener(event, onKeyEvent, capture)
 +	}
  }
+diff --git a/node_modules/kbar/src/types.ts b/node_modules/kbar/src/types.ts
+index 0910420..eb0bf8c 100644
+--- a/node_modules/kbar/src/types.ts
++++ b/node_modules/kbar/src/types.ts
+@@ -20,7 +20,7 @@ export type Action = {
+   section?: ActionSection;
+   icon?: string | React.ReactElement | React.ReactNode;
+   subtitle?: string;
+-  perform?: (currentActionImpl: ActionImpl) => any;
++  perform?: (currentActionImpl: ActionImpl, event?: KeyboardEvent) => any;
+   parent?: ActionId;
+   priority?: Priority;
+ };

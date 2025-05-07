@@ -27,6 +27,7 @@
    [metabase.pulse.init]
    [metabase.query-analysis.init]
    [metabase.revisions.init]
+   [metabase.sample-data.init]
    [metabase.search.init]
    [metabase.session.init]
    [metabase.settings.init]

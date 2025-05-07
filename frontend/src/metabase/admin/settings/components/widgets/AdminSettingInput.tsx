@@ -9,11 +9,16 @@ import {
   type BoxProps,
   Radio,
   Select,
+  Stack,
   Switch,
   TextInput,
   Textarea,
 } from "metabase/ui";
-import type { EnterpriseSettingValue, SettingKey } from "metabase-types/api";
+import type {
+  EnterpriseSettingKey,
+  EnterpriseSettingValue,
+  SettingKey,
+} from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";
 
@@ -43,6 +48,7 @@ export type AdminSettingInputProps<S extends SettingKey> = {
   title?: string;
   description?: React.ReactNode;
   hidden?: boolean;
+  switchLabel?: React.ReactNode;
 } & InputDetails &
   BoxProps;
 
@@ -58,6 +64,7 @@ export function AdminSettingInput<SettingName extends SettingKey>({
   inputType,
   hidden,
   placeholder,
+  switchLabel,
   options,
   ...boxProps
 }: AdminSettingInputProps<SettingName>) {
@@ -97,6 +104,7 @@ export function AdminSettingInput<SettingName extends SettingKey>({
           options={options}
           placeholder={placeholder}
           inputType={inputType}
+          switchLabel={switchLabel}
         />
       )}
     </Box>
@@ -110,13 +118,17 @@ export function BasicAdminSettingInput({
   options,
   placeholder,
   inputType,
+  autoFocus,
+  switchLabel,
 }: {
-  name: SettingKey;
+  name: EnterpriseSettingKey;
   value: any;
   onChange: (newValue: string | boolean | number) => void;
   options?: { label: string; value: string }[];
   placeholder?: string;
+  autoFocus?: boolean;
   inputType: TextualInputType | OptionsInputType | BooleanInputType;
+  switchLabel?: React.ReactNode;
 }) {
   const [localValue, setLocalValue] = useState(value);
 
@@ -145,16 +157,31 @@ export function BasicAdminSettingInput({
           id={name}
           checked={localValue}
           onChange={(e) => handleChange(e.target.checked)}
-          label={localValue ? t`Enabled` : t`Disabled`}
+          label={switchLabel ?? (localValue ? t`Enabled` : t`Disabled`)}
           w="auto"
         />
       );
     case "radio":
       return (
-        <Radio.Group id={name} value={localValue} onChange={handleChange}>
-          {options?.map(({ label, value }) => (
-            <Radio key={value} value={value} label={label} />
-          ))}
+        <Radio.Group
+          id={name}
+          value={String(localValue)}
+          onChange={(newValue) => {
+            if (options && hasBooleanOptions(options)) {
+              // convert the value to boolean in the special case where a radio only has values "true" and "false"
+              // this occurs when the backend value is a boolean but the UI wants to show radio inputs
+              // e.g. bcc-enabled? setting in EmailSettingsPage
+              handleChange(stringToBoolean(newValue));
+            } else {
+              handleChange(newValue);
+            }
+          }}
+        >
+          <Stack gap="sm">
+            {options?.map(({ label, value }) => (
+              <Radio key={value} value={value} label={label} />
+            ))}
+          </Stack>
         </Radio.Group>
       );
     case "textarea":
@@ -178,9 +205,22 @@ export function BasicAdminSettingInput({
           onChange={(e) => setLocalValue(e.target.value)}
           onBlur={() => onChange(localValue)}
           type={inputType ?? "text"}
+          autoFocus={autoFocus}
         />
       );
   }
+}
+
+function hasBooleanOptions(options: { label: string; value: string }[]) {
+  return (
+    options.length === 2 &&
+    options.find(({ value }) => value === "true") &&
+    options.find(({ value }) => value === "false")
+  );
+}
+
+function stringToBoolean(value: string): boolean | string {
+  return value === "true";
 }
 
 export const SetByEnvVar = ({ varName }: { varName: string }) => {
