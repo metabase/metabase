@@ -6,9 +6,26 @@ describe("scenarios > embedding > sdk iframe embedding > without token features"
     cy.signOut();
   });
 
-  it("should show the Not Found route if the token features are missing", () => {
-    H.loadSdkIframeEmbedTestPage({ template: "exploration" })
-      .findByText("Not found")
+  it("shows an error if the token features are missing and the parent page is not localhost", () => {
+    cy.visit("http://localhost:4000");
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      origin: "http://example.com",
+      template: "exploration",
+    });
+
+    frame
+      .findByText("A valid license is required for embedding.")
       .should("be.visible");
+  });
+
+  it("does not show an error if the token features are missing and the parent page is localhost", () => {
+    const frame = H.loadSdkIframeEmbedTestPage({
+      template: "exploration",
+    });
+
+    frame
+      .findByText("A valid license is required for embedding.")
+      .should("not.exist");
   });
 });

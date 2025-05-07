@@ -4,7 +4,7 @@ import { createApiKey } from "./api";
 import { setTokenFeatures } from "./e2e-enterprise-helpers";
 import { restore } from "./e2e-setup-helpers";
 
-const EMBED_JS_PATH = "/app/embed.v1.js";
+const EMBED_JS_PATH = "http://localhost:4000/app/embed.v1.js";
 
 /**
  * Base interface for SDK iframe embedding test page options
@@ -21,6 +21,7 @@ export interface BaseEmbedTestPageOptions {
   locale?: string;
 
   // Options for the test page
+  origin?: string;
   insertHtml?: {
     head?: string;
     beforeEmbed?: string;
@@ -31,23 +32,27 @@ export interface BaseEmbedTestPageOptions {
 /**
  * Creates and loads a test fixture for SDK iframe embedding tests
  */
-export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>(
-  options: T,
-) {
+export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
+  origin = "",
+  ...options
+}: T) {
   return cy.get("@apiKey").then((apiKey) => {
     const testPageSource = getSdkIframeEmbedHtml({
       target: "#metabase-embed-container",
       apiKey,
       instanceUrl: "http://localhost:4000",
+      origin,
       ...options,
     });
 
-    cy.intercept("GET", "/sdk-iframe-test-page", {
+    const testPageUrl = `${origin}/sdk-iframe-test-page`;
+
+    cy.intercept("GET", testPageUrl, {
       body: testPageSource,
       headers: { "content-type": "text/html" },
     }).as("dynamicPage");
 
-    cy.visit("/sdk-iframe-test-page");
+    cy.visit(testPageUrl);
 
     return cy
       .get("iframe")
@@ -64,6 +69,7 @@ export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>(
  */
 function getSdkIframeEmbedHtml({
   insertHtml,
+  origin,
   ...embedConfig
 }: BaseEmbedTestPageOptions) {
   return `
@@ -121,6 +127,8 @@ export function prepareSdkIframeEmbedTest({
 
   if (withTokenFeatures) {
     setTokenFeatures("all");
+  } else {
+    setTokenFeatures("none");
   }
 
   createApiKey("test iframe sdk embedding", ADMIN_GROUP_ID).then(({ body }) => {
