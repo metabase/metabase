@@ -60,7 +60,7 @@ export function registerVisualization(visualization: Visualization) {
       return;
     }
 
-    console.warn(
+    throw new Error(
       t`Visualization with that identifier is already registered: ` +
         visualization.name,
     );
