@@ -221,6 +221,13 @@
     ~dashboard
     (fn [~binding] ~@body)))
 
+(defn- append-subscription-branding-content
+  "Appends branding content to the :fields list in the Slack link-section.
+   Unless we're running the Pro/Enterprise plan, all Slack header links will include branding"
+  [fields]
+  (conj fields {:text (str "<" channel.slack/metabase-branding-link "|" channel.slack/metabase-branding-copy ">")
+                :type "mrkdwn"}))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Tests                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -341,9 +348,11 @@
            (is (= {:channel-id "#general"
                    :attachments
                    [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
-                              {:type "section", :fields [{:type "mrkdwn", :text (str "<https://testmb.com/dashboard/"
-                                                                                     dashboard-id
-                                                                                     "|*Sent from Metabase Test by Rasta Toucan*>")}]}]}
+                              {:type "section",
+                               :fields (append-subscription-branding-content [{:type "mrkdwn"
+                                                                               :text (str "<https://testmb.com/dashboard/"
+                                                                                          dashboard-id
+                                                                                          "|*Sent from Metabase Test by Rasta Toucan*>")}])}]}
                     {:title           pulse.test-util/card-name
                      :rendered-info   {:attachments false
                                        :content     true}
@@ -390,9 +399,11 @@
          (is (= {:channel-id "#general"
                  :attachments
                  [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
-                            {:type "section", :fields [{:type "mrkdwn", :text (str "<https://testmb.com/dashboard/"
-                                                                                   dashboard-id
-                                                                                   "|*Sent from Metabase Test by Rasta Toucan*>")}]}]}
+                            {:type "section",
+                             :fields (append-subscription-branding-content [{:type "mrkdwn",
+                                                                             :text (str "<https://testmb.com/dashboard/"
+                                                                                        dashboard-id
+                                                                                        "|*Sent from Metabase Test by Rasta Toucan*>")}])}]}
                   {:title           pulse.test-util/card-name
                    :rendered-info   {:attachments false, :content true, :render/text true},
                    :title_link      (str "https://testmb.com/question/" card-id)
@@ -433,11 +444,11 @@
          (is (= {:channel-id "#general"
                  :attachments
                  [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
-                            {:type "section", :fields [{:type "mrkdwn"
-                                                        :text
-                                                        (str "<https://testmb.com/dashboard/"
-                                                             dashboard-id
-                                                             "|*Sent from Metabase Test by Rasta Toucan*>")}]}]}
+                            {:type "section",
+                             :fields (append-subscription-branding-content [{:type "mrkdwn"
+                                                                             :text (str "<https://testmb.com/dashboard/"
+                                                                                        dashboard-id
+                                                                                        "|*Sent from Metabase Test by Rasta Toucan*>")}])}]}
                   {:title           pulse.test-util/card-name
                    :rendered-info   {:attachments false, :content true, :render/text true},
                    :title_link      (str "https://testmb.com/question/" card-id)
@@ -480,10 +491,11 @@
                               {:type "section",
                                :fields [{:type "mrkdwn", :text "*State*\nCA, NY…"}         ;; "*State*\nCA, NY and NJ"
                                         {:type "mrkdwn", :text "*Quarter and Y…"}]} ;; "*Quarter and Year*\nQ1, 2021"
-                              {:type "section", :fields [{:type "mrkdwn", :text
-                                                          (str "<https://testmb.com/dashboard/"
-                                                               dashboard-id
-                                                               "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>")}]}]}
+                              {:type "section",
+                               :fields (append-subscription-branding-content [{:type "mrkdwn",
+                                                                               :text (str "<https://testmb.com/dashboard/"
+                                                                                          dashboard-id
+                                                                                          "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>")}])}]}
 
                     {:title           pulse.test-util/card-name
                      :rendered-info   {:attachments false, :content true, :render/text true},
@@ -549,8 +561,9 @@
                     :fields
                     [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}
                      {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
-                   {:type "section", :fields [{:type "mrkdwn"
-                                               :text #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\|\*Sent from Metabase Test by Rasta Toucan\*>"}]}]}
+                   {:type "section",
+                    :fields (append-subscription-branding-content [{:type "mrkdwn"
+                                                                    :text #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\|\*Sent from Metabase Test by Rasta Toucan\*>"}])}]}
 
                  {:title "Test card",
                   :rendered-info {:attachments false, :content true, :render/text true},
@@ -958,8 +971,9 @@
                     :fields
                     [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}
                      {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
-                   {:type "section", :fields [{:type "mrkdwn"
-                                               :text #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\|\*Sent from Metabase Test by Rasta Toucan\*>"}]}]}
+                   {:type "section",
+                    :fields (append-subscription-branding-content [{:type "mrkdwn"
+                                                                    :text #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\|\*Sent from Metabase Test by Rasta Toucan\*>"}])}]}
 
                  {:blocks [{:type "section", :text {:type "mrkdwn", :text "*The first tab*"}}]}
                  {:title "Test card",
@@ -1227,8 +1241,7 @@
                        [{:blocks
                          [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
                           {:type "section",
-                           :fields
-                           [{:type "mrkdwn"}]}]}
+                           :fields (append-subscription-branding-content [{:type "mrkdwn"}])}]}
                         {:title "Test card",
                          :rendered-info {:attachments false, :content true},
                          :attachment-name "image.png",
