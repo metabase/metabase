@@ -59,6 +59,7 @@
 /resources/frontend_client/app/dist/
 /resources/frontend_client/app/locales
 /resources/frontend_client/embed.html
+/resources/frontend_client/embed-sdk.html
 /resources/frontend_client/index.html
 /resources/frontend_client/public.html
 /resources/frontend_client/app/embed.v1.js

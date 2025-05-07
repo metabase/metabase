@@ -31,4 +31,7 @@ export interface SdkIframeEmbedSettings {
 export type SdkIframeEmbedTagSettings = SdkIframeEmbedSettings & {
   target: string | HTMLElement;
   iframeClassName?: string;
+
+  // Whether the embed is running on localhost. Cannot be set by the user.
+  _isLocalhost?: boolean;
 };

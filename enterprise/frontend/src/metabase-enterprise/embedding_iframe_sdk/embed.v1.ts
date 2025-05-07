@@ -8,15 +8,18 @@ const EMBEDDING_ROUTE = "embed/sdk/v1";
 
 type EmbedSettingKey = keyof SdkIframeEmbedSettings;
 
-const EMBED_SETTING_KEYS = [
+// Only these settings can be updated by the user
+const USER_EDITABLE_EMBED_SETTING_KEYS = [
   "apiKey",
-  "instanceUrl",
   "dashboardId",
   "questionId",
   "template",
   "theme",
   "locale",
 ] as const satisfies EmbedSettingKey[];
+
+type UserEditableEmbedSettingKey =
+  (typeof USER_EDITABLE_EMBED_SETTING_KEYS)[number];
 
 class MetabaseEmbed {
   static readonly VERSION = "1.0.0";
@@ -32,6 +35,7 @@ class MetabaseEmbed {
 
     this._validateEmbedSettings(settings);
     this._settings = settings;
+    this._settings._isLocalhost = this.getIsLocalhost();
 
     this._handleMessage = this._handleMessage.bind(this);
     this._setup();
@@ -47,15 +51,12 @@ class MetabaseEmbed {
     }
 
     this._validateEmbedSettings(settings);
+    this._settings = { ...this._settings, ...settings };
 
-    const allowedSettings = Object.fromEntries(
-      Object.entries(settings).filter(([key]) =>
-        EMBED_SETTING_KEYS.includes(key as EmbedSettingKey),
-      ),
+    this._sendMessage(
+      "metabase.embed.updateSettings",
+      this.getWhitelistedSettings(settings),
     );
-
-    this._settings = { ...this._settings, ...allowedSettings };
-    this._sendMessage("metabase.embed.updateSettings", this._settings);
   }
 
   public destroy() {
@@ -96,6 +97,24 @@ class MetabaseEmbed {
     }
 
     parentContainer.appendChild(this.iframe);
+  }
+
+  private getWhitelistedSettings(
+    settings: Partial<SdkIframeEmbedSettings>,
+  ): Partial<SdkIframeEmbedSettings> {
+    return Object.fromEntries(
+      Object.entries(settings).filter(([key]) =>
+        USER_EDITABLE_EMBED_SETTING_KEYS.includes(
+          key as UserEditableEmbedSettingKey,
+        ),
+      ),
+    );
+  }
+
+  private getIsLocalhost() {
+    const { hostname } = window.location;
+
+    return hostname === "localhost" || hostname === "127.0.0.1";
   }
 
   private _validateEmbedSettings(settings: Partial<SdkIframeEmbedSettings>) {

@@ -107,6 +107,7 @@ const config = {
     "app-embed": "./app-embed.js",
     "vendor-styles": "./css/vendor.css",
     styles: "./css/index.module.css",
+    "app-embed-sdk": `${ENTERPRISE_SRC_PATH}/embedding_iframe_sdk/app-embed-sdk.tsx`,
   },
 
   // we override it for dev mode below
@@ -385,16 +386,16 @@ if (devMode) {
   );
 }
 
-const configs = [];
+const configs = [config];
 
 if (process.env.MB_EDITION === "ee") {
   const SDK_IFRAME_EMBED_PLUGIN_PATH = `${ENTERPRISE_SRC_PATH}/embedding_iframe_sdk`;
 
   // Build a separate bundle for the sdk iframe embedding
-  if (config.entry) {
-    config.entry["app-embed-sdk"] =
-      `${SDK_IFRAME_EMBED_PLUGIN_PATH}/app-embed-sdk.js`;
-  }
+  // if (config.entry) {
+  //   config.entry["app-embed-sdk"] =
+  //     `${SDK_IFRAME_EMBED_PLUGIN_PATH}/app-embed-sdk.js`;
+  // }
 
   // Build the embed.js script for the sdk iframe embedding
   configs.push(
