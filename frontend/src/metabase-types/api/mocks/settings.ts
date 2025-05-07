@@ -125,6 +125,7 @@ export const createMockTokenFeatures = (
   serialization: false,
   cache_preemptive: false,
   database_routing: false,
+  "development-mode": false,
   ...opts,
 });
 

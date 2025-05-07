@@ -18,6 +18,7 @@ const SRC_PATH = __dirname + "/frontend/src/metabase";
 const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
+const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
 const CLJS_SRC_PATH = __dirname + "/target/cljs_release";
@@ -71,7 +72,7 @@ const SWC_LOADER = {
 
 const CSS_CONFIG = {
   modules: {
-    auto: filename =>
+    auto: (filename) =>
       !filename.includes("node_modules") && !filename.includes("vendor.css"),
     localIdentName: devMode
       ? "[name]__[local]___[hash:base64:5]"
@@ -82,12 +83,12 @@ const CSS_CONFIG = {
 
 class OnScriptError {
   apply(compiler) {
-    compiler.hooks.compilation.tap("OnScriptError", compilation => {
+    compiler.hooks.compilation.tap("OnScriptError", (compilation) => {
       HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(
         "OnScriptError",
         (data, cb) => {
           // Manipulate the content
-          data.assetTags.scripts.forEach(script => {
+          data.assetTags.scripts.forEach((script) => {
             script.attributes.onerror = `Metabase.AssetErrorLoad(this)`;
           });
           // Tell webpack to move on
@@ -200,6 +201,12 @@ const config = {
       ".svg",
     ],
     alias: {
+      /**
+       * These aliases are used by Eslint import/resolver rule.
+       * @see {@link https://github.com/metabase/metabase/blob/a59d8af558e6e0977fa02863a14611330c3489b0/.eslintrc.js#L155-L159}
+       *
+       * And by the SDK's webpack config {@link file://./webpack.embedding-sdk.config.js}
+       */
       assets: ASSETS_PATH,
       fonts: FONTS_PATH,
       metabase: SRC_PATH,
@@ -224,6 +231,7 @@ const config = {
         process.env.MB_EDITION === "ee"
           ? ENTERPRISE_SRC_PATH + "/overrides"
           : SRC_PATH + "/lib/noop",
+      embedding: EMBEDDING_SRC_PATH,
       "embedding-sdk": SDK_SRC_PATH,
     },
   },
