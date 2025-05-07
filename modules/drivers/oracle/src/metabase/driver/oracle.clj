@@ -32,17 +32,8 @@
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (java.security KeyStore)
-   (java.sql
-    Connection
-    DatabaseMetaData
-    ResultSet
-    SQLException
-    Types)
-   (java.time
-    Instant
-    LocalDateTime
-    OffsetDateTime
-    ZonedDateTime)
+   (java.sql Connection DatabaseMetaData ResultSet SQLException Types)
+   (java.time Instant LocalDateTime OffsetDateTime ZonedDateTime)
    (oracle.jdbc OracleConnection OracleTypes)
    (oracle.sql TIMESTAMPTZ)))
 
