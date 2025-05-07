@@ -21,7 +21,10 @@ whitespace = #'\\s*'
     [:expr [:string s]] s
     [:expr [:doubleString s]] s))
 
-(defn parse-param [s]
+(defn parse-param
+  "Parses the contents of a {{blah}} param in a native query.  Returns a map with the keys [:type, :name, and
+  optionally :args]"
+  [s]
   (match (param-grammar s)
     [:S [:function [:functionName prefix name] [:arglist & args]]] (params/->FunctionParam (str prefix name) (mapv parse-expr args))
     [:S [:param name]] (params/->Param name)))
