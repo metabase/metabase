@@ -109,7 +109,7 @@
         :let [result-dashboard-card-id (:id (:dashcard result))
               is-visualizer-part (render.util/is-visualizer-dashcard? (:dashcard result))
               ;; For visualizer dashcards we match on both card_id and dashboard_card_id
-              ;; To disambiguate between regulard cards and regular cards that were turned into visualizer dashcards
+              ;; To disambiguate between regular cards and regular cards that were turned into visualizer dashcards
               noti-dashcard (or (and is-visualizer-part
                                      (m/find-first (fn [config]
                                                      (and (= (:card_id config) result-card-id)
