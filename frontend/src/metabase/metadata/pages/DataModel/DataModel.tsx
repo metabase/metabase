@@ -49,13 +49,17 @@ export const DataModel = ({ params }: Props) => {
 
   return (
     <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`}>
-      <Stack className={S.sidebar} flex="0 0 400px" gap={0} h="100%">
+      <Stack className={S.sidebar} flex="0 0 320px" gap={0} h="100%">
         <Title order={2} px="xl" py="lg" pb="md">
           {t`Data model`}
         </Title>
 
-        {tableId ? (
-          <Box className={S.tableSectionContainer} h="100%" pb="lg" px="xl">
+        <TablePicker databaseId={databaseId} schemaId={schemaId} />
+      </Stack>
+
+      {tableId && (
+        <Stack className={S.sidebar} flex="0 0 400px" gap={0} h="100%">
+          <Box className={S.tableSectionContainer} h="100%" p="xl" pb="lg">
             <LoadingAndErrorWrapper error={error} loading={isLoading}>
               {table && (
                 <TableSection
@@ -70,10 +74,8 @@ export const DataModel = ({ params }: Props) => {
               )}
             </LoadingAndErrorWrapper>
           </Box>
-        ) : (
-          <TablePicker databaseId={databaseId} schemaId={schemaId} />
-        )}
-      </Stack>
+        </Stack>
+      )}
 
       {isEmptyStateShown && (
         <Flex align="center" bg="accent-gray-light" flex="1" justify="center">
