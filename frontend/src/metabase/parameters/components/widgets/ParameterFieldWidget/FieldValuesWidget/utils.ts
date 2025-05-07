@@ -280,14 +280,14 @@ export function isNumeric(parameter: Parameter, fields: Field[]) {
   );
 }
 
-export function getValue(option: FieldValue): RowValue {
+export function getValue(option: string | FieldValue): RowValue {
   if (Array.isArray(option)) {
     return option[0];
   }
   return option;
 }
 
-export function getLabel(option: FieldValue): string | undefined {
+export function getLabel(option: string | FieldValue): string | undefined {
   if (Array.isArray(option)) {
     return option[1];
   }

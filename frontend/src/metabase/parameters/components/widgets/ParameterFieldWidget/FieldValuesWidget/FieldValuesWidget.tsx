@@ -41,6 +41,7 @@ import {
 } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
+import { getSourceType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   CardId,
@@ -722,7 +723,9 @@ function RemappedValue({
   cardId,
 }: RemappedValueProps) {
   const field = fields[0];
-  const isRemapped = showRemapping(fields) && field?.remappedField() != null;
+  const isRemapped =
+    (showRemapping(fields) && field?.remappedField() != null) ||
+    getSourceType(parameter) === "static-list";
 
   const { data: dashboardData } = useGetRemappedDashboardParameterValueQuery(
     dashboardId != null && value != null && isRemapped
