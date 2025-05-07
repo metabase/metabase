@@ -39,8 +39,8 @@ export const RemappingPicker = ({ comboboxProps, field, ...props }: Props) => {
   const [deleteFieldDimension] = useDeleteFieldDimensionMutation();
   const value = useMemo(() => getValue(field), [field]);
   const options = useMemo(
-    () => getOptions(field, fkTargetField, value),
-    [field, fkTargetField, value],
+    () => getOptions(field, fkTargetField),
+    [field, fkTargetField],
   );
 
   const handleChange = (value: RemappingValue) => {
@@ -86,18 +86,14 @@ export const RemappingPicker = ({ comboboxProps, field, ...props }: Props) => {
   );
 };
 
-function getOptions(
-  field: Field,
-  fkTargetField: Field | undefined,
-  value: RemappingValue,
-) {
+function getOptions(field: Field, fkTargetField: Field | undefined) {
   const options: RemappingValue[] = ["original"];
 
   if (hasForeignKeyTargetFields(field, fkTargetField)) {
     options.push("foreign");
   }
 
-  if (hasMappableNumeralValues(field) || value === "custom") {
+  if (hasMappableNumeralValues(field)) {
     options.push("custom");
   }
 
