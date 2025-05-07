@@ -61,7 +61,7 @@ export function DashboardEmptyState({
     <EmptyStateWrapper isNightMode={isNightMode}>
       <>
         <Stack align="center" maw="25rem" gap="xs">
-          <Title ta="center" order={2}>
+          <Title ta="center" order={3}>
             {title}
           </Title>
 
@@ -93,7 +93,7 @@ export function DashboardEmptyStateWithoutAddPrompt({
   const title = getDefaultTitle(isDashboardEmpty);
   return (
     <EmptyStateWrapper isNightMode={isNightMode}>
-      <Title ta="center" order={2}>
+      <Title ta="center" order={3}>
         {title}
       </Title>
     </EmptyStateWrapper>

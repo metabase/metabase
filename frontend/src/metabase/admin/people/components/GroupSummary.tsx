@@ -3,8 +3,7 @@ import { msgid, ngettext, t } from "ttag";
 import type { UserGroupType } from "metabase/admin/types";
 import CS from "metabase/css/core/index.css";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
-
-import { AdminGroupLabel } from "./GroupSummary.styled";
+import { Box } from "metabase/ui";
 
 interface GroupSummaryProps {
   groups: UserGroupType[];
@@ -20,10 +19,13 @@ export const GroupSummary = ({
     (g) =>
       selectedGroupIds.includes(g.id) && !isAdminGroup(g) && !isDefaultGroup(g),
   );
+
   if (adminGroup && selectedGroupIds.includes(adminGroup.id)) {
     return (
       <span>
-        <AdminGroupLabel>{t`Admin`}</AdminGroupLabel>
+        <Box component="span" c="filter">
+          {t`Admin`}
+        </Box>
         {otherGroups.length > 0 && " " + t`and` + " "}
         {otherGroups.length > 0 && (
           <span className={CS.textBrand}>

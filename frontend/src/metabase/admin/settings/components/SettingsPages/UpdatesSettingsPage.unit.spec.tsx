@@ -4,6 +4,7 @@ import { act } from "react-dom/test-utils";
 import {
   findRequests,
   setupPropertiesEndpoints,
+  setupSettingEndpoint,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
@@ -33,7 +34,14 @@ const setup = async (props: {
       tag: props.versionTag,
       hash: "4742ea1",
     },
-    "version-info": {
+  } as const;
+
+  const settings = createMockSettings(updatesSettings);
+  setupPropertiesEndpoints(settings);
+  setupUpdateSettingEndpoint();
+  setupSettingEndpoint({
+    settingKey: "version-info",
+    settingValue: {
       beta: {
         version: "v1.54.0-beta",
         released: "2025-03-24",
@@ -48,11 +56,7 @@ const setup = async (props: {
         released: "2024-12-16",
       },
     },
-  } as const;
-
-  const settings = createMockSettings(updatesSettings);
-  setupPropertiesEndpoints(settings);
-  setupUpdateSettingEndpoint();
+  });
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>
       createMockSettingDefinition({ key: key as SettingKey, value }),

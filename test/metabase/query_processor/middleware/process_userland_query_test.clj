@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.process-userland-query-test
   (:require
-   #_[toucan2.core :as t2]
    [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]
    [clojure.test :refer :all]
@@ -10,15 +9,13 @@
    [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.process-userland-query
-    :as process-userland-query]
+   [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,7 +24,7 @@
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
       (with-redefs [process-userland-query/save-execution-metadata!*
-                    (fn [query-execution _field-usages]
+                    (fn [query-execution]
                       (when-let [^bytes qe-hash (:hash query-execution)]
                         (deliver
                          result
@@ -178,7 +175,7 @@
 
 (deftest cancel-test
   (let [saved-query-execution? (atom false)]
-    (with-redefs [process-userland-query/save-execution-metadata! (fn [info _field-usages]
+    (with-redefs [process-userland-query/save-execution-metadata! (fn [info]
                                                                     (reset! saved-query-execution? info))]
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
         (let [status (atom ::not-started)]
@@ -205,32 +202,6 @@
                 "val")))
         (testing "No QueryExecution should get saved when a query is canceled"
           (is (not @saved-query-execution?)))))))
-
-(deftest save-field-usage-test
-  (testing "execute an userland query will capture field usages"
-    (mt/test-helpers-set-global-values!
-      (mt/with-model-cleanup [:model/FieldUsage]
-        (mt/with-temporary-setting-values [synchronous-batch-updates   true
-                                           enable-field-usage-analysis true]
-          (mt/with-temp [:model/Field {field-id :id} {:table_id  (mt/id :products)
-                                                      :name      "very_interesting_field"
-                                                      :base_type :type/Integer}
-                         :model/Card card            {:dataset_query (mt/mbql-query products
-                                                                       {:filter [:> [:field field-id nil] 1]})}]
-            (binding [qp.util/*execute-async?* false
-                      qp.pipeline/*execute*    (fn [_driver _query respond]
-                                                 (respond {} []))]
-              (mt/user-http-request :crowberto :post 202 (format "/card/%d/query" (:id card)))
-              (is (=? [{:filter_op                  :>
-                        :breakout_temporal_unit     nil
-                        :breakout_binning_strategy  nil
-                        :breakout_binning_bin_width nil
-                        :breakout_binning_num_bins  nil
-                        :used_in                    :filter
-                        :aggregation_function       nil
-                        :field_id                   field-id
-                        :query_execution_id         (mt/malli=? pos-int?)}]
-                      (t2/select :model/FieldUsage :field_id field-id))))))))))
 
 (deftest query-result-should-not-contains-preprocessed-query-test
   (let [query (mt/mbql-query venues {:limit 1})]

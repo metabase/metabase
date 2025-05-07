@@ -16,12 +16,7 @@ import type { Group, Member } from "metabase-types/api";
 
 import { GroupSummary } from "../GroupSummary";
 
-import {
-  MembershipActionsContainer,
-  MembershipSelectContainer,
-  MembershipSelectHeader,
-  MembershipSelectItem,
-} from "./MembershipSelect.styled";
+import S from "./MembershipSelect.module.css";
 
 const getGroupSections = (groups: Omit<Group, "members">[]) => {
   const defaultGroup = groups.find(isDefaultGroup);
@@ -33,9 +28,7 @@ const getGroupSections = (groups: Omit<Group, "members">[]) => {
 
   if (pinnedGroups.length > 0) {
     return [
-      {
-        groups: pinnedGroups,
-      },
+      { groups: pinnedGroups },
       { groups: regularGroups, header: t`Groups` },
     ];
   }
@@ -112,13 +105,11 @@ export const MembershipSelect = ({
           <span className={CS.p1}>{emptyListMessage}</span>
         )}
         {groups.length > 0 && (
-          <MembershipSelectContainer>
+          <ul className={S.membershipSelectContainer}>
             {groupSections.map((section, index) => (
               <Fragment key={index}>
                 {section.header && (
-                  <MembershipSelectHeader>
-                    {section.header}
-                  </MembershipSelectHeader>
+                  <li className={S.membershipSelectHeader}>{section.header}</li>
                 )}
                 {section.groups.map((group) => {
                   const isDisabled =
@@ -132,8 +123,10 @@ export const MembershipSelect = ({
                     !isAdminGroup(group);
 
                   return (
-                    <MembershipSelectItem
-                      isDisabled={isDisabled}
+                    <li
+                      className={cx(S.membershipSelectItem, {
+                        [S.membershipSelectItemDisabled]: isDisabled,
+                      })}
                       key={group.id}
                       aria-label={group.name}
                       onClick={() =>
@@ -143,7 +136,7 @@ export const MembershipSelect = ({
                       }
                     >
                       <span>{getGroupNameLocalized(group)}</span>
-                      <MembershipActionsContainer>
+                      <div className={S.membershipActionsContainer}>
                         {canEditMembershipType && (
                           <PLUGIN_GROUP_MANAGERS.UserTypeToggle
                             tooltipPlacement="bottom"
@@ -164,13 +157,13 @@ export const MembershipSelect = ({
                         >
                           <Icon name="check" />
                         </span>
-                      </MembershipActionsContainer>
-                    </MembershipSelectItem>
+                      </div>
+                    </li>
                   );
                 })}
               </Fragment>
             ))}
-          </MembershipSelectContainer>
+          </ul>
         )}
       </Popover.Dropdown>
     </Popover>
