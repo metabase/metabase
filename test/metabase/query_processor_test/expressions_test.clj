@@ -853,7 +853,12 @@
     ;; should support these queries without rewriting top-level booleans in conditions.
     (let [true-value  (get standard-literal-expression-defs "MyTrue")
           false-value (get standard-literal-expression-defs "MyFalse")]
-      (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions :expression-literals :nested-queries)
+      (mt/test-drivers (mt/normal-drivers-with-feature
+                        :basic-aggregations
+                        :expressions
+                        :expression-literals
+                        :left-join
+                        :nested-queries)
         (mt/dataset places-cam-likes
           (is (= [[3 0 0]]
                  (mt/formatted-rows
