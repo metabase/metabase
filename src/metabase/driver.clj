@@ -34,7 +34,7 @@
   `nil` (meaning subsequent queries will not attempt to change the session timezone) or something considered invalid
   by a given Database (meaning subsequent queries will fail to change the session timezone)."
   []
-  (doseq [{driver :engine, id :id, :as database} (t2/select 'Database)]
+  (doseq [{driver :engine, id :id, :as database} (t2/select :model/Database)]
     (try
       (notify-database-updated driver database)
       (catch Throwable e

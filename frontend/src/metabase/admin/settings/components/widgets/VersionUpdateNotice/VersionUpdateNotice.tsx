@@ -1,23 +1,29 @@
 import cx from "classnames";
 import { c, t } from "ttag";
 
-import {
-  getCurrentVersion,
-  getLatestVersion,
-} from "metabase/admin/settings/selectors";
+import { getCurrentVersion } from "metabase/admin/settings/selectors";
+import { useGetSettingQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { newVersionAvailable, versionIsLatest } from "metabase/lib/utils";
-import type { VersionInfoRecord } from "metabase-types/api";
+import type {
+  UpdateChannel,
+  VersionInfo,
+  VersionInfoRecord,
+} from "metabase-types/api";
 
 import S from "./VersionUpdateNotice.module.css";
 
 export function VersionUpdateNotice() {
+  const { data: versionInfo } = useGetSettingQuery("version-info") as {
+    data: VersionInfo;
+  };
   const currentVersion = useSelector(getCurrentVersion);
-  const latestVersion = useSelector(getLatestVersion);
+  const updateChannel = useSetting("update-channel") ?? "latest";
+  const latestVersion = versionInfo?.[updateChannel]?.version;
   const isHosted = useSetting("is-hosted?");
   const displayVersion = formatVersion(currentVersion);
 
@@ -25,12 +31,19 @@ export function VersionUpdateNotice() {
     return <CloudCustomers currentVersion={displayVersion} />;
   }
 
-  if (versionIsLatest({ currentVersion, latestVersion })) {
+  if (latestVersion && versionIsLatest({ currentVersion, latestVersion })) {
     return <OnLatestVersion currentVersion={displayVersion} />;
   }
 
-  if (newVersionAvailable({ currentVersion, latestVersion })) {
-    return <NewVersionAvailable currentVersion={displayVersion} />;
+  if (latestVersion && newVersionAvailable({ currentVersion, latestVersion })) {
+    return (
+      <NewVersionAvailable
+        currentVersion={displayVersion}
+        latestVersion={latestVersion}
+        updateChannel={updateChannel}
+        versionInfo={versionInfo}
+      />
+    );
   }
   return <DefaultUpdateMessage currentVersion={displayVersion} />;
 }
@@ -65,11 +78,17 @@ function DefaultUpdateMessage({ currentVersion }: { currentVersion: string }) {
   );
 }
 
-function NewVersionAvailable({ currentVersion }: { currentVersion: string }) {
-  const versionInfo = useSetting("version-info");
-  const updateChannel = useSetting("update-channel");
-  const latestVersion = useSelector(getLatestVersion);
-
+function NewVersionAvailable({
+  currentVersion,
+  latestVersion,
+  updateChannel,
+  versionInfo,
+}: {
+  currentVersion: string;
+  latestVersion: string;
+  updateChannel: UpdateChannel;
+  versionInfo?: VersionInfo | null;
+}) {
   const lastestVersionInfo = versionInfo?.[updateChannel];
 
   return (
