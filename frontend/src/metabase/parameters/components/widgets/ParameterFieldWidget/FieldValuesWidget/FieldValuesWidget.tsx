@@ -398,7 +398,7 @@ export const FieldValuesWidgetInner = forwardRef<
     disableSearch,
     options,
   });
-  const isNumericParameter = isNumeric(fields[0], parameter);
+  const isNumericParameter = isNumeric(parameter, fields);
 
   const parseNumericValue = (value: string) => {
     const number = parseNumber(value);

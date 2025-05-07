@@ -273,8 +273,11 @@ export function getValuesMode({
   return "none";
 }
 
-export function isNumeric(field: Field, parameter: Parameter) {
-  return isNumberParameter(parameter) || field.isNumeric();
+export function isNumeric(parameter: Parameter, fields: Field[]) {
+  return (
+    isNumberParameter(parameter) ||
+    (fields.length > 1 && fields.every((field) => field.isNumeric()))
+  );
 }
 
 export function getValue(option: FieldValue): RowValue {
