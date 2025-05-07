@@ -1,8 +1,8 @@
-import type { Database } from "metabase-types/api";
+import type { Database, DatabaseFeature } from "metabase-types/api";
 
 export function hasDatabaseFeature(
   database: Database,
-  feature: string | null | undefined,
+  feature: DatabaseFeature | string | null | undefined,
 ): boolean {
   if (!feature) {
     return true;
