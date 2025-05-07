@@ -665,7 +665,7 @@
   "Return a honey SQL query fragment that will limit another query to only selecting records visible to the supplied user
   by filtering on a supplied column or honeysql expression, using a the map of permission type->minimum permission-level.
 
-  Defaults to returning a no-op true statement 1=1."
+  Defaults to returning a no-op false statement 0=1."
   {:arglists '([model column-or-exp user-info perm-type->perm-level])}
   dispatch-on-model)
 
@@ -775,7 +775,7 @@
 
 (defmethod visible-filter-clause :default
   [_m _column-or-expression _user-info _perm-type->perm-level]
-  [:= [:inline 1] [:inline 1]])
+  [:= [:inline 0] [:inline 1]])
 
 ;;;; [[to-json]]
 
