@@ -519,9 +519,11 @@
                  :where  [:<= [:raw "rownum"] [:inline (+ offset items)]]}]
        :where  [:> :__rownum__ offset]})))
 
+;; Prior to version 23, Oracle does not have a separate boolean type and instead uses 0/1 which are mapped to
+;; :database-type "NUMBER" and :base-type :type/Decimal.
 (def ^:private boolean-field-types #{:type/Boolean :type/Decimal})
 
-;; Oracle 23+ supports booleans in conditional expressions. Once Oracle 21c is no longer supported, we can
+;; Oracle 23+ supports booleans in conditional expressions. Once Oracle 21c and 19c are no longer supported, we can
 ;; drop these boolean->comparison conversions.
 (defn- boolean->comparison [clause]
   (sql.qp.boolean-to-comparison/boolean->comparison clause boolean-field-types))

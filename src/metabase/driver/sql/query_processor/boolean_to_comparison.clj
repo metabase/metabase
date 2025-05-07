@@ -3,8 +3,8 @@
   like AND, OR, NOT, and CASE. These instead require a comparison operator, so boolean constants like 0 and 1 must be
   replaced with equivalent expressions like 1 = 1 or 0 = 1.
 
-  Drivers can call boolean->comparison or one of the convenience functions logical-op->honeysql or case->honeysql to convert
-  boolean literals and refs into comparison expressions in those clauses. See the sqlserver or oracle drivers for examples."
+  Drivers can call boolean->comparison to convert boolean literals and refs into comparison expressions. See the
+  sqlserver or oracle drivers for examples."
   (:require
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -28,9 +28,9 @@
 ;; https://learn.microsoft.com/en-us/sql/t-sql/language-elements/comparison-operators-transact-sql#boolean-data-type
 ;; https://learn.microsoft.com/en-us/sql/t-sql/language-elements/and-transact-sql
 ;;
-;; https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/About-SQL-Conditions.html#GUID-E9EC8434-CD48-4C01-B01B-85E5359D8DD7
-;; https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/Data-Types.html#GUID-285FFCA8-390D-4FA9-9A51-47B84EF5F83A
-;; https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/Logical-Conditions.html
+;; https://docs.oracle.com/en/database/oracle/oracle-database/21/sqlrf/About-SQL-Conditions.html#GUID-E9EC8434-CD48-4C01-B01B-85E5359D8DD7
+;; https://docs.oracle.com/en/database/oracle/oracle-database/21/sqlrf/Data-Types.html#GUID-285FFCA8-390D-4FA9-9A51-47B84EF5F83A
+;; https://docs.oracle.com/en/database/oracle/oracle-database/21/sqlrf/Logical-Conditions.html
 
 (def ^:private default-boolean-types #{:type/Boolean})
 
@@ -78,7 +78,11 @@
   This function expects to be called in a context where sql.qp/*inner-query* is bound, so that it can lookup
   expression refs by name, if necessary, to determine whether their value is a boolean literal.
 
-  Both the input `clause` and the output are MBQL."
+  Both the input `clause` and the output are MBQL.
+
+  If `boolean-field-types` is provided, it will override the set of types that will are considered boolean for
+  a :field ref. This is useful for drivers that do not have a separately distinguishable boolean type (for example
+  Oracle uses a numeric type)."
   ([clause]
    (boolean->comparison clause default-boolean-types))
   ([clause boolean-field-types]
