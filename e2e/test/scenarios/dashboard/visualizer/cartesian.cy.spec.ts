@@ -3,6 +3,7 @@ const { H } = cy;
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   ORDERS_COUNT_BY_CREATED_AT,
+  ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY,
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
   PIVOT_TABLE_CARD,
   PRODUCTS_AVERAGE_BY_CREATED_AT,
@@ -33,6 +34,10 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
     H.createQuestion(ORDERS_COUNT_BY_PRODUCT_CATEGORY, {
       idAlias: "ordersCountByProductCategoryQuestionId",
+      wrapId: true,
+    });
+    H.createQuestion(ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY, {
+      idAlias: "ordersCountByCreatedAtAndProductCategoryQuestionId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT, {
@@ -192,6 +197,46 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
         "exist",
       );
       cy.findByText("Created At: Month").should("exist");
+    });
+  });
+
+  it("should not drop dimensions when changing viz type to another cartesian chart (VIZ-648)", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.openQuestionsSidebar();
+
+    H.clickVisualizeAnotherWay(
+      ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY.name,
+    );
+
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+      H.switchToColumnsList();
+
+      H.selectVisualization("area");
+
+      H.assertDataSourceColumnSelected(
+        ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY.name,
+        "Count",
+      );
+      H.assertDataSourceColumnSelected(
+        ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY.name,
+        "Created At: Month",
+      );
+      H.assertDataSourceColumnSelected(
+        ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY.name,
+        "Product → Category",
+      );
+
+      H.assertDataSourceColumnSelected(
+        PRODUCTS_COUNT_BY_CREATED_AT.name,
+        "Count",
+      );
+      H.assertDataSourceColumnSelected(
+        PRODUCTS_COUNT_BY_CREATED_AT.name,
+        "Created At: Month",
+      );
     });
   });
 
