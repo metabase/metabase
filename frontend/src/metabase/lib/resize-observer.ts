@@ -28,7 +28,7 @@ function createResizeObserver() {
     });
   }
 
-  const observer = new ResizeObserverImpl(handler);
+  const observer = new JuggleResizeObserver(handler);
 
   return {
     observer,

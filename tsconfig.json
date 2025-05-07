@@ -2,6 +2,7 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "outDir": "build",
+    "jsx": "react-jsx",
     "paths": {
       "*": [
         "./frontend/src/*",

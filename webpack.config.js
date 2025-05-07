@@ -81,6 +81,41 @@ const CSS_CONFIG = {
   importLoaders: 1,
 };
 
+const aliases = {
+  /**
+   * These aliases are used by Eslint import/resolver rule.
+   * @see {@link https://github.com/metabase/metabase/blob/a59d8af558e6e0977fa02863a14611330c3489b0/.eslintrc.js#L155-L159}
+   *
+   * And by the SDK's webpack config {@link file://./webpack.embedding-sdk.config.js}
+   */
+  assets: ASSETS_PATH,
+  fonts: FONTS_PATH,
+  metabase: SRC_PATH,
+  "metabase-lib": LIB_SRC_PATH,
+  "metabase-enterprise": ENTERPRISE_SRC_PATH,
+  "metabase-types": TYPES_SRC_PATH,
+  "metabase-dev": `${SRC_PATH}/dev${devMode ? "" : "-noop"}.js`,
+  cljs: devMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
+  __support__: TEST_SUPPORT_PATH,
+  e2e: E2E_PATH,
+  style: SRC_PATH + "/css/core/index",
+  // NOTE @kdoh - 7/24/18
+  // icepick 2.x is es6 by defalt, to maintain backwards compatability
+  // with ie11 point to the minified version
+  icepick: __dirname + "/node_modules/icepick/icepick.min",
+  // conditionally load either the EE plugins file or a empty file in the CE code tree
+  "ee-plugins":
+    process.env.MB_EDITION === "ee"
+      ? ENTERPRISE_SRC_PATH + "/plugins"
+      : SRC_PATH + "/lib/noop",
+  "ee-overrides":
+    process.env.MB_EDITION === "ee"
+      ? ENTERPRISE_SRC_PATH + "/overrides"
+      : SRC_PATH + "/lib/noop",
+  embedding: EMBEDDING_SRC_PATH,
+  "embedding-sdk": SDK_SRC_PATH,
+};
+
 class OnScriptError {
   apply(compiler) {
     compiler.hooks.compilation.tap("OnScriptError", (compilation) => {
@@ -200,40 +235,7 @@ const config = {
       ".css",
       ".svg",
     ],
-    alias: {
-      /**
-       * These aliases are used by Eslint import/resolver rule.
-       * @see {@link https://github.com/metabase/metabase/blob/a59d8af558e6e0977fa02863a14611330c3489b0/.eslintrc.js#L155-L159}
-       *
-       * And by the SDK's webpack config {@link file://./webpack.embedding-sdk.config.js}
-       */
-      assets: ASSETS_PATH,
-      fonts: FONTS_PATH,
-      metabase: SRC_PATH,
-      "metabase-lib": LIB_SRC_PATH,
-      "metabase-enterprise": ENTERPRISE_SRC_PATH,
-      "metabase-types": TYPES_SRC_PATH,
-      "metabase-dev": `${SRC_PATH}/dev${devMode ? "" : "-noop"}.js`,
-      cljs: devMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
-      __support__: TEST_SUPPORT_PATH,
-      e2e: E2E_PATH,
-      style: SRC_PATH + "/css/core/index",
-      // NOTE @kdoh - 7/24/18
-      // icepick 2.x is es6 by defalt, to maintain backwards compatability
-      // with ie11 point to the minified version
-      icepick: __dirname + "/node_modules/icepick/icepick.min",
-      // conditionally load either the EE plugins file or a empty file in the CE code tree
-      "ee-plugins":
-        process.env.MB_EDITION === "ee"
-          ? ENTERPRISE_SRC_PATH + "/plugins"
-          : SRC_PATH + "/lib/noop",
-      "ee-overrides":
-        process.env.MB_EDITION === "ee"
-          ? ENTERPRISE_SRC_PATH + "/overrides"
-          : SRC_PATH + "/lib/noop",
-      embedding: EMBEDDING_SRC_PATH,
-      "embedding-sdk": SDK_SRC_PATH,
-    },
+    alias: aliases,
   },
   cache: useFilesystemCache
     ? {
