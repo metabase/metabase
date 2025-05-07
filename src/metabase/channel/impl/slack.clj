@@ -50,7 +50,7 @@
 
 (defn- mkdwn-link-text [url label]
   (if url
-    (let [url-length       (count url)
+    (let [url-length       (count  url)
           const-length     3
           max-label-length (- block-text-length-limit url-length const-length)
           label' (escape-mkdwn label)]

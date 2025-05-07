@@ -227,7 +227,7 @@
    [{:type "header" :text {:type "plain_text" :text "Aviary KPIs" :emoji true}}
     {:type "section"
      :fields
-     [{:type "mrkdwn" :text (format "<https://testmb.com/dashboard/%d|*Sent from Metabase by Rasta Toucan*>" dashboard-id)}]}]
+     [{:type "mrkdwn" :text (format "<https://testmb.com/dashboard/%d|*Sent from Metabase Test by Rasta Toucan*>" dashboard-id)}]}]
    (apply concat
           (for [card-id card-ids]
             [{:type "section"
@@ -372,8 +372,7 @@
                                              :row 1
                                              :col 1
                                              :visualization_settings {:text "# header"}}]
-        (mt/with-temporary-setting-values [site-name "Metabase Test"]
-          (thunk))))
+        (thunk)))
 
     :assert
     {:email
@@ -411,8 +410,7 @@
                                              :row 1
                                              :col 1
                                              :visualization_settings {:text "# header, quote isn't escaped" :virtual_card {:display "heading"}}}]
-        (mt/with-temporary-setting-values [site-name "Metabase Test"]
-          (thunk))))
+        (thunk)))
 
     :assert
     {:email
@@ -448,8 +446,7 @@
 
       :fixture
       (fn [_ thunk]
-        (mt/with-temporary-setting-values [site-name "Metabase Test"]
-          (thunk)))
+        (thunk))
 
       :assert
       {:email
@@ -489,9 +486,9 @@
 
     :fixture
     (fn [{dashboard-id :dashboard-id} thunk]
-      (mt/with-temporary-setting-values [site-name "Metabase Test"]
-        (with-link-card-fixture-for-dashboard (t2/select-one :model/Dashboard :id dashboard-id) [_]
-          (thunk))))
+      (with-link-card-fixture-for-dashboard (t2/select-one :model/Dashboard :id dashboard-id) [_]
+        (thunk)))
+
     :assert
     {:email
      (fn [_ [email]]
@@ -879,33 +876,32 @@
 
     :fixture
     (fn [{dashboard-id :dashboard-id} thunk]
-      (mt/with-temporary-setting-values [site-name "Metabase Test"]
-        (mt/with-temp
-          [:model/DashboardTab {tab-id-2 :id}    {:name         "The second tab"
-                                                  :position     1
-                                                  :dashboard_id dashboard-id}
-           :model/DashboardTab {tab-id-1 :id}    {:name         "The first tab"
-                                                  :position     0
-                                                  :dashboard_id dashboard-id}
-           :model/DashboardCard       _                 {:dashboard_id           dashboard-id
-                                                         :dashboard_tab_id       tab-id-1
-                                                         :row                    1
-                                                         :visualization_settings {:text "Card 1 tab-1"}}
-           :model/DashboardCard       _                 {:dashboard_id           dashboard-id
-                                                         :dashboard_tab_id       tab-id-1
-                                                         :row                    2
-                                                         :visualization_settings {:text "Card 2 tab-1"}}
-           :model/DashboardCard       _                 {:dashboard_id           dashboard-id
-                                                         :dashboard_tab_id       tab-id-2
-                                                         :row                    1
-                                                         :visualization_settings {:text "Card 1 tab-2"}}
-           :model/DashboardCard       _                 {:dashboard_id           dashboard-id
-                                                         :dashboard_tab_id       tab-id-2
-                                                         :row                    2
-                                                         :visualization_settings {:text "Card 2 tab-2"}}]
-          ;; dashcards from this setup is currently not belong to any tabs, we should make sure them belong to one
-          (t2/update! :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id nil {:dashboard_tab_id tab-id-1})
-          (thunk))))
+      (mt/with-temp
+        [:model/DashboardTab {tab-id-2 :id}    {:name         "The second tab"
+                                                :position     1
+                                                :dashboard_id dashboard-id}
+         :model/DashboardTab {tab-id-1 :id}    {:name         "The first tab"
+                                                :position     0
+                                                :dashboard_id dashboard-id}
+         :model/DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                       :dashboard_tab_id       tab-id-1
+                                                       :row                    1
+                                                       :visualization_settings {:text "Card 1 tab-1"}}
+         :model/DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                       :dashboard_tab_id       tab-id-1
+                                                       :row                    2
+                                                       :visualization_settings {:text "Card 2 tab-1"}}
+         :model/DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                       :dashboard_tab_id       tab-id-2
+                                                       :row                    1
+                                                       :visualization_settings {:text "Card 1 tab-2"}}
+         :model/DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                       :dashboard_tab_id       tab-id-2
+                                                       :row                    2
+                                                       :visualization_settings {:text "Card 2 tab-2"}}]
+        ;; dashcards from this setup is currently not belong to any tabs, we should make sure them belong to one
+        (t2/update! :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id nil {:dashboard_tab_id tab-id-1})
+        (thunk)))
     :assert
     {:email
      (fn [_ [email]]

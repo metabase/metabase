@@ -211,9 +211,11 @@
 (def channel-type->fixture
   {:channel/email (fn [thunk] (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                                                  email-smtp-port 587
-                                                                 site-url        "https://testmb.com/"]
+                                                                 site-url        "https://testmb.com/"
+                                                                 site-name       "Metabase Test"]
                                 (thunk)))
-   :channel/slack (fn [thunk] (mt/with-temporary-setting-values [site-url "https://testmb.com/"]
+   :channel/slack (fn [thunk] (mt/with-temporary-setting-values [site-url  "https://testmb.com/"
+                                                                 site-name "Metabase Test"]
                                 (mt/with-dynamic-fn-redefs [slack/upload-file! (fn [_file fname]
                                                                                  {:url (format "https://uploaded.com/%s" fname)
                                                                                   :id  fname})]
