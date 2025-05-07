@@ -1,28 +1,26 @@
-/*
- * This file is subject to the terms and conditions defined in
- * file 'LICENSE-EMBEDDING.txt', which is part of this source code package.
- */
-
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-
-import { isWithinIframe } from "metabase/lib/dom";
 
 import { SdkIframeEmbedRoute } from "./components/SdkIframeEmbedRoute";
 
 function _init() {
+  document.body.style.margin = "0";
+  document.body.style.backgroundColor = "transparent";
+
+  const rootElement = document.getElementById("root");
+
+  if (!rootElement) {
+    return;
+  }
+
   try {
-    const root = createRoot(document.getElementById("root")!);
+    const root = createRoot(rootElement);
 
     root.render(
       <StrictMode>
         <SdkIframeEmbedRoute />
       </StrictMode>,
     );
-
-    if (isWithinIframe()) {
-      document.body.style.backgroundColor = "transparent";
-    }
   } catch (error) {
     console.error(error);
   }
