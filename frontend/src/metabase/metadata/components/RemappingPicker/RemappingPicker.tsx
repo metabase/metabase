@@ -34,14 +34,14 @@ export const RemappingPicker = ({ comboboxProps, field, ...props }: Props) => {
           ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
         },
   );
-
-  const [createFieldDimension] = useCreateFieldDimensionMutation();
-  const [deleteFieldDimension] = useDeleteFieldDimensionMutation();
   const value = useMemo(() => getValue(field), [field]);
   const options = useMemo(
     () => getOptions(field, fkTargetField),
     [field, fkTargetField],
   );
+
+  const [createFieldDimension] = useCreateFieldDimensionMutation();
+  const [deleteFieldDimension] = useDeleteFieldDimensionMutation();
 
   const handleChange = (value: RemappingValue) => {
     if (value === "original") {
