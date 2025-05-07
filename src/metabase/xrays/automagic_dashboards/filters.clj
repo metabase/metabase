@@ -84,26 +84,24 @@
       (nil? (:card dashcard)) dashcard
       mappings                (update dashcard :parameter_mappings concat mappings))))
 
-(defn- filter-type
-  "Return filter type for a given field."
+(defn- filter-type-info
+  "Return filter type and section id for a given field."
   [{:keys [effective_type semantic_type] :as _field}]
   (cond
     (or (isa? effective_type :type/Date) (isa? effective_type :type/DateTime))
-    "date/all-options"
+    {:type "date/all-options"
+     :sectionId "date"}
 
     (or (isa? effective_type :type/Text) (isa? effective_type :type/TextLike))
-    "string/="
+    {:type "string/="
+     :sectionId (if (isa? semantic_type :type/Address) "location" "string")}
 
     (isa? effective_type :type/Number)
-    (if (or (isa? semantic_type :type/PK) (isa? semantic_type :type/FK)) "id" "number/=")))
-
-(defn- filter-section-id
-  "Return filter section id for a given field. Only available for certain fields."
-  [{:keys [effective_type semantic_type] :as _field}]
-  (when (and (or (isa? effective_type :type/Text)
-                 (isa? effective_type :type/TextLike))
-             (isa? semantic_type :type/Address))
-    "location"))
+    (if (or (isa? semantic_type :type/PK) (isa? semantic_type :type/FK))
+      {:type "id"
+       :sectionId "id"}
+      {:type "number/="
+       :sectionId "number"})))
 
 (def ^:private ^{:arglists '([dimensions])} remove-unqualified
   (partial remove (fn [{:keys [fingerprint]}]
@@ -133,11 +131,9 @@
                 (-> dashboard
                     (assoc :dashcards dashcards-new)
                     (update :parameters conj (merge {:id   filter-id
-                                                     :type (filter-type candidate)
                                                      :name (:display_name candidate)
                                                      :slug (:name candidate)}
-                                                    (when-let [section-id (filter-section-id candidate)]
-                                                      {:sectionId section-id}))))
+                                                    (filter-type-info candidate))))
                 dashboard)))
           dashboard))))
 

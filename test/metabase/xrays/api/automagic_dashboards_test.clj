@@ -72,20 +72,24 @@
 (deftest xray-dashboard-parameter-types-test
   (testing "Should set correct parameter types"
     (mt/dataset test-data
-      (is (=? {:parameters [{:name "Created At"
-                             :type "date/all-options"}
-                            {:name "Category"
-                             :type "string/="}]}
+      (is (=? {:parameters [{:name      "Created At"
+                             :type      "date/all-options"
+                             :sectionId "date"}
+                            {:name      "Category"
+                             :type      "string/="
+                             :sectionId "string"}]}
               (mt/user-http-request :crowberto :get 200 (format "automagic-dashboards/table/%d" (mt/id :products)))))
-      (is (=? {:parameters [{:name "Created At"
-                             :type "date/all-options"}
-                            {:name "Source"
-                             :type "string/="}
-                            {:name "State"
-                             :type "string/="
+      (is (=? {:parameters [{:name      "Created At"
+                             :type      "date/all-options"
+                             :sectionId "date"}
+                            {:name      "Source"
+                             :type      "string/="
+                             :sectionId "string"}
+                            {:name      "State"
+                             :type      "string/="
                              :sectionId "location"}
-                            {:name "City"
-                             :type "string/="
+                            {:name      "City"
+                             :type      "string/="
                              :sectionId "location"}]}
               (mt/user-http-request :crowberto :get 200 (format "automagic-dashboards/table/%d" (mt/id :people))))))))
 
