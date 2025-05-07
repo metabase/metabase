@@ -86,7 +86,7 @@
 
 (defn- filter-type
   "Return filter type for a given field."
-  [{:keys [effective_type semantic_type] :as field}]
+  [{:keys [effective_type semantic_type] :as _field}]
   (cond
     (or (isa? effective_type :type/Date) (isa? effective_type :type/DateTime))
     "date/all-options"
@@ -99,7 +99,7 @@
 
 (defn- filter-section-id
   "Return filter section id for a given field. Only available for certain fields."
-  [{:keys [effective_type semantic_type] :as field}]
+  [{:keys [effective_type semantic_type] :as _field}]
   (when (and (or (isa? effective_type :type/Text)
                  (isa? effective_type :type/TextLike))
              (isa? semantic_type :type/Address))

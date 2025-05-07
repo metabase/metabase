@@ -2,7 +2,6 @@
   "Ported from frontend/src/metabase-lib/types/utils/isa.js"
   (:refer-clojure :exclude [isa? any? boolean? number? string? integer?])
   (:require
-   [medley.core :as m]
    [metabase.lib.types.constants :as lib.types.constants]
    [metabase.types]))
 
