@@ -1,4 +1,4 @@
-(ns metabase-enterprise.auth-provider
+(ns metabase-enterprise.auth-provider.impl
   (:require
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.http :as u.http]))
