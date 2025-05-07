@@ -43,6 +43,7 @@ import {
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_METABOT,
+  PLUGIN_TENANTS,
 } from "metabase/plugins";
 
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
@@ -94,6 +95,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
 
           <Route path="" component={PeopleListingApp}>
             <ModalRoute path="new" modal={NewUserModal} noWrap />
+            {PLUGIN_TENANTS.userStrategyRoute}
           </Route>
 
           <Route path=":userId" component={PeopleListingApp}>
@@ -117,6 +119,10 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       <Route path="permissions" component={IsAdmin}>
         {getAdminPermissionsRoutes(store)}
       </Route>
+
+      {/* Tenants */}
+      {PLUGIN_TENANTS.tenantsRoutes}
+
       {/* PERFORMANCE */}
       <Route
         path="performance"
@@ -142,6 +148,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         </Route>
       </Route>
       {PLUGIN_METABOT.AdminRoute}
+      {/* Troubleshooting */}
       <Route path="tools" component={createAdminRouteGuard("tools")}>
         <Route title={t`Tools`} component={ToolsApp}>
           <IndexRedirect to="help" />
