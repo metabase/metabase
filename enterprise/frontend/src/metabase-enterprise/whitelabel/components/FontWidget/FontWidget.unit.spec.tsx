@@ -5,6 +5,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
+import { setupContentTranslationEndpoints } from "__support__/server-mocks/content-translation";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { findRequests } from "__support__/utils";
 import type { EnterpriseSettings } from "metabase-types/api";
@@ -24,6 +25,7 @@ const setup = async (
     ...overrides,
   });
   setupPropertiesEndpoints(settings);
+  setupContentTranslationEndpoints();
   setupSettingsEndpoints([
     {
       key: "application-font",
