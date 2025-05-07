@@ -3,7 +3,6 @@ import fetchMock from "fetch-mock";
 
 import {
   setupCollectionByIdEndpoint,
-  setupCollectionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -70,9 +69,6 @@ async function setup({
   const models = hasModels ? [createMockCard({ type: "model" })] : [];
 
   setupDatabasesEndpoints(databases);
-  setupCollectionsEndpoints({
-    collections: [COLLECTION],
-  });
   setupCollectionByIdEndpoint({
     collections: [COLLECTION],
   });
@@ -118,15 +114,15 @@ describe("NewItemMenu", () => {
     jest.restoreAllMocks();
   });
 
-  describe("New Collection", () => {
-    it("should open new collection modal on click", async () => {
-      setup();
-      await userEvent.click(await screen.findByText("Collection"));
-      const modal = await screen.findByRole("dialog", {
-        name: /new collection/i,
-      });
-      expect(modal).toBeVisible();
-    });
+  it("should properly render menu items", async () => {
+    setup();
+    expect(await screen.findByText("Question")).toBeInTheDocument();
+    expect(await screen.findByText("SQL query")).toBeInTheDocument();
+    expect(await screen.findByText("Dashboard")).toBeInTheDocument();
+    expect(await screen.findByText("Model")).toBeInTheDocument();
+    expect(await screen.findByText("Action")).toBeInTheDocument();
+    expect(screen.queryByText("Metric")).not.toBeInTheDocument();
+    expect(screen.queryByText("Collection")).not.toBeInTheDocument();
   });
 
   describe("New Dashboard", () => {
@@ -177,9 +173,6 @@ describe("NewItemMenu", () => {
         screen.getByRole("listitem", { name: "Dashboard" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("listitem", { name: "Collection" }),
-      ).toBeInTheDocument();
-      expect(
         screen.getByRole("listitem", { name: "Model" }),
       ).toBeInTheDocument();
       expect(
@@ -200,9 +193,6 @@ describe("NewItemMenu", () => {
       ).toBeInTheDocument();
       expect(
         screen.getByRole("listitem", { name: "Dashboard" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("listitem", { name: "Collection" }),
       ).toBeInTheDocument();
       expect(
         screen.getByRole("listitem", { name: "Model" }),
@@ -230,9 +220,6 @@ describe("NewItemMenu", () => {
         screen.getByRole("listitem", { name: "Dashboard" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("listitem", { name: "Collection" }),
-      ).toBeInTheDocument();
-      expect(
         screen.getByRole("listitem", { name: "Model" }),
       ).toBeInTheDocument();
       expect(
@@ -256,9 +243,6 @@ describe("NewItemMenu", () => {
       ).toBeInTheDocument();
       expect(
         screen.getByRole("listitem", { name: "Dashboard" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("listitem", { name: "Collection" }),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("listitem", { name: "Model" }),

@@ -15,7 +15,6 @@
    [metabase.sync.sync-metadata.fks :as sync-fks]
    [metabase.sync.sync-metadata.indexes :as sync-indexes]
    [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
-   [metabase.sync.sync-metadata.sync-table-privileges :as sync-table-privileges]
    [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
@@ -58,9 +57,7 @@
    ;; Sync index info if the database supports it
    (sync-util/create-sync-step "sync-indexes" sync-indexes/maybe-sync-indexes! sync-indexes-summary)
    ;; Sync the metadata metadata table if it exists.
-   (sync-util/create-sync-step "sync-metabase-metadata" #(metabase-metadata/sync-metabase-metadata! % db-metadata))
-   ;; Now sync the table privileges if the database enables it
-   (sync-util/create-sync-step "sync-table-privileges" sync-table-privileges/sync-table-privileges!)])
+   (sync-util/create-sync-step "sync-metabase-metadata" #(metabase-metadata/sync-metabase-metadata! % db-metadata))])
 
 (mu/defn sync-db-metadata!
   "Sync the metadata for a Metabase `database`. This makes sure child Table & Field objects are synchronized."
