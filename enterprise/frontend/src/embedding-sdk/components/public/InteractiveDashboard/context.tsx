@@ -13,7 +13,7 @@ import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { DashboardActionKey } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
 import type Question from "metabase-lib/v1/Question";
 
-type InteractiveDashboardContextType = Partial<{
+export type InteractiveDashboardContextType = Partial<{
   plugins: MetabasePluginsConfig;
   dashboardActions: DashboardActionKey[];
   onEditQuestion?: (question: Question) => void;
