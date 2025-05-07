@@ -485,16 +485,42 @@
           (log/errorf e "Chain filter error\n%s" (u/pprint-to-str (u/all-ex-data e)))
           (throw e))))))
 
-;; TODO handle locked parameters
 (defn dashboard-param-remapped-value
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `dashboard`."
   ([token param-key value]
    (dashboard-param-remapped-value token param-key value nil))
   ([token param-key value {:keys [preview] :or {preview false}}]
-   (let [unsigned-token (embed/unsign token)
-         dashboard-id   (unsigned-token->dashboard-id unsigned-token)
-         _              (when-not preview (check-embedding-enabled-for-dashboard dashboard-id))
-         dashboard      (t2/select-one :model/Dashboard :id dashboard-id)]
-     (binding [api/*current-user-permissions-set* (atom #{"/"})
-               api/*is-superuser?*                true]
-       (api.dashboard/dashboard-param-remapped-value dashboard param-key value)))))
+   (let [unsigned-token             (embed/unsign token)
+         dashboard-id               (unsigned-token->dashboard-id unsigned-token)
+         _                          (when-not preview (check-embedding-enabled-for-dashboard dashboard-id))
+         dashboard                  (t2/select-one :model/Dashboard :id dashboard-id)
+         slug-token-params          (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+         parameters                 (:parameters dashboard)
+         id->slug                   (into {} (map (juxt :id :slug) parameters))
+         slug->id                   (into {} (map (juxt :slug :id) parameters))
+         published-embedding-params (:embedding_params dashboard)
+         ;; when previewing an embed, embedding-params should come from the token,
+         ;; since a user may be changing them prior to publishing the Embed, which is what actually persists
+         ;; the settings to the Appdb.
+         embedding-params           (if preview
+                                      (merge published-embedding-params
+                                             (get unsigned-token :_embedding_params))
+                                      published-embedding-params)
+         param-slug                 (get id->slug param-key)
+         locked-param-ids           (into #{}
+                                          (keep (fn [[param param-type]]
+                                                  (when (= param-type "locked")
+                                                    (-> param name slug->id))))
+                                          embedding-params)]
+     ;; you can only search for values of a parameter if it is ENABLED and NOT PRESENT in the JWT.
+     (when (not= (get embedding-params (keyword param-slug)) "enabled")
+       (throw (ex-info (tru "Cannot search for values: {0} is not an enabled parameter." (pr-str param-slug))
+                       {:status-code 400})))
+     (when (get slug-token-params (keyword param-slug))
+       (throw (ex-info (tru "You can''t specify a value for {0} if it''s already set in the JWT." (pr-str param-slug))
+                       {:status-code 400})))
+     (let [constraints (-> (param-values-merged-params id->slug slug->id embedding-params slug-token-params {})
+                           (select-keys locked-param-ids))]
+       (binding [api/*current-user-permissions-set* (atom #{"/"})
+                 api/*is-superuser?*                true]
+         (api.dashboard/dashboard-param-remapped-value dashboard param-key value constraints))))))

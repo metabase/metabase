@@ -1301,40 +1301,43 @@
     (binding [qp.perms/*param-values-query* true]
       (param-values dashboard param-key constraint-param-key->value query))))
 
-(defn- pk-field-of-fk-pk-pair
+(defn- fk-pk-pair?
   [[field-id1 field-id2 & others]]
   (when (and (nil? others)
              (pos-int? field-id1)
              (pos-int? field-id2))
     (let [[field1 field2 :as fields] (t2/select :model/Field :id [:in [field-id1 field-id2]])]
-      (when (= (count fields) 2)
-        (cond (= (:fk_target_field_id field1) (:id field2)) field2
-              (= (:fk_target_field_id field2) (:id field1)) field1)))))
+      (and (= (count fields) 2)
+           (or (= (:fk_target_field_id field1) (:id field2))
+               (= (:fk_target_field_id field2) (:id field1)))))))
 
 (defn dashboard-param-remapped-value
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `dashboard`."
-  [dashboard param-key value]
-  ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
-  (let [dashboard (-> dashboard
-                      (t2/hydrate :resolved-params)
-                      ;; whatever the param's type, we want an equality constraint
-                      (m/update-existing-in [:resolved-params param-key] assoc :type :id))
-        param     (get-in dashboard [:resolved-params param-key])]
-    (case (:values_source_type param)
-      "static-list" (m/find-first #(and (vector? %) (= (count %) 2) (= (first %) value))
-                                  (get-in param [:values_source_config :values]))
-      "card"        nil
-      nil           (let [field-ids (into #{} (map :field-id (param->fields param)))]
-                      (if (= (count field-ids) 1)
-                        (-> (chain-filter dashboard param-key {param-key value})
-                            :values
-                            first)
-                        (when-let [pk-field (pk-field-of-fk-pk-pair field-ids)]
-                          (when-let [name-value (chain-filter/name-for-pk pk-field value)]
-                            [value name-value]))))
-      (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type param))
-                      {:status-code 400
-                       :parameter param})))))
+  ([dashboard param-key value]
+   (dashboard-param-remapped-value dashboard param-key value nil))
+  ([dashboard param-key value constraint-param-key->value]
+   (when (find constraint-param-key->value param-key)
+     (throw (ex-info (tru "Getting the remapped value for a constrained parameter is not supported")
+                     {:status-code 400
+                      :parameter param-key})))
+   (let [dashboard (-> dashboard
+                       (t2/hydrate :resolved-params)
+                       ;; whatever the param's type, we want an equality constraint
+                       (m/update-existing-in [:resolved-params param-key] assoc :type :id))
+         param     (get-in dashboard [:resolved-params param-key])]
+     (case (:values_source_type param)
+       "static-list" (m/find-first #(and (vector? %) (= (count %) 2) (= (first %) value))
+                                   (get-in param [:values_source_config :values]))
+       "card"        nil
+       nil           (let [field-ids (into #{} (map :field-id (param->fields param)))]
+                       (when (or (= (count field-ids) 1)
+                                 (fk-pk-pair? field-ids))
+                         (-> (chain-filter dashboard param-key (assoc constraint-param-key->value param-key value))
+                             :values
+                             first)))
+       (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type param))
+                       {:status-code 400
+                        :parameter param}))))))
 
 (api.macros/defendpoint :get "/:id/params/:param-key/remapping"
   "Fetch the remapped value for a given value of the parameter with ID `:param-key`.
