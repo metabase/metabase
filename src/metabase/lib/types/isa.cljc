@@ -90,9 +90,9 @@
   (field-type? ::lib.types.constants/category column))
 
 (defn ^:export location?
-  "Is `column` of a location type?"
+  "Is `column` a location?"
   [column]
-  (field-type? ::lib.types.constants/location column))
+  (clojure.core/isa? (:semantic-type column) :type/Location))
 
 (defn ^:export description?
   "Is `column` a description?"
