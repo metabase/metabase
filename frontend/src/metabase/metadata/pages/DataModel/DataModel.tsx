@@ -70,11 +70,7 @@ export const DataModel = ({ params }: Props) => {
               )}
             </LoadingAndErrorWrapper>
           ) : (
-            <TablePicker
-              databaseId={databaseId}
-              schemaId={schemaId}
-              tableId={tableId}
-            />
+            <TablePicker databaseId={databaseId} schemaId={schemaId} />
           )}
         </Box>
       </Stack>
