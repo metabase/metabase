@@ -96,7 +96,7 @@ export const MembershipSelect = ({
           aria-label="group-summary"
         >
           <GroupSummary
-            mr="sm"
+            me="sm"
             groups={groups}
             selectedGroupIds={selectedGroupIds}
           />

@@ -220,7 +220,7 @@ const GroupDetailInner = ({
       title={
         <Fragment>
           {getGroupNameLocalized(group ?? {})}
-          <Box component="span" c="text-light" ml="0.5rem">
+          <Box component="span" c="text-light" ms="sm">
             {ngettext(
               msgid`${group.members.length} member`,
               `${group.members.length} members`,

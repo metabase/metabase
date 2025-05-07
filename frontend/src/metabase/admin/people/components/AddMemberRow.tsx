@@ -84,7 +84,7 @@ export function AddMemberRow({
                     size="xl"
                     bg="bg-medium"
                     c="text-primary"
-                    ml={index > 0 ? "sm" : ""}
+                    ms={index > 0 ? "sm" : ""}
                     withRemoveButton
                     onRemove={() => handleRemoveUser(user)}
                   >
@@ -107,7 +107,7 @@ export function AddMemberRow({
                   onClick={() => handleAddUser(user)}
                 >
                   <UserAvatar bg={userToColor(user)} user={user} />
-                  <Text fw="700" size="lg">
+                  <Text fw="bold" size="lg">
                     {user.common_name}
                   </Text>
                 </Flex>

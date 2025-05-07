@@ -254,12 +254,13 @@ function GroupRow({
           align="center"
           to={"/admin/people/groups/" + group.id}
           className={CS.link}
+          gap="md"
         >
           <UserAvatar
             user={{ first_name: getGroupNameLocalized(group) }}
             bg={backgroundColor}
           />
-          <Box component="span" ml="1rem" fw={700} c="brand">
+          <Box component="span" fw={700} c="brand">
             {getGroupNameLocalized(group)}
           </Box>
         </Flex>
@@ -268,7 +269,7 @@ function GroupRow({
         {group.member_count || 0}
         <ApiKeyCount apiKeys={apiKeys} />
       </td>
-      <Box component="td" ta="right">
+      <Box component="td" ta="end">
         {showActionsButton ? (
           <ActionsPopover
             group={group}
