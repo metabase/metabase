@@ -22,6 +22,12 @@ export function dataSource(dataSourceName: string) {
     .parents("[data-testid='data-source-list-item']");
 }
 
+/**
+ * Unselects a data source.
+ * Only works in "ColumnList" mode, despite the name...
+ *
+ * @param dataSourceName the data source name
+ */
 export function removeDataSource(dataSourceName: string) {
   dataSource(dataSourceName)
     .findAllByLabelText("Remove")
