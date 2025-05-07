@@ -374,6 +374,7 @@
           metabase.models.collection-permission-graph-revision
           metabase.models.collection.graph
           metabase.models.collection.root
+          metabase.models.content-translation
           metabase.models.dashboard
           metabase.models.dashboard-card
           metabase.models.dashboard-tab
@@ -779,6 +780,10 @@
   enterprise/content-verification
   {:api  #{metabase-enterprise.content-verification.api.routes}
    :uses #{api models moderation util enterprise/api}}
+
+  enterprise/content-translation
+  {:api  #{metabase-enterprise.content-translation.api.routes}
+   :uses #{api models db util enterprise/api}}
 
   enterprise/core
   {:api  #{metabase-enterprise.core.init}

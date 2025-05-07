@@ -40,6 +40,7 @@
     :model/CardBookmark
     :model/ChannelTemplate
     :model/CollectionBookmark
+    :model/ContentTranslation
     :model/DashboardBookmark
     :model/DataPermissions
     :model/DatabaseRouter
