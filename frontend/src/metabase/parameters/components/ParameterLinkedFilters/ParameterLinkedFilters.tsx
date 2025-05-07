@@ -131,7 +131,7 @@ function ParametersFromOtherSource(): JSX.Element {
         <SectionMessage>
           {jt`For Native Questions use ${(
             <ExternalLink key="field-filters" role="link" href={docsUrl}>
-              Filters
+              Field Filters
             </ExternalLink>
           )} to make Linked Filters available here.`}
         </SectionMessage>
