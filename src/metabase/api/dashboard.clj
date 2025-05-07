@@ -1319,11 +1319,12 @@
           param
           value
           #(let [field-ids (into #{} (map :field-id (param->fields param)))]
-             (when (or (= (count field-ids) 1)
-                       (custom-values/pk-field-of-fk-pk-pair field-ids))
-               (-> (chain-filter dashboard param-key (assoc constraint-param-key->value param-key value))
-                   :values
-                   first)))))
+             (-> (if (= (count field-ids) 1)
+                   (chain-filter dashboard param-key (assoc constraint-param-key->value param-key value))
+                   (when-let [pk-field-id (:id (custom-values/pk-field-of-fk-pk-pair field-ids))]
+                     (chain-filter/chain-filter pk-field-id [{:field-id pk-field-id, :op :=, :value value}] :limit 1)))
+                 :values
+                 first))))
        [value])))
 
 (api.macros/defendpoint :get "/:id/params/:param-key/remapping"
