@@ -415,6 +415,7 @@
                               :standard-deviation-aggregations true
                               :test/jvm-timezone-setting       false
                               :identifiers-with-spaces         true
+                              :saved-question-sandboxing       false
                               :index-info                      true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 

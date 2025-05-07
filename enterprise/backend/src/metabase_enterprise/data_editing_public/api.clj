@@ -1,6 +1,6 @@
 (ns metabase-enterprise.data-editing-public.api
   (:require
-   [metabase-enterprise.data-editing.data-editing :as data-editing]
+   [metabase-enterprise.data-editing.core :as data-editing]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [toucan2.core :as t2]))

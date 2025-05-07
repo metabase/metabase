@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [metabase.util.urls :as urls])

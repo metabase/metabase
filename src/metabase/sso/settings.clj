@@ -1,9 +1,8 @@
 (ns metabase.sso.settings
   (:require
    [clojure.string :as str]
-   [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.models.setting.multi-setting :refer [define-multi-setting define-multi-setting-impl]]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting :refer [defsetting define-multi-setting define-multi-setting-impl]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json])

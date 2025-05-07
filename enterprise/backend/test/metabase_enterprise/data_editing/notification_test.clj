@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-editing.test-util :as data-editing.tu]
    [metabase.actions.test-util :as actions.tu]
-   [metabase.events.notification :as events.notification]
+   [metabase.notification.events.notification :as events.notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))

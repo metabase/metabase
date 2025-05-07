@@ -3,6 +3,7 @@ import type { MockCall } from "fetch-mock";
 import fetchMock from "fetch-mock";
 import { setupJestCanvasMock } from "jest-canvas-mock";
 
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import {
   screen,
   waitFor,
@@ -27,6 +28,10 @@ import {
 registerVisualizations();
 
 describe("QueryBuilder", () => {
+  beforeEach(() => {
+    setupLastDownloadFormatEndpoints();
+  });
+
   afterEach(() => {
     jest.resetAllMocks();
     setupJestCanvasMock();

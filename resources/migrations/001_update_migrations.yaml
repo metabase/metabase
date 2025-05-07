@@ -11588,6 +11588,40 @@ databaseChangeLog:
               UPDATE permissions_group SET magic_group_type='admin' WHERE name='Administrators';
 
   - changeSet:
+      id: v55.2025-04-22T05:42:48
+      author: johnswanson
+      comment: Add `permissions_group.is_tenant_group`
+      preConditions: # Not required
+      changes:
+        - addColumn:
+            tableName: permissions_group
+            columns:
+              - column:
+                  name: is_tenant_group
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: "true iff this is a Tenant Group"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v55.2025-04-22T05:54:51
+      author: johnswanson
+      comment: Add `core_user.tenant_id`
+      preConditions: #
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: tenant_id
+                  type: int
+                  remarks: The ID of the tenant for this user
+                  constraints:
+                    unique: false
+                    nullable: true
+
+  - changeSet:
       id: v55.2025-04-29T10:52:01
       author: crisptrutski
       comment: A table for generating atomic sequence numbers

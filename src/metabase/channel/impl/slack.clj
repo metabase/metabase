@@ -4,10 +4,10 @@
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
+   [metabase.channel.slack :as slack]
    [metabase.channel.template.core :as channel.template]
-   [metabase.integrations.slack :as slack]
    [metabase.models.params.shared :as shared.params]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.malli :as mu]
    [metabase.util.markdown :as markdown]
    [metabase.util.urls :as urls]))

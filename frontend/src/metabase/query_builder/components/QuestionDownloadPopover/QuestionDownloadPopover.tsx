@@ -2,6 +2,12 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
+import type {
+  ExportFormat,
+  TableExportFormat,
+} from "metabase/common/types/export";
+import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
+import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import {
   ActionIcon,
@@ -11,6 +17,7 @@ import {
   Popover,
   Tooltip,
 } from "metabase/ui";
+import { canSavePng } from "metabase/visualizations";
 import type { Dataset } from "metabase-types/api";
 
 import { QuestionDownloadWidget } from "../QuestionDownloadWidget";
@@ -28,7 +35,19 @@ export type QuestionDownloadPopoverProps = {
   Pick<ActionIconProps, "variant"> &
   Partial<Omit<UseDownloadDataParams, "question" | "result">>;
 
-const QuestionDownloadPopover = ({
+export type FormatPreference = {
+  last_download_format: ExportFormat;
+  last_table_download_format: TableExportFormat;
+};
+
+export type BaseQuestionDownloadPopoverProps = QuestionDownloadPopoverProps & {
+  formatPreference?: FormatPreference;
+  setFormatPreference?: (
+    preference: FormatPreference,
+  ) => Promise<{ data?: unknown; error?: unknown }>;
+};
+
+const BaseQuestionDownloadPopover = ({
   className,
   question,
   result,
@@ -39,7 +58,9 @@ const QuestionDownloadPopover = ({
   visualizationSettings,
   variant,
   floating,
-}: QuestionDownloadPopoverProps) => {
+  formatPreference,
+  setFormatPreference,
+}: BaseQuestionDownloadPopoverProps) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const [, handleDownload] = useDownloadData({
@@ -72,6 +93,8 @@ const QuestionDownloadPopover = ({
         <QuestionDownloadWidget
           question={question}
           result={result}
+          formatPreference={formatPreference}
+          setFormatPreference={setFormatPreference}
           onDownload={(opts) => {
             setIsPopoverOpen(false);
             handleDownload(opts);
@@ -82,19 +105,63 @@ const QuestionDownloadPopover = ({
   );
 };
 
+export const QuestionDownloadPopover = (
+  props: QuestionDownloadPopoverProps,
+) => {
+  const canDownloadPng = canSavePng(props.question.display());
+  const formats = canDownloadPng
+    ? [...exportFormats, exportFormatPng]
+    : exportFormats;
+
+  const { value: formatPreference, setValue: setFormatPreference } =
+    useUserKeyValue({
+      namespace: "last_download_format",
+      key: "download_format_preference",
+      defaultValue: {
+        last_download_format: formats[0],
+        last_table_download_format: exportFormats[0],
+      },
+    });
+
+  return (
+    <BaseQuestionDownloadPopover
+      {...props}
+      formatPreference={formatPreference}
+      setFormatPreference={setFormatPreference}
+    />
+  );
+};
+
+export const PublicOrEmbeddedQuestionDownloadPopover = (
+  props: QuestionDownloadPopoverProps,
+) => {
+  const formatPreference = {
+    last_download_format: "csv" as const,
+    last_table_download_format: "csv" as const,
+  };
+
+  return (
+    <BaseQuestionDownloadPopover
+      {...props}
+      formatPreference={formatPreference}
+    />
+  );
+};
+
 interface ShouldRenderDownloadPopoverProps {
   result?: Dataset;
 }
 
-QuestionDownloadPopover.shouldRender = ({
-  result,
-}: ShouldRenderDownloadPopoverProps) => {
+const shouldRender = ({ result }: ShouldRenderDownloadPopoverProps) => {
   return (
     result &&
     !result.error &&
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canDownloadResults(result)
   );
 };
+
+QuestionDownloadPopover.shouldRender = shouldRender;
+PublicOrEmbeddedQuestionDownloadPopover.shouldRender = shouldRender;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default QuestionDownloadPopover;

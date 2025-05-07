@@ -23,7 +23,6 @@
    [metabase.models.dashboard-test :as dashboard-test]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -91,9 +90,7 @@
                         :updated_at (boolean updated_at))
                  (update :entity_id boolean)
                  (update :collection_id boolean)
-                 (update :collection boolean)
-                 (cond-> (:param_values dashboard)
-                   (update :param_values not-empty)))]
+                 (update :collection boolean))]
     (cond-> dash
       (contains? dash :last-edit-info)
       (update :last-edit-info (fn [info]
@@ -455,7 +452,6 @@
                      :collection_authority_level nil
                      :can_write                  false
                      :param_fields               nil
-                     :param_values               nil
                      :last-edit-info             {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
                      :tabs                       [{:name "Test Dashboard Tab" :position 0 :id dashtab-id :dashboard_id dashboard-id}]
                      :dashcards                  [{:size_x                     4
@@ -542,7 +538,6 @@
                      :collection_id              true
                      :collection_authority_level nil
                      :can_write                  false
-                     :param_values               nil
                      :param_fields               {field-id {:id               field-id
                                                             :table_id         table-id
                                                             :display_name     display-name
@@ -620,35 +615,6 @@
         (is (= (assoc crowberto-personal-coll :is_personal true :effective_location "/")
                (:collection (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" dash-id)))))))))
 
-(deftest param-values-test
-  (testing "Don't return `param_values` for Fields for which the current User has no data perms."
-    (mt/with-temp-copy-of-db
-      (perms.test-util/with-no-data-perms-for-all-users!
-        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
-        (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
-                       :model/Card          {card-id :id}      {:name "Dashboard Test Card"}
-                       :model/DashboardCard {_ :id}            {:dashboard_id       dashboard-id
-                                                                :card_id            card-id
-                                                                :parameter_mappings [{:card_id      card-id
-                                                                                      :parameter_id "foo"
-                                                                                      :target       [:dimension
-                                                                                                     [:field (mt/id :venues :name) nil]]}
-                                                                                     {:card_id      card-id
-                                                                                      :parameter_id "bar"
-                                                                                      :target       [:dimension
-                                                                                                     [:field (mt/id :categories :name) nil]]}]}]
-          ;; Manually activate Field values since they are not created during sync (#53387)
-          (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
-          (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
-                                                                 "25°"
-                                                                 "33 Taps"]
-                                         :field_id              (mt/id :venues :name)
-                                         :human_readable_values []}}
-                 (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id)))]
-                   (into {} (for [[field-id m] response]
-                              [field-id (update m :values (partial take 3))]))))))))))
-
 (deftest ^:parallel fetch-a-dashboard-with-param-linked-to-a-field-filter-that-is-not-existed
   (testing "when fetching a dashboard that has a param linked to a field filter that no longer exists, we shouldn't throw an error (#15494)"
     (mt/with-temp
@@ -669,37 +635,9 @@
                                                                  :target       [:dimension [:template-tag "not-existed-filter"]]}]}]
       (mt/with-log-messages-for-level [messages [metabase.models.params :error]]
         (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))
-        (is (=? (repeat 2 {:level   :error
-                           :message "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"})
+        (is (=? [{:level   :error
+                  :message "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"}]
                 (messages)))))))
-
-(deftest param-values-not-fetched-on-load-test
-  (testing "Param values are not needed on initial dashboard load and should not be fetched. #38826"
-    (mt/with-temp
-      [:model/Dashboard {dashboard-id :id} {:name       "Test Dashboard"
-                                            :parameters [{:name      "FOO"
-                                                          :id        "foo"
-                                                          :type      :string/=
-                                                          :sectionId "string"}]}
-       :model/Card {card-id :id} {:name "Dashboard Test Card"}
-       :model/DashboardCard _ {:dashboard_id       dashboard-id
-                               :card_id            card-id
-                               :parameter_mappings [{:card_id      card-id
-                                                     :parameter_id "foo"
-                                                     :target       [:dimension
-                                                                    [:field (mt/id :venues :name) nil]]}]}]
-      ;; Manually activate Field values since they are not created during sync (#53387)
-      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
-      (let [dashboard-load-a (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id))
-            _                (t2/delete! :model/FieldValues :field_id (mt/id :venues :name) :type :full)
-            dashboard-load-b (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id))
-            param-values     (mt/user-http-request :rasta :get 200 (format "dashboard/%s/params/%s/values" dashboard-id "foo"))]
-        (testing "The initial dashboard-load fetches parameter values only if they already exist (#38826)"
-          (is (seq (:param_values dashboard-load-a)))
-          (is (nil? (:param_values dashboard-load-b))))
-        (testing "Request to values endpoint triggers computation of field values if missing."
-          (is (= ["20th Century Cafe" "25°" "33 Taps"]
-                 (take 3 (apply concat (:values param-values))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             PUT /api/dashboard/:id                                             |
@@ -4926,83 +4864,6 @@
             (mt/user-http-request :crowberto :post 202
                                   (format "dashboard/%s/dashcard/%s/card/%s/query" dashboard-id dashcard-id card-id)))
           (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))
-
-;; This test is same as [[metabase.public-sharing.api-test/dashboard-param-values-param-fields-hydration-test]]
-;; adjusted to run with NORMAL dashboard.
-(deftest ^:synchronized dashboard-param-values-param-fields-hydration-test
-  (mt/with-temp
-    [:model/Dashboard     d   {:name "D"
-                               :parameters [{:name      "State filter param 1"
-                                             :slug      "p1"
-                                             :id        "p1"
-                                             :type      "location"}
-                                            {:name      "State filter param 2"
-                                             :slug      "p2"
-                                             :id        "p2"
-                                             :type      "text"}
-                                            {:name      "State filter param 3"
-                                             :slug      "p3"
-                                             :id        "p3"
-                                             :type      "text"}]}
-     :model/Card          c1  (mt/card-with-updated-metadata
-                               {:name          "C1"
-                                :type          :model
-                                :dataset_query (mt/native-query {:query "select * from people"})}
-                               (fn [{col-name :name :as meta} _card]
-                                 ;; Map model's metadata to corresponding field id
-                                 (assoc meta :id  (mt/id :people (keyword (u/lower-case-en col-name))))))
-
-     :model/Card          c2 (let [query (mt/mbql-query nil
-                                           {:source-table (str "card__" (:id c1))
-                                            :aggregation [[:distinct [:field "STATE" {:base-type :type/Text}]]]})]
-                               (mt/card-with-metadata
-                                {:name "C2"
-                                 :dataset_query query}))
-     :model/DashboardCard _dc1 {:dashboard_id       (:id d)
-                                :card_id            (:id c2)
-                                :parameter_mappings
-                                [{:parameter_id "p1"
-                                  :target [:dimension [:field "STATE" {:base-type :type/Text}]]}
-                                 {:parameter_id "p2"
-                                  :target [:dimension [:field "NAME" {:base-type :type/Text}]]}
-                                 {:parameter_id "p3"
-                                  :target [:dimension [:field "CITY" {:base-type :type/Text}]]}]}
-     :model/DashboardCard _dc2 {:dashboard_id       (:id d)
-                                :card_id            (:id c2)
-                                :parameter_mappings
-                                [{:parameter_id "p1"
-                                  :target [:dimension [:field "STATE" {:base-type :type/Text}]]}
-                                 {:parameter_id "p2"
-                                  :target [:dimension [:field "NAME" {:base-type :type/Text}]]}
-                                 {:parameter_id "p3"
-                                  :target [:dimension [:field "CITY" {:base-type :type/Text}]]}]}]
-    (let [call-count (volatile! 0)
-          orig-filterable-columns-for-query params/filterable-columns-for-query]
-      ;; Manually activate Field values since they are not created during sync (#53387)
-      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :people :state)))
-      (with-redefs [params/filterable-columns-for-query
-                    (fn [& args]
-                      (vswap! call-count inc)
-                      (apply orig-filterable-columns-for-query args))]
-        (let [response (mt/user-http-request :crowberto :get 200 (format "dashboard/%d?dashboard_load_id=%s"
-                                                                         (:id d) (str (random-uuid))))]
-          (testing "Baseline: expected :param_fields (#42829)"
-            (is (=? {(mt/id :people :name)  {:name "NAME"}
-                     (mt/id :people :state) {:name "STATE"}
-                     (mt/id :people :city)  {:name "CITY"}}
-                    (get response :param_fields))))
-          (testing "Baseline: expected :param_values (#42829)"
-            (is (=? {(mt/id :people :state) {:values ["AK" "AL"]}}
-                    (-> (get response :param_values)
-                        ;; Take just first 2 values for testing purposes
-                        (update-in [(mt/id :people :state) :values] (partial take 2))))))
-          (testing "Reasonable amount of `filterable-columns` calls performed during dashboard load"
-            ;; Current implementation of [[metabase.models.params/dashcards->param-field-ids]] is supposed
-            ;; to compute `filterable-columns` only once per card per dashboard load, thanks to use of (1) context
-            ;; sharing of it between :param_fields and :param_values hydration. This test defines multiple
-            ;; dashcards and parameters for each dashcard, linked to a single card. Following is the proof
-            ;; of things working as described.
-            (is (= 1 @call-count))))))))
 
 ;; Exception during scheduled (grouper) update of UserParameterValue is thrown. It is not relevant in context
 ;; of tested functionality.

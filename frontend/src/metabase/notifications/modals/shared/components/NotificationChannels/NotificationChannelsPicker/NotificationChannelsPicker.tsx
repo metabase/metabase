@@ -9,7 +9,7 @@ import React, {
 import { jt, t } from "ttag";
 
 import { useListChannelsQuery, useListUserRecipientsQuery } from "metabase/api";
-import { CodeBlock } from "metabase/components/CodeBlock";
+import { CodeEditor } from "metabase/components/CodeEditor";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { getNotificationHandlersGroupedByTypes } from "metabase/lib/notifications";
 import { useSelector } from "metabase/lib/redux";
@@ -252,7 +252,7 @@ const TemplateHelperTooltip = ({
             overflowY: "auto",
           }}
         >
-          <CodeBlock language="json" code={formattedJson} />
+          <CodeEditor language="json" value={formattedJson} />
         </div>
       </Popover.Dropdown>
     </Popover>

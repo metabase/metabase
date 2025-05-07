@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
    [metabase.channel.impl.slack :as channel.slack]
-   [metabase.integrations.slack :as slack]
+   [metabase.channel.slack :as slack]
    [metabase.test.util :as mt]))
 
 (set! *warn-on-reflection* true)

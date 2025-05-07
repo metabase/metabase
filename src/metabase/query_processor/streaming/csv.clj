@@ -5,10 +5,10 @@
    [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.performance :as perf])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
@@ -59,7 +59,7 @@
                                 string))
                (when must-quote (.write writer "\"")))))
 
-(defn- get-formatter
+(defn get-formatter
   "Returns a memoized formatter for a column"
   [timezone settings format-rows?]
   (memoize
