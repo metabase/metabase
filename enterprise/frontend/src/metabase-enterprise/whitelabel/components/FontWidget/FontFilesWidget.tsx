@@ -2,7 +2,8 @@ import type { FocusEvent } from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import Input from "metabase/core/components/Input";
+import { useAdminSetting } from "metabase/api/utils";
+import { Stack, Text, TextInput } from "metabase/ui";
 import type { FontFile } from "metabase-types/api";
 
 import {
@@ -16,28 +17,45 @@ import {
   TableRoot,
 } from "./FontFilesWidget.styled";
 import type { FontFileOption, FontFilesSetting } from "./types";
-import { FONT_OPTIONS, getFontFiles, getFontUrls } from "./utils";
+import { getFontFiles, getFontOptions, getFontUrls } from "./utils";
 
 export interface FontFilesWidgetProps {
   setting: FontFilesSetting;
   onChange: (fontFiles: FontFile[]) => void;
 }
 
-const FontFilesWidget = ({
-  setting,
-  onChange,
-}: FontFilesWidgetProps): JSX.Element => {
-  const files = setting.value;
+export const FontFilesWidget = () => {
+  const {
+    value: files,
+    updateSetting,
+    description: fontFilesDescription,
+  } = useAdminSetting("application-font-files");
+
   const urls = useMemo(() => getFontUrls(files ?? []), [files]);
 
   const handleChange = useCallback(
-    (option: FontFileOption, url: string) => {
-      onChange(getFontFiles({ ...urls, [option.fontWeight]: url }));
+    async (option: FontFileOption, url: string) => {
+      if (
+        urls[option.fontWeight] === url ||
+        (!urls[option.fontWeight] && !url)
+      ) {
+        return;
+      }
+
+      await updateSetting({
+        key: "application-font-files",
+        value: getFontFiles({ ...urls, [option.fontWeight]: url }),
+      });
     },
-    [urls, onChange],
+    [urls, updateSetting],
   );
 
-  return <FontFilesTable urls={urls} onChange={handleChange} />;
+  return (
+    <Stack mt="md" gap="sm">
+      <Text c="text-medium">{fontFilesDescription}</Text>
+      <FontFilesTable urls={urls} onChange={handleChange} />
+    </Stack>
+  );
 };
 
 interface FontFilesTableProps {
@@ -50,7 +68,7 @@ const FontFilesTable = ({
   onChange,
 }: FontFilesTableProps): JSX.Element => {
   return (
-    <TableRoot>
+    <TableRoot data-testid="font-files-widget">
       <TableHeader>
         <TableHeaderRow>
           <TableHeaderCell>{t`Font weight`}</TableHeaderCell>
@@ -58,7 +76,7 @@ const FontFilesTable = ({
         </TableHeaderRow>
       </TableHeader>
       <TableBody>
-        {FONT_OPTIONS.map((option) => (
+        {getFontOptions().map((option) => (
           <FontFileRow
             key={option.name}
             url={urls[option.fontWeight]}
@@ -96,10 +114,9 @@ const FontFileRow = ({
         <TableBodyCellLabel>{option.fontWeight}</TableBodyCellLabel>
       </TableBodyCell>
       <TableBodyCell>
-        <Input
+        <TextInput
           defaultValue={url}
           placeholder="https://some.trusted.location/font-file.woff2"
-          fullWidth
           onBlur={handleBlur}
           aria-label={option.name}
         />
@@ -107,6 +124,3 @@ const FontFileRow = ({
     </TableBodyRow>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FontFilesWidget;

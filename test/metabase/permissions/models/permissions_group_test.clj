@@ -4,10 +4,10 @@
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.api-test-util :as perm-test-util]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -94,7 +94,7 @@
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "adding user to Admin should set is_superuser -> true"
       (mt/with-temp [:model/User {user-id :id}]
-        (perms-group-membership/add-user-to-group! user-id (u/the-id (perms-group/admin)))
+        (perms/add-user-to-group! user-id (u/the-id (perms-group/admin)))
         (is (true? (t2/select-one-fn :is_superuser :model/User, :id user-id)))))))
 
 (deftest add-remove-from-admin-group-test-2

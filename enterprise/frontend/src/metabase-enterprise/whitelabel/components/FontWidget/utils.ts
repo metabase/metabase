@@ -1,27 +1,23 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useAdminSetting } from "metabase/api/utils";
 import type { FontFile, FontFormat } from "metabase-types/api";
 
 import type { FontFileOption } from "./types";
 
-export const FONT_OPTIONS: FontFileOption[] = [
-  {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    name: t`Regular`,
-    fontWeight: 400,
-  },
-  {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    name: t`Bold`,
-    fontWeight: 700,
-  },
-  {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    name: t`Heavy`,
-    fontWeight: 900,
-  },
-];
+export const useGetFontOptions = () => {
+  const { value: availableFonts } = useAdminSetting("available-fonts");
+  const options = useMemo(
+    () => [
+      ...(availableFonts ?? []).map((font) => ({ label: font, value: font })),
+      { label: t`Custom…`, value: "custom" },
+    ],
+    [availableFonts],
+  );
+  return options;
+};
 
 export const getFontUrls = (files: FontFile[]): Record<string, string> => {
   return _.chain(files)
@@ -30,11 +26,27 @@ export const getFontUrls = (files: FontFile[]): Record<string, string> => {
     .value();
 };
 
+export const getFontOptions = (): FontFileOption[] => [
+  {
+    name: t`Regular`,
+    fontWeight: 400,
+  },
+  {
+    name: t`Bold`,
+    fontWeight: 700,
+  },
+  {
+    name: t`Heavy`,
+    fontWeight: 900,
+  },
+];
+
 export const getFontFiles = (urls: Record<string, string>): FontFile[] => {
-  return FONT_OPTIONS.map((option) => ({
-    src: urls[option.fontWeight],
-    option,
-  }))
+  return getFontOptions()
+    .map((option) => ({
+      src: urls[option.fontWeight],
+      option,
+    }))
     .filter(({ src }) => Boolean(src))
     .map(({ src, option }) => getFontFile(src, option));
 };

@@ -106,6 +106,10 @@ export const PLUGIN_ADMIN_TOOLS = {
   COMPONENT: null,
 };
 
+export const PLUGIN_WHITELABEL = {
+  WhiteLabelSettingsPage: PluginPlaceholder,
+};
+
 export const PLUGIN_ADMIN_TROUBLESHOOTING = {
   EXTRA_ROUTES: [] as ReactNode[],
   GET_EXTRA_NAV: (): ReactNode[] => [],
