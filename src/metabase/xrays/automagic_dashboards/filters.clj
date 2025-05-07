@@ -86,12 +86,24 @@
 
 (defn- filter-type
   "Return filter type for a given field."
-  [{:keys [semantic_type] :as field}]
+  [{:keys [effective_type semantic_type] :as field}]
   (cond
-    (temporal? field)                   "date/all-options"
-    (isa? semantic_type :type/State)    "location/state"
-    (isa? semantic_type :type/Country)  "location/country"
-    (isa? semantic_type :type/Category) "category"))
+    (or (isa? effective_type :type/Date) (isa? effective_type :type/DateTime))
+    "date/all-options"
+
+    (or (isa? effective_type :type/Text) (isa? effective_type :type/TextLike))
+    "string/="
+
+    (isa? effective_type :type/Number)
+    (if (or (isa? semantic_type :type/PK) (isa? semantic_type :type/FK)) "id" "number")))
+
+(defn- filter-section-id
+  "Return filter section id for a given field. Only available for certain fields."
+  [{:keys [effective_type semantic_type] :as field}]
+  (when (and (or (isa? effective_type :type/Text)
+                 (isa? effective_type :type/TextLike))
+             (isa? semantic_type :type/Address))
+    "location"))
 
 (def ^:private ^{:arglists '([dimensions])} remove-unqualified
   (partial remove (fn [{:keys [fingerprint]}]
@@ -120,10 +132,12 @@
               (if (= (count dashcards) (count dashcards-new))
                 (-> dashboard
                     (assoc :dashcards dashcards-new)
-                    (update :parameters conj {:id   filter-id
-                                              :type (filter-type candidate)
-                                              :name (:display_name candidate)
-                                              :slug (:name candidate)}))
+                    (update :parameters conj (merge {:id   filter-id
+                                                     :type (filter-type candidate)
+                                                     :name (:display_name candidate)
+                                                     :slug (:name candidate)}
+                                                    (when-let [section-id (filter-section-id candidate)]
+                                                      {:sectionId section-id}))))
                 dashboard)))
           dashboard))))
 
