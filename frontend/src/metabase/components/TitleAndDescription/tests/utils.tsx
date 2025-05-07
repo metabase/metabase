@@ -3,7 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupContentTranslationEndpoints } from "__support__/server-mocks/content-translation";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  type waitForOptions,
+} from "__support__/ui";
 import type {
   RetrievedDictionaryArrayRow,
   TokenFeatures,
@@ -17,6 +22,7 @@ import { createMockState } from "metabase-types/store/mocks";
 import TitleAndDescription from "../TitleAndDescription";
 
 import { sampleDictionary } from "./constants";
+import { WaitForOptions } from "@testing-library/react-hooks";
 
 export interface SetupOpts {
   localeCode: string;
@@ -53,12 +59,7 @@ export const setup = ({
   );
 };
 
-export const assertStringsArePresent = async ({
-  shouldBeTranslated,
-}: {
-  shouldBeTranslated: boolean;
-}) => {
-  const key = shouldBeTranslated ? "msgstr" : "msgid";
+export const assertStringsArePresent = async (key: "msgid" | "msgstr") => {
   expect(
     await screen.findByRole("heading", {
       name: sampleDictionary[0][key],
@@ -71,4 +72,39 @@ export const assertStringsArePresent = async ({
       name: sampleDictionary[1][key],
     }),
   ).toBeInTheDocument();
+};
+
+const assertNeverPasses = (
+  fn: () => void | Promise<void>,
+  options?: waitForOptions,
+) => {
+  let errored = false;
+  try {
+    waitFor(fn, options);
+  } catch (_e) {
+    errored = true;
+  } finally {
+    expect(errored).toBe(true);
+  }
+};
+
+export const assertStringsDoNotBecomePresent = async (
+  key: "msgid" | "msgstr",
+) => {
+  assertNeverPasses(() => {
+    expect(
+      screen.getByRole("heading", {
+        name: sampleDictionary[0][key],
+      }),
+    ).toBeInTheDocument();
+  });
+
+  assertNeverPasses(async () => {
+    await userEvent.hover(screen.getByLabelText("info icon"));
+    expect(
+      await screen.findByRole("tooltip", {
+        name: sampleDictionary[1][key],
+      }),
+    ).toBeInTheDocument();
+  });
 };
