@@ -21,6 +21,7 @@ import {
 } from "../actions";
 import EditSandboxingModal from "../components/EditSandboxingModal";
 import type { GroupTableAccessPolicyParams, SandboxesState } from "../types";
+import { useListUserAttributesQuery } from "metabase/api";
 
 interface EditSandboxingModalContainerProps {
   policy: GroupTableAccessPolicy;
@@ -39,7 +40,6 @@ interface EditSandboxingModalContainerProps {
 
 const EditSandboxingModalContainer = ({
   policy,
-  attributes,
   push,
   params,
   route,
@@ -53,6 +53,8 @@ const EditSandboxingModalContainer = ({
     fetchPolicy(params);
     fetchUserAttributes();
   }, [fetchPolicy, params, fetchUserAttributes]);
+
+  const { data: attributes } = useListUserAttributesQuery();
 
   const isLoading = policyRequestState?.loading || !attributes;
 
@@ -77,7 +79,7 @@ const EditSandboxingModalContainer = ({
     >
       <EditSandboxingModal
         policy={policy}
-        attributes={attributes}
+        attributes={attributes || []}
         params={params}
         onCancel={close}
         onSave={handleSave}

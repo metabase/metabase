@@ -4,6 +4,19 @@ import { IndexLink, Link } from "react-router";
 
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { Text } from "metabase/ui";
+
+export function LeftNavPaneSectionTitle(props) {
+  return (
+    <Text
+      component="li"
+      fw="bold"
+      c="text-secondary"
+      p="0.75em 1em"
+      {...props}
+    />
+  );
+}
 
 /**
  * @deprecated use frontend/src/metabase/admin/settings/components/AdminNav instead

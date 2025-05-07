@@ -27,7 +27,7 @@ const TEST_DATABASE = createSampleDatabase();
 
 // Order is important here for test to pass, since admin options aren't editable
 const TEST_GROUPS = [
-  createMockGroup({ name: "All Users" }),
+  createMockGroup({ name: "All Internal Users" }),
   createMockGroup({ id: 2, name: "Administrators" }),
 ];
 

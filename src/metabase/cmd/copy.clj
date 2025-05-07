@@ -56,6 +56,7 @@
    [:model/Channel
     :model/ChannelTemplate
     :model/Database
+    (when config/ee-available? :model/Tenant)
     :model/User
     :model/Setting
     :model/Table
