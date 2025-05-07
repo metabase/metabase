@@ -92,7 +92,7 @@ const EditableDashboardInner = ({
  * @param props
  */
 export const EditableDashboard = ({
-  dashboardId,
+  dashboardId: initialDashboardId,
   initialParameters = {},
   withDownloads = false,
   drillThroughQuestionHeight,
@@ -115,10 +115,10 @@ export const EditableDashboard = ({
     refreshPeriod,
     onRefreshPeriodChange,
     setRefreshElapsedHook,
-    dashboardId: finalDashId,
     isLoading,
-  } = useSdkDashboardParams({
     dashboardId,
+  } = useSdkDashboardParams({
+    dashboardId: initialDashboardId,
     withDownloads,
     withTitle: true,
     hiddenParameters: undefined,
@@ -131,21 +131,21 @@ export const EditableDashboard = ({
     onEditQuestion,
     onNavigateToNewCardFromDashboard,
   } = useCommonDashboardParams({
-    dashboardId,
+    dashboardId: initialDashboardId,
   });
 
   if (isLoading) {
     return <SdkLoader />;
   }
 
-  if (!finalDashId) {
-    return <DashboardNotFoundError id={dashboardId} />;
+  if (!dashboardId) {
+    return <DashboardNotFoundError id={initialDashboardId} />;
   }
 
   return (
     <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
       <DashboardContextProvider
-        dashboardId={finalDashId}
+        dashboardId={dashboardId}
         parameterQueryParams={initialParameters}
         refreshPeriod={refreshPeriod}
         onRefreshPeriodChange={onRefreshPeriodChange}
