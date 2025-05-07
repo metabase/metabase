@@ -445,8 +445,9 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     // Making sure the card renders
     H.getDashboardCard(0).within(() => {
-      cy.findByText(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).should(
-        "exist",
+      cy.findAllByText(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).should(
+        "have.length",
+        2,
       );
       cy.findByText("Created At: Month").should("exist");
     });
