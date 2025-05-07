@@ -167,7 +167,7 @@
       "abcdef" "🔔 abcd…")))
 
 (deftest dashboard-header-branding-test
-  (let [render-dashboard-header
+  (let [render-markdown-links
         (fn []
           (let [notification {:payload_type :notification/dashboard
                               :payload      {:dashboard       {:id 42, :name "Test Dashboard"}
@@ -178,13 +178,10 @@
                               :details {:value "#foo"}}
                 processed    (with-redefs [slack/upload-file! (constantly {:url "a.com", :id "id"})]
                                (channel/render-notification :channel/slack notification nil [recipient]))]
-            (-> processed first :attachments first :blocks)))
-        link-count (fn []
-                     (let [link-section (last (render-dashboard-header))]
-                       (count (:fields link-section))))]
+            (-> processed first :attachments first :blocks last :fields)))]
     (testing "When whitelabeling is enabled, branding link should not be included"
       (mt/with-premium-features #{:whitelabel}
-        (is (= 1 (link-count)))))
+        (is (= 1 (count (render-markdown-links))))))
     (testing "When whitelabeling is disabled, branding link should be included"
       (mt/with-premium-features #{}
-        (is (= 2 (link-count)))))))
+        (is (= 2 (count (render-markdown-links))))))))
