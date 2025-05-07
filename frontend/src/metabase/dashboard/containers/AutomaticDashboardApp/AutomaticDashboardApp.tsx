@@ -186,7 +186,7 @@ const AutomaticDashboardAppInner = () => {
                   selectedTabId={selectedTabId}
                   slowCards={slowCards}
                   clickBehaviorSidebarDashcard={null}
-                  downloadsEnabled={{ pdf: downloadsEnabled, results: downloadsEnabled }}
+                  downloadsEnabled={downloadsEnabled}
                   autoScrollToDashcardId={undefined}
                   reportAutoScrolledToDashcard={_.noop}
                   navigateToNewCardFromDashboard={
@@ -240,6 +240,7 @@ export const AutomaticDashboardApp = ({
       navigateToNewCardFromDashboard={(opts) =>
         dispatch(navigateToNewCardFromDashboard(opts))
       }
+      downloadsEnabled={{ pdf: false, results: false }}
     >
       <AutomaticDashboardAppInner />
     </DashboardContextProvider>
