@@ -41,6 +41,7 @@ import {
 } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
+import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   CardId,
   Dashboard,
@@ -746,7 +747,7 @@ function RemappedValue({
   const { data: parameterData } = useGetRemappedParameterValueQuery(
     dashboardId == null && cardId == null && value != null && isRemapped
       ? {
-          parameter,
+          parameter: normalizeParameter(parameter),
           field_ids: fields.map(({ id }) => Number(id)),
           value,
         }
