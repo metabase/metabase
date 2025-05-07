@@ -342,6 +342,7 @@
                              {:source-table (data/id table)
                               :expressions  {:custom [:value 1337 {:base_type :type/Integer}]}
                               :fields       [[:field (data/id table :id)] [:expression :custom]]
+                              :order-by     [[:asc [:field (data/id table :id)]]]
                               :limit        3})
            {:keys [query]} (qp.compile/compile mbql-query)
            query           (str/replace query (re-pattern #"(.*)(?:1337)(.*)") (format "$1%s$2" to-insert))]
