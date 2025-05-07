@@ -567,8 +567,6 @@ export const PLUGIN_EMBEDDING_SDK = {
 
 export const PLUGIN_EMBEDDING_IFRAME_SDK = {
   isEnabled: () => false,
-  SdkIframeEmbedRoute: (): ReactNode => null,
-  additionalPublicReducerPlugins: {},
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
