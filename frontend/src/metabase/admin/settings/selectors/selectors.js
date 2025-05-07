@@ -4,11 +4,13 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { GoogleAuthForm } from "metabase/admin/settings/auth/components/GoogleAuthForm";
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
+  PLUGIN_CONTENT_TRANSLATION,
   PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
 import { getDocsUrlForVersion } from "metabase/selectors/settings";
@@ -197,7 +199,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
     name: t`Localization`,
     order: 80,
     component: LocalizationSettingsPage,
-    settings: [],
   },
   uploads: {
     name: t`Uploads`,
