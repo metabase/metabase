@@ -3,7 +3,6 @@ import { push } from "react-router-redux";
 
 import { deletePermanently } from "metabase/archive/actions";
 import {
-  addCardToDashboard,
   addHeadingDashCardToDashboard,
   addLinkDashCardToDashboard,
   addMarkdownDashCardToDashboard,
@@ -22,7 +21,6 @@ import {
   reset,
   setArchivedDashboard,
   setDashboardAttributes,
-  setEditingDashboard,
   setParameterDefaultValue,
   setParameterFilteringParameters,
   setParameterIsMultiSelect,
@@ -38,7 +36,6 @@ import {
   setSharing,
   setSidebar,
   showAddParameterPopover,
-  toggleSidebar,
   updateDashboardAndCards,
 } from "metabase/dashboard/actions";
 import { connect } from "metabase/lib/redux";
@@ -105,14 +102,11 @@ export const mapStateToProps = (state: State) => ({
 export const mapDispatchToProps = {
   initialize,
   cancelFetchDashboardCardData,
-  addCardToDashboard,
   addHeadingDashCardToDashboard,
   addMarkdownDashCardToDashboard,
   addLinkDashCardToDashboard,
-  setEditingDashboard,
   setDashboardAttributes,
   setSharing,
-  toggleSidebar,
   closeSidebar,
   setParameterName,
   setParameterType,

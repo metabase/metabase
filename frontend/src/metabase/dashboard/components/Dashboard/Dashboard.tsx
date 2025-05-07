@@ -74,6 +74,8 @@ function Dashboard() {
     closeSidebar,
     toggleSidebar,
     setEditingDashboard,
+
+    isLoading,
   } = useDashboardContext();
 
   const canWrite = Boolean(dashboard?.can_write);
@@ -166,7 +168,7 @@ function Dashboard() {
       isFullHeight={isEditing || isSharing}
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
-      loading={!dashboard}
+      loading={isLoading}
     >
       {() => {
         if (!dashboard) {
