@@ -65,12 +65,17 @@ export function hasColumnSettingsWidgets({ value, ...props }) {
   return getWidgets({ storedSettings, ...props }).length > 0;
 }
 
-const ColumnSettings = ({ value, variant = "default", ...props }) => {
+const ColumnSettings = ({
+  maxWidth = 300,
+  value,
+  variant = "default",
+  ...props
+}) => {
   const storedSettings = value || {};
   const widgets = getWidgets({ storedSettings, ...props });
 
   return (
-    <div style={{ maxWidth: 300 }} data-testid="column-settings">
+    <div style={{ maxWidth }} data-testid="column-settings">
       {widgets.length > 0 ? (
         widgets.map((widget) => (
           <ChartSettingsWidget
