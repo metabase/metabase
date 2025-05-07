@@ -935,14 +935,15 @@
 (defn param-remapped-value
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `card`."
   [card param-key value]
-  (let [param (get-param-or-throw card param-key)]
-    (custom-values/parameter-remapped-value
-     param
-     value
-     #(when-let [field-id (param->field-id card param)]
-        (-> (chain-filter/chain-filter field-id [{:field-id field-id, :op :=, :value value}] :limit 1)
-            :values
-            first)))))
+  (or (let [param (get-param-or-throw card param-key)]
+        (custom-values/parameter-remapped-value
+         param
+         value
+         #(when-let [field-id (param->field-id card param)]
+            (-> (chain-filter/chain-filter field-id [{:field-id field-id, :op :=, :value value}] :limit 1)
+                :values
+                first))))
+      [value]))
 
 (api.macros/defendpoint :get "/:id/params/:param-key/remapping"
   "Fetch the remapped value for a given value of the parameter with ID `:param-key`.

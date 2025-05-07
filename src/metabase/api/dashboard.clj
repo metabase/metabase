@@ -1310,20 +1310,21 @@
      (throw (ex-info (tru "Getting the remapped value for a constrained parameter is not supported")
                      {:status-code 400
                       :parameter param-key})))
-   (let [dashboard (-> dashboard
-                       (t2/hydrate :resolved-params)
-                       ;; whatever the param's type, we want an equality constraint
-                       (m/update-existing-in [:resolved-params param-key] assoc :type :id))
-         param     (get-in dashboard [:resolved-params param-key])]
-     (custom-values/parameter-remapped-value
-      param
-      value
-      #(let [field-ids (into #{} (map :field-id (param->fields param)))]
-         (when (or (= (count field-ids) 1)
-                   (custom-values/pk-field-of-fk-pk-pair field-ids))
-           (-> (chain-filter dashboard param-key (assoc constraint-param-key->value param-key value))
-               :values
-               first)))))))
+   (or (let [dashboard (-> dashboard
+                           (t2/hydrate :resolved-params)
+                           ;; whatever the param's type, we want an equality constraint
+                           (m/update-existing-in [:resolved-params param-key] assoc :type :id))
+             param     (get-in dashboard [:resolved-params param-key])]
+         (custom-values/parameter-remapped-value
+          param
+          value
+          #(let [field-ids (into #{} (map :field-id (param->fields param)))]
+             (when (or (= (count field-ids) 1)
+                       (custom-values/pk-field-of-fk-pk-pair field-ids))
+               (-> (chain-filter dashboard param-key (assoc constraint-param-key->value param-key value))
+                   :values
+                   first)))))
+       [value])))
 
 (api.macros/defendpoint :get "/:id/params/:param-key/remapping"
   "Fetch the remapped value for a given value of the parameter with ID `:param-key`.
