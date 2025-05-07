@@ -80,5 +80,6 @@
                           :user-id creator_id
                           :object  {:recipients (->> handlers
                                                      (mapcat :recipients)
-                                                     (map #(or (:user %) (:email %))))
+                                                     (map #(or (not-empty (select-keys (:user %) [:id :first_name :last_name :email]))
+                                                               (get-in % [:details :value]))))
                                     :filters    (-> notification-info :alert :parameters)}}))
