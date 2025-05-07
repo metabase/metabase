@@ -85,9 +85,7 @@ export const submitInput = createAsyncThunk(
     }
 
     dispatch(clearUserMessages());
-    const sendMessageRequestPromise = dispatch(
-      sendMessageRequestStreaming(data),
-    );
+    const sendMessageRequestPromise = dispatch(sendMessageRequest(data));
     signal.addEventListener("abort", () => {
       sendMessageRequestPromise.abort();
     });

@@ -1,9 +1,9 @@
 (ns metabase-enterprise.metabot-v3.client
   (:require
    [clj-http.client :as http]
-   [clojure.string :as str]
    [clojure.core.async :as a]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
@@ -13,13 +13,13 @@
    [metabase.models.setting :refer [defsetting]]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
+   [metabase.server.streaming-response :as sr]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.o11y :refer [with-span]]
-   [metabase.server.streaming-response :as sr]))
+   [metabase.util.o11y :refer [with-span]]))
 
 (set! *warn-on-reflection* true)
 
@@ -68,14 +68,14 @@
                       :metadata response-metadata
                       :status response-status}
       (u/prog1 (maybe-parse-response-body-as-json (http/post url options))
-        (deliver response-metadata (some-> <> :body :metadata))
-        (deliver response-status (some-> <> :status))))))
+               (deliver response-metadata (some-> <> :body :metadata))
+               (deliver response-status (some-> <> :status))))))
 
 (defn- agent-v2-endpoint-url []
   (str (ai-proxy-base-url) "/v2/agent"))
 
 (defn- agent-v2-streaming-endpoint-url []
-  (str (ai-proxy-base-url) "/v2/agent-streaming"))
+  (str (ai-proxy-base-url) "/v2/agent/stream"))
 
 (defn- metric-selection-endpoint-url []
   (str (ai-proxy-base-url) "/v1/select-metric"))
@@ -132,7 +132,7 @@
         (u/prog1 (mc/decode ::metabot-v3.client.schema/ai-proxy.response
                             (:body response)
                             (mtx/transformer {:name :api-response}))
-          (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>)))
+                 (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>)))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request (assoc options :body body)
                          :response response}))))
@@ -202,7 +202,7 @@
           response (post! url options)]
       (if (= (:status response) 200)
         (u/prog1 (:body response)
-          (log/debugf "Response:\n%s" (u/pprint-to-str <>)))
+                 (log/debugf "Response:\n%s" (u/pprint-to-str <>)))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request (assoc options :body body)
                          :response response}))))
@@ -221,7 +221,7 @@
           response (post! url options)]
       (if (= (:status response) 200)
         (u/prog1 (:body response)
-          (log/debugf "Response:\n%s" (u/pprint-to-str <>)))
+                 (log/debugf "Response:\n%s" (u/pprint-to-str <>)))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request (assoc options :body body)
                          :response response}))))
