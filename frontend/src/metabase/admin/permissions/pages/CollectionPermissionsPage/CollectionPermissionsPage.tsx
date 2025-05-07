@@ -159,6 +159,9 @@ export const CollectionPermissionsPage = _.compose(
   Collections.loadList({
     entityQuery: collectionsQuery,
   }),
+  Collections.loadList({
+    entityQuery: { ...collectionsQuery, "include-tenant-collections": true },
+  }),
   Groups.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
 )(CollectionsPermissionsPageView);

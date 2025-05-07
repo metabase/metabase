@@ -17,6 +17,7 @@
 ;; Register JWT provider
 (derive :provider/jwt :metabase.auth-identity.provider/provider)
 (derive :provider/jwt :metabase.auth-identity.provider/create-user-if-not-exists)
+(derive :provider/jwt :metabase-enterprise.tenants.auth-provider/create-tenant-if-not-exists)
 
 ;; JWTs use seconds since Epoch, not milliseconds since Epoch for the `iat` and `max_age` time.
 ;; 3 minutes is the time used by Zendesk for their JWT SSO
@@ -34,6 +35,9 @@
 (def ^:private ^{:arglists '([])} jwt-attribute-groups
   (comp keyword sso-settings/jwt-attribute-groups))
 
+(def ^:private ^{:arglists '([])} jwt-attribute-tenant
+  (comp keyword sso-settings/jwt-attribute-tenant))
+
 (def ^:private registered-claims
   "Registered claims in the JWT standard which we should not interpret as login attributes."
   [:iss :iat :sub :aud :exp :nbf :jti])
@@ -45,6 +49,7 @@
                               [(jwt-attribute-email)
                                (jwt-attribute-firstname)
                                (jwt-attribute-lastname)
+                               (jwt-attribute-tenant)
                                (jwt-attribute-groups)])]
     (sso-utils/filter-non-stringable-attributes (apply dissoc jwt-data excluded-keys))))
 
@@ -78,6 +83,7 @@
             email (get jwt-data (jwt-attribute-email))
             first-name (get jwt-data (jwt-attribute-firstname))
             last-name (get jwt-data (jwt-attribute-lastname))
+            tenant-slug (get jwt-data (jwt-attribute-tenant))
             user-attributes (jwt-data->user-attributes jwt-data)]
         (when-not email
           (throw (ex-info (str (tru "JWT token missing email claim"))
@@ -85,6 +91,7 @@
                            :error :missing-email})))
         (log/infof "Successfully authenticated JWT token for: %s %s" first-name last-name)
         {:success? true
+         :tenant-slug tenant-slug
          :user-data {:email email
                      :first_name first-name
                      :last_name last-name

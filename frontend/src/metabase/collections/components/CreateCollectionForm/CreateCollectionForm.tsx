@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
@@ -32,7 +32,7 @@ const COLLECTION_SCHEMA = Yup.object({
   parent_id: Yup.number().nullable(),
 });
 
-interface CreateCollectionProperties {
+export interface CreateCollectionProperties {
   name: string;
   description: string | null;
   parent_id: Collection["id"];
@@ -40,9 +40,10 @@ interface CreateCollectionProperties {
 
 export interface CreateCollectionFormOwnProps {
   collectionId?: Collection["id"]; // can be used by `getInitialCollectionId`
-  onCreate?: (collection: Collection) => void;
+  onSubmit: (collection: CreateCollectionProperties) => void;
   onCancel?: () => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
+  showCollectionPicker?: boolean;
 }
 
 interface CreateCollectionFormStateProps {
@@ -77,10 +78,10 @@ const mapDispatchToProps = {
 
 function CreateCollectionForm({
   initialCollectionId,
-  handleCreateCollection,
-  onCreate,
+  onSubmit,
   onCancel,
   filterPersonalCollections,
+  showCollectionPicker = true,
 }: Props) {
   const initialValues = useMemo(
     () => ({
@@ -90,20 +91,11 @@ function CreateCollectionForm({
     [initialCollectionId],
   );
 
-  const handleCreate = useCallback(
-    async (values: CreateCollectionProperties) => {
-      const action = await handleCreateCollection(values);
-      const collection = Collections.HACK_getObjectFromAction(action);
-      onCreate?.(collection);
-    },
-    [handleCreateCollection, onCreate],
-  );
-
   return (
     <FormProvider
       initialValues={initialValues}
       validationSchema={COLLECTION_SCHEMA}
-      onSubmit={handleCreate}
+      onSubmit={onSubmit}
     >
       {({ dirty }) => (
         <Form>
@@ -120,12 +112,14 @@ function CreateCollectionForm({
             nullable
             optional
           />
-          <FormCollectionPicker
-            name="parent_id"
-            title={t`Collection it's saved in`}
-            filterPersonalCollections={filterPersonalCollections}
-            entityType="collection"
-          />
+          {showCollectionPicker && (
+            <FormCollectionPicker
+              name="parent_id"
+              title={t`Collection it's saved in`}
+              filterPersonalCollections={filterPersonalCollections}
+              entityType="collection"
+            />
+          )}
           <FormAuthorityLevelField />
           <FormFooter>
             <FormErrorMessage inline />

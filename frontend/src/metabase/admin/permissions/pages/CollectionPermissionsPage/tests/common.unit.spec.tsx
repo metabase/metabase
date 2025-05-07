@@ -48,7 +48,7 @@ describe("Admin > CollectionPermissionsPage", () => {
         await screen.findByText("Permissions for Nested One"),
       ).toBeVisible();
       expect(await screen.findByText("Administrators")).toBeVisible();
-      expect(await screen.findByText("All Users")).toBeVisible();
+      expect(await screen.findByText("All Internal Users")).toBeVisible();
       expect(await screen.findByText("Other Users")).toBeVisible();
 
       // 1 groups has write, 1 has read, 1 has none
@@ -127,7 +127,7 @@ describe("Admin > CollectionPermissionsPage", () => {
       expect(within(otherUsersRow).getByText("Other Users")).toBeVisible();
       await userEvent.click(within(otherUsersRow).getByText("View"));
 
-      const popover = await screen.findByTestId("popover");
+      const popover = await screen.findByRole("dialog");
       await userEvent.click(within(popover).getByRole("switch")); // propagate switch
       await userEvent.click(within(popover).getByText("Curate"));
 

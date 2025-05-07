@@ -8,6 +8,7 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { isRootCollection } from "metabase/collections/utils";
+import { useSetting } from "metabase/common/hooks";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
@@ -41,6 +42,7 @@ export const useRootCollectionPickerItems = (
   const { data: databaseData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery(undefined, { skip: !options.showDatabases });
   const databases = databaseData?.data ?? [];
+  const tenantsEnabled = useSetting("use-tenants");
 
   const { data: personalCollection, isLoading: isLoadingPersonalCollecton } =
     useGetCollectionQuery(
@@ -140,6 +142,18 @@ export const useRootCollectionPickerItems = (
       }
     }
 
+    if (tenantsEnabled && currentUser) {
+      collectionItems.push({
+        name: t`Tenant Collections`,
+        id: "tenant",
+        here: ["collection", "card", "dashboard"],
+        description: null,
+        can_write: true,
+        model: "collection",
+        location: "/",
+      });
+    }
+
     return collectionItems;
   }, [
     currentUser,
@@ -151,6 +165,7 @@ export const useRootCollectionPickerItems = (
     rootCollectionError,
     totalPersonalCollectionItems,
     libraryCollection,
+    tenantsEnabled,
   ]);
 
   const isLoading =

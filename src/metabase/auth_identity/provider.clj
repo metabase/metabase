@@ -336,7 +336,8 @@
                  [:sso_source {:optional true} :keyword]
                  [:jwt_attributes {:optional true} [:maybe :map]]
                  [:login_attributes {:optional true} [:maybe :map]]
-                 [:provider-id {:optional true} [:maybe :string]]]
+                 [:provider-id {:optional true} [:maybe :string]]
+                 [:tenant_id {:optional true} [:maybe ms/PositiveInt]]]
    provider :- :keyword]
   (t2/with-transaction [_]
     (u/prog1

@@ -15,6 +15,7 @@
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
    [metabase.users.schema :as users.schema]
+   [metabase.tenants.core :as tenants]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [trs tru]]
@@ -237,10 +238,12 @@
     (when superuser?
       (log/infof "Adding User %s to All Users permissions group..." user-id))
     (let [groups (filter some? [(when-not (:tenant_id user) (perms/all-users-group))
+                                (when (:tenant_id user) (perms/all-external-users-group))
                                 (when superuser? (perms/admin-group))])]
       (perms/allow-changing-all-users-group-members
-        (perms/without-is-superuser-sync-on-add-to-admin-group
-         (perms/add-user-to-groups! user-id (map u/the-id groups)))))
+        (perms/allow-changing-all-external-users-group-members
+         (perms/without-is-superuser-sync-on-add-to-admin-group
+          (perms/add-user-to-groups! user-id (map u/the-id groups))))))
     (sync-password-to-auth-identity! user-id)))
 
 (t2/define-before-update :model/User
@@ -477,7 +480,7 @@
 (defn add-attributes
   "Adds the `:attributes` key to a user."
   [{:keys [login_attributes jwt_attributes] :as user}]
-  (assoc user :attributes (merge jwt_attributes login_attributes)))
+  (assoc user :attributes (merge {} (tenants/login-attributes user) jwt_attributes login_attributes)))
 
 ;;; Filtering users
 

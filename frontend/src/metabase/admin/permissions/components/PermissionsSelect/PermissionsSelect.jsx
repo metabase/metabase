@@ -1,10 +1,9 @@
 import PropTypes from "prop-types";
 import { Fragment, memo, useState } from "react";
 
-import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
 import Toggle from "metabase/common/components/Toggle";
 import { lighten } from "metabase/lib/colors";
-import { Icon, Tooltip } from "metabase/ui";
+import { Icon, Popover, Tooltip } from "metabase/ui";
 
 import {
   ActionsList,
@@ -64,6 +63,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
       isDisabled={isDisabled}
       aria-haspopup="listbox"
       data-testid="permissions-select"
+      aria-disabled={isDisabled}
     >
       {isDisabled ? (
         <DisabledPermissionOption
@@ -95,13 +95,14 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   const hasActions = actionsForCurrentValue.length > 0;
 
   return (
-    <PopoverWithTrigger
+    <Popover
       disabled={isDisabled}
       targetOffsetX={16}
       targetOffsetY={8}
       triggerElement={selectedOptionValue}
     >
-      {({ onClose }) => (
+      <Popover.Target>{selectedOptionValue}</Popover.Target>
+      <Popover.Dropdown>
         <Fragment>
           <OptionsList role="listbox">
             {selectableOptions.map((option) => (
@@ -109,7 +110,6 @@ export const PermissionsSelect = memo(function PermissionsSelect({
                 role="option"
                 key={option.value}
                 onClick={() => {
-                  onClose();
                   onChange(option.value, toggleLabel ? toggleState : null);
                 }}
               >
@@ -124,7 +124,6 @@ export const PermissionsSelect = memo(function PermissionsSelect({
                   key={index}
                   role="option"
                   onClick={() => {
-                    onClose();
                     onAction(action);
                   }}
                 >
@@ -145,8 +144,8 @@ export const PermissionsSelect = memo(function PermissionsSelect({
             </ToggleContainer>
           )}
         </Fragment>
-      )}
-    </PopoverWithTrigger>
+      </Popover.Dropdown>
+    </Popover>
   );
 });
 

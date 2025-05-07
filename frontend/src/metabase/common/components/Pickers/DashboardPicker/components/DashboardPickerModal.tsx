@@ -24,7 +24,7 @@ import { getCollectionId } from "../utils";
 import {
   DashboardPicker,
   defaultOptions as defaultDashboardPickerOptions,
-} from "./DashboardPicker";
+} from "./DashboardPicker/DashboardPicker";
 import { NewDashboardDialog } from "./NewDashboardDialog";
 
 export interface DashboardPickerModalProps {

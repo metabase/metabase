@@ -32,6 +32,23 @@ const structuredAttributes: StructuredUserAttributes = {
       value: "user",
     },
   },
+  type: {
+    // overridden tenant attribute
+    source: "user",
+    frozen: false,
+    value: "insect",
+    original: {
+      source: "tenant",
+      frozen: false,
+      value: "bug",
+    },
+  },
+  color: {
+    // inherited tenant attribute
+    source: "tenant",
+    frozen: false,
+    value: "green",
+  },
   personal: {
     // personal attribute
     source: "user",
@@ -178,6 +195,15 @@ describe("LoginAttributeMappingEditor", () => {
       expect(await screen.findByDisplayValue("bug_gym")).toBeInTheDocument();
     });
 
+    it("shows tenant attributes with text keys", async () => {
+      setup({ structuredAttributes });
+
+      expect(await screen.findByText("type")).toBeInTheDocument();
+      expect(await screen.findByDisplayValue("insect")).toBeInTheDocument();
+      expect(await screen.findByText("color")).toBeInTheDocument();
+      expect(await screen.findByDisplayValue("green")).toBeInTheDocument();
+    });
+
     it("shows user defined attributes with editable keys and values", async () => {
       setup({ structuredAttributes });
 
@@ -212,6 +238,8 @@ describe("LoginAttributeMappingEditor", () => {
         "@tenant.slug": "bug_gym",
         session: "abc123",
         role: "admin",
+        type: "insect",
+        color: "green",
         personal: "secret",
         newAttribute: "newValue",
       });
@@ -227,6 +255,8 @@ describe("LoginAttributeMappingEditor", () => {
         "@tenant.slug": "bug_gym",
         session: "abc123",
         role: "admin",
+        type: "insect",
+        color: "green",
         public: "newSecret",
       });
     });
@@ -241,6 +271,8 @@ describe("LoginAttributeMappingEditor", () => {
         "@tenant.slug": "bug_gym",
         session: "abc123",
         role: "admin",
+        type: "insect",
+        color: "green",
       });
     });
 
@@ -252,6 +284,19 @@ describe("LoginAttributeMappingEditor", () => {
         "@tenant.slug": "bug_gym",
         session: "xyz789",
         role: "admin",
+        type: "insect",
+        color: "green",
+
+    it("can override a tenant attribute value", async () => {
+      const { onChange } = setup({ structuredAttributes });
+
+      await changeInput("green", "blue");
+      expect(onChange).toHaveBeenLastCalledWith({
+        "@tenant.slug": "bug_gym",
+        session: "xyz789",
+        role: "admin",
+        type: "insect",
+        color: "blue",
         personal: "secret",
       });
     });
@@ -264,6 +309,19 @@ describe("LoginAttributeMappingEditor", () => {
         "@tenant.slug": "bug_gym",
         session: "abc123",
         role: "superuser",
+        type: "ick",
+        color: "green",
+        personal: "secret",
+      });
+    });
+    it("can change an overridden tenant attribute value", async () => {
+      const { onChange } = setup({ structuredAttributes });
+
+      await changeInput("insect", "ick");
+      expect(onChange).toHaveBeenLastCalledWith({
+        "@tenant.slug": "bug_gym",
+        type: "ick",
+        color: "green",
         personal: "secret",
       });
     });
@@ -281,6 +339,27 @@ describe("LoginAttributeMappingEditor", () => {
 
       expect(onChange).toHaveBeenLastCalledWith({
         "@tenant.slug": "bug_gym",
+        type: "bug",
+        color: "green",
+        session: "abc123",
+        role: "user",
+        personal: "secret",
+      });
+    });
+    it("can revert a tenant attribute value", async () => {
+      const { onChange } = setup({ structuredAttributes });
+
+      expect(await screen.findByDisplayValue("insect")).toBeInTheDocument();
+      const revertButton = await screen.findByLabelText("refresh icon");
+      await userEvent.click(revertButton);
+
+      expect(await screen.findByDisplayValue("bug")).toBeInTheDocument();
+      expect(screen.queryByDisplayValue("insect")).not.toBeInTheDocument();
+
+      expect(onChange).toHaveBeenLastCalledWith({
+        "@tenant.slug": "bug_gym",
+        type: "bug",
+        color: "green",
         session: "abc123",
         role: "user",
         personal: "secret",

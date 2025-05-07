@@ -92,6 +92,23 @@
     []
     (assoc (get-trash) :name (deferred-tru "Trash"))))
 
+(mu/defn is-tenant-collection-type?
+  "Whether or not the passed `type` is a tenant collection type."
+  [ttype :- [:maybe :string]]
+  (= ttype "shared-tenant-collection"))
+
+(mu/defn is-tenant-collection?
+  "Whether or not a collection is a tenant collection. Placeholder for now."
+  [{:keys [type]} :- [:or RootCollection [:map [:type [:maybe string?]]]]]
+  (is-tenant-collection-type? type))
+
+(defn tenant-collection-where-clause
+  "Returns a clause that will be true if this is a tenant collection, false otherwise."
+  [& [type-column]]
+  [:case
+   [:= (or type-column :type) nil] false
+   :else [:= (or type-column :type) [:inline "shared-tenant-collection"]]])
+
 (defn trash-collection-id
   "The ID representing the Trash collection."
   [] (u/the-id (trash-collection)))
@@ -234,9 +251,11 @@
 
 (mu/defmethod mi/can-read? :model/Collection
   ([instance]
-   (perms/can-read-audit-helper :model/Collection instance))
+   (or (is-trash? instance)
+       (perms/can-read-audit-helper :model/Collection instance)))
   ([_model pk :- pos-int?]
-   (mi/can-read? (t2/select-one :model/Collection :id pk))))
+   (or (is-trash? pk)
+       (mi/can-read? (t2/select-one :model/Collection :id pk)))))
 
 (def AuthorityLevel
   "Malli Schema for valid collection authority levels."
@@ -525,7 +544,9 @@
 (mu/defn user->personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."
   [user-or-id]
-  (when-not (api-key/is-api-key-user? (u/the-id user-or-id))
+  ;; API key users and tenant users do not get personal collections
+  (when-not (or (api-key/is-api-key-user? (u/the-id user-or-id))
+                (t2/select-one-fn :tenant_id :model/User (u/the-id user-or-id)))
     (or (user->existing-personal-collection user-or-id)
         (try
           (first (t2/insert-returning-instances! :model/Collection
@@ -586,6 +607,12 @@
         (assoc user :personal_collection_id (when (contains? non-api-user-ids (u/the-id user))
                                               (or (get user-id->collection-id (u/the-id user))
                                                   (user->personal-collection-id (u/the-id user)))))))))
+
+(mi/define-simple-hydration-method is-tenant-collection
+  :is_tenant_collection
+  "Hydrate the `is_tenant_collection` property of collections - whether or not they're a tenant coll."
+  [collection]
+  (is-tenant-collection? collection))
 
 (mi/define-batched-hydration-method collection-is-personal
   :is_personal
@@ -720,7 +747,7 @@
     ;; c) their personal collection and its descendants
     :from [(if is-superuser?
              [:collection :c]
-             [{:union-all (keep identity [{:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
+             [{:union-all (keep identity [{:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly :c.type]
                                            :from   [[:collection :c]]
                                            :where [:exists {:select [1]
                                                             :from [[:permissions :p]]
@@ -733,17 +760,20 @@
                                                                      [:= :p.perm_value (h2x/literal "read-and-write")]
                                                                      (when (= :read (:permission-level visibility-config))
                                                                        [:= :p.perm_value (h2x/literal "read")])]]}]}
-                                          {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
+                                          {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly :c.type]
                                            :from   [[:collection :c]]
                                            :where  [:= :type (h2x/literal trash-collection-type)]}
                                           (when-let [personal-collection-and-descendant-ids
                                                      (seq (user->personal-collection-and-descendant-ids current-user-id))]
-                                            {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
+                                            {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly :c.type]
                                              :from   [[:collection :c]]
                                              :where  [:in :id [:inline personal-collection-and-descendant-ids]]})])}
               :c])]
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
+            (when-not (perms/use-tenants)
+              [:not (tenant-collection-where-clause :c.type)])
+
             ;; hiding the trash collection when desired...
             (when-not (:include-trash-collection? visibility-config)
               [:not= [:inline (trash-collection-id)] :c.id])
@@ -1522,8 +1552,15 @@
       (when (= :api-key (t2/select-one-fn :type :model/User user-id))
         (throw (ex-info "Can't create a personal collection for an API key" {:user user-id}))))))
 
+(defn- assert-type-ok [collection]
+  (when (and (:type collection)
+             (is-tenant-collection? collection)
+             (not (perms/use-tenants)))
+    (throw (ex-info "Can't create a tenant collection without tenants enabled." {:type (:type collection)}))))
+
 (t2/define-before-insert :model/Collection
   [{collection-name :name, :keys [location type] :as collection}]
+  (assert-type-ok collection)
   (assert-valid-location collection)
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))

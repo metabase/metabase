@@ -31,6 +31,8 @@ export const createMockUser = (opts?: Partial<User>): User => {
     updated_at: new Date().toISOString(),
     sso_source: null,
     permissions: createMockUserPermissions(),
+    can_write_any_collection: true,
+    tenant_id: null,
     ...opts,
   };
 };

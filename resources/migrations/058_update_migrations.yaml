@@ -774,6 +774,141 @@ databaseChangeLog:
             SET data_layer = NULL
 
   - changeSet:
+      id: v58.2025-11-18T12:31:27
+      author: johnswanson
+      comment: Create `tenant` table
+      preConditions: # not needed
+      changes:
+        - createTable:
+            tableName: tenant
+            remarks: |
+              Tenants (collections of external users). A user can be in exactly zero or one tenants.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: the ID of the tenant
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: "name"
+                  type: varchar(254)
+                  remarks: the unique name of the tenant
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: "slug"
+                  type: varchar(254)
+                  remarks: "the slugified version of this tenant's name"
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: "is_active"
+                  type: ${boolean.type}
+                  remarks: Whether the tenant is active or not
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the tenant was updated
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the tenant was created
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v58.2025-11-18T12:31:44
+      author: johnswanson
+      comment: add an index for `core_user.tenant_id`
+      changes:
+        - createIndex:
+            tableName: core_user
+            indexName: idx_core_user_tenant_id
+            columns:
+              - column:
+                  name: tenant_id
+
+  - changeSet:
+      id: v58.2025-11-18T12:31:47
+      author: johnswanson
+      comment: Add foreign key for `core_user.tenant_id`
+      preConditions: # not needed
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: core_user
+            baseColumnNames: tenant_id
+            referencedTableName: tenant
+            referencedColumnNames: id
+            constraintName: fk_core_user_tenant_id
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v58.2025-11-18T12:31:49
+      author: johnswanson
+      comment: Rename any existing `@.+` user attributes to add a preceding underscore
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.MoveExistingAtSymbolUserAttributes"
+
+  - changeSet:
+      id: v58.2025-11-18T12:31:51
+      author: johnswanson
+      comment: Mark users with `deactivated_with_tenant`
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: deactivated_with_tenant
+                  remarks: |
+                    if this user and its tenant are both deactivated, represents whether the user was deactivated
+                    *with* the tenant (in which case it should be reactivated when the tenant is reactivated)
+                    or was deactivated independently.
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-11-18T12:31:53
+      author: edpaget
+      comment: add column for tenant attributes
+      preConditions: # not needed
+      changes:
+        - addColumn:
+            tableName: tenant
+            columns:
+              - column:
+                  name: attributes
+                  type: ${text.type}
+                  remarks: JSON object containing custom tenant attributes
+                  constraints:
+                    nullable: true
+  - changeSet:
+      id: v58.2025-11-18T12:31:54
+      author: johnswanson
+      comment: Add All External Users group
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM permissions_group WHERE magic_group_type = 'all-external-users';
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group (name, magic_group_type, is_tenant_group)
+              VALUES
+              ('All External Users', 'all-external-users', true);
+
+  - changeSet:
       id: v58.2025-11-19T00:00:00
       author: edpaget
       comment: Add is_remote_synced boolean column to collection table

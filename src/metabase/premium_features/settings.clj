@@ -315,6 +315,10 @@
   "Should we enable the Data Studio?"
   :data-studio)
 
+(define-premium-feature ^{:added "0.56.0"} enable-tenants?
+  "Is this a development instance that should have watermarks?"
+  :tenants)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -363,6 +367,7 @@
    :sso_saml                       (enable-sso-saml?)
    :support-users                  (enable-support-users?)
    :table_data_editing             (table-data-editing?)
+   :tenants                        (enable-tenants?)
    :transforms                     (enable-transforms?)
    :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)

@@ -8,6 +8,7 @@
    [honey.sql.helpers :as sql.helpers]
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [malli.util]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -79,8 +80,12 @@
   This will select only collections where `personal_owner_id` is not `nil`.
 
   To include library collections and their descendants, pass in `include-library?` as `true`.
-  By default, library-type collections are excluded."
-  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only include-library?]}]
+  By default, library-type collections are excluded.
+
+  Normally, tenant collections will not be included in the results. Passing `include-tenant-collections=true`
+  will restrict the results to tenant collections."
+  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only include-library?
+           include-tenant-collections]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
@@ -104,6 +109,9 @@
                                           collection/library-data-collection-type
                                           collection/library-metrics-collection-type]]])
                        (perms/audit-namespace-clause :namespace namespace)
+                       (if include-tenant-collections
+                         (collection/tenant-collection-where-clause)
+                         [:not (collection/tenant-collection-where-clause)])
                        (collection/visible-collection-filter-clause
                         :id
                         {:include-archived-items    (if archived
@@ -213,20 +221,23 @@
   some point in the future."
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
-           namespace shallow collection-id]} :- [:map
-                                                 [:exclude-archived               {:default false} [:maybe :boolean]]
-                                                 [:exclude-other-user-collections {:default false} [:maybe :boolean]]
-                                                 [:include-library                {:default false} [:maybe :boolean]]
-                                                 [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
-                                                 [:shallow                        {:default false} [:maybe :boolean]]
-                                                 [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
+           namespace shallow collection-id include-tenant-collections]}
+   :- [:map
+       [:include-tenant-collections     {:default false} [:maybe :boolean]]
+       [:exclude-archived               {:default false} [:maybe :boolean]]
+       [:exclude-other-user-collections {:default false} [:maybe :boolean]]
+       [:include-library                {:default false} [:maybe :boolean]]
+       [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
+       [:shallow                        {:default false} [:maybe :boolean]]
+       [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
   (let [archived    (if exclude-archived false nil)
         collections (-> (select-collections {:archived                       archived
                                              :exclude-other-user-collections exclude-other-user-collections
                                              :namespace                      namespace
                                              :shallow                        shallow
                                              :collection-id                  collection-id
-                                             :include-library?               include-library})
+                                             :include-library?               include-library
+                                             :include-tenant-collections     include-tenant-collections})
                         (t2/hydrate :can_write))]
     (if shallow
       (shallow-tree-from-collection-id collections)
@@ -305,7 +316,8 @@
                                             [:sort-direction (into [:enum {:error/message "sort-direction"}]
                                                                    (map normalize-sort-choice)
                                                                    valid-sort-directions)]
-                                            [:official-collections-first? {:optional true} :boolean]]]]])
+                                            [:official-collections-first? {:optional true} :boolean]]]]
+   [:include-tenant-collections? {:optional true} [:maybe :boolean]]])
 
 (defmulti ^:private collection-children-query
   "Query that will fetch the 'children' of a `collection`, for different types of objects. Possible options are listed
@@ -615,6 +627,7 @@
       (assoc :location (or (when parent-collection
                              (collection/children-location parent-collection))
                            "/"))
+      (assoc :is_tenant_dashboard (collection/is-tenant-collection? parent-collection))
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
       (t2/hydrate :can_write :can_restore :can_delete :is_remote_synced)
@@ -659,25 +672,29 @@
    [:not= :namespace (u/qualified-name "snippets")]])
 
 (defn- collection-query
-  [collection {:keys [archived? collection-namespace pinned-state collection-type include-library?]}]
+  [collection {:keys [archived? collection-namespace pinned-state collection-type include-library? include-tenant-collections?]}]
   (-> (assoc
        (collection/effective-children-query
         collection
         {:cte-name :visible_collection_ids}
-        (if archived?
-          [:or
-           [:= :archived true]
-           [:= :id (collection/trash-collection-id)]]
-          [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])
-        (when collection-type
-          (if (= collection-type "remote-synced")
-            [:= :is_remote_synced true]
-            [:= :type collection-type]))
-        (when-not include-library?
-          [:or [:= nil :type]
-           [:not [:in :type [collection/library-collection-type
-                             collection/library-metrics-collection-type
-                             collection/library-data-collection-type]]]])
+        [:and
+         (if include-tenant-collections?
+           (collection/tenant-collection-where-clause)
+           [:not (collection/tenant-collection-where-clause)])
+         (when collection-type
+           (if (= collection-type "remote-synced")
+             [:= :is_remote_synced true]
+             [:= :type collection-type]))
+         (when-not include-library?
+           [:or [:= nil :type]
+            [:not [:in :type [collection/library-collection-type
+                              collection/library-metrics-collection-type
+                              collection/library-models-collection-type]]]])
+         (if archived?
+           [:or
+            [:= :archived true]
+            [:= :id (collection/trash-collection-id)]]
+           [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])]
         (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
@@ -691,8 +708,11 @@
                 :personal_owner_id
                 :location
                 :archived_directly
+                ;; selected as `type` for compatibility with collection fns that expect it
                 :type
                 [[:case [:= :is_remote_synced nil] [:inline false] :else :is_remote_synced] :is_remote_synced]
+                ;; selected as `collection_type` for fast sorting on "when it's a collection, type"
+                [:type :collection_type]
                 [(h2x/literal "collection") :model]
                 :authority_level])
       ;; the nil indicates that collections are never pinned.
@@ -808,7 +828,7 @@
             collection/maybe-localize-system-collection-name
             (update :archived api/bit->boolean)
             (update :is_remote_synced api/bit->boolean)
-            (t2/hydrate :can_write :effective_location :can_restore :can_delete)
+            (t2/hydrate :can_write :effective_location :can_restore :can_delete :is_tenant_collection)
             (dissoc :collection_position :display :moderated_status :icon
                     :collection_preview :dataset_query :table_id :query_type :is_upload)
             (assoc :type type-value)
@@ -837,7 +857,7 @@
         (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
 
 (defn- remove-unwanted-keys [{:keys [model] :as row}]
-  (cond-> (dissoc row :model_ranking :archived_directly :total_count)
+  (cond-> (dissoc row :model_ranking :archived_directly :total_count :collection_type)
     (not= model "collection") (dissoc :type)))
 
 (defn- model-name->toucan-model [model-name]
@@ -892,7 +912,7 @@
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
-   :type [:archived :boolean] [:last_used_at :timestamp] [:is_remote_synced :boolean]
+   :collection_type :type [:archived :boolean] [:last_used_at :timestamp] [:is_remote_synced :boolean]
    ;; for determining whether a model is based on a csv-uploaded table
    [:table_id :integer] [:is_upload :boolean] :query_type])
 
@@ -931,9 +951,6 @@
   (when official-collections-first?
     [:authority_level :asc :nulls-last]))
 
-(def ^:private normal-collections-first-sort-clause
-  [:type :asc :nulls-first])
-
 (defn children-sort-clause
   "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
   treatment of nulls in the different app db types."
@@ -942,7 +959,7 @@
         (comp cat
               (remove nil?))
         [[(official-collections-first-sort-clause sort-info)]
-         [normal-collections-first-sort-clause]
+         [[:collection_type :asc :nulls-first]]
          (case ((juxt :sort-column :sort-direction) sort-info)
            [nil nil]               [[:%lower.name :asc]]
            [:name :asc]            [[:%lower.name :asc]]
@@ -1033,7 +1050,7 @@
       res
       limit-res)))
 
-(mu/defn- collection-children
+(mu/defn collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
@@ -1077,6 +1094,45 @@
   "Fetch the trash collection, as in `/api/collection/:trash-id`"
   []
   (collection-detail (api/read-check (collection/trash-collection))))
+
+(api.macros/defendpoint :get "/:id/items"
+  "Fetch a specific Collection's items with the following options:
+
+  *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models
+  *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.
+  *  `pinned_state` - when `is_pinned`, return pinned objects only.
+                   when `is_not_pinned`, return non pinned objects only.
+                   when `all`, return everything. By default returns everything.
+
+  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
+  changed, that should too."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   {:keys [models archived pinned_state sort_column sort_direction official_collections_first
+           show_dashboard_questions]} :- [:map
+                                          [:models                     {:optional true} [:maybe Models]]
+                                          [:archived                   {:default false} [:maybe ms/BooleanValue]]
+                                          [:pinned_state               {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                          [:sort_column                {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                          [:sort_direction             {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                          [:official_collections_first {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                          [:show_dashboard_questions   {:default false} [:maybe ms/BooleanValue]]]]
+  (let [model-kwds (set (map keyword (u/one-or-many models)))
+        collection (api/read-check :model/Collection id)]
+    (u/prog1 (collection-children collection
+                                  {:show-dashboard-questions?   show_dashboard_questions
+                                   :models                      model-kwds
+                                   :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
+                                   :pinned-state                (keyword pinned_state)
+                                   :include-tenant-collections? (collection/is-tenant-collection? collection)
+                                   :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
+                                                                 :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
+                                                                 ;; default to sorting official collections first, except for the trash.
+                                                                 :official-collections-first? (if (and (nil? official_collections_first)
+                                                                                                       (not (collection/is-trash? collection)))
+                                                                                                true
+                                                                                                (boolean official_collections_first))}})
+      (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*}))))
 
 (mr/def ::DashboardQuestionCandidate
   [:map
@@ -1288,9 +1344,49 @@
                      (cond-> collection/root-collection
                        collection-namespace (assoc :namespace collection-namespace)))))
 
-(defn create-collection!
+(defenterprise validate-new-tenant-collection!
+  "OSS version. Throws API exceptions if the passed collection is an invalid tenant collection, which in OSS
+  means 'any tenant collection.'"
+  metabase-enterprise.tenants.core
+  [{ttype :type :as _new-coll}]
+  (when (collection/is-tenant-collection-type? ttype)
+    (throw (ex-info "Cannot create tenant collection on OSS." {:status-code 400}))))
+
+(def ^:private CreateCollectionArguments
+  "The arguments to the `POST /api/collection` endpoint, i.e. what the API needs to create a collection."
+  [:map
+   [:name            ms/NonBlankString]
+   [:description     {:optional true} [:maybe ms/NonBlankString]]
+   [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:namespace       {:optional true} [:maybe ms/NonBlankString]]
+   [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]
+   [:type            {:optional true} [:maybe [:enum "shared-tenant-collection"]]]])
+
+(def ^:private NewCollectionArguments
+  "What we use internally to actually create a collection, i.e. what `t2/insert!` needs to create a collection."
+  (-> CreateCollectionArguments
+      (malli.util/dissoc :parent_id)
+      (malli.util/assoc :location [:maybe ms/NonBlankString])
+      (malli.util/optional-keys [:location])
+      (malli.util/closed-schema)))
+
+(mu/defn- apply-defaults-to-collection :- NewCollectionArguments
+  "Converts `CreateCollectionArguments` into `NewCollectionArguments` - i.e. translates what the API gets into what
+  toucan needs to create a collection."
+  [coll-data :- CreateCollectionArguments]
+  (let [parent-coll (when-let [pid (:parent_id coll-data)]
+                      (t2/select-one :model/Collection pid))]
+    (cond-> coll-data
+      ;; default to the same type of tenant collection, if applicable
+      (some-> parent-coll collection/is-tenant-collection?) (assoc :type (:type parent-coll))
+      ;; set the location
+      parent-coll (assoc :location (collection/children-location parent-coll))
+      ;; select only the known set of keys
+      true (select-keys (malli.util/keys NewCollectionArguments)))))
+
+(mu/defn create-collection!
   "Create a new collection."
-  [{:keys [name description parent_id namespace authority_level] :as params}]
+  [{:keys [name description parent_id namespace authority_level type] :as coll-data}]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
   (write-check-collection-or-root-collection parent_id namespace)
   (when (some? authority_level)
@@ -1300,11 +1396,16 @@
   ;; Get namespace from parent collection if not provided
   (let [{remote-synced? :is_remote_synced
          :as parent-collection} (when parent_id
-                                  (t2/select-one [:model/Collection :location :id :namespace :is_remote_synced] :id parent_id))
+                                  (t2/select-one [:model/Collection :location :id :namespace :is_remote_synced :type] :id parent_id))
         effective-namespace (cond
-                              (contains? params :namespace) namespace
+                              (contains? coll-data :namespace) namespace
                               parent-collection (:namespace parent-collection)
-                              :else nil)]
+                              :else nil)
+        effective-type (cond
+                         (contains? coll-data :type) type
+                         parent-collection (:type parent-collection)
+                         :else nil)]
+    (validate-new-tenant-collection! coll-data)
      ;; Now create the new Collection :)
     (u/prog1 (t2/insert-returning-instance!
               :model/Collection
@@ -1313,7 +1414,8 @@
                 :description      description
                 :is_remote_synced (boolean remote-synced?)
                 :authority_level  authority_level
-                :namespace        effective-namespace}
+                :namespace        effective-namespace
+                :type             effective-type}
                (when parent-collection
                  {:location (collection/children-location parent-collection)})))
       (when config/ee-available?
@@ -1354,7 +1456,7 @@
     (let [orig-location (:location collection-before-update)
           new-parent-id (:parent_id collection-updates)
           new-parent    (if new-parent-id
-                          (t2/select-one [:model/Collection :location :id] :id new-parent-id)
+                          (t2/select-one [:model/Collection :location :id :type] :id new-parent-id)
                           collection/root-collection)
           new-location  (collection/children-location new-parent)]
       ;; check and make sure we're actually supposed to be moving something
@@ -1365,6 +1467,9 @@
         (api/check-403
          (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
                                                   (collection/perms-for-moving collection-before-update new-parent)))
+
+        (api/check
+         (not (collection/is-tenant-collection? new-parent)))
 
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location

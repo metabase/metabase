@@ -115,7 +115,7 @@ export function savePermissions() {
 
 export function selectImpersonatedAttribute(attribute) {
   cy.findByRole("dialog").within(() => {
-    cy.findByTestId("select-button").click();
+    cy.findByRole("textbox", { name: "User attribute" }).click();
   });
 
   popover().findByText(attribute).click();

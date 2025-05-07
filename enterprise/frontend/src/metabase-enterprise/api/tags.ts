@@ -29,6 +29,8 @@ import type {
   TransformTag,
 } from "metabase-types/api";
 
+import type { TagType } from "metabase/api/tags";
+
 export const ENTERPRISE_TAG_TYPES = [
   ...TAG_TYPES,
   "scim",
@@ -53,7 +55,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "library-collection",
 ] as const;
 
-export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];
+export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
 
 export function tag(
   type: EnterpriseTagType,

@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import FormField from "metabase/common/components/FormField";
 import { Accordion, Box, Loader, Text } from "metabase/ui";
+import { useGetTenantQuery } from "metabase-enterprise/api";
 import { getExtraAttributes } from "metabase-enterprise/sandboxes/utils";
 import type {
   StructuredUserAttributes,
@@ -34,7 +35,7 @@ const isInheritedValue = (
 
   const inheritedValue =
     attribute?.original?.value ??
-    (attribute.source === "jwt" ? attribute.value : undefined);
+    (attribute.source === "jwt" || attribute.source === "tenant" ? attribute.value : undefined);
   return inheritedValue === inputValue;
 };
 
@@ -48,11 +49,16 @@ export const LoginAttributesWidget = ({
 }: Props) => {
   const [{ value }, , { setValue, setError }] = useField(name);
 
+  const [{ value: tenantId }] = useField("tenant_id");
   const { data: userData, isLoading } = useGetUserQuery(userId ?? skipToken);
 
   const structuredAttributes = useMemo(() => {
-    return getExtraAttributes(userData?.structured_attributes);
+    return getExtraAttributes(userData?.structured_attributes, tenant);
   }, [userData?.structured_attributes]);
+
+  const { data: tenant, isLoading: isLoadingTenant } = useGetTenantQuery(
+    tenantId ?? skipToken,
+  );
 
   const handleChange = (newValue: UserAttributeMap) => {
     const validEntries = Object.entries(newValue).filter(
@@ -78,7 +84,7 @@ export const LoginAttributesWidget = ({
           </Accordion.Control>
           <Accordion.Panel>
             <Box pt="md">
-              {isLoading ? (
+              {isLoading || isLoadingTenant ? (
                 <Loader />
               ) : (
                 <LoginAttributeMappingEditor

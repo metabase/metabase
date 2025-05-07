@@ -103,8 +103,10 @@
                             [:user.is_superuser :is-superuser?]
                             [:user.locale :user-locale]]
                 :from      [[:core_session :session]]
-                :left-join [[:core_user :user] [:= :session.user_id :user.id]]
+                :left-join [[:core_user :user] [:= :session.user_id :user.id]
+                            [:tenant] [:= :tenant.id :user.tenant_id]]
                 :where     [:and
+                            [:or [:= :tenant.id nil] :tenant.is_active]
                             [:= :user.is_active true]
                             [:or [:= :session.id [:raw "?"]] [:= :session.key_hashed [:raw "?"]]]
                             (let [oldest-allowed (case db-type
