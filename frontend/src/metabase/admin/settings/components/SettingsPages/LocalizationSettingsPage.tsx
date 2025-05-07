@@ -28,6 +28,7 @@ export function LocalizationSettingsPage() {
             />
             <AdminSettingInput
               name="report-timezone"
+              searchable
               title={t`Report Timezone`}
               options={[
                 { label: t`Database Default`, value: "" },
