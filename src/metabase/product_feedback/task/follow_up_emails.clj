@@ -1,4 +1,4 @@
-(ns metabase.task.follow-up-emails
+(ns metabase.product-feedback.task.follow-up-emails
   "Tasks which follow up with Metabase users."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
@@ -31,7 +31,8 @@
 (defn- send-follow-up-email!
   "Send an email to the instance admin following up on their experience with Metabase thus far."
   []
-  ;; we need access to email AND the instance must be opted into anonymous tracking AND have surveys enabled. Make sure email hasn't been sent yet
+  ;; we need access to email AND the instance must be opted into anonymous tracking AND have surveys enabled. Make sure
+  ;; email hasn't been sent yet
   (when (and (email/email-configured?)
              (public-settings/anon-tracking-enabled)
              (email/surveys-enabled)

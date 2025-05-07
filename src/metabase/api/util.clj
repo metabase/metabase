@@ -2,9 +2,7 @@
   "Random utilty endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin
   page tasks."
   (:require
-   [clj-http.client :as http]
    [crypto.random :as crypto-random]
-   [environ.core :refer [env]]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -16,9 +14,6 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.logger :as logger]
    [metabase.premium-features.core :as premium-features]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.system-info :as u.system-info]
    [ring.util.response :as response]
@@ -53,39 +48,6 @@
    Intended for use when creating a value for `embedding-secret-key`."
   []
   {:token (crypto-random/hex 32)})
-
-(defn- product-feedback-url
-  "Product feedback url. When not prod, reads `MB_PRODUCT_FEEDBACK_URL` from the environment to prevent development
-  feedback from hitting the endpoint."
-  []
-  (if config/is-prod?
-    "https://prod-feedback.metabase.com/api/v1/crm/product-feedback"
-    (env :mb-product-feedback-url)))
-
-(mu/defn send-feedback!
-  "Sends the feedback to the api endpoint"
-  [comments :- [:maybe ms/NonBlankString]
-   source :- ms/NonBlankString
-   email :- [:maybe ms/NonBlankString]]
-  (try (http/post (product-feedback-url)
-                  {:content-type :json
-                   :body         (json/encode {:comments comments
-                                               :source   source
-                                               :email    email})})
-       (catch Exception e
-         (log/warn e)
-         (throw e))))
-
-(api.macros/defendpoint :post "/product-feedback"
-  "Endpoint to provide feedback from the product"
-  [_route-params
-   _query-params
-   {:keys [comments source email]} :- [:map
-                                       [:comments {:optional true} [:maybe ms/NonBlankString]]
-                                       [:source   ms/NonBlankString]
-                                       [:email    {:optional true} [:maybe ms/NonBlankString]]]]
-  (future (send-feedback! comments source email))
-  api/generic-204-no-content)
 
 (defn- metabase-info
   "Make it easy for the user to tell us what they're using"

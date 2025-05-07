@@ -33,7 +33,7 @@ export async function setup({
   jest.clearAllMocks();
 
   fetchMock.put("path:/api/setting/embedding-homepage", 200);
-  fetchMock.post("path:/api/util/product-feedback", 200);
+  fetchMock.post("path:/api/product-feedback", 200);
   setupSettingsEndpoints([]);
   setupPropertiesEndpoints(createMockSettings());
 
@@ -65,7 +65,7 @@ export const getLastHomepageSettingSettingCall = () =>
   });
 
 export const getLastFeedbackCall = () =>
-  fetchMock.lastCall("path:/api/util/product-feedback", {
+  fetchMock.lastCall("path:/api/product-feedback", {
     method: "POST",
   });
 

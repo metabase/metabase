@@ -22,6 +22,7 @@
    [metabase.models.init]
    [metabase.notification.init]
    [metabase.premium-features.init]
+   [metabase.product-feedback.init]
    [metabase.public-sharing.init]
    [metabase.pulse.init]
    [metabase.query-analysis.init]
