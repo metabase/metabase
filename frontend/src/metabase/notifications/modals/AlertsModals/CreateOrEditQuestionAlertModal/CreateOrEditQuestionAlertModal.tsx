@@ -3,8 +3,11 @@ import { t } from "ttag";
 import { isEqual } from "underscore";
 
 import {
+  skipToken,
   useCreateNotificationMutation,
   useGetChannelInfoQuery,
+  useGetDefaultNotificationTemplateQuery,
+  useGetNotificationPayloadExampleQuery,
   useListChannelsQuery,
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
@@ -47,6 +50,7 @@ import type {
   AlertNotification,
   CreateAlertNotificationRequest,
   NotificationCardSendCondition,
+  NotificationChannelType,
   NotificationCronSubscription,
   NotificationHandler,
   ScheduleType,
@@ -119,6 +123,48 @@ export const CreateOrEditQuestionAlertModal = ({
   const [notification, setNotification] = useState<
     CreateAlertNotificationRequest | UpdateAlertNotificationRequest | null
   >(null);
+
+  console.log("notification", notification);
+  const { data: defaultTemplates } = useGetDefaultNotificationTemplateQuery(
+    notification?.payload?.send_condition &&
+      user &&
+      notification.handlers.length > 0
+      ? {
+          notification: {
+            payload_type: notification.payload_type,
+            payload: notification.payload,
+          },
+          channel_types: notification.handlers.map(
+            (h) => h.channel_type,
+          ) as NotificationChannelType[],
+        }
+      : skipToken,
+    {
+      skip:
+        !notification?.payload?.send_condition ||
+        notification.handlers.length === 0,
+    },
+  );
+  console.log("defaultTemplates", defaultTemplates);
+
+  const { data: templateContext } = useGetNotificationPayloadExampleQuery(
+    notification?.payload_type &&
+      notification?.payload &&
+      user &&
+      notification.handlers.length > 0
+      ? {
+          payload_type: notification.payload_type,
+          payload: notification.payload,
+          creator_id: user.id,
+        }
+      : skipToken,
+    {
+      skip:
+        !notification?.payload?.send_condition ||
+        notification.handlers.length === 0,
+    },
+  );
+  console.log("templateContext", templateContext);
 
   const questionId = question?.id();
   const isEditMode = !!editingNotification;
