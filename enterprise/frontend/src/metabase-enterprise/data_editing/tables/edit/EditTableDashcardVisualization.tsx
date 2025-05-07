@@ -153,7 +153,6 @@ export const EditTableDashcardVisualization = ({
     activeActionState,
     handleExecuteModalClose,
   } = useTableActions({
-    cardId,
     visualizationSettings,
     datasetData: data,
   });

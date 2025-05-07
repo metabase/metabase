@@ -143,7 +143,7 @@ export const EditTableDataGrid = ({
     columnsOptions,
     columnVisibility,
     rowActionsColumn:
-      rowActions && onActionRun
+      rowActions?.length && onActionRun
         ? { actions: rowActions, onActionRun }
         : undefined,
   });

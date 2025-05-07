@@ -6,9 +6,9 @@ import { ActionIcon, Box, Flex, Icon, Tabs } from "metabase/ui";
 
 import { getDashCardById, getSidebar } from "../../selectors";
 
-import { ConfigureEditableTableActions } from "./ConfigureEditableTableActions";
 import { ConfigureEditableTableColumns } from "./ConfigureEditableTableColumns";
 import { ConfigureEditableTableFilters } from "./ConfigureEditableTableFilters";
+import { ConfigureEditableTableActions } from "./actions/ConfigureEditableTableActions";
 
 interface ConfigureEditableTableSidebarProps {
   onClose: () => void;
@@ -28,32 +28,34 @@ export function ConfigureEditableTableSidebar({
   }
 
   return (
-    <Sidebar data-testid="add-table-sidebar">
-      <Tabs defaultValue="columns">
-        <Tabs.List px="md" pt="sm">
-          <Tabs.Tab value="columns">{t`Columns`}</Tabs.Tab>
-          <Tabs.Tab value="filters">{t`Filters`}</Tabs.Tab>
-          <Tabs.Tab value="actions">{t`Actions`}</Tabs.Tab>
+    <>
+      <Sidebar data-testid="add-table-sidebar">
+        <Tabs defaultValue="columns">
+          <Tabs.List px="md" pt="sm">
+            <Tabs.Tab value="columns">{t`Columns`}</Tabs.Tab>
+            <Tabs.Tab value="filters">{t`Filters`}</Tabs.Tab>
+            <Tabs.Tab value="actions">{t`Actions`}</Tabs.Tab>
 
-          <Flex flex="1" justify="flex-end" align="center">
-            <ActionIcon onClick={onClose}>
-              <Icon name="close" />
-            </ActionIcon>
-          </Flex>
-        </Tabs.List>
+            <Flex flex="1" justify="flex-end" align="center">
+              <ActionIcon onClick={onClose}>
+                <Icon name="close" />
+              </ActionIcon>
+            </Flex>
+          </Tabs.List>
 
-        <Box p="md">
-          <Tabs.Panel value="columns">
-            <ConfigureEditableTableColumns dashcard={dashcard} />
-          </Tabs.Panel>
-          <Tabs.Panel value="filters">
-            <ConfigureEditableTableFilters dashcard={dashcard} />
-          </Tabs.Panel>
-          <Tabs.Panel value="actions">
-            <ConfigureEditableTableActions dashcard={dashcard} />
-          </Tabs.Panel>
-        </Box>
-      </Tabs>
-    </Sidebar>
+          <Box p="md">
+            <Tabs.Panel value="columns">
+              <ConfigureEditableTableColumns dashcard={dashcard} />
+            </Tabs.Panel>
+            <Tabs.Panel value="filters">
+              <ConfigureEditableTableFilters dashcard={dashcard} />
+            </Tabs.Panel>
+            <Tabs.Panel value="actions">
+              <ConfigureEditableTableActions dashcard={dashcard} />
+            </Tabs.Panel>
+          </Box>
+        </Tabs>
+      </Sidebar>
+    </>
   );
 }

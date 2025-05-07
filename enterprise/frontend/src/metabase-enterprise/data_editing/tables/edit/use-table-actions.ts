@@ -13,12 +13,12 @@ import type {
   WritebackActionId,
 } from "metabase-types/api";
 
+const DISABLED_AUTOMATIC_MAPPING_IDS = ["id", "created_at", "updated_at"];
+
 export const useTableActions = ({
-  cardId,
   visualizationSettings,
   datasetData,
 }: {
-  cardId: number;
   visualizationSettings?: VisualizationSettings & DashCardVisualizationSettings;
   datasetData: DatasetData | null | undefined;
 }) => {
@@ -27,9 +27,7 @@ export const useTableActions = ({
     rowData: ActionFormInitialValues;
   } | null>(null);
 
-  const { data: actions } = useListActionsQuery({
-    "model-id": cardId,
-  });
+  const { data: actions } = useListActionsQuery({});
 
   const handleRowActionRun = useCallback(
     (action: WritebackAction, row: Row<RowValues>) => {
@@ -43,10 +41,15 @@ export const useTableActions = ({
 
       const remappedInitialActionValues = action.parameters?.reduce(
         (result, parameter) => {
-          if (parameter.slug.startsWith("row.")) {
-            const targetColumnName = parameter.slug.replace("row.", "");
+          if (
+            parameter.slug &&
+            parameter.id &&
+            !DISABLED_AUTOMATIC_MAPPING_IDS.includes(
+              parameter.slug.toLowerCase(),
+            )
+          ) {
             const targetColumnIndex = datasetData?.cols.findIndex((col) => {
-              return col.name === targetColumnName;
+              return col.name.toLowerCase() === parameter.slug.toLowerCase();
             });
 
             if (targetColumnIndex > -1) {
