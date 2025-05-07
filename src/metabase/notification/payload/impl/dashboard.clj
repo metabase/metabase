@@ -69,7 +69,5 @@
   (events/publish-event! :event/subscription-send
                          {:id      id
                           :user-id creator_id
-                          :object  {:recipients (->> handlers
-                                                     (mapcat :recipients)
-                                                     (map #(or (:user %) (:email %))))
+                          :object  {:recipients (handlers->audit-recipients handlers)
                                     :filters    (-> notification-info :dashboard_subscription :parameters)}}))
