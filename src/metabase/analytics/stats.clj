@@ -741,7 +741,7 @@
 
 (defenterprise ee-snowplow-features-data
   "OSS values to use for features which require calling EE code to check whether they are available/enabled."
-  metabase-enterprise.stats
+  metabase-enterprise.analytics.stats
   []
   (ee-snowplow-features-data'))
 

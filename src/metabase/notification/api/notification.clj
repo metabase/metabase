@@ -8,7 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
