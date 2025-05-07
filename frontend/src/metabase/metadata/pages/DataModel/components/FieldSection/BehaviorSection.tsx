@@ -35,7 +35,6 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
       <Box>
         <SectionPill icon="filter" title={t`Behavior`} />
       </Box>
-
       <FieldVisibilityPicker
         description={t`Where this field should be displayed`}
         label={t`Visibility`}
@@ -47,7 +46,6 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
           });
         }}
       />
-
       <FieldValuesTypePicker
         description={t`How this field should be filtered`}
         label={t`Filtering`}
@@ -59,7 +57,7 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
           });
         }}
       />
-
+      Display values
       {database != null && canFieldUnfoldJson(field, database) && (
         <UnfoldJsonPicker
           description={t`Unfold JSON into component fields, where each JSON key becomes a column. You can turn this off if performance is slow.`}
