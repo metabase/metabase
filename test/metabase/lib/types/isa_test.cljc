@@ -111,6 +111,7 @@
              {:pred #'lib.types.isa/category?,           :positive :type/Category,          :negative :type/Boolean}
              {:pred #'lib.types.isa/category?,           :positive :type/Company,           :negative :type/URL}
              {:pred #'lib.types.isa/location?,           :positive :type/Address,           :negative :type/Number}
+             {:pred #'lib.types.isa/location?,           :positive :type/Latitude           :negative :type/Category}
              {:pred #'lib.types.isa/description?,        :positive :type/Description,       :negative :type/City}
              {:pred #'lib.types.isa/foreign-key?,        :positive :type/FK,                :negative :type/ZipCode}
              {:pred #'lib.types.isa/primary-key?,        :positive :type/PK,                :negative :type/ZipCode}
