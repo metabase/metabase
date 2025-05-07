@@ -32,12 +32,14 @@
 ;; https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/Data-Types.html#GUID-285FFCA8-390D-4FA9-9A51-47B84EF5F83A
 ;; https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/Logical-Conditions.html
 
+(def ^:private default-boolean-types #{:type/Boolean})
+
 (defn- some-isa? [child parents]
   (some #(isa? child %) parents))
 
 (defn- boolean-typed?
   ([m]
-   (boolean-typed? m [:type/Boolean]))
+   (boolean-typed? m default-boolean-types))
   ([m boolean-types]
    (and (map? m)
         (some-isa? ((some-fn :base-type :effective-type)
@@ -49,11 +51,10 @@
 (defn- boolean-typed-clause? [[_tag _x options]]
   (boolean-typed? options))
 
-(defn- boolean-field-clause? [clause]
+(defn- boolean-field-clause? [clause boolean-types]
   (and (mbql.u/is-clause? :field clause)
        (let [[_ id-or-name options] clause
-             has-types? (some-fn :base-type :base_type :effective-type :effective_type)
-             boolean-types [:type/Boolean :type/Decimal]]
+             has-types? (some-fn :base-type :base_type :effective-type :effective_type)]
          (or (boolean-typed? options boolean-types)
              ;; If :base-type is not present in the options, try looking it up in the metadata provider.
              (and (integer? id-or-name)
@@ -78,18 +79,22 @@
   expression refs by name, if necessary, to determine whether their value is a boolean literal.
 
   Both the input `clause` and the output are MBQL."
-  [clause]
-  (if (or (boolean? clause)
-          (boolean-value-clause? clause)
-          (boolean-field-clause? clause)
-          (boolean-expression-clause? clause))
-    [:= clause true]
-    clause))
+  ([clause]
+   (boolean->comparison clause default-boolean-types))
+  ([clause boolean-field-types]
+   (if (or (boolean? clause)
+           (boolean-value-clause? clause)
+           (boolean-field-clause? clause boolean-field-types)
+           (boolean-expression-clause? clause))
+     [:= clause true]
+     clause)))
 
 (defn case-boolean->comparison
   "Replace booleans with comparisons in a CASE clause."
-  [[_ cond-cases :as clause]]
-  (->> cond-cases
-       (mapv (fn [[e1 e2]]
-               [(boolean->comparison e1) e2]))
-       (assoc clause 1)))
+  ([clause]
+   (case-boolean->comparison clause default-boolean-types))
+  ([[_ cond-cases :as clause] boolean-field-types]
+   (->> cond-cases
+        (mapv (fn [[e1 e2]]
+                [(boolean->comparison e1 boolean-field-types) e2]))
+        (assoc clause 1))))
