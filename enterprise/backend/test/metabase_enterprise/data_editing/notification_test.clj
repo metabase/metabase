@@ -50,12 +50,11 @@
 
    {:channel/slack (fn [[message :as msgs]]
                      (is (= 1 (count msgs)))
-                     (is (=? {:attachments [{:blocks
-                                             [{:type "section",
-                                               :text
-                                               {:type "mrkdwn",
-                                                :text "*Crowberto Corv has created a row for CATEGORIES*\n*Created row:*\n• ID : 76\n• NAME : New Category"}}]}]
-                              :channel-id "#test-pulse"}
+                     (is (=? {:blocks [{:type "section"
+                                        :text
+                                        {:type "mrkdwn"
+                                         :text "*Crowberto Corv has created a row for CATEGORIES*\n*Created row:*\n• ID : 76\n• NAME : New Category"}}]
+                              :channel "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
@@ -82,12 +81,10 @@
 
    {:channel/slack (fn [[message :as msgs]]
                      (is (= 1 (count msgs)))
-                     (is (=? {:attachments [{:blocks
-                                             [{:type "section",
-                                               :text
-                                               {:type "mrkdwn",
-                                                :text "*Crowberto Corv has updated a row from CATEGORIES*\n*Update:*\n• ID : 1\n• NAME : Updated Category"}}]}]
-                              :channel-id  "#test-pulse"}
+                     (is (=? {:blocks [{:type "section"
+                                        :text {:type "mrkdwn"
+                                               :text "*Crowberto Corv has updated a row from CATEGORIES*\n*Update:*\n• ID : 1\n• NAME : Updated Category"}}]
+                              :channel  "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
@@ -114,12 +111,10 @@
 
    {:channel/slack (fn [[message :as msgs]]
                      (is (= 1 (count msgs)))
-                     (is (=? {:attachments [{:blocks
-                                             [{:type "section",
-                                               :text
-                                               {:type "mrkdwn",
-                                                :text "*Crowberto Corv has deleted a row from CATEGORIES*\n*Deleted row:*\n• ID : 1\n• NAME : African"}}]}]
-                              :channel-id "#test-pulse"}
+                     (is (=? {:blocks [{:type "section"
+                                        :text {:type "mrkdwn"
+                                               :text "*Crowberto Corv has deleted a row from CATEGORIES*\n*Deleted row:*\n• ID : 1\n• NAME : African"}}]
+                              :channel "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
@@ -224,12 +219,10 @@
 
    {:channel/slack (fn [[message :as msgs]]
                      (is (= 1 (count msgs)))
-                     (is (=? {:attachments [{:blocks
-                                             [{:type "section",
-                                               :text
-                                               {:type "mrkdwn",
-                                                :text "*Crowberto Corv has created a row for CATEGORIES*\n*Created row:*\n• ID : 76\n• NAME : New Category"}}]}]
-                              :channel-id "#test-pulse"}
+                     (is (=? {:blocks [{:type "section"
+                                        :text {:type "mrkdwn"
+                                               :text "*Crowberto Corv has created a row for CATEGORIES*\n*Created row:*\n• ID : 76\n• NAME : New Category"}}]
+                              :channel "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
@@ -396,10 +389,10 @@
                                   :subject "Crowberto Corv has created a row for CATEGORIES"}]
                  :channel/http [{:body {"record" {"ID" 1, "NAME" "Updated Category"}
                                         "new_name" "Updated Category"}}]
-                 :channel/slack [{:attachments [{:blocks [{:text {:text "Name Was changed from African to Updated Category"
-                                                                  :type "mrkdwn"}
-                                                           :type "section"}]}]
-                                  :channel-id "#test-pulse"}]}
+                 :channel/slack [{:blocks [{:text {:text "Name Was changed from African to Updated Category"
+                                                   :type "mrkdwn"}
+                                            :type "section"}]
+                                  :channel "#test-pulse"}]}
                 (notification.tu/with-captured-channel-send!
                   (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
                     (mt/user-http-request
