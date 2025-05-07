@@ -8,18 +8,15 @@ const EMBEDDING_ROUTE = "embed/sdk/v1";
 
 type EmbedSettingKey = keyof SdkIframeEmbedSettings;
 
-// Only these settings can be updated by the user
-const USER_EDITABLE_EMBED_SETTING_KEYS = [
+const ALLOWED_EMBED_SETTING_KEYS = [
   "apiKey",
+  "instanceUrl",
   "dashboardId",
   "questionId",
   "template",
   "theme",
   "locale",
 ] as const satisfies EmbedSettingKey[];
-
-type UserEditableEmbedSettingKey =
-  (typeof USER_EDITABLE_EMBED_SETTING_KEYS)[number];
 
 class MetabaseEmbed {
   static readonly VERSION = "1.0.0";
@@ -50,13 +47,13 @@ class MetabaseEmbed {
       return;
     }
 
+    if (settings.instanceUrl) {
+      raiseError("instanceUrl cannot be updated after the embed is created");
+    }
+
     this._validateEmbedSettings(settings);
     this._settings = { ...this._settings, ...settings };
-
-    this._sendMessage(
-      "metabase.embed.updateSettings",
-      this.getWhitelistedSettings(settings),
-    );
+    this._setEmbedSettings(settings);
   }
 
   public destroy() {
@@ -66,6 +63,16 @@ class MetabaseEmbed {
       this._isEmbedReady = false;
       this.iframe = null;
     }
+  }
+
+  private _setEmbedSettings(settings: Partial<SdkIframeEmbedSettings>) {
+    const allowedSettings = Object.fromEntries(
+      Object.entries(settings).filter(([key]) =>
+        ALLOWED_EMBED_SETTING_KEYS.includes(key as EmbedSettingKey),
+      ),
+    );
+
+    this._sendMessage("metabase.embed.updateSettings", allowedSettings);
   }
 
   private _setup() {
@@ -97,18 +104,6 @@ class MetabaseEmbed {
     }
 
     parentContainer.appendChild(this.iframe);
-  }
-
-  private getWhitelistedSettings(
-    settings: Partial<SdkIframeEmbedSettings>,
-  ): Partial<SdkIframeEmbedSettings> {
-    return Object.fromEntries(
-      Object.entries(settings).filter(([key]) =>
-        USER_EDITABLE_EMBED_SETTING_KEYS.includes(
-          key as UserEditableEmbedSettingKey,
-        ),
-      ),
-    );
   }
 
   private getIsLocalhost() {
@@ -143,7 +138,7 @@ class MetabaseEmbed {
       }
 
       this._isEmbedReady = true;
-      this.updateSettings(this._settings);
+      this._setEmbedSettings(this._settings);
     }
   };
 
@@ -154,8 +149,17 @@ class MetabaseEmbed {
   }
 }
 
+class MetabaseEmbedError extends Error {
+  constructor(message: string) {
+    super(message);
+
+    // eslint-disable-next-line no-literal-metabase-strings -- used in error messages
+    this.name = "MetabaseEmbedError";
+  }
+}
+
 const raiseError = (message: string) => {
-  throw new Error(`[metabase.embed] ${message}`);
+  throw new MetabaseEmbedError(message);
 };
 
 const warn = (...messages: unknown[]) =>
