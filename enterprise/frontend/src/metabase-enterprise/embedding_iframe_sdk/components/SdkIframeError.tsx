@@ -1,13 +1,5 @@
 import noResultsSource from "assets/img/no_results.svg";
-import { Center, Image, Loader, Stack, Text, ThemeProvider } from "metabase/ui";
-
-export const SdkIframeLoading = () => (
-  <ThemeProvider>
-    <Center h="100%" mih="100vh">
-      <Loader />
-    </Center>
-  </ThemeProvider>
-);
+import { Center, Image, Stack, Text, ThemeProvider } from "metabase/ui";
 
 export const SdkIframeInvalidLicenseError = () => (
   <ThemeProvider>
