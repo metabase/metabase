@@ -30,12 +30,7 @@ import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
 import FieldPicker from "./DataSelectorFieldPicker";
 import SchemaPicker from "./DataSelectorSchemaPicker";
 import TablePicker from "./DataSelectorTablePicker";
-import {
-  DatabaseTrigger,
-  FieldTrigger,
-  TableTrigger,
-  Trigger,
-} from "./TriggerComponents";
+import { TableTrigger, Trigger } from "./TriggerComponents";
 import { CONTAINER_WIDTH, DATA_BUCKET } from "./constants";
 import SavedEntityPicker from "./saved-entity-picker/SavedEntityPicker";
 import { getDataTypes } from "./utils";
@@ -62,59 +57,6 @@ export function DataSourceSelector(props) {
       steps={[DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
       combineDatabaseSchemaSteps
       getTriggerElementContent={TableTrigger}
-      {...props}
-    />
-  );
-}
-
-export function DatabaseDataSelector(props) {
-  return (
-    <DataSelector
-      steps={[DATABASE_STEP]}
-      getTriggerElementContent={DatabaseTrigger}
-      {...props}
-    />
-  );
-}
-
-export function DatabaseSchemaAndTableDataSelector(props) {
-  return (
-    <DataSelector
-      steps={[DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
-      combineDatabaseSchemaSteps
-      getTriggerElementContent={TableTrigger}
-      {...props}
-    />
-  );
-}
-
-export function SchemaAndTableDataSelector(props) {
-  return (
-    <DataSelector
-      steps={[SCHEMA_STEP, TABLE_STEP]}
-      getTriggerElementContent={TableTrigger}
-      {...props}
-    />
-  );
-}
-
-export function SchemaTableAndFieldDataSelector(props) {
-  return (
-    <DataSelector
-      steps={[SCHEMA_STEP, TABLE_STEP, FIELD_STEP]}
-      getTriggerElementContent={FieldTrigger}
-      // We don't want to change styles when there's a different trigger element
-      isMantine={!props.getTriggerElementContent}
-      {...props}
-    />
-  );
-}
-
-export function FieldDataSelector(props) {
-  return (
-    <DataSelector
-      steps={[FIELD_STEP]}
-      getTriggerElementContent={FieldTrigger}
       {...props}
     />
   );
