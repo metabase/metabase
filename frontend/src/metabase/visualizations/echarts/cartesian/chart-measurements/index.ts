@@ -176,7 +176,7 @@ const getXAxisTicksWidth = (
         dataset[index][X_AXIS_DATA_KEY] as number,
       );
     }
-    return dataset[index]?.[X_AXIS_DATA_KEY];
+    return dataset[index][X_AXIS_DATA_KEY];
   });
 
   const [firstXTickWidth, lastXTickWidth] = valuesToMeasure.map((value) =>
