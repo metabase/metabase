@@ -10,7 +10,9 @@
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.models.interface :as mi]
-   [metabase.models.setting.cache :as setting.cache]
+   [metabase.settings.core :as setting]
+   [metabase.task :as task]
+   [metabase.task.bootstrap :as task.bootstrap]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -209,7 +211,9 @@
       (cloud-migration.settings/read-only-mode! true)
       (when (cluster?)
         (log/info "Cluster detected, waiting for read-only mode to propagate")
-        (Thread/sleep (int (* 1.5 setting.cache/cache-update-check-interval-ms))))
+        (Thread/sleep (int (* 1.5 setting/cache-update-check-interval-ms))))
+      (log/info "Stopping scheduler")
+      (task/stop-scheduler!)
 
       (log/info "Dumping h2 backup to" (.getAbsolutePath dump-file))
       (set-progress id :dump 20)
@@ -226,6 +230,12 @@
       (log/info "Notifying store that upload is done")
       (http/put (migration-url external_id "/uploaded"))
 
+      ;; Need to restore the previous scheduler configuration because the database quartz is pointing at has changed
+      ;; after finishing the dump to h2 migration
+      (task.bootstrap/set-jdbc-backend-properties! (mdb/db-type))
+      (log/info "Restarting scheduler")
+      (task/start-scheduler!)
+
       (log/info "Migration finished")
       (set-progress id :done 100)
       (catch Exception e
@@ -235,7 +245,7 @@
           (do
             (t2/update! :model/CloudMigration id {:state :error})
             (log/info "Migration failed")
-            (throw (ex-info "Error performing migration" {:error e})))))
+            (throw (ex-info "Error performing migration" {} e)))))
       (finally
         (cloud-migration.settings/read-only-mode! false)
         (io/delete-file dump-file :silently)))))

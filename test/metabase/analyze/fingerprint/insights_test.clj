@@ -41,33 +41,20 @@
    (boolean (#'insights/valid-period? (inst->day from) (inst->day to) period))))
 
 (deftest valid-period-test
-  (is (= true
-         (valid-period? #t "2015-01" #t "2015-02")))
+  (is (true? (valid-period? #t "2015-01" #t "2015-02")))
   ; Do we correctly handle descending time series?
-  (is (= true
-         (valid-period? #t "2015-02" #t "2015-01")))
-  (is (= true
-         (valid-period? #t "2015-02" #t "2015-03")))
-  (is (= false
-         (valid-period? #t "2015-01" #t "2015-03")))
-  (is (= false
-         (valid-period? #t "2015-01" nil)))
-  (is (= true
-         (valid-period? #t "2015-01-01" #t "2015-01-02")))
-  (is (= true
-         (valid-period? #t "2015-01-01" #t "2015-01-08")))
-  (is (= true
-         (valid-period? #t "2015-01-01" #t "2015-04-03")))
-  (is (= true
-         (valid-period? #t "2015" #t "2016")))
-  (is (= false
-         (valid-period? #t "2015-01-01" #t "2015-01-09")))
-  (is (= true
-         (valid-period? #t "2015-01-01" #t "2015-04-03" :quarter)))
-  (is (= false
-         (valid-period? #t "2015-01-01" #t "2015-04-03" :month)))
-  (is (= false
-         (valid-period? #t "2015-01" #t "2015-02" nil))))
+  (is (true? (valid-period? #t "2015-02" #t "2015-01")))
+  (is (true? (valid-period? #t "2015-02" #t "2015-03")))
+  (is (= false (valid-period? #t "2015-01" #t "2015-03")))
+  (is (= false (valid-period? #t "2015-01" nil)))
+  (is (true? (valid-period? #t "2015-01-01" #t "2015-01-02")))
+  (is (true? (valid-period? #t "2015-01-01" #t "2015-01-08")))
+  (is (true? (valid-period? #t "2015-01-01" #t "2015-04-03")))
+  (is (true? (valid-period? #t "2015" #t "2016")))
+  (is (= false (valid-period? #t "2015-01-01" #t "2015-01-09")))
+  (is (true? (valid-period? #t "2015-01-01" #t "2015-04-03" :quarter)))
+  (is (= false (valid-period? #t "2015-01-01" #t "2015-04-03" :month)))
+  (is (= false (valid-period? #t "2015-01" #t "2015-02" nil))))
 
 ;; Make sure we don't return nosense results like infinitiy coeficients
 ;; Fixes https://github.com/metabase/metabase/issues/9070
@@ -205,3 +192,19 @@
                                         {:base_type :type/Text}])
                     [["2024-08-09" 10.0 "weekday"]
                      ["2024-08-10" 20.0 "weekend"]])))))
+
+(deftest datetime-unit-insights
+  (testing "A timeseries column with a :type/Text base type can still produce insights if it has a valid :unit (#12388)"
+    (are [assertion datetime-col] (assertion
+                                   (transduce identity
+                                              (insights/insights [datetime-col
+                                                                  {:base_type :type/Number}])
+                                              [["2024-08-09" 10.0]
+                                               ["2024-08-10" 20.0]]))
+      nil?  {:base_type :type/Text}
+      ;; Extraction unit (day-of-week) is classified as a numeric column and doesn't produce insights here
+      nil?  {:base_type :type/Text :unit :day-of-week}
+      ;; Spot check truncation units — should all generate insights
+      some? {:base_type :type/Text :unit :day}
+      some? {:base_type :type/Text :unit :month}
+      some? {:base_type :type/Text :unit :year})))

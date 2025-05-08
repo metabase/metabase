@@ -319,7 +319,7 @@
         "string"     :type/Text
         "object"     :type/Dictionary
         "array"      :type/Array
-        "binData"    :type/*
+        "binData"    :type/MongoBinData
         ;; "uuid" is not a database type like the rest here
         ;; it's determined by the subtype of binData fields in describe-table
         "uuid"       :type/UUID
@@ -415,6 +415,7 @@
                               :standard-deviation-aggregations true
                               :test/jvm-timezone-setting       false
                               :identifiers-with-spaces         true
+                              :saved-question-sandboxing       false
                               :index-info                      true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 

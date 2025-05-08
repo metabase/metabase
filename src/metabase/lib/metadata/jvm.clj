@@ -11,7 +11,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as u.memo]
@@ -63,7 +63,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :engine :name :dbms_version :settings :is_audit :details :timezone]}))
+         {:select [:id :engine :name :dbms_version :settings :is_audit :details :timezone :entity_id :router_database_id]}))
 
 (t2/define-after-select :metadata/database
   [database]
@@ -89,7 +89,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :db_id :name :display_name :schema :active :visibility_type]}))
+         {:select [:id :db_id :name :display_name :schema :active :visibility_type :entity_id]}))
 
 (t2/define-after-select :metadata/table
   [table]
@@ -143,6 +143,7 @@
                 :field/fk_target_field_id
                 :field/id
                 :field/name
+                :field/entity_id
                 :field/nfc_path
                 :field/parent_id
                 :field/position
@@ -230,6 +231,7 @@
    (next-method query-type model parsed-args honeysql)
    {:select    [:card/collection_id
                 :card/created_at   ; Needed for backfilling :entity_id on demand; see [[metabase.models.card]].
+                :card/card_schema  ; Needed for after-select logic to work.
                 :card/database_id
                 :card/dataset_query
                 :card/id

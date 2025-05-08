@@ -12,14 +12,15 @@
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
-   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.permissions.api.permission-graph :as api.permission-graph]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-revision :as perms-revision]
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -67,6 +68,31 @@
                    (setting/get-value-of-type :boolean :show-updated-permission-banner)))
   :type       :boolean
   :audit      :never)
+
+(defn- turn-off-tenants! []
+  ;; TODO: when we have `:model/Tenant`, make sure none exist
+  (when (t2/exists? :model/User :tenant_id [:not= nil])
+    (throw (ex-info (tru "Tenants cannot be turned off, a tenant user exists") {})))
+  (perms-group/delete-all-external-users!))
+
+(defn- turn-on-tenants! []
+  (perms-group/create-all-external-users!))
+
+(defsetting use-tenants
+  (deferred-tru
+   "Turn on the Tenants feature, allowing users to be assigned to a particular Tenant.")
+  :type :boolean
+  :visibility :admin
+  :export? false
+  :default false
+  :feature :tenants
+  :can-read-from-env? false
+  :setter (fn [new-value]
+            (when-not new-value
+              (turn-off-tenants!))
+            (when new-value
+              (turn-on-tenants!))
+            (setting/set-value-of-type! :boolean :use-tenants new-value)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GRAPH ENDPOINTS                                           |
@@ -295,10 +321,7 @@
       (api/check
        (t2/exists? :model/User :id user_id :is_superuser false)
        [400 (tru "Admin cant be a group manager.")]))
-    (t2/insert! :model/PermissionsGroupMembership
-                :group_id         group_id
-                :user_id          user_id
-                :is_group_manager is_group_manager)
+    (perms/add-user-to-group! user_id group_id is_group_manager)
     ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
     ;; let the frontend add it as appropriate
     (:members (t2/hydrate (t2/instance :model/PermissionsGroup {:id group_id})

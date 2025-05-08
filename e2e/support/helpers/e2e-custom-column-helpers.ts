@@ -112,6 +112,11 @@ export const CustomExpressionEditor = {
       // CodeMirror elements in Cypress. realType() would work but some of the formulas
       // contain special characters that are not supported by realType().
       CustomExpressionEditor.get().findByRole("textbox").invoke("text", text);
+
+      // invoke("text") does not trigger the validator, so we need to trigger it manually
+      // by typing something
+      CustomExpressionEditor.type(" {backspace}");
+
       return CustomExpressionEditor;
     }
 
@@ -182,7 +187,7 @@ export const CustomExpressionEditor = {
       const unexpanded = part.replaceAll(/→/g, "->");
 
       const alphabet =
-        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789^[]()-,.;_!@#$%&*+=/<>\" ':;\\";
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789^[]()-,.;_!@#$%&*+=/<>\" ':;\\\n";
       if (unexpanded.split("").some((char) => !alphabet.includes(char))) {
         throw new Error(
           `unknown character in CustomExpressionEditor.type in ${part}`,
@@ -206,6 +211,7 @@ export const CustomExpressionEditor = {
     return cy.findByLabelText("Auto-format");
   },
   format() {
+    CustomExpressionEditor.formatButton().should("be.visible");
     CustomExpressionEditor.formatButton().click();
     return CustomExpressionEditor;
   },

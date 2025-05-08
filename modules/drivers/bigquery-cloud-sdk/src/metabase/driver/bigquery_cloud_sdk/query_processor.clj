@@ -11,13 +11,14 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.setting :as setting]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -31,6 +32,7 @@
     FieldValue
     FieldValueList)
    (java.time
+    Instant
     LocalDate
     LocalDateTime
     LocalTime
@@ -164,10 +166,16 @@
   (parse-value column-mode v bigdec))
 
 (defn- parse-timestamp-str [timezone-id s]
-  ;; Timestamp strings either come back as ISO-8601 strings or Unix timestamps in µs, e.g. "1.3963104E9"
+  ;; Timestamp strings either come back as ISO-8601 strings or Unix timestamps in seconds, e.g. "1.3963104E9"
   (log/tracef "Parse timestamp string '%s' (default timezone ID = %s)" s timezone-id)
   (if-let [seconds (u/ignore-exceptions (Double/parseDouble s))]
-    (t/zoned-date-time (t/instant (* seconds 1000)) (t/zone-id timezone-id))
+    (let [full-seconds (long seconds)
+          ;; BigQuery timestamps have microsecond precision
+          ;; (see https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#timestamp_type)
+          micro-adjustment (long (Math/round (double (* (- seconds full-seconds) 1000000))))
+          nano-adjustment (* micro-adjustment 1000)
+          instant (Instant/ofEpochSecond full-seconds nano-adjustment)]
+      (t/zoned-date-time instant (t/zone-id timezone-id)))
     (u.date/parse s timezone-id)))
 
 (defmethod parse-result-of-type "DATE"
@@ -189,6 +197,24 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SQL Driver Methods                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :split-part]
+  [driver [_ text divider position]]
+  [:coalesce
+   [:at
+    [:split
+     (sql.qp/->honeysql driver text)
+     (sql.qp/->honeysql driver divider)]
+    [:safe_ordinal (sql.qp/->honeysql driver position)]]
+   ""])
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :text]
+  [driver [_ value]]
+  (h2x/maybe-cast "STRING" (sql.qp/->honeysql driver value)))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :date]
+  [driver [_ value]]
+  [:parse_date "%Y-%m-%d" (sql.qp/->honeysql driver value)])
 
 ;; TODO -- all this [[temporal-type]] stuff below can be replaced with the more generalized
 ;; [[h2x/with-database-type-info]] stuff we've added. [[h2x/with-database-type-info]] was inspired by this BigQuery code
@@ -543,9 +569,9 @@
         (datetime target-timezone)
         (with-temporal-type :datetime))))
 
-(defmethod sql.qp/->float :bigquery-cloud-sdk
-  [_ value]
-  (h2x/cast :float64 value))
+(defmethod sql.qp/float-dbtype :bigquery-cloud-sdk
+  [_]
+  :float64)
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :regex-match-first]
   [driver [_ arg pattern]]
@@ -649,7 +675,7 @@
   nfc-path)
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
-  [driver [_field _id-or-name {::add/keys [source-table], :as _opts} :as field-clause]]
+  [driver [_field id-or-name {::add/keys [source-table source-alias], :as opts} :as field-clause]]
   (let [parent-method (get-method sql.qp/->honeysql [:sql :field])]
     ;; if the Field is from a join or source table, record this fact so that we know never to qualify it with the
     ;; project ID no matter what
@@ -658,9 +684,17 @@
       ;; SQL QP parent method, and we can access that inside other things like [[sql.qp/date]] implementations which it
       ;; may call in turn.
       (let [field-clause (with-temporal-type field-clause (temporal-type field-clause))
-            result       (parent-method driver field-clause)]
-        (cond-> result
-          (not (temporal-type result)) (with-temporal-type (temporal-type field-clause)))))))
+            stored-field  (when (integer? id-or-name)
+                            (lib.metadata/field (qp.store/metadata-provider) id-or-name))
+            result       (parent-method driver field-clause)
+            result       (cond-> result
+                           (not (temporal-type result))
+                           (with-temporal-type (temporal-type field-clause)))]
+        (if (and (lib.field/json-field? stored-field)
+                 (or (::sql.qp/forced-alias opts)
+                     (= source-table ::add/source)))
+          (keyword source-alias)
+          result)))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :relative-datetime]
   [driver clause]

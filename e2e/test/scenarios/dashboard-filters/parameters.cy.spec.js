@@ -76,7 +76,7 @@ describe("scenarios > dashboard > parameters", () => {
     // Continue typing a "d" and you see "Gadget"
     H.popover()
       .first()
-      .within(() => cy.findByPlaceholderText("Search").type("d"));
+      .within(() => cy.findByPlaceholderText("Search the list").type("d"));
     cy.wait("@dashboard");
 
     // eslint-disable-next-line no-unsafe-element-filtering
@@ -724,7 +724,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.filterWidget().click();
 
       H.dashboardParametersPopover().within(() => {
-        H.fieldValuesInput().type("Antwan Fisher");
+        H.fieldValuesCombobox().type("Antwan Fisher");
         cy.button("Add filter").click();
       });
 
@@ -755,7 +755,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.filterWidget().click();
 
       H.dashboardParametersPopover().within(() => {
-        H.fieldValuesInput().type("Antwan Fisher");
+        H.fieldValuesCombobox().type("Antwan Fisher");
         cy.button("Add filter").click();
       });
 

@@ -10,9 +10,10 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
+   [metabase.cache.core :as cache]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
@@ -59,6 +60,38 @@
 (methodical/defmethod t2.hydrate/model-for-automagic-hydration [#_model :default #_k :card]
   [_original-model _k]
   :model/Card)
+
+(def ^:private current-schema-version
+  "Latest schema version number. This is an increasing integer stored in each card's `:card_schema` column.
+  It is used to guide `after-select` logic in how to modernize a card correctly.
+
+  `20` is the \"legacy\" version - that was the default value given to all cards that existed when the `card_schema`
+  column was added.
+
+  Update process:
+  - Increment this number.
+  - Update `before-insert` and `before-update` if necessary, so they are storing upgraded cards.
+  - Add a new [[upgrade-card-schema-to]] implementation, that upgrades the immediately previous version to your new
+    version.
+
+  The core `after-select` logic compares each row's `card_schema` and runs the upgrade functions for all versions up to
+  and including [[current-schema-version]]."
+  22)
+
+(defmulti ^:private upgrade-card-schema-to
+  "Upgrades a card on read, so that it fits the given schema version number.
+
+  The number is the **target** revision - if we read a row with `:card_schema` 22 and the [[current-schema-version]]
+  is 25, then the `after-select` logic will effectively call
+
+      (-> card
+          (upgrade-card-schema-to 23)
+          (upgrade-card-schema-to 24)
+          (upgrade-card-schema-to 25))
+  "
+  {:arglists '([card target-schema-version])}
+  (fn [_card target-schema-version]
+    target-schema-version))
 
 (t2/deftransforms :model/Card
   {:dataset_query          mi/transform-metabase-query
@@ -249,7 +282,7 @@
           (log/errorf t "Failed prefething cards `%s`." (pr-str (map :id dataset-cards))))))
     (binding [query-perms/*card-instances*
               (when (seq source-card-ids)
-                (t2/select-fn->fn :id identity [:model/Card :id :collection_id] :id [:in source-card-ids]))]
+                (t2/select-fn->fn :id identity [:model/Card :id :collection_id :card_schema] :id [:in source-card-ids]))]
       (mi/instances-with-hydrated-data
        cards :can_run_adhoc_query
        (fn []
@@ -536,7 +569,8 @@
 ;; TODO -- consider whether we should validate the Card query when you save/update it?? (#40013)
 (defn- pre-insert [card]
   (let [defaults {:parameters         []
-                  :parameter_mappings []}
+                  :parameter_mappings []
+                  :card_schema        current-schema-version}
         card     (maybe-check-dashboard-internal-card
                   (merge defaults card))]
     (u/prog1 card
@@ -545,6 +579,7 @@
       (check-field-filter-fields-are-from-correct-database card)
       ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
       (assert-valid-type card)
+      (card.metadata/assert-valid-idents! card)
       (params/assert-valid-parameters card)
       (params/assert-valid-parameter-mappings card)
       (collection/check-collection-namespace :model/Card (:collection_id card)))))
@@ -624,7 +659,8 @@
           old-card-info (when (or (contains? changes :type)
                                   (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
-                          (t2/select-one [:model/Card :dataset_query :type] :id (u/the-id id)))]
+                          (t2/select-one [:model/Card :dataset_query :type :result_metadata :card_schema]
+                                         :id (u/the-id id)))]
       ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
       ;; On-Demand DB Fields
       (when (get-in changes [:dataset_query :native])
@@ -646,7 +682,7 @@
                  (= (:type old-card-info) :model)
                  (not (model-supports-implicit-actions? changes)))
         (disable-implicit-action-for-model! id))
-      ;; Changing from a Question to a Model: archive associated actions
+      ;; Changing from a Model to a Question: archive associated actions and strip the model out of `:ident`s.
       (when (and (= (:type changes) :question)
                  (= (:type old-card-info) :model))
         (t2/update! :model/Action {:model_id id :type [:not= :implicit]} {:archived true})
@@ -667,6 +703,7 @@
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints changes)
+      (card.metadata/assert-valid-idents! (merge old-card-info changes))
       (assert-valid-type (merge old-card-info changes)))))
 
 (defn- add-query-description-to-metric-card
@@ -763,24 +800,75 @@
        ;; If we did have to generate the hashed entity_id, include it on the returned card as well.
        @hashed-eid (assoc :entity_id @entity-id)))))
 
+;; Schema upgrade: 20 to 21 ==========================================================================================
+;; Originally this backfilled `:ident`s on all columns in `:result_metadata`.
+;; However, that caused performance problems since it's often recursive, and the caching was ineffective.
+;; Now this upgrade is a no-op.
+(defmethod upgrade-card-schema-to 21 [card _schema-version]
+  card)
+
+;; Schema upgrade: 21 to 22 ==========================================================================================
+;; Two bugs during development of the field refs overhaul resulted in bad `:ident`s being saved into
+;; `:result_metadata` in certain cases.
+;; - Early on, some old "field__Database__Schema__TableName__FieldName" idents got saved for models.
+;; - A bug in #56244 computed bad idents given a fresh column (like an aggregation) while the source was a model.
+;; To avoid both of these issues, the upgrade to 22 simply discards any old idents.
+(defmethod upgrade-card-schema-to 22
+  [card _schema-version]
+  (update card :result_metadata (fn [cols]
+                                  (mapv #(dissoc % :ident :model/inner_ident) cols))))
+
+(defn- upgrade-card-schema-to-latest [card]
+  (if (and (:id card)
+           (or (:dataset_query card)
+               (:result_metadata card)
+               (:database_id card)
+               (:type card)))
+    ;; A plausible select to run the after-select logic on.
+    (if-not (:card_schema card)
+      ;; Plausible but no :card_schema - error.
+      (throw (ex-info "Cannot SELECT a Card without including :card_schema"
+                      {:card-id (:id card)}))
+      ;; Plausible and has the schema, so run the upgrades over it.
+      (loop [card card]
+        (if (= (:card_schema card) current-schema-version)
+          card
+          (let [new-version (inc (:card_schema card))]
+            (recur (assoc (upgrade-card-schema-to card new-version)
+                          :card_schema new-version))))))
+
+    ;; Some sort of odd query like an aggregation over cards. Just return it as-is.
+    card))
+
 (t2/define-after-select :model/Card
   [card]
+  ;; +===============================================================================================+
+  ;; |   DO NOT EDIT THIS FUNCTION DIRECTLY!                                                         |
+  ;; |   Future revisions to the shapes of cards should be handled via [[upgrade-card-schema-to]].   |
+  ;; |   See [[current-schema-version]] for details on the schema versioning.                        |
+  ;; +===============================================================================================+
   (-> card
       (dissoc :dataset_query_metrics_v2_migration_backup)
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
-      ensure-clause-idents))
+      serdes/add-entity-id
+      ensure-clause-idents
+      ;; At this point, the card should be at schema version 20 or higher.
+      upgrade-card-schema-to-latest))
 
 (t2/define-before-insert :model/Card
   [card]
   (-> card
-      (assoc :metabase_version config/mb-version-string)
+      (assoc :metabase_version config/mb-version-string
+             :card_schema current-schema-version)
       maybe-normalize-query
+      ; Add any missing idents on the query (expr, breakout, agg) before populating :result_metadata.
+      (ensure-clause-idents ::before-insert)
+      (u/assoc-default :entity_id (u/generate-nano-id)) ; Must have an entity_id before populating the metadata.
       card.metadata/populate-result-metadata
       pre-insert
-      populate-query-fields
-      (ensure-clause-idents ::before-insert)))
+      populate-query-fields))
 
 (t2/define-after-insert :model/Card
   [card]
@@ -796,6 +884,24 @@
     (assoc changes :collection_id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))
     changes))
 
+(defn- strip-model-from-idents
+  [result-metadata
+   {eid :entity_id :as _card}]
+  (mapv #(lib/remove-model-ident % eid) result-metadata))
+
+(defn- normalize-result-metadata-idents
+  "If the `:type` is changing, the `:result_metadata` needs to change too, either adding or removing model details
+  from the `:ident`s."
+  [card-updates card-entity changes]
+  (let [input-metadata   (or (:result_metadata card-updates)
+                             (:result_metadata card-entity))
+        updated-metadata (case (:type changes)
+                           :question (strip-model-from-idents input-metadata card-entity)
+                           :model    (card.metadata/fix-incoming-idents input-metadata card-entity)
+                           nil)]
+    (cond-> card-updates
+      updated-metadata (assoc :result_metadata updated-metadata))))
+
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
   ;; remove all the unchanged keys from the map, except for `:id`, so the functions below can do the right thing since
@@ -804,20 +910,25 @@
   ;; We have to convert this to a plain map rather than a Toucan 2 instance at this point to work around upstream bug
   ;; https://github.com/camsaul/toucan2/issues/145 .
   ;; TODO: ^ that's been fixed, this could be refactored
-  (-> (into {:id (:id card)} (t2/changes (dissoc card :verified-result-metadata?)))
-      (apply-dashboard-question-updates)
-
-      maybe-normalize-query
-      ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
-      ;; change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
-      ;; verified-result-metadata? flag (see #37009).
-      (cond-> #_changes
-       (or (empty? (:result_metadata card))
-           (not verified-result-metadata?))
-        card.metadata/populate-result-metadata)
-      pre-update
-      populate-query-fields
-      maybe-populate-initially-published-at))
+  (let [changes (-> card
+                    (dissoc :verified-result-metadata?)
+                    (assoc :card_schema current-schema-version)
+                    t2/changes)]
+    (-> (into (select-keys card [:id :type :entity_id]) changes)
+        apply-dashboard-question-updates
+        maybe-normalize-query
+        (normalize-result-metadata-idents card changes)
+        ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
+        ;; change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
+        ;; verified-result-metadata? flag (see #37009).
+        (cond-> #_changes
+         (or (empty? (:result_metadata card))
+             (not verified-result-metadata?)
+             (contains? changes :type))
+          card.metadata/populate-result-metadata)
+        pre-update
+        populate-query-fields
+        maybe-populate-initially-published-at)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
@@ -832,7 +943,12 @@
 ;; NOTE: The columns required for this hashing must be kept in sync with [[ensure-clause-idents]].
 (defmethod serdes/hash-fields :model/Card
   [_card]
-  [:name (serdes/hydrated-hash :collection) :created_at])
+  [:name (serdes/hydrated-hash :collection :collection_id) :created_at])
+
+(defmethod serdes/hash-required-fields :model/Card
+  [_card]
+  {:model :model/Card
+   :required-fields [:name :collection_id :created_at]})
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
   [_model & {:keys [table-alias]}]
@@ -948,7 +1064,7 @@
   created."
   ([card creator] (create-card! card creator false))
   ([card creator delay-event?] (create-card! card creator delay-event? true))
-  ([{:keys [dataset_query result_metadata parameters parameter_mappings type] :as input-card-data} creator delay-event? autoplace-dashboard-questions?]
+  ([{:keys [result_metadata parameters parameter_mappings type] :as input-card-data} creator delay-event? autoplace-dashboard-questions?]
    ;; you can't specify the dashboard_tab_id and not a dashboard_id
    (api/check-400 (not (and (:dashboard_tab_id input-card-data)
                             (not (:dashboard_id input-card-data)))))
@@ -961,12 +1077,17 @@
                                                 (assoc
                                                  :creator_id (:id creator)
                                                  :parameters (or parameters [])
-                                                 :parameter_mappings (or parameter_mappings []))
+                                                 :parameter_mappings (or parameter_mappings [])
+                                                 :entity_id          (u/generate-nano-id))
                                                 (cond-> (nil? type)
-                                                  (assoc :type :question)))
-         {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata {:query    dataset_query
-                                                                                        :metadata result_metadata
-                                                                                        :model?   (model? card-data)})
+                                                  (assoc :type :question))
+                                                maybe-normalize-query
+                                                (ensure-clause-idents ::before-insert))
+         {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
+                                             {:query     (:dataset_query card-data)
+                                              :metadata  result_metadata
+                                              :entity-id (:entity_id card-data)
+                                              :model?    (model? card-data)})
          card                               (t2/with-transaction [_conn]
                                               ;; Adding a new card at `collection_position` could cause other cards in
                                               ;; this collection to change position, check that and fix it if needed
@@ -1140,6 +1261,9 @@
                                          :moderator_id        (:id actor)
                                          :status              nil
                                          :text                (tru "Unverified due to edit")}))
+    ;; Invalidate the cache for card
+    (cache/invalidate-config! {:questions [(:id card-before-update)]
+                               :with-overrides? true})
     ;; ok, now save the Card
     (t2/update! :model/Card (:id card-before-update)
                 ;; `collection_id` and `description` can be `nil` (in order to unset them).
@@ -1225,7 +1349,8 @@
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
   {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
-          :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name]
+          :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name
+          :card_schema]
    :skip [;; cache invalidation is instance-specific
           :cache_invalidated_at
           ;; those are instance-specific analytic columns

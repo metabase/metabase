@@ -3,7 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
@@ -124,3 +124,50 @@
   (let [register!* (delay (register-fonts!))]
     (fn []
       @register!*)))
+
+(def ^:const max-bar-width
+  "Minibar max width in px"
+  70)
+
+(def ^:const font-size
+  "Font size in px"
+  12.5)
+
+(def ^:const td-x-padding-em
+  "Table cell x padding in em"
+  1)
+
+(def ^:const td-y-padding-em
+  "Table cell y padding in em"
+  0.75)
+
+(def ^:const mb-width
+  "Minibar width in pixels"
+  100)
+
+(def ^:const mb-height
+  "Minibar height in pixels"
+  8)
+
+(def ^:const mb-primary-color
+  "Minibar primary color"
+  (public-settings/application-color))
+
+(def ^:const mb-primary-color-alpha
+  "Minibar primary color with alpha 0.2"
+  (format "%s33" mb-primary-color))
+
+(def ^:const mb-secondary-color
+  "Minibar secondary color; used for negative values"
+  (public-settings/secondary-chart-color))
+
+(def ^:const mb-secondary-color-alpha
+  "Minibar secondary color with alpha 0.2"
+  (format "%s33" mb-secondary-color))
+
+(def ^:const view-as-img-style
+  "CSS Styles for img elements in cells of a column with {:view-as 'image'} setting"
+  {:max-width  "100%"
+   :max-height "30px"
+   :object-fit "contain"
+   :display    "block"})

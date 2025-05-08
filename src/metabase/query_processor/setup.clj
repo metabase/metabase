@@ -10,11 +10,11 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.models.setting :as setting]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
+   [metabase.settings.core :as setting]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
@@ -50,7 +50,7 @@
         :id          (:id card)
         :name        (format "Card #%d" (:id card))
         :database-id (:database_id card)})
-     [:model/Card :id :database_id]
+     [:model/Card :id :database_id :card_schema]
      :id [:in (set ids)])))
 
 (deftype ^:private BootstrapMetadataProvider []
@@ -169,7 +169,7 @@
   [f :- [:=> [:cat ::qp.schema/query] :any]]
   (fn [query]
     (cond
-      setting/*database-local-values*
+      (setting/database-local-values)
       (f query)
 
       (= (query-type query) :internal)
@@ -177,7 +177,7 @@
 
       :else
       (let [{:keys [settings]} (lib.metadata/database (qp.store/metadata-provider))]
-        (binding [setting/*database-local-values* (or settings {})]
+        (setting/with-database-local-values (or settings {})
           (f query))))))
 
 (mu/defn- do-with-canceled-chan :- fn?

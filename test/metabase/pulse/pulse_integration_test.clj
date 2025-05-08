@@ -10,12 +10,14 @@
    [hickory.core :as hik]
    [hickory.select :as hik.s]
    [metabase.channel.email :as email]
+   [metabase.lib.core :as lib]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.humanization :as u.humanization]
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [thunk]
@@ -41,22 +43,18 @@
                                                                                                [:field (mt/id :orders :total) {:base-type :type/Float}]
                                                                                                [:expression "Tax Rate"]]
                                                                                 :limit        10}}}
-                    :model/Card {~model-card-id :id} {:name            "Model with percent semantic type"
-                                                      :type            :model
-                                                      :dataset_query   {:type     :query
-                                                                        :database (mt/id)
-                                                                        :query    {:source-table (format "card__%s" ~base-card-id)}}
-                                                      :result_metadata [{:name         "TAX"
-                                                                         :display_name "Tax"
-                                                                         :base_type    :type/Float}
-                                                                        {:name         "TOTAL"
-                                                                         :display_name "Total"
-                                                                         :base_type    :type/Float}
-                                                                        {:name          "Tax Rate"
-                                                                         :display_name  "Tax Rate"
-                                                                         :base_type     :type/Float
-                                                                         :semantic_type :type/Percentage
-                                                                         :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}
+                    :model/Card {~model-card-id :id} (-> (mt/card-with-source-metadata-for-query
+                                                          {:type     :query
+                                                           :database (mt/id)
+                                                           :query    {:source-table (format "card__%s" ~base-card-id)}})
+                                                         (assoc :name "Model with percent semantic type"
+                                                                :type :model)
+                                                         (update :result_metadata
+                                                                 ~(fn [metadata]
+                                                                    (mapv #(cond-> %
+                                                                             (= (:name %) "Tax Rate")
+                                                                             (assoc :semantic_type :type/Percentage))
+                                                                          metadata))))
                     :model/Card {~question-card-id :id} {:name          "Query based on model"
                                                          :dataset_query {:type     :query
                                                                          :database (mt/id)
@@ -338,131 +336,138 @@
 (deftest consistent-date-formatting-test
   (mt/with-temporary-setting-values [custom-formatting nil]
     (let [q (sql-time-query "2023-12-11 15:30:45.123" 20)]
-      (mt/with-temp [:model/Card {native-card-id :id} {:name          "NATIVE"
-                                                       :dataset_query {:database (mt/id)
-                                                                       :type     :native
-                                                                       :native   {:query q}}}
-                     :model/Card {model-card-id  :id
-                                  model-metadata :result_metadata} {:name          "MODEL"
-                                                                    :type          :model
-                                                                    :dataset_query {:database (mt/id)
-                                                                                    :type     :query
-                                                                                    :query    (model-query native-card-id)}}
-                     :model/Card {meta-model-card-id :id} {:name                   "METAMODEL"
-                                                           :type                   :model
-                                                           :dataset_query          {:database (mt/id)
-                                                                                    :type     :query
-                                                                                    :query    {:source-table
-                                                                                               (format "card__%s" model-card-id)}}
-                                                           :result_metadata        (mapv
-                                                                                    (fn [{column-name :name :as col}]
-                                                                                      (cond-> col
-                                                                                        (= "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" column-name)
-                                                                                        (assoc :settings {:date_separator "-"
-                                                                                                          :date_style     "YYYY/M/D"
-                                                                                                          :time_style     "HH:mm"})
-                                                                                        (= "EXAMPLE_TIMESTAMP" column-name)
-                                                                                        (assoc :settings {:time_enabled "seconds"})))
-                                                                                    model-metadata)
-                                                           :visualization_settings {:column_settings {"[\"name\",\"FULL_DATETIME_UTC\"]"
-                                                                                                      {:date_abbreviate true
-                                                                                                       :time_enabled    "milliseconds"
-                                                                                                       :time_style      "HH:mm"}
-                                                                                                      "[\"name\",\"EXAMPLE_TIMESTAMP\"]"
-                                                                                                      {:time_enabled "milliseconds"}
-                                                                                                      "[\"name\",\"EXAMPLE_TIME\"]"
-                                                                                                      {:time_enabled nil}
-                                                                                                      "[\"name\",\"FULL_DATETIME_PACIFIC\"]"
-                                                                                                      {:time_enabled nil}}}}
-                     :model/Dashboard {dash-id :id} {:name "The Dashboard"}
-                     :model/DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
-                                                                   :card_id      native-card-id}
-                     :model/DashboardCard {model-dash-card-id :id} {:dashboard_id dash-id
-                                                                    :card_id      model-card-id}
-                     :model/DashboardCard {metamodel-dash-card-id :id} {:dashboard_id dash-id
-                                                                        :card_id      meta-model-card-id}
-                     :model/Pulse {pulse-id :id
-                                   :as      pulse} {:name "Consistent Time Formatting Pulse"
-                                                    :dashboard_id dash-id}
-                     :model/PulseCard _ {:pulse_id          pulse-id
-                                         :card_id           native-card-id
-                                         :dashboard_card_id base-dash-card-id
-                                         :include_csv       true}
-                     :model/PulseCard _ {:pulse_id          pulse-id
-                                         :card_id           model-card-id
-                                         :dashboard_card_id model-dash-card-id
-                                         :include_csv       true}
-                     :model/PulseCard _ {:pulse_id          pulse-id
-                                         :card_id           meta-model-card-id
-                                         :dashboard_card_id metamodel-dash-card-id
-                                         :include_csv       true}
-                     :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                                 :pulse_id     pulse-id
-                                                                 :enabled      true}
-                     :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                                     :user_id          (mt/user->id :rasta)}]
-        (let [attached-data     (run-pulse-and-return-attached-csv-data! pulse)
-              get-res           #(-> (get attached-data %)
-                                     (update-vals first)
-                                     (dissoc "X"))
-              native-results    (get-res "NATIVE.csv")
-              model-results     (get-res "MODEL.csv")
-              metamodel-results (get-res "METAMODEL.csv")]
-          ;; Note that these values are obtained by inspection since the UI formats are in the FE code.
-          (testing "The default export formats conform to the default UI formats"
-            (is (= {"FULL_DATETIME_UTC"                "December 11, 2023, 3:30 PM"
-                    "FULL_DATETIME_PACIFIC"            "December 11, 2023, 3:30 PM"
-                    "EXAMPLE_TIMESTAMP"                "December 11, 2023, 3:30 PM"
-                    "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" "December 11, 2023, 3:30 PM"
-                    "EXAMPLE_DATE"                     "December 11, 2023"
-                    "EXAMPLE_TIME"                     "3:30 PM"
-                    ;; NOTE -- We don't have a type in our type system for year so this is just an integer.
-                    ;; It might be worth looking into fixing this so that it displays without a comma
-                    "EXAMPLE_YEAR"                     "2,023"
-                    "EXAMPLE_MONTH"                    "12"
-                    "EXAMPLE_DAY"                      "11"
-                    "EXAMPLE_WEEK_NUMBER"              "50"
-                    "EXAMPLE_HOUR"                     "15"
-                    "EXAMPLE_MINUTE"                   "30"
-                    "EXAMPLE_SECOND"                   "45"}
-                   ;; the EXAMPLE_WEEK is a normal timestamp.
-                   ;; We care about it in the context of the Model, not the native results
-                   ;; so dissoc it here.
-                   (dissoc native-results "EXAMPLE_WEEK"))))
-          (testing "An exported model retains the base format, but does use display names for column names."
-            (is (= {"Full Datetime Utc"                "December 11, 2023, 3:30 PM"
-                    "Full Datetime Pacific"            "December 11, 2023, 3:30 PM"
-                    "Example Timestamp"                "December 11, 2023, 3:30 PM"
-                    "Example Timestamp With Time Zone" "December 11, 2023, 3:30 PM"
-                    "Example Date"                     "December 11, 2023"
-                    "Example Time"                     "3:30 PM"
-                    "Example Year"                     "2,023"
-                    "Example Month"                    "12"
-                    "Example Day"                      "11"
-                    "Example Week Number"              "50"
-                    "Example Week: Week"               "December 10, 2023 - December 16, 2023"
-                    "Example Hour"                     "15"
-                    "Example Minute"                   "30"
-                    "Example Second"                   "45"}
-                   model-results)))
-          (testing "Visualization settings are applied"
-            (is (= "Dec 11, 2023, 15:30:45.123"
-                   (metamodel-results "Full Datetime Utc"))))
-          (testing "Custom column metadata settings are applied"
-            (is (= "2023-12-11, 15:30"
-                   (metamodel-results "Example Timestamp With Time Zone"))))
-          (testing "Visualization settings overwrite custom metadata column settings"
-            (is (= "December 11, 2023, 3:30:45.123 PM"
-                   (metamodel-results "Example Timestamp"))))
-          (testing "Setting time-enabled to nil for a date time column results in only showing the date"
-            (is (= "December 11, 2023"
-                   (metamodel-results "Full Datetime Pacific"))))
-          (testing "Setting time-enabled to nil for a time column just returns an empty string"
-            (is (= ""
-                   (metamodel-results "Example Time"))))
-          (testing "Week Units Are Displayed as a Date Range"
-            (is (= "December 10, 2023 - December 16, 2023"
-                   (metamodel-results "Example Week: Week")))))))))
+      (letfn [(model-metadata-fn [col]
+                (assoc col :display_name (u.humanization/name->human-readable-name :simple (:name col))))
+              (metamodel-metadata-fn [{column-name :name :as col}]
+                (let [settings (case column-name
+                                 "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE"
+                                 {:date_separator "-"
+                                  :date_style     "YYYY/M/D"
+                                  :time_style     "HH:mm"}
+
+                                 "EXAMPLE_TIMESTAMP"
+                                 {:time_enabled "seconds"}
+
+                                 nil)]
+                  (cond-> col
+                    settings (assoc :settings settings))))]
+        (mt/with-temp [:model/Card {native-card-id :id} (-> (mt/card-with-source-metadata-for-query
+                                                             (mt/native-query {:query q}))
+                                                            (assoc :name "NATIVE"))
+                       :model/Card {model-card-id  :id} (-> (mt/card-with-source-metadata-for-query
+                                                             {:database (mt/id)
+                                                              :type     :query
+                                                              :query    (model-query native-card-id)})
+                                                            (merge {:name "MODEL"
+                                                                    :type :model})
+                                                            (update :result_metadata
+                                                                    #(mapv model-metadata-fn %)))
+                       :model/Card {meta-model-card-id :id} (-> (mt/card-with-source-metadata-for-query
+                                                                 (mt/mbql-query nil
+                                                                   {:source-table (format "card__%s" model-card-id)}))
+                                                                (assoc :name                   "METAMODEL"
+                                                                       :type                   :model
+                                                                       :visualization_settings
+                                                                       {:column_settings {"[\"name\",\"FULL_DATETIME_UTC\"]"
+                                                                                          {:date_abbreviate true
+                                                                                           :time_enabled    "milliseconds"
+                                                                                           :time_style      "HH:mm"}
+                                                                                          "[\"name\",\"EXAMPLE_TIMESTAMP\"]"
+                                                                                          {:time_enabled "milliseconds"}
+                                                                                          "[\"name\",\"EXAMPLE_TIME\"]"
+                                                                                          {:time_enabled nil}
+                                                                                          "[\"name\",\"FULL_DATETIME_PACIFIC\"]"
+                                                                                          {:time_enabled nil}}})
+                                                                (update :result_metadata #(mapv metamodel-metadata-fn %)))
+                       :model/Dashboard {dash-id :id} {:name "The Dashboard"}
+                       :model/DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
+                                                                     :card_id      native-card-id}
+                       :model/DashboardCard {model-dash-card-id :id} {:dashboard_id dash-id
+                                                                      :card_id      model-card-id}
+                       :model/DashboardCard {metamodel-dash-card-id :id} {:dashboard_id dash-id
+                                                                          :card_id      meta-model-card-id}
+                       :model/Pulse {pulse-id :id
+                                     :as      pulse} {:name "Consistent Time Formatting Pulse"
+                                                      :dashboard_id dash-id}
+                       :model/PulseCard _ {:pulse_id          pulse-id
+                                           :card_id           native-card-id
+                                           :dashboard_card_id base-dash-card-id
+                                           :include_csv       true}
+                       :model/PulseCard _ {:pulse_id          pulse-id
+                                           :card_id           model-card-id
+                                           :dashboard_card_id model-dash-card-id
+                                           :include_csv       true}
+                       :model/PulseCard _ {:pulse_id          pulse-id
+                                           :card_id           meta-model-card-id
+                                           :dashboard_card_id metamodel-dash-card-id
+                                           :include_csv       true}
+                       :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                                   :pulse_id     pulse-id
+                                                                   :enabled      true}
+                       :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                       :user_id          (mt/user->id :rasta)}]
+          (let [attached-data     (run-pulse-and-return-attached-csv-data! pulse)
+                get-res           #(-> (get attached-data %)
+                                       (update-vals first)
+                                       (dissoc "X"))
+                native-results    (get-res "NATIVE.csv")
+                model-results     (get-res "MODEL.csv")
+                metamodel-results (get-res "METAMODEL.csv")]
+            ;; Note that these values are obtained by inspection since the UI formats are in the FE code.
+            (testing "The default export formats conform to the default UI formats"
+              (is (= {"FULL_DATETIME_UTC"                "December 11, 2023, 3:30 PM"
+                      "FULL_DATETIME_PACIFIC"            "December 11, 2023, 3:30 PM"
+                      "EXAMPLE_TIMESTAMP"                "December 11, 2023, 3:30 PM"
+                      "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" "December 11, 2023, 3:30 PM"
+                      "EXAMPLE_DATE"                     "December 11, 2023"
+                      "EXAMPLE_TIME"                     "3:30 PM"
+                      ;; NOTE -- We don't have a type in our type system for year so this is just an integer.
+                      ;; It might be worth looking into fixing this so that it displays without a comma
+                      "EXAMPLE_YEAR"                     "2,023"
+                      "EXAMPLE_MONTH"                    "12"
+                      "EXAMPLE_DAY"                      "11"
+                      "EXAMPLE_WEEK_NUMBER"              "50"
+                      "EXAMPLE_HOUR"                     "15"
+                      "EXAMPLE_MINUTE"                   "30"
+                      "EXAMPLE_SECOND"                   "45"}
+                     ;; the EXAMPLE_WEEK is a normal timestamp.
+                     ;; We care about it in the context of the Model, not the native results
+                     ;; so dissoc it here.
+                     (dissoc native-results "EXAMPLE_WEEK"))))
+            (testing "An exported model retains the base format, but does use display names for column names."
+              (is (= {"Full Datetime Utc"                "December 11, 2023, 3:30 PM"
+                      "Full Datetime Pacific"            "December 11, 2023, 3:30 PM"
+                      "Example Timestamp"                "December 11, 2023, 3:30 PM"
+                      "Example Timestamp With Time Zone" "December 11, 2023, 3:30 PM"
+                      "Example Date"                     "December 11, 2023"
+                      "Example Time"                     "3:30 PM"
+                      "Example Year"                     "2,023"
+                      "Example Month"                    "12"
+                      "Example Day"                      "11"
+                      "Example Week Number"              "50"
+                      "Example Week: Week"               "December 10, 2023 - December 16, 2023"
+                      "Example Hour"                     "15"
+                      "Example Minute"                   "30"
+                      "Example Second"                   "45"}
+                     model-results)))
+            (testing "Visualization settings are applied"
+              (is (= "Dec 11, 2023, 15:30:45.123"
+                     (metamodel-results "Full Datetime Utc"))))
+            (testing "Custom column metadata settings are applied"
+              (is (= "2023-12-11, 15:30"
+                     (metamodel-results "Example Timestamp With Time Zone"))))
+            (testing "Visualization settings overwrite custom metadata column settings"
+              (is (= "December 11, 2023, 3:30:45.123 PM"
+                     (metamodel-results "Example Timestamp"))))
+            (testing "Setting time-enabled to nil for a date time column results in only showing the date"
+              (is (= "December 11, 2023"
+                     (metamodel-results "Full Datetime Pacific"))))
+            (testing "Setting time-enabled to nil for a time column just returns an empty string"
+              (is (= ""
+                     (metamodel-results "Example Time"))))
+            (testing "Week Units Are Displayed as a Date Range"
+              (is (= "December 10, 2023 - December 16, 2023"
+                     (metamodel-results "Example Week: Week"))))))))))
 
 (deftest renamed-column-names-are-applied-test
   (testing "CSV attachments should have the same columns as displayed in Metabase (#18572)"
@@ -855,29 +860,24 @@
 (deftest geographic-coordinates-formatting-test
   (testing "Longitude and latitude columns should format correctly on export (#38419)"
     (mt/dataset airports
-      (let [base-card {:dataset_query {:database (mt/id)
-                                       :type     :query
-                                       :query    {:source-table (mt/id :airport)
-                                                  :fields       [[:field (mt/id :airport :id) {:base-type :type/Integer}]
-                                                                 [:field (mt/id :airport :longitude) {:base-type :type/Float}]
-                                                                 [:field (mt/id :airport :latitude) {:base-type :type/Float}]]
-                                                  :order-by     [[:asc (mt/id :airport :id)]]
-                                                  :limit        5}}}
-            model     {:dataset_query   {:database (mt/id)
-                                         :type     :query
-                                         :query    {:source-table (mt/id :airport)
-                                                    :fields       [[:field (mt/id :airport :id) {:base-type :type/Integer}]
-                                                                   [:field (mt/id :airport :longitude) {:base-type :type/Float}]
-                                                                   [:field (mt/id :airport :latitude) {:base-type :type/Float}]]
-                                                    :order-by     [[:asc (mt/id :airport :id)]]
-                                                    :limit        5}}
+      (let [query     (mt/mbql-query airport
+                        {:fields   [$id $longitude $latitude]
+                         :order-by [[:asc $id]]
+                         :limit    5})
+            base-card {:dataset_query   query}
+            model-eid (u/generate-nano-id)
+            model     {:dataset_query   query
                        :type            :model
-                       :result_metadata [{:name "ID"
-                                          :id   (mt/id :airport :id)}
+                       :entity_id       model-eid
+                       :result_metadata [{:name  "ID"
+                                          :id    (mt/id :airport :id)
+                                          :ident (lib/model-ident (mt/ident :airport :id) model-eid)}
                                          {:semantic_type :type/Longitude
-                                          :name          "LONGITUDE"}
+                                          :name          "LONGITUDE"
+                                          :ident         (lib/model-ident (mt/ident :airport :longitude) model-eid)}
                                          {:semantic_type :type/Latitude
-                                          :name          "LATITUDE"}]}]
+                                          :name          "LATITUDE"
+                                          :ident         (lib/model-ident (mt/ident :airport :latitude) model-eid)}]}]
         (mt/with-temp [:model/Card {card-id :id} base-card
                        :model/Card {model-id :id} model
                        :model/Dashboard {dash-id :id} {}

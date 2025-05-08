@@ -1,6 +1,7 @@
 name: REVIEWS
 display_name: Reviews
 description: null
+entity_id: imJMQOvUtLybVRNQu7MFu
 created_at: '2024-08-28T14:38:42.774331Z'
 db_id: test-data (h2)
 schema: PUBLIC
@@ -21,4 +22,3 @@ serdes/meta:
 - id: REVIEWS
   model: Table
 database_require_filter: null
-entity_id: imJMQOvUtLybVRNQu7MFu

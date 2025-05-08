@@ -106,9 +106,8 @@ describe("scenarios > question > filter", () => {
     H.popover().within(() => {
       cy.findByText("Product ID").click();
       cy.findByText("Aerodynamic Linen Coat").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
 
     cy.log("Reported failing on v0.36.4 and v0.36.5.1");
     cy.findByTestId("loading-indicator").should("not.exist");
@@ -498,7 +497,7 @@ describe("scenarios > question > filter", () => {
     H.filter({ mode: "notebook" });
     H.popover().within(() => {
       cy.findByText("Created At").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByText("Previous").click();
       cy.findByText(/^Include/).click();
       cy.button("Add filter").click();
@@ -567,7 +566,7 @@ describe("scenarios > question > filter", () => {
     H.enterCustomColumnDetails({ formula: "3.14159" });
     H.popover().within(() => {
       cy.button("Done").should("be.disabled");
-      cy.findByText("Expecting boolean but found 3.14159");
+      cy.findByText("Types are incompatible.").should("be.visible");
     });
   });
 
@@ -578,7 +577,7 @@ describe("scenarios > question > filter", () => {
     H.enterCustomColumnDetails({ formula: '"TheAnswer"' });
     H.popover().within(() => {
       cy.button("Done").should("be.disabled");
-      cy.findByText('Expecting boolean but found "TheAnswer"');
+      cy.findByText("Types are incompatible.").should("be.visible");
     });
   });
 
@@ -738,9 +737,8 @@ describe("scenarios > question > filter", () => {
     H.popover().within(() => {
       cy.findByText("Category").click();
       cy.findByText("Gizmo").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     H.openNotebook();
 
     H.verifyNotebookQuery("Products", [
@@ -1037,6 +1035,21 @@ describe("scenarios > question > filter", () => {
       H.enterCustomColumnDetails({ formula: "floor" });
 
       H.checkExpressionEditorHelperPopoverPosition();
+    });
+  });
+
+  it("should close the dropdown but not the popover on escape when the combobox is opened", () => {
+    const optionName = "Abbey Satterfield";
+    H.openPeopleTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByText("Name").click();
+      cy.findByLabelText("Filter value").type("ab");
+      cy.findByRole("option", { name: optionName }).should("be.visible");
+
+      cy.findByLabelText("Filter value").type("{esc}");
+      cy.findByRole("option", { name: optionName }).should("not.exist");
+      cy.findByLabelText("Filter value").should("be.visible");
     });
   });
 });

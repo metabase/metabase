@@ -8,7 +8,7 @@ table_id:
 - Internal Metabase Database
 - public
 - v_alerts
-database_type: varchar
+database_type: text
 base_type: type/Text
 effective_type: type/Text
 semantic_type: type/Category
@@ -39,4 +39,4 @@ serdes/meta:
   model: Field
 database_indexed: false
 database_partitioned: null
-entity_id: BedPL8TCqvbUDtZbxWqNW
+entity_id: U1dAR8sncQ0doMFbpDobg

@@ -1,4 +1,4 @@
-import { getFunctionByStructure } from "./helper-text-strings";
+import { getMBQLName } from "./clause";
 import { parser } from "./tokenizer/parser";
 
 export function enclosingFunction(doc: string, pos: number) {
@@ -14,7 +14,12 @@ export function enclosingFunction(doc: string, pos: number) {
       cursor.to >= pos
     ) {
       const value = doc.slice(cursor.from, cursor.to);
-      const structure = value.replace(/\(.*\)?$/, "");
+      const argsIndex = value.indexOf("(") ?? value.length;
+      const structure = value.slice(0, argsIndex).trim();
+
+      if (!value.includes("(")) {
+        break;
+      }
 
       const args =
         cursor.node.getChildren("ArgList")?.[0]?.getChildren("Arg") ?? [];
@@ -27,7 +32,7 @@ export function enclosingFunction(doc: string, pos: number) {
         break;
       }
 
-      const fn = getFunctionByStructure(structure);
+      const fn = getMBQLName(structure);
       if (fn) {
         res = {
           name: fn,

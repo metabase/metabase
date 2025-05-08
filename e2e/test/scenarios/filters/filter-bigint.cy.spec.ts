@@ -211,7 +211,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
           cy.findByPlaceholderText("Min").type(minValue);
           cy.findByPlaceholderText("Max").type(maxValue);
         },
-        filterDisplayName: `NUMBER is ${minValue} – ${maxValue}`,
+        filterDisplayName: `NUMBER is between ${minValue} and ${maxValue}`,
         filteredRowCount: 3,
       });
     }
@@ -615,7 +615,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
           cy.findAllByPlaceholderText("Enter a number").eq(0).type(minValue);
           cy.findAllByPlaceholderText("Enter a number").eq(1).type(maxValue);
         },
-        filterDisplayName: `NUMBER is ${minValue} – ${maxValue}`,
+        filterDisplayName: `NUMBER is between ${minValue} and ${maxValue}`,
         filterArgsDisplayName: "2 selections",
         filteredRowCount: 3,
         withDrillThru,
@@ -1058,7 +1058,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       H.openNotebook();
       H.getNotebookStep("data").button("Filter").click();
       H.popover().findByText("Custom Expression").click();
-      H.enterCustomColumnDetails({ formula: `[ID] = "${value}"` });
+      H.enterCustomColumnDetails({ formula: `[ID] = ${value}` });
       cy.button("Done").click();
       H.visualize();
       H.assertQueryBuilderRowCount(1);
@@ -1069,7 +1069,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         cy.findByLabelText("Back").click();
         cy.findByText("Custom Expression").click();
       });
-      H.enterCustomColumnDetails({ formula: `[ID] != "${value}"` });
+      H.enterCustomColumnDetails({ formula: `[ID] != ${value}` });
       cy.button("Update").click();
       H.visualize();
       H.assertQueryBuilderRowCount(2);

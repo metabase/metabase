@@ -921,6 +921,15 @@
                (binding [*search-request-results-database-id* db-id]
                  (search-request-data :rasta :q (:name table)))))))))
 
+(deftest table-test-8
+  (testing "you should be able to see a Table when the current user is a superuser"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    table {:db_id db-id}]
+      (mt/with-no-data-perms-for-all-users!
+        (is (= 1
+               (binding [*search-request-results-database-id* db-id]
+                 (count (search-request-data :crowberto :q (:name table))))))))))
+
 (deftest all-users-no-perms-table-test
   (testing (str "If the All Users group doesn't have perms to view a Table, but the current User is in a group that "
                 "does have perms, they should still be able to see it (#12332)")
@@ -1747,6 +1756,29 @@
                (select-keys
                 (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
                 [:total :data])))))))
+
+(deftest include-metadata
+  (testing "Include card result_metadata if include-metadata is set"
+    (let [search-name (random-uuid)
+          named #(str search-name "-" %)]
+      (mt/with-temp [:model/Card {reg-card-id :id} {:name            (named "regular card")
+                                                    :result_metadata [{:description "The state or province of the account’s billing address."
+                                                                       :ident       "OmdKsPv5v1ct3Ku6X4tJl"}]}]
+        (testing "Can include `result_metadata` info"
+          (is (= [{:description "The state or province of the account’s billing address."
+                   :ident       "OmdKsPv5v1ct3Ku6X4tJl"}]
+                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_metadata "true")
+                      :data
+                      (filter #(= reg-card-id (:id %)))
+                      first
+                      :result_metadata))))
+        (testing "result_metadata not included by default"
+          (is (nil?
+               (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
+                    :data
+                    (filter #(= reg-card-id (:id %)))
+                    first
+                    :result_metadata))))))))
 
 (deftest prometheus-response-metrics-test
   (testing "Prometheus counters get incremented for error responses"

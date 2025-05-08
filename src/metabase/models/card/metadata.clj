@@ -1,6 +1,7 @@
 (ns metabase.models.card.metadata
   "Code related to Card metadata (re)calculation and saving updated metadata asynchronously."
   (:require
+   [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -15,6 +16,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
+
+(declare ^:private fix-incoming-idents)
 
 (mr/def ::future
   [:fn {:error/message "A future"} future?])
@@ -42,28 +45,37 @@ saved later when it is ready."
     [:metadata-future ::future]]])
 
 (mu/defn- maybe-async-model-result-metadata :- ::maybe-async-result-metadata
-  [{:keys [query metadata original-metadata valid-metadata?]} :- [:map
-                                                                  [:valid-metadata? :any]]]
+  [{:keys [query metadata original-metadata valid-metadata? entity-id]} :- [:map
+                                                                            [:valid-metadata? :any]]]
   (log/debug "Querying for metadata and blending model metadata")
-  (let [futur     (legacy-result-metadata-future query)
+  (let [futur     (-> query
+                      (assoc-in [:info :card-entity-id] entity-id)
+                      legacy-result-metadata-future)
         metadata' (if valid-metadata?
                     (map mbql.normalize/normalize-source-metadata metadata)
                     original-metadata)
-        result    (deref futur metadata-sync-wait-ms ::timed-out)]
+        result    (deref futur metadata-sync-wait-ms ::timed-out)
+        combiner  (fn [result]
+                    (-> result
+                        (fix-incoming-idents {:type      :model
+                                              :entity_id entity-id})
+                        (qp.util/combine-metadata metadata')))]
     (if (= result ::timed-out)
       {:metadata-future (future
                           (try
-                            (qp.util/combine-metadata @futur metadata')
+                            (combiner @futur)
                             (catch Throwable e
                               (future-cancel futur)
                               (log/errorf e "Error blending model metadata: %s" (ex-message e))
                               metadata')))}
-      {:metadata (qp.util/combine-metadata result metadata')})))
+      {:metadata (combiner result)})))
 
 (mu/defn- maybe-async-recomputed-metadata :- ::maybe-async-result-metadata
-  [query]
+  [query entity-id]
   (log/debug "Querying for metadata")
-  (let [futur (legacy-result-metadata-future query)
+  (let [futur (-> query
+                  (assoc-in [:info :card-entity-id] entity-id)
+                  legacy-result-metadata-future)
         result (deref futur metadata-sync-wait-ms ::timed-out)]
     (if (= result ::timed-out)
       {:metadata-future futur}
@@ -90,8 +102,9 @@ saved later when it is ready."
 
   This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
   might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
-  [{:keys [original-query query metadata original-metadata model?], :as options}]
-  (let [valid-metadata? (and metadata (mr/validate analyze/ResultsMetadata metadata))]
+  [{:keys [original-query query metadata original-metadata model? entity-id], :as options}]
+  (let [valid-metadata? (and metadata
+                             (mr/validate analyze/ResultsMetadata metadata))]
     (cond
       (or
        ;; query didn't change, preserve existing metadata
@@ -107,7 +120,9 @@ saved later when it is ready."
             valid-metadata?))
       (do
         (log/debug "Reusing provided metadata")
-        {:metadata metadata})
+        ;; TODO: Passing this synthetic `card` is pretty hacky. Better to refactor `fix-incoming-idents`.
+        {:metadata (fix-incoming-idents metadata {:entity_id entity-id
+                                                  :type      (if model? :model :question)})})
 
       ;; frontend always sends query. But sometimes programatic don't (cypress, API usage). Returning an empty channel
       ;; means the metadata won't be updated at all.
@@ -122,12 +137,29 @@ saved later when it is ready."
       (maybe-async-model-result-metadata (assoc options :valid-metadata? valid-metadata?))
 
       :else
-      (maybe-async-recomputed-metadata query))))
+      (maybe-async-recomputed-metadata query entity-id))))
 
 (def ^:private metadata-async-timeout-ms
   "Duration in milliseconds to wait for the metadata before abandoning the asynchronous metadata saving. Default is 15
   minutes."
   (u/minutes->ms 15))
+
+;; TODO: Bring this back once we can count on idents again.
+#_(defn- valid-ident?
+    "Validates that model columns have idents that always start with `model[CardEntityId]__`, and that all idents are
+    nonempty strings.
+
+    Note that this **does not** check that `:type :native` queries have native idents - SQL-based sandboxing stores
+    `:native` queries but returns MBQL-like metadata with IDs and the Field `entity_id`s as idents."
+    ;; TODO: That limitation that prevents checking native queries have native-looking :idents is unfortunate.
+    ;; At least this checks that we never store `native[]__`, ie. native queries without a card entity_id.
+    ([column card]
+     (valid-ident? column (= (:type card) :model) (:entity_id card)))
+    ([column model? entity-id]
+     (let [valid-fn (cond
+                      model?               lib/valid-model-ident?
+                      :else                lib/valid-basic-ident?)]
+       (valid-fn column entity-id))))
 
 (mu/defn save-metadata-async!
   "Save metadata when (and if) it is ready. Takes a chan that will eventually return metadata. Waits up
@@ -150,7 +182,7 @@ saved later when it is ready."
             (log/infof "Not updating metadata asynchronously for card %s because no metadata" (u/the-id card))
 
             :else
-            (let [current-query (t2/select-one-fn :dataset_query [:model/Card :dataset_query] :id id)]
+            (let [current-query (t2/select-one-fn :dataset_query [:model/Card :dataset_query :card_schema] :id id)]
               (if (= (:dataset_query card) current-query)
                 (do
                   (t2/update! :model/Card id {:result_metadata metadata})
@@ -160,12 +192,45 @@ saved later when it is ready."
           (log/errorf e "Error updating metadata for Card %d asynchronously: %s" id (ex-message e)))))))
 
 (defn infer-metadata
-  "Infer the default result_metadata to store for MBQL cards."
+  "Infer the default result_metadata to store for MBQL cards.
+
+  Ignores any that might be present already.
+
+  If the card is provided and is a model, this will wrap [[lib/model-ident]] around the `:ident`s from the inner query."
   [query]
   (not-empty (request/with-current-user nil
                (u/ignore-exceptions
                  (qp.preprocess/query->expected-cols query)))))
 
+(defn- xform-maybe-fix-idents-for-model
+  "Returns a transducer that will conditionally wrap `:ident`s with [[lib/model-ident]] if they are not already wrapped
+  for this model.
+
+  If the provided card is not a model, returns [[identity]]."
+  [card]
+  (if (= (:type card) :model)
+    (let [eid (:entity_id card)]
+      (map (fn [col]
+             (cond-> col
+               (and (lib/valid-basic-ident? col eid)
+                    (not (lib/valid-model-ident? col eid))) (lib/add-model-ident eid)))))
+    identity))
+
+(defn infer-metadata-with-model-overrides
+  "Does a fresh [[infer-metadata]] for the provided query.
+
+  - If the `card` is not a model, that fresh metadata is returned directly.
+  - If the `card` **is** a model, then the fresh metadata is returned, but any existing `:result_metadata` is included
+  so model metadata overrides (eg. new display_name or field types) are preserved in the result."
+  [query card]
+  (let [model?         (= (:type card) :model)
+        model-metadata (when model? (:result_metadata card))
+        ;; If this is a model, include that model metadata so QP will infer correctly overridden metadata.
+        query          (cond-> query
+                         model-metadata (update :info merge {:metadata/model-metadata model-metadata}))]
+    (into [] (xform-maybe-fix-idents-for-model card) (infer-metadata query))))
+
+;; TODO: Refactor this to use idents rather than names, so it's more robust.
 (defn refresh-metadata
   "Update cached result metadata to reflect changes to the underlying tables.
   For now, this only handles the additional and removal of columns, and does not get into things like type changes."
@@ -177,6 +242,16 @@ saved later when it is ready."
                  (->> (remove (comp old-names :name) new-metadata)
                       (map update-fn))))))
 
+(defn fix-incoming-idents
+  "Result metadata included with an insert or update should already be in its final form, but might:
+  - Have placeholders, if we didn't have an `:entity_id` for a new card when the query ran
+  - Be for an inner query, not for a model, and need to be wrapped with the [[lib/model-ident]]."
+  [results-metadata card]
+  ;; It's important that the placeholders are handled first, otherwise the check for double-wrapping will fail.
+  (into [] (comp (map #(m/update-existing % :ident lib/replace-placeholder-idents (:entity_id card)))
+                 (xform-maybe-fix-idents-for-model card))
+        results-metadata))
+
 (defn populate-result-metadata
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
   metadata from the query."
@@ -186,13 +261,13 @@ saved later when it is ready."
     (not query)
     (do
       (log/debug "Not inferring result metadata for Card: query was not updated")
-      card)
+      (m/update-existing card :result_metadata fix-incoming-idents card))
 
-    ;; passing in metadata => no-op
+    ;; passing in metadata => use that metadata, but replace any placeholder idents in it.
     metadata
     (do
       (log/debug "Not inferring result metadata for Card: metadata was passed in to insert!/update!")
-      card)
+      (update card :result_metadata fix-incoming-idents card))
 
     ;; this is an update, and dataset_query hasn't changed => no-op
     (and existing-card-id
@@ -215,4 +290,15 @@ saved later when it is ready."
     :else
     (do
       (log/debug "Attempting to infer result metadata for Card")
-      (assoc card :result_metadata (infer-metadata query)))))
+      (assoc card :result_metadata (infer-metadata-with-model-overrides query card)))))
+
+(defn assert-valid-idents!
+  "Given a card (or updates being made to a card) check the `:result_metadata` has correctly formed idents."
+  [{_cols :result_metadata :as _card}]
+  ;; TODO: Bring back these safety checks when we can rely on card having `:ident`s.
+  #_(lib/assert-idents-present! cols {:card-id (:id card)})
+  #_(when-let [invalid (seq (remove #(or (nil? (:ident %))
+                                         (valid-ident? % card))
+                                    cols))]
+      (log/warnf "Some columns in :result_metadata (card %d %s %s) have bad :idents! Query %s and bad columns %s"
+                 (:id card) (:entity_id card) (str (:type card)) (:dataset_query card) invalid)))

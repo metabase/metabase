@@ -65,7 +65,7 @@ interface TableState {
 }
 
 class Table extends Component<TableProps, TableState> {
-  static uiName = t`Table`;
+  static getUiName = () => t`Table`;
   static identifier = "table";
   static iconName = "table2";
   static canSavePng = false;
@@ -89,16 +89,36 @@ class Table extends Component<TableProps, TableState> {
 
   static settings = {
     ...columnSettings({ hidden: true }),
+    "table.pagination": {
+      get section() {
+        return t`Columns`;
+      },
+      get title() {
+        return t`Paginate results`;
+      },
+      inline: true,
+      widget: "toggle",
+      dashboard: true,
+      default: false,
+    },
     "table.row_index": {
-      section: t`Columns`,
-      title: t`Show row index`,
+      get section() {
+        return t`Columns`;
+      },
+      get title() {
+        return t`Show row index`;
+      },
       inline: true,
       widget: "toggle",
       default: false,
     },
     "table.pivot": {
-      section: t`Columns`,
-      title: t`Pivot table`,
+      get section() {
+        return t`Columns`;
+      },
+      get title() {
+        return t`Pivot table`;
+      },
       widget: "toggle",
       inline: true,
       getHidden: (
@@ -121,8 +141,12 @@ class Table extends Component<TableProps, TableState> {
     },
 
     "table.pivot_column": {
-      section: t`Columns`,
-      title: t`Pivot column`,
+      get section() {
+        return t`Columns`;
+      },
+      get title() {
+        return t`Pivot column`;
+      },
       widget: "field",
       getDefault: ([
         {
@@ -144,8 +168,12 @@ class Table extends Component<TableProps, TableState> {
       persistDefault: true,
     },
     "table.cell_column": {
-      section: t`Columns`,
-      title: t`Cell column`,
+      get section() {
+        return t`Columns`;
+      },
+      get title() {
+        return t`Cell column`;
+      },
       widget: "field",
       getDefault: (
         [{ data }]: Series,
@@ -173,7 +201,9 @@ class Table extends Component<TableProps, TableState> {
     ...tableColumnSettings,
     "table.column_widths": {},
     [DataGrid.COLUMN_FORMATTING_SETTING]: {
-      section: t`Conditional Formatting`,
+      get section() {
+        return t`Conditional Formatting`;
+      },
       widget: ChartSettingsTableFormatting,
       default: [],
       getProps: (series: Series, settings: VisualizationSettings) => ({
@@ -247,18 +277,17 @@ class Table extends Component<TableProps, TableState> {
     }
 
     if (isString(column)) {
-      const canWrapText = (columnSettings: OptionsType) => {
-        return (
-          columnSettings["view_as"] === null ||
-          columnSettings["view_as"] === "auto"
-        );
-      };
+      const canWrapText = (columnSettings: OptionsType) =>
+        columnSettings["view_as"] !== "image";
 
       settings["text_wrapping"] = {
         title: t`Wrap text`,
         default: false,
         widget: "toggle",
         inline: true,
+        isValid: (_column, columnSettings) => {
+          return canWrapText(columnSettings);
+        },
         getHidden: (_column, columnSettings) => {
           return !canWrapText(columnSettings);
         },

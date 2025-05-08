@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver.common.parameters.operators :as params.ops]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.user-parameter-value :as user-parameter-value]

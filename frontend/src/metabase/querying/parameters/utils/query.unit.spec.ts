@@ -235,7 +235,8 @@ describe("applyParameter", () => {
         type: "number/between",
         target: getFilterColumnTarget("ORDERS", "ID"),
         value: ["-9223372036854775808", "9223372036854775807"],
-        expectedDisplayName: "ID is -9223372036854775808 – 9223372036854775807",
+        expectedDisplayName:
+          "ID is between -9223372036854775808 and 9223372036854775807",
       },
       {
         type: "id",

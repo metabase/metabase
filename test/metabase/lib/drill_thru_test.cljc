@@ -10,6 +10,7 @@
    [metabase.lib.field :as-alias lib.field]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
@@ -857,6 +858,29 @@
                      :table-name "Orders"}]
       ;; Underlying records and automatic insights are not supported for native.
       :native-drills #{:drill-thru/quick-filter}})))
+
+(deftest ^:parallel available-drill-thrus-use-correct-field-with-models-test
+  (testing "drills get the model's column instead of the result metadata column #56799"
+    (let [card (:orders (lib.tu/mock-cards))
+          metadata-provider (lib.tu/metadata-provider-with-mock-card card)
+          query (lib/query metadata-provider card)
+          lib-col (m/find-first #(= (:name %) "CREATED_AT") (lib/returned-columns query))
+          card-col (m/find-first #(= (:name %) "CREATED_AT") (:result-metadata card))
+          context {:column     card-col
+                   :column-ref (lib/ref card-col)
+                   :value      nil}
+          drills (lib/available-drill-thrus query context)]
+      (is (=? [;; filter drills are special and use a column from filterable-columns
+               {:type :drill-thru/column-filter}
+               {:type :drill-thru/distribution
+                :column lib-col}
+               {:type :drill-thru/sort
+                :column lib-col}
+               {:type :drill-thru/summarize-column
+                :column lib-col}
+               {:type :drill-thru/column-extract
+                :column lib-col}]
+              drills)))))
 
 (deftest ^:parallel drill-value->js-test
   (testing "should convert :null to nil"

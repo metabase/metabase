@@ -6,7 +6,7 @@ import { screen } from "__support__/ui";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
-import type { Dashboard } from "metabase-types/api";
+import type { MetabaseDashboard } from "embedding-sdk/types/dashboard";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import type { CreateDashboardValues } from "./use-create-dashboard-api";
@@ -61,7 +61,7 @@ describe("useCreateDashboardApi", () => {
 
 const TestComponent = (
   props: CreateDashboardValues & {
-    onDashboardCreate: (dashboard: Dashboard) => void;
+    onDashboardCreate: (dashboard: MetabaseDashboard) => void;
   },
 ) => {
   const { onDashboardCreate, ...restProps } = props;

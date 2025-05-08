@@ -12,10 +12,8 @@
   (testing "Export filename reflects the current time in the report timezone"
     (let [test-timezone "America/Los_Angeles"]
       (mt/with-temporary-setting-values [report-timezone test-timezone]
-        (let [now-in-report-zone           (t/zoned-date-time (t/instant) test-timezone)
-              filename-time                (u.date/parse (streaming.common/export-filename-timestamp))
-              filename-time-in-report-zone (t/zoned-date-time filename-time test-timezone)]
-          ;; Check that the parsed timestamp matches the expected time within a tolerance of 1 second
-          (is (< (abs (- (.toEpochSecond filename-time-in-report-zone)
-                         (.toEpochSecond now-in-report-zone)))
-                 1)))))))
+        (mt/with-clock (t/zoned-date-time (t/instant) test-timezone)
+          (let [now-in-report-zone           (t/zoned-date-time (t/instant) test-timezone)
+                filename-time                (u.date/parse (streaming.common/export-filename-timestamp))
+                filename-time-in-report-zone (t/zoned-date-time filename-time test-timezone)]
+            (is (= now-in-report-zone filename-time-in-report-zone))))))))

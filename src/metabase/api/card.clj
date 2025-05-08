@@ -1,7 +1,6 @@
 (ns metabase.api.card
   "/api/card endpoints."
   (:require
-   [clojure.java.io :as io]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
@@ -10,7 +9,7 @@
    [metabase.api.field :as api.field]
    [metabase.api.macros :as api.macros]
    [metabase.api.query-metadata :as api.query-metadata]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -23,13 +22,11 @@
    [metabase.models.params :as params]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.query :as query]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
-   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.json :as json]
@@ -114,10 +111,6 @@
                          :segment (lib/uses-segment? query model-id)
                          :metric  (lib/uses-metric? query model-id)))))))))
 
-(defmethod cards-for-filter-option* :using_metric
-  [_filter-option model-id]
-  (cards-for-segment-or-metric :metric model-id))
-
 (defmethod cards-for-filter-option* :using_segment
   [_filter-option model-id]
   (cards-for-segment-or-metric :segment model-id))
@@ -140,21 +133,20 @@
 
 (api.macros/defendpoint :get "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
-  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `using_model`, `using_metric`,
-  `using_segment`, and `archived`. See corresponding implementation functions above for the specific behavior
-  of each filter option. :card_index:"
+  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `using_model`, `using_segment`, and
+  `archived`. See corresponding implementation functions above for the specific behavior of each filter
+  option. :card_index:"
   [_route-params
    {:keys [f], model-id :model_id} :- [:map
                                        [:f        {:default :all}  (into [:enum] card-filter-options)]
                                        [:model_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (when (contains? #{:database :table :using_model :using_metric :using_segment} f)
+  (when (contains? #{:database :table :using_model :using_segment} f)
     (api/checkp (integer? model-id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
                                                        (name f)))
     (case f
       :database      (api/read-check :model/Database model-id)
       :table         (api/read-check :model/Database (t2/select-one-fn :db_id :model/Table, :id model-id))
       :using_model   (api/read-check :model/Card model-id)
-      :using_metric  (api/read-check :model/Database (db-id-via-table :metric model-id))
       :using_segment (api/read-check :model/Database (db-id-via-table :segment model-id))))
   (let [cards          (filter mi/can-read? (cards-for-filter-option f model-id))
         last-edit-info (:card (revisions/fetch-last-edited-info {:card-ids (map :id cards)}))]
@@ -606,7 +598,9 @@
                                                :query             dataset_query
                                                :metadata          result_metadata
                                                :original-metadata (:result_metadata card-before-update)
-                                               :model?            is-model-after-update?})
+                                               :model?            is-model-after-update?
+                                               :entity-id         (or (:entity_id card-updates)
+                                                                      (:entity_id card-before-update))})
           card-updates                       (merge card-updates
                                                     (when (and (some? type)
                                                                is-model-after-update?)
@@ -711,7 +705,7 @@
     (api/write-check :model/Collection new-collection-id-or-nil))
   ;; for each affected card...
   (when (seq card-ids)
-    (let [cards (t2/select [:model/Card :id :collection_id :collection_position :dataset_query]
+    (let [cards (t2/select [:model/Card :id :collection_id :collection_position :dataset_query :card_schema]
                            {:where [:and [:in :id (set card-ids)]
                                     [:or [:not= :collection_id new-collection-id-or-nil]
                                      (when new-collection-id-or-nil
@@ -782,8 +776,9 @@
 (api.macros/defendpoint :post "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.
 
-  `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
-  is normally used to power 'Download Results' buttons that use HTML `form` actions)."
+  `parameters`, `pivot-results?` and `format-rows?` should be passed as application/x-www-form-urlencoded form content
+  or json in the body. This is because this endpoint is normally used to power 'Download Results' buttons that use
+  HTML `form` actions)."
   [{:keys [card-id export-format]} :- [:map
                                        [:card-id       ms/PositiveInt]
                                        [:export-format (into [:enum] api.dataset/export-formats)]]
@@ -829,7 +824,7 @@
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Card card-id))
-  (let [{existing-public-uuid :public_uuid} (t2/select-one [:model/Card :public_uuid] :id card-id)]
+  (let [{existing-public-uuid :public_uuid} (t2/select-one [:model/Card :public_uuid :card_schema] :id card-id)]
     {:uuid (or existing-public-uuid
                (u/prog1 (str (random-uuid))
                  (t2/update! :model/Card card-id
@@ -853,7 +848,7 @@
   []
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
-  (t2/select [:model/Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+  (t2/select [:model/Card :name :id :public_uuid :card_schema], :public_uuid [:not= nil], :archived false))
 
 (api.macros/defendpoint :get "/embeddable"
   "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
@@ -861,7 +856,7 @@
   []
   (validation/check-has-application-permission :setting)
   (validation/check-embedding-enabled)
-  (t2/select [:model/Card :name :id], :enable_embedding true, :archived false))
+  (t2/select [:model/Card :name :id :card_schema], :enable_embedding true, :archived false))
 
 (api.macros/defendpoint :post "/pivot/:card-id/query"
   "Run the query associated with a Card."
@@ -927,51 +922,3 @@
                                          [:param-key ms/NonBlankString]
                                          [:query     ms/NonBlankString]]]
   (param-values (api/read-check :model/Card card-id) param-key query))
-
-(defn-  from-csv!
-  "This helper function exists to make testing the POST /api/card/from-csv endpoint easier."
-  [{:keys [collection-id filename file]}]
-  (try
-    (let [uploads-db-settings (public-settings/uploads-settings)
-          model (upload/create-csv-upload! {:collection-id collection-id
-                                            :filename      filename
-                                            :file          file
-                                            :schema-name   (:schema_name uploads-db-settings)
-                                            :table-prefix  (:table_prefix uploads-db-settings)
-                                            :db-id         (or (:db_id uploads-db-settings)
-                                                               (throw (ex-info (tru "The uploads database is not configured.")
-                                                                               {:status-code 422})))})]
-      {:status  200
-       :body    (:id model)
-       :headers {"metabase-table-id" (str (:table-id model))}})
-    (catch Throwable e
-      {:status (or (-> e ex-data :status-code)
-                   500)
-       :body   {:message (or (ex-message e)
-                             (tru "There was an error uploading the file"))}})
-    (finally (io/delete-file file :silently))))
-
-;;; TODO -- why the HECC does the endpoint for creating a TABLE live in `/api/card/`?
-(api.macros/defendpoint :post "/from-csv"
-  "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."
-  {:multipart true}
-  ;; TODO -- not clear collection_id and file are supposed to come from `:multipart-params`
-  [_route-params
-   _query-params
-   _body
-   {{collection-id "collection_id", file "file"} :multipart-params, :as _request}
-   :- [:map
-       [:multipart-params
-        [:map
-         ["collection_id" [:maybe
-                           {:decode/api (fn [collection-id]
-                                          (when-not (= collection-id "root")
-                                            collection-id))}
-                           pos-int?]]
-         ["file" [:map
-                  [:filename :string]
-                  [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
-  ;; parse-long returns nil with "root" as the collection ID, which is what we want anyway
-  (from-csv! {:collection-id collection-id
-              :filename      (:filename file)
-              :file          (:tempfile file)}))

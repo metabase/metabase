@@ -365,6 +365,10 @@ export function tableInteractiveHeader() {
   return cy.findByTestId("table-header");
 }
 
+export function tableInteractiveFooter() {
+  return cy.findByTestId("table-footer");
+}
+
 export function resizeTableColumn(columnId, moveX, elementIndex = 0) {
   // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByTestId(`resize-handle-${columnId}`)
@@ -441,8 +445,8 @@ export function tableHeaderClick(headerString) {
   tableHeaderColumn(headerString).click();
 }
 
-export function clickActionsPopover() {
-  return popover({ testId: "click-actions-popover" });
+export function clickActionsPopover({ skipVisibilityCheck = false } = {}) {
+  return popover({ testId: "click-actions-popover", skipVisibilityCheck });
 }
 
 export function segmentEditorPopover() {
@@ -495,9 +499,12 @@ export function multiAutocompleteInput(filter = ":eq(0)") {
   return cy.findAllByRole("combobox").filter(filter).get("input").first();
 }
 
-export function fieldValuesInput(filter = ":eq(0)") {
-  // eslint-disable-next-line no-unsafe-element-filtering
-  return cy.findAllByRole("textbox").filter(filter).get("input").last();
+export function fieldValuesCombobox() {
+  return cy.findByRole("combobox");
+}
+
+export function fieldValuesTextbox() {
+  return cy.findByRole("textbox");
 }
 
 export function fieldValuesValue(index) {
@@ -507,7 +514,11 @@ export function fieldValuesValue(index) {
 
 export function removeFieldValuesValue(index) {
   // eslint-disable-next-line no-unsafe-element-filtering
-  return cy.findAllByTestId("token-field").icon("close").eq(index).click();
+  return cy
+    .findAllByTestId("token-field")
+    .findAllByLabelText("Remove")
+    .eq(index)
+    .click();
 }
 
 export function multiAutocompleteValue(index, filter = ":eq(0)") {

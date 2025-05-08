@@ -212,7 +212,7 @@
 (defn site-locale-from-setting
   "Fetch the value of the `site-locale` Setting, or `nil` if it is unset."
   []
-  (when-let [get-value-of-type (resolve 'metabase.models.setting/get-value-of-type)]
+  (when-let [get-value-of-type (resolve 'metabase.settings.models.setting/get-value-of-type)]
     (when (bound? get-value-of-type)
       ;; make sure we don't try to recursively fetch the site locale when we're actively in the process of fetching it,
       ;; otherwise that will cause infinite loops if we try to log anything... see #32376

@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.enhancements.integrations.ldap :as ldap-ee]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.sso.ldap :as ldap]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]

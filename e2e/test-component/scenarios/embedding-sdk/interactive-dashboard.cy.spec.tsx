@@ -3,6 +3,7 @@ import {
   InteractiveDashboard,
   InteractiveQuestion,
 } from "@metabase/embedding-sdk-react";
+import { useState } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -101,6 +102,22 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
     });
   });
 
+  it("should show a watermark on dashcards in development mode", () => {
+    cy.intercept("/api/session/properties", (req) => {
+      req.continue((res) => {
+        res.body["token-features"]["development-mode"] = true;
+      });
+    });
+
+    cy.get("@dashboardId").then((dashboardId) => {
+      mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+    });
+
+    getSdkRoot().within(() => {
+      cy.findAllByTestId("development-watermark").should("have.length", 1);
+    });
+  });
+
   describe("loading behavior for both entity IDs and number IDs (metabase#49581)", () => {
     const successTestCases = [
       {
@@ -189,5 +206,48 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
         });
       cy.findByText("New question").should("be.visible");
     });
+  });
+
+  it("should only call POST /dataset once when parent component re-renders (EMB-288)", () => {
+    cy.intercept("POST", "/api/dataset").as("datasetQuery");
+
+    const TestComponent = ({ dashboardId }: { dashboardId: string }) => {
+      const [counter, setCounter] = useState(0);
+
+      return (
+        <div>
+          <button onClick={() => setCounter((c) => c + 1)}>
+            Trigger parent re-render ({counter})
+          </button>
+
+          <InteractiveDashboard dashboardId={dashboardId} />
+        </div>
+      );
+    };
+
+    cy.get<string>("@dashboardId").then((dashboardId) => {
+      mountSdkContent(<TestComponent dashboardId={dashboardId} />);
+    });
+
+    // Drill down to "See these Orders"
+    cy.wait("@dashcardQuery");
+    cy.get("[data-dataset-index=0] > [data-column-id='PRODUCT_ID']").click();
+
+    H.popover()
+      .findByText(/View this Product/)
+      .click();
+
+    cy.wait("@datasetQuery");
+
+    // Trigger multiple parent re-renders
+    getSdkRoot().within(() => {
+      cy.findByText(/Trigger parent re-render/).click();
+      cy.findByText(/Trigger parent re-render/).click();
+      cy.findByText(/Trigger parent re-render/).click();
+    });
+
+    // Verify no additional dataset queries were made after re-renders
+    cy.wait(500);
+    cy.get("@datasetQuery.all").should("have.length", 1);
   });
 });

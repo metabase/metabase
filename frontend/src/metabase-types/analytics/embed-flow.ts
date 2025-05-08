@@ -1,3 +1,5 @@
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
+
 type EmbedFlowParams = {
   locked?: number;
   enabled?: number;
@@ -11,6 +13,7 @@ type EmbedFlowAppearance = {
   theme?: string;
   font?: string;
   downloads?: boolean | null;
+  enabled_download_types?: EmbedResourceDownloadOptions | null;
   hide_download_button?: boolean | null;
 };
 

@@ -1,11 +1,10 @@
-// @ts-expect-error There is no type definition
-import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
-import { type ComponentProps, useEffect, useMemo } from "react";
+import type { ComponentProps } from "react";
 
 import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
+import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
@@ -45,12 +44,18 @@ registerVisualization(Table);
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
 
+/**
+ * This is an arbitrary number, it should be big enough to pass CI tests.
+ * This works because we set delays for ExplicitSize to 0 in storybook.
+ */
+const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 2500;
+
 export default {
   title: "App/Embed/PublicOrEmbeddedDashboardView/filters",
   component: PublicOrEmbeddedDashboardView,
   decorators: [
     ReduxDecorator,
-    WaitForResizeToStopDecorator,
+    createWaitForResizeToStopDecorator(TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING),
     MockIsEmbeddingDecorator,
   ],
   parameters: {
@@ -113,28 +118,6 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
       <Story />
     </MetabaseReduxProvider>
   );
-}
-
-/**
- * This is an arbitrary number, it should be big enough to pass CI tests.
- * This works because we set delays for ExplicitSize to 0 in storybook.
- */
-const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 2500;
-function WaitForResizeToStopDecorator(Story: StoryFn) {
-  const asyncCallback = useMemo(() => createAsyncCallback(), []);
-
-  useEffect(() => {
-    const timeoutId = setTimeout(
-      asyncCallback,
-      TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING,
-    );
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, [asyncCallback]);
-
-  return <Story />;
 }
 
 declare global {
@@ -429,6 +412,7 @@ const createDefaultArgs = (
     selectedTabId: TAB_ID,
     parameterType: "text",
     ...args,
+    downloadsEnabled: { pdf: true, results: false },
   };
 };
 

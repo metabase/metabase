@@ -86,14 +86,14 @@ If your filter dropdown menu displays the wrong values for a column:
 
 1. Go to **Admin settings** > **Table Metadata**.
 2. Find your database, table, and column.
-3. Click the **gear** icon at the right of a column’s settings box.
+3. Click the **gear** icon at the right of a column's settings box.
 4. Scroll to **Cached field values**.
 5. Optional: click **Discard cached field values**.
 6. Click **Re-scan this field**.
 
 **Explanation**
 
-Metabase [scans](../databases/sync-scan.md#how-database-scans-work) get the values for your filter dropdown menus by querying and caching the first 1,000 distinct records from a table. You might see outdated filter values if your tables are getting updated more frequently compared to your [scan schedule](../databases/sync-scan.md#scheduling-database-scans).
+Metabase [scans](../databases/sync-scan.md#how-database-scans-work) get the values for your filter dropdown menus by querying and caching the first 1,000 distinct records from a table. You might see outdated filter values if your tables are getting updated more frequently compared to your [scan schedule](../databases/sync-scan.md#scanning-for-filter-values).
 
 ## Related topics
 
@@ -105,7 +105,7 @@ Metabase [scans](../databases/sync-scan.md#how-database-scans-work) get the valu
 
 ## Are you still stuck?
 
-If you can’t solve your problem using the troubleshooting guides:
+If you can't solve your problem using the troubleshooting guides:
 
 - Search or ask the [Metabase community](https://discourse.metabase.com/).
 - Search for [known bugs or limitations](./known-issues.md).

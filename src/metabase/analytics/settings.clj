@@ -1,8 +1,8 @@
 (ns metabase.analytics.settings
   (:require
    [metabase.config :as config]
-   [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]))
 

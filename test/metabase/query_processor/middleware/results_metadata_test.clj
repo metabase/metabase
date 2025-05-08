@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [malli.error :as me]
    [metabase.analyze.query-results :as qr]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
@@ -11,6 +12,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.middleware.results-metadata :as middleware.results-metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -20,18 +22,19 @@
    [toucan2.core :as t2]))
 
 (defn- card-metadata [card]
-  (t2/select-one-fn :result_metadata :model/Card :id (u/the-id card)))
+  (:result_metadata (t2/select-one :model/Card :id (u/the-id card))))
 
 (defn- round-to-2-decimals
   "Defaults [[mt/round-all-decimals]] to 2 digits"
   [data]
   (mt/round-all-decimals 2 data))
 
-(defn- default-card-results []
+(defn- default-card-results [card-entity-id]
   (let [id->fingerprint   (t2/select-pk->fn :fingerprint :model/Field :table_id (mt/id :venues))
         name->fingerprint (comp id->fingerprint (partial mt/id :venues))]
     [{:name           "ID"
       :display_name   "ID"
+      :ident          (lib/native-ident "ID" card-entity-id)
       :base_type      :type/BigInteger
       :effective_type :type/BigInteger
       :database_type  "BIGINT"
@@ -40,6 +43,7 @@
       :field_ref      [:field "ID" {:base-type :type/BigInteger}]}
      {:name           "NAME"
       :display_name   "Name"
+      :ident          (lib/native-ident "NAME" card-entity-id)
       :base_type      :type/Text
       :effective_type :type/Text
       :database_type  "CHARACTER VARYING"
@@ -48,6 +52,7 @@
       :field_ref      [:field "NAME" {:base-type :type/Text}]}
      {:name           "PRICE"
       :display_name   "Price"
+      :ident          (lib/native-ident "PRICE" card-entity-id)
       :base_type      :type/Integer
       :effective_type :type/Integer
       :database_type  "INTEGER"
@@ -56,6 +61,7 @@
       :field_ref      [:field "PRICE" {:base-type :type/Integer}]}
      {:name           "CATEGORY_ID"
       :display_name   "Category ID"
+      :ident          (lib/native-ident "CATEGORY_ID" card-entity-id)
       :base_type      :type/Integer
       :effective_type :type/Integer
       :database_type  "INTEGER"
@@ -64,6 +70,7 @@
       :field_ref      [:field "CATEGORY_ID" {:base-type :type/Integer}]}
      {:name           "LATITUDE"
       :display_name   "Latitude"
+      :ident          (lib/native-ident "LATITUDE" card-entity-id)
       :base_type      :type/Float
       :effective_type :type/Float
       :database_type  "DOUBLE PRECISION"
@@ -72,6 +79,7 @@
       :field_ref      [:field "LATITUDE" {:base-type :type/Float}]}
      {:name           "LONGITUDE"
       :display_name   "Longitude"
+      :ident          (lib/native-ident "LONGITUDE" card-entity-id)
       :base_type      :type/Float
       :effective_type :type/Float
       :database_type  "DOUBLE PRECISION"
@@ -81,8 +89,8 @@
 
 (defn- default-card-results-native
   "These are rounded to two decimal places."
-  []
-  (for [column (-> (default-card-results)
+  [card-entity-id]
+  (for [column (-> (default-card-results card-entity-id)
                    (update-in [3 :fingerprint] assoc :type {:type/Number {:min 2.0
                                                                           :max 74.0
                                                                           :avg 29.98
@@ -93,26 +101,39 @@
 
 (deftest save-result-metadata-test
   (testing "test that Card result metadata is saved after running a Card"
-    (mt/with-temp [:model/Card card]
-      (let [result (qp/process-query
-                    (qp/userland-query
-                     (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})
-                     {:card-id    (u/the-id card)
-                      :query-hash (qp.util/query-hash {})}))]
-        (when-not (= :completed (:status result))
-          (throw (ex-info "Query failed." result))))
-      (is (= (round-to-2-decimals (default-card-results-native))
-             (-> card card-metadata round-to-2-decimals)))
+    (let [query (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})]
+      (mt/with-temp [:model/Card card {:dataset_query query}]
+        (let [result (qp/process-query
+                      (qp/userland-query
+                       query
+                       {:card-id        (u/the-id card)
+                        :card-entity-id (:entity_id card)
+                        :query-hash     (qp.util/query-hash {})}))]
+          (when-not (= :completed (:status result))
+            (throw (ex-info "Query failed." result))))
+        (is (= (round-to-2-decimals (default-card-results-native (:entity_id card)))
+               (-> card card-metadata round-to-2-decimals)))
 
-      ;; updated_at should not be modified when saving result metadata
-      (is (= (:updated_at card)
-             (t2/select-one-fn :updated_at :model/Card :id (u/the-id card)))))))
+        ;; updated_at should not be modified when saving result metadata
+        (is (= (:updated_at card)
+               (t2/select-one-fn :updated_at :model/Card :id (u/the-id card))))))))
+
+(defn- test-card-1 []
+  (let [eid (u/generate-nano-id)]
+    {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
+     :entity_id       eid
+     :result_metadata [{:name         "NAME"
+                        :display_name "Name"
+                        :ident        (lib/native-ident "NAME" eid)
+                        :base_type    :type/Text}]}))
 
 (deftest save-result-metadata-test-2
-  (testing "check that using a Card as your source doesn't overwrite the results metadata..."
-    (mt/with-temp [:model/Card card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
-                                     :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
-      (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
+  (testing "check that using a Card as your source doesn't overwrite its results metadata..."
+    (mt/with-temp [:model/Card card (test-card-1)]
+      (is (= [{:name         "NAME"
+               :display_name "Name"
+               :ident        (lib/native-ident "NAME" (:entity_id card))
+               :base_type    :type/Text}]
              (card-metadata card)))
       (let [result (qp/process-query
                     (qp/userland-query
@@ -121,33 +142,98 @@
                       :query    {:source-table (str "card__" (u/the-id card))}}))]
         (is (partial= {:status :completed}
                       result)))
-      (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
+      (is (= [{:name         "NAME"
+               :display_name "Name"
+               :ident        (lib/native-ident "NAME" (:entity_id card))
+               :base_type    :type/Text}]
              (card-metadata card))))))
 
 (deftest save-result-metadata-test-3
   (testing "check that using a Card as your source doesn't overwrite the results metadata even when running via the API endpoint"
     (mt/with-temp [:model/Collection collection {}
-                   :model/Card       card {:collection_id   (u/the-id collection)
-                                           :dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
-                                           :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
+                   :model/Card       card       (assoc (test-card-1) :collection_id (u/the-id collection))]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       (mt/user-http-request :rasta :post 202 "dataset" {:database lib.schema.id/saved-questions-virtual-database-id
                                                         :type     :query
                                                         :query    {:source-table (str "card__" (u/the-id card))}})
-      (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
+      (is (= [{:name         "NAME"
+               :display_name "Name"
+               :ident        (lib/native-ident "NAME" (:entity_id card))
+               :base_type    :type/Text}]
              (card-metadata card))))))
+
+(deftest save-result-metadata-test-4
+  (testing "check that using a Card as your source doesn't overwrite the results metadata for MBQL queries..."
+    (mt/with-temp [:model/Card card {:dataset_query   (mt/mbql-query venues {:fields [$name]})
+                                     :result_metadata [{:name         "NAME"
+                                                        :display_name "Custom Name"
+                                                        :ident        (mt/ident :venues :name)
+                                                        :base_type    :type/Text}]}]
+      (is (= [{:name         "NAME"
+               :display_name "Custom Name"
+               :ident        (mt/ident :venues :name)
+               :base_type    :type/Text}]
+             (card-metadata card)))
+      (let [result (qp/process-query
+                    (qp/userland-query
+                     {:database lib.schema.id/saved-questions-virtual-database-id
+                      :type     :query
+                      :query    {:source-table (str "card__" (u/the-id card))}}))]
+        (is (partial= {:status :completed}
+                      result)))
+      (is (= [{:name         "NAME"
+               :display_name "Custom Name"
+               :ident        (mt/ident :venues :name)
+               :base_type    :type/Text}]
+             (card-metadata card))))))
+
+(deftest save-result-metadata-test-5
+  (testing "test that card result metadata does not generate an UPDATE statement when unchanged"
+    (mt/with-temp [:model/Card card {:dataset_query (mt/native-query {:query "SELECT NAME FROM VENUES"})}]
+      (is (nil? (card-metadata card)))
+      (mt/with-metadata-provider (mt/id)
+        (middleware.results-metadata/store-previous-result-metadata!
+         {:result_metadata
+          [{:base_type :type/Text
+            :database_type "CHARACTER VARYING"
+            :display_name "NAME"
+            :ident "native[]__NAME"
+            :effective_type :type/Text
+            :field_ref [:field "NAME" {:base-type :type/Text}]
+            :fingerprint {:global {:distinct-count 100, :nil% 0.0}
+                          :type {:type/Text {:average-length 15.63
+                                             :percent-email 0.0
+                                             :percent-json 0.0
+                                             :percent-state 0.0
+                                             :percent-url 0.0}}}
+            :name "NAME"
+            :semantic_type :type/Name}]})
+        (let [call-count (atom 0)
+              t2-update!-orig t2/update!]
+          (with-redefs [t2/update! (fn [modelable & args]
+                                     (when (= :model/Card modelable)
+                                       (swap! call-count inc))
+                                     (apply t2-update!-orig modelable args))]
+            (let [result (qp/process-query
+                          (qp/userland-query
+                           (mt/native-query {:query "SELECT NAME FROM VENUES"})
+                           {:card-id    (u/the-id card)
+                            :query-hash (qp.util/query-hash {})}))]
+              (is (partial= {:status :completed}
+                            result)))
+            (is (= 0 @call-count))))))))
 
 (deftest ^:parallel metadata-in-results-test
   (testing "make sure that queries come back with metadata"
-    (is (= {:columns  (for [col (round-to-2-decimals (default-card-results-native))]
-                        (-> col (update :semantic_type keyword) (update :base_type keyword)))}
-           (-> (qp/process-query
-                (qp/userland-query
-                 {:database (mt/id)
-                  :type     :native
-                  :native   {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"}}))
-               (get-in [:data :results_metadata])
-               round-to-2-decimals)))))
+    (let [card-eid (u/generate-nano-id)]
+      (is (= {:columns  (for [col (round-to-2-decimals (default-card-results-native card-eid))]
+                          (-> col (update :semantic_type keyword) (update :base_type keyword)))}
+             (-> (qp/process-query
+                  (qp/userland-query
+                   (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})
+                   {:card-entity-id card-eid}))
+                 (get-in [:data :results_metadata])
+                 round-to-2-decimals))))))
 
 (deftest ^:parallel metadata-in-results-test-2
   (testing "datasets"
@@ -168,15 +254,14 @@
                                                :base_type)
                                               cols)))]
         (testing "native"
-          (let [fields (str/join ", " (map :name (default-card-results-native)))
+          (let [card-eid (u/generate-nano-id)
+                fields (str/join ", " (map :name (default-card-results-native card-eid)))
                 native-query (str "SELECT " fields " FROM VENUES")
-                existing-metadata (add-preserved (default-card-results-native))
-                results (qp/process-query
-                         (qp/userland-query
-                          {:database (mt/id)
-                           :type     :native
-                           :native   {:query native-query}
-                           :info     {:metadata/model-metadata existing-metadata}}))]
+                existing-metadata (add-preserved (default-card-results-native card-eid))
+                results (-> (mt/native-query   {:query native-query})
+                            (qp/userland-query {:metadata/model-metadata existing-metadata
+                                                :card-entity-id          card-eid})
+                            qp/process-query)]
             (is (= (map choose existing-metadata)
                    (map choose (-> results :data :results_metadata :columns))))))
         (testing "mbql"
@@ -247,7 +332,9 @@
 (deftest ^:parallel valid-results-metadata-test-2
   (mt/test-drivers (mt/normal-drivers)
     (testing "Native queries should come back with valid results metadata (#12265)"
-      (let [metadata (-> (mt/mbql-query venues) qp.compile/compile mt/native-query results-metadata)]
+      (let [metadata (-> (mt/mbql-query venues) qp.compile/compile mt/native-query
+                         (assoc-in [:info :card-entity-id] (u/generate-nano-id))
+                         results-metadata)]
         (is (seq metadata))
         (is (not (me/humanize (mr/explain qr/ResultsMetadata metadata))))))))
 
@@ -258,11 +345,10 @@
     ;; is actually a `:type/DateTime`. The query results metadata should come back with the correct type info.
     ;; PS: the above comment is likely outdated with H2 v2
     ;; TODO: is this still relevant? -jpc
-    (let [results (:data
-                   (qp/process-query
-                    {:type     :native
-                     :native   {:query "select date_trunc('day', checkins.\"DATE\") as d FROM checkins"}
-                     :database (mt/id)}))]
+    (let [results (-> (mt/native-query {:query "select date_trunc('day', checkins.\"DATE\") as d FROM checkins"})
+                      (assoc-in [:info :card-entity-id] (u/generate-nano-id))
+                      qp/process-query
+                      :data)]
       (testing "Sanity check: annotate should infer correct type from `:cols`"
         (is (=? {:base_type    :type/Date,
                  :effective_type :type/Date
@@ -341,7 +427,8 @@
 (deftest ^:parallel result-metadata-preservation-test
   (testing "result_metadata is preserved in the query processor if passed into the context"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card {base-card-id :id} {:dataset_query {:database (mt/id)
+      (mt/with-temp [:model/Card {base-card-id :id
+                                  :as base-card}    {:dataset_query {:database (mt/id)
                                                                      :type     :query
                                                                      :query    {:source-table (mt/id :orders)
                                                                                 :expressions  {"Tax Rate" [:/
@@ -357,6 +444,11 @@
                                                                             :database (mt/id)
                                                                             :query    {:source-table (format "card__%s" base-card-id)}}
                                                           :result_metadata [{:semantic_type :type/Percentage
+                                                                             :ident         (get-in base-card
+                                                                                                    [:dataset_query
+                                                                                                     :query
+                                                                                                     :expression-idents
+                                                                                                     "Tax Rate"])
                                                                              :name          "Tax Rate"}]}]
         (testing "The baseline behavior is for data results_metadata to be independently computed"
           (let [results (qp/process-query dataset-query)]

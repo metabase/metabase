@@ -6,7 +6,6 @@ import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
 import {
   act,
   mockGetBoundingClientRect,
-  mockScrollBy,
   renderWithProviders,
   screen,
   waitFor,
@@ -136,7 +135,6 @@ const setup = ({
   onItemSelect = jest.fn<void, [CollectionPickerItem]>(),
 }: SetupOpts = {}) => {
   mockGetBoundingClientRect();
-  mockScrollBy();
 
   const allCollections = flattenCollectionTree(collectionTree).map((c) =>
     createMockCollection(c as Collection),

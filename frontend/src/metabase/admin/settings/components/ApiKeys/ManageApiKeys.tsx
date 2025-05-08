@@ -1,3 +1,4 @@
+/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -32,7 +33,7 @@ function EmptyTableWarning({ onCreate }: { onCreate: () => void }) {
       gap="sm"
       data-testid="empty-table-warning"
     >
-      <Title>{t`No API keys here yet`}</Title>
+      <Title order={2}>{t`No API keys here yet`}</Title>
       <Text color="text.1" mb="md">
         {t`You can create an API key to make API calls programatically.`}
       </Text>
@@ -167,7 +168,7 @@ export const ManageApiKeys = () => {
           data-testid="api-keys-settings-header"
         >
           <Stack>
-            <Title>{t`Manage API Keys`}</Title>
+            <Title order={2}>{t`Manage API Keys`}</Title>
             {!tableIsEmpty && (
               <Text color="text-medium">{t`Allow users to use the API keys to authenticate their API calls.`}</Text>
             )}

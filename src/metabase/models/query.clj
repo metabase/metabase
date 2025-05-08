@@ -112,7 +112,7 @@
     (= :native query-type)  {:database-id database-id, :table-id nil}
     (integer? source-table) {:database-id database-id, :table-id source-table}
     (string? source-table)  (let [[_ card-id] (re-find #"^card__(\d+)$" source-table)]
-                              (t2/select-one [:model/Card [:table_id :table-id] [:database_id :database-id]]
+                              (t2/select-one [:model/Card :card_schema [:table_id :table-id] [:database_id :database-id]]
                                              :id (Integer/parseInt card-id)))
     (map? source-query)     (legacy-query->database-and-table-ids {:database database-id
                                                                    :type     query-type
@@ -159,6 +159,7 @@
     (walk/prewalk walker query)
     (seq ids)))
 
+;;; TODO -- only used in X-Rays code; move there
 (mu/defn adhoc-query :- (ms/InstanceOf :model/Query)
   "Wrap query map into a Query object (mostly to facilitate type dispatch)."
   [query :- :map]

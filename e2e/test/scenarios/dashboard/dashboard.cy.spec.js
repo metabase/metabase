@@ -125,6 +125,10 @@ describe("scenarios > dashboard", () => {
       () => {
         cy.intercept("POST", "api/collection").as("createCollection");
         cy.visit("/");
+        cy.findByTestId("home-page").should(
+          "contain",
+          "Try out these sample x-rays to see what Metabase can do.",
+        );
         H.closeNavigationSidebar();
         H.appBar().findByText("New").click();
         H.popover().findByText("Dashboard").should("be.visible").click();
@@ -1211,13 +1215,23 @@ describe("scenarios > dashboard", () => {
   });
 
   describe("warn before leave", () => {
+    beforeEach(() => {
+      cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
+    });
+
     it("should warn a user before leaving after adding, editing, or removing a card on a dashboard", () => {
       cy.visit("/");
+
+      cy.findByTestId("home-page").should(
+        "contain",
+        "Try out these sample x-rays to see what Metabase can do.",
+      );
 
       // add
       createNewDashboard();
       cy.findByTestId("dashboard-header").icon("add").click();
       cy.findByTestId("add-card-sidebar").findByText("Orders").click();
+      cy.wait("@queryMetadata");
       assertPreventLeave({ openSidebar: false });
       H.saveDashboard();
 
@@ -1264,6 +1278,12 @@ describe("scenarios > dashboard", () => {
         assertPreventLeave();
         H.saveDashboard();
 
+        cy.findByRole("tab", { name: "Copy of Tab 1" }).should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+
         // remove tab
         H.editDashboard();
         H.deleteTab("Copy of Tab 1");
@@ -1271,7 +1291,7 @@ describe("scenarios > dashboard", () => {
         // can be a side effect
         cy.url().should("include", "tab-1");
         assertPreventLeave();
-        H.saveDashboard();
+        H.saveDashboard({ waitMs: 100 });
 
         // rename tab
         H.editDashboard();

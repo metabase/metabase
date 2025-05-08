@@ -127,11 +127,10 @@
 (mu/defn required-native-extras :- set?
   "Returns the extra keys that are required for this database's native queries, for example `:collection` name is
   needed for MongoDB queries."
-  [metadata-provider :- ::lib.schema.metadata/metadata-providerable]
-  (let [db (lib.metadata/database metadata-provider)]
-    (cond-> #{}
-      (get-in db [:features :native-requires-specified-collection])
-      (conj :collection))))
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
+  (cond-> #{}
+    (lib.metadata/database-supports? metadata-providerable :native-requires-specified-collection)
+    (conj :collection)))
 
 (mu/defn with-native-extras :- ::lib.schema/query
   "Updates the extras required for the db to run this query.

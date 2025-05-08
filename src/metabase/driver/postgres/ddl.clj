@@ -6,8 +6,8 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.ddl :as sql.ddl]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)

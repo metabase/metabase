@@ -11,18 +11,18 @@
    [medley.core :as m]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.analytics.snowplow :as snowplow]
+   [metabase.channel.slack :as slack]
    [metabase.config :as config]
    [metabase.db :as db]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.eid-translation.core :as eid-translation]
-   [metabase.integrations.slack :as slack]
-   [metabase.internal-stats :as internal-stats]
+   [metabase.internal-stats.core :as internal-stats]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.setting :as setting]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.core :as setting]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
@@ -293,7 +293,7 @@
   "Get metrics on Collection usage."
   []
   (let [collections (t2/select :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
-        cards       (t2/select [:model/Card :collection_id] {:where (mi/exclude-internal-content-hsql :model/Card)})]
+        cards       (t2/select [:model/Card :collection_id :card_schema] {:where (mi/exclude-internal-content-hsql :model/Card)})]
     {:collections              (count collections)
      :cards_in_collections     (count (filter :collection_id cards))
      :cards_not_in_collections (count (remove :collection_id cards))
@@ -341,11 +341,6 @@
   "Get metrics based on Segments."
   []
   {:segments (t2/count :model/Segment)})
-
-(defn- metric-metrics
-  "Get metrics based on Metrics."
-  []
-  {:metrics (t2/count :model/LegacyMetric)})
 
 ;;; Execution Metrics
 
@@ -474,7 +469,6 @@
                       :execution  (execution-metrics)
                       :field      (field-metrics)
                       :group      (group-metrics)
-                      :metric     (metric-metrics)
                       :pulse      (pulse-metrics)
                       :alert      (alert-metrics)
                       :question   (question-metrics)
@@ -747,7 +741,7 @@
 
 (defenterprise ee-snowplow-features-data
   "OSS values to use for features which require calling EE code to check whether they are available/enabled."
-  metabase-enterprise.stats
+  metabase-enterprise.analytics.stats
   []
   (ee-snowplow-features-data'))
 
@@ -815,6 +809,11 @@
    {:name      :database-auth-providers
     :available (premium-features/enable-database-auth-providers?)
     :enabled   (premium-features/enable-database-auth-providers?)}
+   {:name      :database-routing
+    :available (premium-features/enable-database-routing?)
+    :enabled   (if (premium-features/enable-database-routing?)
+                 (t2/exists? :model/DatabaseRouter)
+                 false)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
     :enabled   (some? (get env/env :mb-config-file-path))}
@@ -839,6 +838,15 @@
    {:name      :cache-preemptive
     :available (premium-features/enable-preemptive-caching?)
     :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}
+   {:name      :metabot-v3
+    :available (premium-features/enable-metabot-v3?)
+    :enabled   (premium-features/enable-metabot-v3?)}
+   {:name      :ai-sql-fixer
+    :available (premium-features/enable-ai-sql-fixer?)
+    :enabled   (premium-features/enable-ai-sql-fixer?)}
+   {:name      :ai-sql-generation
+    :available (premium-features/enable-ai-sql-generation?)
+    :enabled   (premium-features/enable-ai-sql-generation?)}
    {:name      :sdk-embedding
     :available true
     :enabled   (setting/get :enable-embedding-sdk)}

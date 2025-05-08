@@ -53,15 +53,22 @@ export const storybookSdkAuthDefaultConfig =
 export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
   const sdkTheme = context.globals.sdkTheme;
   const theme = sdkTheme ? storybookThemes[sdkTheme] : undefined;
-
+  const locale = context.globals.locale;
   const user = context.globals.user;
+
+  const key = `${user}-${locale}`;
 
   const authConfig = useMemo(() => {
     return getStorybookSdkAuthConfigForUser(user);
   }, [user]);
 
   return (
-    <MetabaseProvider authConfig={authConfig} theme={theme} key={user}>
+    <MetabaseProvider
+      authConfig={authConfig}
+      theme={theme}
+      key={key}
+      locale={locale}
+    >
       <Story />
     </MetabaseProvider>
   );

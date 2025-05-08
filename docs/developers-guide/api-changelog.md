@@ -4,7 +4,11 @@ title: API changelog
 
 # Breaking changes to the API interface
 
-## Metabase 0.53.0
+## Metabase 0.55.0
+
+- `POST /api/card/from-csv` has been renamed to `POST /api/upload/csv`.
+
+## Metabase 0.54.0
 
 - The alert system has been migrated from the legacy pulse infrastructure to the new notification system. This migration includes the following changes:
 
@@ -17,6 +21,18 @@ title: API changelog
     - An overview of the new notification system can be found at `src/metabase/notification/README.md`
     - Notification API documentation at `{{YOUR_URL}}/api/docs/#tag/apinotification`
     - Interactive API documentation available at `/api/docs` endpoint
+
+## Metabase 0.53.0
+
+- `POST /api/card/:card-id/query/:export-format`
+
+  Previously, request parameters (parameters, pivot-results?, and format-rows?) could be sent via query parameters or
+  as application/x-www-form-urlencoded form content. In Metabase 0.53.0, parameters must be sent as either:
+
+  - application/x-www-form-urlencoded form content
+  - JSON-encoded in the request body
+
+  Sending parameters as query parameters in the URL is no longer supported.
 
 ## Metabase 0.52.0
 

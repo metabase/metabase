@@ -670,11 +670,17 @@
                               :percentile-aggregations  true
                               :metadata/key-constraints false
                               :identifiers-with-spaces  true
+                              :expressions/integer      true
+                              :expressions/float        true
+                              :expressions/date         true
+                              :expressions/text         true
+                              :split-part               true
                               ;; BigQuery uses timezone operators and arguments on calls like extract() and
                               ;; timezone_trunc() rather than literally using SET TIMEZONE, but we need to flag it as
                               ;; supporting set-timezone anyway so that reporting timezones are returned and used, and
                               ;; tests expect the converted values.
-                              :set-timezone             true}]
+                              :set-timezone             true
+                              :expression-literals      true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC

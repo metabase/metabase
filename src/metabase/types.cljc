@@ -274,6 +274,7 @@
 
 (derive :type/TextLike :type/*)
 (derive :type/MongoBSONID :type/TextLike)
+(derive :type/MongoBinData :type/TextLike)
 (derive :type/MySQLEnum :type/Text)
 ;; IP address can be either a data type e.g. Postgres `inet` or a semantic type e.g. a `text` column that has IP
 ;; addresses
@@ -349,6 +350,12 @@
 (derive :Coercion/UNIXMilliSeconds->DateTime :Coercion/UNIXTime->Temporal)
 (derive :Coercion/UNIXMicroSeconds->DateTime :Coercion/UNIXTime->Temporal)
 (derive :Coercion/UNIXNanoSeconds->DateTime :Coercion/UNIXTime->Temporal)
+
+(derive :Coercion/String->Number :Coercion/*)
+(derive :Coercion/String->Float :Coercion/String->Number)
+
+(derive :Coercion/String->Integer :Coercion/String->Number)
+(derive :Coercion/Float->Integer  :Coercion/*)
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
@@ -436,6 +443,14 @@
      (clj->js (into {} (for [tyype (distinct (mapcat descendants [:type/* :Semantic/* :Relation/*]))]
                          [(name tyype) (u/qualified-name tyype)])))))
 
+#?(:cljs
+   (def ^:export LEVEL_ONE_TYPES
+     "Return js array of level one types formatted as values of [[TYPE]] js object.
+
+     Level one types are children (i.e. direct descendants) of :type/*."
+     (to-array (distinct (map u/qualified-name
+                              (filter #((parents %) :type/*) (descendants :type/*)))))))
+
 (coercion-hierarchies/define-types! :Coercion/UNIXNanoSeconds->DateTime #{:type/Integer :type/Decimal} :type/Instant)
 (coercion-hierarchies/define-types! :Coercion/UNIXMicroSeconds->DateTime #{:type/Integer :type/Decimal} :type/Instant)
 (coercion-hierarchies/define-types! :Coercion/UNIXMilliSeconds->DateTime #{:type/Integer :type/Decimal} :type/Instant)
@@ -447,6 +462,11 @@
 (coercion-hierarchies/define-types! :Coercion/YYYYMMDDHHMMSSString->Temporal :type/Text                 :type/DateTime)
 
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/YYYYMMDDHHMMSSBytes->Temporal :type/* :type/DateTime)
+
+(coercion-hierarchies/define-non-inheritable-type! :Coercion/String->Float :type/Text :type/Float)
+
+(coercion-hierarchies/define-non-inheritable-type! :Coercion/String->Integer :type/Text  :type/Integer)
+(coercion-hierarchies/define-non-inheritable-type! :Coercion/Float->Integer  :type/Float :type/Integer)
 
 (defn is-coercible-from?
   "Whether `coercion-strategy` is allowed for `base-type`."

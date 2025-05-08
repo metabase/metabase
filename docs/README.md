@@ -94,7 +94,7 @@ Metabase's reference documentation.
 - [Visualizing data](./questions/visualizations/visualizing-results.md)
 - [Combo charts](./questions/visualizations/combo-chart.md)
 - [Detail](./questions/visualizations/detail.md)
-- [Funnel charts](./questions/visualizations/detail.md)
+- [Funnel charts](./questions/visualizations/funnel.md)
 - [Gauge charts](./questions/visualizations/gauge.md)
 - [Line, bar, and area charts](./questions/visualizations/line-bar-and-area-charts.md)
 - [Maps](./questions/visualizations/map.md)

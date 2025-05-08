@@ -30,9 +30,7 @@
     :model/CardFavorite
     :model/CloudMigration
     :model/DashboardFavorite
-    :model/FieldUsage
-    :model/LegacyMetric
-    :model/LegacyMetricImportantField
+    :model/DatabaseRouter
     :model/Query
     :model/QueryAnalysis
     :model/QueryCache

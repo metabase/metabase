@@ -10,11 +10,11 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.auth-provider :as auth-provider]
+   [metabase.auth-provider.core :as auth-provider]
    [metabase.driver.impl :as driver.impl]
-   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -34,7 +34,7 @@
   `nil` (meaning subsequent queries will not attempt to change the session timezone) or something considered invalid
   by a given Database (meaning subsequent queries will fail to change the session timezone)."
   []
-  (doseq [{driver :engine, id :id, :as database} (t2/select 'Database)]
+  (doseq [{driver :engine, id :id, :as database} (t2/select :model/Database)]
     (try
       (notify-database-updated driver database)
       (catch Throwable e
@@ -578,6 +578,9 @@
     ;; \"avg(x + y)\"
     :expression-aggregations
 
+    ;; Does the driver support expressions consisting of a single literal value like `1`, `\"hello\"`, and `false`.
+    :expression-literals
+
     ;; Does the driver support using a query as the `:source-query` of another MBQL query? Examples are CTEs or
     ;; subselects in SQL queries.
     :nested-queries
@@ -653,6 +656,9 @@
     ;; DEFAULTS TO TRUE
     :schemas
 
+    ;; Does the driver support multi-level-schema for e.g. multicatalog support in databricks
+    :multi-level-schema
+
     ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
     :actions/custom
@@ -726,8 +732,20 @@
     ;; Does this driver support the :distinct-where function?
     :distinct-where
 
-    ;; Does this driver support casting?
-    :cast
+    ;; Does this driver support sandboxing with saved questions?
+    :saved-question-sandboxing
+
+    ;; Does this driver support casting text and floats to integers? (`integer()` custom expression function)
+    :expressions/integer
+
+    ;; Does this driver support casting values to text? (`text()` custom expression function)
+    :expressions/text
+
+    ;; Does this driver support casting text to dates? (`date()` custom expression function)
+    :expressions/date
+
+    ;; Does this driver support casting text to floats? (`float()` custom expression function)
+    :expressions/float
 
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
@@ -781,6 +799,7 @@
                               :test/jvm-timezone-setting              true
                               :fingerprint                            true
                               :upload-with-auto-pk                    true
+                              :saved-question-sandboxing              true
                               :test/dynamic-dataset-loading           true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
@@ -1339,3 +1358,23 @@
 (defmethod dynamic-database-types-lookup ::driver
   [_driver _database _database-types]
   nil)
+
+(defmulti adjust-schema-qualification
+  "Adjust the given schema to either add or remove further schema qualification.
+
+   In general, the database detail property `multi-level-schema` ought to drive whether a schema gets qualified or not.
+   If it is true, schemas should be fully qualified to `catalog` or other addressable hierarchical concept. If false, they should not be.
+
+   Returns a string either of the unchanged `schema` or the adjusted value."
+  {:added "0.55.0" :arglists '([driver database schema])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti query-canceled?
+  "Test if an exception is due to a query being canceled due to user action. For JDBC drivers this can
+  happen when setting `.setQueryTimeout`."
+  {:added "0.53.12" :arglists '([driver ^Throwable e])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod query-canceled? ::driver [_ _] false)

@@ -21,7 +21,7 @@ export const InputField = styled.input<InputFieldProps>`
     outline: none;
   }
 
-  &::-webkit-file-upload-button {
+  &::file-selector-button {
     padding-top: 0.5rem;
     padding-right: 2rem;
     visibility: hidden;

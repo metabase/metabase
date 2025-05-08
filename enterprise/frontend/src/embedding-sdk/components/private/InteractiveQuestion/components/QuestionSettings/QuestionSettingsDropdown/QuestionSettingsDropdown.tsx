@@ -7,12 +7,29 @@ import { Center, Icon, Popover, type PopoverProps } from "metabase/ui";
 import ToolbarButtonS from "../../../styles/ToolbarButton.module.css";
 import { ToolbarButton } from "../../util/ToolbarButton";
 
+/**
+ * @interface
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionQuestionSettingsDropdownProps = {
+  /**
+   * Height for the dropdown menu
+   */
+  height?: CSSProperties["height"];
+} & Omit<PopoverProps, "children">;
+
+/**
+ * Dropdown button that contains the QuestionSettings component.
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
 export const QuestionSettingsDropdown = ({
   height,
   ...popoverProps
-}: {
-  height?: CSSProperties["height"];
-} & Omit<PopoverProps, "children"> = {}) => (
+}: InteractiveQuestionQuestionSettingsDropdownProps = {}) => (
   <Popover position="bottom-end" {...popoverProps}>
     <Popover.Target>
       <ToolbarButton
