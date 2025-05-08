@@ -284,7 +284,7 @@
   events
   {:api  #{metabase.events.core
            metabase.events.init}
-   :uses #{api channel driver models premium-features util}}
+   :uses #{channel driver models util view-log}}
 
   formatter
   {:api  #{metabase.formatter}
@@ -400,7 +400,6 @@
           metabase.models.user
           metabase.models.user-parameter-value
           metabase.models.util.spec-update
-          metabase.models.view-log-impl
           metabase.models.visualization-settings}
    :uses #{analytics
            analyze
@@ -518,7 +517,6 @@
           metabase.query-processor.middleware.annotate
           metabase.query-processor.middleware.cache-backend.db
           metabase.query-processor.middleware.constraints
-          metabase.query-processor.middleware.fetch-source-query
           metabase.query-processor.middleware.fetch-source-query-legacy
           metabase.query-processor.middleware.limit
           metabase.query-processor.middleware.permissions
@@ -706,6 +704,11 @@
   util
   {:api :any
    :uses #{config db driver legacy-mbql lib models plugins settings}}
+
+  view-log
+  {:api  #{metabase.view-log.core
+           metabase.view-log.init}
+   :uses #{analytics api events models premium-features util}}
 
   xrays
   {:api  #{metabase.xrays.api

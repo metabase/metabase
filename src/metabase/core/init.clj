@@ -38,6 +38,7 @@
    [metabase.tiles.init]
    [metabase.upload.init]
    [metabase.user-key-value.init]
+   [metabase.view-log.init]
    [metabase.xrays.init]))
 
 ;; load EE init code on system launch if it exists.
