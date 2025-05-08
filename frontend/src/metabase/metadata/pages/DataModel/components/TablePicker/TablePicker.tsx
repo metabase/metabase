@@ -1,10 +1,14 @@
-import { useDeferredValue, useState } from "react";
+import { useDeferredValue, useEffect, useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
+import { useDispatch } from "metabase/lib/redux";
 import { Box, Icon, Input, Stack } from "metabase/ui";
 import type { DatabaseId, SchemaId } from "metabase-types/api";
+
+import { getUrl } from "../../utils";
 
 import { Results } from "./Item";
 import { flatten, useExpandedState, useSearch, useTableLoader } from "./utils";
@@ -41,6 +45,33 @@ export function TablePicker(props: TablePickerProps) {
 function Tree(props: TablePickerProps) {
   const { isExpanded, toggle } = useExpandedState(props);
   const { tree } = useTableLoader(props);
+
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    // When we detect a database with just one schema, we automatically
+    // select and expand that schema.
+    const { databaseId, schemaId } = props;
+    const database = tree.children.find(
+      (node) =>
+        node.type === "database" && node.value.databaseId === databaseId,
+    );
+    if (database?.children.length === 1) {
+      const schema = database.children[0];
+      if (schema.type === "schema" && schemaId !== schema.value.schemaId) {
+        toggle(schema.key);
+        dispatch(
+          push(
+            getUrl({
+              fieldId: undefined,
+              tableId: undefined,
+              ...schema.value,
+            }),
+          ),
+        );
+      }
+    }
+  }, [props, tree, dispatch, toggle]);
 
   const items = flatten(tree, isExpanded);
   return <Results items={items} toggle={toggle} />;
