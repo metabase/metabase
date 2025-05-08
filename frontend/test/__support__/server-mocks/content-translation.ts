@@ -8,7 +8,7 @@ export function setupContentTranslationEndpoints({
 }: {
   dictionary?: DictionaryResponse["data"];
   uploadSuccess?: boolean;
-}) {
+} = {}) {
   fetchMock.get(
     "path:/api/ee/content-translation/dictionary",
     (url): DictionaryResponse => {
