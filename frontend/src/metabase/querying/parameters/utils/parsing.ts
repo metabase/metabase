@@ -3,7 +3,8 @@ import dayjs from "dayjs";
 import { type NumberValue, parseNumber } from "metabase/lib/number";
 import type { DateFilterValue } from "metabase/querying/filters/types";
 import { isDatePickerTruncationUnit } from "metabase/querying/filters/utils/dates";
-import type { ParameterValueOrArray } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import type { ParameterValueOrArray, TemporalUnit } from "metabase-types/api";
 
 function normalizeArray(value: ParameterValueOrArray | null | undefined) {
   if (value == null) {
@@ -22,6 +23,12 @@ export function deserializeStringParameterValue(
     }
     return values;
   }, []);
+}
+
+export function normalizeStringParameterValue(
+  value: ParameterValueOrArray | null | undefined,
+): string[] {
+  return deserializeStringParameterValue(value);
 }
 
 export function serializeNumberParameterValue(
@@ -70,6 +77,12 @@ export function deserializeBooleanParameterValue(
     }
     return values;
   }, []);
+}
+
+export function normalizeBooleanParameterValue(
+  value: ParameterValueOrArray | null | undefined,
+): boolean[] {
+  return deserializeBooleanParameterValue(value);
 }
 
 function serializeDate(date: Date, hasTime: boolean) {
@@ -543,4 +556,25 @@ export function deserializeDateParameterValue(
   }
 
   return null;
+}
+
+export function normalizeDateParameterValue(
+  value: ParameterValueOrArray | null | undefined,
+): string | null {
+  const dateValue = deserializeDateParameterValue(value);
+  return dateValue != null ? serializeDateParameterValue(dateValue) : null;
+}
+
+export function deserializeTemporalUnitParameterValue(
+  value: ParameterValueOrArray | null | undefined,
+): TemporalUnit | null {
+  const availableUnits = Lib.availableTemporalUnits();
+  const matchedUnit = availableUnits.find((unit) => unit === value);
+  return matchedUnit != null ? matchedUnit : null;
+}
+
+export function normalizeTemporalUnitParameterValue(
+  value: ParameterValueOrArray | null | undefined,
+): TemporalUnit | null {
+  return deserializeTemporalUnitParameterValue(value);
 }

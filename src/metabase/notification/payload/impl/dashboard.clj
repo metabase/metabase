@@ -1,7 +1,7 @@
 (ns metabase.notification.payload.impl.dashboard
   (:require
    [metabase.channel.render.core :as channel.render]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.params.shared :as shared.params]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
