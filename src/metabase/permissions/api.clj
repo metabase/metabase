@@ -13,9 +13,9 @@
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.permissions.api.permission-graph :as api.permission-graph]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.permissions.models.permissions-revision :as perms-revision]
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -321,7 +321,7 @@
       (api/check
        (t2/exists? :model/User :id user_id :is_superuser false)
        [400 (tru "Admin cant be a group manager.")]))
-    (perms-group-membership/add-user-to-group! user_id group_id is_group_manager)
+    (perms/add-user-to-group! user_id group_id is_group_manager)
     ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
     ;; let the frontend add it as appropriate
     (:members (t2/hydrate (t2/instance :model/PermissionsGroup {:id group_id})

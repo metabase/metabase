@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.http-client :as client]
-   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.test.initialize :as initialize]

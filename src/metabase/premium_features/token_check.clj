@@ -416,5 +416,14 @@
   []
   (or (is-hosted?) (has-feature? :audit-app)))
 
-(defenterprise decode-airgap-token "In OSS, this returns an empty map." metabase-enterprise.airgap [_] {})
-(defenterprise token-valid-now? "In OSS, this returns false." metabase-enterprise.airgap [_] false)
+(defenterprise decode-airgap-token
+  "In OSS, this returns an empty map."
+  metabase-enterprise.premium-features.airgap
+  [_]
+  {})
+
+(defenterprise token-valid-now?
+  "In OSS, this returns false."
+  metabase-enterprise.premium-features.airgap
+  [_]
+  false)

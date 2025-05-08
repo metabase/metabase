@@ -3,9 +3,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.api.card-test :as api.card-test]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -21,7 +20,7 @@
                        :model/PermissionsGroup           group {}
                        :model/GroupTableAccessPolicy     _ {:group_id (u/the-id group)
                                                             :table_id (u/the-id table)}]
-          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group)
+          (perms/add-user-to-group! (mt/user->id :rasta) group)
           (mt/with-db db
             (mt/with-no-data-perms-for-all-users!
               (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
@@ -42,7 +41,7 @@
                                                                :collection_id (u/the-id collection)}
                        :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
                                                                :table_id (u/the-id table)}]
-          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group)
+          (perms/add-user-to-group! (mt/user->id :rasta) group)
           (mt/with-db db
             (mt/with-no-data-perms-for-all-users!
               (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
@@ -65,7 +64,7 @@
                                                                :collection_id (u/the-id collection)}
                        :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
                                                                :table_id (u/the-id table)}]
-          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group)
+          (perms/add-user-to-group! (mt/user->id :rasta) group)
           (mt/with-db db
             (mt/with-no-data-perms-for-all-users!
               (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
@@ -86,7 +85,7 @@
                          :model/PermissionsGroup           group {}
                          :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
                                                                  :table_id (u/the-id table)}]
-            (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group)
+            (perms/add-user-to-group! (mt/user->id :rasta) group)
             (mt/with-db db
               (mt/with-no-data-perms-for-all-users!
                 (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
@@ -107,7 +106,7 @@
                                                                                                       :query {:source-table (mt/id :venues)
                                                                                                               :limit 1}}}]
 
-      (perms-group-membership/add-user-to-group! user-id group)
+      (perms/add-user-to-group! user-id group)
       (let [cases [[:unrestricted           :query-builder-and-native true]
                    [:unrestricted           :query-builder            true]
                    [:unrestricted           :no                       true]

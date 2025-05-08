@@ -4,7 +4,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
-import { UpsellWhitelabel } from "metabase/admin/upsells";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS,
@@ -22,6 +21,7 @@ import {
   StaticEmbeddingSettings,
 } from "../components/EmbeddingSettings";
 import SettingsLicense from "../components/SettingsLicense";
+import { AppearanceSettingsPage } from "../components/SettingsPages/AppearanceSettingsPage";
 import { EmailSettingsPage } from "../components/SettingsPages/EmailSettingsPage";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
 import { PublicSharingSettingsPage } from "../components/SettingsPages/PublicSharingSettingsPage";
@@ -308,23 +308,40 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
     ],
   },
+  appearance: {
+    // OSS Version
+    name: t`Appearance`,
+    getHidden: (settings) => settings["token-features"]?.whitelabel,
+    order: 133,
+    component: () => <AppearanceSettingsPage />,
+    isUpsell: true,
+    settings: [],
+  },
+  whitelabel: {
+    // EE Version
+    name: t`Appearance`,
+    getHidden: (settings) => !settings["token-features"]?.whitelabel,
+    order: 134,
+    component: () => <AppearanceSettingsPage tab="branding" />,
+    settings: [],
+  },
+  "whitelabel/branding": {
+    name: t`Appearance`,
+    component: () => <AppearanceSettingsPage tab="branding" />,
+    settings: [],
+  },
+  "whitelabel/conceal-metabase": {
+    name: t`Appearance`,
+    component: () => <AppearanceSettingsPage tab="conceal-metabase" />,
+    settings: [],
+  },
   cloud: {
     name: t`Cloud`,
     getHidden: (settings) =>
       settings["token-features"]?.hosting === true ||
       settings["airgap-enabled"],
-    order: 132,
+    order: 140,
     component: CloudPanel,
-    settings: [],
-    isUpsell: true,
-  },
-  whitelabel: {
-    name: t`Appearance`,
-    getHidden: (settings) => settings["token-features"]?.whitelabel === true,
-    order: 133,
-    component: (props) => (
-      <UpsellWhitelabel {...props} source="settings-appearance" />
-    ),
     settings: [],
     isUpsell: true,
   },

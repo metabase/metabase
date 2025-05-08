@@ -7,7 +7,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.user :as user]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]

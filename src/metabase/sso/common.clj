@@ -4,7 +4,6 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -47,6 +46,6 @@
       ;; if adding membership fails for one reason or another (i.e. if the group doesn't exist) log the error add the
       ;; user to the other groups rather than failing entirely
       (try
-        (perms-group-membership/add-user-to-group! user-id id)
+        (perms/add-user-to-group! user-id id)
         (catch Throwable e
           (log/errorf e "Error adding User %s to Group %s" user-id id))))))
