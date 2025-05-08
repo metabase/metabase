@@ -52,7 +52,6 @@ describe(
         colors: {
           background: "rgb(22, 26, 29)",
           "background-hover": "rgb(14, 17, 20)",
-          "background-disabled": "rgb(45, 45, 48)",
           "text-primary": "rgb(255, 255, 255)",
           brand: "rgb(253, 121, 168)",
         },
@@ -108,7 +107,6 @@ describe(
         colors: {
           background: "rgb(255, 255, 255)",
           "background-hover": "rgb(245, 245, 245)",
-          "background-disabled": "rgb(230, 230, 230)",
           "text-primary": "rgb(51, 51, 51)",
           brand: "rgb(253, 121, 168)",
         },
