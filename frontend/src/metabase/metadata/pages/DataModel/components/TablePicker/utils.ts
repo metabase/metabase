@@ -8,16 +8,16 @@ import {
 import type { IconName } from "metabase/ui";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
-export function getIconForType(
-  type: "database" | "schema" | "table",
-): IconName {
+type NodeType = "database" | "schema" | "table";
+
+export function getIconForType(type: NodeType): IconName {
   if (type === "table") {
     return "table2";
   }
   return type;
 }
 
-export function hasChildren(type: "database" | "schema" | "table"): boolean {
+export function hasChildren(type: NodeType): boolean {
   return type !== "table";
 }
 
@@ -27,15 +27,36 @@ export type TreePath = {
   tableId?: TableId;
 };
 
-type NodeType = "root" | "database" | "schema" | "table";
-
-type TreeNode = {
-  type: NodeType;
-  label: string;
+type RootNode = {
+  type: "root";
+  label: "";
   children: TreeNode[];
-  value: TreePath;
-  complete?: boolean;
 };
+
+export type TreeNode = RootNode | (Item & { children: TreeNode[] });
+
+type DatabaseItem = {
+  type: "database";
+  label: string;
+  key: string;
+  value: { databaseId: DatabaseId };
+};
+
+type SchemaItem = {
+  type: "schema";
+  label: string;
+  key: string;
+  value: { databaseId: DatabaseId; schemaId: SchemaId };
+};
+
+type TableItem = {
+  type: "table";
+  label: string;
+  key: string;
+  value: { databaseId: DatabaseId; schemaId: SchemaId; tableId: TableId };
+};
+
+export type Item = DatabaseItem | SchemaItem | TableItem;
 
 export function useTableLoader(path: TreePath) {
   const [fetchDatabases] = useLazyListDatabasesQuery();
@@ -44,92 +65,116 @@ export function useTableLoader(path: TreePath) {
 
   const [tree, setTree] = useState<TreeNode>({
     type: "root",
-    label: "Root",
-    complete: false,
-    value: {},
+    label: "",
     children: [],
   });
+
+  const getDatabases = useCallback(async () => {
+    const res = await fetchDatabases({}, true);
+    return (
+      res.data?.data.map((database) =>
+        item<DatabaseItem>({
+          type: "database",
+          label: database.name,
+          value: { databaseId: database.id },
+        }),
+      ) ?? []
+    );
+  }, [fetchDatabases]);
+
+  const getSchemas = useCallback(
+    async (databaseId: DatabaseId | undefined) => {
+      if (databaseId === undefined) {
+        return [];
+      }
+      const res = await fetchSchemas({ id: databaseId }, true);
+      return (
+        res.data?.map((schema) =>
+          item<SchemaItem>({
+            type: "schema",
+            label: schema,
+            value: { databaseId, schemaId: schema },
+          }),
+        ) ?? []
+      );
+    },
+    [fetchSchemas],
+  );
+
+  const getTables = useCallback(
+    async (
+      databaseId: DatabaseId | undefined,
+      schemaId_: SchemaId | undefined,
+    ) => {
+      const schemaId = schemaId_?.replace(/^\d+:/, "");
+      if (databaseId === undefined || schemaId === undefined) {
+        return [];
+      }
+      const res = await fetchTables({ id: databaseId, schema: schemaId }, true);
+      return (
+        res?.data?.map((table) =>
+          item<TableItem>({
+            type: "table",
+            label: table.name,
+            value: { databaseId, schemaId, tableId: table.id },
+          }),
+        ) ?? []
+      );
+    },
+    [fetchTables],
+  );
 
   const load = useCallback(
     async function (path: TreePath) {
       const { databaseId, schemaId } = path;
-      const schema = schemaId?.replace(/^\d+:/, "");
-
-      const shouldFetchSchemas = databaseId !== undefined;
-      const shouldFetchTables =
-        databaseId !== undefined && schema !== undefined;
-
       const [databases, schemas, tables] = await Promise.all([
-        fetchDatabases({}, true),
-        shouldFetchSchemas ? fetchSchemas({ id: databaseId }, true) : null,
-        shouldFetchTables
-          ? fetchTables({ id: databaseId, schema }, true)
-          : null,
+        getDatabases(),
+        getSchemas(path.databaseId),
+        getTables(path.databaseId, path.schemaId),
       ]);
 
       const newTree: TreeNode = {
         type: "root",
-        complete: true,
-        label: "Root",
-        value: {},
-        children:
-          databases?.data?.data.map((database) => ({
-            type: "database",
-            label: database.name,
-            value: { databaseId: database.id },
-            complete: database.id === databaseId && shouldFetchSchemas,
-            children:
-              database.id === databaseId
-                ? (schemas?.data?.map((schemaId_) => ({
-                    type: "schema",
-                    complete: schema === schemaId_ && shouldFetchTables,
-                    label: schemaId_,
-                    value: {
-                      databaseId: database.id,
-                      schemaId: schemaId_,
-                    },
-                    children:
-                      schema === schemaId_
-                        ? (tables?.data?.map((table) => ({
-                            type: "table",
-                            complete: true,
-                            label: table.name,
-                            value: {
-                              databaseId: database.id,
-                              schemaId: schemaId_,
-                              tableId: table.id,
-                            },
-                            children: [],
-                          })) ?? [])
-                        : [],
-                  })) ?? [])
-                : [],
-          })) ?? [],
+        label: "",
+        children: databases.map((database) => ({
+          ...database,
+          children:
+            database.value.databaseId !== databaseId
+              ? []
+              : schemas.map((schema) => ({
+                  ...schema,
+                  children:
+                    schema.value.schemaId !== schemaId
+                      ? []
+                      : tables.map((table) => ({
+                          ...table,
+                          children: [],
+                        })),
+                })),
+        })),
       };
       setTree((current) => merge(current, newTree));
     },
-    [fetchDatabases, fetchSchemas, fetchTables],
+    [getDatabases, getSchemas, getTables],
   );
 
   useEffect(() => {
     load(path);
   }, [path, load]);
 
-  return {
-    tree,
-  };
+  return { tree };
 }
 
 export function toKey(value: TreePath) {
+  // Stable JSON stringify
   return `{"databaseId":${JSON.stringify(value.databaseId ?? null)},"schemaId":${JSON.stringify(value.schemaId ?? null)},"tableId":${JSON.stringify(value.tableId ?? null)}}`;
 }
-export function toValue(key: string): TreePath {
-  const { databaseId, schemaId, tableId } = JSON.parse(key);
+
+function item<T extends Item>(item: Omit<T, "key">): T {
   return {
-    databaseId: databaseId ?? undefined,
-    schemaId: schemaId ?? undefined,
-    tableId: tableId ?? undefined,
-  };
+    ...item,
+    key: toKey(item.value),
+  } as T;
 }
 
 export function useExpandedState(path: TreePath) {
@@ -139,12 +184,10 @@ export function useExpandedState(path: TreePath) {
   });
 
   return {
-    isExpanded: (path: TreePath | string) => {
-      const key = typeof path === "string" ? path : toKey(path);
+    isExpanded(key: string) {
       return Boolean(state[key]);
     },
-    toggle: (path: TreePath | string) => {
-      const key = typeof path === "string" ? path : toKey(path);
+    toggle(key: string) {
       setState((current) => ({
         ...current,
         [key]: !current[key],
@@ -153,63 +196,22 @@ export function useExpandedState(path: TreePath) {
   };
 }
 
-export type Item = {
-  type: NodeType;
-  label: string;
-  complete?: boolean;
-  value: TreePath;
-  key: string;
-};
-
 export function flatten(
-  tree: TreeNode,
+  node: TreeNode,
   isExpanded: (key: string) => boolean,
 ): Item[] {
-  if (!tree) {
-    return [];
-  }
-  if (tree.type === "root") {
-    return sort(tree.children).flatMap((child) => flatten(child, isExpanded));
+  if (node.type === "root") {
+    // root node doesn't render a title and is always expanded
+    return sort(node.children).flatMap((child) => flatten(child, isExpanded));
   }
 
-  const key = toKey(tree.value);
-  const expanded = isExpanded(key);
+  if (!isExpanded(node.key)) {
+    return [node];
+  }
 
-  if (tree.type === "database") {
-    return [
-      {
-        type: "database",
-        label: tree.label,
-        complete: tree.complete,
-        value: tree.value,
-        key: toKey(tree.value),
-      },
-      ...(expanded
-        ? sort(tree.children).flatMap((child) => flatten(child, isExpanded))
-        : []),
-    ];
-  }
-  if (tree.type === "schema") {
-    return [
-      {
-        type: "schema",
-        label: tree.label,
-        complete: tree.complete,
-        value: tree.value,
-        key: toKey(tree.value),
-      },
-      ...(expanded
-        ? sort(tree.children).flatMap((child) => flatten(child, isExpanded))
-        : []),
-    ];
-  }
   return [
-    {
-      type: "table",
-      label: tree.label,
-      value: tree.value,
-      key: toKey(tree.value),
-    },
+    node,
+    ...sort(node.children).flatMap((child) => flatten(child, isExpanded)),
   ];
 }
 
@@ -219,11 +221,14 @@ function sort(nodes: TreeNode[]): TreeNode[] {
   });
 }
 
-function merge(a: TreeNode, b: TreeNode): TreeNode {
-  if (!a.complete) {
+function merge(a: TreeNode | undefined, b: TreeNode | undefined): TreeNode {
+  if (!a) {
+    if (!b) {
+      throw new Error("Both a and b are undefined");
+    }
     return b;
   }
-  if (!b.complete) {
+  if (!b) {
     return a;
   }
 
@@ -236,9 +241,5 @@ function merge(a: TreeNode, b: TreeNode): TreeNode {
     children.push(merge(aa, bb));
   }
 
-  return {
-    ...a,
-    ...b,
-    children,
-  };
+  return { ...a, ...b, children };
 }

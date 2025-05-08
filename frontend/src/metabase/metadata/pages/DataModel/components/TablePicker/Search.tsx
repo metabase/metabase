@@ -46,18 +46,15 @@ export function SearchResults({ searchValue }: { searchValue: string }) {
     );
   }
 
-  return items?.map(
-    (item) =>
-      item.type !== "root" && (
-        <ItemRow
-          type={item.type}
-          label={item.label}
-          key={toKey(item.value)}
-          value={item.value}
-          isExpanded
-        />
-      ),
-  );
+  return items?.map((item) => (
+    <ItemRow
+      type={item.type}
+      label={item.label}
+      key={toKey(item.value)}
+      value={item.value}
+      isExpanded
+    />
+  ));
 }
 
 function byName(a: { name: string }, b: { name: string }) {

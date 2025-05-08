@@ -7,7 +7,12 @@ import type { DatabaseId, SchemaId } from "metabase-types/api";
 import { ITEM_MIN_HEIGHT, ItemRow } from "./Item";
 import { SearchInput, SearchResults } from "./Search";
 import S from "./TablePicker.module.css";
-import { type Item, flatten, useExpandedState, useTableLoader } from "./utils";
+import {
+  type TreeNode,
+  flatten,
+  useExpandedState,
+  useTableLoader,
+} from "./utils";
 
 export function TablePicker(props: {
   databaseId?: DatabaseId;
@@ -19,8 +24,6 @@ export function TablePicker(props: {
   const { isExpanded, toggle } = useExpandedState(props);
   const { tree } = useTableLoader(props);
 
-  const flat = flatten(tree, isExpanded);
-
   return (
     <Stack className={S.tablePicker}>
       <Box px="xl">
@@ -28,7 +31,7 @@ export function TablePicker(props: {
       </Box>
 
       {deferredSearchValue === "" ? (
-        <Results items={flat} toggle={toggle} isExpanded={isExpanded} />
+        <Results tree={tree} toggle={toggle} isExpanded={isExpanded} />
       ) : (
         <Box className={S.tablePickerItemWrapper} px="xl" pb="lg">
           <SearchResults searchValue={searchValue} />
@@ -39,15 +42,17 @@ export function TablePicker(props: {
 }
 
 function Results({
-  items,
+  tree,
   toggle,
   isExpanded,
 }: {
-  items: Item[];
+  tree: TreeNode;
   toggle: (key: string) => void;
   isExpanded: (key: string) => boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+
+  const items = flatten(tree, isExpanded);
 
   const virtual = useVirtualizer({
     estimateSize: () => ITEM_MIN_HEIGHT,
@@ -64,15 +69,11 @@ function Results({
         }}
       >
         {virtual.getVirtualItems().map((virtualItem) => {
-          const { type, ...item } = items[virtualItem.index];
-          if (type === "root") {
-            return null;
-          }
+          const item = items[virtualItem.index];
           return (
             <ItemRow
               {...item}
               key={item.key}
-              type={type}
               ref={virtual.measureElement}
               onClick={() => {
                 toggle(item.key);
