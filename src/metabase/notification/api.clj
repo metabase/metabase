@@ -4,7 +4,14 @@
    [metabase.api.routes.common :as routes.common]
    [metabase.api.util.handlers :as handlers]
    [metabase.notification.api.notification]
-   [metabase.notification.api.unsubscribe]))
+   [metabase.notification.api.unsubscribe]
+   [potemkin :as p]))
+
+(p/import-vars
+ [metabase.notification.api.notification
+  list-notifications
+  get-notification
+  unsubscribe-user!])
 
 (def ^{:arglists '([request respond raise])} notification-routes
   "`/api/notification` routes."
