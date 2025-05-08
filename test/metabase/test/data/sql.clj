@@ -350,7 +350,7 @@
 
 (defmethod tx/field-reference :sql/test-extensions
   ([driver field-id]
-   (->> [:field field-id]
+   (->> [:field field-id {}]
         (sql.qp/->honeysql driver)
         (sql.qp/format-honeysql driver)
         first)))
