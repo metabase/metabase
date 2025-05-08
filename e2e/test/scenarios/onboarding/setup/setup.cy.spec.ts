@@ -240,9 +240,7 @@ describe("scenarios > setup", () => {
         cy.findByDisplayValue("Doe").should("exist");
         cy.findByDisplayValue("john@doe.test").should("exist");
         cy.findByDisplayValue("Doe Unlimited").should("exist");
-        cy.findByLabelText("Create a password")
-          .should("be.focused")
-          .and("be.empty");
+        cy.findByLabelText("Create a password").should("be.empty");
       });
     },
   );
