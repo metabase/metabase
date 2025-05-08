@@ -37,9 +37,9 @@
             result (with-redefs [render.util/is-visualizer-dashcard? (constantly true)]
                      (#'email.impl/assoc-attachment-booleans [matching-part-config] [visualizer-part]))]
 
-        (is (= true (-> result first :card :include_csv))
+        (is (true? (-> result first :card :include_csv))
             "Should include CSV attachment setting from matching part config")
-        (is (= true (-> result first :card :include_xls))
+        (is (true? (-> result first :card :include_xls))
             "Should include XLS attachment setting from matching part config")))
 
     (testing "falls back to matching on card_id only when no perfect visualizer match is found"
@@ -52,7 +52,7 @@
                                   :format_rows true}
             result (#'email.impl/assoc-attachment-booleans [matching-part-config] [regular-part])]
 
-        (is (= true (-> result first :card :include_csv))
+        (is (true? (-> result first :card :include_csv))
             "Should include CSV attachment setting using the fallback match")
-        (is (= true (-> result first :card :format_rows))
+        (is (true? (-> result first :card :format_rows))
             "Should include format_rows setting using the fallback match")))))

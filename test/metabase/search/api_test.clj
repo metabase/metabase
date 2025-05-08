@@ -398,7 +398,7 @@
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
-                         :model "card", :bookmark false :creator_id true :creator_common_name "Rasta Toucan"
+                         :model "card" :entity_id true :bookmark false :creator_id true :creator_common_name "Rasta Toucan"
                          :display "table" :can_write true))]
     (set [(make-card 5)
           (make-card 3)
