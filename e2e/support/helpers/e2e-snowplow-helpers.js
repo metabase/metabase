@@ -103,12 +103,22 @@ function isArrayDeepMatch(array, partialArray) {
 }
 
 const getEventNames = (body) => {
-  return body?.map(
-    (event) =>
-      event?.event?.unstruct_event?.data?.data?.event ??
-      event.event_name ??
-      "{not able to parse event name}",
-  );
+  return body?.map((event) => {
+    // get the event name if it exists
+    const eventName = event?.event?.unstruct_event?.data?.data?.event;
+    if (eventName) {
+      return eventName;
+    }
+    // get the  eventType if it exists, print is as object so we can tell
+    if (event.eventType) {
+      return {
+        eventType: event.eventType,
+      };
+    }
+    // fallback to logging it
+    console.log("[not able to parse event name]", event);
+    return "[not able to parse event name]";
+  });
 };
 
 export const expectGoodSnowplowEvents = (count) => {
