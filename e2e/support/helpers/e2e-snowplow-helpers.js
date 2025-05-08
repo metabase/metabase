@@ -102,27 +102,37 @@ function isArrayDeepMatch(array, partialArray) {
   return true;
 }
 
+const getEventNames = (body) => {
+  return body?.map(
+    (event) =>
+      event?.event?.unstruct_event?.data?.data?.event ??
+      event.event_name ??
+      "{not able to parse event name}",
+  );
+};
+
 export const expectGoodSnowplowEvents = (count) => {
-  retrySnowplowRequest(
+  // variables used to print a pretty message in case of errors
+
+  return retrySnowplowRequest(
     "micro/good",
     ({ body }) => body.length >= count,
-    `Failure while expecting ${count} good Snowplow events`,
-  )
-    .its("body")
-    .then((body) => {
-      cy.log(
-        console.log(
-          "DEBUG:expectGoodSnowplowEvents:events",
-          body.map((event) => event?.event?.unstruct_event?.data?.data?.event),
-        ),
+    ({ body }) => {
+      // this gets printed when the timeout is reached, meaning that we never reach the count we expect
+      const eventNamesReceived = getEventNames(body);
+      return `Timeout while waiting for ${count} good Snowplow events, reached ${eventNamesReceived.length} events. ${eventNamesReceived ? `Events names received: ${JSON.stringify(eventNamesReceived, null, 2)}` : ""}`;
+    },
+  ).then(({ body }) => {
+    const eventNamesReceived = getEventNames(body);
+
+    if (body.length !== count) {
+      // this gets called the number of events is greater than what we expected
+      throw new Error(
+        `Expected ${count} good Snowplow events, but got ${eventNamesReceived.length}. ${eventNamesReceived ? `Events names received: ${JSON.stringify(eventNamesReceived, null, 2)}` : ""}`,
       );
-      console.log(
-        "DEBUG:expectGoodSnowplowEvents:events",
-        body.map((event) => event?.event?.unstruct_event?.data?.data?.event),
-      );
-      return body;
-    })
-    .should("have.length", count);
+    }
+    return cy.wrap(body);
+  });
 };
 
 export const expectNoBadSnowplowEvents = () => {
@@ -156,7 +166,7 @@ const retrySnowplowRequest = (
     } else {
       const message =
         typeof messageOrMessageFn === "function"
-          ? messageOrMessageFn()
+          ? messageOrMessageFn(response)
           : messageOrMessageFn;
       throw new Error("Snowplow retry timeout " + message);
     }
