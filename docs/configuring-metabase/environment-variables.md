@@ -679,7 +679,7 @@ Keyword setting to control whitelabeling of the help link. Valid values are `:me
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
-- Default: `https://www.metabase.com/help-premium`
+- Default: `https://www.metabase.com/help/premium`
 - [Configuration file name](./config-file.md): `help-link-custom-destination`
 
 Custom URL for the help link.
@@ -1115,6 +1115,10 @@ The base URL where dashboard notitification links will point to instead of the M
 - Default: `3`
 
 The size of the thread pool used to send notifications.
+
+If Metabase stops sending notifications like alerts, it may be because long-running 
+  queries are clogging the notification queue. You may be able to unclog the queue by 
+  increasihg the size of the thread pool dedicated to notifications.
 
 ### `MB_PERSISTED_MODEL_REFRESH_CRON_SCHEDULE`
 
@@ -2230,3 +2234,4 @@ Type: string<br>
 Default: `null`
 
 Base-64 encoded public key for this sites SSL certificate. Specify this to enable HTTP Public Key Pinning. Using HPKP is no longer recommended. See http://mzl.la/1EnfqBf for more information.
+
