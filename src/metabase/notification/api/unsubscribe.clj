@@ -6,7 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
