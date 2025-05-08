@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer [deftest testing is]]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.models.collection :as collection]
-   [metabase.models.collection-test :refer [with-collection-hierarchy!]]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection-test :refer [with-collection-hierarchy!]]
    [metabase.stale-test :as stale.test]
    [metabase.test :as mt]
    [metabase.util :as u]))

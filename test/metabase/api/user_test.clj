@@ -3,9 +3,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.user :as api.user]
+   [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
    [metabase.http-client :as client]
-   [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.user :as user]
    [metabase.models.user-test :as user-test]

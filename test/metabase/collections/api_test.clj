@@ -1,19 +1,19 @@
-(ns metabase.api.collection-test
+(ns metabase.collections.api-test
   "Tests for /api/collection endpoints."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.card-test :as api.card-test]
-   [metabase.api.collection :as api.collection]
+   [metabase.collections.api :as api.collection]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection-test :as collection-test]
    [metabase.models.card :as card]
-   [metabase.models.collection :as collection]
-   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
-   [metabase.models.collection-test :as collection-test]
-   [metabase.models.collection.graph :as graph]
-   [metabase.models.collection.graph-test :as graph.test]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
+   [metabase.permissions.models.collection.graph :as graph]
+   [metabase.permissions.models.collection.graph-test :as graph.test]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.revisions.models.revision :as revision]
@@ -31,7 +31,7 @@
 
 (defmacro ^:private with-collection-hierarchy!
   "Totally-rad macro that creates a Collection hierarchy and grants the All Users group perms for all the Collections
-  you've bound. See docs for [[metabase.models.collection-test/with-collection-hierarchy]] for more details."
+  you've bound. See docs for [[metabase.collections.models.collection-test/with-collection-hierarchy]] for more details."
   {:style/indent 1}
   [collection-bindings & body]
   {:pre [(vector? collection-bindings)
@@ -1251,7 +1251,7 @@
     :can_write           true
     :name                "Lucky Pigeon's Personal Collection"
     :personal_owner_id   (mt/user->id :lucky)
-    :effective_ancestors [{:metabase.models.collection.root/is-root? true
+    :effective_ancestors [{:metabase.collections.models.collection.root/is-root? true
                            :name                                     "Our analytics"
                            :id                                       "root"
                            :authority_level                          nil
@@ -1443,7 +1443,7 @@
           root-collection (t2/select-one :model/Collection :personal_owner_id root-owner-id)]
       (mt/with-temp [:model/Collection collection {:name     "Som Test Child Collection"
                                                    :location (collection/location-path root-collection)}]
-        (is (= [{:metabase.models.collection.root/is-root? true,
+        (is (= [{:metabase.collections.models.collection.root/is-root? true,
                  :authority_level                          nil,
                  :name                                     "Our analytics",
                  :id                                       false,
@@ -2005,7 +2005,7 @@
         (with-some-children-of-collection! nil
           (mt/with-temp [:model/PermissionsGroup           group {}
                          :model/PermissionsGroupMembership _     {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
-            (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
+            (perms/grant-permissions! group (perms/collection-read-path {:metabase.collections.models.collection.root/is-root? true}))
             (is (partial= [(-> {:name               "Birthday Card", :description nil, :model "card",
                                 :collection_preview false,           :display     "table"}
                                default-item
@@ -2362,7 +2362,7 @@
                         :slug            "my_beautiful_collection"
                         :entity_id       (:entity_id collection)
                         :location        "/"
-                        :effective_ancestors [{:metabase.models.collection.root/is-root? true
+                        :effective_ancestors [{:metabase.collections.models.collection.root/is-root? true
                                                :name                                     "Our analytics"
                                                :id                                       "root"
                                                :authority_level                          nil

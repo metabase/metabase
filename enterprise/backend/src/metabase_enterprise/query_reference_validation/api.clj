@@ -5,7 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.models.collection :as collection]
+   [metabase.collections.models.collection :as collection]
    [metabase.query-analysis.core :as query-analysis]
    [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]

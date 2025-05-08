@@ -1,6 +1,6 @@
 (ns metabase.test.initialize.test-users-personal-collections
   (:require
-   [metabase.models.collection :as collection]
+   [metabase.collections.models.collection :as collection]
    [metabase.test.data.users :as test.users]))
 
 (defn init!

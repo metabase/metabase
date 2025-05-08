@@ -20,7 +20,7 @@
   "Assert that block permissions are not in effect for Database or Tables for a query that's otherwise allowed to run
   because of Collection perms; throw an Exception if they are; otherwise return `true`. The query is still allowed to
   run if the current User has unrestricted data permissions from another Group. See the namespace documentation for
-  [[metabase.models.collection]] for more details."
+  [[metabase.collections.models.collection]] for more details."
   :feature :advanced-permissions
   [{{gtap-perms :gtaps} ::query-perms/perms, database-id :database :as query}]
   (let [{:keys [table-ids card-ids native?]} (query-perms/query->source-ids query)

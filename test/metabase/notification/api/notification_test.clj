@@ -4,7 +4,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.channel.email.messages :as messages]
-   [metabase.models.collection :as collection]
+   [metabase.collections.models.collection :as collection]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]

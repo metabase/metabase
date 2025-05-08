@@ -1,6 +1,6 @@
 (ns metabase.search.permissions
   (:require
-   [metabase.models.collection :as collection]
+   [metabase.collections.models.collection :as collection]
    [metabase.models.table :as table]
    [metabase.permissions.core :as perms]
    [metabase.search.config :refer [SearchContext]]

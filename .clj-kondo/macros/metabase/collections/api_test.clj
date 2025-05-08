@@ -1,4 +1,4 @@
-(ns macros.metabase.api.collection-test)
+(ns macros.metabase.collections.api-test)
 
 (defmacro with-collection-hierarchy! [bindings & body]
   `(let [~'a nil

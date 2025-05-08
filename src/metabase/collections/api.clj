@@ -1,4 +1,4 @@
-(ns metabase.api.collection
+(ns metabase.collections.api
   "`/api/collection` endpoints. By default, these endpoints operate on Collections in the 'default' namespace, which is
   the namespace that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
   `:snippet` namespace, ('Snippet folders' in the UI). These namespaces are independent hierarchies. To use these
@@ -11,6 +11,8 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters :as params]
@@ -18,12 +20,10 @@
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :as card]
-   [metabase.models.collection :as collection]
-   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
-   [metabase.models.collection.graph :as graph]
-   [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
+   [metabase.permissions.models.collection.graph :as graph]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.request.core :as request]
@@ -149,7 +149,7 @@
           (mi/can-read? root)
           (cons root))))
     (t2/hydrate collections :can_write :is_personal :can_delete)
-    ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
+    ;; remove the :metabase.collection.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal collections we translate the name to user's locale
     (collection/personal-collections-with-ui-details  (for [collection collections]
                                                         (dissoc collection ::collection.root/is-root?)))))
