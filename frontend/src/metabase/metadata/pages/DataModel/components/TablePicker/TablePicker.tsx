@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
+import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Icon, Input, Stack } from "metabase/ui";
 
@@ -73,7 +74,8 @@ function Tree(props: TreePath) {
 }
 
 function Search({ query, path }: { query: string; path: TreePath }) {
-  const { tree, isLoading } = useSearch(query);
+  const debouncedQuery = useDebouncedValue(query, 500);
+  const { tree, isLoading } = useSearch(debouncedQuery);
 
   const items = flatten(tree);
   const isEmpty = !isLoading && items.length === 0;
