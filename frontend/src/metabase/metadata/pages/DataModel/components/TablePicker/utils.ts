@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   skipToken,
@@ -263,66 +263,74 @@ export function useSearch(query: string) {
         },
   );
 
-  const tree: TreeNode = {
-    type: "root",
-    label: "",
-    children: [],
-  };
+  const tree = useMemo(() => {
+    const tree: TreeNode = {
+      type: "root",
+      label: "",
+      children: [],
+    };
 
-  data?.data.forEach((result) => {
-    const { model, database_name, database_id, table_schema, id, name } =
-      result;
+    data?.data.forEach((result) => {
+      const { model, database_name, database_id, table_schema, id, name } =
+        result;
 
-    if (model !== "table" || database_name === null || table_schema === null) {
-      return;
-    }
+      if (
+        model !== "table" ||
+        database_name === null ||
+        table_schema === null
+      ) {
+        return;
+      }
 
-    let databaseNode = tree.children.find(
-      (node) =>
-        node.type === "database" && node.value.databaseId === database_id,
-    );
-    if (!databaseNode) {
-      databaseNode = node({
-        type: "database",
-        label: database_name,
-        value: {
-          databaseId: database_id,
-        },
-      });
-      tree.children.push(databaseNode);
-    }
+      let databaseNode = tree.children.find(
+        (node) =>
+          node.type === "database" && node.value.databaseId === database_id,
+      );
+      if (!databaseNode) {
+        databaseNode = node({
+          type: "database",
+          label: database_name,
+          value: {
+            databaseId: database_id,
+          },
+        });
+        tree.children.push(databaseNode);
+      }
 
-    let schemaNode = databaseNode.children.find(
-      (node) => node.type === "schema" && node.value.schemaId === table_schema,
-    );
-    if (!schemaNode) {
-      schemaNode = node({
-        type: "schema",
-        label: table_schema,
-        value: {
-          databaseId: database_id,
-          schemaId: table_schema,
-        },
-      });
-      databaseNode.children.push(schemaNode);
-    }
+      let schemaNode = databaseNode.children.find(
+        (node) =>
+          node.type === "schema" && node.value.schemaId === table_schema,
+      );
+      if (!schemaNode) {
+        schemaNode = node({
+          type: "schema",
+          label: table_schema,
+          value: {
+            databaseId: database_id,
+            schemaId: table_schema,
+          },
+        });
+        databaseNode.children.push(schemaNode);
+      }
 
-    let tableNode = schemaNode.children.find(
-      (node) => node.type === "table" && node.value.tableId === id,
-    );
-    if (!tableNode) {
-      tableNode = node({
-        type: "table",
-        label: name,
-        value: {
-          databaseId: database_id,
-          schemaId: table_schema,
-          tableId: id,
-        },
-      });
-      schemaNode.children.push(tableNode);
-    }
-  });
+      let tableNode = schemaNode.children.find(
+        (node) => node.type === "table" && node.value.tableId === id,
+      );
+      if (!tableNode) {
+        tableNode = node({
+          type: "table",
+          label: name,
+          value: {
+            databaseId: database_id,
+            schemaId: table_schema,
+            tableId: id,
+          },
+        });
+        schemaNode.children.push(tableNode);
+      }
+    });
+    return tree;
+  }, [data]);
 
   return {
     isLoading,
