@@ -3,16 +3,16 @@ import { screen, waitFor, cleanup } from "@testing-library/react";
 import { setup } from "./setup";
 
 describe("LegendCaption (OSS)", () => {
-  afterEach(cleanup);
-
   it("should display the original title when enterprise plugins are not available", async () => {
     setup({
       title: "Hello World",
       locale: "es",
     });
-    
+
     await waitFor(() => {
-      expect(screen.getByTestId("legend-caption-title")).toHaveTextContent("Hello World");
+      expect(screen.getByTestId("legend-caption-title")).toHaveTextContent(
+        "Hello World",
+      );
     });
   });
 
@@ -23,7 +23,9 @@ describe("LegendCaption (OSS)", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId("legend-caption-title")).toHaveTextContent("Chart Title");
+      expect(screen.getByTestId("legend-caption-title")).toHaveTextContent(
+        "Chart Title",
+      );
       expect(screen.getByText("info")).toBeInTheDocument(); // Description icon
     });
   });
