@@ -26,7 +26,7 @@ export function Results({
   path,
 }: {
   items: FlatItem[];
-  toggle?: (key: string) => void;
+  toggle?: (key: string, value?: boolean) => void;
   path: TreePath;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -92,7 +92,7 @@ export function Results({
               >
                 <MaybeLink
                   className={S.link}
-                  to={value ? getUrl(value) : undefined}
+                  to={value && !isExpanded ? getUrl(value) : undefined}
                   onClick={() => {
                     toggle?.(key);
                     virtual.measureElement(

@@ -144,9 +144,15 @@ export function useTableLoader(path: TreePath) {
     [getDatabases, getSchemas, getTables],
   );
 
+  const { databaseId, schemaId, tableId } = path;
+
   useEffect(() => {
-    load(path);
-  }, [path, load]);
+    load({
+      databaseId,
+      schemaId,
+      tableId,
+    });
+  }, [databaseId, schemaId, tableId, load]);
 
   return { tree };
 }
@@ -239,14 +245,23 @@ export function useSearch(query: string) {
 export function useExpandedState(path: TreePath) {
   const [state, setState] = useState(expandPath({}, path));
 
+  const { databaseId, schemaId, tableId } = path;
+
+  useEffect(() => {
+    // When the path changes, this means a user has navigated throught the browser back
+    // button, ensure the state is expanded to the current path.
+    setState((state) => expandPath(state, { databaseId, schemaId, tableId }));
+  }, [databaseId, schemaId, tableId]);
+
   return {
-    isExpanded(key: string) {
+    isExpanded(path: string | TreePath) {
+      const key = typeof path === "string" ? path : toKey(path);
       return Boolean(state[key]);
     },
-    toggle(key: string) {
+    toggle(key: string, value?: boolean) {
       setState((current) => ({
         ...current,
-        [key]: !current[key],
+        [key]: value ?? !current[key],
       }));
     },
   };
