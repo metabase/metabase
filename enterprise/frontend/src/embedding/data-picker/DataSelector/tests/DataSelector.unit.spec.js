@@ -9,7 +9,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { UnconnectedDataSelector as DataSelector } from "./DataSelector";
+import { UnconnectedDataSelector as DataSelector } from "../DataSelector";
 
 const MULTI_SCHEMA_DB_ID = 2;
 const MULTI_SCHEMA_TABLE1_ID = 100;
