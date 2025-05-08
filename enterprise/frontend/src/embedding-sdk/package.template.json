@@ -11,12 +11,12 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "default": "./dist/index.mjs"
     },
     "./nextjs": {
       "types": "./dist/nextjs.d.ts",
       "require": "./dist/nextjs.cjs",
-      "import": "./dist/nextjs.js"
+      "import": "./dist/nextjs.mjs"
     },
     "./styles.css": "./dist/index.css",
     "./package.json": "./package.json"
