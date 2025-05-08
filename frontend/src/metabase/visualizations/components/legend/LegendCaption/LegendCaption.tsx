@@ -78,6 +78,7 @@ export const LegendCaption = ({
 
   const tc = useTranslateContent();
   const translatedTitle = tc(title);
+  const translatedDescription = tc(description);
 
   return (
     <LegendCaptionRoot className={className} data-testid="legend-caption">
@@ -102,7 +103,7 @@ export const LegendCaption = ({
           <Tooltip
             label={
               <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
-                {description}
+                {translatedDescription}
               </Markdown>
             }
             maw="22em"
