@@ -29,11 +29,9 @@
   shutdown!]
 
  [metabase.analytics.quartz
-  
+
   add-listeners-to-scheduler!]
 
- [sdk
-  
  [metabase.analytics.sdk
 
   embedding-mw
