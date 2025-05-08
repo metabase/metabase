@@ -29,7 +29,7 @@ export const Warning = {
   render: Template,
 
   args: {
-    problem: { severity: "warning", message: MESSAGE },
+    problem: { severity: "warning", title: "Warning", message: MESSAGE },
   },
 };
 
@@ -37,6 +37,6 @@ export const Error = {
   render: Template,
 
   args: {
-    problem: { severity: "error", message: MESSAGE },
+    problem: { severity: "error", title: "Error", message: MESSAGE },
   },
 };
