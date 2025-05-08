@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import type { IconName } from "metabase/ui";
@@ -17,6 +18,7 @@ type Props = {
   icon?: IconName;
   onBack?: () => void;
   onClose?: () => void;
+  actions?: ReactNode;
 };
 
 function getHeaderVariant({
@@ -35,7 +37,14 @@ function getHeaderVariant({
   return "default";
 }
 
-function SidebarHeader({ className, title, icon, onBack, onClose }: Props) {
+function SidebarHeader({
+  className,
+  title,
+  icon,
+  onBack,
+  onClose,
+  actions,
+}: Props) {
   const hasDefaultBackButton = !title && !!onBack;
 
   const headerVariant = getHeaderVariant({
@@ -76,11 +85,14 @@ function SidebarHeader({ className, title, icon, onBack, onClose }: Props) {
         )}
       </Flex>
 
-      {onClose && (
-        <a className={SidebarHeaderS.CloseButton} onClick={onClose}>
-          <Icon name="close" size={18} />
-        </a>
-      )}
+      <Flex align="center" gap="sm">
+        {actions}
+        {onClose && (
+          <a className={SidebarHeaderS.CloseButton} onClick={onClose}>
+            <Icon name="close" size={18} />
+          </a>
+        )}
+      </Flex>
     </Flex>
   );
 }
