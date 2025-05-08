@@ -3,7 +3,7 @@
    [clj-http.client :as http]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
-   [metabase.driver.postgres-test :as postgres-test]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.http-client :as client]
    [metabase.models.database :as database]
@@ -12,6 +12,7 @@
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -110,7 +111,7 @@
     (testing "Ensure we have the ability to add a single new table"
       (let [db-name "add_new_table_sync_test_table"
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})]
-        (postgres-test/drop-if-exists-and-create-db! db-name)
+        (tx/drop-if-exists-and-create-db! driver/*driver* db-name)
         (mt/with-temp [:model/Database database {:engine :postgres :details (assoc details :dbname db-name)}]
           (let [spec     (sql-jdbc.conn/connection-details->spec :postgres details)
                 exec!    (fn [spec statements] (doseq [statement statements] (jdbc/execute! spec [statement])))
@@ -165,7 +166,7 @@
       (with-no-attached-data-warehouses
         (let [db-name (str (gensym "attached_datawarehouse"))]
           (try
-            (postgres-test/drop-if-exists-and-create-db! db-name)
+            (tx/drop-if-exists-and-create-db! driver/*driver* db-name)
             (let [details (mt/dbdef->connection-details :postgres :db {:database-name db-name})]
               (mt/with-temp [:model/Database database {:engine :postgres
                                                        :details (assoc details :dbname db-name)
@@ -211,4 +212,4 @@
                     (let [tables (tableset database)]
                       (is (= #{"public.foo" "public.bar" "public.fern"} tables)))))))
             (finally
-              (postgres-test/drop-if-exists-and-create-db! db-name :pg/just-drop))))))))
+              (tx/drop-if-exists-and-create-db! driver/*driver* db-name :just-drop))))))))
