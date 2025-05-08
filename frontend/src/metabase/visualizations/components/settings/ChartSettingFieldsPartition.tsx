@@ -295,7 +295,9 @@ export const ChartSettingFieldsPartition = ({
                       w="100%"
                       p="0.75rem"
                       bg="bg-light"
-                      c="text-medium"
+                      bd="1px dashed border"
+                      c="text-light"
+                      ta="center"
                       className={CS.rounded}
                     >
                       {emptyColumnMessage}
