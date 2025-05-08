@@ -31,18 +31,17 @@
       ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
       (str (user/form-password-reset-url reset-token) "#new"))))
 
-(defn- dispatch-on-event-info
-  [{notification-system-event :payload :as _notification-info}]
-  (let [{:keys [action event_name]} notification-system-event]
-    (if action
-      [event_name action]
-      event_name)))
-
 (defmulti transform-event-info
   "Transform the event info to a format that is easier to work with in the templates.
   This is a multi-method because we want to be able to add more event types in the future."
   {:arglists '([notification-info])}
-  dispatch-on-event-info)
+  :event_name)
+
+(defmulti event-info->condition-context
+  "Transformed the published event info to an intermediate datastructure that's used for evaluating the condition"
+  {:arglists '([event-topic event-info])}
+  (fn [event-topic _event-info]
+    event-topic))
 
 (defn- sample-for-table
   [table-id changes?]
@@ -269,6 +268,7 @@
 
 (mu/defmethod transform-event-info :event/row.created :- ::row.created
   [notification-info]
+  (def notification-info notification-info)
   (bulk-row-transformation notification-info))
 
 (mu/defmethod transform-event-info :event/row.updated :- ::row.updated
@@ -302,17 +302,41 @@
 (defmethod notification.payload/notification-payload-schema :notification/system-event
   [notification-info]
   (when-let [[op _arg-schema return-schema] (some->> notification-info
-                                                     dispatch-on-event-info
+                                                     :payload
+                                                     :event_name
                                                      (get-method transform-event-info)
                                                      meta
                                                      :schema)]
     (assert (= op :=>))
     (mr/resolve-schema return-schema)))
 
+(defn- default-row-action-transformation
+  [event-info]
+  (lib.util.match/match-one
+    event-info
+    {:row_change {:before ?before
+                  :after  ?after}
+     :args       {:table_id ?table-id}}
+    {:record   (or ?after ?before)
+     :table_id ?table-id}))
+
+(defmethod event-info->condition-context :event/row.created
+  [_event-topic event-info]
+  (default-row-action-transformation event-info))
+
+(defmethod event-info->condition-context :event/row.updated
+  [_event-topic event-info]
+  (default-row-action-transformation event-info))
+
+(defmethod event-info->condition-context :event/row.deleted
+  [_event-topic event-info]
+  (default-row-action-transformation event-info))
+
 (defmethod notification.send/should-queue-notification? :notification/system-event
   [notification-info]
   (if-let [condition (not-empty (:condition notification-info))]
-    (notification.condition/evaluate-expression condition (:event_info notification-info))
+    (->> (event-info->condition-context (get-in notification-info [:payload :event_name]) (:event_info notification-info))
+         (notification.condition/evaluate-expression condition))
     true))
 
 (defn sample-payload
