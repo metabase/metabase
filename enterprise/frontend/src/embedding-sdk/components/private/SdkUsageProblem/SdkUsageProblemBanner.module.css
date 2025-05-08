@@ -25,16 +25,10 @@
   margin-left: 0.37rem;
 }
 
-.Indicator .WrenchIcon {
-  stroke: #509ee3;
-  stroke-width: 1.25;
-}
-
 .Indicator .Logo {
   border-radius: 3px 0 0 3px;
 }
 
 .DocsButton:not([data-css-specificity-hack="🤣"]) {
   color: #509ee3;
-  border: 1px solid var(--mb-color-brand);
 }
