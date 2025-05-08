@@ -92,6 +92,7 @@ export type MetabaseColor = keyof MetabaseColors;
  * Theme options for customizing specific Metabase
  * components and visualizations.
  *
+ * @privateRemarks
  * Every non-optional properties here must have a default value defined
  * in DEFAULT_METABASE_COMPONENT_THEME at [default-component-theme.ts]
  */
@@ -242,7 +243,10 @@ export type MetabaseComponentTheme = {
   };
 };
 
-type ColorCssVariableOrString = `var(--mb-color-${ColorName})` | string;
+/**
+ * @inline
+ */
+export type ColorCssVariableOrString = `var(--mb-color-${ColorName})` | string;
 
 export type ChartColor =
   | string

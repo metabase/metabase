@@ -17,6 +17,7 @@ type SetupOpts = {
   stageIndex?: number;
   column?: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
+  withAddButton?: boolean;
 };
 
 function setup({
@@ -24,6 +25,7 @@ function setup({
   stageIndex = -1,
   column = findUnknownColumn(query),
   filter,
+  withAddButton = false,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -35,6 +37,7 @@ function setup({
       column={column}
       filter={filter}
       isNew={!filter}
+      withAddButton={withAddButton}
       onChange={onChange}
       onBack={onBack}
     />,
@@ -48,10 +51,16 @@ function setup({
       : null;
   }
 
+  const getNextFilterChangeOpts = () => {
+    const [_filter, opts] = onChange.mock.lastCall;
+    return opts;
+  };
+
   return {
     query,
     column,
     getNextFilterName,
+    getNextFilterChangeOpts,
     onChange,
     onBack,
   };
@@ -94,6 +103,18 @@ describe("DefaultFilterPicker", () => {
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
     });
+
+    it.each([
+      { label: "Apply filter", run: true },
+      { label: "Add another filter", run: false },
+    ])(
+      'should add a filter via the "$label" button when the add button is enabled',
+      async ({ label, run }) => {
+        const { getNextFilterChangeOpts } = setup({ withAddButton: true });
+        await userEvent.click(screen.getByRole("button", { name: label }));
+        expect(getNextFilterChangeOpts()).toMatchObject({ run });
+      },
+    );
   });
 
   describe("existing filter", () => {

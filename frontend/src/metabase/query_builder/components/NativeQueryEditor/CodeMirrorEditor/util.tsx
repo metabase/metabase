@@ -271,3 +271,10 @@ export const getPlaceholderText = (engine?: string | null): string => {
       return "";
   }
 };
+
+export function getSelectedRanges(state: EditorState): Range[] {
+  const value = state.doc.toString();
+  return state.selection.ranges.map((range) =>
+    convertSelectionToRange(value, range),
+  );
+}

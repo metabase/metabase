@@ -23,10 +23,10 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
@@ -63,6 +63,7 @@
                               :expressions                     true
                               :native-parameters               true
                               :expression-aggregations         true
+                              :expression-literals             true
                               :binning                         true
                               :datetime-diff                   true
                               :convert-timezone                true
@@ -124,10 +125,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Misc Implementations                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmethod sql.qp/->float :starburst
-  [_ value]
-  (h2x/cast :double value))
 
 (defn- format-mod
   [_fn [x y]]

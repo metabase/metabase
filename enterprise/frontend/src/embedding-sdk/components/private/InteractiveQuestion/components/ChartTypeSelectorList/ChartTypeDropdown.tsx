@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { IconName } from "embedding-sdk/types/ui";
 import { isNotNull } from "metabase/lib/types";
 import { Icon, Menu, type MenuProps } from "metabase/ui";
 import visualizations from "metabase/visualizations";
@@ -12,7 +13,23 @@ import { useSensibleVisualizations } from "../../hooks/use-sensible-visualizatio
 import ToolbarButtonS from "../../styles/ToolbarButton.module.css";
 import { ToolbarButton } from "../util/ToolbarButton";
 
-export const ChartTypeDropdown = (menuProps: MenuProps) => {
+/**
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionChartTypeDropdownProps = MenuProps;
+
+/**
+ * Dropdown for selecting the visualization type (bar chart, line chart, table, etc.).
+ * Automatically updates to show recommended visualization types for the current data.
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
+export const ChartTypeDropdown = ({
+  ...menuProps
+}: InteractiveQuestionChartTypeDropdownProps) => {
   const { selectedVisualization, updateQuestionVisualization } =
     useQuestionVisualization();
 
@@ -23,8 +40,8 @@ export const ChartTypeDropdown = (menuProps: MenuProps) => {
     visualizationType: CardDisplayType,
   ): {
     value: CardDisplayType;
-    label: Visualization["uiName"];
-    iconName: Visualization["iconName"];
+    label: ReturnType<Visualization["getUiName"]>;
+    iconName: IconName;
   } | null => {
     const visualization = visualizations.get(visualizationType);
     if (!visualization) {
@@ -33,7 +50,7 @@ export const ChartTypeDropdown = (menuProps: MenuProps) => {
 
     return {
       value: visualizationType,
-      label: visualization.uiName,
+      label: visualization.getUiName(),
       iconName: visualization.iconName,
     };
   };

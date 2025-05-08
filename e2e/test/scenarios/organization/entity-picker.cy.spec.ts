@@ -10,12 +10,16 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type {
+  DashboardDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
 import type { DashboardCard } from "metabase-types/api";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
-const cardDetails: H.StructuredQuestionDetails = {
+const cardDetails: StructuredQuestionDetails = {
   name: "Question",
   type: "question",
   query: {
@@ -1022,7 +1026,7 @@ describe("scenarios > organization > entity picker", () => {
     });
   });
 
-  describe("keyboard navigation", () => {
+  describe("misc entity picker stuff", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
@@ -1032,8 +1036,8 @@ describe("scenarios > organization > entity picker", () => {
       cy.visit("/");
 
       // New Collection Flow
-      H.newButton("Collection").click();
-      H.modal()
+      H.startNewCollectionFromSidebar();
+      cy.findByTestId("new-collection-modal")
         .findByLabelText(/Collection it's saved in/)
         .click();
 
@@ -1108,10 +1112,51 @@ describe("scenarios > organization > entity picker", () => {
         .findByLabelText(/Where do you/)
         .click();
       H.entityPickerModalTab("Browse").click();
+
+      // wait for data to avoid flakiness
+      H.entityPickerModalLevel(1).should("contain", "First collection");
+
       closeAndAssertModal(H.entityPickerModal);
       closeAndAssertModal(() =>
         cy.findByRole("heading", { name: /Duplicate/ }),
       );
+    });
+
+    it("should grow in width as needed, but not shrink (metabase#55690)", () => {
+      cy.viewport(1500, 800);
+      cy.visit("/");
+
+      // New Collection Flow
+      H.startNewCollectionFromSidebar();
+      cy.findByTestId("new-collection-modal")
+        .findByLabelText(/Collection it's saved in/)
+        .click();
+      H.entityPickerModalTab("Collections").click();
+
+      //Initial width of entity picker
+      cy.findByRole("dialog", { name: "Select a collection" })
+        .should("have.css", "width")
+        .and("eq", "920px");
+
+      H.entityPickerModalItem(1, "First collection").click();
+
+      //Entity picker should grow
+      cy.findByRole("dialog", { name: "Select a collection" })
+        .should("have.css", "width")
+        .and("eq", "1095px");
+
+      H.entityPickerModalItem(2, "Second collection").click();
+
+      //Max width is 80% of the viewport. Here, we get horizontal scrolling
+      cy.findByRole("dialog", { name: "Select a collection" })
+        .should("have.css", "width")
+        .and("eq", "1200px");
+
+      H.entityPickerModalItem(0, "Our analytics").click();
+      //Entity picker should not shrink if we go back in the collection tree
+      cy.findByRole("dialog", { name: "Select a collection" })
+        .should("have.css", "width")
+        .and("eq", "1200px");
     });
   });
 });
@@ -1212,7 +1257,7 @@ function createTestDashboards() {
 }
 
 function createTestDashboardWithEmptyCard(
-  dashboardDetails: H.DashboardDetails = {},
+  dashboardDetails: DashboardDetails = {},
 ) {
   const dashcardDetails: Partial<DashboardCard>[] = [
     {
@@ -1244,7 +1289,7 @@ function createTestDashboardWithEmptyCard(
   });
 }
 
-function selectQuestionFromDashboard(dashboardDetails?: H.DashboardDetails) {
+function selectQuestionFromDashboard(dashboardDetails?: DashboardDetails) {
   createTestDashboardWithEmptyCard(dashboardDetails).then((dashboard) => {
     H.visitDashboard(dashboard.id);
     H.editDashboard();

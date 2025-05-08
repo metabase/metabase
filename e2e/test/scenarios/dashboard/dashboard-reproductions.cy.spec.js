@@ -1738,3 +1738,121 @@ describe("issue 54353", () => {
     cy.findByRole("dialog").should("not.exist");
   });
 });
+
+describe("issue 44937", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signIn("readonly");
+  });
+
+  it("dashboard empty state should not suggest creating a new question when users have no creation permission (metabase#44937)", () => {
+    cy.visit("/");
+    H.newButton().click();
+    H.popover().findByText("Dashboard").click();
+    H.modal().within(() => {
+      cy.findByPlaceholderText("What is the name of your dashboard?").type(
+        "my dashboard",
+      );
+      cy.button("Create").click();
+    });
+
+    H.main().findByText(
+      "Browse your collections to find and add existing questions.",
+    );
+
+    cy.button("Add a chart").click();
+    H.sidebar().within(() => {
+      cy.findByText("Our analytics").click();
+      cy.findByText("Orders").click();
+    });
+
+    H.createNewTab();
+
+    H.main().findByText(
+      "Browse your collections to find and add existing questions.",
+    );
+  });
+});
+
+describe("issue 56716", () => {
+  function setupDashboard() {
+    const questionDetails = {
+      query: {
+        "source-table": PRODUCTS_ID,
+        fields: [
+          ["field", PRODUCTS.ID, null],
+          ["field", PRODUCTS.RATING, null],
+        ],
+      },
+    };
+
+    const parameterDetails = {
+      id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+      type: "number/=",
+      target: ["dimension", ["field", PRODUCTS.RATING, null]],
+      name: "Number",
+      slug: "number",
+    };
+
+    const dashboardDetails = {
+      parameters: [parameterDetails],
+    };
+
+    const vizSettings = {
+      column_settings: {
+        '["name","RATING"]': {
+          click_behavior: {
+            type: "crossfilter",
+            parameterMapping: {
+              [parameterDetails.id]: {
+                id: parameterDetails.id,
+                source: { id: "RATING", name: "RATING", type: "column" },
+                target: {
+                  id: parameterDetails.id,
+                  type: "parameter",
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const getParameterMapping = (cardId) => ({
+      card_id: cardId,
+      parameter_id: parameterDetails.id,
+      target: ["dimension", ["field", PRODUCTS.RATING, null]],
+    });
+
+    H.createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: dashcard, questionId }) => {
+      const { dashboard_id } = dashcard;
+
+      H.editDashboardCard(dashcard, {
+        parameter_mappings: [getParameterMapping(questionId)],
+        visualization_settings: vizSettings,
+      });
+
+      H.visitDashboard(dashboard_id);
+    });
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should reset the filter when clicking on a column value twice with a click behavior enabled (metabase#56716)", () => {
+    setupDashboard();
+
+    H.getDashboardCard().findByText("4.6").click();
+    H.filterWidget().should("contain.text", "4.6");
+    H.getDashboardCard().findByText("4 rows").should("be.visible");
+
+    H.getDashboardCard().findAllByText("4.6").first().click();
+    H.filterWidget().should("not.contain.text", "4.6");
+    H.getDashboardCard().findByText("200 rows").should("be.visible");
+  });
+});

@@ -9,8 +9,9 @@ import {
 } from "metabase/components/AdminLayout";
 
 export const MetadataWrapper = styled(AdminWrapper)`
-  /* 142px is collective height of content above this component but below navbar */
-  height: calc(100% - 142px);
+  /* 53px is the height of DataModelApp's NavBar */
+  /* 104px is the height of MetadataHeader */
+  height: calc(100% - 53px - 104px);
 `;
 
 export const MetadataMain = styled(AdminMain)`

@@ -4,6 +4,7 @@ import { t } from "ttag";
 import ButtonGroup from "metabase/core/components/ButtonGroup";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
   onCloseChartSettings,
   onCloseChartType,
@@ -25,6 +26,28 @@ export const LeftViewFooterButtonGroup = () => {
 
   const dispatch = useDispatch();
 
+  const handleVizTypeClick = isShowingChartTypeSidebar
+    ? () => dispatch(onCloseChartType())
+    : () => dispatch(onOpenChartType());
+
+  const handleVizSettingClick = isShowingChartSettingsSidebar
+    ? () => dispatch(onCloseChartSettings())
+    : () => dispatch(onOpenChartSettings());
+
+  useRegisterShortcut(
+    [
+      {
+        id: "query-builder-toggle-viz-types",
+        perform: handleVizTypeClick,
+      },
+      {
+        id: "query-builder-toggle-viz-settings",
+        perform: handleVizSettingClick,
+      },
+    ],
+    [isShowingChartTypeSidebar, isShowingChartSettingsSidebar],
+  );
+
   return (
     <Group className={cx(CS.flex1, S.Root)}>
       <ButtonGroup className={S.FooterButtonGroup}>
@@ -34,11 +57,7 @@ export const LeftViewFooterButtonGroup = () => {
           data-testid="viz-type-button"
           active={isShowingChartTypeSidebar}
           className={S.Button}
-          onClick={
-            isShowingChartTypeSidebar
-              ? () => dispatch(onCloseChartType())
-              : () => dispatch(onOpenChartType())
-          }
+          onClick={handleVizTypeClick}
         >
           {t`Visualization`}
         </ViewButton>

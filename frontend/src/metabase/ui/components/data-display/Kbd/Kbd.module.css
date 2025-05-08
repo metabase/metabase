@@ -1,0 +1,7 @@
+.root {
+  background-color: var(--mb-color-background);
+  border-color: var(--mb-color-border);
+  color: var(--mb-color-text-primary);
+  border-bottom-width: 1px;
+  box-shadow: 0 2px 3px var(--mb-color-border);
+}

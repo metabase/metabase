@@ -2,9 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.models.setting :as setting]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.util :as qp.util]
+   [metabase.settings.core :as setting]
    [metabase.task.truncate-audit-tables :as task.truncate-audit-tables]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

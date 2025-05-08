@@ -338,8 +338,8 @@ describe("Field", () => {
         ],
       });
 
-      expect(field.remappedField()).toBeDefined();
-      expect(field.remappedField()).toBe(field.metadata?.field(2));
+      expect(field.remappedExternalField()).toBeDefined();
+      expect(field.remappedExternalField()).toBe(field.metadata?.field(2));
     });
 
     it("should return the field's name_field", () => {
@@ -354,8 +354,8 @@ describe("Field", () => {
         ],
       });
 
-      expect(field.remappedField()).toBeDefined();
-      expect(field.remappedField()).toBe(field.metadata?.field(2));
+      expect(field.remappedExternalField()).toBeDefined();
+      expect(field.remappedExternalField()).toBe(field.metadata?.field(2));
     });
 
     it("should return null when the field has no name_field or no dimension with a 'human readable' field", () => {
@@ -367,7 +367,7 @@ describe("Field", () => {
         ],
       });
 
-      expect(field.remappedField()).toBe(null);
+      expect(field.remappedExternalField()).toBe(null);
     });
   });
 

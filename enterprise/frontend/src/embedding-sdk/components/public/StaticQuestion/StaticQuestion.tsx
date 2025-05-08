@@ -6,13 +6,16 @@ import {
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 
 import { InteractiveQuestion } from "../InteractiveQuestion";
+import type { InteractiveQuestionQuestionIdProps } from "../InteractiveQuestion/types";
 
-export type StaticQuestionProps = {
+/**
+ * @interface
+ * @expand
+ * @category StaticQuestion
+ */
+export type StaticQuestionProps = InteractiveQuestionQuestionIdProps & {
   withChartTypeSelector?: boolean;
-} & Pick<
-  InteractiveQuestionProviderProps,
-  "questionId" | "initialSqlParameters"
-> &
+} & Pick<InteractiveQuestionProviderProps, "initialSqlParameters"> &
   FlexibleSizeProps;
 
 const StaticQuestionInner = ({
@@ -39,4 +42,10 @@ const StaticQuestionInner = ({
   </InteractiveQuestionProvider>
 );
 
+/**
+ * A component that renders a static question.
+ *
+ * @function
+ * @category StaticQuestion
+ */
 export const StaticQuestion = withPublicComponentWrapper(StaticQuestionInner);

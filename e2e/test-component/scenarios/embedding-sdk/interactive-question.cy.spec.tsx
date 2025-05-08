@@ -3,11 +3,13 @@ import {
   InteractiveQuestion,
   type MetabaseQuestion,
 } from "@metabase/embedding-sdk-react";
-import type { ComponentProps } from "react";
+import { type ComponentProps, useState } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  FIRST_COLLECTION_ENTITY_ID,
   FIRST_COLLECTION_ID,
+  SECOND_COLLECTION_ENTITY_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
@@ -28,6 +30,7 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
 import { Box, Button, Modal } from "metabase/ui";
+const { H } = cy;
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -61,6 +64,20 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     getSdkRoot().within(() => {
       cy.findByText("Product ID").should("be.visible");
       cy.findByText("Max of Quantity").should("be.visible");
+    });
+  });
+
+  it("should show a watermark in development mode", () => {
+    cy.intercept("/api/session/properties", (req) => {
+      req.continue((res) => {
+        res.body["token-features"]["development-mode"] = true;
+      });
+    });
+
+    mountInteractiveQuestion();
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("development-watermark").should("exist");
     });
   });
 
@@ -378,6 +395,74 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
           cy.findByText("Max of Quantity").should("not.exist");
         });
       });
+    });
+  });
+
+  it("should select sensible display for new questions (EMB-308)", () => {
+    mountSdkContent(<InteractiveQuestion questionId="new" />);
+    cy.log("Select data");
+    H.popover().findByRole("link", { name: "Orders" }).click();
+
+    cy.log("Select summarization");
+    H.getNotebookStep("summarize")
+      .findByText("Pick a function or metric")
+      .click();
+    H.popover().findByRole("option", { name: "Count of rows" }).click();
+
+    cy.log("Select grouping");
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().findByRole("heading", { name: "Created At" }).click();
+
+    cy.log("Set limit");
+    const LIMIT = 2;
+    cy.button("Row limit").click();
+    cy.findByPlaceholderText("Enter a limit")
+      .type(LIMIT.toString())
+      .realPress("Tab");
+
+    cy.log("Visualize");
+    H.visualize();
+    H.cartesianChartCircle().should("have.length", LIMIT);
+  });
+
+  it("can change target collection to a different entity id without crashing (metabase#57438)", () => {
+    const TestComponent = () => {
+      const [targetCollection, setTargetCollection] = useState<string | null>(
+        FIRST_COLLECTION_ENTITY_ID!,
+      );
+
+      return (
+        <div>
+          <div>id = {targetCollection}</div>
+
+          <InteractiveQuestion
+            questionId="new"
+            targetCollection={targetCollection}
+            onSave={() => {}}
+            isSaveEnabled
+          />
+
+          <div
+            onClick={() => setTargetCollection(SECOND_COLLECTION_ENTITY_ID!)}
+          >
+            use second collection
+          </div>
+        </div>
+      );
+    };
+
+    mountSdkContent(<TestComponent />);
+
+    getSdkRoot().within(() => {
+      cy.findByText(`id = ${FIRST_COLLECTION_ENTITY_ID}`).should("exist");
+      cy.findByText("use second collection").click();
+      cy.findByText(`id = ${SECOND_COLLECTION_ENTITY_ID}`).should("exist");
+
+      cy.log("ensure that the interactive question still works");
+      H.popover().findByRole("link", { name: "Orders" }).click();
+      cy.findByRole("button", { name: "Visualize" }).should("be.visible");
     });
   });
 });

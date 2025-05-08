@@ -1,4 +1,4 @@
-import React, { type CSSProperties } from "react";
+import React from "react";
 import { t } from "ttag";
 
 import { PublicComponentStylesWrapper } from "embedding-sdk/components/private/PublicComponentStylesWrapper";
@@ -6,14 +6,14 @@ import { SdkError } from "embedding-sdk/components/private/PublicComponentWrappe
 import { SdkLoader } from "embedding-sdk/components/private/PublicComponentWrapper/SdkLoader";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getLoginStatus, getUsageProblem } from "embedding-sdk/store/selectors";
+import type { CommonStylingProps } from "embedding-sdk/types/props";
 
 import { RenderOnlyInSdkProvider } from "../SdkContext";
 
 export type PublicComponentWrapperProps = {
   children: React.ReactNode;
-  className?: string;
-  style?: CSSProperties;
-};
+} & CommonStylingProps;
+
 const PublicComponentWrapperInner = React.forwardRef<
   HTMLDivElement,
   PublicComponentWrapperProps

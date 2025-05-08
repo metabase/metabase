@@ -4,7 +4,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.auth-provider :as auth-provider]
+   [metabase.auth-provider.core :as auth-provider]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
@@ -12,10 +12,10 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
@@ -388,6 +388,7 @@
 (defn- expand-schema-filters-prop [prop]
   (let [prop-name (:name prop)
         disp-name (or (:display-name prop) "")
+        placeholder (or (:placeholder prop) "E.x. public,auth*")
         type-prop-nm (str prop-name "-type")]
     [{:name type-prop-nm
       :display-name disp-name
@@ -401,14 +402,14 @@
       :default "all"}
      {:name (str prop-name "-patterns")
       :type "text"
-      :placeholder "E.x. public,auth*"
+      :placeholder placeholder
       :description (trs "Comma separated names of {0} that should appear in Metabase" (u/lower-case-en disp-name))
       :visible-if  {(keyword type-prop-nm) "inclusion"}
       :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (u/lower-case-en disp-name))
       :required true}
      {:name (str prop-name "-patterns")
       :type "text"
-      :placeholder "E.x. public,auth*"
+      :placeholder placeholder
       :description (trs "Comma separated names of {0} that should NOT appear in Metabase" (u/lower-case-en disp-name))
       :visible-if  {(keyword type-prop-nm) "exclusion"}
       :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (u/lower-case-en disp-name))
@@ -520,17 +521,12 @@
     "starburst"
     "vertica"})
 
-(def partner-drivers
-  "The set of other drivers in the partnership program"
-  #{"firebolt" "materialize"})
-
 (defn driver-source
-  "Return the source type of the driver: official, partner, or community"
+  "Return the source type of the driver: official or community"
   [driver-name]
-  (cond
-    (contains? official-drivers driver-name) "official"
-    (contains? partner-drivers driver-name) "partner"
-    :else "community"))
+  (if (contains? official-drivers driver-name)
+    "official"
+    "community"))
 
 (defn available-drivers-info
   "Return info about all currently available drivers, including their connection properties fields and supported

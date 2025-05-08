@@ -8,7 +8,7 @@ import { type Options, suggestFunctions } from "./functions";
 
 describe("suggestFunctions", () => {
   function setup({
-    startRule = "expression",
+    expressionMode = "expression",
     reportTimezone = "America/New_York",
     features = undefined,
   }: Partial<Options> & {
@@ -23,7 +23,7 @@ describe("suggestFunctions", () => {
     });
     const query = createQuery({ metadata });
     const source = suggestFunctions({
-      startRule,
+      expressionMode,
       query,
       metadata,
       reportTimezone,
@@ -88,13 +88,13 @@ describe("suggestFunctions", () => {
       {
         apply: expect.any(Function),
         detail:
-          'Returns the localized short name (eg. `"Apr"`) for the given month number (eg. `4`)',
-        displayLabel: "monthName",
+          "Looks at the values in each argument in order and returns the first non-null value for each row.",
+        displayLabel: "coalesce",
         icon: "function",
-        label: "monthName",
+        label: "coalesce",
         matches: [
-          [1, 2],
-          [5, 5],
+          [0, 1],
+          [6, 6],
         ],
         type: "function",
       },
@@ -111,13 +111,13 @@ describe("suggestFunctions", () => {
       {
         apply: expect.any(Function),
         detail:
-          "Looks at the values in each argument in order and returns the first non-null value for each row.",
-        displayLabel: "coalesce",
+          'Returns the localized short name (eg. `"Apr"`) for the given month number (eg. `4`)',
+        displayLabel: "monthName",
         icon: "function",
-        label: "coalesce",
+        label: "monthName",
         matches: [
-          [0, 1],
-          [6, 6],
+          [1, 2],
+          [5, 5],
         ],
         type: "function",
       },
@@ -132,17 +132,17 @@ describe("suggestFunctions", () => {
     })),
   };
 
-  describe("startRule = expression", () => {
-    const startRule = "expression";
+  describe("expressionMode = expression", () => {
+    const expressionMode = "expression";
 
     it("should suggest functions", () => {
-      const completer = setup({ startRule });
+      const completer = setup({ expressionMode });
       const results = completer("conc|");
       expect(results).toEqual(RESULTS);
     });
 
     it("should suggest functions, inside a word", () => {
-      const completer = setup({ startRule });
+      const completer = setup({ expressionMode });
       const results = completer("con|c");
       expect(results).toEqual(RESULTS);
     });
@@ -167,14 +167,14 @@ describe("suggestFunctions", () => {
         "con|c ([Foo])",
       ];
       for (const doc of cases) {
-        const completer = setup({ startRule });
+        const completer = setup({ expressionMode });
         const results = completer(doc);
         expect(results).toEqual(RESULTS_NO_TEMPLATE);
       }
     });
 
     it("should not suggest offset", async () => {
-      const completer = setup({ startRule });
+      const completer = setup({ expressionMode });
       const results = await completer("offse|");
       const options = results?.options.filter(
         (option) => option.label === "offset",
@@ -183,7 +183,7 @@ describe("suggestFunctions", () => {
     });
 
     it("should suggest case", async () => {
-      const completer = setup({ startRule });
+      const completer = setup({ expressionMode });
       const results = await completer("cas|");
       const options = results?.options.filter(
         (option) => option.label === "case",
@@ -204,26 +204,26 @@ describe("suggestFunctions", () => {
 
     it("should not suggest unsupported functions", async () => {
       const completer = setup({
-        startRule,
+        expressionMode,
         features: [],
       });
       const results = await completer("rege|");
       expect(
-        results?.options.find((option) => option.label === "regexextract"),
+        results?.options.find((option) => option.label === "regexExtract"),
       ).toBe(undefined);
     });
 
     it("should suggest supported functions", async () => {
       const completer = setup({
-        startRule,
+        expressionMode,
         features: ["regex"],
       });
       const results = await completer("rege|");
       expect(
-        results?.options.find((option) => option.label === "regexextract"),
+        results?.options.find((option) => option.label === "regexExtract"),
       ).toEqual({
-        label: "regexextract",
-        displayLabel: "regexextract",
+        label: "regexExtract",
+        displayLabel: "regexExtract",
         detail:
           "Extracts matching substrings according to a regular expression.",
         matches: [[0, 3]],
@@ -234,54 +234,54 @@ describe("suggestFunctions", () => {
     });
   });
 
-  describe("startRule = aggregation", () => {
-    const startRule = "aggregation";
+  describe("expressionMode = aggregation", () => {
+    const expressionMode = "aggregation";
 
     it("should not suggest functions", () => {
-      const completer = setup({ startRule });
+      const completer = setup({ expressionMode });
       const results = completer("con|");
       expect(results).toEqual(null);
     });
   });
 
-  describe("startRule = boolean", () => {
-    const startRule = "boolean";
+  describe("expressionMode = boolean", () => {
+    const expressionMode = "filter";
 
     it("should suggest functions", () => {
-      const completer = setup({ startRule });
+      const completer = setup({ expressionMode });
       const results = completer("conc|");
       expect(results).toEqual(RESULTS);
     });
 
     it("should suggest functions, inside a word", () => {
-      const completer = setup({ startRule });
+      const completer = setup({ expressionMode });
       const results = completer("con|c");
       expect(results).toEqual(RESULTS);
     });
 
     it("should suggest functions, before parenthesis, inside a word", () => {
-      const completer = setup({ startRule });
+      const completer = setup({ expressionMode });
       const results = completer("con|c()");
       expect(results).toEqual(RESULTS_NO_TEMPLATE);
     });
   });
 
   it("should complete functions whose name starts with the an operator name as a prefix (metabase#55686)", async () => {
-    const completer = setup({ startRule: "expression" });
+    const completer = setup({ expressionMode: "expression" });
     const results = await completer("not|");
     expect(results?.options.map((result) => result.displayLabel)).toEqual([
+      "notEmpty",
       "notIn",
       "notNull",
-      "notEmpty",
       "doesNotContain",
       "now",
-      "interval",
       "intervalStartingFrom",
+      "interval",
+      "contains",
+      "minute",
+      "month",
       "length",
       "monthName",
-      "month",
-      "minute",
-      "contains",
     ]);
   });
 });

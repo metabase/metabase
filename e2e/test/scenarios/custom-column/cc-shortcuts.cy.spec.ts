@@ -32,161 +32,165 @@ function selectColumn(index: number, table: string, name?: string) {
     });
 }
 
-describe("scenarios > question > custom column > expression shortcuts > extract", () => {
-  const DATE_EXTRACTIONS = [
-    {
-      table: ORDERS_ID,
-      column: "Created At",
-      name: "Hour of day",
-      fn: "hour",
-    },
-    {
-      table: ORDERS_ID,
-      column: "Created At",
-      name: "Day of month",
-      fn: "day",
-    },
-    {
-      table: ORDERS_ID,
-      column: "Created At",
-      name: "Day of week",
-      fn: "weekday",
-    },
-    {
-      table: ORDERS_ID,
-      column: "Created At",
-      name: "Month of year",
-      fn: "month",
-    },
-    {
-      table: ORDERS_ID,
-      column: "Created At",
-      name: "Quarter of year",
-      fn: "quarter",
-    },
-    {
-      table: ORDERS_ID,
-      column: "Created At",
-      name: "Year",
-      fn: "year",
-    },
-  ];
+describe(
+  "scenarios > question > custom column > expression shortcuts > extract",
+  { tags: "@flaky" },
+  () => {
+    const DATE_EXTRACTIONS = [
+      {
+        table: ORDERS_ID,
+        column: "Created At",
+        name: "Hour of day",
+        fn: "hour",
+      },
+      {
+        table: ORDERS_ID,
+        column: "Created At",
+        name: "Day of month",
+        fn: "day",
+      },
+      {
+        table: ORDERS_ID,
+        column: "Created At",
+        name: "Day of week",
+        fn: "weekday",
+      },
+      {
+        table: ORDERS_ID,
+        column: "Created At",
+        name: "Month of year",
+        fn: "month",
+      },
+      {
+        table: ORDERS_ID,
+        column: "Created At",
+        name: "Quarter of year",
+        fn: "quarter",
+      },
+      {
+        table: ORDERS_ID,
+        column: "Created At",
+        name: "Year",
+        fn: "year",
+      },
+    ];
 
-  const EMAIL_EXTRACTIONS = [
-    {
-      table: ORDERS_ID,
-      column: "Email",
-      name: "Domain",
-      fn: "domain",
-    },
-    {
-      table: ORDERS_ID,
-      column: "Email",
-      name: "Host",
-      fn: "host",
-    },
-  ];
+    const EMAIL_EXTRACTIONS = [
+      {
+        table: ORDERS_ID,
+        column: "Email",
+        name: "Domain",
+        fn: "domain",
+      },
+      {
+        table: ORDERS_ID,
+        column: "Email",
+        name: "Host",
+        fn: "host",
+      },
+    ];
 
-  const URL_EXRACTIONS = [
-    {
-      table: ORDERS_ID,
-      column: "Product ID",
-      name: "Domain",
-      fn: "domain",
-    },
-    {
-      table: ORDERS_ID,
-      column: "Product ID",
-      name: "Subdomain",
-      fn: "subdomain",
-    },
-    {
-      table: ORDERS_ID,
-      column: "Product ID",
-      name: "Host",
-      fn: "host",
-    },
-  ];
+    const URL_EXRACTIONS = [
+      {
+        table: ORDERS_ID,
+        column: "Product ID",
+        name: "Domain",
+        fn: "domain",
+      },
+      {
+        table: ORDERS_ID,
+        column: "Product ID",
+        name: "Subdomain",
+        fn: "subdomain",
+      },
+      {
+        table: ORDERS_ID,
+        column: "Product ID",
+        name: "Host",
+        fn: "host",
+      },
+    ];
 
-  const EXTRACTIONS = [
-    ...EMAIL_EXTRACTIONS,
-    ...DATE_EXTRACTIONS,
-    ...URL_EXRACTIONS,
-  ];
+    const EXTRACTIONS = [
+      ...EMAIL_EXTRACTIONS,
+      ...DATE_EXTRACTIONS,
+      ...URL_EXRACTIONS,
+    ];
 
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
 
-    // Make the PRODUCT_ID column a URL column for these tests, to avoid having to create a new model
-    cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
-      semantic_type: "type/URL",
+      // Make the PRODUCT_ID column a URL column for these tests, to avoid having to create a new model
+      cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
+        semantic_type: "type/URL",
+      });
     });
-  });
 
-  for (const extraction of EXTRACTIONS) {
-    it(`should be possible to use the ${extraction.name} extraction on ${extraction.column}`, () => {
-      H.openTable({ mode: "notebook", limit: 1, table: extraction.table });
+    for (const extraction of EXTRACTIONS) {
+      it(`should be possible to use the ${extraction.name} extraction on ${extraction.column}`, () => {
+        H.openTable({ mode: "notebook", limit: 1, table: extraction.table });
+        H.addCustomColumn();
+        selectExtractColumn();
+
+        cy.findAllByTestId("dimension-list-item")
+          .contains(extraction.column)
+          .click();
+        H.popover().findAllByRole("button").contains(extraction.name).click();
+
+        H.CustomExpressionEditor.value().should("contain", `${extraction.fn}(`);
+
+        H.expressionEditorWidget()
+          .findByTestId("expression-name")
+          .should("have.value", extraction.name);
+      });
+    }
+
+    it("should be possible to create the same extraction multiple times", () => {
+      H.openOrdersTable({ mode: "notebook", limit: 5 });
       H.addCustomColumn();
       selectExtractColumn();
 
-      cy.findAllByTestId("dimension-list-item")
-        .contains(extraction.column)
-        .click();
-      H.popover().findAllByRole("button").contains(extraction.name).click();
-
-      H.CustomExpressionEditor.value().should("contain", `${extraction.fn}(`);
+      cy.findAllByTestId("dimension-list-item").contains("Created At").click();
+      H.popover().findAllByRole("button").contains("Hour of day").click();
 
       H.expressionEditorWidget()
         .findByTestId("expression-name")
-        .should("have.value", extraction.name);
+        .should("have.value", "Hour of day");
+
+      H.expressionEditorWidget().button("Done").click();
+
+      // eslint-disable-next-line no-unsafe-element-filtering
+      cy.findAllByTestId("notebook-cell-item").last().click();
+      selectExtractColumn();
+
+      cy.findAllByTestId("dimension-list-item").contains("Created At").click();
+      H.popover().findAllByRole("button").contains("Hour of day").click();
+
+      H.expressionEditorWidget()
+        .findByTestId("expression-name")
+        .should("have.value", "Hour of day (1)");
     });
-  }
 
-  it("should be possible to create the same extraction multiple times", () => {
-    H.openOrdersTable({ mode: "notebook", limit: 5 });
-    H.addCustomColumn();
-    selectExtractColumn();
+    it("should be possible to edit a previous stages' columns when an aggregation is present (metabase#43226)", () => {
+      H.openOrdersTable({ mode: "notebook", limit: 5 });
 
-    cy.findAllByTestId("dimension-list-item").contains("Created At").click();
-    H.popover().findAllByRole("button").contains("Hour of day").click();
+      cy.button("Summarize").click();
+      H.popover().findByText("Count of rows").click();
 
-    H.expressionEditorWidget()
-      .findByTestId("expression-name")
-      .should("have.value", "Hour of day");
+      // add custom column
+      cy.findAllByTestId("action-buttons").first().icon("add_data").click();
+      selectExtractColumn();
 
-    H.expressionEditorWidget().button("Done").click();
+      cy.findAllByTestId("dimension-list-item").contains("Created At").click();
+      H.popover().findAllByRole("button").contains("Hour of day").click();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByTestId("notebook-cell-item").last().click();
-    selectExtractColumn();
-
-    cy.findAllByTestId("dimension-list-item").contains("Created At").click();
-    H.popover().findAllByRole("button").contains("Hour of day").click();
-
-    H.expressionEditorWidget()
-      .findByTestId("expression-name")
-      .should("have.value", "Hour of day (1)");
-  });
-
-  it("should be possible to edit a previous stages' columns when an aggregation is present (metabase#43226)", () => {
-    H.openOrdersTable({ mode: "notebook", limit: 5 });
-
-    cy.button("Summarize").click();
-    H.popover().findByText("Count of rows").click();
-
-    // add custom column
-    cy.findAllByTestId("action-buttons").first().icon("add_data").click();
-    selectExtractColumn();
-
-    cy.findAllByTestId("dimension-list-item").contains("Created At").click();
-    H.popover().findAllByRole("button").contains("Hour of day").click();
-
-    H.expressionEditorWidget()
-      .findByTestId("expression-name")
-      .should("have.value", "Hour of day");
-  });
-});
+      H.expressionEditorWidget()
+        .findByTestId("expression-name")
+        .should("have.value", "Hour of day");
+    });
+  },
+);
 
 H.describeWithSnowplow(
   "scenarios > question > custom column > expression shortcuts > extract",

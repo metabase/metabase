@@ -1,6 +1,5 @@
 (ns mage.kondo
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.shell :as shell]
    [mage.util :as u]))
@@ -28,9 +27,9 @@
 
 (defn- saved-deps-edn-hash
   []
-  (str/trim (try
-              (slurp saved-deps-edn-hash-filename)
-              (catch Exception _ nil))))
+  (try
+    (str/trim (slurp saved-deps-edn-hash-filename))
+    (catch Exception _ nil)))
 
 (defn- copy-configs-if-needed!
   "Copy Kondo configs for dependencies only if `deps.edn` has changed since last time we did it."
@@ -61,8 +60,8 @@
                             (list* "-M:kondo" "--lint" args))
         _ (u/debug "command: " command)]
     (println "Running Kondo on:" args)
-    (apply shell/sh* "clojure" command)
-    (System/exit 0)))
+    (let [{:keys [exit], :or {exit -1}} (apply shell/sh* "clojure" command)]
+      (System/exit exit))))
 
 (defn kondo
   "Run Kondo against our project. With no args, runs Kondo against everything we normally lint. Otherwise args are

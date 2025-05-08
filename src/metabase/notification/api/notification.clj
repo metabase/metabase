@@ -8,7 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
@@ -221,6 +221,7 @@
   "Send an unsaved notification."
   [_route _query body :- ::models.notification/FullyHydratedNotification]
   (api/create-check :model/Notification body)
+  (models.notification/validate-email-handlers! (:handlers body))
   (-> body
       (assoc :creator_id api/*current-user-id*)
       promote-to-t2-instance

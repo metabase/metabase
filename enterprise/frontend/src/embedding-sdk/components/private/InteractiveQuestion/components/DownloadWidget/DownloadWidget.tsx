@@ -8,13 +8,17 @@ import type { StackProps } from "metabase/ui";
 import { useInteractiveQuestionContext } from "../../context";
 
 // TODO: Add props for formatting, file type, etc
-export interface DownloadWidgetProps extends StackProps {}
+/**
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionDownloadWidgetProps = StackProps;
 
 const DownloadWidgetInner = ({
   question,
   result,
   ...rest
-}: DownloadWidgetProps &
+}: InteractiveQuestionDownloadWidgetProps &
   Pick<UseDownloadDataParams, "question" | "result">) => {
   const { withDownloads } = useInteractiveQuestionContext();
   const [, handleDownload] = useDownloadData({
@@ -34,7 +38,16 @@ const DownloadWidgetInner = ({
   );
 };
 
-export const DownloadWidget = (props: DownloadWidgetProps) => {
+/**
+ * Provides a UI widget for downloading data in different formats (`CSV`, `XLSX`, `JSON`, and `PNG` depending on the visualization).
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
+export const DownloadWidget = (
+  props: InteractiveQuestionDownloadWidgetProps,
+) => {
   const { question, queryResults } = useInteractiveQuestionContext();
   const [result] = queryResults ?? [];
 

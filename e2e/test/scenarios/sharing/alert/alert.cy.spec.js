@@ -146,8 +146,10 @@ describe("scenarios > alert", () => {
       const allowedDomain = "metabase.test";
       const deniedDomain = "metabase.example";
       const deniedEmail = `mailer@${deniedDomain}`;
-      const subscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
-      const alertError = `You're only allowed to email alerts to addresses ending in ${allowedDomain}`;
+      // We're not exposing allowed domains to normal users.
+      const normalError = `The following email addresses are not allowed: ${deniedEmail}`;
+      const adminSubscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
+      const adminAlertError = `You're only allowed to email alerts to addresses ending in ${allowedDomain}`;
 
       function addEmailRecipient(email) {
         cy.findByRole("textbox").click().type(`${email}`).blur();
@@ -177,7 +179,7 @@ describe("scenarios > alert", () => {
             addEmailRecipient(deniedEmail);
           });
 
-          cy.findByText(alertError);
+          cy.findByText(adminAlertError);
           cy.button("Done").should("be.disabled");
         });
       });
@@ -193,7 +195,40 @@ describe("scenarios > alert", () => {
           // Reproduces metabase#17977
           cy.button("Send email now").should("be.disabled");
           cy.button("Done").should("be.disabled");
-          cy.findByText(subscriptionError);
+          cy.findByText(adminSubscriptionError);
+        });
+      });
+
+      it("should not display the list of approved domains for non-admins (metabase#57138)", () => {
+        cy.signInAsNormalUser();
+        H.visitQuestion(ORDERS_QUESTION_ID);
+
+        H.openSharingMenu("Create an alert");
+        H.modal().within(() => {
+          cy.findByText("New alert").should("be.visible");
+
+          cy.findByTestId("token-field").within(() => {
+            addEmailRecipient(deniedEmail);
+          });
+
+          cy.button("Done").click();
+        });
+        cy.findByTestId("toast-undo").within(() => {
+          cy.root().should("have.attr", "color", "error");
+          cy.findByText(normalError);
+        });
+
+        H.visitDashboard(ORDERS_DASHBOARD_ID);
+        H.openSharingMenu("Subscriptions");
+
+        H.sidebar().within(() => {
+          addEmailRecipient(deniedEmail);
+
+          cy.button("Done").click();
+        });
+        cy.findByTestId("toast-undo").within(() => {
+          cy.root().should("have.attr", "color", "error");
+          cy.findByText(normalError);
         });
       });
     },
