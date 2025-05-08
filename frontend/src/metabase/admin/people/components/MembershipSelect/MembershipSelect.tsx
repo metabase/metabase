@@ -3,7 +3,6 @@ import cx from "classnames";
 import { Fragment } from "react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import {
   getGroupNameLocalized,
   isAdminGroup,
@@ -11,7 +10,7 @@ import {
 } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
-import { Icon, Popover } from "metabase/ui";
+import { Box, Flex, Icon, Popover } from "metabase/ui";
 import type { Group, Member } from "metabase-types/api";
 
 import { GroupSummary } from "../GroupSummary";
@@ -87,22 +86,28 @@ export const MembershipSelect = ({
       // prevent clicks on the confirm modal from closing this popover
       closeOnClickOutside={!isConfirmModalOpen}
       onChange={togglePopover}
+      position="bottom-end"
     >
       <Popover.Target>
-        <div
+        <Flex
+          display="inline-flex"
           onClick={openPopover}
-          className={cx(CS.flex, CS.alignCenter)}
+          align="center"
           aria-label="group-summary"
         >
-          <span className={cx(CS.mr1, CS.textMedium)}>
-            <GroupSummary groups={groups} selectedGroupIds={selectedGroupIds} />
-          </span>
-          <Icon className={CS.textLight} name="chevrondown" size={10} />
-        </div>
+          <GroupSummary
+            me="sm"
+            groups={groups}
+            selectedGroupIds={selectedGroupIds}
+          />
+          <Icon c="text-light" name="chevrondown" size={10} />
+        </Flex>
       </Popover.Target>
       <Popover.Dropdown>
         {groups.length === 0 && (
-          <span className={CS.p1}>{emptyListMessage}</span>
+          <Box component="span" p="sm">
+            {emptyListMessage}
+          </Box>
         )}
         {groups.length > 0 && (
           <ul className={S.membershipSelectContainer}>

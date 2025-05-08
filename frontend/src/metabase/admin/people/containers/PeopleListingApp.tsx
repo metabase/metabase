@@ -1,12 +1,10 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
-import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Group, Icon, Input, Radio } from "metabase/ui";
+import { Flex, Group, Icon, Input, Radio } from "metabase/ui";
 
 import { PeopleList } from "../components/PeopleList";
 import { USER_STATUS } from "../constants";
@@ -32,10 +30,10 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
   };
 
   const headingContent = (
-    <div className={cx(CS.mb2, CS.flex, CS.alignCenter)}>
+    <Flex align="center" mb="xl">
       <Input
         miw="14rem"
-        mr="2rem"
+        mr="xl"
         fz="sm"
         type="text"
         placeholder={t`Find someone`}
@@ -62,7 +60,7 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
           </Group>
         </Radio.Group>
       )}
-    </div>
+    </Flex>
   );
 
   const buttonText =
