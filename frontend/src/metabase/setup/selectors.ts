@@ -42,6 +42,10 @@ export const getInvite = (state: State): InviteInfo | undefined => {
   return state.setup.invite;
 };
 
+export const getIsEmbeddingUseCase = (state: State): boolean => {
+  return state.setup.isEmbeddingUseCase;
+};
+
 export const getIsLocaleLoaded = (state: State): boolean => {
   return state.setup.isLocaleLoaded;
 };
@@ -97,16 +101,26 @@ export const getSteps = createSelector(
     (state: State) => getStep(state),
     (state: State) => getSetting(state, "token-features"),
     (state: State) => state.setup.licenseToken,
+    (state: State) => getIsEmbeddingUseCase(state),
   ],
-  (usageReason, activeStep, tokenFeatures, licenseToken) => {
+  (
+    usageReason,
+    activeStep,
+    tokenFeatures,
+    licenseToken,
+    isEmbeddingUseCase,
+  ) => {
     const isPaidPlan =
       tokenFeatures &&
       Object.values(tokenFeatures).some((value) => value === true);
     const hasAddedPaidPlanInPreviousStep = Boolean(licenseToken);
 
-    const shouldShowDBConnectionStep = usageReason !== "embedding";
+    const shouldShowDBConnectionStep =
+      !isEmbeddingUseCase && usageReason !== "embedding";
     const shouldShowLicenseStep =
-      isEEBuild() && (!isPaidPlan || hasAddedPaidPlanInPreviousStep);
+      !isEmbeddingUseCase &&
+      isEEBuild() &&
+      (!isPaidPlan || hasAddedPaidPlanInPreviousStep);
 
     // note: when hosting is true, we should be on cloud and therefore not show
     // the token step. There is an edge case that it's probably not possible in
@@ -118,13 +132,13 @@ export const getSteps = createSelector(
       tokenFeatures &&
       tokenFeatures["hosting"] &&
       !hasAddedPaidPlanInPreviousStep;
-    const shouldShowDataUsageStep = !isHosted;
+    const shouldShowDataUsageStep = !isEmbeddingUseCase && !isHosted;
 
     const steps: { key: SetupStep; isActiveStep: boolean }[] = [
-      { key: "welcome" as const },
-      { key: "language" as const },
+      !isEmbeddingUseCase && { key: "welcome" as const },
+      !isEmbeddingUseCase && { key: "language" as const },
       { key: "user_info" as const },
-      { key: "usage_question" as const },
+      !isEmbeddingUseCase && { key: "usage_question" as const },
       shouldShowDBConnectionStep && {
         key: "db_connection" as const,
       },
