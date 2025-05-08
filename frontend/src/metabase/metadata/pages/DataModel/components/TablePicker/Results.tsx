@@ -1,10 +1,10 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
-import { useRef } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
 import Link from "metabase/core/components/Link";
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box, Flex, Icon, Skeleton } from "metabase/ui";
 
 import S from "./Results.module.css";
 import type { FlatItem, TreePath } from "./types";
@@ -42,7 +42,8 @@ export function Results({
     <Box ref={ref} px="xl" pb="lg" className={S.results}>
       <Box style={{ height: virtual.getTotalSize() }}>
         {virtual.getVirtualItems().map(({ start, index }) => {
-          const { value, label, type, isExpanded, key } = items[index];
+          const { value, label, type, isExpanded, isLoading, key } =
+            items[index];
           const isActive = type === "table" && _.isEqual(path, value);
 
           return (
@@ -56,9 +57,9 @@ export function Results({
                 marginLeft: itemMargin[type],
               }}
             >
-              <Link
+              <MaybeLink
                 className={S.link}
-                to={getUrl(value)}
+                to={value ? getUrl(value) : undefined}
                 onClick={() => {
                   toggle?.(key);
                   virtual.measureElement(
@@ -67,24 +68,67 @@ export function Results({
                 }}
               >
                 <Flex align="center" gap="xs" py="xs" mih={ITEM_MIN_HEIGHT}>
-                  {hasChildren(type) && (
-                    <Icon
-                      name="chevronright"
-                      size={10}
-                      color="var(--mb-color-text-light)"
-                      className={cx(S.chevron, { [S.expanded]: isExpanded })}
-                    />
-                  )}
-                  <Icon name={getIconForType(type)} className={S.icon} />
-                  <Box pl="sm" className={S.label}>
-                    {label}
-                  </Box>
+                  <Delay delay={isLoading ? 200 : 0}>
+                    {hasChildren(type) && (
+                      <Icon
+                        name="chevronright"
+                        size={10}
+                        color="var(--mb-color-text-light)"
+                        className={cx(S.chevron, { [S.expanded]: isExpanded })}
+                      />
+                    )}
+                    <Icon name={getIconForType(type)} className={S.icon} />
+                    {isLoading ? (
+                      <Loading />
+                    ) : (
+                      <Box pl="sm" className={S.label}>
+                        {label}
+                      </Box>
+                    )}
+                  </Delay>
                 </Flex>
-              </Link>
+              </MaybeLink>
             </Flex>
           );
         })}
       </Box>
     </Box>
   );
+}
+
+function MaybeLink(props: {
+  to?: string;
+  onClick?: () => void;
+  className?: string;
+  children: ReactNode;
+}) {
+  if (props.to !== undefined) {
+    return <Link {...props} to={props.to} />;
+  }
+  return <span {...props} />;
+}
+
+function Delay({ delay, children }: { delay: number; children: ReactNode }) {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (delay === 0) {
+      setShow(true);
+      return;
+    }
+    const timeout = setTimeout(() => setShow(true), delay);
+    return () => clearTimeout(timeout);
+  }, [delay]);
+
+  if (!show) {
+    // make tests aware that things are loading
+    return <span data-testid="loading-indicator" />;
+  }
+
+  return children;
+}
+
+function Loading() {
+  const w = 20 + Math.random() * 80;
+  return <Skeleton radius="sm" width={`${w}%`} height={12} />;
 }

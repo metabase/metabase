@@ -39,6 +39,18 @@ export type Item = DatabaseItem | SchemaItem | TableItem;
 
 export type ItemType = Item["type"];
 
-export type FlatItem = Item & {
+export type FlatItem = LoadingItem | ExpandedItem;
+
+type ExpandedItem = Item & {
   isExpanded?: boolean;
+  isLoading?: false;
+};
+
+type LoadingItem = {
+  isLoading: true;
+  type: ItemType;
+  key: string;
+  isExpanded?: boolean;
+  value?: TreePath;
+  label?: string;
 };

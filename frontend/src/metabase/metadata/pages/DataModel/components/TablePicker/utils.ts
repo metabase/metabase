@@ -296,6 +296,13 @@ export function flatten(
 ): FlatItem[] {
   if (node.type === "root") {
     // root node doesn't render a title and is always expanded
+    if (node.children.length === 0) {
+      return [
+        { isLoading: true, type: "database", key: Math.random().toString() },
+        { isLoading: true, type: "database", key: Math.random().toString() },
+        { isLoading: true, type: "database", key: Math.random().toString() },
+      ];
+    }
     return sort(node.children).flatMap((child) => flatten(child, isExpanded));
   }
 
@@ -303,10 +310,31 @@ export function flatten(
     return [node];
   }
 
+  if (node.children.length === 0) {
+    const childType = getChildType(node.type);
+    if (!childType) {
+      return [node];
+    }
+    return [
+      { ...node, isExpanded: true },
+      { isLoading: true, type: childType, key: Math.random().toString() },
+    ];
+  }
+
   return [
     { ...node, isExpanded: true },
     ...sort(node.children).flatMap((child) => flatten(child, isExpanded)),
   ];
+}
+
+function getChildType(type: ItemType): ItemType | null {
+  if (type === "database") {
+    return "schema";
+  }
+  if (type === "schema") {
+    return "table";
+  }
+  return null;
 }
 
 function sort(nodes: TreeNode[]): TreeNode[] {
