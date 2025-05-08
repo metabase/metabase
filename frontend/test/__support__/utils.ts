@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { act, waitFor, waitForOptions } from "./ui";
+import { act, waitFor, type waitForOptions } from "./ui";
 
 export const getNextId = (() => {
   let id = 0;
@@ -56,14 +56,15 @@ export async function findRequests(method: "PUT" | "POST" | "DELETE" | "GET") {
 
 /**
  * Asserts that a Jest expect() assertion fails. This is useful for ensuring
- * that the page is NOT asynchronously updated. Note that this function ensures that the callback function continuously throws
+ * that the page is NOT asynchronously updated. This function ensures that the
+ * callback function repeatedly throws an error until the timeout elapses
  *
  * @see https://stackoverflow.com/questions/68118941/how-to-wait-for-something-not-to-happen-in-testing-library
  * */
-export const assertNeverPasses = (
+export const assertNeverPasses = async (
   fn: () => void | Promise<void>,
+  expectedError: string | RegExp = /Timed out in waitFor/,
   options?: waitForOptions,
 ) => {
-  expect(true).toBe(false);
-  // await expect(waitFor(fn, options)).rejects.toThrow();
+  await expect(waitFor(fn, options)).rejects.toThrow(expectedError);
 };
