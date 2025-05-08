@@ -223,8 +223,6 @@ const cssModulesPlugin = () => ({
 });
 
 // We have to use a custom plugin, because `esbuild-plugin-svgr` as a side-effect disables svg processing in `css` files
-// TODO: try to use a custom plugin but with svgr package.
-// Testing: check that svg in .css files are base64
 const svgrPlugin = () => ({
   name: "svgr-plugin",
   setup(build) {
