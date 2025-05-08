@@ -3,6 +3,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.params :as params]
    [metabase.public-sharing.api-test :as public-test]
    [metabase.test :as mt]
@@ -176,3 +178,32 @@
     (is (= {}
            (params/get-linked-field-ids
             [{:parameter_mappings []}])))))
+
+(deftest ^:parallel duplicate-column-names-test
+  (testing "columns with duplicated names get mapped correctly to parameters"
+    (testing "native queries"
+      (let [card {:dataset_query (mt/native-query {:template-tags
+                                                   {"tag1" {:name         "tag1"
+                                                            :display_name "Tag 1"
+                                                            :id           "11111111"
+                                                            :type         :dimension
+                                                            :dimension    [:field (mt/id :orders :id) nil]}
+                                                    "tag2" {:name         "tag2"
+                                                            :display_name "Tag 2"
+                                                            :id           "aaaaaaaa"
+                                                            :type         :dimension
+                                                            :dimension    [:field (mt/id :products :id) nil]}}})}]
+        (testing "card->template-tag-param-id->field-clauses"
+          (is (= {"11111111" #{[:field (mt/id :orders :id) nil]}
+                  "aaaaaaaa" #{[:field (mt/id :products :id) nil]}}
+                 (#'params/card->template-tag-param-id->field-clauses card))))
+
+        (testing "card->template-tag-param-id->field-ids"
+          (is (= {"11111111" #{(mt/id :orders :id)}
+                  "aaaaaaaa" #{(mt/id :products :id)}}
+                 (#'params/card->template-tag-param-id->field-ids card))))
+
+        (testing "card->template-tag-field-ids"
+          (is (= #{(mt/id :orders :id)
+                   (mt/id :products :id)}
+                 (params/card->template-tag-field-ids card))))))))
