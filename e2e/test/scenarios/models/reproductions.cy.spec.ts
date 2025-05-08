@@ -783,8 +783,7 @@ describe("issue 33844", () => {
   }
 
   it("should show hidden PKs in model metadata editor and object details after creating a model (metabase#33844)", () => {
-    cy.visit("/");
-    H.newButton("Model").click();
+    cy.visit("/model/new");
     cy.findByTestId("new-model-options")
       .findByText("Use the notebook editor")
       .click();
@@ -1058,10 +1057,9 @@ describe("issue 34514", () => {
     cy.intercept("GET", "/api/database/*/schema/*").as("fetchTables");
     cy.intercept("GET", "/api/database/*").as("fetchDatabase");
 
-    cy.visit("/");
     // It's important to navigate via UI so that there are
     // enough entries in the browser history to go back to.
-    H.newButton("Model").click();
+    cy.visit("/model/new");
     cy.findByTestId("new-model-options")
       .findByText("Use the notebook editor")
       .click();
