@@ -6,6 +6,11 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
+(defn- run-sample-query [query]
+  (->> query
+       qp/process-query
+       (mt/formatted-rows [int str])))
+
 (deftest can-compile-temporal-units-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
     (testing "temporal unit parameters"
@@ -31,12 +36,12 @@
           (is (= [[1 "2019-01-01T00:00:00Z"]
                   [2 "2018-01-01T00:00:00Z"]
                   [3 "2019-01-01T00:00:00Z"]]
-                 (mt/rows (qp/process-query year-query)))))
+                 (run-sample-query year-query))))
         (mt/with-native-query-testing-context month-query
           (is (= [[1 "2019-02-01T00:00:00Z"]
                   [2 "2018-05-01T00:00:00Z"]
                   [3 "2019-12-01T00:00:00Z"]]
-                 (mt/rows (qp/process-query month-query)))))))))
+                 (run-sample-query month-query))))))))
 
 (deftest bad-function-names-throw-errors-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
@@ -53,7 +58,7 @@
                                        :value  "year"}])]
         (mt/with-native-query-testing-context query
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized function: mb.bad_function_name"
-                                (mt/rows (qp/process-query query)))))))))
+                                (run-sample-query query))))))))
 
 (deftest bad-parameter-throws-error-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
@@ -70,4 +75,4 @@
                                        :value  "foo"}])]
         (mt/with-native-query-testing-context query
           (is (thrown? clojure.lang.ExceptionInfo
-                       (mt/rows (qp/process-query query)))))))))
+                       (run-sample-query query))))))))
