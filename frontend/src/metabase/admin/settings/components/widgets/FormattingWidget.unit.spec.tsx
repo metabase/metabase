@@ -1,0 +1,143 @@
+import userEvent from "@testing-library/user-event";
+import { act } from "react-dom/test-utils";
+
+import {
+  findRequests,
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+  setupUpdateSettingEndpoint,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { UndoListing } from "metabase/containers/UndoListing";
+import type { SettingKey } from "metabase-types/api";
+import {
+  createMockSettingDefinition,
+  createMockSettings,
+} from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
+
+import { FormattingWidget } from "./FormattingWidget";
+
+const setup = async () => {
+  const localizationSettings = {
+    "site-locale": "En",
+    "report-timezone": "",
+    "start-of-week": "monday",
+    "available-timezones": [
+      "Europe/Paris",
+      "Pacific/Auckland",
+      "US/Mountain",
+      "UTC",
+    ] as string[],
+  } as const;
+
+  const settings = createMockSettings(localizationSettings);
+  setupPropertiesEndpoints(settings);
+  setupUpdateSettingEndpoint();
+  setupSettingsEndpoints(
+    Object.entries(settings).map(([key, value]) =>
+      createMockSettingDefinition({ key: key as SettingKey, value }),
+    ),
+  );
+
+  renderWithProviders(
+    <div>
+      <FormattingWidget />
+      <UndoListing />
+    </div>,
+    {
+      storeInitialState: {
+        settings: createMockSettingsState(settings),
+      },
+    },
+  );
+};
+
+describe("PublicSharingSettingsPage", () => {
+  it("should render a FormattingWidget", async () => {
+    await act(() => setup());
+    [
+      "Dates and Times",
+      "Date style",
+      "Abbreviate days and months",
+      "Time style",
+      "Separator style",
+      "Unit of currency",
+      "Currency label style",
+    ].forEach((text) => {
+      expect(screen.getByText(text)).toBeInTheDocument();
+    });
+    expect(
+      await screen.findByDisplayValue("January 31, 2018"),
+    ).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("100,000.00")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("US Dollar")).toBeInTheDocument();
+
+    // const radios = await screen.findAllByRole("radio");
+    // expect(radios).toHaveLength(2);
+
+    // const timeStyleWidget = screen.getByTestId("time_style-formatting-setting");
+
+    // // Then search within that component
+    // const radiosInComponent = within(timeStyleWidget).getAllByRole("radio");
+    // expect(radiosInComponent).toHaveLength(5);
+
+    // // eslint-disable-next-line jest-dom/prefer-to-have-value
+    // expect(radios[0]).toHaveAttribute("value", "none");
+    // expect(radios[0]).toBeChecked();
+
+    // // eslint-disable-next-line jest-dom/prefer-to-have-value
+    // expect(radios[1]).toHaveAttribute("value", "simple");
+    // expect(radios[1]).not.toBeChecked();
+  });
+
+  it("should update multiple settings", async () => {
+    setup();
+    const blur = async () => {
+      const elementOutside = screen.getByText("Dates and Times");
+      await userEvent.click(elementOutside); // blur
+    };
+
+    const timezoneInput = await screen.findByDisplayValue("Database Default");
+    await userEvent.clear(timezoneInput);
+    await userEvent.type(timezoneInput, "Mount");
+    await userEvent.click(await screen.findByText("US/Mountain"));
+    blur();
+
+    const startOfWeekInput = await screen.findByDisplayValue("Monday");
+    await userEvent.click(startOfWeekInput);
+    await userEvent.click(await screen.findByText("Tuesday"));
+    blur();
+
+    const currencyInput = await screen.findByDisplayValue("US Dollar");
+    await userEvent.click(currencyInput);
+    await userEvent.click(await screen.findByText("New Zealand Dollar"));
+    blur();
+
+    await waitFor(async () => {
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(3);
+    });
+
+    const puts = await findRequests("PUT");
+    const { url: timezonePutUrl, body: timezonePutBody } = puts[0];
+    const { url: startOfWeekPutUrl, body: startOfWeekPutBody } = puts[1];
+    const { url: currencyPutUrl, body: currencyPutBody } = puts[2];
+
+    expect(timezonePutUrl).toContain("/api/setting/report-timezone");
+    expect(timezonePutBody).toEqual({ value: "US/Mountain" });
+
+    expect(startOfWeekPutUrl).toContain("/api/setting/start-of-week");
+    expect(startOfWeekPutBody).toEqual({ value: "tuesday" });
+
+    expect(currencyPutUrl).toContain("/api/setting/custom-formatting");
+    // custom-formatting is a nested JSON object. This just checks the currency value
+    // to avoid being coupled to the entire object structure
+    expect(currencyPutBody.value["type/Currency"].currency).toEqual("NZD");
+
+    await waitFor(() => {
+      const toasts = screen.getAllByLabelText("check icon");
+      expect(toasts).toHaveLength(3);
+    });
+  });
+});
