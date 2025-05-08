@@ -26,6 +26,7 @@ import {
   getUiControls,
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
+import { getTokenFeature } from "metabase/setup/selectors";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconName, IconProps } from "metabase/ui";
 import {
@@ -89,12 +90,14 @@ import {
   VisualizationRoot,
   VisualizationSlowSpinner,
 } from "./Visualization.styled";
+import { Watermark } from "./Watermark";
 
 type StateDispatchProps = {
   dispatch: Dispatch;
 };
 
 type StateProps = {
+  hasDevWatermark: boolean;
   fontFamily: string;
   isRawTable: boolean;
   isEmbeddingSdk: boolean;
@@ -193,6 +196,7 @@ type VisualizationState = {
 };
 
 const mapStateToProps = (state: State): StateProps => ({
+  hasDevWatermark: getTokenFeature(state, "development-mode"),
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
   isEmbeddingSdk: getIsEmbeddingSdk(state),
@@ -558,6 +562,7 @@ class Visualization extends PureComponent<
       fontFamily,
       getExtraDataForClick,
       getHref,
+      hasDevWatermark,
       headerIcon,
       height: rawHeight,
       isAction,
@@ -779,6 +784,7 @@ class Visualization extends PureComponent<
               <div
                 data-card-key={getCardKey(series[0].card?.id)}
                 className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
+                style={{ position: "relative" }}
               >
                 <CardVisualization
                   actionButtons={actionButtons}
@@ -855,6 +861,7 @@ class Visualization extends PureComponent<
                   onVisualizationClick={this.handleVisualizationClick}
                   onHeaderColumnReorder={this.props.onHeaderColumnReorder}
                 />
+                {hasDevWatermark && <Watermark card={series[0].card} />}
               </div>
             )
           )}

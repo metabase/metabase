@@ -2,9 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.serialization :as serdes]
-   [metabase.test :as mt])
-  (:import
-   (java.time LocalDateTime)))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 

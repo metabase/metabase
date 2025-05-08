@@ -8,7 +8,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.config :as config]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.user :as user]

@@ -7,7 +7,7 @@
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.login-history.core :as login-history]
    [metabase.request.core :as request]
    [metabase.settings.deprecated-grab-bag :as public-settings]

@@ -3,7 +3,7 @@ import Fuse from "fuse.js";
 
 import type Database from "metabase-lib/v1/metadata/Database";
 
-import { getHelpText } from "../helper-text-strings";
+import { type HelpText, getHelpText } from "../help-text";
 import {
   CALL,
   END_OF_INPUT,
@@ -13,7 +13,7 @@ import {
   type Token,
   lexify,
 } from "../pratt";
-import type { HelpText, MBQLClauseFunctionConfig } from "../types";
+import type { MBQLClauseFunctionConfig } from "../types";
 
 import type { Completion } from "./types";
 
@@ -58,11 +58,11 @@ export function expressionClauseCompletion(
 function getSnippet(helpText: HelpText) {
   const args =
     helpText.args
-      ?.filter((arg) => arg.name !== "…")
-      ?.map((arg) => "${" + (arg.template ?? arg.name) + "}")
+      .filter((arg) => arg.name !== "…")
+      .map((arg) => "${" + (arg.template ?? arg.name) + "}")
       .join(", ") ?? "";
 
-  return `${helpText.structure}(${args})`;
+  return `${helpText.displayName}(${args})`;
 }
 
 export function fuzzyMatcher(options: Completion[]) {

@@ -10,6 +10,7 @@
    [metabase.channel.models.channel :as models.channel]
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.util :as render.util]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.models.params.shared :as shared.params]
@@ -106,11 +107,18 @@
 (defn- assoc-attachment-booleans [part-configs parts]
   (for [{{result-card-id :id} :card :as result} parts
         :let [result-dashboard-card-id (:id (:dashcard result))
-              ;; We match on both the card id and the dashboard card id to support visualizer dashcards
-              noti-dashcard (m/find-first (fn [config]
-                                            (and (= (:card_id config) result-card-id)
-                                                 (= (:dashboard_card_id config) result-dashboard-card-id)))
-                                          part-configs)]]
+              is-visualizer-part (render.util/is-visualizer-dashcard? (:dashcard result))
+              ;; For visualizer dashcards we match on both card_id and dashboard_card_id
+              ;; To disambiguate between regular cards and regular cards that were turned into visualizer dashcards
+              noti-dashcard (or (and is-visualizer-part
+                                     (m/find-first (fn [config]
+                                                     (and (= (:card_id config) result-card-id)
+                                                          (= (:dashboard_card_id config) result-dashboard-card-id)))
+                                                   part-configs))
+                                ;; Fall back to just matching on card_id
+                                (m/find-first (fn [config]
+                                                (= (:card_id config) result-card-id))
+                                              part-configs))]]
     (if result-card-id
       (update result :card merge (select-keys noti-dashcard [:include_csv :include_xls :format_rows :pivot_results]))
       result)))

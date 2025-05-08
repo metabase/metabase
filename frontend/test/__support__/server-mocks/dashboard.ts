@@ -5,6 +5,7 @@ import type {
   Dashboard,
   DashboardId,
   DashboardQueryMetadata,
+  GetPublicDashboard,
 } from "metabase-types/api";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
@@ -50,4 +51,10 @@ export function setupDashboardPublicLinkEndpoints(dashboardId: DashboardId) {
   fetchMock.delete(`path:/api/dashboard/${dashboardId}/public_link`, {
     id: dashboardId,
   });
+}
+
+export function setupListPublicDashboardsEndpoint(
+  publicDashboards: GetPublicDashboard[],
+) {
+  fetchMock.get("path:/api/dashboard/public", publicDashboards);
 }
