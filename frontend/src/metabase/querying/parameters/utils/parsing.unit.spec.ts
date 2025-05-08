@@ -6,6 +6,7 @@ import {
   deserializeDateParameterValue,
   deserializeNumberParameterValue,
   deserializeStringParameterValue,
+  deserializeTemporalUnitParameterValue,
   normalizeNumberParameterValue,
   serializeDateParameterValue,
   serializeNumberParameterValue,
@@ -401,4 +402,21 @@ describe("date parameters", () => {
   ])("should ignore invalid value %s", (value) => {
     expect(deserializeDateParameterValue(value)).toBeNull();
   });
+});
+
+describe("temporal unit parameters", () => {
+  it.each([
+    { value: "day", expectedValue: "day" },
+    { value: "year", expectedValue: "year" },
+    { value: "day-of-year", expectedValue: "day-of-year" },
+  ])("should deserialize $value", ({ value, expectedValue }) => {
+    expect(deserializeTemporalUnitParameterValue(value)).toEqual(expectedValue);
+  });
+
+  it.each([null, undefined, "", [""], ["abc"], ["year"], 1, NaN, [NaN]])(
+    "should ignore invalid value %s",
+    (value) => {
+      expect(deserializeTemporalUnitParameterValue(value)).toEqual(null);
+    },
+  );
 });
