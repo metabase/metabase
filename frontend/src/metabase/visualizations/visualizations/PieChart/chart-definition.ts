@@ -4,7 +4,7 @@ import _ from "underscore";
 import { formatValue } from "metabase/lib/formatting";
 import {
   ChartSettingsError,
-  // MinRowsError,
+  MinRowsError,
 } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { nestedSettings } from "metabase/visualizations/lib/settings/nested";
@@ -66,19 +66,18 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
     );
   },
   checkRenderable: (
-    // [
-    //   {
-    //     data: { rows },
-    //   },
-    // ],
-    series,
+    [
+      {
+        data: { rows },
+      },
+    ],
     settings,
   ) => {
     // This prevents showing "Which columns do you want to use" when
     // the piechart is displayed with no results in the dashboard
-    // if (rows.length < 1) {
-    //   throw new MinRowsError(1, 0);
-    // }
+    if (rows.length < 1) {
+      throw new MinRowsError(1, 0);
+    }
     const isDimensionMissing =
       !settings["pie.dimension"] ||
       (Array.isArray(settings["pie.dimension"]) &&
