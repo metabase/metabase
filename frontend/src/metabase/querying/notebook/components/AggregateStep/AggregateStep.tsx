@@ -82,7 +82,6 @@ interface AggregationPopoverProps {
   onClose: () => void;
 }
 
-// TODO: add parameter to filter out specific operators for ad-hoc pivots
 function AggregationPopover({
   query,
   stageIndex,
