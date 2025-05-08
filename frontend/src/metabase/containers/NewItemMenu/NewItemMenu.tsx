@@ -3,33 +3,27 @@ import _ from "underscore";
 
 import NewItemMenu from "metabase/components/NewItemMenu";
 import Databases from "metabase/entities/databases";
-import Search from "metabase/entities/search";
 import { connect } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import {
   getHasDataAccess,
-  getHasDatabaseWithActionsEnabled,
   getHasDatabaseWithJsonEngine,
   getHasNativeWrite,
 } from "metabase/selectors/data";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { CollectionItem } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 interface MenuDatabaseProps {
   databases?: Database[];
-  models?: CollectionItem[];
 }
 
 const mapStateToProps = (
   state: State,
-  { databases = [], models = [] }: MenuDatabaseProps,
+  { databases = [] }: MenuDatabaseProps,
 ) => ({
-  hasModels: models.length > 0,
   hasDataAccess: getHasDataAccess(databases),
   hasNativeWrite: getHasNativeWrite(databases),
   hasDatabaseWithJsonEngine: getHasDatabaseWithJsonEngine(databases),
-  hasDatabaseWithActionsEnabled: getHasDatabaseWithActionsEnabled(databases),
 });
 
 const mapDispatchToProps = {
@@ -41,13 +35,6 @@ const mapDispatchToProps = {
 export default _.compose(
   Databases.loadList({
     loadingAndErrorWrapper: false,
-  }),
-  Search.loadList({
-    // Checking if there is at least one model,
-    // so we can decide if "Action" option should be shown
-    query: { models: ["dataset"], limit: 1 },
-    loadingAndErrorWrapper: false,
-    listName: "models",
   }),
   connect(mapStateToProps, mapDispatchToProps),
 )(NewItemMenu);

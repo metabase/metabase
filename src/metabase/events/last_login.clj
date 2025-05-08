@@ -1,6 +1,6 @@
 (ns metabase.events.last-login
   (:require
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
