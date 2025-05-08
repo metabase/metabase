@@ -41,7 +41,7 @@ export const SdkUsageProblemBanner = ({
     return null;
   }
 
-  const { severity } = problem;
+  const { title, severity } = problem;
   const isError = severity === "error";
 
   // When the font family cannot be loaded from the MB instance,
@@ -106,7 +106,7 @@ export const SdkUsageProblemBanner = ({
                 c={unthemedTextDark}
                 ff={fontFamily}
               >
-                {severity}
+                {title}
               </Text>
 
               <Icon

@@ -12,6 +12,7 @@ interface SdkProblemOptions {
   authConfig: MetabaseAuthConfig;
   isEnabled: boolean;
   hasTokenFeature: boolean;
+  isDevelopmentMode?: boolean;
 }
 
 export const USAGE_PROBLEM_MESSAGES = {
@@ -24,6 +25,9 @@ export const USAGE_PROBLEM_MESSAGES = {
 
   // This message only works on localhost at the moment, as we cannot detect if embedding is disabled due to CORS restrictions on /api/session/properties.
   EMBEDDING_SDK_NOT_ENABLED: `The embedding SDK is not enabled for this instance. Please enable it in settings to start using the SDK.`,
+
+  // eslint-disable-next-line no-literal-metabase-strings -- only shown in development.
+  DEVELOPMENT_MODE_CLOUD_INSTANCE: `This Metabase is in development mode intended exclusively for testing. Using this Metabase for everyday BI work or when embedding in production is considered unfair usage.`,
 } as const;
 
 export const SDK_AUTH_DOCS_URL =
@@ -45,6 +49,7 @@ export const USAGE_PROBLEM_DOC_URLS: Record<SdkUsageProblemKey, string> = {
   JWT_PROVIDER_URI_DEPRECATED: SDK_AUTH_DOCS_URL,
   NO_AUTH_METHOD_PROVIDED: SDK_AUTH_DOCS_URL,
   EMBEDDING_SDK_NOT_ENABLED: SDK_INTRODUCTION_DOCS_URL,
+  DEVELOPMENT_MODE_CLOUD_INSTANCE: METABASE_UPGRADE_URL,
 } as const;
 
 /**
@@ -54,7 +59,7 @@ export const USAGE_PROBLEM_DOC_URLS: Record<SdkUsageProblemKey, string> = {
 export function getSdkUsageProblem(
   options: SdkProblemOptions,
 ): SdkUsageProblem | null {
-  const { isEnabled, hasTokenFeature, authConfig } = options;
+  const { isEnabled, hasTokenFeature, authConfig, isDevelopmentMode } = options;
   const { authProviderUri, apiKey } = authConfig;
 
   const isSSO = !!authProviderUri;
@@ -79,7 +84,11 @@ export function getSdkUsageProblem(
       isLocalhost,
       isEnabled,
       hasJwtProviderUriProperty,
+      isDevelopmentMode,
     })
+      .with({ isDevelopmentMode: true }, () =>
+        toWarning("DEVELOPMENT_MODE_CLOUD_INSTANCE"),
+      )
       .with({ hasJwtProviderUriProperty: true }, () =>
         toError("JWT_PROVIDER_URI_DEPRECATED"),
       )
@@ -126,6 +135,7 @@ export function getSdkUsageProblem(
 const toError = (type: SdkUsageProblemKey): SdkUsageProblem => ({
   type,
   severity: "error",
+  title: "Error",
   message: USAGE_PROBLEM_MESSAGES[type],
   documentationUrl: USAGE_PROBLEM_DOC_URLS[type],
 });
@@ -133,6 +143,8 @@ const toError = (type: SdkUsageProblemKey): SdkUsageProblem => ({
 const toWarning = (type: SdkUsageProblemKey): SdkUsageProblem => ({
   type,
   severity: "warning",
+  // eslint-disable-next-line no-literal-metabase-strings -- only shown in development.
+  title: "This embed is powered by the Metabase SDK.",
   message: USAGE_PROBLEM_MESSAGES[type],
   documentationUrl: USAGE_PROBLEM_DOC_URLS[type],
 });
