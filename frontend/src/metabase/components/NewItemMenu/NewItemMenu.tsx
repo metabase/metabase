@@ -10,6 +10,15 @@ import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
 import type { CollectionId } from "metabase-types/api";
 
+type NewMenuItem = {
+  title: string;
+  icon: string;
+  link?: LocationDescriptor;
+  event?: string;
+  action?: () => void;
+  onClose?: () => void;
+};
+
 export interface NewItemMenuProps {
   className?: string;
   collectionId?: CollectionId;
@@ -22,15 +31,6 @@ export interface NewItemMenuProps {
   onCloseNavbar: () => void;
   onChangeLocation: (nextLocation: LocationDescriptor) => void;
 }
-
-type NewMenuItem = {
-  title: string;
-  icon: string;
-  link?: LocationDescriptor;
-  event?: string;
-  action?: () => void;
-  onClose?: () => void;
-};
 
 const NewItemMenu = ({
   className,
