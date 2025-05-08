@@ -359,17 +359,11 @@ export function setPublicDashboardEndpoints(uuid) {
 }
 
 export function setEmbedQuestionEndpoints(token) {
-  if (!IS_EMBED_PREVIEW) {
-    setCardEndpoints(`/api/embed/card/${encodeURIComponent(token)}`);
-  }
+  setCardEndpoints(`${embedBase}/card/${encodeURIComponent(token)}`);
 }
 
 export function setEmbedDashboardEndpoints(token) {
-  if (!IS_EMBED_PREVIEW) {
-    setDashboardEndpoints(`/api/embed/dashboard/${encodeURIComponent(token)}`);
-  } else {
-    setDashboardEndpoints(embedBase);
-  }
+  setDashboardEndpoints(`${embedBase}/dashboard/${encodeURIComponent(token)}`);
 }
 
 function GET_with(url, omitKeys) {
