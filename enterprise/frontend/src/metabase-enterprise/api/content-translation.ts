@@ -4,7 +4,7 @@ import type { DictionaryResponse } from "metabase-types/api/content-translation"
 import { EnterpriseApi } from "./api";
 
 type ListContentTranslationsRequest = {
-  locale: string;
+  locale?: string;
 };
 
 type UploadContentTranslationDictionaryRequest = {
