@@ -32,10 +32,10 @@ export function Results({
   const ref = useRef<HTMLDivElement>(null);
 
   const virtual = useVirtualizer({
-    estimateSize: () => ITEM_MIN_HEIGHT,
     count: items.length,
     getScrollElement: () => ref.current,
     overscan: VIRTUAL_OVERSCAN,
+    estimateSize: () => ITEM_MIN_HEIGHT,
   });
 
   return (
@@ -50,6 +50,7 @@ export function Results({
               key={key}
               ref={virtual.measureElement}
               className={cx(S.item, S[type], { [S.active]: isActive })}
+              data-index={index}
               style={{
                 top: start,
                 marginLeft: itemMargin[type],
@@ -60,7 +61,9 @@ export function Results({
                 to={getUrl(value)}
                 onClick={() => {
                   toggle?.(key);
-                  virtual.measure();
+                  virtual.measureElement(
+                    ref.current?.querySelector(`[data-index='${index}']`),
+                  );
                 }}
               >
                 <Flex align="center" gap="xs" py="xs" mih={ITEM_MIN_HEIGHT}>
@@ -73,7 +76,9 @@ export function Results({
                     />
                   )}
                   <Icon name={getIconForType(type)} className={S.icon} />
-                  <Box pl="sm">{label}</Box>
+                  <Box pl="sm" className={S.label}>
+                    {label}
+                  </Box>
                 </Flex>
               </Link>
             </Flex>

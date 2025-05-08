@@ -47,3 +47,7 @@
     transform: rotate(90deg);
   }
 }
+
+.label {
+  overflow-wrap: anywhere;
+}
