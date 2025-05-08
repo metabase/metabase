@@ -7,6 +7,10 @@ import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 import { Box, Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
+import {
+  isVisualizerDashboardCard,
+  isVisualizerSupportedVisualization,
+} from "metabase/visualizer/utils";
 import type {
   DashCardId,
   Dashboard,
@@ -138,7 +142,10 @@ function DashCardActionsPanelInner({
   }
 
   if (!isLoading && !hasError) {
-    if (onEditVisualization) {
+    if (
+      isVisualizerDashboardCard(dashcard) ||
+      isVisualizerSupportedVisualization(dashcard?.card.display)
+    ) {
       buttons.push(
         <DashCardActionButton
           key="visualizer-button"
@@ -149,7 +156,13 @@ function DashCardActionsPanelInner({
           <DashCardActionButton.Icon name="pencil" />
         </DashCardActionButton>,
       );
-    } else if (!disableSettingsConfig) {
+    }
+
+    if (
+      !disableSettingsConfig &&
+      !isVisualizerDashboardCard(dashcard) &&
+      !isVisualizerSupportedVisualization(dashcard?.card.display)
+    ) {
       buttons.push(
         <ChartSettingsButton
           key="chart-settings-button"
@@ -160,6 +173,22 @@ function DashCardActionsPanelInner({
             handleOnReplaceAllVisualizationSettings
           }
         />,
+      );
+    }
+
+    if (
+      !isVisualizerDashboardCard(dashcard) &&
+      !isVisualizerSupportedVisualization(dashcard?.card.display)
+    ) {
+      buttons.push(
+        <DashCardActionButton
+          key="visualizer-button"
+          tooltip={t`Visualize another way`}
+          aria-label={t`Visualize another way`}
+          onClick={onEditVisualization}
+        >
+          <DashCardActionButton.Icon name="add_data" />
+        </DashCardActionButton>,
       );
     }
 

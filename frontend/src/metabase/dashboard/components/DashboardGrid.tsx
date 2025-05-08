@@ -33,6 +33,10 @@ import { Box, Flex } from "metabase/ui";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
+import {
+  isVisualizerDashboardCard,
+  isVisualizerSupportedVisualization,
+} from "metabase/visualizer/utils";
 import type {
   BaseDashboardCard,
   Card,
@@ -68,7 +72,7 @@ import {
   getLayouts,
   getVisibleCards,
 } from "../grid-utils";
-import { getDashcardDataMap } from "../selectors";
+import { getDashcardDataMap, getDashcards } from "../selectors";
 
 import { DashCard } from "./DashCard/DashCard";
 import DashCardS from "./DashCard/DashCard.module.css";
@@ -109,6 +113,7 @@ type LastProps = {
 };
 
 const mapStateToProps = (state: State) => ({
+  dashcards: getDashcards(state),
   dashcardData: getDashcardDataMap(state),
 });
 
@@ -569,10 +574,20 @@ class DashboardGridInner extends Component<
   };
 
   renderVisualizerModal() {
+    const { dashcards } = this.props;
     const { visualizerModalStatus } = this.state;
     if (!visualizerModalStatus) {
       return null;
     }
+
+    const dashcard = dashcards[visualizerModalStatus.dashcardId];
+
+    // We want to allow saving a visualization as is if it's initial display type
+    // isn't supported by visualizer. For example, taking a pivot table and saving
+    // it as a bar chart with several columns selected.
+    const allowSaveWhenPristine =
+      !isVisualizerDashboardCard(dashcard) &&
+      !isVisualizerSupportedVisualization(dashcard?.card.display);
 
     return (
       <VisualizerModal
@@ -580,6 +595,7 @@ class DashboardGridInner extends Component<
         onClose={this.onVisualizerModalClose}
         initialState={{ state: visualizerModalStatus.state }}
         saveLabel={t`Save`}
+        allowSaveWhenPristine={allowSaveWhenPristine}
       />
     );
   }
