@@ -6,14 +6,13 @@ import _ from "underscore";
 import Link from "metabase/core/components/Link";
 import { Box, Flex, Icon } from "metabase/ui";
 
-import { getUrl } from "../../utils";
-
 import S from "./Item.module.css";
 import {
   type Item,
   type ItemType,
   type TreePath,
   getIconForType,
+  getUrl,
   hasChildren,
 } from "./utils";
 
@@ -96,13 +95,7 @@ const ItemRow = forwardRef(function ItemRowInner(
   return (
     <Flex ref={ref} style={style}>
       <Link
-        to={getUrl({
-          databaseId: undefined,
-          fieldId: undefined,
-          schemaId: undefined,
-          tableId: undefined,
-          ...value,
-        })}
+        to={getUrl(value)}
         onClick={onClick}
         className={cx(S.item, S[type], { [S.active]: active })}
       >

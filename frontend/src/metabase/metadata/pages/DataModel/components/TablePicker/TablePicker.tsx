@@ -7,12 +7,11 @@ import EmptyState from "metabase/components/EmptyState";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Icon, Input, Stack } from "metabase/ui";
 
-import { getUrl } from "../../utils";
-
 import { Results } from "./Item";
 import {
   type TreePath,
   flatten,
+  getUrl,
   useExpandedState,
   useSearch,
   useTableLoader,
@@ -60,15 +59,7 @@ function Tree(props: TreePath) {
       const schema = database.children[0];
       if (schema.type === "schema" && schemaId !== schema.value.schemaId) {
         toggle(schema.key);
-        dispatch(
-          push(
-            getUrl({
-              fieldId: undefined,
-              tableId: undefined,
-              ...schema.value,
-            }),
-          ),
-        );
+        dispatch(push(getUrl(schema.value)));
       }
     }
   }, [props, tree, dispatch, toggle]);

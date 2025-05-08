@@ -10,6 +10,8 @@ import {
 import type { IconName } from "metabase/ui";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
+import { getUrl as getUrl_ } from "../../utils";
+
 export type ItemType = Item["type"];
 
 export function getIconForType(type: ItemType): IconName {
@@ -21,6 +23,16 @@ export function getIconForType(type: ItemType): IconName {
 
 export function hasChildren(type: ItemType): boolean {
   return type !== "table";
+}
+
+export function getUrl(value: TreePath) {
+  return getUrl_({
+    fieldId: undefined,
+    tableId: undefined,
+    databaseId: undefined,
+    schemaId: undefined,
+    ...value,
+  });
 }
 
 export type TreePath = {
