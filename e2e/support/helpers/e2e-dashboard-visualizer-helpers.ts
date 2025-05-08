@@ -70,6 +70,12 @@ export function addDataset(datasetName: string) {
   cy.wait("@cardQuery");
 }
 
+export function assertCurrentVisualization(name: VisualizationDisplay) {
+  cy.findByTestId("viz-picker-main")
+    .findByDisplayValue(name)
+    .should("be.checked");
+}
+
 export function selectVisualization(visualization: VisualizationDisplay) {
   cy.findByTestId("viz-picker-main").within(() => {
     cy.icon(visualization as any).click();
