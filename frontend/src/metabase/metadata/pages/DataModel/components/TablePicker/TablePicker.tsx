@@ -42,6 +42,7 @@ export function TablePicker(props: TreePath) {
 }
 
 function Tree(props: TreePath) {
+  const { databaseId, schemaId } = props;
   const { isExpanded, toggle } = useExpandedState(props);
   const { tree } = useTableLoader(props);
 
@@ -51,19 +52,22 @@ function Tree(props: TreePath) {
   useEffect(() => {
     // When we detect a database with just one schema, we automatically
     // select and expand that schema.
-    const { databaseId, schemaId } = props;
     const database = tree.children.find(
       (node) =>
         node.type === "database" && node.value.databaseId === databaseId,
     );
-    if (database?.children.length === 1) {
+    if (
+      databaseId &&
+      isExpanded({ databaseId }) &&
+      database?.children.length === 1
+    ) {
       const schema = database.children[0];
       if (schema.type === "schema" && schemaId !== schema.value.schemaId) {
-        toggle(schema.key);
+        toggle(schema.key, true);
         dispatch(push(getUrl(schema.value)));
       }
     }
-  }, [props, tree, dispatch, toggle]);
+  }, [databaseId, schemaId, tree, dispatch, toggle, isExpanded]);
 
   return <Results items={items} toggle={toggle} path={props} />;
 }

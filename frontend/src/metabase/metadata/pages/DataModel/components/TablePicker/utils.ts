@@ -253,17 +253,24 @@ export function useExpandedState(path: TreePath) {
     setState((state) => expandPath(state, { databaseId, schemaId, tableId }));
   }, [databaseId, schemaId, tableId]);
 
-  return {
-    isExpanded(path: string | TreePath) {
+  const isExpanded = useCallback(
+    (path: string | TreePath) => {
       const key = typeof path === "string" ? path : toKey(path);
       return Boolean(state[key]);
     },
-    toggle(key: string, value?: boolean) {
-      setState((current) => ({
-        ...current,
-        [key]: value ?? !current[key],
-      }));
-    },
+    [state],
+  );
+
+  const toggle = useCallback((key: string, value?: boolean) => {
+    setState((current) => ({
+      ...current,
+      [key]: value ?? !current[key],
+    }));
+  }, []);
+
+  return {
+    isExpanded,
+    toggle,
   };
 }
 
