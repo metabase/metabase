@@ -1,36 +1,39 @@
-import cx from "classnames";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { useListUsersQuery } from "metabase/api";
 import UserAvatar from "metabase/components/UserAvatar";
-import CS from "metabase/css/core/index.css";
-import Typeahead from "metabase/hoc/Typeahead";
-import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
-import type { User } from "metabase-types/api";
+import { Flex, Pill, Popover, Text, UnstyledButton } from "metabase/ui";
+import type { Member, User } from "metabase-types/api";
 
-import { AddMemberAutocompleteSuggestionRoot } from "./AddMemberRow.styled";
+import { userToColor } from "../colors";
+
 import { AddRow } from "./AddRow";
 
 interface AddMemberRowProps {
-  users: User[];
-  excludeIds: Set<number>;
+  members: Member[];
   onCancel: () => void;
   onDone: (userIds: number[]) => void;
 }
 
-export function AddMemberRow({
-  users,
-  excludeIds,
-  onCancel,
-  onDone,
-}: AddMemberRowProps) {
-  const rowRef = useRef<HTMLDivElement>(null);
+export function AddMemberRow({ members, onCancel, onDone }: AddMemberRowProps) {
+  const listUsersReq = useListUsersQuery();
   const [text, setText] = useState("");
   const [selectedUsersById, setSelectedUsersById] = useState<Map<number, User>>(
     new Map(),
   );
+
+  const availableToSelectUsers = useMemo(() => {
+    const { isLoading, error, data } = listUsersReq;
+    if (isLoading || error) {
+      return [];
+    }
+    const allUsers = data?.data ?? [];
+    const groupMemberIds = new Set(members.map((m) => m.user_id));
+    return allUsers.filter(
+      ({ id }) => !selectedUsersById.has(id) && !groupMemberIds.has(id),
+    );
+  }, [members, selectedUsersById, listUsersReq]);
 
   const handleRemoveUser = (user: User) => {
     const newSelectedUsersById = new Map(selectedUsersById);
@@ -49,138 +52,70 @@ export function AddMemberRow({
     onDone(Array.from(selectedUsersById.keys()));
   };
 
-  const availableToSelectUsers = useMemo(
-    () =>
-      users.filter(
-        (user) => !selectedUsersById.has(user.id) && !excludeIds.has(user.id),
-      ),
-    [selectedUsersById, excludeIds, users],
-  );
+  const suggestedUsers = useMemo(() => {
+    const input = text.toLowerCase();
+    return availableToSelectUsers.filter((user) =>
+      (user.common_name || "").toLowerCase().includes(input),
+    );
+  }, [availableToSelectUsers, text]);
 
   return (
     <tr>
       <td colSpan={4} style={{ padding: 0 }}>
-        <AddRow
-          ref={rowRef}
-          value={text}
-          isValid={selectedUsersById.size > 0}
-          placeholder={t`Julie McMemberson`}
-          onChange={(e) => setText(e.target.value)}
-          onDone={handleDone}
-          onCancel={onCancel}
+        <Popover
+          opened={suggestedUsers.length > 0}
+          position="bottom-start"
+          withArrow
+          shadow="md"
         >
-          {Array.from(selectedUsersById.values()).map((user) => (
-            <div
-              key={user.id}
-              className={cx(
-                CS.bgMedium,
-                CS.p1,
-                CS.px2,
-                CS.mr1,
-                CS.rounded,
-                CS.flex,
-                CS.alignCenter,
-              )}
-            >
-              {user.common_name}
-              <Icon
-                className={cx(
-                  CS.pl1,
-                  CS.cursorPointer,
-                  CS.textSlate,
-                  CS.textMediumHover,
-                )}
-                name="close"
-                onClick={() => handleRemoveUser(user)}
-              />
+          <Popover.Target>
+            <div>
+              <AddRow
+                value={text}
+                isValid={selectedUsersById.size > 0}
+                placeholder={t`Julie McMemberson`}
+                onChange={(e) => setText(e.target.value)}
+                onDone={handleDone}
+                onCancel={onCancel}
+              >
+                {Array.from(selectedUsersById.values()).map((user, index) => (
+                  <Pill
+                    key={user.id}
+                    size="xl"
+                    bg="bg-medium"
+                    c="text-primary"
+                    ms={index > 0 ? "sm" : ""}
+                    withRemoveButton
+                    onRemove={() => handleRemoveUser(user)}
+                  >
+                    {user.common_name}
+                  </Pill>
+                ))}
+              </AddRow>
             </div>
-          ))}
-          <AddMemberTypeaheadPopover
-            value={text}
-            options={availableToSelectUsers}
-            onSuggestionAccepted={handleAddUser}
-            target={rowRef}
-          />
-        </AddRow>
+          </Popover.Target>
+
+          <Popover.Dropdown>
+            <Flex direction="column" p="xs" miw="15rem">
+              {suggestedUsers.map((user: User, index: number) => (
+                <Flex
+                  key={index}
+                  component={UnstyledButton}
+                  align="center"
+                  gap="md"
+                  p="0.5rem 1rem"
+                  onClick={() => handleAddUser(user)}
+                >
+                  <UserAvatar bg={userToColor(user)} user={user} />
+                  <Text fw="bold" size="lg">
+                    {user.common_name}
+                  </Text>
+                </Flex>
+              ))}
+            </Flex>
+          </Popover.Dropdown>
+        </Popover>
       </td>
     </tr>
-  );
-}
-
-const getColorPalette = () => [
-  color("brand"),
-  color("accent1"),
-  color("accent2"),
-  color("accent3"),
-  color("accent4"),
-];
-
-interface AddMemberTypeaheadPopoverProps {
-  suggestions: User[];
-  selectedSuggestion: User | null;
-  onSuggestionAccepted: (user: User) => void;
-  target: React.RefObject<HTMLDivElement>;
-}
-
-const AddMemberTypeaheadPopover = Typeahead({
-  optionFilter: (text: string, user: User) =>
-    (user.common_name || "").toLowerCase().includes(text.toLowerCase()),
-  optionIsEqual: (userA: User, userB: User) => userA.id === userB.id,
-})(function AddMemberTypeaheadPopover({
-  suggestions,
-  selectedSuggestion,
-  onSuggestionAccepted,
-  target,
-}: AddMemberTypeaheadPopoverProps) {
-  const colors = useMemo(getColorPalette, []);
-
-  return (
-    <TippyPopover
-      className={CS.bordered}
-      offset={[0, 0]}
-      placement="bottom-start"
-      visible={suggestions.length > 0}
-      reference={target}
-      content={
-        suggestions &&
-        suggestions.map((user: User, index: number) => (
-          <AddMemberAutocompleteSuggestion
-            key={index}
-            user={user}
-            color={colors[index % colors.length]}
-            selected={!!selectedSuggestion && user.id === selectedSuggestion.id}
-            onClick={onSuggestionAccepted.bind(null, user)}
-          />
-        ))
-      }
-    />
-  );
-});
-
-interface AddMemberAutocompleteSuggestionProps {
-  user: User;
-  color: string;
-  selected: boolean;
-  onClick: () => void;
-}
-
-function AddMemberAutocompleteSuggestion({
-  user,
-  color,
-  selected,
-  onClick,
-}: AddMemberAutocompleteSuggestionProps) {
-  return (
-    <AddMemberAutocompleteSuggestionRoot
-      isSelected={selected}
-      onClick={onClick}
-    >
-      <span className={cx(CS.inlineBlock, CS.mr2)}>
-        <UserAvatar bg={color} user={user} />
-      </span>
-      <span className={cx(CS.h3, { [CS.textWhite]: selected })}>
-        {user.common_name}
-      </span>
-    </AddMemberAutocompleteSuggestionRoot>
   );
 }

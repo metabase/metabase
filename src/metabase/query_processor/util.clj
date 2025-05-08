@@ -224,7 +224,7 @@
 (defmacro with-execute-async
   "Execute body asynchronously in a pooled executor.
 
-  Used for side effects during query execution like saving query execution info or capturing FieldUsages."
+  Used for side effects during query execution like saving query execution info."
   [thunk]
   `(do-with-execute-async ~thunk))
 

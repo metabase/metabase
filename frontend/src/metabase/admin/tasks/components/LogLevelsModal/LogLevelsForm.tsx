@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { t } from "ttag";
 
 import { CodeEditor } from "metabase/components/CodeEditor";
@@ -17,6 +17,7 @@ interface Props {
 }
 
 export const LogLevelsForm = ({ presets }: Props) => {
+  const codeId = useId();
   const [{ value }, { error: jsonError }, { setValue }] = useField("json");
   const [, { error: durationError }] = useField("duration");
   const error = durationError || jsonError;
@@ -45,6 +46,10 @@ export const LogLevelsForm = ({ presets }: Props) => {
         )}
       </Flex>
 
+      <Text component="label" fw="bold" htmlFor={codeId} size="sm">
+        {t`Override log configuration using`}
+      </Text>
+
       <Box
         className={S.codeContainer}
         // Using h + mah + mih to make the CodeEditor fill its parent vertically
@@ -54,6 +59,7 @@ export const LogLevelsForm = ({ presets }: Props) => {
       >
         <CodeEditor
           className={S.code}
+          id={codeId}
           language="json"
           value={value}
           onChange={setValue}

@@ -1,43 +1,18 @@
 import type * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseFeature, Expression } from "metabase-types/api";
+import type { DatabaseFeature } from "metabase-types/api";
 
 import type { DefinedClauseName } from "./clause";
 import type { Token } from "./pratt";
 
-export type MBQLClauseCategory =
-  | "logical"
-  | "math"
-  | "string"
-  | "date"
-  | "conversion"
-  | "window"
-  | "aggregation";
-
-export interface HelpText {
-  name: string;
-  category: MBQLClauseCategory;
-  args?: HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
-  description: string;
-  example: Lib.ExpressionParts;
-  structure: string;
-  docsPage?: string;
-}
-
-export interface HelpTextConfig {
-  name: DefinedClauseName;
-  category: MBQLClauseCategory;
-  args?: HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
-  description: (database: Database, reportTimezone?: string) => string;
-  structure: string;
-  docsPage?: string;
-}
-
-interface HelpTextArg {
-  name: string;
-  description: string;
-  example: Expression | ["args", Expression[]];
-  template?: string;
+export enum MBQLClauseCategory {
+  Logical = "logical",
+  Math = "math",
+  String = "string",
+  Date = "date",
+  Conversion = "conversion",
+  Window = "window",
+  Aggregation = "aggregation",
 }
 
 export type ExpressionType =
@@ -49,17 +24,50 @@ export type ExpressionType =
   | "number"
   | "string";
 
-export type MBQLClauseFunctionConfig = {
+export type ClauseArgDefinition = {
+  name: string;
+  type: ExpressionType;
+  description?: string;
+  example?:
+    | Lib.ExpressionParts
+    | Lib.ExpressionArg
+    | (Lib.ExpressionParts | Lib.ExpressionArg)[];
+  template?: string;
+  optional?: boolean;
+};
+
+export type MBQLClauseDefinition = {
+  name?: never;
   displayName: string;
   type: ExpressionType;
-  args: ExpressionType[];
-  argType(index: number, args: unknown[], type: ExpressionType): ExpressionType;
+  args(): ClauseArgDefinition[];
+  argType?(
+    index: number,
+    args: unknown[],
+    type: ExpressionType,
+  ): ExpressionType;
   requiresFeature?: DatabaseFeature;
   hasOptions?: boolean;
   multiple?: boolean;
-  name: DefinedClauseName;
-
+  category?: MBQLClauseCategory;
   validator?: (...args: any) => string | undefined;
+  description?(database: Database, reportTimezone?: string): string;
+  docsPage?: string;
+};
+
+export type MBQLClauseFunctionConfig = {
+  name: DefinedClauseName;
+  displayName: string;
+  type: ExpressionType;
+  args: ClauseArgDefinition[];
+  argType(index: number, args: unknown[], type: ExpressionType): ExpressionType;
+  requiresFeature?: DatabaseFeature;
+  hasOptions: boolean;
+  multiple: boolean;
+  category?: MBQLClauseCategory;
+  validator?: (...args: any) => string | undefined;
+  description?(database: Database, reportTimezone?: string): string;
+  docsPage?: string;
 };
 
 export type Hooks = {
