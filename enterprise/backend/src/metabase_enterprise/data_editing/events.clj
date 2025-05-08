@@ -1,6 +1,6 @@
 (ns metabase-enterprise.data-editing.events
   (:require
-   [metabase.events.notification :as events.notification]))
+   [metabase.notification.core :as notification]))
 
 (derive ::event :metabase/event)
 
@@ -12,6 +12,6 @@
 (derive :event/row.deleted ::event)
 
 (doseq [event (descendants ::event)]
-  (defmethod events.notification/notification-filter-for-topic event
+  (defmethod notification/notification-filter-for-topic event
     [_topic event-info]
     [:= :table_id (-> event-info :args :table_id)]))

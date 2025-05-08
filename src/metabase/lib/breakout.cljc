@@ -57,7 +57,7 @@
        (lib.util/add-summary-clause query stage-number :breakout expr)
        query))))
 
-(mu/defn breakoutable-columns :- [:sequential ::lib.schema.metadata/column]
+(mu/defn breakoutable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get column metadata for all the columns that can be broken out by in
   the stage number `stage-number` of the query `query`
   If `stage-number` is omitted, the last stage is used.

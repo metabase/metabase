@@ -2,10 +2,10 @@ export type GenericErrorResponse = {
   data?:
     | {
         message?: string;
-        errors?: Record<string, string>;
+        errors?: Record<string, string> | Record<string, string>[];
       }
     | string;
-  errors?: Record<string, string>;
+  errors?: Record<string, string> | Record<string, string>[];
   message?: string;
 };
 

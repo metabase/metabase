@@ -6,6 +6,7 @@ import { t } from "ttag";
 import EntityMenu from "metabase/components/EntityMenu";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import UserAvatar from "metabase/components/UserAvatar";
+import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
@@ -16,8 +17,8 @@ import { getSetting } from "metabase/selectors/settings";
 import { Icon, Tooltip } from "metabase/ui";
 import type { Group, GroupId, Member, User } from "metabase-types/api";
 
-import MembershipSelect from "./MembershipSelect";
-import { RefreshLink } from "./PeopleListRow.styled";
+import { MembershipSelect } from "./MembershipSelect";
+import S from "./PeopleListRow.module.css";
 
 const enablePasswordLoginKey = "enable-password-login";
 
@@ -90,11 +91,9 @@ export const PeopleListRow = ({
           <td>{moment(user.updated_at).fromNow()}</td>
           <td>
             <Tooltip label={t`Reactivate this account`}>
-              <span>
-                <RefreshLink to={Urls.reactivateUser(user.id)}>
-                  <Icon name="refresh" size={20} />
-                </RefreshLink>
-              </span>
+              <Link to={Urls.reactivateUser(user.id)} className={S.refreshLink}>
+                <Icon name="refresh" size={20} />
+              </Link>
             </Tooltip>
           </td>
         </Fragment>

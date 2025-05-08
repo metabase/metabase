@@ -3,7 +3,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as notification.payload.temp-storage]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [potemkin :as p]))

@@ -7,11 +7,11 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
-   [metabase.models.task-history :as task-history]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.util :as sync-util]
+   [metabase.task-history.models.task-history :as task-history]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [toucan2.core :as t2]))

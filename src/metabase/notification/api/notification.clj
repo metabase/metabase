@@ -11,10 +11,11 @@
    [metabase.channel.email.messages :as messages]
    [metabase.channel.models.channel :as models.channel]
    [metabase.channel.template.core :as channel.template]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
+   [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -176,7 +177,8 @@
     (notification/sample-payload notification)
 
     ;; else
-    (notification/notification-payload notification)))
+    (binding [notification.payload.execute/*query-max-bare-rows* 2]
+      (notification/notification-payload notification))))
 
 (api.macros/defendpoint :post "/payload"
   "Return the payload of a notification"
@@ -299,6 +301,7 @@
   "Send an unsaved notification."
   [_route _query body :- ::models.notification/FullyHydratedNotification]
   (api/create-check :model/Notification body)
+  (models.notification/validate-email-handlers! (:handlers body))
   (-> body
       (assoc :creator_id api/*current-user-id*)
       promote-to-t2-instance

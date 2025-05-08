@@ -3,6 +3,7 @@ import type {
   ColumnDef,
   ColumnSizingState,
 } from "@tanstack/react-table";
+import cx from "classnames";
 import type React from "react";
 import { memo } from "react";
 
@@ -24,6 +25,7 @@ export const getDefaultCellTemplate = <TRow, TValue>(
     wrap,
     getCellClassName,
     getCellStyle,
+    getCellClassNameByCellId,
     getIsCellEditing,
     editingCell: EditingCellComponent,
   }: ColumnOptions<TRow, TValue>,
@@ -56,7 +58,10 @@ export const getDefaultCellTemplate = <TRow, TValue>(
         onExpand={onExpand}
         variant={cellVariant}
         wrap={wrap}
-        className={getCellClassName?.(value, row.index)}
+        className={cx(
+          getCellClassName?.(value, row.index),
+          getCellClassNameByCellId?.(cellContext),
+        )}
         style={getCellStyle?.(value, row.index)}
       />
     );

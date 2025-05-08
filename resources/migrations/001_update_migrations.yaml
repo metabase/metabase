@@ -10553,6 +10553,22 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: v53.2025-05-06T16:03:19
+      author: nvoxland
+      comment: Support indexing of values with bigint ids
+      preConditions:
+      changes:
+        - modifyDataType:
+            tableName: model_index_value
+            columnName: model_pk
+            newDataType: bigint
+      rollback:
+        - modifyDataType:
+            tableName: model_index_value
+            columnName: model_pk
+            newDataType: int
+
+  - changeSet:
       id: v54.2025-01-30T16:10:55
       author: bshepherdson
       comment: Add `entity_id` column to the `metabase_database` table
@@ -11588,6 +11604,40 @@ databaseChangeLog:
               UPDATE permissions_group SET magic_group_type='admin' WHERE name='Administrators';
 
   - changeSet:
+      id: v55.2025-04-22T05:42:48
+      author: johnswanson
+      comment: Add `permissions_group.is_tenant_group`
+      preConditions: # Not required
+      changes:
+        - addColumn:
+            tableName: permissions_group
+            columns:
+              - column:
+                  name: is_tenant_group
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: "true iff this is a Tenant Group"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v55.2025-04-22T05:54:51
+      author: johnswanson
+      comment: Add `core_user.tenant_id`
+      preConditions: #
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: tenant_id
+                  type: int
+                  remarks: The ID of the tenant for this user
+                  constraints:
+                    unique: false
+                    nullable: true
+
+  - changeSet:
       id: v55.2025-04-29T10:52:01
       author: crisptrutski
       comment: A table for generating atomic sequence numbers
@@ -11659,6 +11709,64 @@ databaseChangeLog:
         - dropColumn:
             tableName: data_edit_undo_chain
             columnName: scope
+
+  - changeSet:
+      id: v55.2025-05-02T08:21:44
+      author: lbrdnk
+      comment: Migrate hacked semantic types
+      rollback:
+        - update:
+            tableName: metabase_field
+            # set columns to NULL
+            columns:
+              - column:
+                  name: coercion_strategy
+              - column:
+                  name: effective_type
+            where: coercion_strategy = 'Coercion/String->Float'
+      changes:
+        - update:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: coercion_strategy
+                  value: 'Coercion/String->Float'
+              - column:
+                  name: effective_type
+                  value: 'type/Float'
+            where: |
+              (
+                select metabase_database.engine
+                from metabase_table
+                join metabase_database on metabase_table.db_id = metabase_database.id
+                where metabase_field.table_id = metabase_table.id
+              ) in (
+                'mysql',
+                'sqlite',
+                'sqlserver',
+                'snowflake',
+                'h2',
+                'oracle'
+              )
+              AND base_type = 'type/Text'
+              AND semantic_type in (
+                'type/Longitude',
+                'type/Discount',
+                'type/Currency',
+                'type/Cost',
+                'type/Quantity',
+                'type/Duration',
+                'type/Latitude',
+                'type/Coordinate',
+                'type/GrossMargin',
+                'type/Percentage',
+                'type/Share',
+                'type/Price',
+                'type/Income',
+                'type/Score',
+                'type/Number'
+              )
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

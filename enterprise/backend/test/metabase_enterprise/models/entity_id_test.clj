@@ -46,10 +46,7 @@
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
-    :model/FieldUsage
     :model/FieldValues
-    :model/LegacyMetric
-    :model/LegacyMetricImportantField
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
@@ -80,7 +77,6 @@
     :model/SearchIndexMetadata
     :model/Secret
     :model/Session
-    :model/TablePrivileges
     :model/TaskHistory
     :model/TimelineEvent
     :model/Undo

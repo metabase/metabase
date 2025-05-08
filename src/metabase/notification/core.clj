@@ -1,6 +1,7 @@
 (ns metabase.notification.core
   "Core functionality for notifications."
   (:require
+   [metabase.notification.events.notification :as events.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.impl.system-event :as notification.payload.system-event]
    [metabase.notification.seed :as notification.seed]
@@ -23,4 +24,8 @@
  [notification.seed
   seed-notification!]
  [notification.send
-  send-notification!])
+  send-notification!
+  *default-options*]
+ [events.notification
+  *skip-sending-notification?*
+  notification-filter-for-topic])

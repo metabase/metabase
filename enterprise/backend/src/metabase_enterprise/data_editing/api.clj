@@ -9,7 +9,6 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver :as driver]
    [metabase.models.field-values :as field-values]
-   [metabase.upload :as-alias upload]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -127,15 +126,15 @@
 
 ;; upload types are used temporarily, I expect this to change
 (def ^:private column-type->upload-type
-  {"auto_incrementing_int_pk" ::upload/auto-incrementing-int-pk
-   "boolean"                  ::upload/boolean
-   "int"                      ::upload/int
-   "float"                    ::upload/float
-   "varchar255"               ::upload/varchar-255
-   "text"                     ::upload/text
-   "date"                     ::upload/date
-   "datetime"                 ::upload/datetime
-   "offset_datetime"          ::upload/timestamp-with-time-zone})
+  {"auto_incrementing_int_pk" :metabase.upload/auto-incrementing-int-pk
+   "boolean"                  :metabase.upload/boolean
+   "int"                      :metabase.upload/int
+   "float"                    :metabase.upload/float
+   "varchar255"               :metabase.upload/varchar-255
+   "text"                     :metabase.upload/text
+   "date"                     :metabase.upload/date
+   "datetime"                 :metabase.upload/datetime
+   "offset_datetime"          :metabase.upload/timestamp-with-time-zone})
 
 (def ^:private ColumnType
   (into [:enum] (keys column-type->upload-type)))

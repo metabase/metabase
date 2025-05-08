@@ -92,3 +92,17 @@ export function setupUserAcknowledgementEndpoints({
     value,
   });
 }
+
+export function setupLastDownloadFormatEndpoints({
+  last_download_format = "csv" as const,
+  last_table_download_format = "csv" as const,
+} = {}) {
+  return setupUserKeyValueEndpoints({
+    namespace: "last_download_format",
+    key: "download_format_preference",
+    value: {
+      last_download_format,
+      last_table_download_format,
+    },
+  });
+}

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 export type AdminPaneProps = {
-  title?: string;
+  title?: React.ReactNode;
   description?: string;
   buttonText?: string;
   buttonAction?: () => void;

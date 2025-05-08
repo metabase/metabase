@@ -124,9 +124,12 @@ export const EditTableDashcardVisualization = ({
   const {
     isInserting,
     tableFieldMetadataMap,
-    handleRowCreate,
+    cellsWithFailedUpdatesMap,
+
     handleCellValueUpdate,
-    handleExpandedRowDelete,
+    handleRowCreate,
+    handleRowUpdate,
+    handleRowDelete,
   } = useTableCRUD({
     tableId,
     scope: editingScope,
@@ -235,6 +238,7 @@ export const EditTableDashcardVisualization = ({
             <EditTableDataGrid
               data={data}
               fieldMetadataMap={tableFieldMetadataMap}
+              cellsWithFailedUpdatesMap={cellsWithFailedUpdatesMap}
               onCellValueUpdate={handleCellValueUpdate}
               onRowExpandClick={openEditRowModal}
               columnsConfig={columnsConfig}
@@ -261,9 +265,9 @@ export const EditTableDashcardVisualization = ({
         modalState={modalState}
         onClose={closeModal}
         hasDeleteAction={hasDeleteAction}
-        onEdit={handleCellValueUpdate}
+        onEdit={handleRowUpdate}
         onRowCreate={handleRowCreate}
-        onRowDelete={handleExpandedRowDelete}
+        onRowDelete={handleRowDelete}
         datasetColumns={data.cols}
         currentRowData={
           modalState.rowIndex !== undefined

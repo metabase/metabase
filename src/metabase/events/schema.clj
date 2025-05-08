@@ -39,7 +39,7 @@
                                             :model model}})
      hydrated-schema]))
 
-(def user-hydrate
+(def ^:private user-hydrate
   "Hydrate user information when sending system event notifications."
   [:model/User :first_name :last_name :email])
 
@@ -118,26 +118,6 @@
      [:invitor [:map {:closed true}
                 [:email                       ms/Email]
                 [:first_name {:optional true} [:maybe :string]]]]]]])
-
-;; metric events
-
-;; TODO -- are these for LEGACY METRICS? ARE THESE EVENT USED ANYMORE?
-
-(mr/def ::metric
-  [:map {:closed true}
-   [:user-id  pos-int?]
-   [:object   [:fn #(t2/instance-of? :model/LegacyMetric %)]]])
-
-(mr/def :event/metric-create ::metric)
-
-(mr/def ::metric-with-message
-  [:merge
-   ::metric
-   [:map {:closed true}
-    [:revision-message {:optional true} :string]]])
-
-(mr/def :event/metric-update ::metric-with-message)
-(mr/def :event/metric-delete ::metric-with-message)
 
 ;; segment events
 

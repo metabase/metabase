@@ -105,7 +105,7 @@ export function isActionDashCard(
 }
 
 export function isVirtualDashCard(
-  dashcard: BaseDashboardCard,
+  dashcard: Pick<BaseDashboardCard, "visualization_settings">,
 ): dashcard is VirtualDashboardCard {
   return _.isObject(dashcard?.visualization_settings?.virtual_card);
 }

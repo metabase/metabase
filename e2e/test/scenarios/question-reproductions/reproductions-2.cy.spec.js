@@ -183,9 +183,7 @@ describe("issue 25144", { tags: "@OSS" }, () => {
   });
 
   it("should show Models tab after creation the first model (metabase#24878)", () => {
-    cy.visit("/");
-
-    H.newButton("Model").click();
+    cy.visit("/model/new");
     cy.findByTestId("new-model-options")
       .findByText(/use the notebook/i)
       .click();

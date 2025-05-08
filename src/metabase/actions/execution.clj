@@ -156,7 +156,7 @@
                                     :type "id"
                                     :value [(get simple-parameters pk-field-name)]}]))))
 
-(defn parse-implicit-action [action-instance]
+(defn- parse-implicit-action [action-instance]
   (let [k (keyword (:kind action-instance))]
     (legacy->current k k)))
 

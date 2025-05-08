@@ -11,18 +11,18 @@
    [medley.core :as m]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.analytics.snowplow :as snowplow]
+   [metabase.channel.slack :as slack]
    [metabase.config :as config]
    [metabase.db :as db]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.eid-translation.core :as eid-translation]
-   [metabase.integrations.slack :as slack]
-   [metabase.internal-stats :as internal-stats]
+   [metabase.internal-stats.core :as internal-stats]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.setting :as setting]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.core :as setting]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
@@ -342,11 +342,6 @@
   []
   {:segments (t2/count :model/Segment)})
 
-(defn- metric-metrics
-  "Get metrics based on Metrics."
-  []
-  {:metrics (t2/count :model/LegacyMetric)})
-
 ;;; Execution Metrics
 
 (defn- execution-metrics-sql []
@@ -474,7 +469,6 @@
                       :execution  (execution-metrics)
                       :field      (field-metrics)
                       :group      (group-metrics)
-                      :metric     (metric-metrics)
                       :pulse      (pulse-metrics)
                       :alert      (alert-metrics)
                       :question   (question-metrics)
@@ -747,7 +741,7 @@
 
 (defenterprise ee-snowplow-features-data
   "OSS values to use for features which require calling EE code to check whether they are available/enabled."
-  metabase-enterprise.stats
+  metabase-enterprise.analytics.stats
   []
   (ee-snowplow-features-data'))
 

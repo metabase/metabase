@@ -6,63 +6,63 @@ export const globalShortcuts = {
       return t`Create a question`;
     },
     shortcut: ["c q"],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
   "create-new-native-query": {
     get name() {
       return t`Create a native query`;
     },
     shortcut: ["c n"],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
   "create-new-dashboard": {
     get name() {
       return t`Create a dashboard`;
     },
     shortcut: ["c d"],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
   "create-new-collection": {
     get name() {
       return t`Create a collection`;
     },
     shortcut: ["c f"],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
   "create-new-model": {
     get name() {
       return t`Create a model`;
     },
     shortcut: ["c m"],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
   "create-new-metric": {
     get name() {
       return t`Create a metric`;
     },
     shortcut: ["c k"],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
   "navigate-browse-database": {
     get name() {
       return t`Browse databases`;
     },
     shortcut: ["g d"],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
   "navigate-browse-model": {
     get name() {
       return t`Browse models`;
     },
     shortcut: ["g m"],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
   "navigate-browse-metric": {
     get name() {
       return t`Browse metrics`;
     },
     shortcut: ["g k"],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
 
   "report-issue": {
@@ -70,14 +70,15 @@ export const globalShortcuts = {
       return t`Report an issue`;
     },
     shortcut: ["$mod+f1"],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
   "shortcuts-modal": {
     get name() {
       return t`Toggle Shortcuts Modal`;
     },
-    shortcut: ["?"],
-    shortcutGroup: "global",
+    shortcut: ["Shift+?"],
+    shortcutDisplay: ["?"],
+    shortcutGroup: "global" as const,
   },
 
   "navigate-trash": {
@@ -85,14 +86,14 @@ export const globalShortcuts = {
       return t`Open trash`;
     },
     shortcut: ["g t"],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
   "navigate-personal-collection": {
     get name() {
       return t`Open personal collection`;
     },
     shortcut: ["g p"],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
 
   "toggle-navbar": {
@@ -100,14 +101,14 @@ export const globalShortcuts = {
       return t`Toggle sidebar`;
     },
     shortcut: ["["],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
   "navigate-admin-settings": {
     get name() {
       return t`Go to admin`;
     },
     shortcut: ["g a"],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
 
   "navigate-user-settings": {
@@ -115,7 +116,7 @@ export const globalShortcuts = {
       return t`Go to user settings`;
     },
     shortcut: ["g u"],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
 
   "navigate-home": {
@@ -123,6 +124,6 @@ export const globalShortcuts = {
       return t`Go to home`;
     },
     shortcut: ["g h"],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
 };

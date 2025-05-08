@@ -1,7 +1,6 @@
 (ns metabase-enterprise.data-editing.coerce
   (:require
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.malli :as mu])
+   [metabase.util.date-2 :as u.date])
   (:import
    (clojure.lang BigInt)
    (java.time LocalDateTime ZonedDateTime ZoneId)

@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.config :as config]
-   [metabase.models.setting :refer [defsetting]]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting store-use-staging

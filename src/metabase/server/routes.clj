@@ -1,17 +1,17 @@
 (ns metabase.server.routes
   "Main Compojure routes tables. See https://github.com/weavejester/compojure/wiki/Routes-In-Detail for details about
-   how these work. `/api/` routes are in `metabase.api.routes`."
+   how these work. `/api/` routes are in [[metabase.api-routes.routes]]."
   (:require
    [compojure.core :refer #_{:clj-kondo/ignore [:discouraged-var]} [context defroutes GET OPTIONS]]
    [compojure.route :as route]
+   [metabase.api-routes.core :as api]
    [metabase.api.dataset :as api.dataset]
-   [metabase.api.routes :as api]
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.public-settings :as public-settings]
    [metabase.server.auth-wrapper :as auth-wrapper]
    [metabase.server.routes.index :as index]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [ring.util.response :as response]))

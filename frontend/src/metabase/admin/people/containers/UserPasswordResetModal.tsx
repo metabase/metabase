@@ -11,13 +11,12 @@ import CS from "metabase/css/core/index.css";
 import Users from "metabase/entities/users";
 import { connect } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
+import { Flex } from "metabase/ui";
 import type { User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { clearTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";
-
-import { ButtonContainer } from "./UserPasswordResetModal.styled";
 
 interface UserPasswordResetModalParams {
   params: { userId: string };
@@ -70,7 +69,7 @@ class UserPasswordResetModalInner extends Component<UserPasswordResetModalProps>
       >
         <p>{t`Are you sure you want to do this?`}</p>
 
-        <ButtonContainer>
+        <Flex>
           <Button
             className={CS.mlAuto}
             disabled={this.state.resetButtonDisabled}
@@ -87,7 +86,7 @@ class UserPasswordResetModalInner extends Component<UserPasswordResetModalProps>
           >
             {t`Reset password`}
           </Button>
-        </ButtonContainer>
+        </Flex>
       </ModalContent>
     );
   }

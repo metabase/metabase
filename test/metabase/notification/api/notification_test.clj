@@ -390,10 +390,10 @@
                                    :channel_id   http-channel-id}]}]
         ;; this test only check that channel will send, the content are tested in [[metabase.notification.payload.impl.card-test]]
         (testing "send to all handlers"
-          (is (=? {:channel/email [{:message    (mt/malli=? some?)
-                                    :bcc        ["crowberto@metabase.com"]}]
-                   :channel/slack [{:attachments (mt/malli=? some?)
-                                    :channel-id  "#general"}]
+          (is (=? {:channel/email [{:message (mt/malli=? some?)
+                                    :bcc     ["crowberto@metabase.com"]}]
+                   :channel/slack [{:blocks  (mt/malli=? some?)
+                                    :channel "#general"}]
                    :channel/http [{:body (mt/malli=? some?)}]}
                   (notification.tu/with-captured-channel-send!
                     (mt/user-http-request :crowberto :post 204 (format "notification/%d/send" (:id notification)))))))
@@ -417,8 +417,8 @@
       (testing "send to all handlers"
         (is (=? {:channel/email [{:message (mt/malli=? some?)
                                   :bcc     ["crowberto@metabase.com"]}]
-                 :channel/slack [{:attachments (mt/malli=? some?)
-                                  :channel-id  "#general"}]
+                 :channel/slack [{:blocks  (mt/malli=? some?)
+                                  :channel "#general"}]
                  :channel/http  [{:body (mt/malli=? some?)}]}
                 (notification.tu/with-captured-channel-send!
                   (mt/user-http-request :crowberto :post 204 "notification/send"
@@ -1074,17 +1074,75 @@
                   (:handlers (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
                                                    (assoc notification :handlers [notification.tu/default-slack-handler]))))))))))
 
-#_(deftest notification-payload-card-test
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders {:limit 1})}]
-      (mt/user-http-request :crowberto :post 200 "notification/payload"
-                            {:payload_type :notification/card
-                             :payload      {:card_id card-id}
-                             :creator_id   (mt/user->id :crowberto)})))
+(deftest notification-payload-card-test
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query categories {:limit 5})}]
+    (let [result (mt/user-http-request :crowberto :post 200 "notification/payload"
+                                       {:payload_type :notification/card
+                                        :payload      {:card_id card-id}
+                                        :creator_id   (mt/user->id :crowberto)})
+          card-result (-> result :payload :payload :card_part :result)]
+      (testing "the sample data has only 2 rows, no matter the limit"
+        (is (= 2 (:row_count card-result)))
+        (is (= [[1 "African"] [2 "American"]] (-> card-result :data :rows)))))))
+
+(deftest default-template-notification-card-test
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders {:limit 5})}]
+    (mt/user-http-request :crowberto :post 200 "notification/default_template"
+                          {:channel_types ["channel/slack"]
+                           :notification {:payload_type :notification/card
+                                          :payload      {:card_id card-id}
+                                          :creator_id   (mt/user->id :crowberto)}})))
 
 (deftest get-default-template-test
   (is (=? {:channel/email (mt/malli=? :map)
            :channel/slack (mt/malli=? :map)}
           (mt/user-http-request :crowberto :post 200 "notification/default_template"
-                                {:notification {:payload_type :notification/system-event
-                                                :payload      {:event_name :event/row.created}}
-                                 :channel_types ["channel/email" "channel/slack"]}))))
+                                {:channel_types [:channel/email :channel/slack]
+                                 :notification {:payload_type :notification/system-event
+                                                :payload      {:event_name :event/row.created}}}))))
+
+(deftest validate-email-domains-test
+  (mt/when-ee-evailable
+   (mt/with-premium-features #{:email-allow-list}
+     (mt/with-model-cleanup [:model/Notification]
+       (mt/with-temporary-setting-values [subscription-allowed-domains "example.com"]
+         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders {:limit 1})}]
+           (let [notification {:payload_type  "notification/card"
+                               :creator_id    (mt/user->id :crowberto)
+                               :payload       {:card_id card-id
+                                               :send_condition "has_result"}}
+                 failed-handlers [{:channel_type "channel/email"
+                                   :recipients   [{:type    "notification-recipient/raw-value"
+                                                   :details {:value "ngoc@metabase.com"}}
+                                                  {:type    "notification-recipient/raw-value"
+                                                   :details {:value "ngoc@metaba.be"}}]}]
+                 success-handlers [{:channel_type "channel/email"
+                                    :recipients   [{:type    "notification-recipient/raw-value"
+                                                    :details {:value "ngoc@example.com"}}]}]]
+             (testing "on creation"
+               (testing "fail if recipients does not match allowed domains"
+                 (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
+                        (mt/user-http-request :crowberto :post 403 "notification" (assoc notification :handlers failed-handlers)))))
+
+               (testing "success if recipients matches allowed domains"
+                 (mt/user-http-request :crowberto :post 200 "notification" (assoc notification :handlers success-handlers))))
+
+             (testing "on update"
+               (notification.tu/with-card-notification [notification {}]
+                 (testing "fail if recipients does not match allowed domains"
+                   (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
+                          (mt/user-http-request :crowberto :put 403 (format "notification/%d" (:id notification))
+                                                (assoc notification :handlers failed-handlers)))))
+
+                 (testing "success if recipients matches allowed domains"
+                   (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                         (assoc notification :handlers success-handlers)))))
+
+             (testing "on send test"
+               (testing "fail if recipients does not match allowed domains"
+                 (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
+                        (mt/user-http-request :crowberto :post 403 "notification/send"
+                                              (assoc notification :handlers failed-handlers)))))
+               (testing "success if recipients matches allowed domains"
+                 (mt/user-http-request :crowberto :post 204 "notification/send"
+                                       (assoc notification :handlers success-handlers)))))))))))

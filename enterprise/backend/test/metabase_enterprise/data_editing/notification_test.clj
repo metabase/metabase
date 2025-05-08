@@ -3,9 +3,10 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-editing.test-util :as data-editing.tu]
    [metabase.actions.test-util :as actions.tu]
-   [metabase.events.notification :as events.notification]
+   [metabase.notification.events.notification :as events.notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [thunk]
@@ -27,16 +28,20 @@
   [prop request-fn channel-type->assert-fns]
   (data-editing.tu/with-temp-test-db!
     (mt/with-temp [:model/Channel chn {:type :channel/http}]
-      (notification.tu/with-system-event-notification!
-        [notification {:notification-system-event {:event_name (:event_name prop)
-                                                   :table_id   (mt/id (or (:table prop) :categories))}
-                       :handlers                  (all-handlers (:id chn))}]
-        (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
-          (let [channel-type->captured-message (notification.tu/with-captured-channel-send!
-                                                 (request-fn notification))]
-            (doseq [[channel-type assert-fn] channel-type->assert-fns]
-              (testing (format "channel-type = %s" channel-type)
-                (assert-fn (get channel-type->captured-message channel-type))))))))))
+      (let [table-id (mt/id (or (:table prop) :categories))]
+        (notification.tu/with-system-event-notification!
+          [notification {:notification-system-event {:event_name (:event_name prop)
+                                                     :table_id   table-id}
+                         :notification           {:condition  [:and
+                                                               [:= [:context :table_id] table-id]
+                                                               [:= [:context :event_name] (u/qualified-name (:event_name prop))]]}
+                         :handlers                  (all-handlers (:id chn))}]
+          (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
+            (let [channel-type->captured-message (notification.tu/with-captured-channel-send!
+                                                   (request-fn notification))]
+              (doseq [[channel-type assert-fn] channel-type->assert-fns]
+                (testing (format "channel-type = %s" channel-type)
+                  (assert-fn (get channel-type->captured-message channel-type)))))))))))
 
 (deftest create-row-notification-test
   (test-row-notification!
@@ -50,12 +55,11 @@
 
    {:channel/slack (fn [[message :as msgs]]
                      (is (= 1 (count msgs)))
-                     (is (=? {:attachments [{:blocks
-                                             [{:type "section",
-                                               :text
-                                               {:type "mrkdwn",
-                                                :text "*Crowberto Corv has created a row for CATEGORIES*\n*Created row:*\n• ID : 76\n• NAME : New Category"}}]}]
-                              :channel-id "#test-pulse"}
+                     (is (=? {:blocks [{:type "section"
+                                        :text
+                                        {:type "mrkdwn"
+                                         :text "*Crowberto Corv has created a row for CATEGORIES*\n*Created row:*\n• ID : 76\n• NAME : New Category"}}]
+                              :channel "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
@@ -82,12 +86,10 @@
 
    {:channel/slack (fn [[message :as msgs]]
                      (is (= 1 (count msgs)))
-                     (is (=? {:attachments [{:blocks
-                                             [{:type "section",
-                                               :text
-                                               {:type "mrkdwn",
-                                                :text "*Crowberto Corv has updated a row from CATEGORIES*\n*Update:*\n• ID : 1\n• NAME : Updated Category"}}]}]
-                              :channel-id  "#test-pulse"}
+                     (is (=? {:blocks [{:type "section"
+                                        :text {:type "mrkdwn"
+                                               :text "*Crowberto Corv has updated a row from CATEGORIES*\n*Update:*\n• ID : 1\n• NAME : Updated Category"}}]
+                              :channel  "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
@@ -114,12 +116,10 @@
 
    {:channel/slack (fn [[message :as msgs]]
                      (is (= 1 (count msgs)))
-                     (is (=? {:attachments [{:blocks
-                                             [{:type "section",
-                                               :text
-                                               {:type "mrkdwn",
-                                                :text "*Crowberto Corv has deleted a row from CATEGORIES*\n*Deleted row:*\n• ID : 1\n• NAME : African"}}]}]
-                              :channel-id "#test-pulse"}
+                     (is (=? {:blocks [{:type "section"
+                                        :text {:type "mrkdwn"
+                                               :text "*Crowberto Corv has deleted a row from CATEGORIES*\n*Deleted row:*\n• ID : 1\n• NAME : African"}}]
+                              :channel "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
@@ -224,12 +224,10 @@
 
    {:channel/slack (fn [[message :as msgs]]
                      (is (= 1 (count msgs)))
-                     (is (=? {:attachments [{:blocks
-                                             [{:type "section",
-                                               :text
-                                               {:type "mrkdwn",
-                                                :text "*Crowberto Corv has created a row for CATEGORIES*\n*Created row:*\n• ID : 76\n• NAME : New Category"}}]}]
-                              :channel-id "#test-pulse"}
+                     (is (=? {:blocks [{:type "section"
+                                        :text {:type "mrkdwn"
+                                               :text "*Crowberto Corv has created a row for CATEGORIES*\n*Created row:*\n• ID : 76\n• NAME : New Category"}}]
+                              :channel "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
@@ -396,10 +394,10 @@
                                   :subject "Crowberto Corv has created a row for CATEGORIES"}]
                  :channel/http [{:body {"record" {"ID" 1, "NAME" "Updated Category"}
                                         "new_name" "Updated Category"}}]
-                 :channel/slack [{:attachments [{:blocks [{:text {:text "Name Was changed from African to Updated Category"
-                                                                  :type "mrkdwn"}
-                                                           :type "section"}]}]
-                                  :channel-id "#test-pulse"}]}
+                 :channel/slack [{:blocks [{:text {:text "Name Was changed from African to Updated Category"
+                                                   :type "mrkdwn"}
+                                            :type "section"}]
+                                  :channel "#test-pulse"}]}
                 (notification.tu/with-captured-channel-send!
                   (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
                     (mt/user-http-request

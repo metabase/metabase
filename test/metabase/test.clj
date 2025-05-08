@@ -311,7 +311,7 @@
  [tu.misc
   object-defaults
   with-clock
-  with-single-admin-user]
+  with-single-admin-user!]
 
  [u.random
   random-name

@@ -1,6 +1,5 @@
 (ns metabase-enterprise.data-editing.coerce-test
   (:require
-   [clojure.data :refer [diff]]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.data-editing.coerce :as coerce]

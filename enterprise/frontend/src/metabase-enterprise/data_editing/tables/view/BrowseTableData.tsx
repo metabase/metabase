@@ -5,7 +5,6 @@ import { t } from "ttag";
 import { useGetTableDataQuery, useGetTableQuery } from "metabase/api";
 import Link from "metabase/core/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { TableNotificationsTrigger } from "metabase/notifications/modals";
 import { closeNavbar } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -19,6 +18,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { TableNotificationsTrigger } from "metabase-enterprise/data_editing/alerts/TableNotificationsModals/TableNotificationsTrigger/TableNotificationsTrigger";
 import Question from "metabase-lib/v1/Question";
 import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
 import * as ML_Urls from "metabase-lib/v1/urls";

@@ -1,14 +1,10 @@
 (ns metabase.notification.payload.sample
+  (:refer-clojure :exclude [rand-nth])
   (:require
    [clojure.string :as str]
-   [metabase.models.table :as table]
    [metabase.types :as types]
-   [metabase.util :as u]
    [metabase.util.random :as u.random]
-   [metabase.util.time :as u.time]
-   [toucan2.core :as t2])
-  (:import
-   (java.util Random)))
+   [metabase.util.time :as u.time]))
 
 (set! *warn-on-reflection* true)
 
@@ -45,9 +41,9 @@
   ;; +/- 75 degrees is a generous but plausible range for latitudes.
   (* 150 (- (rand) 0.5)))
 
-(defn- gen-longitude []
+#_(defn- gen-longitude []
   ;; +/- 180 degrees
-  (- (* 360 (rand)) 180))
+    (- (* 360 (rand)) 180))
 
 (defn- gen-category []
   (rand-nth ["Electronics" "Clothing" "Food" "Books" "Sports" "Home" "Beauty" "Toys"]))

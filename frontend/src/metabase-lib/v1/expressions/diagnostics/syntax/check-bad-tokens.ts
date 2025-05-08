@@ -11,7 +11,7 @@ export function checkBadTokens({ tokens }: { tokens: Token[] }) {
 
     const { text } = token;
     if (text.length === 1) {
-      error(token, t`Invalid character: ${text}`);
+      error(token, t`Unexpected character: ${text}`);
     }
 
     error(token, t`Invalid expression: ${text}`);

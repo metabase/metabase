@@ -8,11 +8,11 @@
    [metabase.models.params.shared :as shared.params]
    [metabase.models.serialization :as serdes]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.request.core :as request]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -139,6 +139,17 @@
   rows-to-disk-threadhold
   1000)
 
+(def ^{:dynamic true
+       :doc "Control how many rows executing a card for notification will return.
+            Used when getting an example payload for UI."} *query-max-bare-rows*
+  nil)
+
+(defn- query-contraints
+  []
+  (cond-> {}
+    *query-max-bare-rows*
+    (assoc :max-results-bare-rows *query-max-bare-rows*)))
+
 (defn- data-rows-to-disk!
   [qp-result]
   (if (<= (:row_count qp-result) rows-to-disk-threadhold)
@@ -172,7 +183,7 @@
                                            :context       :dashboard-subscription
                                            :export-format :api
                                            :parameters    parameters
-                                           :constraints   {}
+                                           :constraints   (query-contraints)
                                            :middleware    {:process-viz-settings?             true
                                                            :js-int-to-string?                 false
                                                            :add-default-userland-constraints? false}
@@ -279,7 +290,7 @@
                  (qp.card/process-query-for-card card-id :api
                                                  ;; TODO rename to :notification?
                                                  :context     :pulse
-                                                 :constraints {}
+                                                 :constraints (query-contraints)
                                                  :middleware  {:skip-results-metadata?            false
                                                                :process-viz-settings?             true
                                                                :js-int-to-string?                 false

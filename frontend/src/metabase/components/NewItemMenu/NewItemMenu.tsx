@@ -7,10 +7,6 @@ import EntityMenu from "metabase/components/EntityMenu";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setOpenModal } from "metabase/redux/ui";
-import {
-  getEmbedOptions,
-  getIsEmbeddingIframe,
-} from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
 import type { CollectionId } from "metabase-types/api";
 
@@ -20,11 +16,9 @@ export interface NewItemMenuProps {
   trigger?: ReactNode;
   triggerIcon?: string;
   triggerTooltip?: string;
-  hasModels: boolean;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
   hasDatabaseWithJsonEngine: boolean;
-  hasDatabaseWithActionsEnabled: boolean;
   onCloseNavbar: () => void;
   onChangeLocation: (nextLocation: LocationDescriptor) => void;
 }
@@ -44,18 +38,12 @@ const NewItemMenu = ({
   trigger,
   triggerIcon,
   triggerTooltip,
-  hasModels,
   hasDataAccess,
   hasNativeWrite,
   hasDatabaseWithJsonEngine,
-  hasDatabaseWithActionsEnabled,
   onCloseNavbar,
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
-  const entityTypes = useSelector(
-    (state) => getEmbedOptions(state).entity_types,
-  );
-  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
 
   const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
@@ -93,69 +81,16 @@ const NewItemMenu = ({
       });
     }
 
-    items.push(
-      {
-        title: t`Dashboard`,
-        icon: "dashboard",
-        action: () => dispatch(setOpenModal("dashboard")),
-      },
-      {
-        title: t`Collection`,
-        icon: "folder",
-        action: () => dispatch(setOpenModal("collection")),
-      },
-    );
-
-    if (
-      hasNativeWrite &&
-      (!isEmbeddingIframe || entityTypes.includes("model"))
-    ) {
-      const collectionQuery = collectionId
-        ? `?collectionId=${collectionId}`
-        : "";
-
-      items.push({
-        title: t`Model`,
-        icon: "model",
-        link: `/model/new${collectionQuery}`,
-        onClose: onCloseNavbar,
-      });
-    }
-
-    if (
-      hasModels &&
-      hasDatabaseWithActionsEnabled &&
-      hasNativeWrite &&
-      !isEmbeddingIframe
-    ) {
-      items.push({
-        title: t`Action`,
-        icon: "bolt",
-        action: () => dispatch(setOpenModal("action")),
-      });
-    }
-
-    if (hasDataAccess && !isEmbeddingIframe) {
-      items.push({
-        title: t`Metric`,
-        icon: "metric",
-        link: Urls.newQuestion({
-          mode: "query",
-          cardType: "metric",
-          collectionId,
-        }),
-        onClose: onCloseNavbar,
-      });
-    }
+    items.push({
+      title: t`Dashboard`,
+      icon: "dashboard",
+      action: () => dispatch(setOpenModal("dashboard")),
+    });
 
     return items;
   }, [
     hasDataAccess,
     hasNativeWrite,
-    isEmbeddingIframe,
-    entityTypes,
-    hasModels,
-    hasDatabaseWithActionsEnabled,
     collectionId,
     onCloseNavbar,
     hasDatabaseWithJsonEngine,

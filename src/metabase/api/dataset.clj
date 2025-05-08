@@ -8,7 +8,7 @@
    [metabase.api.query-metadata :as api.query-metadata]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]

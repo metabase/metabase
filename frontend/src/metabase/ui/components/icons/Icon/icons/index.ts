@@ -9,6 +9,8 @@ import add_column_component from "./add_column.svg?component";
 import add_column_source from "./add_column.svg?source";
 import add_data_component from "./add_data.svg?component";
 import add_data_source from "./add_data.svg?source";
+import add_folder_component from "./add_folder.svg?component";
+import add_folder_source from "./add_folder.svg?source";
 import add_row_component from "./add_row.svg?component";
 import add_row_source from "./add_row.svg?source";
 import add_to_dash_component from "./add_to_dash.svg?component";
@@ -439,6 +441,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     add_data: {
       component: add_data_component,
       source: add_data_source,
+    },
+    add_folder: {
+      component: add_folder_component,
+      source: add_folder_source,
     },
     add_row: {
       component: add_row_component,
@@ -1304,6 +1310,7 @@ export type IconName =
   | "add"
   | "add_column"
   | "add_data"
+  | "add_folder"
   | "add_row"
   | "add_to_dash"
   | "ai"
