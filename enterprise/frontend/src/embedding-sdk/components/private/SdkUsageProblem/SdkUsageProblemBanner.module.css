@@ -35,4 +35,5 @@
 
 .DocsButton:not([data-css-specificity-hack="🤣"]) {
   color: #509ee3;
+  border: 1px solid #509ee3;
 }
