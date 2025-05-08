@@ -191,15 +191,14 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
       H.assertDataSourceColumnSelected(PAYMENT_DONE_PAGE_VIEWS.name, "views");
 
       H.verticalWell().within(() => {
-        cy.findByText("METRIC").should("exist");
-        cy.findAllByTestId("well-item").should("have.length", 1);
+        cy.findByText("METRIC").should("not.exist");
       });
       H.horizontalWell().within(() => {
-        cy.findByText("DIMENSION").should("exist");
+        cy.findByText("DIMENSION").should("not.exist");
         cy.findByText(LANDING_PAGE_VIEWS.name).should("exist");
         cy.findByText(CHECKOUT_PAGE_VIEWS.name).should("exist");
         cy.findByText(PAYMENT_DONE_PAGE_VIEWS.name).should("exist");
-        cy.findAllByTestId("well-item").should("have.length", 4);
+        cy.findAllByTestId("well-item").should("have.length", 3);
       });
 
       // Remove a column from the data manager
@@ -210,43 +209,27 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
         false,
       );
       H.verticalWell().within(() => {
-        cy.findByText("METRIC").should("exist");
-        cy.findAllByTestId("well-item").should("have.length", 1);
+        cy.findByText("METRIC").should("not.exist");
       });
       H.horizontalWell().within(() => {
-        cy.findByText("DIMENSION").should("exist");
-        cy.findAllByTestId("well-item").should("have.length", 3);
+        cy.findByText("DIMENSION").should("not.exist");
+        cy.findAllByTestId("well-item").should("have.length", 2);
       });
 
       // Add a column back
       H.selectColumnFromColumnsList(CHECKOUT_PAGE_VIEWS.name, "views");
       H.assertDataSourceColumnSelected(CHECKOUT_PAGE_VIEWS.name, "views");
       H.verticalWell().within(() => {
-        cy.findByText("METRIC").should("exist");
-        cy.findAllByTestId("well-item").should("have.length", 1);
+        cy.findByText("METRIC").should("not.exist");
       });
       H.horizontalWell().within(() => {
-        cy.findByText("DIMENSION").should("exist");
-        cy.findAllByTestId("well-item").should("have.length", 4);
+        cy.findByText("DIMENSION").should("not.exist");
+        cy.findAllByTestId("well-item").should("have.length", 3);
       });
 
-      // Remove the metric column from the well
-      H.verticalWell()
-        .findByTestId("well-item")
-        .findByLabelText("Remove")
-        .click();
-
-      H.assertDataSourceColumnSelected(LANDING_PAGE_VIEWS.name, "views", false);
-      H.assertDataSourceColumnSelected(
-        CHECKOUT_PAGE_VIEWS.name,
-        "views",
-        false,
-      );
-      H.assertDataSourceColumnSelected(
-        PAYMENT_DONE_PAGE_VIEWS.name,
-        "views",
-        false,
-      );
+      H.deselectColumnFromColumnsList(LANDING_PAGE_VIEWS.name, "views");
+      H.deselectColumnFromColumnsList(CHECKOUT_PAGE_VIEWS.name, "views");
+      H.deselectColumnFromColumnsList(PAYMENT_DONE_PAGE_VIEWS.name, "views");
 
       H.verticalWell().findAllByTestId("well-item").should("have.length", 0);
       H.horizontalWell().findAllByTestId("well-item").should("have.length", 0);
@@ -261,35 +244,12 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
       H.assertDataSourceColumnSelected(PAYMENT_DONE_PAGE_VIEWS.name, "views");
 
       H.verticalWell().within(() => {
-        cy.findByText("METRIC").should("exist");
-        cy.findAllByTestId("well-item").should("have.length", 1);
+        cy.findByText("METRIC").should("not.exist");
       });
       H.horizontalWell().within(() => {
-        cy.findByText("DIMENSION").should("exist");
-        cy.findAllByTestId("well-item").should("have.length", 4);
+        cy.findByText("DIMENSION").should("not.exist");
+        cy.findAllByTestId("well-item").should("have.length", 3);
       });
-
-      // Remove the dimension column from the well
-      H.horizontalWell()
-        .findAllByTestId("well-item")
-        .first()
-        .findByLabelText("Remove")
-        .click();
-
-      H.assertDataSourceColumnSelected(LANDING_PAGE_VIEWS.name, "views", false);
-      H.assertDataSourceColumnSelected(
-        CHECKOUT_PAGE_VIEWS.name,
-        "views",
-        false,
-      );
-      H.assertDataSourceColumnSelected(
-        PAYMENT_DONE_PAGE_VIEWS.name,
-        "views",
-        false,
-      );
-
-      H.verticalWell().findAllByTestId("well-item").should("have.length", 0);
-      H.horizontalWell().findAllByTestId("well-item").should("have.length", 0);
     });
   });
 
@@ -313,15 +273,14 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
       H.addDataset(PAYMENT_DONE_PAGE_VIEWS.name);
 
       H.verticalWell().within(() => {
-        cy.findByText("METRIC").should("exist");
-        cy.findAllByTestId("well-item").should("have.length", 1);
+        cy.findByText("METRIC").should("not.exist");
       });
       H.horizontalWell().within(() => {
-        cy.findByText("DIMENSION").should("exist");
+        cy.findByText("DIMENSION").should("not.exist");
         cy.findByText(LANDING_PAGE_VIEWS.name).should("exist");
         cy.findByText(CHECKOUT_PAGE_VIEWS.name).should("exist");
         cy.findByText(PAYMENT_DONE_PAGE_VIEWS.name).should("exist");
-        cy.findAllByTestId("well-item").should("have.length", 4);
+        cy.findAllByTestId("well-item").should("have.length", 3);
       });
     });
   });

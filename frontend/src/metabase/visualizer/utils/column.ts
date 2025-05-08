@@ -101,3 +101,7 @@ export function extractReferencedColumns(
       typeof valueSource !== "string",
   );
 }
+
+export function isArtificialColumn(column: DatasetColumn) {
+  return column.source === "artificial";
+}
