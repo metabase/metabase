@@ -28,14 +28,14 @@ import type {
 import { type ReduxProps, connector } from "./context.redux";
 
 export type DashboardContextErrorState = {
-  error: FailedFetchDashboardResult | null;
+  error: Error | null;
 };
 
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
   parameterQueryParams?: Query;
   onLoad?: (dashboard: Dashboard) => void;
-  onError?: (error: FailedFetchDashboardResult) => void;
+  onError?: (error: Error) => void;
   onLoadWithoutCards?: (dashboard: Dashboard) => void;
   navigateToNewCardFromDashboard:
     | ((opts: NavigateToNewCardFromDashboardOpts) => void)
@@ -121,7 +121,7 @@ const DashboardContextProviderInner = ({
   navigateToNewCardFromDashboard,
   ...reduxProps
 }: PropsWithChildren<ContextProps>) => {
-  const [error, setError] = useState<FailedFetchDashboardResult | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const previousIsLoading = usePrevious(isLoading);
   const previousIsLoadingWithoutCards = usePrevious(isLoadingWithoutCards);
 
@@ -156,8 +156,7 @@ const DashboardContextProviderInner = ({
   );
 
   const handleError = useCallback(
-    (err: FailedFetchDashboardResult | Error) => {
-      const error = err instanceof Error ? { error: err, payload: err } : err;
+    (error: Error) => {
       onError?.(error);
       setError(error);
     },
@@ -171,7 +170,7 @@ const DashboardContextProviderInner = ({
       handleLoadDashboard(dashboardId)
         .then((result) => {
           if (isFailedFetchDashboardResult(result)) {
-            handleError(result);
+            handleError(result.error as Error);
           }
         })
         .catch((err) => {

@@ -131,7 +131,7 @@ export const EditableDashboard = ({
     onEditQuestion,
     onNavigateToNewCardFromDashboard,
   } = useCommonDashboardParams({
-    dashboardId: initialDashboardId,
+    dashboardId,
   });
 
   if (isLoading) {
