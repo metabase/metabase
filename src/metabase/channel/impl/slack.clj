@@ -80,7 +80,7 @@
         (conj [{:type "section"
                 :text {:type     "mrkdwn"
                        :text     (or card-url-text (mkdwn-link-text title-link title))
-                       :verbatim true}}]
+                       #_:verbatim #_true}}]
               (if (:render/text rendered-info)
                 {:type "section"
                  :text {:type "plain_text"
@@ -115,7 +115,9 @@
 (mu/defmethod channel/render-notification [:channel/slack :notification/card] :- [:sequential SlackMessage]
   [_channel-type _payload-type {:keys [payload] :as notification-payload} template recipients]
   (let [card-url-text (when template
-                        (channel.template/render-template template notification-payload))
+                        (markdown/process-markdown
+                         (channel.template/render-template template notification-payload)
+                         :slack))
         blocks        (concat [{:type "header"
                                 :text {:type "plain_text"
                                        :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)

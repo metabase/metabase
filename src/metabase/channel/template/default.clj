@@ -50,7 +50,7 @@
                                                                                               "{{/each}}\n")}}
                    [:notification/card nil] {:channel_type :channel/slack
                                              :details      {:type :slack/handlebars-text
-                                                            :body "<{{card-url payload.card.id}}|{{payload.card.name}}>"}}}
+                                                            :body "[{{payload.card.name}}]({{card-url payload.card.id}})"}}}
    :channel/http {[:notification/system-event :event/row.created] default-http-template
                   [:notification/system-event :event/row.updated] default-http-template
                   [:notification/system-event :event/row.deleted] default-http-template}})
