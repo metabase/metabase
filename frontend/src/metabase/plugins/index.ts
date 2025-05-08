@@ -1,24 +1,11 @@
 import React, {
   type ComponentType,
-  type HTMLAttributes,
-  type ReactNode,
-  type SetStateAction,
-  useMemo,
-import type React from "react";
-import type {
-  ComponentType,
-  Dispatch,
-  HTMLAttributes,
-  ReactNode,
-  SetStateAction,
-import type React from "react";
-import {
-  type ComponentType,
   type Dispatch,
   type HTMLAttributes,
   type ReactNode,
   type SetStateAction,
   useCallback,
+  useMemo,
 } from "react";
 import { t } from "ttag";
 import type { AnySchema } from "yup";
@@ -95,7 +82,7 @@ import type {
   TimelineEvent,
   User,
 } from "metabase-types/api";
-import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
+import type { AdminPathKey, State } from "metabase-types/store";
 
 import type {
   GetAuthProviders,
