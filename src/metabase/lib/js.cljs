@@ -909,6 +909,18 @@
   [agg-operators agg-clause]
   (to-array (lib.core/selected-aggregation-operators (seq agg-operators) agg-clause)))
 
+(defn ^:export filter-pivot-aggregation-operators
+  "Given a list of `agg-operators` from [[available-aggregation-operators]],
+  goes through the operators filters any that are not supported for ad-hoc
+  pivot tables built from viz settings.
+
+  Specifically, this removes the cumulative sum/count operators which cause
+  confusing results for pivot table totals & subtotals.
+
+  > **Code health:** Healthy"
+  [agg-operators]
+  (to-array (lib.core/filter-pivot-aggregation-operators (seq agg-operators))))
+
 ;; # Filtering
 ;; Filters work in a similar way to aggregations and order-by, but are more complex since they can have several
 ;; parameters, which can be columns, several types of literal value, etc.
