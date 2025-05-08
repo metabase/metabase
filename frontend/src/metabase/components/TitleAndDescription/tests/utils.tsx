@@ -22,6 +22,7 @@ import { createMockState } from "metabase-types/store/mocks";
 import TitleAndDescription from "../TitleAndDescription";
 
 import { sampleDictionary } from "./constants";
+import { assertNeverPasses } from "__support__/utils";
 
 export interface SetupOpts {
   localeCode: string;
@@ -73,13 +74,6 @@ export const assertStringsArePresent = async (
       name: sampleDictionary[1][stringType],
     }),
   ).toBeInTheDocument();
-};
-
-const assertNeverPasses = async (
-  fn: () => void | Promise<void>,
-  options?: waitForOptions,
-) => {
-  await expect(waitFor(fn, options)).rejects.toThrow();
 };
 
 export const assertStringsDoNotBecomePresent = async (
