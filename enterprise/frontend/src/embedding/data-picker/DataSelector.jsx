@@ -379,17 +379,6 @@ export class UnconnectedDataSelector extends Component {
     return this.props.loading;
   };
 
-  getCardType() {
-    const { selectedDataBucketId, savedEntityType } = this.state;
-    switch (true) {
-      case selectedDataBucketId === DATA_BUCKET.MODELS ||
-        savedEntityType === "model":
-        return "model";
-      default:
-        return "question";
-    }
-  }
-
   hasModels = () => {
     const { availableModels, canSelectModel, loaded } = this.props;
     return loaded && canSelectModel && availableModels.includes("dataset");
@@ -871,7 +860,6 @@ export class UnconnectedDataSelector extends Component {
         return (
           <SavedEntityPicker
             collectionId={selectedCollectionId}
-            type={this.getCardType()}
             tableId={selectedTable?.id}
             databaseId={currentDatabaseId}
             onSelect={this.handleSavedEntitySelect}
