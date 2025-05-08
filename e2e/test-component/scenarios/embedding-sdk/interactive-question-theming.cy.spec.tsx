@@ -154,6 +154,40 @@ describe(
         );
       });
     });
+
+    it("overrides the question toolbar's default background color", () => {
+      const theme: MetabaseTheme = {
+        colors: {
+          background: "rgb(255, 255, 255)",
+          "text-primary": "rgb(51, 51, 51)",
+          brand: "rgb(253, 121, 168)",
+        },
+        components: {
+          question: {
+            toolbar: { backgroundColor: "rgb(100, 150, 200)" },
+          },
+        },
+      };
+
+      cy.get<number>("@questionId").then((questionId) => {
+        mountSdkContent(
+          <Box bg={theme.colors?.background} h="100vh">
+            <InteractiveQuestion questionId={questionId} />
+          </Box>,
+          { sdkProviderProps: { theme } },
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Product ID").should("be.visible");
+        // Should use the toolbar backgroundColor override, not the default background
+        cy.findByTestId("interactive-question-result-toolbar").should(
+          "have.css",
+          "background-color",
+          "rgb(100, 150, 200)",
+        );
+      });
+    });
   },
 );
 
