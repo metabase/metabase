@@ -94,7 +94,7 @@
                                                       :notification_ids (map :id notifications)}}
         (log/debugf "Found %d notifications for event: %s" (count notifications) topic)
         (doseq [notification notifications]
-          (notification/send-notification! (assoc notification :event_info (maybe-hydrate-event-info topic event-info))))))))
+          (notification.send/send-notification! (assoc notification :event_info (maybe-hydrate-event-info topic event-info))))))))
 
 (methodical/defmethod events/publish-event! ::notification
   [topic event-info]

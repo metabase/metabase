@@ -1,6 +1,6 @@
 (ns metabase.actions.events
   (:require
-   [metabase.events :as events]))
+   [metabase.events.core :as events]))
 
 (derive ::event :metabase/event)
 
