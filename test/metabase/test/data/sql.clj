@@ -357,7 +357,7 @@
 
 (defmethod tx/field-reference :sparksql
   ([driver field-id]
-   (let [parent-method (get-method tx/field-reference :sql)
+   (let [parent-method (get-method tx/field-reference :sql/test-extensions)
          full-reference (parent-method driver field-id)
          [_ _ field-name] (str/split full-reference #"\.")]
      (format "`t1`.%s" field-name))))
