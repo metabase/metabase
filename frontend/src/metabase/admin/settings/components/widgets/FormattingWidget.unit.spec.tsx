@@ -19,19 +19,7 @@ import { createMockSettingsState } from "metabase-types/store/mocks";
 import { FormattingWidget } from "./FormattingWidget";
 
 const setup = async () => {
-  const localizationSettings = {
-    "site-locale": "En",
-    "report-timezone": "",
-    "start-of-week": "monday",
-    "available-timezones": [
-      "Europe/Paris",
-      "Pacific/Auckland",
-      "US/Mountain",
-      "UTC",
-    ] as string[],
-  } as const;
-
-  const settings = createMockSettings(localizationSettings);
+  const settings = createMockSettings();
   setupPropertiesEndpoints(settings);
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints(
