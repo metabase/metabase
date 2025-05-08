@@ -109,7 +109,7 @@ export type NewButtonClickedEvent = ValidateEvent<{
 
 export type NewButtonItemClickedEvent = ValidateEvent<{
   event: "new_button_item_clicked";
-  triggered_from: "question" | "native-query" | "dashboard" | "metabot";
+  triggered_from: "question" | "native-query" | "dashboard";
   event_detail: "app-bar" | "empty-collection";
 }>;
 
