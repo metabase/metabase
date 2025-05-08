@@ -49,7 +49,9 @@ import {
   TOGGLE_DATA_REFERENCE,
   TOGGLE_SNIPPET_SIDEBAR,
   TOGGLE_TEMPLATE_TAGS_EDITOR,
+  UPDATE_QUESTION,
   ZOOM_IN_ROW,
+  onCloseAIQuestionAnalysisSidebar,
   onCloseChartSettings,
   onCloseChartType,
   onCloseQuestionInfo,
@@ -58,6 +60,7 @@ import {
   onCloseSummary,
   onCloseTimelines,
   onEditSummary,
+  onOpenAIQuestionAnalysisSidebar,
   onOpenChartSettings,
   onOpenChartType,
   onOpenQuestionInfo,
@@ -117,6 +120,14 @@ export const uiControls = handleActions(
       },
     },
 
+    [UPDATE_QUESTION]: {
+      next: (state, { payload }) => ({
+        ...state,
+        highlightedNativeQueryLineNumbers: state.isNativeQueryFixApplied
+          ? DEFAULT_UI_CONTROLS.highlightedNativeQueryLineNumbers
+          : state.highlightedNativeQueryLineNumbers,
+      }),
+    },
     [TOGGLE_DATA_REFERENCE]: {
       next: (state, { payload }) => ({
         ...state,
@@ -182,6 +193,9 @@ export const uiControls = handleActions(
     [RUN_QUERY]: (state) => ({
       ...state,
       isRunning: true,
+      isNativeQueryFixApplied: false,
+      highlightedNativeQueryLineNumbers:
+        DEFAULT_UI_CONTROLS.highlightedNativeQueryLineNumbers,
     }),
     [CANCEL_QUERY]: {
       next: (state, { payload }) => ({ ...state, isRunning: false }),
@@ -217,6 +231,15 @@ export const uiControls = handleActions(
       isShowingSummarySidebar: true,
     }),
     [onCloseSummary]: (state) => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
+    [onOpenAIQuestionAnalysisSidebar]: (state) => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingAIQuestionAnalysisSidebar: true,
+    }),
+    [onCloseAIQuestionAnalysisSidebar]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),

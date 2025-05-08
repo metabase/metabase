@@ -146,6 +146,7 @@ export const DashCardMenu = ({
 
     return (
       <DashCardMenuItems
+        dashcardId={dashcardId}
         question={question}
         result={result}
         isDownloadingData={isDownloadingData}
