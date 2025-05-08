@@ -553,18 +553,18 @@
   of that field for the entry where `pk-field` has the value `value`."
   [pk-field value]
   (let [pk-field-id (:id pk-field)]
-   (when-let [name-field-id (:id (t2/query-one (implicit-pk->name-mapping-query pk-field-id)))]
-     (let [mbql-query (remapped-name-mbql-query pk-field-id name-field-id value)]
-       (log/debugf "Remapped name MBQL query:\n%s" (u/pprint-to-str 'magenta mbql-query))
-       (try
-         (-> (qp/process-query mbql-query (constantly conj))
-             ffirst)
-         (catch Throwable e
-           (throw (ex-info "Error remapped name query"
-                           {:pk-field-id   pk-field-id
-                            :name-field-id name-field-id
-                            :mbql-query    mbql-query}
-                           e))))))))
+    (when-let [name-field-id (:id (t2/query-one (implicit-pk->name-mapping-query pk-field-id)))]
+      (let [mbql-query (remapped-name-mbql-query pk-field-id name-field-id value)]
+        (log/debugf "Remapped name MBQL query:\n%s" (u/pprint-to-str 'magenta mbql-query))
+        (try
+          (-> (qp/process-query mbql-query (constantly conj))
+              ffirst)
+          (catch Throwable e
+            (throw (ex-info "Error remapped name query"
+                            {:pk-field-id   pk-field-id
+                             :name-field-id name-field-id
+                             :mbql-query    mbql-query}
+                            e))))))))
 
 ;; TODO -- add some caching here?
 (mu/defn remapped-field-id :- [:maybe ms/PositiveInt]
