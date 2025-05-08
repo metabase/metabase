@@ -11,19 +11,19 @@
 (def ^:private template-lookup
   {:channel/email {[:notification/system-event :event/row.created] {:channel_type :channel/email
                                                                     :details      {:type    :email/handlebars-resource
-                                                                                   :subject "Table {{table.name}} has a new row"
+                                                                                   :subject "A new record was added to \"{{table.name}}\" by {{editor.common_name}}"
                                                                                    :path    "metabase/channel/email/data_editing_row_create.hbs"}}
                    [:notification/system-event :event/row.updated] {:channel_type :channel/email
                                                                     :details      {:type    :email/handlebars-resource
-                                                                                   :subject "Table {{table.name}} has been updated"
+                                                                                   :subject "A record was updated in \"{{table.name}}\" by {{editor.common_name}}"
                                                                                    :path    "metabase/channel/email/data_editing_row_update.hbs"}}
                    [:notification/system-event :event/row.deleted] {:channel_type :channel/email
                                                                     :details      {:type    :email/handlebars-resource
-                                                                                   :subject "Table {{table.name}} has a row deleted"
+                                                                                   :subject "A new record was deleted from \"{{table.name}}\" by {{editor.common_name}}"
                                                                                    :path    "metabase/channel/email/data_editing_row_delete.hbs"}}}
    :channel/slack {[:notification/system-event :event/row.created] {:channel_type :channel/slack
                                                                     :details      {:type :slack/handlebars-text
-                                                                                   :body (str "# {{editor.first_name}} {{editor.last_name}} has created a row for {{table.name}}"
+                                                                                   :body (str "# A new record was added to \"{{table.name}}\" by {{editor.common_name}}\n\n"
                                                                                               "\n\n"
                                                                                               "## Created row:"
                                                                                               "\n\n"
@@ -32,7 +32,7 @@
                                                                                               "{{/each}}\n")}}
                    [:notification/system-event :event/row.updated] {:channel_type :channel/slack
                                                                     :details      {:type :slack/handlebars-text
-                                                                                   :body (str "# {{editor.first_name}} {{editor.last_name}} has updated a row from {{table.name}}\n\n"
+                                                                                   :body (str "# A record was updated in \"{{table.name}}\" by {{editor.common_name}}\n\n"
                                                                                               "\n\n"
                                                                                               "## Update:"
                                                                                               "\n\n"
@@ -41,7 +41,7 @@
                                                                                               "{{/each}}\n")}}
                    [:notification/system-event :event/row.deleted] {:channel_type :channel/slack
                                                                     :details      {:type :slack/handlebars-text
-                                                                                   :body (str "# {{editor.first_name}} {{editor.last_name}} has deleted a row from {{table.name}}"
+                                                                                   :body (str "# A new record was deleted from \"{{table.name}}\" by {{editor.common_name}}\n\n"
                                                                                               "\n\n"
                                                                                               "## Deleted row:"
                                                                                               "\n\n"
