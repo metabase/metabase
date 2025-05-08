@@ -523,6 +523,14 @@
              (-> (mt/client :get 200 "session/properties" (mt/user->credentials :rasta))
                  keys #{:premium-embedding-token}))))))
 
+(deftest properties-skip-include-in-list?=false
+  (reset-throttlers!)
+  (testing "GET /session/properties"
+    (testing "don't return the version-info property"
+      (is (= nil
+             (-> (mt/client :get 200 "session/properties" (mt/user->credentials :crowberto))
+                 keys #{:version-info}))))))
+
 ;;; ------------------------------------------- TESTS FOR GOOGLE SIGN-IN ---------------------------------------------
 
 (deftest google-auth-test

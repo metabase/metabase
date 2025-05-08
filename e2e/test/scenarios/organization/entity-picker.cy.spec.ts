@@ -10,12 +10,16 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type {
+  DashboardDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
 import type { DashboardCard } from "metabase-types/api";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
-const cardDetails: H.StructuredQuestionDetails = {
+const cardDetails: StructuredQuestionDetails = {
   name: "Question",
   type: "question",
   query: {
@@ -1032,8 +1036,8 @@ describe("scenarios > organization > entity picker", () => {
       cy.visit("/");
 
       // New Collection Flow
-      H.newButton("Collection").click();
-      H.modal()
+      H.startNewCollectionFromSidebar();
+      cy.findByTestId("new-collection-modal")
         .findByLabelText(/Collection it's saved in/)
         .click();
 
@@ -1123,8 +1127,8 @@ describe("scenarios > organization > entity picker", () => {
       cy.visit("/");
 
       // New Collection Flow
-      H.newButton("Collection").click();
-      H.modal()
+      H.startNewCollectionFromSidebar();
+      cy.findByTestId("new-collection-modal")
         .findByLabelText(/Collection it's saved in/)
         .click();
       H.entityPickerModalTab("Collections").click();
@@ -1253,7 +1257,7 @@ function createTestDashboards() {
 }
 
 function createTestDashboardWithEmptyCard(
-  dashboardDetails: H.DashboardDetails = {},
+  dashboardDetails: DashboardDetails = {},
 ) {
   const dashcardDetails: Partial<DashboardCard>[] = [
     {
@@ -1285,7 +1289,7 @@ function createTestDashboardWithEmptyCard(
   });
 }
 
-function selectQuestionFromDashboard(dashboardDetails?: H.DashboardDetails) {
+function selectQuestionFromDashboard(dashboardDetails?: DashboardDetails) {
   createTestDashboardWithEmptyCard(dashboardDetails).then((dashboard) => {
     H.visitDashboard(dashboard.id);
     H.editDashboard();
