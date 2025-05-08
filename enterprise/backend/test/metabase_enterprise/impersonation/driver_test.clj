@@ -228,6 +228,7 @@
                                      (tx/db-test-env-var :sqlserver :password))
                              "drop user if exists [user_b];"
                              "create user user_b for login user_b;"
+                             "drop role if exists [role_b];"
                              "create role role_b;"
                              "grant select on table_b to role_b;"
                              "exec sp_addrolemember 'role_b', 'user_b';"
