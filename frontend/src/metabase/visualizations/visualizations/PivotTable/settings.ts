@@ -29,7 +29,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { partitions } from "./partitions";
+import { partitions, preAggPartitions } from "./partitions";
 import {
   addMissingCardBreakouts,
   isFormattablePivotColumn,
@@ -44,6 +44,10 @@ export const getTitleForColumn = (
   const { column: _column, column_title: columnTitle } =
     settings.column(column);
   return columnTitle || displayNameForColumn(_column);
+};
+
+const isPreaggregatedPivot = (cols: DatasetColumn[]) => {
+  return cols.some((col) => isPreaggregatedPivotColumn(col));
 };
 
 export const settings = {
@@ -87,7 +91,9 @@ export const settings = {
         settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
         data?.cols ?? [],
       ),
-      partitions,
+      partitions: isPreaggregatedPivot(data.cols)
+        ? preAggPartitions
+        : partitions,
       columns: data == null ? [] : data.cols,
       settings,
       getColumnTitle: (column: DatasetColumn) => {
@@ -95,7 +101,7 @@ export const settings = {
       },
       // If there are any columns that might be part of a pre-aggregated pivot table,
       // disable adding/removing columns.
-      canEditColumns: !data.cols.some((col) => isPreaggregatedPivotColumn(col)),
+      canEditColumns: !isPreaggregatedPivot(data.cols),
     }),
     getValue: (
       [{ data }]: [{ data: DatasetData; card: Card }],
@@ -105,6 +111,12 @@ export const settings = {
       if (data == null) {
         return undefined;
       }
+
+      // TODO -- implement the right logic here
+      if (!isPreaggregatedPivot(data.cols)) {
+        return undefined;
+      }
+
       const columnsToPartition = data.cols.filter(
         (col) => !isPivotGroupColumn(col),
       );
@@ -254,8 +266,9 @@ export const settings = {
         cols: cols.filter(isFormattablePivotColumn),
       };
     },
-    getHidden: ([{ data }]: [{ data: DatasetData }]) =>
-      !data?.cols.some((col) => isFormattablePivotColumn(col)),
+    // TODO: should this still be hidden in some cases?
+    //getHidden: ([{ data }]: [{ data: DatasetData }]) =>
+    //  !data?.cols.some((col) => isFormattablePivotColumn(col)),
   },
 };
 
