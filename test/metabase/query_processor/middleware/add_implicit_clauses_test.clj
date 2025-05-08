@@ -2,12 +2,15 @@
   (:require
    [clojure.test :refer :all]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -214,7 +217,8 @@
           (is (=? (lib.tu.macros/$ids [$venues.id
                                        (mbql.u/update-field-options field-ref dissoc :temporal-unit)
                                        $venues.category-id->categories.name])
-                  (get-in (qp.add-implicit-clauses/add-implicit-clauses query)
+                  (get-in (qp.store/with-metadata-provider meta/metadata-provider
+                            (qp.add-implicit-clauses/add-implicit-clauses query))
                           [:query :fields]))))))))
 
 (deftest ^:parallel add-correct-implicit-fields-for-deeply-nested-source-queries-test
@@ -319,3 +323,22 @@
                          :limit        5})
                       mt/rows
                       (mapv (comp int second))))))))))
+
+(deftest changed-coercion-of-models-unerlying-data-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+    (mt/with-temp
+      [:model/Card
+       card
+       {:type :model
+        :dataset_query (lib.convert/->legacy-MBQL query)}]
+      (qp.store/with-metadata-provider
+        (lib.tu/merged-mock-metadata-provider
+         mp
+         {:fields [{:id (mt/id :venues :price)
+                    :coercion-strategy :Coercion/UNIXSeconds->DateTime
+                    :effective-type :type/Instant}]})
+        ;; It is irrelevant which provider is used to get card and create query. Important is that one used in qp,
+        ;; by means of `with-metdata-provider`, contains the coercion.
+        (is (=? {:status :completed}
+                (qp/process-query (lib/query mp (lib.metadata/card mp (:id card))))))))))

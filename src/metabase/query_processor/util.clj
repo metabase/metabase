@@ -99,7 +99,13 @@
   (This is done so irrelevant info or options that don't affect query results doesn't result in the same query
   producing different hashes.)"
   [query :- [:maybe :map]]
-  (let [{:keys [constraints parameters], :as query} (select-keys query [:database :lib/type :stages :parameters :constraints :impersonation/role])]
+  (let [{:keys [constraints parameters], :as query} (select-keys query [:database
+                                                                        :lib/type
+                                                                        :stages
+                                                                        :parameters
+                                                                        :constraints
+                                                                        :mirror-database/id
+                                                                        :impersonation/role])]
     (cond-> query
       (empty? constraints) (dissoc :constraints)
       true                 (update :parameters sort-parameter-values)
@@ -218,7 +224,7 @@
 (defmacro with-execute-async
   "Execute body asynchronously in a pooled executor.
 
-  Used for side effects during query execution like saving query execution info or capturing FieldUsages."
+  Used for side effects during query execution like saving query execution info."
   [thunk]
   `(do-with-execute-async ~thunk))
 

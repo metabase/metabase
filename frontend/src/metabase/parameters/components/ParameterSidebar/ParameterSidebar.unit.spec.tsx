@@ -57,7 +57,6 @@ const setup = ({
           onChangeFilteringParameters={jest.fn()}
           onRemoveParameter={jest.fn()}
           onChangeTemporalUnits={jest.fn()}
-          onShowAddParameterPopover={jest.fn()}
           onClose={jest.fn()}
           onChangeRequired={jest.fn()}
           hasMapping={hasMapping}

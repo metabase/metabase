@@ -1,126 +1,110 @@
 import userEvent from "@testing-library/user-event";
 
 import {
-  mockScrollIntoView,
-  renderWithProviders,
-  screen,
-  waitFor,
-} from "__support__/ui";
-import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+  setupUpdateSettingEndpoint,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { findRequests } from "__support__/utils";
+import type {
+  EnterpriseSettingKey,
+  EnterpriseSettings,
+} from "metabase-types/api";
+import { createMockSettings } from "metabase-types/api/mocks";
 
-import type { StringSetting } from "./IllustrationWidget";
 import { IllustrationWidget } from "./IllustrationWidget";
 
+type IllustrationSetting = Extract<
+  EnterpriseSettingKey,
+  | "login-page-illustration"
+  | "landing-page-illustration"
+  | "no-data-illustration"
+  | "no-object-illustration"
+>;
+
 interface SetupOpts {
-  setting: StringSetting;
-  settingValues: Partial<
-    Pick<
-      EnterpriseSettings,
-      | "login-page-illustration-custom"
-      | "landing-page-illustration-custom"
-      | "no-data-illustration-custom"
-      | "no-object-illustration-custom"
-    >
-  >;
-  type: "background" | "icon";
-  customIllustrationSetting:
-    | "login-page-illustration-custom"
-    | "landing-page-illustration-custom"
-    | "no-data-illustration-custom"
-    | "no-object-illustration-custom";
+  name: IllustrationSetting;
+  title: string;
+  description?: React.ReactNode;
+  settings?: Partial<EnterpriseSettings>;
 }
-function setup({
-  setting,
-  settingValues,
-  type,
-  customIllustrationSetting,
+
+async function setup({
+  name,
+  title,
+  description,
+  settings: settingOverrides = {},
 }: SetupOpts) {
-  const onChange = jest.fn();
-  const onChangeSetting = jest.fn();
-  mockScrollIntoView();
+  const settings = createMockSettings({
+    "login-page-illustration": "default",
+    "login-page-illustration-custom": "",
+    "landing-page-illustration": "default",
+    "landing-page-illustration-custom": "",
+    "no-data-illustration": "default",
+    "no-data-illustration-custom": "",
+    "no-object-illustration": "default",
+    "no-object-illustration-custom": "",
+    ...settingOverrides,
+  });
+  setupPropertiesEndpoints(settings);
+  setupSettingsEndpoints([]);
+  setupUpdateSettingEndpoint();
+
   renderWithProviders(
-    <IllustrationWidget
-      setting={setting}
-      onChange={onChange}
-      onChangeSetting={onChangeSetting}
-      settingValues={settingValues}
-      customIllustrationSetting={customIllustrationSetting}
-      errorMessageContainerId="does-not-matter-in-unit-tests"
-      type={type}
-    />,
+    <IllustrationWidget name={name} title={title} description={description} />,
   );
 
-  return { onChange, onChangeSetting };
+  await screen.findByText(title);
 }
 
 describe("IllustrationWidget", () => {
-  const defaultSetting = {
-    key: "login-page-illustration",
-    value: null,
-    default: "default",
-  } as const;
-  const customIllustrationSetting = "login-page-illustration-custom";
-  const defaultSettingValues = {
-    [customIllustrationSetting]: "",
-  };
-  const defaultIllustrationLabel = "Lighthouse";
-  const defaultType = "background";
-
   describe("select options", () => {
-    it("should render default value", () => {
-      setup({
-        setting: defaultSetting,
-        settingValues: defaultSettingValues,
-        type: defaultType,
-        customIllustrationSetting,
+    it("should render default value", async () => {
+      await setup({
+        name: "login-page-illustration",
+        title: "Login page illustration",
       });
-      expect(
-        screen.getByDisplayValue(defaultIllustrationLabel),
-      ).toBeInTheDocument();
+      expect(await screen.findByDisplayValue("Lighthouse")).toBeInTheDocument();
+      expect(screen.getByText("Login page illustration")).toBeInTheDocument();
     });
 
     it("should render options", async () => {
-      setup({
-        setting: defaultSetting,
-        settingValues: defaultSettingValues,
-        type: defaultType,
-        customIllustrationSetting,
+      await setup({
+        name: "login-page-illustration",
+        title: "Login page illustration",
       });
       await userEvent.click(screen.getByRole("textbox"));
-      expect(screen.getByText(defaultIllustrationLabel)).toBeInTheDocument();
+      expect(screen.getByText("Lighthouse")).toBeInTheDocument();
       expect(screen.getByText("No illustration")).toBeInTheDocument();
       expect(screen.getByText("Custom")).toBeInTheDocument();
     });
 
     it("should allow setting 'No illustration' option", async () => {
-      const noIllustrationOption = {
-        label: "No illustration",
-        value: "none",
-      };
-
-      const { onChange } = setup({
-        setting: defaultSetting,
-        settingValues: defaultSettingValues,
-        type: defaultType,
-        customIllustrationSetting,
+      await setup({
+        name: "login-page-illustration",
+        title: "Login page illustration",
       });
       await userEvent.click(screen.getByRole("textbox"));
-      await userEvent.click(screen.getByText(noIllustrationOption.label));
-      expect(onChange).toHaveBeenCalledWith(noIllustrationOption.value);
+      await userEvent.click(screen.getByText("No illustration"));
+
+      const [put] = await findRequests("PUT");
+      expect(put.url).toMatch(/login-page-illustration/);
+      expect(put.body).toEqual({
+        value: "none",
+      });
     });
 
     it("should not set anything after selecting 'Custom' option, but not uploading any file", async () => {
-      const customOption = { label: "Custom", value: "custom" };
-
-      const { onChange } = setup({
-        setting: defaultSetting,
-        settingValues: defaultSettingValues,
-        type: defaultType,
-        customIllustrationSetting,
+      await setup({
+        name: "login-page-illustration",
+        title: "Login page illustration",
       });
       await userEvent.click(screen.getByRole("textbox"));
-      await userEvent.click(screen.getByText(customOption.label));
-      expect(onChange).not.toHaveBeenCalled();
+      await userEvent.click(screen.getByText("Custom"));
+
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(0);
     });
 
     /**
@@ -129,148 +113,106 @@ describe("IllustrationWidget", () => {
      * been covered in E2E tests.
      */
 
-    it("should not remove the custom uploaded image after changing the option to 'No illustration'", async () => {
-      const noIllustrationOption = {
-        label: "No illustration",
+    it("should not remove the custom uploaded image after changing the option away from custom", async () => {
+      const fakeImage = new Blob(["fake-image"], {
+        type: "image/png",
+      }).toString();
+
+      await setup({
+        name: "login-page-illustration",
+        title: "Login page illustration",
+        settings: {
+          "login-page-illustration": "custom",
+          "login-page-illustration-custom": fakeImage,
+        },
+      });
+      await userEvent.click(screen.getByRole("textbox"));
+      await userEvent.click(screen.getByText("No illustration"));
+
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(1);
+      const [put] = puts;
+      expect(put.url).toEqual(
+        "http://localhost/api/setting/login-page-illustration",
+      );
+      expect(put.body).toEqual({
         value: "none",
-      };
-      const setting = {
-        ...defaultSetting,
-        value: "custom",
-      } as const;
-
-      const settingValues = {
-        [customIllustrationSetting]: "some-image-url",
-      };
-
-      const { onChange, onChangeSetting } = setup({
-        setting,
-        settingValues,
-        type: defaultType,
-        customIllustrationSetting,
       });
-
-      await userEvent.click(screen.getByRole("textbox"));
-      await userEvent.click(screen.getByText(noIllustrationOption.label));
-
-      expect(onChange).toHaveBeenCalledWith(noIllustrationOption.value);
-      expect(onChangeSetting).not.toHaveBeenCalled();
-    });
-
-    it("should not remove the custom uploaded image after changing the option to the default option", async () => {
-      const defaultOption = {
-        label: "Lighthouse",
-        value: "default",
-      };
-      const setting = {
-        ...defaultSetting,
-        value: "custom",
-      } as const;
-
-      const settingValues = {
-        [customIllustrationSetting]: "some-image-url",
-      };
-
-      const { onChange, onChangeSetting } = setup({
-        setting,
-        settingValues,
-        type: defaultType,
-        customIllustrationSetting,
-      });
-
-      await userEvent.click(screen.getByRole("textbox"));
-      await userEvent.click(screen.getByText(defaultOption.label));
-
-      expect(onChange).toHaveBeenCalledWith(defaultOption.value);
-      expect(onChangeSetting).not.toHaveBeenCalled();
     });
 
     it("should remove the custom uploaded image when clicking the remove button", async () => {
-      const setting = {
-        ...defaultSetting,
-        value: "custom",
-      } as const;
+      const fakeImage = new Blob(["fake-image"], {
+        type: "image/png",
+      }).toString();
 
-      const settingValues = {
-        [customIllustrationSetting]: "some-image-url",
-      };
-
-      const { onChange, onChangeSetting } = setup({
-        setting,
-        settingValues,
-        type: defaultType,
-        customIllustrationSetting,
+      await setup({
+        name: "login-page-illustration",
+        title: "Login page illustration",
+        settings: {
+          "login-page-illustration": "custom",
+          "login-page-illustration-custom": fakeImage,
+        },
       });
 
-      await userEvent.click(screen.getByLabelText("close icon"));
+      await userEvent.click(await screen.findByLabelText("close icon"));
 
-      await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith("default");
+      await waitFor(async () => {
+        const puts = await findRequests("PUT");
+        expect(puts).toHaveLength(2);
       });
-      expect(onChangeSetting).toHaveBeenCalledWith(
-        customIllustrationSetting,
-        null,
+
+      const [put1, put2] = await findRequests("PUT");
+      expect(put1.url).toEqual(
+        "http://localhost/api/setting/login-page-illustration",
       );
+      expect(put1.body).toEqual({
+        value: "default",
+      });
+      expect(put2.url).toEqual(
+        "http://localhost/api/setting/login-page-illustration-custom",
+      );
+      expect(put2.body).toEqual({
+        value: null,
+      });
     });
   });
 
   describe("select the same option twice", () => {
-    it("should not call callbacks when selecting the default option twice", async () => {
-      const { onChange, onChangeSetting } = setup({
-        setting: defaultSetting,
-        settingValues: defaultSettingValues,
-        type: defaultType,
-        customIllustrationSetting,
+    it("should update if the setting hasn't changed", async () => {
+      await setup({
+        name: "login-page-illustration",
+        title: "Login page illustration",
       });
+      await userEvent.click(screen.getByRole("textbox"));
+      await userEvent.click(screen.getByText("Lighthouse"));
 
       await userEvent.click(screen.getByRole("textbox"));
-      await userEvent.click(screen.getByText(defaultIllustrationLabel));
-      expect(
-        screen.queryByText(defaultIllustrationLabel),
-      ).not.toBeInTheDocument();
+      await userEvent.click(screen.getByText("Lighthouse"));
 
-      expect(onChange).not.toHaveBeenCalled();
-      expect(onChangeSetting).not.toHaveBeenCalled();
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(0);
     });
 
-    it("should not call callbacks when selecting 'No illustration' option twice", async () => {
-      const setting = {
-        ...defaultSetting,
-        value: "none",
-      } as const;
-      const { onChange, onChangeSetting } = setup({
-        setting,
-        settingValues: defaultSettingValues,
-        type: defaultType,
-        customIllustrationSetting,
-      });
+    it("should not update when selecting 'Custom' option twice", async () => {
+      const fakeImage = new Blob(["fake-image"], {
+        type: "image/png",
+      }).toString();
 
-      await userEvent.click(screen.getByRole("textbox"));
-      await userEvent.click(screen.getByText("No illustration"));
-      expect(screen.queryByText("No illustration")).not.toBeInTheDocument();
-
-      expect(onChange).not.toHaveBeenCalled();
-      expect(onChangeSetting).not.toHaveBeenCalled();
-    });
-
-    it("should not call callbacks when selecting 'Custom' option twice", async () => {
-      const setting = {
-        ...defaultSetting,
-        value: "custom",
-      } as const;
-      const { onChange, onChangeSetting } = setup({
-        setting,
-        settingValues: defaultSettingValues,
-        type: defaultType,
-        customIllustrationSetting,
+      await setup({
+        name: "login-page-illustration",
+        title: "Login page illustration",
+        settings: {
+          "login-page-illustration": "custom",
+          "login-page-illustration-custom": fakeImage,
+        },
       });
 
       await userEvent.click(screen.getByRole("textbox"));
       await userEvent.click(screen.getByText("Custom"));
       expect(screen.queryByText("Custom")).not.toBeInTheDocument();
 
-      expect(onChange).not.toHaveBeenCalled();
-      expect(onChangeSetting).not.toHaveBeenCalled();
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(0);
     });
   });
 });

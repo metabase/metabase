@@ -89,10 +89,10 @@
     ;; if we're doing `SELECT *` there's no way we can deduplicate anything so we're SOL, return as-is
     select-clause
     ;; otherwise we can actually deduplicate things
-    (loop [already-seen #{}, acc [], [[col alias] & more] (select-clause-alias-everything select-clause)]
+    (loop [already-seen #{}, acc [], [[col alias :as col-alias] & more] (select-clause-alias-everything select-clause)]
       (cond
-        ;; if not more cols are left to deduplicate, we're done
-        (not col)
+        ;; if no more cols are left to deduplicate, we're done
+        (nil? col-alias)
         acc
 
         ;; otherwise if we've already used this alias, replace it with one like `identifier_2` and try agan
@@ -167,7 +167,7 @@
    :tsql        Dialect/TSql})
 
 (def ^:private ^java.util.List additional-operators
-  ["#>>" "!="])
+  ["#>>" "!=" "||"])
 
 (defn- add-operators
   ^SqlFormatter$Formatter [^SqlFormatter$Formatter formatter]

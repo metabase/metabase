@@ -4,6 +4,7 @@
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.api-test-util :as perm-test-util]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -22,12 +23,15 @@
 
 (deftest magic-groups-test
   (testing "check that we can get the magic permissions groups through the helper functions\n"
-    (doseq [[group-name group] {"All Users"      (perms-group/all-users)
-                                "Administrators" (perms-group/admin)}]
+    (doseq [[group-name group magic-group-type]
+            [["All Users"      (perms-group/all-users) perms-group/all-users-magic-group-type]
+             ["Administrators" (perms-group/admin)     perms-group/admin-magic-group-type]]]
       (testing group-name
         (is (mi/instance-of? :model/PermissionsGroup group))
         (is (= group-name
                (:name group)))
+        (is (= magic-group-type
+               (:magic_group_type group)))
         (testing "make sure we're not allowed to delete the magic groups"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
@@ -90,7 +94,7 @@
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "adding user to Admin should set is_superuser -> true"
       (mt/with-temp [:model/User {user-id :id}]
-        (t2/insert! :model/PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
+        (perms/add-user-to-group! user-id (u/the-id (perms-group/admin)))
         (is (true? (t2/select-one-fn :is_superuser :model/User, :id user-id)))))))
 
 (deftest add-remove-from-admin-group-test-2
@@ -201,3 +205,13 @@
                                  {:id user-2-g1 :is_group_manager false}}
                     group-id-2 #{{:id user-1-g2 :is_group_manager false}}}
                    (group-id->members)))))))))
+
+(deftest is-tenant-group?-works
+  (mt/with-temp [:model/PermissionsGroup {:as normal-group} {:is_tenant_group false}
+                 :model/PermissionsGroup {:as tenant-group} {:is_tenant_group true}]
+    (is (= true
+           (perms-group/is-tenant-group? tenant-group)
+           (perms-group/is-tenant-group? (u/the-id tenant-group))))
+    (is (= false
+           (perms-group/is-tenant-group? normal-group)
+           (perms-group/is-tenant-group? (u/the-id normal-group))))))

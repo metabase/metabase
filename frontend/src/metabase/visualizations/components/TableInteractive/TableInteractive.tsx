@@ -73,6 +73,7 @@ import {
 } from "./cells/HeaderCellWithColumnInfo";
 import { MiniBarCell } from "./cells/MiniBarCell";
 import { useObjectDetail } from "./hooks/use-object-detail";
+import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-columns-change";
 
 const getBodyCellVariant = (column: DatasetColumn): BodyCellVariant => {
   const isPill = isPK(column) || isFK(column);
@@ -113,11 +114,15 @@ const getColumnOrder = (cols: DatasetColumn[], hasIndexColumn: boolean) => {
 
 const getColumnSizing = (
   cols: DatasetColumn[],
-  widths: number[] = [],
+  widths?: number[],
 ): ColumnSizingState => {
+  if (!widths) {
+    return {};
+  }
+
   return cols.reduce((acc: ColumnSizingState, column, index) => {
     const width = widths[index];
-    if (width != null) {
+    if (width != null && width > 0) {
       acc[column.name] = width;
     }
     return acc;
@@ -185,10 +190,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cols, settings["table.row_index"]]);
 
+  const columnWidths = settings["table.column_widths"];
   const columnSizingMap = useMemo(() => {
-    return getColumnSizing(cols, settings["table.column_widths"]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cols, settings["table.column_widths"]]);
+    return getColumnSizing(cols, columnWidths);
+  }, [cols, columnWidths]);
 
   const onOpenObjectDetail = useObjectDetail(data);
 
@@ -325,11 +330,21 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       if (columnIndex === -1) {
         return;
       }
-      const clicked = getTableHeaderClickedObject(data, columnIndex, isPivoted);
-      onVisualizationClick({ ...clicked, element: event.currentTarget });
+      const newClicked = getTableHeaderClickedObject(
+        data,
+        columnIndex,
+        isPivoted,
+      );
+      if (clicked?.element === event.currentTarget) {
+        // Close the click actions popover after clicking on the column header the second time
+        onVisualizationClick(null);
+      } else {
+        onVisualizationClick({ ...newClicked, element: event.currentTarget });
+      }
     },
     [
       data,
+      clicked,
       isPivoted,
       onVisualizationClick,
       sorting,
@@ -421,6 +436,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         Boolean(columnSettings["text_wrapping"]);
       const isMinibar = columnSettings["show_mini_bar"];
       const cellVariant = getBodyCellVariant(col);
+      const isImage = columnSettings["view_as"] === "image";
       const headerVariant = mode != null || isDashboard ? "light" : "outline";
       const getBackgroundColor = memoize(
         (value: RowValue, rowIndex: number) =>
@@ -454,6 +470,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         getCellClassName: (value) =>
           cx("test-TableInteractive-cellWrapper", {
             [S.pivotedFirstColumn]: columnIndex === 0 && isPivoted,
+            [S.bodyCellWithImage]: isImage,
             "test-Table-ID": value != null && isID(col),
             "test-Table-FK": value != null && isFK(col),
             "test-TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
@@ -535,13 +552,22 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   ]);
 
   const handleColumnResize = useCallback(
-    (columnSizing: ColumnSizingState) => {
-      const newWidths = cols.map((col) => columnSizing[col.name] ?? 0);
+    (columnName: string, width: number) => {
+      const columnIndex = cols.findIndex((col) => col.name === columnName);
+      if (columnIndex == null) {
+        return;
+      }
+      const columnWidthsSetting = (
+        settings["table.column_widths"] ?? []
+      ).slice();
+
+      columnWidthsSetting[columnIndex] = width;
+
       onUpdateVisualizationSettings({
-        "table.column_widths": newWidths,
+        "table.column_widths": columnWidthsSetting,
       });
     },
-    [cols, onUpdateVisualizationSettings],
+    [cols, onUpdateVisualizationSettings, settings],
   );
 
   const rowId: RowIdColumnOptions | undefined = useMemo(() => {
@@ -648,13 +674,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onColumnReorder: handleColumnReordering,
     pageSize,
   });
-  const { measureColumnWidths, virtualGrid } = tableProps;
+  const { virtualGrid } = tableProps;
 
-  useEffect(() => {
-    if (Object.values(columnSizingMap).length === 0) {
-      measureColumnWidths();
-    }
-  }, [cols, measureColumnWidths, columnSizingMap]);
+  // If the data changes we reset saved column widths as it is no longer relevant
+  // except for the case where question is converted from a model to a question and back.
+  useResetWidthsOnColumnsChange(onUpdateVisualizationSettings, data, question);
 
   const scrolledColumnRef = useRef<number | null>(null);
   useEffect(() => {

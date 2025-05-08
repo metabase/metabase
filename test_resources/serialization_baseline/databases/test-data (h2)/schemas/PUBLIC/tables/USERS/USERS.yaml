@@ -1,6 +1,7 @@
 name: USERS
 display_name: Users
 description: null
+entity_id: BM7Nnb4drPYip-uXrsxXs
 created_at: '2024-08-28T14:38:42.774331Z'
 db_id: test-data (h2)
 schema: PUBLIC
@@ -21,4 +22,3 @@ serdes/meta:
 - id: USERS
   model: Table
 database_require_filter: null
-entity_id: BM7Nnb4drPYip-uXrsxXs

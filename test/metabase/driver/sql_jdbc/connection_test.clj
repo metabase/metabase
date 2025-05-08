@@ -372,7 +372,6 @@
                                      :tunnel-port ssh-test/ssh-mock-server-with-password-port
                                      :tunnel-user ssh-test/ssh-username
                                      :tunnel-pass ssh-test/ssh-password)]
-
         (is (true? (driver.u/can-connect-with-details? (tx/driver) tunnel-db-details)))
         (mt/with-temp [:model/Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
           (mt/with-db tunneled-db

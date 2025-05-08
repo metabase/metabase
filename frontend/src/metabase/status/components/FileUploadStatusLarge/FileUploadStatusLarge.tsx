@@ -109,10 +109,15 @@ const getTitle = (
 };
 
 const loadingMessages = [
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   t`Getting our ducks in a row`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   t`Still working`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   t`Arranging bits and bytes`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   t`Doing the heavy lifting`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   t`Pushing some pixels`,
 ];
 

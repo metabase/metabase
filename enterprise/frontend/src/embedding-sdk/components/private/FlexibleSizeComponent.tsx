@@ -1,16 +1,27 @@
 import type { CSSProperties, PropsWithChildren } from "react";
 
+import type { CommonStylingProps } from "embedding-sdk/types/props";
 import { Box } from "metabase/ui";
 
 export const FLEXIBLE_SIZE_DEFAULT_HEIGHT = "600px";
 export const FLEXIBLE_SIZE_DEFAULT_WIDTH = "100%";
 
-export type FlexibleSizeProps = PropsWithChildren<{
-  height?: CSSProperties["height"];
-  width?: CSSProperties["width"];
-  className?: string;
-  style?: CSSProperties;
-}>;
+/**
+ * @inline
+ */
+export type FlexibleSizeProps = PropsWithChildren<
+  CommonStylingProps & {
+    /**
+     * A number or string specifying a CSS size value that specifies the width of the component
+     */
+    width?: CSSProperties["width"];
+
+    /**
+     * A number or string specifying a CSS size value that specifies the height of the component
+     */
+    height?: CSSProperties["height"];
+  }
+>;
 
 export const FlexibleSizeComponent = ({
   height: propHeight = FLEXIBLE_SIZE_DEFAULT_HEIGHT,

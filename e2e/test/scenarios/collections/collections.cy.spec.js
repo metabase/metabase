@@ -10,6 +10,7 @@ import {
   FIRST_COLLECTION_ENTITY_ID,
   FIRST_COLLECTION_ID,
   ORDERS_QUESTION_ID,
+  READ_ONLY_PERSONAL_COLLECTION_ID,
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -29,6 +30,74 @@ describe("scenarios > collection defaults", () => {
     cy.intercept("GET", "/api/collection/*/items?**").as("getCollectionItems");
   });
 
+  describe("new collection button", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsNormalUser();
+    });
+
+    it("should show the new collection button in the root collection", () => {
+      cy.intercept("POST", "/api/collection").as("createCollection");
+
+      visitRootCollection();
+      cy.findByTestId("collection-menu")
+        .findByLabelText("Create a new collection")
+        .click();
+      cy.findByTestId("new-collection-modal").within(() => {
+        cy.findByLabelText("Name").type("MCL");
+        cy.findByTestId("collection-picker-button").should(
+          "contain",
+          "Our analytics",
+        );
+        cy.button("Create").click();
+        cy.wait("@createCollection");
+      });
+      cy.location("pathname").should("match", /^\/collection\/\d+-mcl/);
+      cy.findByTestId("collection-empty-state").should("be.visible");
+
+      cy.log(
+        "Newly created collection should also have the new collection button",
+      );
+      cy.findByTestId("collection-menu")
+        .findByLabelText("Create a new collection")
+        .should("be.visible");
+    });
+
+    it("user without curate permissions should only be allowed to create a new collection inside their personal collection scope", () => {
+      cy.intercept("POST", "/api/collection").as("createCollection");
+
+      cy.signIn("readonly");
+      visitRootCollection();
+      cy.findByTestId("collection-menu")
+        .findByLabelText("Create a new collection")
+        .should("not.exist");
+
+      H.visitCollection(READ_ONLY_PERSONAL_COLLECTION_ID);
+
+      cy.findByTestId("collection-menu")
+        .findByLabelText("Create a new collection")
+        .click();
+      cy.findByTestId("new-collection-modal").within(() => {
+        cy.findByLabelText("Name").type("sub");
+        cy.findByTestId("collection-picker-button").should(
+          "contain",
+          "Read Only Tableton's Personal Collection",
+        );
+        cy.button("Create").click();
+        cy.wait("@createCollection");
+      });
+      cy.location("pathname").should("match", /^\/collection\/\d+-sub/);
+      cy.findByTestId("collection-empty-state").should("be.visible");
+
+      cy.log(
+        "Newly created personal sub-collection should also have the new collection button",
+      );
+      cy.findByTestId("collection-menu")
+        .findByLabelText("Create a new collection")
+        .should("be.visible");
+    });
+  });
+
   describe("new collection modal", () => {
     it("should be usable on small screens", () => {
       const COLLECTIONS_COUNT = 5;
@@ -43,14 +112,11 @@ describe("scenarios > collection defaults", () => {
 
       cy.viewport(800, 500);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("New").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Collection").click();
-
+      H.startNewCollectionFromSidebar();
       cy.findByTestId("new-collection-modal").then((modal) => {
         cy.findByPlaceholderText("My new fantastic collection").type(
           "Test collection",
+          { force: true },
         );
         cy.findByLabelText("Description").type("Test collection description");
         cy.findByTestId("collection-picker-button")
@@ -853,11 +919,7 @@ describe("scenarios > collection defaults", () => {
 
     it("should create new collections within the current collection", () => {
       H.visitCollection(THIRD_COLLECTION_ID);
-      cy.findByTestId("app-bar").findByText("New").click();
-
-      H.popover().within(() => {
-        cy.findByText("Collection").click();
-      });
+      H.startNewCollectionFromSidebar();
 
       cy.findByTestId("new-collection-modal").then((modal) => {
         cy.findByText("Collection it's saved in").should("be.visible");

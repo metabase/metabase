@@ -18,11 +18,13 @@
   Find the JavaDoc for Quartz here: http://www.quartz-scheduler.org/api/2.3.0/index.html"
   (:require
    [clojure.string :as str]
+   [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [environ.core :as env]
    [metabase.db :as mdb]
    [metabase.plugins.classloader :as classloader]
    [metabase.task.bootstrap]
+   [metabase.task.prometheus :as task.prometheus]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -52,7 +54,7 @@
 
 (defmulti init!
   "Initialize (i.e., schedule) Job(s) with a given name. All implementations of this method are called once and only
-  once when the Quartz task scheduler is initialized. Task namespaces (`metabase.task.*`) should add new
+  once when the Quartz task scheduler is initialized. Task namespaces (`metabase.<module>.task.*`) should add new
   implementations of this method to schedule the jobs they define (i.e., with a call to `schedule-task!`.)
 
   The dispatch value for this function can be any unique keyword, but by convention is a namespaced keyword version of
@@ -97,6 +99,19 @@
                        (ex-message (.getCause e)))
             (qs/delete-job scheduler job-key)))))))
 
+(defn- reset-errored-triggers!
+  "Quartz does not play well with rolling updates. For example, if a new instance adds and schedules a new job, an older
+  instance may pick this up, but be unable to construct the job. It will then put the trigger into the `ERROR` state,
+  from which it will never recover.
+
+  Actually fixing this odd and undesirable behavior would be the ideal solution, but as a stopgap, let's just
+  automatically reset all `ERROR`ed triggers to `WAITING` on startup."
+  [^Scheduler scheduler]
+  (doseq [^TriggerKey tk (.getTriggerKeys scheduler nil)]
+    ;; From dox: "Only affects triggers that are in ERROR state - if identified trigger is not
+    ;; in that state then the result is a no-op."
+    (.resetTriggerFromErrorState scheduler tk)))
+
 (defn init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
   standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
@@ -108,7 +123,14 @@
       (when (compare-and-set! *quartz-scheduler* nil new-scheduler)
         (qs/standby new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
+        ;; Register Prometheus listeners
+        (let [listener-manager (.getListenerManager new-scheduler)]
+          (.addJobListener listener-manager
+                           (task.prometheus/create-job-execution-listener))
+          (.addTriggerListener listener-manager
+                               (task.prometheus/create-trigger-listener new-scheduler)))
         (delete-jobs-with-no-class!)
+        (reset-errored-triggers! new-scheduler)
         (init-tasks!)))))
 
 ;;; this is a function mostly to facilitate testing.
@@ -289,6 +311,7 @@
     (task/job-info \"metabase.task.sync-and-analyze.job\")"
   [job-key]
   (when-let [scheduler (scheduler)]
+    (qs/shutdown? scheduler)
     (let [job-key (->job-key job-key)]
       (try
         (assoc (job-detail->info (qs/get-job scheduler job-key))
@@ -328,3 +351,11 @@
        (catch Exception e#
          (log/error e# msg#)
          (throw (JobExecutionException. msg# e# true))))))
+
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defmacro defjob
+  "Like `clojurewerkz.quartzite.task/defjob` but with a log context."
+  [jtype args & body]
+  `(jobs/defjob ~jtype ~args
+     (log/with-context {:quartz-job-type (quote ~jtype)}
+       ~@body)))

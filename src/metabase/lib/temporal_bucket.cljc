@@ -8,7 +8,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.lib.temporal-bucket.util :as lib.temporal-bucket.util]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -63,6 +62,22 @@
       :last    -1
       0)))
 
+(defn- temporal-interval-tru
+  "Chooses the correct temporal interval description based on the provided amount `n`."
+  [n
+   this-interval-message
+   prev-interval-message
+   prev-interval-plural-message
+   next-interval-message
+   next-interval-plural-message]
+  (cond
+    (zero? n) this-interval-message
+    (= n -1)  prev-interval-message
+    (= n 1)   next-interval-message
+    (neg? n)  prev-interval-plural-message
+    (pos? n)  next-interval-plural-message
+    :else     (throw (ex-info (str "Invalid n: " n) {:n n}))))
+
 (mu/defn describe-temporal-interval :- ::lib.schema.common/non-blank-string
   "Get a translated description of a temporal bucketing interval. If unit is unspecified, assume `:day`."
   [n    :- TemporalIntervalAmount
@@ -70,18 +85,73 @@
   (let [n    (interval-n->int n)
         unit (or unit :day)]
     (case (keyword unit)
-      :default         (lib.temporal-bucket.util/temporal-interval-tru n "default period")
-      :millisecond     (lib.temporal-bucket.util/temporal-interval-tru n "millisecond")
-      :second          (lib.temporal-bucket.util/temporal-interval-tru n "second")
-      :minute          (lib.temporal-bucket.util/temporal-interval-tru n "minute")
-      :hour            (lib.temporal-bucket.util/temporal-interval-tru n "hour")
-      :day             (lib.temporal-bucket.util/temporal-interval-tru n "day" "Today" "Yesterday" "Tomorrow")
-      :week            (lib.temporal-bucket.util/temporal-interval-tru n "week")
-      :month           (lib.temporal-bucket.util/temporal-interval-tru n "month")
-      :quarter         (lib.temporal-bucket.util/temporal-interval-tru n "quarter")
-      :year            (lib.temporal-bucket.util/temporal-interval-tru n "year")
+      :millisecond     (temporal-interval-tru n
+                                              (i18n/tru  "This millisecond")
+                                              (i18n/tru  "Previous millisecond")
+                                              (i18n/trun "Previous {0} millisecond" "Previous {0} milliseconds" (abs n))
+                                              (i18n/tru  "Next millisecond")
+                                              (i18n/trun "Next {0} millisecond" "Next {0} milliseconds" (abs n)))
+      :second          (temporal-interval-tru n
+                                              (i18n/tru  "This second")
+                                              (i18n/tru  "Previous second")
+                                              (i18n/trun "Previous {0} second" "Previous {0} seconds" (abs n))
+                                              (i18n/tru  "Next second")
+                                              (i18n/trun "Next {0} second" "Next {0} seconds" (abs n)))
+      :minute          (temporal-interval-tru n
+                                              (i18n/tru  "This minute")
+                                              (i18n/tru  "Previous minute")
+                                              (i18n/trun "Previous {0} minute" "Previous {0} minutes" (abs n))
+                                              (i18n/tru  "Next minute")
+                                              (i18n/trun "Next {0} minute" "Next {0} minutes" (abs n)))
+      :hour            (temporal-interval-tru n
+                                              (i18n/tru  "This hour")
+                                              (i18n/tru  "Previous hour")
+                                              (i18n/trun "Previous {0} hour" "Previous {0} hours" (abs n))
+                                              (i18n/tru  "Next hour")
+                                              (i18n/trun "Next {0} hour" "Next {0} hours" (abs n)))
+      :day             (temporal-interval-tru n
+                                              (i18n/tru  "Today")
+                                              (i18n/tru  "Yesterday")
+                                              (i18n/trun "Previous {0} day" "Previous {0} days" (abs n))
+                                              (i18n/tru  "Tomorrow")
+                                              (i18n/trun "Next {0} day" "Next {0} days" (abs n)))
+      :week            (temporal-interval-tru n
+                                              (i18n/tru  "This week")
+                                              (i18n/tru  "Previous week")
+                                              (i18n/trun "Previous {0} week" "Previous {0} weeks" (abs n))
+                                              (i18n/tru  "Next week")
+                                              (i18n/trun "Next {0} week" "Next {0} weeks" (abs n)))
+      :month           (temporal-interval-tru n
+                                              (i18n/tru  "This month")
+                                              (i18n/tru  "Previous month")
+                                              (i18n/trun "Previous {0} month" "Previous {0} months" (abs n))
+                                              (i18n/tru  "Next month")
+                                              (i18n/trun "Next {0} month" "Next {0} months" (abs n)))
+      :quarter         (temporal-interval-tru n
+                                              (i18n/tru  "This quarter")
+                                              (i18n/tru  "Previous quarter")
+                                              (i18n/trun "Previous {0} quarter" "Previous {0} quarters" (abs n))
+                                              (i18n/tru  "Next quarter")
+                                              (i18n/trun "Next {0} quarter" "Next {0} quarters" (abs n)))
+      :year            (temporal-interval-tru n
+                                              (i18n/tru  "This year")
+                                              (i18n/tru  "Previous year")
+                                              (i18n/trun "Previous {0} year" "Previous {0} years" (abs n))
+                                              (i18n/tru  "Next year")
+                                              (i18n/trun "Next {0} year" "Next {0} years" (abs n)))
       ;; else
-      (lib.temporal-bucket.util/temporal-interval-tru n "unknown unit"))))
+      (i18n/tru "Unknown unit"))))
+
+(defn- relative-datetime-tru
+  "Chooses the correct relative interval description based on the provided amount `n`."
+  [n
+   prev-interval-message
+   next-interval-message]
+  (cond
+    (neg? n) prev-interval-message
+    (pos? n) next-interval-message
+    :else
+    (i18n/tru "starting now")))
 
 (mu/defn describe-relative-datetime :- ::lib.schema.common/non-blank-string
   "Get a translated description of the offset part of a relative datetime interval.
@@ -94,18 +164,46 @@
   (let [n    (interval-n->int n)
         unit (or unit :day)]
     (case (keyword unit)
-      :default     (lib.temporal-bucket.util/relative-datetime-tru n "default period")
-      :millisecond (lib.temporal-bucket.util/relative-datetime-tru n "millisecond")
-      :second      (lib.temporal-bucket.util/relative-datetime-tru n "second")
-      :minute      (lib.temporal-bucket.util/relative-datetime-tru n "minute")
-      :hour        (lib.temporal-bucket.util/relative-datetime-tru n "hour")
-      :day         (lib.temporal-bucket.util/relative-datetime-tru n "day")
-      :week        (lib.temporal-bucket.util/relative-datetime-tru n "week")
-      :month       (lib.temporal-bucket.util/relative-datetime-tru n "month")
-      :quarter     (lib.temporal-bucket.util/relative-datetime-tru n "quarter")
-      :year        (lib.temporal-bucket.util/relative-datetime-tru n "year")
+      :millisecond (relative-datetime-tru n
+                                          (i18n/trun "starting {0} millisecond ago" "starting {0} milliseconds ago" (abs n))
+                                          (i18n/trun "starting {0} millisecond from now" "starting {0} milliseconds from now" (abs n)))
+      :second      (relative-datetime-tru n
+                                          (i18n/trun "starting {0} second ago" "starting {0} seconds ago" (abs n))
+                                          (i18n/trun "starting {0} second from now" "starting {0} seconds from now" (abs n)))
+      :minute      (relative-datetime-tru n
+                                          (i18n/trun "starting {0} minute ago" "starting {0} minutes ago" (abs n))
+                                          (i18n/trun "starting {0} minute from now" "starting {0} minutes from now" (abs n)))
+      :hour        (relative-datetime-tru n
+                                          (i18n/trun "starting {0} hour ago" "starting {0} hours ago" (abs n))
+                                          (i18n/trun "starting {0} hour from now" "starting {0} hours from now" (abs n)))
+      :day         (relative-datetime-tru n
+                                          (i18n/trun "starting {0} day ago" "starting {0} days ago" (abs n))
+                                          (i18n/trun "starting {0} day from now" "starting {0} days from now" (abs n)))
+      :week        (relative-datetime-tru n
+                                          (i18n/trun "starting {0} week ago" "starting {0} weeks ago" (abs n))
+                                          (i18n/trun "starting {0} week from now" "starting {0} weeks from now" (abs n)))
+      :month       (relative-datetime-tru n
+                                          (i18n/trun "starting {0} month ago" "starting {0} months ago" (abs n))
+                                          (i18n/trun "starting {0} month from now" "starting {0} months from now" (abs n)))
+      :quarter     (relative-datetime-tru n
+                                          (i18n/trun "starting {0} quarter ago" "starting {0} quarters ago" (abs n))
+                                          (i18n/trun "starting {0} quarter from now" "starting {0} quarters from now" (abs n)))
+      :year        (relative-datetime-tru n
+                                          (i18n/trun "starting {0} year ago" "starting {0} years ago" (abs n))
+                                          (i18n/trun "starting {0} year from now" "starting {0} years from now" (abs n)))
       ;; else
-      (lib.temporal-bucket.util/relative-datetime-tru n "unknown unit"))))
+      (i18n/tru "Unknown unit"))))
+
+(mu/defn describe-temporal-interval-with-offset :- ::lib.schema.common/non-blank-string
+  "Get a translated description of a temporal bucketing interval with offset."
+  [n           :- TemporalIntervalAmount
+   unit        :- [:maybe :keyword]
+   offset      :- TemporalIntervalAmount
+   offset-unit :- [:maybe :keyword]]
+  (str
+   (describe-temporal-interval n unit)
+   ", "
+   (describe-relative-datetime offset offset-unit)))
 
 (defmulti with-temporal-bucket-method
   "Implementation for [[temporal-bucket]]. Implement this to tell [[temporal-bucket]] how to add a bucket to a

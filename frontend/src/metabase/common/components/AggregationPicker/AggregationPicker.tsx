@@ -249,7 +249,7 @@ export function AggregationPicker({
         name={displayInfo?.displayName}
         clause={clause}
         withName
-        startRule="aggregation"
+        expressionMode="aggregation"
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
         onChangeClause={handleClauseChange}
         onClose={closeExpressionEditor}

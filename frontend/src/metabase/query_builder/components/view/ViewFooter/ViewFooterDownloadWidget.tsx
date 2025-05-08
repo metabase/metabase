@@ -2,7 +2,7 @@ import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
-import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
+import QuestionDownloadPopover from "metabase/query_builder/components/QuestionDownloadPopover";
 import {
   getFirstQueryResult,
   getQuestion,
@@ -16,14 +16,15 @@ export const ViewFooterDownloadWidget = () => {
 
   return (
     question &&
-    QueryDownloadWidget.shouldRender({ result }) && (
-      <QueryDownloadWidget
+    QuestionDownloadPopover.shouldRender({ result }) && (
+      <QuestionDownloadPopover
         className={cx(CS.hide, CS.smShow)}
         question={question}
         result={result}
         visualizationSettings={visualizationSettings}
         dashcardId={question.card().dashcardId}
         dashboardId={question.card().dashboardId}
+        variant="viewFooter"
       />
     )
   );

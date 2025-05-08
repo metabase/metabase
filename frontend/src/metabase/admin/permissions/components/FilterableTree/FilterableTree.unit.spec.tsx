@@ -55,7 +55,6 @@ const setup = () => {
 
 describe("FilterableTree", () => {
   beforeAll(() => {
-    window.HTMLElement.prototype.scrollIntoView = jest.fn();
     jest.useFakeTimers();
   });
 

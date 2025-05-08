@@ -1,6 +1,7 @@
 (ns metabase.public-sharing.api
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require
+   [hiccup.core :as hiccup]
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.core :as analytics]
@@ -12,7 +13,7 @@
    [metabase.api.field :as api.field]
    [metabase.api.macros :as api.macros]
    [metabase.db.query :as mdb.query]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.util.match :as lib.util.match]
@@ -30,7 +31,6 @@
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
-   [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -89,7 +89,7 @@
                               :archived false, conditions))
         remove-card-non-public-columns
         combine-parameters-and-template-tags
-        (t2/hydrate :param_values :param_fields))))
+        (t2/hydrate :param_fields))))
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
@@ -238,7 +238,7 @@
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true
             params/*field-id-context* (atom params/empty-field-id-context)]
     (-> (api/check-404 (apply t2/select-one [:model/Dashboard :name :description :id :parameters :auto_apply_filters :width], :archived false, conditions))
-        (t2/hydrate [:dashcards :card :series :dashcard/action] :tabs :param_values :param_fields)
+        (t2/hydrate [:dashcards :card :series :dashcard/action] :tabs :param_fields)
         api.dashboard/add-query-average-durations
         (update :dashcards (fn [dashcards]
                              (for [dashcard dashcards]
@@ -388,6 +388,14 @@
             ;; Undo middleware string->keyword coercion
             (actions/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
 
+(defn- iframe
+  "Return an `<iframe>` HTML fragment to embed a public page."
+  ^String [^String url width height]
+  (hiccup/html [:iframe {:src         url
+                         :width       width
+                         :height      height
+                         :frameborder 0}]))
+
 (api.macros/defendpoint :get "/oembed"
   "oEmbed endpoint used to retrieve embed code and metadata for a (public) Metabase URL."
   [_route-params
@@ -406,7 +414,7 @@
    :type    "rich"
    :width   maxwidth
    :height  maxheight
-   :html    (embed/iframe url maxwidth maxheight)})
+   :html    (iframe url maxwidth maxheight)})
 
 ;;; ----------------------------------------------- Public Action ------------------------------------------------
 
@@ -626,7 +634,7 @@
   [{:keys [uuid param-key]} :- [:map
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
-   constraint-param-key->value]
+   constraint-param-key->value :- [:map-of string? any?]]
   (let [dashboard (dashboard-with-uuid uuid)]
     (request/as-admin
       (binding [qp.perms/*param-values-query* true]

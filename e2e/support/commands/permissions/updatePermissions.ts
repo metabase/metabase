@@ -61,8 +61,9 @@ Cypress.Commands.add(
     impersonations?: Impersonation[],
   ) => {
     cy.log("Fetch permissions graph");
-    cy.request<PermissionsGraph>("GET", "/api/permissions/graph").then(
-      ({ body: { groups, revision } }) => {
+    return cy
+      .request<PermissionsGraph>("GET", "/api/permissions/graph")
+      .then(({ body: { groups, revision } }) => {
         const UPDATED_GROUPS = Object.assign(groups, groupsPermissionsObject);
 
         const payload = {
@@ -73,8 +74,7 @@ Cypress.Commands.add(
 
         cy.log("Update/save permissions");
         cy.request("PUT", "/api/permissions/graph", payload);
-      },
-    );
+      });
   },
 );
 

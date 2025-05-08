@@ -8,8 +8,6 @@
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.field-values :as field-values]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -1240,183 +1238,14 @@
                  (.getHost (.getOptions client)))
               "BigQuery client should be configured with alternate host"))))))
 
-;; integer()
-
-(defn- check-integer-query
-  ([query db-type uncasted-field]
-   (check-integer-query query db-type uncasted-field "`subquery`.`INTCAST`"))
-  ([query db-type uncasted-field casted-field]
-   (mt/native-query {:query (str "SELECT " casted-field ", "
-                                 ;; need to do regex because some strings have 0 in front
-                                 "REGEXP_CONTAINS(" (name uncasted-field) ", CONCAT('^0*', " "CAST(" casted-field " AS " db-type "), '$'))"
-                                 ", "
-                                 (name uncasted-field) " "
-                                 "FROM ( "
-                                 (-> query qp.compile/compile :query)
-                                 " ) AS subquery "
-                                 "LIMIT 100")})))
-
-(deftest ^:parallel integer-cast-table-fields
+(deftest timestamp-precision-test
   (mt/test-driver :bigquery-cloud-sdk
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [[:people [{:field :zip :db-type "STRING"}]]]
-                {:keys [field db-type]} fields]
-          (testing (str "casting " table "." field "(" db-type ") to integer")
-            (let [field-md (lib.metadata/field mp (mt/id table field))
-                  query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                            (lib/with-fields [field-md])
-                            (lib/expression "INTCAST" (lib/integer field-md))
-                            (lib/limit 100))
-                  result (-> query (check-integer-query db-type field) qp/process-query)
-                  cols (mt/cols result)
-                  rows (mt/rows result)]
-              (is (#{:type/Integer :type/BigInteger} (-> cols first :base_type)))
-              (doseq [[casted-value equals? uncasted-value] rows]
-                (is (int? casted-value))
-                (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))
-
-(deftest ^:parallel integer-cast-custom-expressions
-  (mt/test-driver :bigquery-cloud-sdk
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[table expressions] [[:people [{:expression (lib/concat
-                                                             (lib.metadata/field mp (mt/id :people :id))
-                                                             (lib.metadata/field mp (mt/id :people :zip)))
-                                                :db-type "STRING"}]]]
-                {:keys [expression db-type]} expressions]
-          (testing (str "Casting " db-type " to integer")
-            (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                            (lib/with-fields [])
-                            (lib/expression "UNCASTED" expression)
-                            (as-> q
-                                  (lib/expression q "INTCAST" (lib/integer (lib/expression-ref q "UNCASTED"))))
-                            (lib/limit 10))
-                  result (-> query (check-integer-query db-type "`subquery`.`UNCASTED`") qp/process-query)
-                  cols (mt/cols result)
-                  rows (mt/rows result)]
-              (is (#{:type/Integer :type/BigInteger} (-> cols first :base_type)))
-              (doseq [[casted-value equals? uncasted-value] rows]
-                (is (int? casted-value))
-                (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))
-
-(deftest ^:parallel integer-cast-nested-native-query
-  (mt/test-driver :bigquery-cloud-sdk
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[_table expressions] [[:people [{:expression "'123'" :db-type "STRING"}
-                                                {:expression "'-123'" :db-type "STRING"}]]]
-                {:keys [expression db-type]} expressions]
-          (testing (str "Casting " db-type " to integer from native query")
-            (let [native-query (mt/native-query {:query (str "SELECT " expression " AS UNCASTED")})]
-              (mt/with-temp
-                [:model/Card
-                 {card-id :id}
-                 (mt/card-with-source-metadata-for-query native-query)]
-                (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
-                                (as-> q
-                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first)))))
-                      result (-> query (check-integer-query db-type "`uncasted`") qp/process-query)
-                      cols (mt/cols result)
-                      rows (mt/rows result)]
-                  (is (#{:type/Integer :type/BigInteger} (-> cols first :base_type)))
-                  (doseq [[casted-value equals? uncasted-value] rows]
-                    (is (int? casted-value))
-                    (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))))
-
-(deftest ^:parallel integer-cast-nested-query
-  (mt/test-driver :bigquery-cloud-sdk
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [[:people [{:field :zip :db-type "STRING"}]]]
-                {:keys [field db-type]} fields]
-          (let [nested-query (lib/query mp (lib.metadata/table mp (mt/id table)))]
-            (testing (str "Casting " db-type " to integer")
-              (mt/with-temp
-                [:model/Card
-                 {card-id :id}
-                 (mt/card-with-source-metadata-for-query nested-query)]
-                (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
-                                (lib/with-fields [])
-                                (as-> q
-                                      (lib/expression q "INTCAST" (lib/integer (lib.metadata/field mp (mt/id table field)))))
-                                (lib/limit 10))
-                      result (-> query (check-integer-query db-type field) qp/process-query)
-                      cols (mt/cols result)
-                      rows (mt/rows result)]
-                  (is (#{:type/Integer :type/BigInteger} (-> cols first :base_type)))
-                  (doseq [[casted-value equals? uncasted-value] rows]
-                    (is (int? casted-value))
-                    (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))))
-
-(deftest ^:parallel integer-cast-nested-query-custom-expressions
-  (mt/test-driver :bigquery-cloud-sdk
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[table expressions] [[:people [{:expression (lib/concat
-                                                             (lib.metadata/field mp (mt/id :people :id))
-                                                             (lib.metadata/field mp (mt/id :people :zip)))
-                                                :db-type "STRING"}]]]
-                {:keys [expression db-type]} expressions]
-          (let [nested-query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                                 (lib/with-fields [])
-                                 (lib/expression "UNCASTED" expression)
-                                 (lib/limit 10))]
-            (testing (str "Casting " db-type " to integer")
-              (mt/with-temp
-                [:model/Card
-                 {card-id :id}
-                 (mt/card-with-source-metadata-for-query nested-query)]
-                (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
-                                (as-> q
-                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first))))
-                                (lib/limit 10))
-                      result (-> query (check-integer-query db-type "`subquery`.`UNCASTED`") qp/process-query)
-                      cols (mt/cols result)
-                      rows (mt/rows result)]
-                  (is (#{:type/Integer :type/BigInteger} (-> cols first :base_type)))
-                  (doseq [[casted-value equals? uncasted-value] rows]
-                    (is (int? casted-value))
-                    (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))))
-
-(deftest ^:parallel integer-cast-nested-custom-expressions
-  (mt/test-driver :bigquery-cloud-sdk
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[table expressions] [[:people [{:expression [(lib/concat
-                                                              (lib.metadata/field mp (mt/id :people :id))
-                                                              (lib.metadata/field mp (mt/id :people :zip)))
-                                                             (lib/concat
-                                                              (lib.metadata/field mp (mt/id :people :id))
-                                                              (lib.metadata/field mp (mt/id :people :zip)))]
-                                                :db-type "STRING"}]]]
-                {db-type :db-type [e1 e2] :expression} expressions]
-          (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                          (lib/expression "UNCASTED" e1)
-                          (lib/expression "INTCAST" (lib/integer e2))
-                          (lib/limit 10))
-                result (-> query (check-integer-query db-type "`subquery`.`UNCASTED`") qp/process-query)
-                cols (mt/cols result)
-                rows (mt/rows result)]
-            (is (#{:type/Integer :type/BigInteger} (-> cols first :base_type)))
-            (doseq [[casted-value equals? uncasted-value] rows]
-              (is (int? casted-value))
-              (is equals? (str "Not equal for: " casted-value " " uncasted-value)))))))))
-
-(deftest ^:parallel integer-cast-aggregations
-  (mt/test-driver :bigquery-cloud-sdk
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [[:people [{:field :zip :db-type "STRING"}]]]
-                {:keys [field db-type]} fields]
-          (testing (str "aggregating " table "." field "(" db-type ") and casting to integer")
-            (let [field-md (lib.metadata/field mp (mt/id table field))
-                  query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                            (lib/aggregate (lib/max field-md))
-                            (lib/aggregate (lib/max (lib/integer field-md))))
-                  result (-> query (check-integer-query db-type "`subquery`.`max`" "`subquery`.`max_2`") qp/process-query)
-                  cols (mt/cols result)
-                  rows (mt/rows result)]
-              (is (#{:type/Integer :type/BigInteger} (-> cols first :base_type)))
-              (doseq [[casted-value _equals? _uncasted-value] rows]
-                (is (int? casted-value))))))))))
+    (let [sql (str "select"
+                   " timestamp '2024-12-11 16:23:55.123456 UTC' col_timestamp,"
+                   " datetime  '2024-12-11T16:23:55.123456' col_datetime")
+          query {:database (mt/id)
+                 :type :native
+                 :native {:query sql}}]
+      (is (=? [["2024-12-11T16:23:55.123456Z" #"2024-12-11T16:23:55.123456.*"]]
+              (-> (qp/process-query query)
+                  mt/rows))))))

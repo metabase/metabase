@@ -25,6 +25,7 @@ import {
   getUiControls,
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
+import { getTokenFeature } from "metabase/setup/selectors";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconName, IconProps } from "metabase/ui";
 import {
@@ -69,6 +70,8 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
+import { EmptyVizState } from "../EmptyVizState";
+
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { ErrorView } from "./ErrorView";
 import LoadingView from "./LoadingView";
@@ -79,12 +82,14 @@ import {
   VisualizationRoot,
   VisualizationSlowSpinner,
 } from "./Visualization.styled";
+import { Watermark } from "./Watermark";
 
 type StateDispatchProps = {
   dispatch: Dispatch;
 };
 
 type StateProps = {
+  hasDevWatermark: boolean;
   fontFamily: string;
   isRawTable: boolean;
   isEmbeddingSdk: boolean;
@@ -126,10 +131,12 @@ type VisualizationOwnProps = {
   isAction?: boolean;
   isDashboard?: boolean;
   isMobile?: boolean;
+  isShowingSummarySidebar?: boolean;
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
+  onEditSummary?: () => void;
   query?: NativeQuery;
   rawSeries?: RawSeries;
   replacementContent?: JSX.Element | null;
@@ -175,6 +182,7 @@ type VisualizationState = {
 };
 
 const mapStateToProps = (state: State): StateProps => ({
+  hasDevWatermark: getTokenFeature(state, "development-mode"),
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
   isEmbeddingSdk: getIsEmbeddingSdk(state),
@@ -528,6 +536,7 @@ class Visualization extends PureComponent<
       fontFamily,
       getExtraDataForClick,
       getHref,
+      hasDevWatermark,
       headerIcon,
       height: rawHeight,
       isAction,
@@ -543,9 +552,11 @@ class Visualization extends PureComponent<
       isQueryBuilder,
       isSettings,
       isShowingDetailsOnlyColumns,
+      isShowingSummarySidebar,
       isSlow,
       metadata,
       mode,
+      onEditSummary,
       query,
       queryBuilderMode,
       rawSeries = [],
@@ -557,6 +568,7 @@ class Visualization extends PureComponent<
       selectedTimelineEventIds,
       showAllLegendItems,
       showTitle,
+      style,
       tableHeaderHeight,
       timelineEvents,
       token,
@@ -579,7 +591,6 @@ class Visualization extends PureComponent<
 
     // these may be overridden below
     let { series, hovered, clicked } = this.state;
-    let { style } = this.props;
 
     const clickActions = this.getClickActions(clicked);
     const regularClickActions = clickActions.filter(isRegularClickAction);
@@ -594,7 +605,7 @@ class Visualization extends PureComponent<
     const loading = isLoading(series);
 
     // don't try to load settings unless data is loaded
-    let settings = this.props.settings || this.state.computedSettings;
+    const settings = this.props.settings || this.state.computedSettings;
 
     if (!loading && !error) {
       if (!visualization) {
@@ -610,13 +621,12 @@ class Visualization extends PureComponent<
             t`Could not display this chart with this data.`;
           if (
             e instanceof ChartSettingsError &&
-            visualization.placeholderSeries &&
-            !isDashboard
+            visualization?.hasEmptyState &&
+            !isDashboard &&
+            !isEmbeddingSdk
           ) {
-            // hide the error and replace series with the placeholder series
+            // hide the error and display the empty state instead
             error = null;
-            series = visualization.placeholderSeries;
-            settings = getComputedSettingsForSeries(series);
             isPlaceholder = true;
           } else if (e instanceof ChartSettingsError && onOpenChartSettings) {
             error = (
@@ -670,16 +680,6 @@ class Visualization extends PureComponent<
       };
     }
 
-    if (isPlaceholder) {
-      hovered = null;
-      style = {
-        ...style,
-        opacity: 0.2,
-        filter: "grayscale()",
-        pointerEvents: "none",
-      };
-    }
-
     const CardVisualization = visualization as VisualizationType;
 
     const title = settings["card.title"];
@@ -701,7 +701,9 @@ class Visualization extends PureComponent<
           className={className}
           style={style}
           data-testid="visualization-root"
-          data-viz-ui-name={visualization?.uiName}
+          // `getUiName` should be defined (and is a required field on the TS type), but because we have javascript
+          // files about visualizations, it's best if we don't risk crashing the app, hence the `?.()`
+          data-viz-ui-name={visualization?.getUiName?.()}
           ref={this.props.forwardedRef}
         >
           {!!hasHeader && (
@@ -740,11 +742,18 @@ class Visualization extends PureComponent<
               expectedDuration={expectedDuration}
               isSlow={!!isSlow}
             />
+          ) : isPlaceholder ? (
+            <EmptyVizState
+              chartType={visualization?.identifier}
+              isSummarizeSidebarOpen={isShowingSummarySidebar}
+              onEditSummary={onEditSummary}
+            />
           ) : (
             series && (
               <div
                 data-card-key={getCardKey(series[0].card?.id)}
                 className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
+                style={{ position: "relative" }}
               >
                 <CardVisualization
                   actionButtons={actionButtons}
@@ -777,7 +786,6 @@ class Visualization extends PureComponent<
                   isMobile={!!isMobile}
                   isNightMode={!!isNightMode}
                   isObjectDetail={isObjectDetail}
-                  isPlaceholder={isPlaceholder}
                   isPreviewing={isPreviewing}
                   isRawTable={isRawTable}
                   isQueryBuilder={!!isQueryBuilder}
@@ -822,6 +830,7 @@ class Visualization extends PureComponent<
                   onVisualizationClick={this.handleVisualizationClick}
                   onHeaderColumnReorder={this.props.onHeaderColumnReorder}
                 />
+                {hasDevWatermark && <Watermark card={series[0].card} />}
               </div>
             )
           )}

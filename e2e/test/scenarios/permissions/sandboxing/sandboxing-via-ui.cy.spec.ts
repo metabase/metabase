@@ -6,6 +6,7 @@ import type { CollectionItem, Dashboard } from "metabase-types/api";
 import {
   assertAllResultsAndValuesAreSandboxed,
   assertNoResultsOrValuesAreSandboxed,
+  assertResponseFailsClosed,
   assignAttributeToUser,
   configureSandboxPolicy,
   createSandboxingDashboardAndQuestions,
@@ -43,6 +44,7 @@ describe(
       cy.intercept("/api/card/*/query").as("cardQuery");
 
       H.restore("postgres-12");
+
       cy.signInAsAdmin();
       H.setTokenFeatures("all");
       preparePermissions();
@@ -62,10 +64,11 @@ describe(
       });
       // @ts-expect-error - this isn't typed yet
       cy.createUserFromRawData(gizmoViewer);
+      // @ts-expect-error - this isn't typed yet
       cy.createUserFromRawData(widgetViewer);
 
       // this setup is a bit heavy, so let's just do it once
-      H.snapshot("sandboxing-on-postgres-12");
+      H.snapshot("sandboxing-snapshot");
     });
 
     beforeEach(() => {
@@ -75,7 +78,7 @@ describe(
         "dashcardQuery",
       );
       cy.intercept("POST", "/api/dataset").as("datasetQuery");
-      H.restore("sandboxing-on-postgres-12" as any);
+      H.restore("sandboxing-snapshot" as any);
     });
 
     it("shows all data before sandboxing policy is applied", () => {
@@ -162,12 +165,18 @@ describe(
     describe("we expect an error - and no data to be shown - when applying a sandbox policy...", () => {
       (
         [
-          ["Question", "boolean", "true"],
-          ["Question", "string", "Category is Gizmo"],
-          ["Question", "number", "11"],
-          ["Model", "boolean", "true"],
-          ["Model", "string", "Category is Gizmo"],
-          ["Model", "number", "11"],
+          ["Question", "booleanExpr", "true"],
+          ["Question", "booleanLiteral", "true"],
+          ["Question", "stringExpr", "Category is Gizmo"],
+          ["Question", "stringLiteral", "fixed literal string"],
+          ["Question", "numberExpr", "1"],
+          ["Question", "numberLiteral", "1"],
+          ["Model", "booleanExpr", "true"],
+          ["Model", "booleanLiteral", "true"],
+          ["Model", "stringExpr", "Category is Gizmo"],
+          ["Model", "stringLiteral", "fixed literal string"],
+          ["Model", "numberExpr", "1"],
+          ["Model", "numberLiteral", "1"],
         ] as const
       ).forEach(([customViewType, customColumnType, customColumnValue]) => {
         it(`...to a table filtered by a custom ${customColumnType} column in a ${customViewType}`, () => {
@@ -190,8 +199,7 @@ describe(
             new Array(sandboxableQuestions.length).fill("@dashcardQuery"),
           ).then((interceptions) => {
             interceptions.forEach(({ response }) => {
-              expect(response?.body.data.rows).to.have.length(0);
-              expect(response?.body.error_type).to.contain("invalid-query");
+              assertResponseFailsClosed(response);
             });
           });
 

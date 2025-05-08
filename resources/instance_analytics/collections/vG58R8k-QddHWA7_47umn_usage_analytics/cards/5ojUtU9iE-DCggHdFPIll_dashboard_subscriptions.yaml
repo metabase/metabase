@@ -362,6 +362,7 @@ serdes/meta:
   label: dashboard_subscriptions
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: null
 metabase_version: null
 source_card_id: null

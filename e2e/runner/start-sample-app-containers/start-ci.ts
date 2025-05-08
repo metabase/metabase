@@ -2,4 +2,10 @@ import type { SampleAppTestSuiteName } from "../sample-apps-shared/types";
 
 import { startSampleAppContainers } from "./startSampleAppContainers";
 
-startSampleAppContainers(process.env.TEST_SUITE as SampleAppTestSuiteName);
+const testSuite = process.argv?.[2]?.trim() as SampleAppTestSuiteName;
+
+if (!testSuite) {
+  throw new Error("Test suite parameter is required");
+}
+
+startSampleAppContainers(testSuite);

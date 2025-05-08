@@ -18,6 +18,13 @@
   #?(:cljs (js->clj (js/JSON.parse x))
      :clj (json/decode x)))
 
+(defn- json-roundtrip
+  "Round-trips a value to JSON and back in Clojure to ensure it can be used as a key with consistent type.
+  Does nothing in CLJS."
+  [x]
+  #?(:cljs x
+     :clj (json/decode (json/encode x))))
+
 (defn- pivot-group-column?
   "Is the given column the pivot-grouping column?"
   [col]
@@ -84,7 +91,7 @@
               (persistent!
                (reduce
                 (fn [acc row]
-                  (let [grouping-key (mapv #(nth row %) column-indexes)
+                  (let [grouping-key (json-roundtrip (mapv #(nth row %) column-indexes))
                         values (mapv #(nth row %) val-indexes)]
                     (assoc! acc grouping-key values)))
                 (transient {})
@@ -120,7 +127,9 @@
          (sequential? collapsed-subtotal)
          (let [key-path (conj (into [] (interpose :children collapsed-subtotal))
                               :isCollapsed)]
-           (assoc-in tree key-path true))))
+           (if-not (nil? (get-in tree key-path))
+             (assoc-in tree key-path true)
+             tree))))
      tree
      parsed-collapsed-subtotals)))
 
@@ -130,7 +139,10 @@
   {:children (ordered-map/ordered-map)}."
   [path tree]
   (if (seq path)
-    (let [v (first path)]
+    ;; In `add-is-collapsed` we parse JSON from the viz settings to determine
+    ;; the path of values to collapse. So we have to roundtrip values from the QP
+    ;; to JSON and back to make sure their types match.
+    (let [v (json-roundtrip (first path))]
       (update tree v
               (fn [node]
                 (let [subtree (or (:children node) (ordered-map/ordered-map))]
@@ -151,7 +163,7 @@
   (let [col-and-row-indexes (into (vec col-indexes) row-indexes)]
     (reduce
      (fn [acc row]
-       (let [value-key  (select-indexes row col-and-row-indexes)
+       (let [value-key  (json-roundtrip (select-indexes row col-and-row-indexes))
              values     (select-indexes row val-indexes)
              data       (into []
                               (map-indexed
@@ -327,78 +339,80 @@
 (defn- create-subtotal-node
   "Creates a subtotal node for the given row item."
   [row-item]
-  {:value (i18n/tru "Totals for {0}" (:value row-item))
-   :rawValue (:rawValue row-item)
-   :span 1
-   :isSubtotal true
-   :children []})
+  (let [subtotal-val (or (get-in row-item [:value :xlsx-formatted-value])
+                         (:value row-item))]
+    {:value (i18n/tru "Totals for {0}" subtotal-val)
+     :rawValue (:rawValue row-item)
+     :span 1
+     :isSubtotal true
+     :children []}))
 
-(defn- should-create-subtotal?
-  "Determines if a subtotal should be created based on settings and row structure."
-  [is-subtotal-enabled should-show-subtotal]
-  (and is-subtotal-enabled should-show-subtotal))
+(defn- subtotal-permitted?
+  "Returns true if subtotals are enabled for this column and visible for this row."
+  [subtotal-enabled-for-col? visible?]
+  (and subtotal-enabled-for-col? visible?))
+
+(defn- subtotal-visible?
+  "Determines whether a subtotal should be shown for a given row."
+  [row-item settings]
+  (let [condense? (true? (:pivot.condense_duplicate_totals settings))
+        child-count (count (:children row-item))]
+    (or (not condense?) (> child-count 1) (:isCollapsed row-item))))
 
 (declare add-subtotal)
 
 (defn- process-children
   "Recursively processes children nodes to add subtotals."
-  [children rest-subtotal-settings should-show-fn]
+  [children remaining-col-settings settings]
   (persistent!
    (reduce (fn [acc child]
              (if (seq (:children child))
                (add-subtotal child
-                             rest-subtotal-settings
-                             (should-show-fn child)
-                             acc)
+                             remaining-col-settings
+                             (subtotal-visible? child settings)
+                             acc
+                             settings)
                (conj! acc child)))
            (transient []) children)))
 
 (defn- add-subtotal
   "Adds subtotal nodes to a row item based on subtotal settings.
-   Returns a sequence of nodes (the original node and possibly a subtotal node).
-  `transient-row` is the accumulator where results are added."
-  [row-item subtotal-settings-by-col should-show-subtotal transient-row]
-  (let [current-col-setting    (first subtotal-settings-by-col)
-        remaining-col-settings (rest subtotal-settings-by-col)
-        subtotal-enabled?      (should-create-subtotal? current-col-setting should-show-subtotal)
-        subtotal-node          (when subtotal-enabled?
-                                 (create-subtotal-node row-item))]
-    (if (:isCollapsed row-item)
+   Returns a sequence of nodes (the original node and possibly a subtotal node)."
+  [row-item subtotal-settings-by-col visible? transient-row settings]
+  (let [subtotal-enabled-for-col? (first subtotal-settings-by-col)
+        remaining-col-settings    (rest subtotal-settings-by-col)
+        subtotal-node             (when (subtotal-permitted? subtotal-enabled-for-col? visible?)
+                                    (create-subtotal-node row-item))
+        is-collapsed?             (:isCollapsed row-item)]
+    (if is-collapsed?
       ;; For collapsed items, just add subtotals if applicable
       (conj! transient-row subtotal-node)
-      ;; For expanded items, process children recursively
-      (let [should-show-fn     (fn [child]
-                                 (or (> (count (:children child)) 1)
-                                     (:isCollapsed child)))
-            processed-children (process-children (:children row-item)
+      ;; For expanded items, recurse.
+      (let [processed-children (process-children (:children row-item)
                                                  remaining-col-settings
-                                                 should-show-fn)
+                                                 settings)
             updated-node       (-> row-item
                                    (assoc :children processed-children)
-                                   (assoc :hasSubtotal subtotal-enabled?))]
+                                   (assoc :hasSubtotal (boolean subtotal-node)))]
         (cond-> (conj! transient-row updated-node)
           subtotal-node (conj! subtotal-node))))))
 
 (defn- add-subtotals
-  "Adds subtotal rows to the pivot table based on settings.
-   Returns the tree with subtotals added where appropriate."
+  "Adds subtotal rows to the pivot table based on settings."
   [row-tree row-indexes settings col-settings]
   (if-not (should-show-column-totals? settings)
     (vec row-tree)
     (let [subtotal-settings-by-col (map (fn [idx]
                                           (not= ((nth col-settings idx) :pivot_table.column_show_totals)
                                                 false))
-                                        row-indexes)
-          has-multiple-children    (some #(> (count (:children %)) 1) row-tree)
-          should-show-root-total   (fn [row-item]
-                                     (or has-multiple-children
-                                         (> (count (:children row-item)) 1)))]
+                                        row-indexes)]
       (persistent!
        (reduce (fn [acc row-item]
                  (add-subtotal row-item
                                subtotal-settings-by-col
-                               (should-show-root-total row-item)
-                               acc))
+                               (subtotal-visible? row-item settings)
+                               acc
+                               settings))
                (transient []) row-tree)))))
 
 (defn display-name-for-col
@@ -493,7 +507,8 @@
 (defn- get-normal-cell-values
   "Processes and formats values for normal data cells (non-subtotal)."
   [values-by-key index-values value-formatters color-getter]
-  (let [{:keys [values valueColNames data dimensions]} (get values-by-key index-values) formatted-values (format-values values value-formatters)]
+  (let [{:keys [values valueColNames data dimensions]} (get values-by-key index-values)
+        formatted-values (format-values values value-formatters)]
     (if-not data
       formatted-values
       (map-indexed

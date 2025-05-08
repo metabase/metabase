@@ -15,13 +15,17 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.string-extracts-test :as string-extracts-test]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.store :as qp.store]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -541,14 +545,14 @@
                                   :aggregation  [[:count]]
                                   :breakout     [[:field (u/the-id field) nil]]}))]
               (is (= ["SELECT"
-                      "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL) AS `json_bit → 1234`,"
+                      "  (JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0) AS `json_bit → 1234`,"
                       "  COUNT(*) AS `count`"
                       "FROM"
                       "  `json`"
                       "GROUP BY"
-                      "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL)"
+                      "  (JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0)"
                       "ORDER BY"
-                      "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL) ASC"]
+                      "  (JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0) ASC"]
                      (str/split-lines (driver/prettify-native-form :mysql (:query compile-res)))))
               (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
 
@@ -568,7 +572,7 @@
                                                               :min-value 0.75,
                                                               :max-value 54.0,
                                                               :bin-width 0.75}}]]
-                  (is (= ["((FLOOR(((CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL) - 0.75) / 0.75)) * 0.75) + 0.75)"
+                  (is (= ["((FLOOR((((JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0) - 0.75) / 0.75)) * 0.75) + 0.75)"
                           "$.\"1234\""]
                          (sql.qp/format-honeysql :mysql (sql.qp/->honeysql :mysql field-clause)))))))))))))
 
@@ -816,183 +820,17 @@
                         (map #(get {"TIMESTAMP" "DATETIME"} % %)))
                    (->> binned-query   qp/process-query mt/cols (map :database_type))))))))))
 
-;; integer()
-
-(defn- check-integer-query
-  ([query db-type uncasted-field]
-   (check-integer-query query db-type uncasted-field "`subquery`.`INTCAST`"))
-  ([query db-type uncasted-field casted-field]
-   (mt/native-query {:query (str "SELECT " casted-field ", "
-                                 ;; need to do regex because some strings have 0 in front
-                                 ;; MariaDB doesn't like the || operator :(
-                                 (name uncasted-field) " REGEXP CONCAT('^0*', " "CAST(" casted-field " AS " db-type ") COLLATE utf8mb4_unicode_ci, '$')"
-                                 ", "
-                                 (name uncasted-field) " "
-                                 "FROM ( "
-                                 (-> query qp.compile/compile :query)
-                                 " ) AS subquery "
-                                 "LIMIT 100")})))
-
-(deftest ^:parallel integer-cast-table-fields
+(deftest have-select-privelege?-timeout-test
   (mt/test-driver :mysql
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [[:people [{:field :zip :db-type "CHAR"}]]]
-                {:keys [field db-type]} fields]
-          (testing (str "casting " table "." field "(" db-type ") to integer")
-            (let [field-md (lib.metadata/field mp (mt/id table field))
-                  query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                            (lib/with-fields [field-md])
-                            (lib/expression "INTCAST" (lib/integer field-md))
-                            (lib/limit 100))
-                  result (-> query (check-integer-query db-type field) qp/process-query)
-                  cols (mt/cols result)
-                  rows (mt/rows result)]
-              (is (= :type/BigInteger (-> cols first :base_type)))
-              (doseq [[casted-value equals? uncasted-value] rows]
-                (is (int? casted-value))
-                (is (= 1 equals?) (str "Not equal for: " casted-value " " uncasted-value))))))))))
-
-(deftest ^:parallel integer-cast-custom-expressions
-  (mt/test-driver :mysql
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[table expressions] [[:people [{:expression (lib/concat
-                                                             (lib.metadata/field mp (mt/id :people :id))
-                                                             (lib.metadata/field mp (mt/id :people :zip)))
-                                                :db-type "CHAR"}]]]
-                {:keys [expression db-type]} expressions]
-          (testing (str "Casting " db-type " to integer")
-            (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                            (lib/with-fields [])
-                            (lib/expression "UNCASTED" expression)
-                            (as-> q
-                                  (lib/expression q "INTCAST" (lib/integer (lib/expression-ref q "UNCASTED"))))
-                            (lib/limit 10))
-                  result (-> query (check-integer-query db-type "`subquery`.`UNCASTED`") qp/process-query)
-                  cols (mt/cols result)
-                  rows (mt/rows result)]
-              (is (= :type/BigInteger (-> cols first :base_type)))
-              (doseq [[casted-value equals? uncasted-value] rows]
-                (is (int? casted-value))
-                (is (= 1 equals?) (str "Not equal for: " casted-value " " uncasted-value))))))))))
-
-(deftest ^:parallel integer-cast-nested-native-query
-  (mt/test-driver :mysql
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[_table expressions] [[:people [{:expression "'1238493839384848'" :db-type "CHAR"}
-                                                {:expression "'-12372636363626263'" :db-type "CHAR"}]]]
-                {:keys [expression db-type]} expressions]
-          (testing (str "Casting " db-type " to integer from native query")
-            (let [native-query (mt/native-query {:query (str "SELECT " expression " AS UNCASTED")})]
-              (mt/with-temp
-                [:model/Card
-                 {card-id :id}
-                 (mt/card-with-source-metadata-for-query native-query)]
-                (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
-                                (as-> q
-                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first)))))
-                      result (-> query (check-integer-query db-type "`UNCASTED`") qp/process-query)
-                      cols (mt/cols result)
-                      rows (mt/rows result)]
-                  (is (= :type/BigInteger (-> cols first :base_type)))
-                  (doseq [[casted-value equals? uncasted-value] rows]
-                    (is (int? casted-value))
-                    (is (= 1 equals?) (str "Not equal for: " casted-value " " uncasted-value))))))))))))
-
-(deftest ^:parallel integer-cast-nested-query
-  (mt/test-driver :mysql
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [[:people [{:field :zip :db-type "CHAR"}]]]
-                {:keys [field db-type]} fields]
-          (let [nested-query (lib/query mp (lib.metadata/table mp (mt/id table)))]
-            (testing (str "Casting " db-type " to integer")
-              (mt/with-temp
-                [:model/Card
-                 {card-id :id}
-                 (mt/card-with-source-metadata-for-query nested-query)]
-                (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
-                                (lib/with-fields [])
-                                (as-> q
-                                      (lib/expression q "INTCAST" (lib/integer (lib.metadata/field mp (mt/id table field)))))
-                                (lib/limit 10))
-                      result (-> query (check-integer-query db-type field) qp/process-query)
-                      cols (mt/cols result)
-                      rows (mt/rows result)]
-                  (is (= :type/BigInteger (-> cols first :base_type)))
-                  (doseq [[casted-value equals? uncasted-value] rows]
-                    (is (int? casted-value))
-                    (is (= 1 equals?) (str "Not equal for: " casted-value " " uncasted-value))))))))))))
-
-(deftest ^:parallel integer-cast-nested-query-custom-expressions
-  (mt/test-driver :mysql
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[table expressions] [[:people [{:expression (lib/concat
-                                                             (lib.metadata/field mp (mt/id :people :id))
-                                                             (lib.metadata/field mp (mt/id :people :zip)))
-                                                :db-type "CHAR"}]]]
-                {:keys [expression db-type]} expressions]
-          (let [nested-query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                                 (lib/with-fields [])
-                                 (lib/expression "UNCASTED" expression)
-                                 (lib/limit 10))]
-            (testing (str "Casting " db-type " to integer")
-              (mt/with-temp
-                [:model/Card
-                 {card-id :id}
-                 (mt/card-with-source-metadata-for-query nested-query)]
-                (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
-                                (as-> q
-                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first))))
-                                (lib/limit 10))
-                      result (-> query (check-integer-query db-type "`subquery`.`UNCASTED`") qp/process-query)
-                      cols (mt/cols result)
-                      rows (mt/rows result)]
-                  (is (= :type/BigInteger (-> cols first :base_type)))
-                  (doseq [[casted-value equals? uncasted-value] rows]
-                    (is (int? casted-value))
-                    (is (= 1 equals?) (str "Not equal for: " casted-value " " uncasted-value))))))))))))
-
-(deftest ^:parallel integer-cast-nested-custom-expressions
-  (mt/test-driver :mysql
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[table expressions] [[:people [{:expression [(lib/concat
-                                                              (lib.metadata/field mp (mt/id :people :id))
-                                                              (lib.metadata/field mp (mt/id :people :zip)))
-                                                             (lib/concat
-                                                              (lib.metadata/field mp (mt/id :people :id))
-                                                              (lib.metadata/field mp (mt/id :people :zip)))]
-                                                :db-type "CHAR"}]]]
-                {db-type :db-type [e1 e2] :expression} expressions]
-          (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                          (lib/expression "UNCASTED" e1)
-                          (lib/expression "INTCAST" (lib/integer e2))
-                          (lib/limit 10))
-                result (-> query (check-integer-query db-type "`subquery`.`UNCASTED`") qp/process-query)
-                cols (mt/cols result)
-                rows (mt/rows result)]
-            (is (= :type/BigInteger (-> cols first :base_type)))
-            (doseq [[casted-value equals? uncasted-value] rows]
-              (is (= 1 equals?) (str "Not equal for: " casted-value " " uncasted-value)))))))))
-
-(deftest ^:parallel integer-cast-aggregations
-  (mt/test-driver :mysql
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [[:people [{:field :zip :db-type "CHAR"}]]]
-                {:keys [field db-type]} fields]
-          (testing (str "aggregating " table "." field "(" db-type ") and casting to integer")
-            (let [field-md (lib.metadata/field mp (mt/id table field))
-                  query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                            (lib/aggregate (lib/max field-md))
-                            (lib/aggregate (lib/max (lib/integer field-md))))
-                  result (-> query (check-integer-query db-type "`subquery`.`max`" "`subquery`.`max_2`") qp/process-query)
-                  cols (mt/cols result)
-                  rows (mt/rows result)]
-              (is (= :type/BigInteger (-> cols first :base_type)))
-              (doseq [[casted-value _equals? _uncasted-value] rows]
-                (is (int? casted-value))))))))))
+    (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+      (qp.store/with-metadata-provider (mt/id)
+        (testing "checking select privilege defaults to allow on timeout (#56737)"
+          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT sleep(3)"])]
+            (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
+              (sql-jdbc.execute/do-with-connection-with-options
+               driver/*driver*
+               (mt/db)
+               nil
+               (fn [^java.sql.Connection conn]
+                 (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                             driver/*driver* conn schema table-name))))))))))))

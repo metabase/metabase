@@ -581,10 +581,12 @@ describe("scenarios > dashboard > filters > query stages", () => {
           // We're not using apply2ndStageBreakoutFilter() here because in public dashboards
           // there are no field values to choose from. We need to search for those values manually.
           H.filterWidget().eq(0).click();
-          H.popover().within(() => {
-            cy.findByPlaceholderText("Enter some text").type("Gadget");
-            cy.button("Add filter").click();
-          });
+          H.popover()
+            .first()
+            .within(() => {
+              cy.findByPlaceholderText("Enter some text").type("Gadget");
+              cy.button("Add filter").click();
+            });
           QSHelpers.waitForPublicDashboardData();
 
           H.getDashboardCard(0).within(() => {
@@ -611,10 +613,12 @@ describe("scenarios > dashboard > filters > query stages", () => {
           // We're not using apply2ndStageBreakoutFilter() here because in public dashboards
           // there are no field values to choose from. We need to search for those values manually.
           H.filterWidget().eq(0).click();
-          H.popover().within(() => {
-            cy.findByPlaceholderText("Enter some text").type("Gadget");
-            cy.button("Add filter").click();
-          });
+          H.popover()
+            .first()
+            .within(() => {
+              cy.findByPlaceholderText("Enter some text").type("Gadget");
+              cy.button("Add filter").click();
+            });
           QSHelpers.waitForEmbeddedDashboardData();
 
           H.getDashboardCard(0).within(() => {

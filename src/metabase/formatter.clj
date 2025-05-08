@@ -8,8 +8,8 @@
    [hiccup.util]
    [metabase.formatter.datetime :as datetime]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.streaming.common :as streaming.common]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.types :as types]
    [metabase.util.currency :as currency]
    [metabase.util.json :as json]
@@ -122,12 +122,15 @@
                                (streaming.common/global-type-settings col viz-settings)
                                (catch Exception _e
                                  (streaming.common/global-type-settings (dissoc col :base_type :effective_type) viz-settings)))
-        col-id               (or col-id (second field-ref))
+        ref-type             (first field-ref)
+        col-id-or-name       (or col-id (second field-ref))
         column-settings      (-> (get viz-settings ::mb.viz/column-settings)
                                  (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
         column-settings      (merge
-                              (or (get column-settings {::mb.viz/field-id col-id})
-                                  (get column-settings {::mb.viz/column-name col-name}))
+                              (when (= :field ref-type)
+                                (get column-settings {::mb.viz/field-id col-id-or-name}))
+                              (or (get column-settings {::mb.viz/column-name col-name})
+                                  (get column-settings {::mb.viz/column-name col-id-or-name}))
                               (qualify-keys col-settings)
                               global-type-settings)
         global-settings      (merge
@@ -146,7 +149,6 @@
                                                                    (:type/Currency global-settings))
                                                                  (:type/Number global-settings)
                                                                  column-settings)
-
         currency           (when currency?
                              (keyword (or currency "USD")))
         integral?          (and (isa? (or effective_type base_type) :type/Integer) (integer? (or scale 1)))

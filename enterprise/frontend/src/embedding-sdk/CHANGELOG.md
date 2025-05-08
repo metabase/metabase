@@ -1,3 +1,95 @@
+## [0.55.5-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.4-metabot...embedding-sdk-0.55.5-metabot) (2025-05-07)
+
+
+### Bug Fixes
+
+* **sdk:** clicking on "and X more" in chart legend throws error ([#57175](https://github.com/metabase/metabase/issues/57175)) ([6b427ef](https://github.com/metabase/metabase/commit/6b427efbfcf2dfc114cdc892a4bf9ec9cee3f38d))
+* **sdk:** custom GeoJSON maps does not load due to wrong domain ([#57539](https://github.com/metabase/metabase/issues/57539)) ([7f92780](https://github.com/metabase/metabase/commit/7f92780e9e1641fb79054e4f9b99c7819f5d9833))
+* **sdk:** Ensure that questions don't flicker when fetching entity IDs ([#57073](https://github.com/metabase/metabase/issues/57073)) ([af0188a](https://github.com/metabase/metabase/commit/af0188ade10002d948efe3199839cb3f000f164d))
+* **sdk:** manual fixes for module level ttag calls causing broken translations ([#57391](https://github.com/metabase/metabase/issues/57391)) ([2adc027](https://github.com/metabase/metabase/commit/2adc0271787a0a07b1ec5e704198432166071ac3))
+* **sdk:** updating collection's entity id crashes InteractiveQuestion and CollectionBrowser ([#57529](https://github.com/metabase/metabase/issues/57529)) ([92fac6c](https://github.com/metabase/metabase/commit/92fac6cabb08e59ef39a80a5c589df458c749cb5))
+* **sdk:** use background color in sankey chart text outline ([#57135](https://github.com/metabase/metabase/issues/57135)) ([dd76006](https://github.com/metabase/metabase/commit/dd76006c42a5220db0097bdc583ffd110cf174ae))
+
+
+
+## [0.55.4-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.3-metabot...embedding-sdk-0.55.4-metabot) (2025-04-23)
+
+
+
+## [0.55.3-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.2-metabot...embedding-sdk-0.55.3-metabot) (2025-04-22)
+
+
+### Bug Fixes
+
+* **sdk:** css variables leak from Mantine to the host app ([#56985](https://github.com/metabase/metabase/issues/56985)) ([2b3f683](https://github.com/metabase/metabase/commit/2b3f6833e71696827cb61a4b5a504859ce674f01))
+
+
+
+## [0.55.2-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.1-metabot...embedding-sdk-0.55.2-metabot) (2025-04-22)
+
+
+### Bug Fixes
+
+* **sdk:** use instance locale if no locale is passed ([#56683](https://github.com/metabase/metabase/issues/56683)) ([88a8827](https://github.com/metabase/metabase/commit/88a88270be99c24095deb6bbf3bf6eb61ca73e1a))
+
+
+### Features
+
+* **sdk:** Add question details to Metabot ([#56601](https://github.com/metabase/metabase/issues/56601)) ([5b7c4ec](https://github.com/metabase/metabase/commit/5b7c4ec58799d5669eea2cd0df07d80a96374d1e))
+* **sdk:** Automatically set a sensible display to interactive questions ([#56584](https://github.com/metabase/metabase/issues/56584)) ([debae53](https://github.com/metabase/metabase/commit/debae5382881a4f824a547dc955ed03de80da626))
+* **sdk:** Automatically set a sensible display to interactive questions ([#56584](https://github.com/metabase/metabase/issues/56584)) ([#56667](https://github.com/metabase/metabase/issues/56667)) ([b7a74d0](https://github.com/metabase/metabase/commit/b7a74d02c7082b1dd180d059c255e2ebb1d0cbaf))
+* **sdk:** Export more public SDK types ([#56838](https://github.com/metabase/metabase/issues/56838)) ([764b236](https://github.com/metabase/metabase/commit/764b2366015df4594d3e7745234fdef126abc3b5))
+* **sdk:** Export public plugin and icon types ([#56851](https://github.com/metabase/metabase/issues/56851)) ([fe1df8d](https://github.com/metabase/metabase/commit/fe1df8df8839eca275dd1dd2c02d1a8872278643))
+* **sdk:** Use public types for Dashboard/Collection/User and other entities ([#56875](https://github.com/metabase/metabase/issues/56875)) ([9bb5e3e](https://github.com/metabase/metabase/commit/9bb5e3ec502f6a2bb80ad0be0c01124668abf387))
+
+
+
+## [0.55.1-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.1-nightly...embedding-sdk-0.55.1-metabot) (2025-04-04)
+
+
+### Features
+
+* **sdk:** Add a Metabot SDK component ([#56271](https://github.com/metabase/metabase/issues/56271)) ([adaa23d](https://github.com/metabase/metabase/commit/adaa23dc4111498e8e7a5a5eed928789a36038f9))
+
+
+
+## [0.55.1-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.3-nightly...embedding-sdk-0.55.1-nightly) (2025-04-04)
+
+
+### Bug Fixes
+
+* **sdk:**  wrong icon on visualization selector ([#54724](https://github.com/metabase/metabase/issues/54724)) ([cbf51e6](https://github.com/metabase/metabase/commit/cbf51e6dc33ad7b0749a8bfcf8c18f746bd34138))
+* **sdk:** Add `questionProps` to dashboard components ([#55993](https://github.com/metabase/metabase/issues/55993)) ([6d7ae96](https://github.com/metabase/metabase/commit/6d7ae9677984e193fe364e5011564af4748d99d2))
+* **sdk:** don't set the color scheme on the host app ([#54918](https://github.com/metabase/metabase/issues/54918)) ([77e231d](https://github.com/metabase/metabase/commit/77e231de6c39c8616792d46dfbbdb5691c7a96d2))
+* **sdk:** Entity ID support for CreateDashboardModal ([#55358](https://github.com/metabase/metabase/issues/55358)) ([2d4a7d0](https://github.com/metabase/metabase/commit/2d4a7d05df276bc14c9fcb4c6d8ee71e9525471a))
+* **sdk:** expose the correct type for saveToCollection ([#54428](https://github.com/metabase/metabase/issues/54428)) ([54a7b1c](https://github.com/metabase/metabase/commit/54a7b1c707e814c735d19e36d914529791cf5b7c))
+* **sdk:** Fix ad-hoc question view when clicking into SDK dashboard ([#55254](https://github.com/metabase/metabase/issues/55254)) ([928683d](https://github.com/metabase/metabase/commit/928683dc7145d477a99d91efe086d3a409fa913b))
+* **sdk:** Fix ColorRangeSelector in Conditional Formatting ([#54450](https://github.com/metabase/metabase/issues/54450)) ([752e924](https://github.com/metabase/metabase/commit/752e9246e59541a3e70968959bfd1e1b9592c4e1))
+* **sdk:** Fix ColorSelector in Conditional Formatting ([#54402](https://github.com/metabase/metabase/issues/54402)) ([cd06480](https://github.com/metabase/metabase/commit/cd06480c6b7d404d8f93ad514ed06158776285eb))
+* **sdk:** fix dataset endpoint being called on every re-render ([#56100](https://github.com/metabase/metabase/issues/56100)) ([c5d31e8](https://github.com/metabase/metabase/commit/c5d31e8ba26308135bb76e80a84af1797067e501))
+* **sdk:** Improve _.compose type + fix SDK type ([#54850](https://github.com/metabase/metabase/issues/54850)) ([59d5f32](https://github.com/metabase/metabase/commit/59d5f32f10224be9c4bbd285ef052cf1200fa9a3))
+* **sdk:** mark all react-dom dependency requests as external for React 19 compatibility ([#55071](https://github.com/metabase/metabase/issues/55071)) ([87354c1](https://github.com/metabase/metabase/commit/87354c136f93ef334a1b53635666c8a032f02751))
+* **sdk:** mark react-dom/client as external to fix warnings in React 19 ([#54919](https://github.com/metabase/metabase/issues/54919)) ([b178fee](https://github.com/metabase/metabase/commit/b178fee0c4bf1e32d265d71a89980cbeca00b2fb))
+* **sdk:** move import of mantine css to index file of sdk ([#54602](https://github.com/metabase/metabase/issues/54602)) ([b427265](https://github.com/metabase/metabase/commit/b427265c7da86f4c6a96f927f419cb6e47d3e2de))
+* **sdk:** Popovers not working on Safari ([#55012](https://github.com/metabase/metabase/issues/55012)) ([6586b58](https://github.com/metabase/metabase/commit/6586b589c8b65196a19fca374b7e64ae1cd8ed98))
+* **sdk:** remove react-router console error in LegendLabel when in React 19 ([#54926](https://github.com/metabase/metabase/issues/54926)) ([576567b](https://github.com/metabase/metabase/commit/576567b379ddb64f95ab22cfc3fb02ab348c13f2))
+
+
+### Features
+
+* **sdk:** Add DownloadWidget and DownloadWidgetDropdown ([#54546](https://github.com/metabase/metabase/issues/54546)) ([129cd93](https://github.com/metabase/metabase/commit/129cd93aa62c29b5dedfc3c728e58d82b5804b36))
+* **sdk:** Add entity IDs to CollectionBrowser ([#54985](https://github.com/metabase/metabase/issues/54985)) ([65cd90a](https://github.com/metabase/metabase/commit/65cd90a5b640d0ea5d15e244170b7c4e9a708e93))
+* **sdk:** Add stable ID support where missing ([#54975](https://github.com/metabase/metabase/issues/54975)) ([fa41120](https://github.com/metabase/metabase/commit/fa4112062973a1aedfb1d7f9d649a28f3a1d38c2))
+* **sdk:** do not setup sandboxing and show user switcher if using a sample database ([#55105](https://github.com/metabase/metabase/issues/55105)) ([588abf1](https://github.com/metabase/metabase/commit/588abf10ed983291a17e1ad2934aff90bf41b270))
+* **sdk:** Ensure that all dashboards use entity ID the same way ([#55010](https://github.com/metabase/metabase/issues/55010)) ([1f76048](https://github.com/metabase/metabase/commit/1f760489a4054ac930f94c7c3f90a7a97acc3c2e))
+* **sdk:** experimental react 19 version range support ([#54904](https://github.com/metabase/metabase/issues/54904)) ([1e59047](https://github.com/metabase/metabase/commit/1e590475c90279ee605ae06c039936bc89b1a512))
+* **sdk:** Revamp TableInteractive visualization component: update header styles, add text wrapping, and row indices ([#54399](https://github.com/metabase/metabase/issues/54399)) ([e4a6d8a](https://github.com/metabase/metabase/commit/e4a6d8a81e58cf2a8d7aad683d3127b015e2a803))
+* **sdk:** Simple data picker ([#54489](https://github.com/metabase/metabase/issues/54489)) ([f417142](https://github.com/metabase/metabase/commit/f4171427b21b8c21407274e0f606ffaeb3692986)), closes [#52964](https://github.com/metabase/metabase/issues/52964)
+* **sdk:** Use dts rollup to generate a single .d.ts file with types ([#56205](https://github.com/metabase/metabase/issues/56205)) ([1bb7881](https://github.com/metabase/metabase/commit/1bb78814cfa70e5432a3e8f754fcc360c86d51fe))
+* **sdk:** use questionId={new} for creating new questions ([#54323](https://github.com/metabase/metabase/issues/54323)) ([fb25682](https://github.com/metabase/metabase/commit/fb25682fe8dbafe2062e37bce832f62440872ab7))
+
+
+
 ## [0.54.3-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.2-nightly...embedding-sdk-0.54.3-nightly) (2025-02-26)
 
 

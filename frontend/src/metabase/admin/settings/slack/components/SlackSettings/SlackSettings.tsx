@@ -10,6 +10,7 @@ import SlackSetup from "../../containers/SlackSetup";
 import SlackStatus from "../../containers/SlackStatus";
 
 const BREADCRUMBS = [
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   [t`Notification channels`, "/admin/settings/notifications"],
   ["Slack"],
 ];

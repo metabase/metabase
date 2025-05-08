@@ -10,6 +10,7 @@ interface DashboardEmptyStateProps {
   isDashboardEmpty: boolean;
   isEditing?: boolean;
   isNightMode: boolean;
+  canCreateQuestions?: boolean;
 }
 
 const getDefaultTitle = (isDashboardEmpty: boolean) =>
@@ -47,16 +48,21 @@ export function DashboardEmptyState({
   isDashboardEmpty,
   isEditing,
   isNightMode,
+  canCreateQuestions,
 }: DashboardEmptyStateProps) {
-  const defaultTitle = getDefaultTitle(isDashboardEmpty);
+  let title = getDefaultTitle(isDashboardEmpty);
+  if (isEditing) {
+    title = canCreateQuestions
+      ? t`Create a new question or browse your collections for an existing one.`
+      : t`Browse your collections to find and add existing questions.`;
+  }
+
   return (
     <EmptyStateWrapper isNightMode={isNightMode}>
       <>
         <Stack align="center" maw="25rem" gap="xs">
-          <Title ta="center" order={2}>
-            {isEditing
-              ? t`Create a new question or browse your collections for an existing one.`
-              : defaultTitle}
+          <Title ta="center" order={3}>
+            {title}
           </Title>
 
           <Text ta="center" data-testid="dashboard-empty-state-copy">
@@ -87,7 +93,7 @@ export function DashboardEmptyStateWithoutAddPrompt({
   const title = getDefaultTitle(isDashboardEmpty);
   return (
     <EmptyStateWrapper isNightMode={isNightMode}>
-      <Title ta="center" order={2}>
+      <Title ta="center" order={3}>
         {title}
       </Title>
     </EmptyStateWrapper>
