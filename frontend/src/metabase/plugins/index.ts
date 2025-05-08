@@ -1,10 +1,9 @@
-import type React from "react";
-import type {
-  ComponentType,
-  Dispatch,
-  HTMLAttributes,
-  ReactNode,
-  SetStateAction,
+import React, {
+  type ComponentType,
+  type HTMLAttributes,
+  type ReactNode,
+  type SetStateAction,
+  useMemo,
 } from "react";
 import { t } from "ttag";
 import type { AnySchema } from "yup";
@@ -34,11 +33,16 @@ import type {
   ModelFilterSettings,
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/core/components/Link";
+import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
+import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import { getIconBase } from "metabase/lib/icon";
+import type { MetabotContext } from "metabase/metabot";
+import type { PaletteAction } from "metabase/palette/types";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -53,9 +57,14 @@ import type {
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
+  DashCardId,
   Dashboard,
+  DatabaseId,
   Database as DatabaseType,
   Dataset,
+  DatasetError,
+  DatasetErrorType,
+  FieldId,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -63,9 +72,10 @@ import type {
   Pulse,
   Revision,
   TableId,
+  Timeline,
   User,
 } from "metabase-types/api";
-import type { AdminPathKey, State } from "metabase-types/store";
+import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
 
 import type {
   GetAuthProviders,
@@ -95,6 +105,10 @@ export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS: ((
 
 export const PLUGIN_ADMIN_TOOLS = {
   COMPONENT: null,
+};
+
+export const PLUGIN_WHITELABEL = {
+  WhiteLabelSettingsPage: PluginPlaceholder,
 };
 
 export const PLUGIN_ADMIN_TROUBLESHOOTING = {
@@ -178,7 +192,9 @@ export const PLUGIN_ADMIN_USER_FORM_FIELDS = {
 };
 
 // menu items in people management tab
-export const PLUGIN_ADMIN_USER_MENU_ITEMS = [];
+export const PLUGIN_ADMIN_USER_MENU_ITEMS = [] as Array<
+  (user: User) => React.ReactNode
+>;
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 
 // auth settings
@@ -289,7 +305,9 @@ export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
 
 const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
   type: null,
-  name: t`Regular`,
+  get name() {
+    return t`Regular`;
+  },
   icon: "folder",
 };
 
@@ -443,10 +461,12 @@ export const PLUGIN_REDUCERS: {
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
   shared: any;
+  metabotPlugin: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
+  metabotPlugin: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
@@ -529,6 +549,8 @@ export const PLUGIN_MODEL_PERSISTENCE = {
 export const PLUGIN_EMBEDDING = {
   isEnabled: () => false,
   isInteractiveEmbeddingEnabled: (_state: State) => false,
+  SimpleDataPicker: (_props: SimpleDataPickerProps) => null,
+  DataSourceSelector: (_props: DataSourceSelectorProps) => null,
 };
 
 export interface SimpleDataPickerProps {
@@ -542,7 +564,6 @@ export interface SimpleDataPickerProps {
 
 export const PLUGIN_EMBEDDING_SDK = {
   isEnabled: () => false,
-  SimpleDataPicker: (_props: SimpleDataPickerProps) => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
@@ -612,6 +633,103 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
   }) => ({ pdf: true, results: true }),
 };
 
+const defaultMetabotContextValue: MetabotContext = {
+  getChatContext: () => ({}) as any,
+  registerChatContextProvider: () => () => {},
+};
+
+export type FixSqlQueryButtonProps = {
+  query: Lib.Query;
+  queryError: DatasetError;
+  queryErrorType: DatasetErrorType | undefined;
+  onQueryFix: (fixedQuery: Lib.Query, fixedLineNumbers: number[]) => void;
+  onHighlightLines: (fixedLineNumbers: number[]) => void;
+};
+
+export type PluginAiSqlFixer = {
+  FixSqlQueryButton: ComponentType<FixSqlQueryButtonProps>;
+};
+
+export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
+  FixSqlQueryButton: PluginPlaceholder,
+};
+
+export type GenerateSqlQueryButtonProps = {
+  className?: string;
+  prompt: string;
+  databaseId: DatabaseId;
+  onGenerateQuery: (queryText: string) => void;
+};
+
+export type PluginAiSqlGeneration = {
+  GenerateSqlQueryButton: ComponentType<GenerateSqlQueryButtonProps>;
+};
+
+export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
+  GenerateSqlQueryButton: PluginPlaceholder,
+};
+
+export interface AIDashboardAnalysisSidebarProps {
+  dashboard: Dashboard;
+  onClose?: () => void;
+  dashcardId?: DashCardId;
+}
+
+export interface AIQuestionAnalysisSidebarProps {
+  question: Question;
+  className?: string;
+  onClose?: () => void;
+  timelines?: Timeline[];
+}
+
+export type PluginAIEntityAnalysis = {
+  AIQuestionAnalysisButton: ComponentType<any>;
+  AIDashboardAnalysisButton: ComponentType<any>;
+  AIQuestionAnalysisSidebar: ComponentType<AIQuestionAnalysisSidebarProps>;
+  AIDashboardAnalysisSidebar: ComponentType<AIDashboardAnalysisSidebarProps>;
+  canAnalyzeDashboard: (dashboard: Dashboard) => boolean;
+  canAnalyzeQuestion: (question: Question) => boolean;
+};
+
+export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
+  AIQuestionAnalysisButton: PluginPlaceholder,
+  AIDashboardAnalysisButton: PluginPlaceholder,
+  AIQuestionAnalysisSidebar: PluginPlaceholder,
+  AIDashboardAnalysisSidebar: PluginPlaceholder,
+  canAnalyzeDashboard: () => false,
+  canAnalyzeQuestion: () => false,
+};
+
+export const PLUGIN_METABOT = {
+  Metabot: () => null as React.ReactElement | null,
+  defaultMetabotContextValue,
+  MetabotContext: React.createContext(defaultMetabotContextValue),
+  getMetabotProvider: () => {
+    return ({ children }: { children: React.ReactNode }) =>
+      React.createElement(
+        PLUGIN_METABOT.MetabotContext.Provider,
+        { value: PLUGIN_METABOT.defaultMetabotContextValue },
+        children,
+      );
+  },
+  useMetabotPalletteActions: (_searchText: string) =>
+    useMemo(() => [] as PaletteAction[], []),
+};
+
+type DashCardMenuItemGetter = (
+  question: Question,
+  dashcardId: DashCardId | undefined,
+  dispatch: Dispatch,
+) => (DashCardMenuItem & { key: string }) | null;
+
+export type PluginDashcardMenu = {
+  dashcardMenuItemGetters: DashCardMenuItemGetter[];
+};
+
+export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
+  dashcardMenuItemGetters: [],
+};
+
 export const PLUGIN_DB_ROUTING = {
   DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;
@@ -625,4 +743,12 @@ export const PLUGIN_DB_ROUTING = {
   getPrimaryDBEngineFieldState: (
     _database: Pick<Database, "router_user_attribute">,
   ): "default" | "hidden" | "disabled" => "default",
+};
+
+export const PLUGIN_API = {
+  getFieldValuesUrl: (fieldId: FieldId) => `/api/field/${fieldId}/values`,
+  getRemappedFieldValueUrl: (fieldId: FieldId, remappedFieldId: FieldId) =>
+    `/api/field/${fieldId}/remapping/${remappedFieldId}`,
+  getSearchFieldValuesUrl: (fieldId: FieldId, searchFieldId: FieldId) =>
+    `/api/field/${fieldId}/search/${searchFieldId}`,
 };

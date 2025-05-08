@@ -2,6 +2,7 @@
   "There are more e2e tests in [[metabase.api.card-test]]."
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -224,9 +225,17 @@
 
 (deftest updates-metadata-provider
   (testing "should set the previous results metadata to the store"
-    (mt/with-temp [:model/Card card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
-                                     :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
-      (mt/with-metadata-provider (mt/id)
-        (run-query-for-card (u/the-id card))
-        (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
-               (qp.store/miscellaneous-value [::qp.results-metadata/card-stored-metadata])))))))
+    (let [entity-id (u/generate-nano-id)]
+      (mt/with-temp [:model/Card card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
+                                       :entity_id       entity-id
+                                       :result_metadata [{:name         "NAME"
+                                                          :display_name "Name"
+                                                          :ident        (lib/native-ident "NAME" entity-id)
+                                                          :base_type    :type/Text}]}]
+        (mt/with-metadata-provider (mt/id)
+          (run-query-for-card (u/the-id card))
+          (is (= [{:name         "NAME"
+                   :display_name "Name"
+                   :ident        (lib/native-ident "NAME" entity-id)
+                   :base_type    :type/Text}]
+                 (qp.store/miscellaneous-value [::qp.results-metadata/card-stored-metadata]))))))))

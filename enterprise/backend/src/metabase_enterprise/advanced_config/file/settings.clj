@@ -2,7 +2,7 @@
   (:require
    [clojure.spec.alpha :as s]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 

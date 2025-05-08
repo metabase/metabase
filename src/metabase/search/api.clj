@@ -8,10 +8,11 @@
    [metabase.api.open-api :as open-api]
    [metabase.config :as config]
    [metabase.permissions.core :as perms]
-   [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
+   [metabase.search.ingestion :as ingestion]
+   [metabase.search.settings :as search.settings]
    [metabase.search.task.search-index :as task.search-index]
    [metabase.task :as task]
    [metabase.util :as u]
@@ -61,9 +62,9 @@
   "This will trigger an immediate reindexing, if we are using search index."
   []
   (api/check-superuser)
-  (if  (search/supports-index?)
+  (if (search/supports-index?)
     ;; The job appears to wait on the main thread when run from tests, so, unfortunately, testing this branch is hard.
-    (if (and (task/job-exists? task.search-index/reindex-job-key) (not config/is-test?))
+    (if (and (task/job-exists? task.search-index/reindex-job-key) (or (not ingestion/*force-sync*) (config/is-test?)))
       (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
       (do (task.search-index/reindex!) {:message "done"}))
 
@@ -87,8 +88,8 @@
     (when unknown-rankers
       (throw (ex-info (str "Unknown rankers: " (str/join ", " (map name (sort unknown-rankers))))
                       {:status-code 400})))
-    (public-settings/experimental-search-weight-overrides!
-     (merge-with merge (public-settings/experimental-search-weight-overrides) {context (update-keys overrides u/qualified-name)}))))
+    (search.settings/experimental-search-weight-overrides!
+     (merge-with merge (search.settings/experimental-search-weight-overrides) {context (update-keys overrides u/qualified-name)}))))
 
 (api.macros/defendpoint :get "/weights"
   "Return the current weights being used to rank the search results"

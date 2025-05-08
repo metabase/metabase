@@ -39,7 +39,7 @@ describe("official collections", () => {
       // Gate the UI
       cy.visit("/collection/root");
 
-      startNewCollectionCreation();
+      H.startNewCollectionFromSidebar();
       cy.findByTestId("new-collection-modal").then((modal) => {
         assertNoCollectionTypeInput();
         cy.findByLabelText("Close").click();
@@ -84,7 +84,7 @@ describe("official collections", () => {
 
       openCollection("First collection");
 
-      startNewCollectionCreation();
+      H.startNewCollectionFromSidebar();
       cy.findByTestId("new-collection-modal").then((modal) => {
         assertNoCollectionTypeInput();
         cy.findByLabelText("Close").click();
@@ -107,7 +107,7 @@ describe("official collections", () => {
 
       H.popover().findByText("Make collection official").should("exist");
 
-      startNewCollectionCreation();
+      H.startNewCollectionFromSidebar();
       cy.findByTestId("new-collection-modal").then((modal) => {
         assertHasCollectionTypeInput();
         cy.findByPlaceholderText("My new fantastic collection").type(
@@ -124,7 +124,7 @@ describe("official collections", () => {
       });
       H.popover().findByText("Make collection official").should("exist");
 
-      startNewCollectionCreation();
+      H.startNewCollectionFromSidebar();
       cy.findByTestId("new-collection-modal").then((modal) => {
         assertHasCollectionTypeInput();
         cy.findByLabelText("Close").click();
@@ -236,7 +236,7 @@ function openCollection(collectionName) {
 }
 
 function createAndOpenOfficialCollection({ name }) {
-  startNewCollectionCreation();
+  H.startNewCollectionFromSidebar();
   cy.findByTestId("new-collection-modal").then((modal) => {
     cy.findByPlaceholderText("My new fantastic collection").type(name);
     cy.findByText("Official").click();
@@ -310,5 +310,3 @@ const assertHasCollectionBadgeInNavbar = (expectBadge = true) => {
       }
     });
 };
-
-const startNewCollectionCreation = () => H.newButton("Collection").click();

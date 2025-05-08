@@ -12,7 +12,8 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]])
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.time :as time])
   (:import
    #?@(:clj
        ((java.time.format DateTimeFormatter)))))
@@ -27,12 +28,14 @@
   {:arglists '([tyype value locale])}
   (fn [tyype _value _locale] (keyword tyype)))
 
+;; TODO: Refactor to use time/parse-unit and time/format-unit
 (defmethod formatted-value :date/single
   [_ value locale]
   #?(:cljs (let [m (.locale (moment value) locale)]
              (.format m "MMMM D, YYYY"))
      :clj  (u.date/format "MMMM d, yyyy" (u.date/parse value) locale)))
 
+;; TODO: Refactor to use time/parse-unit and time/format-unit
 (defmethod formatted-value :date/month-year
   [_ value locale]
   #?(:cljs (let [m (.locale (moment value "YYYY-MM") locale)]
@@ -49,6 +52,7 @@
      (b/formatter
       "Q" (b/value :iso/quarter-of-year 1) ", " (b/value :year 4))))
 
+;; TODO: Refactor to use time/parse-unit and time/format-unit
 (defmethod formatted-value :date/quarter-year
   [_ value locale]
   #?(:cljs (let [m (.locale (moment value "[Q]Q-YYYY") locale)]
@@ -82,15 +86,47 @@
     #"^thisyear$"                           (lib/describe-temporal-interval 0 :year)
     #"^(past|next)([0-9]+)([a-z]+)s~?$" :>> (fn [matches] (apply format-relative-date matches))))
 
+(defn- format-day [value locale]
+  (-> value
+      (time/parse-unit  :day-of-week-abbrev "en") ;; always read in en locale
+      (time/format-unit :day-of-week        locale)))
+
+(defn- format-hour [value locale]
+  (-> value
+      (time/parse-unit  :hour-of-day-24     "en") ;; always read in en locale
+      (time/format-unit :hour-of-day        locale)))
+
+(defn- format-month [value locale]
+  (-> value
+      (time/parse-unit  :month-of-year      "en") ;; always read in en locale
+      (time/format-unit :month-of-year-full locale)))
+
+(defn- format-exclude-unit [value unit locale]
+  (case unit
+    "hours"    (format-hour value locale)
+    "days"     (format-day value locale)
+    "months"   (format-month value locale)
+    "quarters" (trs "Q{0}" value)))
+
+(defmethod formatted-value :date/exclude
+  [_ value locale]
+  (let [[exclude unit & parts] (str/split value #"-")]
+    (assert (= "exclude" exclude) "The exclude string should start with 'exclude-'.")
+    (if (<= (count parts) 2)
+      (trs "Exclude {0}" (str/join ", " (map #(format-exclude-unit % unit locale) parts)))
+      (trs "Exclude {0} selections" (count parts)))))
+
 (defmethod formatted-value :date/all-options
   [_ value locale]
   ;; Test value against a series of regexes (similar to those in metabase/parameters/utils/mbql.js) to determine
   ;; the appropriate formatting, since it is not encoded in the parameter type.
-  ;; TODO: this is incomplete, and only handles simple dates https://github.com/metabase/metabase/issues/39385
   (condp (fn [re value] (->> (re-find re value) second)) value
     #"^(this[a-z]+)$"          :>> #(formatted-value :date/relative % locale)
-    #"^~?([0-9-T:]+)~?$"       :>> #(formatted-value :date/single % locale)
+    #"^~([0-9-T:]+)$"          :>> #(trs "Before {0}" (formatted-value :date/single % locale))
+    #"^([0-9-T:]+)$"           :>> #(trs "On {0}"     (formatted-value :date/single % locale))
+    #"^([0-9-T:]+)~$"          :>> #(trs "After {0}"  (formatted-value :date/single % locale))
     #"^([0-9-T:]+~[0-9-T:]+)$" :>> #(formatted-value :date/range % locale)
+    #"^(exclude-.+)$"          :>> #(formatted-value :date/exclude % locale)
     (formatted-value :date/relative value locale)))
 
 (defn formatted-list

@@ -8,6 +8,7 @@
 
 (deftest ^:parallel host-up?-test
   (testing "host-up?"
+    #_{:clj-kondo/ignore [:equals-true]}
     (are [s expected] (= expected
                          (u/host-up? s))
       "localhost"  true
@@ -17,6 +18,7 @@
            (u/host-port-up? "nosuchhost" 8005)))))
 
 (deftest ^:parallel ip-address?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [x expected] (= expected
                        (u/ip-address? x))
     "8.8.8.8"              true

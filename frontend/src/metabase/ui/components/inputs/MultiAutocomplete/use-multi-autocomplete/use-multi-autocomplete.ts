@@ -2,7 +2,6 @@ import {
   type ComboboxData,
   type ComboboxItem,
   type ComboboxParsedItem,
-  getOptionsLockup,
   getParsedComboboxData,
   isOptionsGroup,
   useCombobox,
@@ -31,7 +30,7 @@ type UseMultiAutocompleteProps = {
   dropdownOpened?: boolean;
   defaultDropdownOpened?: boolean;
   selectFirstOptionOnChange?: boolean;
-  onCreate?: (rawValue: string) => string | null;
+  parseValue: (rawValue: string) => string | null;
   onChange: (newValues: string[]) => void;
   onSearchChange?: (newValue: string) => void;
   onDropdownOpen?: () => void;
@@ -55,7 +54,7 @@ export function useMultiAutocomplete({
   data,
   dropdownOpened,
   defaultDropdownOpened,
-  onCreate = defaultCreate,
+  parseValue,
   onChange,
   onSearchChange,
   onDropdownOpen,
@@ -77,7 +76,6 @@ export function useMultiAutocomplete({
   const fieldSelection = _fieldSelection ?? { index: values.length, length: 0 };
   const searchValue = useMemo(() => getSearchValue(fieldValue), [fieldValue]);
   const options = useMemo(() => getParsedComboboxData(data), [data]);
-  const optionByValue = useMemo(() => getOptionsLockup(options), [options]);
 
   const setFieldState = ({
     fieldValue,
@@ -102,7 +100,7 @@ export function useMultiAutocomplete({
   ) => {
     const newFieldValues = getFieldValuesWithoutDuplicates(
       values,
-      newParsedValues.map(onCreate).filter(isNotNullish),
+      newParsedValues.map(parseValue).filter(isNotNullish),
       fieldSelection,
     );
     const newValues = getValuesAfterChange(
@@ -189,11 +187,10 @@ export function useMultiAutocomplete({
     valueIndex: number,
   ) => {
     const selectedValue = values[valueIndex];
-    const selectedOption = optionByValue[selectedValue];
     const pillRect = event.currentTarget.getBoundingClientRect();
 
     setFieldState({
-      fieldValue: escapeCsv(selectedOption?.label ?? selectedValue),
+      fieldValue: escapeCsv(selectedValue),
       fieldSelection: { index: valueIndex, length: 1 },
       fieldMinWidth: pillRect.width,
     });
@@ -254,7 +251,7 @@ export function useMultiAutocomplete({
 
   return {
     combobox,
-    pillValues: getPillValues(values, optionByValue, fieldSelection),
+    pillValues: getPillValues(values, fieldSelection),
     filteredOptions: getOptionsWithoutDuplicates(
       values,
       options,
@@ -281,19 +278,8 @@ function getSearchValue(fieldValue: string) {
   return parsedValues.length === 1 ? parsedValues[0] : fieldValue;
 }
 
-function getPillValues(
-  values: string[],
-  optionByValue: Record<string, ComboboxItem>,
-  fieldSelection: FieldSelection,
-) {
-  const mappedValues = values.map(
-    (value) => optionByValue[value]?.label ?? value,
-  );
-  return getValuesAfterChange(
-    mappedValues,
-    [FIELD_PLACEHOLDER],
-    fieldSelection,
-  );
+function getPillValues(values: string[], fieldSelection: FieldSelection) {
+  return getValuesAfterChange(values, [FIELD_PLACEHOLDER], fieldSelection);
 }
 
 function getValuesNotInSelection(
@@ -444,10 +430,6 @@ function escapeCsv(value: string): string {
     return `${QUOTE_CHAR}${value.replaceAll(ESCAPED_CHARS, (s) => `${ESCAPE_CHAR}${s}`)}${QUOTE_CHAR}`;
   }
   return value;
-}
-
-function defaultCreate(value: string) {
-  return value.trim().length > 0 ? value : null;
 }
 
 function isNotNullish<T>(value: T | null): value is T {

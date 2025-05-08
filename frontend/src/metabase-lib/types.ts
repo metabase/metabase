@@ -12,6 +12,7 @@ import type {
 } from "metabase-types/api";
 
 import type { ColumnExtractionTag } from "./extractions";
+import type { DefinedClauseName } from "./v1/expressions";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -112,6 +113,9 @@ export type Limit = number | null;
 
 declare const ColumnMetadataSymbol: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadataSymbol };
+
+declare const ColumnTypeInfoSymbol: unique symbol;
+export type ColumnTypeInfo = unknown & { _opaque: typeof ColumnTypeInfoSymbol };
 
 declare const ColumnGroupSymbol: unique symbol;
 export type ColumnGroup = unknown & { _opaque: typeof ColumnGroupSymbol };
@@ -258,37 +262,16 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
-export type ExpressionOperator =
-  | "+"
-  | "-"
-  | "*"
-  | "/"
-  | "="
-  | "!="
-  | ">"
-  | "<"
-  | ">="
-  | "<="
-  | "between"
-  | "contains"
-  | "does-not-contain"
-  | "is-null"
-  | "not-null"
-  | "is-empty"
-  | "not-empty"
-  | "starts-with"
-  | "ends-with"
-  | "concat"
-  | "interval"
-  | "time-interval"
-  | "relative-time-interval"
-  | "relative-datetime"
-  | "datetime-add"
-  | "inside"
-  | "segment"
-  | "offset";
+export type ExpressionOperator = DefinedClauseName | "value";
 
-export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
+export type ExpressionArg =
+  | boolean
+  | number
+  | bigint
+  | string
+  | ColumnMetadata
+  | SegmentMetadata
+  | MetricMetadata;
 
 export type ExpressionParts = {
   operator: ExpressionOperator;
@@ -299,6 +282,8 @@ export type ExpressionParts = {
 export type ExpressionOptions = {
   "case-sensitive"?: boolean;
   "include-current"?: boolean;
+  "base-type"?: string;
+  "effective-type"?: string;
 };
 
 declare const FilterOperatorSymbol: unique symbol;
@@ -648,6 +633,7 @@ export interface ClickObject {
 
 export interface FieldValuesSearchInfo {
   fieldId: FieldId | null;
+  searchField: ColumnMetadata | null;
   searchFieldId: FieldId | null;
   hasFieldValues: FieldValuesType;
 }

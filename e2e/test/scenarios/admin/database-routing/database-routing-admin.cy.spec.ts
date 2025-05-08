@@ -135,7 +135,6 @@ describe("admin > database > database routing", () => {
         })),
       });
       cy.reload();
-      expandDbRouting();
       dbRoutingSection().within(() => {
         cy.findByText("Destination DB 5").should("exist");
         cy.findByText("Destination DB 6").should("not.exist");
@@ -225,7 +224,6 @@ describe("admin > database > database routing", () => {
       cy.log("validate setup was successful");
       cy.reload();
       cy.findByLabelText("Enable database routing").should("be.checked");
-      expandDbRouting();
       dbRoutingSection()
         .findByText(BASE_POSTGRES_MIRROR_DB_INFO.name)
         .should("exist");
@@ -245,7 +243,7 @@ describe("admin > database > database routing", () => {
       cy.log("should not see destination databases in search");
       H.commandPaletteSearch(BASE_POSTGRES_MIRROR_DB_INFO.name, false);
       H.commandPalette()
-        .findByText("No results for “Destination DB”")
+        .findByText("No results for “DestinationDB”")
         .should("exist");
 
       cy.log("should not see database in table metadata db list");
@@ -286,35 +284,35 @@ describe("admin > database > database routing", () => {
       cy.visit("/admin/databases/2");
 
       cy.log("should be disabled if model actions is enabled");
-      cy.findAllByTestId("database-model-features-section")
-        .findByLabelText("Model actions")
-        .should("be.checked");
+      cy.findByLabelText("Model actions").should("be.checked");
       assertDbRoutingDisabled();
-      cy.findAllByTestId("database-model-features-section")
-        .findByLabelText("Model actions")
-        .click({ force: true });
+
+      cy.findByLabelText("Model actions").parent("label").click();
+
       assertDbRoutingNotDisabled();
 
       cy.log("should be disabled if model persistence is enabled");
-      cy.findAllByTestId("database-model-features-section")
-        .findByLabelText("Model persistence")
+      cy.findByLabelText("Model persistence")
         .should("not.be.checked")
-        .click({ force: true });
+        .parent("label")
+        .click();
+
       assertDbRoutingDisabled();
       cy.findAllByTestId("database-model-features-section")
         .findByLabelText("Model persistence")
         .should("be.checked")
-        .click({ force: true });
+        .parent("label")
+        .click();
       assertDbRoutingNotDisabled();
 
       cy.log("should be disabled if uploads are enabled for the database");
       cy.visit("/admin/settings/uploads");
       cy.findByLabelText("Upload Settings Form")
-        .findByText("Select a database")
+        .findByPlaceholderText("Select a database")
         .click();
       H.popover().findByText("Writable Postgres12").click();
       cy.findByLabelText("Upload Settings Form")
-        .findByText("Select a schema")
+        .findByPlaceholderText("Select a schema")
         .click();
 
       H.popover().findByText("public").click();
@@ -364,12 +362,41 @@ describe("admin > database > database routing", () => {
       cy.log("should not allow enabling database for uploads");
       cy.visit("/admin/settings/uploads");
       cy.findByLabelText("Upload Settings Form")
-        .findByText("Select a database")
+        .findByPlaceholderText("Select a database")
         .click();
       H.popover()
         .findByText("Writable Postgres12 (DB Routing Enabled)")
-        .closest('[data-element-id="list-item"]')
-        .should("have.attr", "aria-disabled", "true");
+        .closest('[data-combobox-option="true"]')
+        .should("have.attr", "data-combobox-disabled", "true");
+    });
+
+    it("should highlight that a dabtabase has routing enabled on the permissions pages", () => {
+      cy.log("setup");
+      cy.request("PUT", "/api/database/2", {
+        settings: { "database-enable-actions": false },
+      });
+      configurDbRoutingViaAPI({
+        router_database_id: 2,
+        user_attribute: "role",
+      });
+
+      cy.log("should highlight on group perms page at db level");
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+      cy.findByTestId("permission-table")
+        .findByText("(Database routing enabled)")
+        .should("exist");
+
+      cy.log("should highlight on group perms page at table level");
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}/database/2`);
+      cy.findByTestId("permissions-editor-breadcrumbs")
+        .findByText("(Database routing enabled)")
+        .should("exist");
+
+      cy.log("should highlight on group perms page at table level");
+      cy.visit("/admin/permissions/data/database/2");
+      cy.findByTestId("permissions-editor-breadcrumbs")
+        .findByText("(Database routing enabled)")
+        .should("exist");
     });
 
     describe("feature visibility", () => {
@@ -440,7 +467,6 @@ describe("admin > database > database routing", () => {
         cy.signIn("normal");
         cy.visit("/admin/databases/2");
         dbRoutingSection().should("exist");
-        expandDbRouting();
         dbRoutingSection().within(() => {
           cy.log("should not be able to manage db routing settings");
           cy.findByLabelText("Enable database routing").should("be.disabled");
@@ -495,9 +521,7 @@ function assertDbRoutingNotDisabled() {
       .should("not.be.disabled")
       .realHover();
   });
-  H.tooltip()
-    .findByText(/Database routing can't be enabled if/)
-    .should("not.exist");
+  H.tooltip().should("not.contain", /Database routing can't be enabled if/);
 }
 
 function assertDbRoutingDisabled() {

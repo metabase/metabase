@@ -9,6 +9,7 @@ import {
   useImperativeHandle,
   useRef,
 } from "react";
+import _ from "underscore";
 
 import { isEventOverElement } from "metabase/lib/dom";
 import * as Lib from "metabase-lib";
@@ -18,8 +19,9 @@ import type { SelectionRange } from "../types";
 
 export type CodeMirrorEditorProps = {
   query: Lib.Query;
-  onChange?: (queryText: string) => void;
+  highlightedLineNumbers?: number[];
   readOnly?: boolean;
+  onChange?: (queryText: string) => void;
   onRunQuery?: () => void;
   onCursorMoveOverCardTag?: (id: CardId) => void;
   onRightClickSelection?: () => void;
@@ -32,9 +34,8 @@ export interface CodeMirrorEditorRef {
 }
 
 import S from "./CodeMirrorEditor.module.css";
-import { useExtensions } from "./extensions";
+import { useExtensions, useHighlightLines } from "./extensions";
 import {
-  areAllRangesEqual,
   getPlaceholderText,
   getSelectedRanges,
   matchCardIdAtCursor,
@@ -43,19 +44,22 @@ import {
 export const CodeMirrorEditor = forwardRef<
   CodeMirrorEditorRef,
   CodeMirrorEditorProps
->(function CodeMirrorEditor(props, ref) {
-  const editor = useRef<ReactCodeMirrorRef>(null);
-  const {
+>(function CodeMirrorEditor(
+  {
     query,
-    onChange,
+    highlightedLineNumbers,
     readOnly,
+    onChange,
     onRunQuery,
     onSelectionChange,
     onRightClickSelection,
     onCursorMoveOverCardTag,
-  } = props;
-
+  },
+  ref,
+) {
+  const editorRef = useRef<ReactCodeMirrorRef>(null);
   const extensions = useExtensions({ query, onRunQuery });
+  useHighlightLines(editorRef, highlightedLineNumbers);
 
   const engine = Lib.engine(query);
   const placeholder = getPlaceholderText(engine);
@@ -63,7 +67,7 @@ export const CodeMirrorEditor = forwardRef<
   useImperativeHandle(ref, () => {
     return {
       focus() {
-        editor.current?.editor?.focus();
+        editorRef.current?.editor?.focus();
       },
       getSelectionTarget() {
         return document.querySelector(".cm-selectionBackground");
@@ -78,7 +82,7 @@ export const CodeMirrorEditor = forwardRef<
         const beforeRanges = getSelectedRanges(update.startState);
         const afterRanges = getSelectedRanges(update.state);
 
-        if (!areAllRangesEqual(beforeRanges, afterRanges)) {
+        if (!_.isEqual(beforeRanges, afterRanges)) {
           onSelectionChange(afterRanges);
         }
       }
@@ -99,7 +103,7 @@ export const CodeMirrorEditor = forwardRef<
 
   useEffect(() => {
     function handler(evt: MouseEvent) {
-      const selection = editor.current?.state?.selection.main;
+      const selection = editorRef.current?.state?.selection.main;
       if (!selection) {
         return;
       }
@@ -119,7 +123,7 @@ export const CodeMirrorEditor = forwardRef<
 
   return (
     <CodeMirror
-      ref={editor}
+      ref={editorRef}
       data-testid="native-query-editor"
       className={S.editor}
       extensions={extensions}

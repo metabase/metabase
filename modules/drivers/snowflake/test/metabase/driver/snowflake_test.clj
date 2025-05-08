@@ -17,6 +17,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
@@ -26,9 +27,9 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.database :as database]
    [metabase.models.secret :as secret]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.sync.core :as sync]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.util :as sync-util]
@@ -488,7 +489,12 @@
              net.snowflake.client.jdbc.SnowflakeSQLException
              (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
             "can-connect? should throw for Snowflake databases that don't exist (#9511)")
-
+        (is (can-connect? (-> (:details (mt/db))
+                              (assoc :host (str (get-in (mt/db) [:details :account])
+                                                ".snowflakecomputing.com")
+                                     :use-hostname true)
+                              (dissoc :account)))
+            "can-connect? with host and no account")
         (when (and pk-key pk-user)
           (mt/with-temp-file [pk-path]
             (mt/with-temp [:model/Secret {path-secret-id :id} {:name "Private key for Snowflake"
@@ -505,6 +511,13 @@
                                                                         :value (mt/bytes->base64-data-uri (u/string-to-bytes pk-key))}]
               (testing "private key authentication via uploaded keys or local key with path stored in a secret"
                 (spit pk-path pk-key)
+                (is (can-connect? (-> (:details (mt/db))
+                                      (assoc :host (str (get-in (mt/db) [:details :account])
+                                                        ".snowflakecomputing.com")
+                                             :use-hostname true)
+                                      (dissoc :password :account)
+                                      (merge {:db pk-db :user pk-user} {:private-key-id path-secret-id})))
+                    "can-connect? with pk, host and no account")
                 (doseq [to-merge [;; uploaded string
                                   {:private-key-value pk-key
                                    :private-key-options "uploaded"}
@@ -1171,3 +1184,18 @@
                     (and private-key-path private-key-id))
             (is (= :private-key-id (m/find-first #{:private-key-path :private-key-value :private-key-id} (reverse result)))
                 [idxs result])))))))
+
+(deftest have-select-privelege?-timeout-test
+  (mt/test-driver :snowflake
+    (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+      (qp.store/with-metadata-provider (mt/id)
+        (testing "checking select privilege defaults to allow on timeout (#56737)"
+          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT SYSTEM$WAIT(3, 'SECONDS')"])]
+            (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
+              (sql-jdbc.execute/do-with-connection-with-options
+               driver/*driver*
+               (mt/db)
+               nil
+               (fn [^java.sql.Connection conn]
+                 (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                             driver/*driver* conn schema table-name))))))))))))

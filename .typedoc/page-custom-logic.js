@@ -1,4 +1,3 @@
-const INTERNAL_MODULE_NAME = "internal";
 const GENERATED_DOC_RETURN_URL_LOCAL_STORAGE_KEY = "generatedDocReturnUrl";
 
 const isEmbeddingSdkApiDocsPage = (href) =>
@@ -29,22 +28,6 @@ const navigateBack = ({ fallbackUrl }) => {
     location.href = returnUrl;
   } else {
     location.href = fallbackUrl;
-  }
-};
-
-/**
- * Redirects from the "internal" module index page to the main index page
- */
-const setupRedirectsFromInternalModule = () => {
-  const href = location.href;
-  const indexPage = href.replace(/(.*\/html)\/.*/, "$1/index.html");
-
-  const isInternalModule =
-    href.endsWith(`${INTERNAL_MODULE_NAME}.html`) ||
-    href.endsWith(INTERNAL_MODULE_NAME);
-
-  if (isInternalModule) {
-    location.replace(indexPage);
   }
 };
 
@@ -103,67 +86,8 @@ const setupWordBreaks = () => {
   });
 };
 
-/**
- * Removes the "internal" kind item from the main content menu of a main page
- */
-const removeContentMenuInternalItem = () => {
-  const internalItem = document.querySelector(
-    `.col-content dt#${INTERNAL_MODULE_NAME}`,
-  );
-
-  if (!internalItem) {
-    return;
-  }
-
-  internalItem.remove();
-};
-
-/**
- * Removes the `internal` menu item from the site (left) menu
- */
-const removeSiteMenuInternalItems = () => {
-  const internalModuleItem = document.querySelector(
-    `.site-menu .tsd-accordion li:has(summary[data-key="other$${INTERNAL_MODULE_NAME}"])`,
-  );
-
-  if (!internalModuleItem) {
-    return;
-  }
-
-  internalModuleItem.remove();
-};
-
-/**
- * Removes the `internal` menu item from the page (right) menu
- */
-const removePageMenuInternalItems = () => {
-  const internalModuleItem = document.querySelector(
-    `.page-menu .tsd-accordion a[href="#${INTERNAL_MODULE_NAME}"]`,
-  );
-
-  if (!internalModuleItem) {
-    return;
-  }
-
-  internalModuleItem.remove();
-};
-
-const removePageElements = () => {
-  removeContentMenuInternalItem();
-  removeSiteMenuInternalItems();
-  removePageMenuInternalItems();
-};
-
-const observer = new MutationObserver(removePageElements);
-
-observer.observe(document.body, {
-  childList: true,
-  subtree: true,
-});
-
 const init = () => {
   storeReturnUrl();
-  setupRedirectsFromInternalModule();
   setupWordBreaks();
 };
 

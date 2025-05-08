@@ -6,10 +6,30 @@ import type { TemplateTagType } from "metabase-types/api";
 import { ContainerLabel, InputContainer } from "./TagEditorParam";
 
 const OPTIONS: Array<{ value: TemplateTagType; label: string }> = [
-  { value: "text", label: t`Text` },
-  { value: "number", label: t`Number` },
-  { value: "date", label: t`Date` },
-  { value: "dimension", label: t`Field Filter` },
+  {
+    value: "text",
+    get label() {
+      return t`Text`;
+    },
+  },
+  {
+    value: "number",
+    get label() {
+      return t`Number`;
+    },
+  },
+  {
+    value: "date",
+    get label() {
+      return t`Date`;
+    },
+  },
+  {
+    value: "dimension",
+    get label() {
+      return t`Field Filter`;
+    },
+  },
 ];
 
 export function VariableTypeSelect(props: {

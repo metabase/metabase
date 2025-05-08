@@ -14,7 +14,7 @@
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :as card]
@@ -23,18 +23,18 @@
    [metabase.models.field :refer [readable-fields-only]]
    [metabase.models.interface :as mi]
    [metabase.models.secret :as secret]
-   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.permissions.core :as perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
-   [metabase.sample-data :as sample-data]
+   [metabase.sample-data.core :as sample-data]
    [metabase.server.streaming-response]
+   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
-   [metabase.upload :as upload]
+   [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.honey-sql-2 :as h2x]
@@ -530,6 +530,9 @@
         (update :tables (fn [tables]
                           (for [table tables]
                             (update table :segments (partial filter mi/can-read?)))))
+        (update :tables (fn [tables]
+                          (for [table tables]
+                            (update table :schema str))))
         (update :tables (if remove_inactive?
                           (fn [tables]
                             (filter :active tables))
@@ -1013,6 +1016,7 @@
   (api/let-404 [db (t2/select-one :model/Database :id id)]
     (api/check-403 (mi/can-write? db))
     (t2/delete! :model/Database :router_database_id id)
+    (database-routing/delete-associated-database-router! id)
     (t2/delete! :model/Database :id id)
     (events/publish-event! :event/database-delete {:object db :user-id api/*current-user-id*}))
   api/generic-204-no-content)

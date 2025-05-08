@@ -8,16 +8,16 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.config :as config]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
-   [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
+   [metabase.settings.core :refer [defsetting]]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -361,17 +361,9 @@
 ;;; |                                     Creating a new User -- POST /api/user                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(api.macros/defendpoint :post "/"
-  "Create a new `User`, return a 400 if the email address is already taken"
-  [_route-params
-   _query-params
-   {:keys [email user_group_memberships] :as body}
-   :- [:map
-       [:first_name             {:optional true} [:maybe ms/NonBlankString]]
-       [:last_name              {:optional true} [:maybe ms/NonBlankString]]
-       [:email                  ms/Email]
-       [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
-       [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]]]
+(defn invite-user
+  "Implementation for `POST /`, invites a user to Metabase."
+  [{:keys [email user_group_memberships] :as body}]
   (api/check-superuser)
   (api/checkp (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
               "email" (tru "Email address already in use."))
@@ -388,6 +380,18 @@
                                :source          "admin"})
       (-> (fetch-user :id new-user-id)
           (t2/hydrate :user_group_memberships)))))
+
+(api.macros/defendpoint :post "/"
+  "Create a new `User`, return a 400 if the email address is already taken"
+  [_route-params
+   _query-params
+   body :- [:map
+            [:first_name             {:optional true} [:maybe ms/NonBlankString]]
+            [:last_name              {:optional true} [:maybe ms/NonBlankString]]
+            [:email                  ms/Email]
+            [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
+            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]]]
+  (invite-user body))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
