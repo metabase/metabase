@@ -7,7 +7,6 @@
    [metabase.models.table :as table]
    [metabase.models.user :as user]
    [metabase.notification.condition :as notification.condition]
-   [metabase.notification.events.notification :as notification.events]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.sample :as payload.sample]
    [metabase.notification.send :as notification.send]
@@ -36,7 +35,7 @@
   "Transform the event info to a format that is easier to work with in the templates.
   This is a multi-method because we want to be able to add more event types in the future."
   {:arglists '([notification-info])}
-  :event_name)
+  (comp :event_name :payload))
 
 (defmulti event-info->condition-context
   "Transformed the published event info to an intermediate datastructure that's used for evaluating the condition"
@@ -269,7 +268,6 @@
 
 (mu/defmethod transform-event-info :event/row.created :- ::row.created
   [notification-info]
-  (def notification-info notification-info)
   (bulk-row-transformation notification-info))
 
 (mu/defmethod transform-event-info :event/row.updated :- ::row.updated
@@ -298,6 +296,7 @@
 
 (mu/defmethod notification.payload/notification-payload :notification/system-event :- :map
   [notification-info :- ::notification.payload/Notification]
+  (def notification-info notification-info)
   (transform-event-info notification-info))
 
 (defmethod notification.payload/notification-payload-schema :notification/system-event
@@ -312,31 +311,33 @@
     (mr/resolve-schema return-schema)))
 
 (defn- default-row-action-transformation
-  [event-info]
+  [event-topic event-info]
   (lib.util.match/match-one
     event-info
     {:row_change {:before ?before
                   :after  ?after}
      :args       {:table_id ?table-id}}
-    {:record   (or ?after ?before)
-     :table_id ?table-id}))
+    {:record     (or ?after ?before)
+     :table_id   ?table-id
+     :event_name event-topic}))
 
 (mr/def ::condition.row.mutated
   [:map {:closed true}
    [:record :map]
-   [:table_id pos-int?]])
+   [:table_id pos-int?]
+   [:event_name :keyword]])
 
 (mu/defmethod event-info->condition-context :event/row.created :- ::condition.row.mutated
-  [_event-topic event-info]
-  (default-row-action-transformation event-info))
+  [event-topic event-info]
+  (default-row-action-transformation event-topic event-info))
 
 (mu/defmethod event-info->condition-context :event/row.updated :- ::condition.row.mutated
-  [_event-topic event-info]
-  (default-row-action-transformation event-info))
+  [event-topic event-info]
+  (default-row-action-transformation event-topic event-info))
 
 (mu/defmethod event-info->condition-context :event/row.deleted :- ::condition.row.mutated
-  [_event-topic event-info]
-  (default-row-action-transformation event-info))
+  [event-topic event-info]
+  (default-row-action-transformation event-topic event-info))
 
 (defmethod notification.send/should-queue-notification? :notification/system-event
   [notification-info]
