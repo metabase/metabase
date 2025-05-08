@@ -262,15 +262,16 @@
 (defn param-remapped-value
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `card`."
   [[field-id :as field-ids] param value]
-  (custom-values/parameter-remapped-value
-   param
-   value
-   #(-> (if (nil? (next field-ids))
-          (chain-filter/chain-filter field-id [{:field-id field-id, :op :=, :value value}] :limit 1)
-          (when-let [pk-field-id (:id (custom-values/pk-field-of-fk-pk-pair field-ids))]
-            (chain-filter/chain-filter pk-field-id [{:field-id pk-field-id, :op :=, :value value}] :limit 1)))
-        :values
-        first)))
+  (or (custom-values/parameter-remapped-value
+       param
+       value
+       #(-> (if (= (count field-ids) 1)
+              (chain-filter/chain-filter field-id [{:field-id field-id, :op :=, :value value}] :limit 1)
+              (when-let [pk-field-id (:id (custom-values/pk-field-of-fk-pk-pair field-ids))]
+                (chain-filter/chain-filter pk-field-id [{:field-id pk-field-id, :op :=, :value value}] :limit 1)))
+            :values
+            first))
+      [value]))
 
 (api.macros/defendpoint :post "/parameter/remapping"
   "Return the remapped parameter values for cards or dashboards that are being edited."
