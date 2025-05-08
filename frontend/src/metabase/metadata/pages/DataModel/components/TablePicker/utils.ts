@@ -101,9 +101,8 @@ export function useTableLoader(path: TreePath) {
   const getTables = useCallback(
     async (
       databaseId: DatabaseId | undefined,
-      schemaId_: SchemaId | undefined,
+      schemaId: SchemaId | undefined,
     ) => {
-      const schemaId = schemaId_?.replace(/^\d+:/, "");
       if (databaseId === undefined || schemaId === undefined) {
         return [];
       }
