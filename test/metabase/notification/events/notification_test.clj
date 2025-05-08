@@ -6,6 +6,7 @@
    [metabase.notification.core :as notification]
    [metabase.notification.events.notification :as events.notification]
    [metabase.notification.models :as models.notification]
+   [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
