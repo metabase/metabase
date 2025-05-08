@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.cmd.env-var-dox :as sut]))
 
-(def ns-set (sut/get-settings #{"metabase.public-settings"}))
+(def ns-set (sut/get-settings #{"metabase.settings.deprecated-grab-bag"}))
 
 (deftest test-format-prefix
   (testing "format-prefix handles deprecated variables."

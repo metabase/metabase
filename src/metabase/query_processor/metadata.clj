@@ -11,6 +11,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
@@ -70,7 +71,8 @@
   (let [query  (cond-> query
                  current-user-id (assoc-in [:info :executed-by] current-user-id))
         driver (driver.u/database->driver (:database query))]
-    (driver/query-result-metadata driver query)))
+    (-> (driver/query-result-metadata driver query)
+        (annotate/annotate-native-cols (get-in query [:info :card-entity-id])))))
 
 (mu/defn- add-extra-column-metadata :- :map
   [col            :- :map

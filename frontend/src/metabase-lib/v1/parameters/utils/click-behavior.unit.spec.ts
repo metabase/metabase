@@ -45,6 +45,7 @@ const FLOAT_CATEGORY_FIELD = createMockField({
   semantic_type: "type/Category",
   name: "FLOAT_CATEGORY",
   display_name: "Float Category",
+  has_field_values: "list",
 });
 
 const metadata = createMockMetadata({
@@ -499,7 +500,7 @@ describe("metabase/lib/click-behavior", () => {
   });
 
   describe("formatSourceForTarget", () => {
-    it("should not change text parameters", () => {
+    it("should validate date parameter values", () => {
       const source = {
         type: "column" as const,
         id: "SOME_STRING",
@@ -528,7 +529,7 @@ describe("metabase/lib/click-behavior", () => {
         extraData,
         clickBehavior,
       });
-      expect(value).toEqual("foo");
+      expect(value).toEqual(null);
     });
 
     it("should format date/all-options parameters based on unit", () => {

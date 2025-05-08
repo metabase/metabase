@@ -4,10 +4,10 @@ import type {
   Engine,
   EngineField,
   EngineSource,
+  EnterpriseSettingKey,
   EnterpriseSettings,
   FontFile,
   SettingDefinition,
-  SettingKey,
   Settings,
   TokenFeatures,
   TokenStatus,
@@ -47,12 +47,6 @@ export const createMockEngines = (
     "driver-name": "CommunityEngine",
     source: createMockEngineSource({
       type: "community",
-    }),
-  }),
-  partnerEngine: createMockEngine({
-    "driver-name": "PartnerEngine",
-    source: createMockEngineSource({
-      type: "partner",
     }),
   }),
   ...opts,
@@ -130,11 +124,16 @@ export const createMockTokenFeatures = (
   query_reference_validation: false,
   serialization: false,
   cache_preemptive: false,
+  metabot_v3: false,
+  ai_sql_fixer: false,
+  ai_sql_generation: false,
+  database_routing: false,
+  "development-mode": false,
   ...opts,
 });
 
 export const createMockSettingDefinition = <
-  Key extends SettingKey = SettingKey,
+  Key extends EnterpriseSettingKey = EnterpriseSettingKey,
 >(
   opts: SettingDefinition<Key>,
 ): SettingDefinition<Key> => ({
@@ -179,6 +178,7 @@ export const createMockSettings = (
   "help-link": "metabase",
   "help-link-custom-destination": "",
   "deprecation-notice-version": undefined,
+  "development-mode?": false,
   "ee-ai-features-enabled": false,
   "ee-openai-model": "",
   "ee-openai-api-key": "",
@@ -188,6 +188,9 @@ export const createMockSettings = (
   "email-smtp-security": "none",
   "email-smtp-username": null,
   "email-smtp-password": null,
+  "email-from-name": null,
+  "email-from-address": null,
+  "email-reply-to": null,
   "embedding-app-origin": "",
   "embedding-app-origins-sdk": "",
   "embedding-app-origins-interactive": "",
@@ -207,7 +210,7 @@ export const createMockSettings = (
   "enable-xrays": false,
   engines: createMockEngines(),
   "example-dashboard-id": 1,
-  gsheets: { status: "not-connected", folder_url: null },
+  gsheets: {},
   "humanization-strategy": "simple",
   "has-user-setup": true,
   "hide-embed-branding?": true,

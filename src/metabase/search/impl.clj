@@ -7,12 +7,12 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
-   [metabase.public-settings :as public-settings]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.search.settings :as search.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
@@ -54,6 +54,8 @@
     ;; We filter what we can (i.e., everything in a collection) out already when querying
     true))
 
+;; TODO: remove this implementation now that we check permissions in the SQL, leaving it in for now to guard against
+;; issue with new pure sql implementation
 (defmethod check-permissions-for-model :table
   [search-ctx instance]
   ;; we've already filtered out tables w/o collection permissions in the query itself.
@@ -200,7 +202,7 @@
 (defn default-engine
   "In the absence of an explicit engine argument in a request, which engine should be used?"
   []
-  (if-let [s (public-settings/search-engine)]
+  (if-let [s (search.settings/search-engine)]
     (let [engine (keyword "search.engine" (name s))]
       (if (search.engine/supported-engine? engine)
         engine
@@ -264,7 +266,8 @@
    [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
-   [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]])
+   [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
+   [:include-metadata?                   {:optional true} [:maybe boolean?]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -280,6 +283,7 @@
            is-impersonated-user?
            is-sandboxed-user?
            include-dashboard-questions?
+           include-metadata?
            is-superuser?
            last-edited-at
            last-edited-by
@@ -326,6 +330,7 @@
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
+                 (some? include-metadata?)                   (assoc :include-metadata? include-metadata?)
                  (seq ids)                                   (assoc :ids ids))]
     (when (and (seq ids)
                (not= (count models) 1))
@@ -399,6 +404,21 @@
        (map #(u/update-some % :dashboard select-keys [:id :name :moderation_status]))
        (map #(dissoc % :dashboard_id))))
 
+(defn- add-metadata [search-results]
+  (let [card-ids (into #{}
+                       (comp
+                        (filter #(= (:model %) "card"))
+                        (map :id))
+                       search-results)
+        card-metadata (if (empty? card-ids)
+                        {}
+                        (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in card-ids]))]
+    (map (fn [{:keys [model id] :as item}]
+           (if (= model "card")
+             (assoc item :result_metadata (card-metadata id))
+             item))
+         search-results)))
+
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
   [search-ctx :- search.config/SearchContext]
@@ -413,6 +433,7 @@
         total-results     (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                             true hydrate-dashboards
                             true hydrate-user-metadata
+                            (:include-metadata? search-ctx) (add-metadata)
                             (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
                             true (add-collection-effective-location)
                             true (map serialize))]

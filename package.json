@@ -133,12 +133,12 @@
     "sql-formatter": "^15.1.2",
     "stream-browserify": "^3.0.0",
     "tether": "^1.2.0",
+    "tinykeys": "^3.0.0",
     "tippy.js": "^6.3.5",
     "ts-pattern": "^5.1.2",
     "ttag": "1.7.21",
     "typescript": "^5.4.5",
     "underscore": "~1.13.3",
-    "use-debounce": "^10.0.0",
     "yup": "^0.32.11"
   },
   "devDependencies": {
@@ -159,8 +159,8 @@
     "@microsoft/api-extractor": "^7.52.2",
     "@peculiar/webcrypto": "^1.5.0",
     "@pmmmwh/react-refresh-webpack-plugin": "0.5.10",
-    "@rspack/cli": "^1.3.0",
-    "@rspack/core": "^1.3.0",
+    "@rspack/cli": "^1.3.6",
+    "@rspack/core": "^1.3.6",
     "@rspack/plugin-react-refresh": "^1.0.1",
     "@sinonjs/fake-timers": "^9.1.2",
     "@storybook/addon-a11y": "^8.5.0",
@@ -268,6 +268,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-storybook": "^0.9.0",
     "eslint-plugin-testing-library": "^5.11.1",
+    "eslint-plugin-ttag": "^1.1.0",
     "fetch-mock": "^9.11.0",
     "fork-ts-checker-webpack-plugin": "^9.0.2",
     "get-nonce": "^1.0.1",
@@ -295,6 +296,8 @@
     "mochawesome-merge": "^4.2.1",
     "mochawesome-report-generator": "^6.2.0",
     "mockdate": "^2.0.2",
+    "msw": "^2.7.5",
+    "msw-storybook-addon": "^2.0.4",
     "mutationobserver-shim": "^0.3.7",
     "mysql2": "^3.9.8",
     "node-fetch": "2.6.7",
@@ -333,11 +336,17 @@
     "terser-webpack-plugin": "^5.3.9",
     "ts-morph": "^25.0.0",
     "tsx": "^4.19.3",
+    "typedoc": "0.28.2",
+    "typedoc-plugin-dt-links": "^2.0.0",
+    "typedoc-plugin-markdown": "^4.6.2",
+    "typedoc-plugin-mdn-links": "^5.0.1",
+    "typedoc-plugin-merge-modules": "^7.0.0",
+    "typedoc-plugin-redirect": "^1.2.0",
     "typescript-plugin-css-modules": "^5.1.0",
     "webpack": "5.94.0",
     "webpack-bundle-analyzer": "^4.10.1",
     "webpack-cli": "^5.1.1",
-    "webpack-dev-server": "^5.0.4",
+    "webpack-dev-server": "^5.2.1",
     "webpack-notifier": "1.15.0",
     "webpack-stats-plugin": "^1.1.3",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
@@ -362,7 +371,7 @@
     "unset-value": "2.0.1",
     "webpack-dev-middleware": "^5.3.4",
     "nanoid": "^3.3.8",
-    "path-to-regexp": "^0.1.12"
+    "fetch-mock/path-to-regexp": "3.3.0"
   },
   "scripts": {
     "build": "yarn build:cljs && yarn build:js",
@@ -419,6 +428,8 @@
     "embedding-sdk:generate-nextjs-compat": "tsx enterprise/frontend/src/embedding-sdk/bin/generate-nextjs-compat.ts",
     "embedding-sdk:test-unit": "yarn test-unit enterprise/frontend/src/embedding-sdk/",
     "embedding-sdk:tsc": "tsc --project tsconfig.sdk.json",
+    "embedding-sdk:docs:generate:pure": "typedoc --options ./.typedoc/typedoc.html.config.js && typedoc --options ./.typedoc/typedoc.markdown.config.js",
+    "embedding-sdk:docs:generate": "yarn run build-embedding-sdk && yarn run embedding-sdk:docs:generate:pure",
     "embedding-sdk:cli-snippets:type-check": "./bin/embedding-sdk/type-check-embedding-sdk-cli-snippets.sh",
     "embedding-sdk:docs-snippets:type-check": "./bin/embedding-sdk/type-check-embedding-sdk-docs-snippets.sh",
     "embedding-sdk:clean": "rm -rf resources/embedding-sdk/dist && rm -rf resources/embedding-sdk/.tsbuildinfo",
@@ -484,7 +495,7 @@
       "prettier --write"
     ],
     "**/*.{clj,cljc,cljs,bb}": [
-      "./bin/cljfmt_staged.sh"
+      "./bin/mage cljfmt-files"
     ],
     "e2e/test/scenarios/*/{*.(js|ts),!(helpers|shared)/*.(js|ts)}": [
       "node e2e/validate-e2e-test-files.js"

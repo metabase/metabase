@@ -8,7 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -22,7 +22,7 @@
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.types :as types]
-   [metabase.upload :as upload]
+   [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru deferred-trun tru]]
    [metabase.util.log :as log]
@@ -43,8 +43,12 @@
   "Schema for a valid table field ordering."
   (into [:enum] (map name table/field-orderings)))
 
-(defn- fix-schema [table]
-  (update table :schema str))
+(defn- present-table
+  "Given a table, shape it for the API."
+  [table]
+  (-> table
+      (update :db dissoc :router_database_id)
+      (update :schema str)))
 
 (api.macros/defendpoint :get "/"
   "Get all `Tables`."
@@ -52,7 +56,7 @@
   (as-> (t2/select :model/Table, :active true, {:order-by [[:name :asc]]}) tables
     (t2/hydrate tables :db)
     (into [] (comp (filter mi/can-read?)
-                   (map fix-schema))
+                   (map present-table))
           tables)))
 
 (api.macros/defendpoint :get "/:id"
@@ -67,7 +71,7 @@
                             api/read-check)]
     (-> (api-perm-check-fn :model/Table id)
         (t2/hydrate :db :pk_field)
-        fix-schema)))
+        present-table)))
 
 (api.macros/defendpoint :get "/:table-id/data"
   "Get the data for the given table"
@@ -391,7 +395,7 @@
         (m/dissoc-in [:db :details])
         (assoc-dimension-options db)
         format-fields-for-response
-        fix-schema
+        present-table
         (update :fields (partial filter (fn [{visibility-type :visibility_type}]
                                           (case (keyword visibility-type)
                                             :hidden    include-hidden-fields?
@@ -412,7 +416,7 @@
         (-> table
             (m/dissoc-in [:db :details])
             format-fields-for-response
-            fix-schema
+            present-table
             (update :fields #(remove (comp #{:hidden :sensitive} :visibility_type) %)))))))
 
 (defenterprise fetch-table-query-metadata
@@ -599,7 +603,8 @@
       ;; it's silly to be hydrating some of these tables/dbs
       {:relationship   :Mt1
        :origin_id      (:id origin-field)
-       :origin         (t2/hydrate origin-field [:table :db])
+       :origin         (-> (t2/hydrate origin-field [:table :db])
+                           (update :table present-table))
        :destination_id (:fk_target_field_id origin-field)
        :destination    (t2/hydrate (t2/select-one :model/Field :id (:fk_target_field_id origin-field)) :table)})))
 
@@ -683,7 +688,7 @@
   (update-csv! {:table-id id
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
-                :action   ::upload/append}))
+                :action   :metabase.upload/append}))
 
 (api.macros/defendpoint :post "/:id/replace-csv"
   "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have
@@ -703,4 +708,4 @@
   (update-csv! {:table-id id
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
-                :action   ::upload/replace}))
+                :action   :metabase.upload/replace}))

@@ -13,11 +13,11 @@
 
   Tests will check to make sure new models get included in this map."
   '{:model/Action                            metabase.actions.models
-    :model/ApiKey                            metabase.models.api-key
+    :model/ApiKey                            metabase.api-keys.models.api-key
     :model/ApplicationPermissionsRevision    metabase.models.application-permissions-revision
     :model/AuditLog                          metabase.models.audit-log
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark
-    :model/CacheConfig                       metabase.models.cache-config
+    :model/CacheConfig                       metabase.cache.models.cache-config
     :model/Card                              metabase.models.card
     :model/CardBookmark                      metabase.bookmarks.models.bookmark
     :model/Channel                           metabase.channel.models.channel
@@ -34,20 +34,18 @@
     :model/DashboardTab                      metabase.models.dashboard-tab
     :model/DataPermissions                   metabase.permissions.models.data-permissions
     :model/Database                          metabase.models.database
+    :model/DatabaseRouter                    metabase-enterprise.database-routing.model
     :model/Dimension                         metabase.models.dimension
     :model/Field                             metabase.models.field
-    :model/FieldUsage                        metabase.models.field-usage
     :model/FieldValues                       metabase.models.field-values
     :model/GroupTableAccessPolicy            metabase-enterprise.sandbox.models.group-table-access-policy
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
-    :model/LegacyMetric                      metabase.models.legacy-metric
-    :model/LegacyMetricImportantField        metabase.models.legacy-metric-important-field
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
     :model/ModerationReview                  metabase.models.moderation-review
-    :model/NativeQuerySnippet                metabase.models.native-query-snippet
+    :model/NativeQuerySnippet                metabase.native-query-snippets.models.native-query-snippet
     :model/Notification                      metabase.notification.models
     :model/NotificationCard                  metabase.notification.models
     :model/NotificationHandler               metabase.notification.models
@@ -65,8 +63,8 @@
     :model/PulseChannelRecipient             metabase.pulse.models.pulse-channel-recipient
     :model/Query                             metabase.models.query
     :model/QueryAction                       metabase.actions.models
-    :model/QueryAnalysis                     metabase.models.query-analysis
-    :model/QueryCache                        metabase.models.query-cache
+    :model/QueryAnalysis                     metabase.query-analysis.models.query-analysis
+    :model/QueryCache                        metabase.cache.models.query-cache
     :model/QueryExecution                    metabase.models.query-execution
     :model/QueryField                        metabase.models.query-field
     :model/QueryTable                        metabase.models.query-table
@@ -76,10 +74,9 @@
     :model/Secret                            metabase.models.secret
     :model/Segment                           metabase.segments.models.segment
     :model/Session                           metabase.session.models.session
-    :model/Setting                           metabase.models.setting
+    :model/Setting                           metabase.settings.models.setting
     :model/Table                             metabase.models.table
-    :model/TablePrivileges                   metabase.models.table-privileges
-    :model/TaskHistory                       metabase.models.task-history
+    :model/TaskHistory                       metabase.task-history.models.task-history
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
     :model/User                              metabase.models.user

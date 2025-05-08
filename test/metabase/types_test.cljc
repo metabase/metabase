@@ -39,8 +39,7 @@
 (coercion-hierarchies/define-types! ::Coerce-Int-To-Str :type/Integer :type/Text)
 
 (deftest ^:parallel is-coercible?-test
-  (is (= true
-         (types/is-coercible? ::Coerce-Int-To-Str :type/Integer :type/Text)))
+  (is (true? (types/is-coercible? ::Coerce-Int-To-Str :type/Integer :type/Text)))
   (testing "should be able to coerce from a subtype of base type"
     (is (types/is-coercible? ::Coerce-Int-To-Str :type/BigInteger :type/Text)))
   (testing "should NOT be able to coerce from a parent type of base type"

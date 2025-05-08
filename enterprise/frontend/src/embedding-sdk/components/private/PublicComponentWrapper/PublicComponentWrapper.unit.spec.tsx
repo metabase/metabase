@@ -1,10 +1,10 @@
 import { renderWithProviders, screen } from "__support__/ui";
 import { sdkReducers } from "embedding-sdk/store";
-import type { LoginStatus } from "embedding-sdk/store/types";
 import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk/test/mocks/state";
+import type { LoginStatus } from "embedding-sdk/types/user";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { SdkContextProvider } from "../SdkContext";

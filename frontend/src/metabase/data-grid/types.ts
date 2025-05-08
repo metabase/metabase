@@ -174,8 +174,8 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Items per page. Undefined disables pagination. */
   pageSize?: number;
 
-  /** Callback when a column is resized */
-  onColumnResize?: (columnSizingMap: ColumnSizingState) => void;
+  /** Callback when a column is resized. */
+  onColumnResize?: (columnName: string, width: number) => void;
 
   /** Callback when columns are reordered */
   onColumnReorder?: (columnOrder: string[]) => void;

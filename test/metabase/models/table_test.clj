@@ -10,8 +10,11 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest valid-field-order?-test
   (testing "A valid field ordering is a set IDs  of all active fields in a given table"
@@ -173,3 +176,137 @@
          (-> (t2/select-one :model/Table (mt/id :venues))
              (t2/hydrate :pk_field)
              :pk_field))))
+
+(deftest visible-tables-filter-clause-test
+  (testing "visible-tables-filter-clause generates a HoneySQL clause that filters tables based on user permissions"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {table-id-1 :id} {:db_id db-id :name "Table1"}
+                   :model/Table    {table-id-2 :id} {:db_id db-id :name "Table2"}
+                   :model/Table    {table-id-3 :id} {:db_id db-id :name "Table3"}]
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :blocked)
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :no)
+
+      (data-perms/set-table-permission! (perms-group/all-users) table-id-1 :perms/view-data :unrestricted)
+      (data-perms/set-table-permission! (perms-group/all-users) table-id-1 :perms/create-queries :query-builder)
+
+      (data-perms/set-table-permission! (perms-group/all-users) table-id-2 :perms/view-data :unrestricted)
+      (data-perms/set-table-permission! (perms-group/all-users) table-id-2 :perms/create-queries :query-builder-and-native)
+
+      (data-perms/set-table-permission! (perms-group/all-users) table-id-3 :perms/view-data :blocked)
+      (data-perms/set-table-permission! (perms-group/all-users) table-id-3 :perms/create-queries :no)
+
+      (let [user-id            (mt/user->id :rasta)
+            fetch-visible-ids (fn [user-cfg table-id-field]
+                                (let [filter-clause (table/visible-tables-filter-clause table-id-field user-cfg)]
+                                  (t2/select-pks-set [:model/Table]
+                                                     {:where
+                                                      [:and
+                                                       [:= :db_id db-id]
+                                                       filter-clause]})))]
+
+        (testing "Superuser should see all tables"
+          (let [superuser-cfg {:user-id       user-id ; User ID doesn't matter for superuser
+                               :is-superuser? true
+                               :view-data-permission-level :unrestricted ; Levels don't matter for superuser
+                               :create-queries-permission-level :query-builder}]
+            (is (= #{table-id-1 table-id-2 table-id-3}
+                   (fetch-visible-ids superuser-cfg :id)))))
+
+        (testing "Non-superuser should only see tables where they have both view and query permissions (mimics mi/can-read?)"
+          (let [rasta-cfg {:user-id       user-id
+                           :is-superuser? false
+                           :view-data-permission-level :unrestricted
+                           :create-queries-permission-level :query-builder}]
+            (is (= #{table-id-1 table-id-2}
+                   (fetch-visible-ids rasta-cfg :id))
+                "Clause should filter out tables without sufficient view/query permissions")
+
+            (testing "using a sequence of fields for the table ID"
+              (is (= #{table-id-1 table-id-2}
+                     (fetch-visible-ids rasta-cfg [:id :metabase_table.id]))
+                  "Clause should work with coalesce when a sequence of fields is provided"))
+
+            (testing "using a qualified keyword"
+              (is (= #{table-id-1 table-id-2}
+                     (fetch-visible-ids rasta-cfg :metabase_table.id))
+                  "Clause should work with qualified keyword"))))
+
+        (testing "Non-superuser requiring only :view-data :unrestricted should see tables 1 and 2"
+          (let [rasta-view-only-cfg {:user-id       user-id
+                                     :is-superuser? false
+                                     :view-data-permission-level :unrestricted
+                                     :create-queries-permission-level :no}]
+            (is (= #{table-id-1 table-id-2}
+                   (fetch-visible-ids rasta-view-only-cfg :id))
+                "Clause should respect the provided permission levels")))
+
+        (testing "Non-superuser requiring :view-data :blocked should all tables since all values are more permissive "
+          (let [rasta-blocked-cfg {:user-id       user-id
+                                   :is-superuser? false
+                                   :view-data-permission-level :blocked
+                                   :create-queries-permission-level :no}]
+            (is (= #{table-id-1 table-id-2 table-id-3}
+                   (fetch-visible-ids rasta-blocked-cfg :id))
+                "Clause should filter correctly when requiring :blocked level"))))))
+  (testing "visible-tables-filter-clause generates a HoneySQL clause that filters tables based on user permissions when only db level perms are set"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {table-id-1 :id} {:db_id db-id :name "Table1"}
+                   :model/Table    {table-id-2 :id} {:db_id db-id :name "Table2"}
+                   :model/Table    {table-id-3 :id} {:db_id db-id :name "Table3"}]
+
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :no)
+
+      (let [user-id            (mt/user->id :rasta)
+            fetch-visible-ids (fn [user-cfg table-id-field]
+                                (let [filter-clause (table/visible-tables-filter-clause table-id-field user-cfg)]
+                                  (t2/select-pks-set [:model/Table]
+                                                     {:where
+                                                      [:and
+                                                       [:= :db_id db-id]
+                                                       filter-clause]})))]
+
+        (testing "Superuser should see all tables"
+          (let [superuser-cfg {:user-id       user-id ; User ID doesn't matter for superuser
+                               :is-superuser? true
+                               :view-data-permission-level :unrestricted ; Levels don't matter for superuser
+                               :create-queries-permission-level :query-builder}]
+            (is (= #{table-id-1 table-id-2 table-id-3}
+                   (fetch-visible-ids superuser-cfg :id)))))
+
+        (testing "Non-superuser should only see tables where they have both view and query permissions (mimics mi/can-read?)"
+          (let [rasta-cfg {:user-id       user-id
+                           :is-superuser? false
+                           :view-data-permission-level :unrestricted
+                           :create-queries-permission-level :query-builder}]
+            (is (nil?
+                 (fetch-visible-ids rasta-cfg :id))
+                "Clause should filter out tables without sufficient view/query permissions")
+
+            (testing "using a sequence of fields for the table ID"
+              (is (nil?
+                   (fetch-visible-ids rasta-cfg [:id :metabase_table.id]))
+                  "Clause should work with coalesce when a sequence of fields is provided"))
+
+            (testing "using a qualified keyword"
+              (is (nil?
+                   (fetch-visible-ids rasta-cfg :metabase_table.id))
+                  "Clause should work with qualified keyword"))))
+
+        (testing "Non-superuser requiring only :view-data :unrestricted should see tables 1 and 2"
+          (let [rasta-view-only-cfg {:user-id       user-id
+                                     :is-superuser? false
+                                     :view-data-permission-level :unrestricted
+                                     :create-queries-permission-level :no}]
+            (is (= #{table-id-1 table-id-2 table-id-3}
+                   (fetch-visible-ids rasta-view-only-cfg :id))
+                "Clause should respect the provided permission levels")))
+
+        (testing "Non-superuser requiring :view-data :blocked should all tables since all values are more permissive "
+          (let [rasta-blocked-cfg {:user-id       user-id
+                                   :is-superuser? false
+                                   :view-data-permission-level :blocked
+                                   :create-queries-permission-level :no}]
+            (is (= #{table-id-1 table-id-2 table-id-3}
+                   (fetch-visible-ids rasta-blocked-cfg :id))
+                "Clause should filter correctly when requiring :blocked level")))))))

@@ -40,7 +40,7 @@ export const SaveEditButton = (props: { onDoneEditing: () => void }) => {
 
   useRegisterShortcut([
     {
-      id: "save-dashboard",
+      id: "dashboard-save",
       perform: onSave,
     },
   ]);

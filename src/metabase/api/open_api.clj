@@ -17,8 +17,8 @@
   ;; TODO -- context map instead of prefix?
   (open-api-spec [this prefix]
     "Get the OpenAPI spec base object (as a Clojure data structure) associated with a Ring handler. `prefix` is the
-    route prefix in the Compojure `context` sense, e.g. `/api/` for [[metabase.api.routes/routes]], or `/api/user/` by
-    the time we get to [[metabase.api.user]], etc."))
+    route prefix in the Compojure `context` sense, e.g. `/api/` for [[metabase.api-routes.core/routes]], or
+    `/api/user/` by the time we get to [[metabase.api.user]], etc."))
 
 (extend-protocol OpenAPISpec
   nil
@@ -319,4 +319,4 @@
 #_:clj-kondo/ignore
 (comment
   (open-api-spec (metabase.api.macros/ns-handler 'metabase.api.geojson) "/api/geojson")
-  (root-open-api-object (requiring-resolve 'metabase.api.routes/routes)))
+  (root-open-api-object (requiring-resolve 'metabase.api-routes.core/routes)))

@@ -1040,10 +1040,27 @@ export const BarNonLinearNumericXAxis = {
   },
 };
 
+export const BarWidthDstTimezones56424 = {
+  render: Template,
+  args: {
+    rawSeries: data.barWidthDstTimezones56424 as any,
+    renderingContext,
+  },
+};
+
 export const Default = {
   render: Template,
   args: {
     rawSeries: data.messedUpAxis as any,
     renderingContext,
+  },
+};
+
+export const Watermark = {
+  render: Template,
+  args: {
+    rawSeries: data.barWidthDstTimezones56424 as any,
+    renderingContext,
+    hasDevWatermark: true,
   },
 };

@@ -11,9 +11,9 @@
    [metabase.config :as config]
    [metabase.formatter :as formatter]
    [metabase.notification.payload.execute :as notification.execute]
-   [metabase.public-settings :as public-settings]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor :as qp]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]))
@@ -215,9 +215,9 @@
 
 ;; When there are more rows than the limit, check to ensure a truncation warning is present
 (deftest truncation-warning-when-rows-exceed-max
-  (is (= true
-         (let [html-output (html (#'body/render-truncation-warning 10 100))]
-           (boolean (re-find #"Showing.*10.*of.*100.*rows" html-output))))))
+  (is (true?
+       (let [html-output (html (#'body/render-truncation-warning 10 100))]
+         (boolean (re-find #"Showing.*10.*of.*100.*rows" html-output))))))
 
 (def ^:private test-columns-with-date-semantic-type
   (update test-columns 2 merge {:base_type    :type/Text

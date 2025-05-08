@@ -6,12 +6,9 @@
 
   See https://metaboat.slack.com/archives/CKZEMT1MJ/p1736556522733279 for rationale behind this pattern."
   (:require
-   [metabase.task.cache]
    [metabase.task.creator-sentiment-emails]
    [metabase.task.follow-up-emails]
-   [metabase.task.refresh-slack-channel-user-cache]
    [metabase.task.send-anonymous-stats]
-   [metabase.task.task-history-cleanup]
    [metabase.task.truncate-audit-tables]
    [metabase.task.upgrade-checks]))
 

@@ -123,12 +123,9 @@ To view your conditional counts by plan, set the **Group by** column to "Plan".
 
 ## Related functions
 
-Different ways to do the same thing, because it's fun to try new things.
-
 **Metabase**
 
-- [case](#case)
-- [CumulativeCount](#cumulativecount)
+- [Conditional running counts](#conditional-running-counts)
 
 **Other tools**
 
@@ -136,43 +133,10 @@ Different ways to do the same thing, because it's fun to try new things.
 - [Spreadsheets](#spreadsheets)
 - [Python](#python)
 
-### case
 
-You can combine [`Count`](../expressions-list.md#count) with [`case`](./case.md):
+### Conditional running counts
 
-```
-Count(case([Plan] = "Basic", [ID]))
-```
-
-to do the same thing as `CountIf`:
-
-```
-CountIf([Plan] = "Basic")
-```
-
-The `case` version lets you count a different column when the condition isn't met. For example, if you've got data from different sources:
-
-| ID: Source A | Plan: Source A | ID: Source B | Plan: Source B |
-| ------------ | -------------- | ------------ | -------------- |
-| 1            | Basic          |              |                |
-|              |                | B            | basic          |
-|              |                | C            | basic          |
-| 4            | Business       | D            | business       |
-| 5            | Premium        | E            | premium        |
-
-To count the total number of Basic plans across both sources, you could create a `case` expression to:
-
-- Count the rows in "ID: Source A" where "Plan: Source A = "Basic"
-- Count the rows in "ID: Source B" where "Plan: Source B = "basic"
-
-```
-Count(case([Plan: Source A] = "Basic", [ID: Source A],
-            case([Plan: Source B] = "basic", [ID: Source B])))
-```
-
-### CumulativeCount
-
-`CountIf` doesn't do running counts. You'll need to combine [CumulativeCount](../expressions-list.md#cumulativecount) with [`case`](./case.md).
+`CountIf` doesn't do running counts, and [CumulativeCount](../expressions/cumulative) doesn't accept conditions (or any other arguments) . To do conditional running counts, you'll need to be creative: combine [CumulativeSum](../expressions/cumulative) (not `CumulativeCount`! ) with [`case`](./case.md). The idea is to use `case` to return `1` when a condition is satisfied and `0` when it isn't, then compute the running sum of all the 1's.
 
 If our sample data is a time series:
 
@@ -194,7 +158,7 @@ And we want to get the running count of active plans like this:
 Create an aggregation from **Summarize** > **Custom expression**:
 
 ```
-CumulativeCount(case([Active Subscription] = true, [ID]))
+CumulativeSum(case([Active Subscription] = true, 1,0))
 ```
 
 You'll also need to set the **Group by** column to "Created Date: Month".

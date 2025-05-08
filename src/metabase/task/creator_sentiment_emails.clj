@@ -11,7 +11,7 @@
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.premium-features.core :as premium-features]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.task :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])

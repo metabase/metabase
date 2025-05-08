@@ -60,15 +60,7 @@ const DashboardActionMenuInner = ({
   useRegisterShortcut(
     [
       {
-        id: "copy-dashboard",
-        perform: () => dispatch(push(`${location?.pathname}/copy`)),
-      },
-      {
-        id: "move-dashboard",
-        perform: () => canEdit && dispatch(push(`${location?.pathname}/move`)),
-      },
-      {
-        id: "trash-dashboard",
+        id: "dashboard-send-to-trash",
         perform: () => dispatch(push(`${location?.pathname}/archive`)),
       },
     ],

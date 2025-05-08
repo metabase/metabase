@@ -4,33 +4,33 @@
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
-   [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.performance :as perf]
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
-   (java.util Queue)))
+   (java.util.concurrent DelayQueue)))
 
 (set! *warn-on-reflection* true)
 
 ;; Currently we use a single queue, even if multiple engines are enabled, but may want to revisit this.
-(defonce ^:private ^Queue queue (queue/delay-queue))
+(defonce ^:private ^DelayQueue queue (queue/delay-queue))
 
 ;; Perhaps this config move up somewhere more visible? Conversely, we may want to specialize it per engine.
 
-(def ^:private delay-ms
-  "The minimum time we must wait before updating the index. This delay exists to dedupe and batch changes efficiently."
+(def ^:private message-delay-ms
+  "The time a message should wait before coming off the queue.
+  This delay exists to ensure the data is fully committed before indexing."
   100)
 
-(def ^:private batch-max
-  "The maximum number of update messages to process together.
-  Note that each message can correspond to multiple documents, for example there would be 1 message for updating all
-  the tables within a given database when it is renamed."
-  50)
+(def ^:private listener-name
+  "The name of the listener that consumes the queue"
+  "search-index-update")
 
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
@@ -41,11 +41,11 @@
        (str/join " ")))
 
 (defn- display-data [m]
-  (select-keys m [:name :display_name :description :collection_name]))
+  (perf/select-keys m [:name :display_name :description :collection_name]))
 
 (defn- ->document [m]
   (-> m
-      (select-keys
+      (perf/select-keys
        (into [:model] search.spec/attr-columns))
       (update :archived boolean)
       (assoc
@@ -101,10 +101,10 @@
          (m/distinct-by (juxt :id :model))
          (map ->document)))))
 
-(defn populate-index!
-  "Go over all searchable items and populate the index with them."
-  [engine]
-  (search.engine/consume! engine (query->documents (search-items-reducible))))
+(defn searchable-documents
+  "Return all existing searchable documents from the database."
+  []
+  (query->documents (search-items-reducible)))
 
 (def ^:dynamic *force-sync*
   "Force ingestion to happen immediately, on the same thread."
@@ -114,42 +114,60 @@
   "Used by tests to disable updates, for example when testing migrations, where the schema is wrong."
   false)
 
-(defn consume!
-  "Update all active engines' indexes with the given documents"
-  [documents-reducible]
-  (when-let [engines (seq (search.engine/active-engines))]
-    (if (= 1 (count engines))
-      (search.engine/consume! (first engines) documents-reducible)
-      ;; TODO um, multiplexing over the reducible awkwardly feels strange. We at least use a magic number for now.
-      (doseq [batch (eduction (partition-all 150) documents-reducible)
-              e     engines]
-        (search.engine/consume! e batch)))))
+(defn update!
+  "Update all active engines' existing indexes with the given documents. Passed remove-documents will be deleted from the index."
+  [documents-reducible removed-models-reducible]
+  (doseq [e (seq (search.engine/active-engines))]
+    ;; We are partitioning the documents into batches at this level and sending each batch to all the engines
+    ;; to avoid having to retain the head of the sequences as we work through all the documents.
+    ;; Individual engines may also partition the documents further if they prefer
+    (reduce (fn [_ batch] (search.engine/update! e batch)) nil
+            (eduction (partition-all 150) documents-reducible))
+    (reduce (fn [_ batch] (doseq [[group ids] (u/group-by first second batch)]
+                            (search.engine/delete! e group ids))) nil
+            (eduction (partition-all 1000) removed-models-reducible))))
+
+(defn- extract-model-and-id
+  ([update]
+   (when-let [[model update-def] update]
+     (extract-model-and-id model update-def)))
+
+  ([model update-def]
+   (let [operation (first update-def)
+         values (rest update-def)]
+     (case operation
+       := (let [column-def (first (filter keyword? values))
+                id (str (first (filter integer? values)))]
+            (if (= :this.id column-def)
+              [model id]
+              nil))
+
+       :and (first (keep (partial extract-model-and-id model) values))))))
 
 (defn bulk-ingest!
   "Process the given search model updates. Returns the number of search index entries that get updated as a result."
   [updates]
-  (->> (for [[search-model where-clauses] (u/group-by first second updates)]
-         (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
-       ;; init collection is only for clj-kondo, as we know that the list is non-empty
-       (reduce u/rconcat [])
-       query->documents
-       consume!))
+  (let [documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
+                         (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
+                       ;; init collection is only for clj-kondo, as we know that the list is non-empty
+                       (reduce u/rconcat [])
+                       query->documents)
+        passed-documents (map extract-model-and-id updates)
+        indexed-documents (map (juxt :model (comp str :id)) (into [] documents))
+        ;; TODO: The list of documents to delete is not completely accurate.
+        ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the rows that were actually indexed.
+        ;; This will not work for cases like indexed-entries with compound PKs,
+        ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
+        ;; Long-term, we should find a better approach to knowing what to purge.
+        to-delete (remove (set indexed-documents) passed-documents)]
+
+    (update! documents to-delete)))
 
 (defn- track-queue-size! []
   (analytics/set! :metabase-search/queue-size (.size queue)))
 
-(defn get-next-batch!
-  "Wait up for a batch to become ready, and take it off the queue.
-  Used `first-delay-ms` to determine how long it will wait for any updates.
-  It will wait an additional `next-delay-ms` after each item for additional items to add to the batch, up to some
-  maximum batch size.
-  Will return nil if there is a timeout waiting for any updates."
-  [first-delay-ms next-delay-ms]
-  (u/prog1 (queue/take-delayed-batch! queue batch-max first-delay-ms next-delay-ms)
-    (track-queue-size!)))
-
 (defn- index-worker-exists? []
-  (task/job-exists? @(requiring-resolve 'metabase.search.task.search-index/update-job-key)))
+  (queue/listener-exists? listener-name))
 
 (defn ingest-maybe-async!
   "Update or create any search index entries related to the given updates.
@@ -164,6 +182,34 @@
        (do
          (doseq [update updates]
            (log/trace "Queuing update" update)
-           (queue/put-with-delay! queue delay-ms update))
+           (queue/put-with-delay! queue message-delay-ms update))
          (track-queue-size!)
          true)))))
+
+(defn report->prometheus!
+  "Send a search index update report to Prometheus"
+  [duration report]
+  (analytics/inc! :metabase-search/index-ms duration)
+  (prometheus/observe! :metabase-search/index-duration-ms duration)
+  (doseq [[model cnt] report]
+    (analytics/inc! :metabase-search/index {:model model} cnt)))
+
+(defn start-listener!
+  "Starts the ingestion listener on the queue"
+  []
+  (queue/listen! listener-name queue bulk-ingest!
+                 {:success-handler     (fn [result duration _]
+                                         (report->prometheus! duration result)
+                                         (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) result))
+                                         (track-queue-size!))
+                  :err-handler        (fn [err _]
+                                        (log/error err "Error indexing search entries")
+                                        (analytics/inc! :metabase-search/index-error)
+                                        (track-queue-size!))
+                  ;; Note that each message can correspond to multiple documents,
+                  ;; for example there would be 1 message for updating all
+                  ;; the tables within a given database when it is renamed.
+                  ;; Messages can also correspond to zero documents,
+                  ;; such as when updating a table that is marked as not visible.
+                  :max-batch-messages 50
+                  :max-next-ms       100}))

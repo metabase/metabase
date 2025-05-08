@@ -93,6 +93,34 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     cy.findByTestId("fk-target-select").should("have.value", "Products → ID");
   });
 
+  it("should correctly filter out options in Foreign Key picker (metabase#56839)", () => {
+    H.visitAlias("@ORDERS_PRODUCT_ID_URL");
+    cy.wait("@metadata");
+
+    cy.findByPlaceholderText("Select a target").clear();
+    H.popover()
+      .should("contain.text", "Orders → ID")
+      .and("contain.text", "People → ID")
+      .and("contain.text", "Products → ID")
+      .and("contain.text", "Reviews → ID");
+
+    cy.log("should case-insensitive match field display name");
+    cy.findByPlaceholderText("Select a target").type("id");
+    H.popover()
+      .should("contain.text", "Orders → ID")
+      .and("contain.text", "People → ID")
+      .and("contain.text", "Products → ID")
+      .and("contain.text", "Reviews → ID");
+
+    cy.log("should case-insensitive match field description");
+    cy.findByPlaceholderText("Select a target").clear().type("EXT");
+    H.popover()
+      .should("not.contain.text", "Orders → ID")
+      .and("not.contain.text", "People → ID")
+      .and("contain.text", "Products → ID")
+      .and("contain.text", "Reviews → ID");
+  });
+
   it("should not let you change the type to 'Number' (metabase#16781)", () => {
     H.visitAlias("@ORDERS_PRODUCT_ID_URL");
     cy.wait(["@metadata", "@metadata"]);
@@ -556,6 +584,37 @@ describe("scenarios > admin > datamodel > metadata", () => {
         .eq(2)
         .should("have.text", "Rating");
     });
+  });
+
+  it("semantic picker should not overflow the screen on smaller viewports (metabase#56442)", () => {
+    const viewportHeight = 400;
+
+    cy.viewport(1280, viewportHeight);
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
+    cy.findAllByTestId("admin-metadata-table-list-item")
+      .contains("Reviews")
+      .scrollIntoView()
+      .click();
+    cy.findByTestId("column-ID")
+      .scrollIntoView()
+      .findByPlaceholderText("Select a semantic type")
+      .click();
+
+    H.popover().scrollTo("top");
+    H.popover()
+      .findByText("Entity Key")
+      .should(($element) => {
+        const rect = $element[0].getBoundingClientRect();
+        expect(rect.top).greaterThan(0);
+      });
+
+    H.popover().scrollTo("bottom");
+    H.popover()
+      .findByText("No semantic type")
+      .should(($element) => {
+        const rect = $element[0].getBoundingClientRect();
+        expect(rect.bottom).lessThan(viewportHeight);
+      });
   });
 
   it("display value 'custom mapping' should be available regardless of the chosen filtering type (metabase#16322)", () => {

@@ -22,7 +22,7 @@ export const EditDashboardButton = ({
   useRegisterShortcut(
     [
       {
-        id: "edit-dashboard",
+        id: "dashboard-edit",
         perform: onBeginEditing,
       },
     ],

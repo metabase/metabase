@@ -17,6 +17,7 @@ import {
   checkboxOverrides,
   chipOverrides,
   codeOverrides,
+  comboboxOverrides,
   dateInputOverrides,
   datePickerOverrides,
   dividerOverrides,
@@ -32,6 +33,8 @@ import {
   navLinkOverrides,
   overlayOverrides,
   paperOverrides,
+  pillOverrides,
+  pillsInputOverrides,
   popoverOverrides,
   progressOverrides,
   radioOverrides,
@@ -101,18 +104,26 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
   headings: {
     sizes: {
       h1: {
-        fontSize: rem(24),
-        lineHeight: rem(24),
+        fontSize: rem(32),
+        lineHeight: rem(38),
       },
       h2: {
+        fontSize: rem(24),
+        lineHeight: rem(28),
+      },
+      h3: {
         fontSize: rem(20),
         lineHeight: rem(24),
       },
-      h3: {
+      h4: {
+        fontSize: rem(17),
+        lineHeight: rem(20),
+      },
+      h5: {
         fontSize: rem(14),
         lineHeight: rem(16),
       },
-      h4: {
+      h6: {
         fontSize: rem(14),
         lineHeight: rem(16),
       },
@@ -132,6 +143,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...cardOverrides,
     ...checkboxOverrides,
     ...chipOverrides,
+    ...comboboxOverrides,
     ...codeOverrides,
     ...dateInputOverrides,
     ...datePickerOverrides,
@@ -147,6 +159,8 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...radioOverrides,
     ...overlayOverrides,
     ...paperOverrides,
+    ...pillOverrides,
+    ...pillsInputOverrides,
     ...popoverOverrides,
     ...progressOverrides,
     ...scrollAreaOverrides,

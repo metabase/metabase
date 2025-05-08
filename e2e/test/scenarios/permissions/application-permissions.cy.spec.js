@@ -197,7 +197,7 @@ describe("scenarios > admin > permissions > application", () => {
         });
 
         H.undoToast()
-          .findByText(/changes saved/)
+          .findByText(/changes saved/i)
           .should("be.visible");
       });
     });

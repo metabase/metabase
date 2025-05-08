@@ -21,14 +21,15 @@
    [metabase.util.log :as log])
   (:import
    (java.sql ResultSet Types)
-   (java.time LocalDateTime ZonedDateTime)))
+   (java.time LocalDateTime ZonedDateTime LocalDate)))
 
 (set! *warn-on-reflection* true)
 
 (driver/register! :druid-jdbc :parent :sql-jdbc)
 
 (doseq [[feature supported?] {:set-timezone            true
-                              :expression-aggregations true}]
+                              :expression-aggregations true
+                              :expression-literals     true}]
   (defmethod driver/database-supports? [:druid-jdbc feature] [_driver _feature _db] supported?))
 
 (defmethod sql-jdbc.conn/connection-details->spec :druid-jdbc
@@ -133,6 +134,16 @@
 (defmethod sql.qp/inline-value [:druid-jdbc LocalDateTime]
   [_driver t]
   (format "'%s'" (format-datetime t)))
+
+(defn- format-date [d] (t/format "yyyy-MM-dd" d))
+
+(defmethod sql-jdbc.execute/set-parameter [:druid-jdbc LocalDate]
+  [driver ps i d]
+  (sql-jdbc.execute/set-parameter driver ps i (format-date d)))
+
+(defmethod sql.qp/inline-value [:druid-jdbc LocalDate]
+  [_driver d]
+  (format "'%s'" (format-date d)))
 
 (defmethod sql.qp/json-query :druid-jdbc
   [_driver unwrapped-identifier nfc-field]

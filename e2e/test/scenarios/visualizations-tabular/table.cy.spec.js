@@ -122,6 +122,10 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should preserve set widths after reordering (VIZ-439)", () => {
+    cy.intercept(
+      "GET",
+      "/api/search?models=dataset&models=table&table_db_id=*",
+    ).as("getSearchResults");
     H.startNewNativeQuestion({
       query: 'select 1 "first_column", 2 "second_column"',
       display: "table",
@@ -129,6 +133,7 @@ describe("scenarios > visualizations > table", () => {
     });
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
+    cy.wait("@getSearchResults");
 
     H.tableHeaderColumn("first_column").invoke("outerWidth").as("firstWidth");
     H.tableHeaderColumn("second_column").invoke("outerWidth").as("secondWidth");
@@ -156,7 +161,7 @@ describe("scenarios > visualizations > table", () => {
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
     // Wait for column widths to be set
-    cy.wait(100);
+    cy.wait("@getSearchResults");
     assertUnchangedWidths();
   });
 
@@ -372,26 +377,15 @@ describe("scenarios > visualizations > table", () => {
       .and("contain", "No description");
   });
 
-  it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {
+  it("should close the colum popover on subsequent click (metabase#16789)", () => {
     H.openPeopleTable({ limit: 2 });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("City").click();
-    H.popover().within(() => {
-      cy.icon("arrow_up");
-      cy.icon("arrow_down");
-      cy.icon("gear");
-      cy.findByText("Filter by this column");
-      cy.findByText("Distribution");
-      cy.findByText("Distinct values");
-    });
+    H.tableHeaderColumn("City").click();
+    H.clickActionsPopover().should("be.visible");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("City").click();
-    // Although arbitrary waiting is considered an anti-pattern and a really bad practice, I couldn't find any other way to reproduce this issue.
-    // Cypress is too fast and is doing the assertions in that split second while popover is reloading which results in a false positive result.
-    cy.wait(100);
-    H.popover().should("not.exist");
+    H.tableHeaderColumn("City").click();
+    cy.wait(100); // Ensure popover is closed
+    H.clickActionsPopover({ skipVisibilityCheck: true }).should("not.exist");
   });
 
   it("popover should not be scrollable horizontally (metabase#31339)", () => {
