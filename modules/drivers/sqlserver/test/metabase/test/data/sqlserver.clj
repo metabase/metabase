@@ -15,14 +15,15 @@
 (sql-jdbc.tx/add-test-extensions! :sqlserver)
 
 (defmethod tx/drop-if-exists-and-create-db! :sqlserver
-  [_driver db-name & [just-drop]]
-  (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver (mt/dbdef->connection-details :sqlserver :server nil))]
+  [driver db-name & [just-drop]]
+  (let [db-name (sql.tx/qualify-and-quote driver db-name)
+        spec (sql-jdbc.conn/connection-details->spec driver (mt/dbdef->connection-details driver :server nil))]
     (jdbc/execute! spec
-                   [(format "DROP DATABASE IF EXISTS %s" (sql.tx/qualify-and-quote :sqlserver db-name))]
+                   [(format "DROP DATABASE IF EXISTS %s" db-name)]
                    {:transaction? false})
     (when (not= just-drop :just-drop)
       (jdbc/execute! spec
-                     [(format "CREATE DATABASE %s;" (sql.tx/qualify-and-quote :sqlserver db-name))]
+                     [(format "CREATE DATABASE %s;" db-name)]
                      {:transaction? false}))))
 
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"

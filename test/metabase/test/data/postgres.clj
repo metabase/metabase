@@ -136,8 +136,8 @@
 (defmethod sql.tx/session-schema :postgres [_driver] "public")
 
 (defmethod tx/drop-if-exists-and-create-db! :postgres
-  [_driver db-name & [just-drop]]
-  (let [spec (sql-jdbc.conn/connection-details->spec :postgres (mt/dbdef->connection-details :postgres :server nil))]
+  [driver db-name & [just-drop]]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver (mt/dbdef->connection-details driver :server nil))]
     ;; kill any open connections
     (jdbc/query spec ["SELECT pg_terminate_backend(pg_stat_activity.pid)
                        FROM pg_stat_activity
