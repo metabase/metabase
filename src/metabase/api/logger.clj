@@ -49,7 +49,7 @@
                         (map #(assoc % :level :debug))
                         (sort-by :name)
                         (vec))
-               (as-> $ (when (empty? $) (log/error "Serialization preset is empty"))))}
+               (as-> $ (when (empty? $) (log/error "Sync preset is empty"))))}
    {:id :linkedfilters
     :display_name (tru "Linked filters troubleshooting")
     :loggers (doto (->> (loggers-under "metabase.models.params.chain-filter")
@@ -57,7 +57,7 @@
                         (map #(assoc % :level :debug))
                         (sort-by :name)
                         (vec))
-               (as-> $ (when (empty? $) (log/error "Serialization preset is empty"))))}
+               (as-> $ (when (empty? $) (log/error "Linked filters preset is empty"))))}
    {:id :serialization
     :display_name (tru "Serialization troubleshooting")
     :loggers (doto (->> (cons (logger "metabase.models.serialization")
