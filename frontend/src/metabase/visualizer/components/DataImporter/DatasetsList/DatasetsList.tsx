@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from "react";
+import _ from "underscore";
 
 import { skipToken, useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { getDashboard } from "metabase/dashboard/selectors";
@@ -87,23 +88,25 @@ export function DatasetsList({
     [dataSources, handleAddDataSource, handleRemoveDataSource],
   );
 
-  const { data: result = { data: [] } } = useSearchQuery(
-    search.length > 0
-      ? {
-          q: search,
-          limit: 10,
-          models: ["card"],
-          include_dashboard_questions: true,
-        }
-      : skipToken,
-    {
-      refetchOnMountOrArgChange: true,
-    },
-  );
+  const { data: result = { data: [] }, isLoading: isLoadingSearch } =
+    useSearchQuery(
+      search.length > 0
+        ? {
+            q: search,
+            limit: 10,
+            models: ["card"],
+            include_dashboard_questions: true,
+          }
+        : skipToken,
+      {
+        refetchOnMountOrArgChange: true,
+      },
+    );
 
-  const { data: allRecents = [] } = useListRecentsQuery(undefined, {
-    refetchOnMountOrArgChange: true,
-  });
+  const { data: allRecents = [], isLoading: isLoadingRecents } =
+    useListRecentsQuery(undefined, {
+      refetchOnMountOrArgChange: true,
+    });
 
   const items: VisualizerCardDataSource[] = useMemo(() => {
     if (
@@ -140,8 +143,22 @@ export function DatasetsList({
       .filter(isNotNull);
   }, [result, allRecents, search, dashboardId]);
 
-  if (items.length === 0) {
-    return <Loader />;
+  if (items.length === 0 && search.length > 0 && result.data.length > 0) {
+    return (
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: "white",
+          zIndex: 999,
+        }}
+      >
+        <div>{JSON.stringify(result)}</div>
+      </div>
+    );
   }
 
   return (
