@@ -135,14 +135,19 @@ function CompletionItem({
 function Footer() {
   return (
     <Box className={S.footer}>
-      <KeyIcon name="arrow_up" />
-      <KeyIcon name="arrow_down" />
-      {c("used when explaining keyboard shortcuts, as in `{key} to navigate.`")
-        .t`to navigate.`}
-      <span />
-      <KeyIcon name="enter_or_return" />{" "}
-      {c("used when explaining keyboard shortcuts, as in `{key} to navigate.`")
-        .t`to select.`}
+      {c(
+        "{0} is the icon for the arrow up and arrow down keys, {1} is the icon for the enter/return key",
+      ).jt`${(
+        <>
+          <KeyIcon name="arrow_up" key="arrow_up" />
+          <KeyIcon name="arrow_down" key="arrow_down" />
+        </>
+      )} to navigate. ${(
+        <>
+          <span key="space" />
+          <KeyIcon name="enter_or_return" key="enter_or_return" />
+        </>
+      )} to select.`}
     </Box>
   );
 }
