@@ -1,4 +1,4 @@
-(ns metabase.internal-stats
+(ns metabase.internal-stats.core
   (:require
    [metabase.internal-stats.embedding :as embedding-stats]
    [metabase.internal-stats.query-executions :as query-execution-stats]

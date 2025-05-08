@@ -345,7 +345,9 @@ export const CreateOrEditQuestionAlertModal = ({
             }}
             emailRecipientText={t`Email alerts to:`}
             getInvalidRecipientText={(domains) =>
-              t`You're only allowed to email alerts to addresses ending in ${domains}`
+              userCanAccessSettings
+                ? t`You're only allowed to email alerts to addresses ending in ${domains}`
+                : t`You're only allowed to email alerts to allowed domains`
             }
           />
         </AlertModalSettingsBlock>

@@ -14,12 +14,10 @@
    [metabase.http-client :as client]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.params :as params]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-sharing.api :as api.public]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.test :as mt]
@@ -159,31 +157,6 @@
             ;; If it's not updated within 300ms, the test will fail.
             (testing "the count should be incremented within 300 ms:"
               (is (tu/poll-until 300 (> (get-qe-count) qe-count-before))))))))))
-
-(deftest make-sure-param-values-get-returned-as-expected
-  (let [category-name-id (mt/id :categories :name)]
-    (mt/with-temp [:model/Card card {:dataset_query
-                                     {:database (mt/id)
-                                      :type     :native
-                                      :native   {:query         (str "SELECT COUNT(*) "
-                                                                     "FROM venues "
-                                                                     "LEFT JOIN categories ON venues.category_id = categories.id "
-                                                                     "WHERE {{category}}")
-                                                 :collection    "CATEGORIES"
-                                                 :template-tags {:category {:name         "category"
-                                                                            :display-name "Category"
-                                                                            :type         "dimension"
-                                                                            :dimension    ["field" category-name-id nil]
-                                                                            :widget-type  "category"
-                                                                            :required     true}}}}}]
-      (is (= {(mt/id :categories :name) {:values                (t2/select-one-fn (comp count :values)
-                                                                                  'FieldValues :field_id category-name-id
-                                                                                  :type :full)
-                                         :human_readable_values []
-                                         :field_id              category-name-id}}
-             (-> (:param_values (#'api.public/public-card :id (u/the-id card)))
-                 (update-in [category-name-id :values] count)
-                 (update category-name-id #(into {} %))))))))
 
 (defn card-with-snippet-and-card-template-tags []
   {:enable_embedding true
@@ -966,52 +939,6 @@
   (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
   (is (= [1 2 3 4]
          (t2/select-one-fn :values :model/FieldValues :field_id (mt/id :venues :price)))))
-
-(defn- price-param-values []
-  {(mt/id :venues :price) {:values                [1 2 3 4]
-                           :human_readable_values []
-                           :field_id              (mt/id :venues :price)}})
-
-(defn- add-price-param-to-dashboard! [dashboard]
-  (t2/update! :model/Dashboard (u/the-id dashboard) {:parameters [{:name "Price", :type "category", :slug "price", :id "_PRICE_"}]}))
-
-(defn- add-dimension-param-mapping-to-dashcard! [dashcard card dimension]
-  (t2/update! :model/DashboardCard (u/the-id dashcard) {:parameter_mappings [{:card_id (u/the-id card)
-                                                                              :target  ["dimension" dimension]}]}))
-
-(defn- GET-param-values! [dashboard]
-  ;; Manually activate Field values since they are not created during sync (#53387)
-  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
-  (mt/with-temporary-setting-values [enable-public-sharing true]
-    (:param_values (client/client :get 200 (str "public/dashboard/" (:public_uuid dashboard))))))
-
-(deftest check-that-param-info-comes-back-for-sql-cards
-  (with-temp-public-dashboard-and-card [dash card dashcard]
-    (t2/update! :model/Card (u/the-id card)
-                {:dataset_query {:database (mt/id)
-                                 :type     :native
-                                 :native   {:template-tags {:price {:name         "price"
-                                                                    :display-name "Price"
-                                                                    :type         "dimension"
-                                                                    :dimension    ["field" (mt/id :venues :price) nil]}}}}})
-    (add-price-param-to-dashboard! dash)
-    (add-dimension-param-mapping-to-dashcard! dashcard card ["template-tag" "price"])
-    (is (= (price-param-values)
-           (GET-param-values! dash)))))
-
-(deftest check-that-param-info-comes-back-for-mbql-cards--field-id-
-  (with-temp-public-dashboard-and-card [dash card dashcard]
-    (add-price-param-to-dashboard! dash)
-    (add-dimension-param-mapping-to-dashcard! dashcard card ["field" (mt/id :venues :price) nil])
-    (is (= (price-param-values)
-           (GET-param-values! dash)))))
-
-(deftest check-that-param-info-comes-back-for-mbql-cards--fk---
-  (with-temp-public-dashboard-and-card [dash card dashcard]
-    (add-price-param-to-dashboard! dash)
-    (add-dimension-param-mapping-to-dashcard! dashcard card [:field (mt/id :venues :price) {:source-field (mt/id :checkins :venue_id)}])
-    (is (= (price-param-values)
-           (GET-param-values! dash)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        New FieldValues search endpoints                                        |
@@ -1898,93 +1825,6 @@
                            :crowberto :get 200
                            (format "public/card/%s/query/%s?format_rows=%s" uuid (name export-format) apply-formatting?))
                           ((get output-helper export-format))))))))))))
-
-;; This test is same as [[metabase.api.dashboard-test/dashboard-param-values-param-fields-hydration-test]]
-;; adjusted to run with PUBLIC dashboard.
-(deftest ^:synchronized public-dashboard-param-values-param-fields-hydration-test
-  (let [public-dashboard-uuid (str (random-uuid))]
-    (mt/with-temporary-setting-values [enable-public-sharing true]
-      (mt/with-temp
-        [:model/Dashboard     d   {:name "D"
-                                   :public_uuid public-dashboard-uuid
-                                   :parameters [{:name      "State filter param 1"
-                                                 :slug      "p1"
-                                                 :id        "p1"
-                                                 :type      "location"}
-                                                {:name      "State filter param 2"
-                                                 :slug      "p2"
-                                                 :id        "p2"
-                                                 :type      "text"}
-                                                {:name      "State filter param 3"
-                                                 :slug      "p3"
-                                                 :id        "p3"
-                                                 :type      "text"}]}
-         :model/Card          c1  (let [query {:database (mt/id)
-                                               :type     :native
-                                               :native   {:query "select * from people"}}]
-                                    {:name "C1"
-                                     :type :model
-                                     :database_id (mt/id)
-                                     :dataset_query query
-                                     :result_metadata
-                                     (mapv (fn [{col-name :name :as meta}]
-                                             ;; Map model's metadata to corresponding field id
-                                             (assoc meta :id  (mt/id :people (keyword (u/lower-case-en col-name)))))
-                                           (-> (qp/process-query query)
-                                               :data :results_metadata :columns))})
-
-         :model/Card          c2 (let [query (mt/mbql-query nil
-                                               {:source-table (str "card__" (:id c1))
-                                                :aggregation
-                                                [[:distinct [:field "STATE" {:base-type :type/Text}]]]})]
-                                   {:name "C2"
-                                    :database_id (mt/id)
-                                    :dataset_query query
-                                    :result_metadata (-> (qp/process-query query)
-                                                         :data :results_metadata :columns)})
-         :model/DashboardCard _dc1 {:dashboard_id       (:id d)
-                                    :card_id            (:id c2)
-                                    :parameter_mappings
-                                    [{:parameter_id "p1"
-                                      :target [:dimension [:field "STATE" {:base-type :type/Text}]]}
-                                     {:parameter_id "p2"
-                                      :target [:dimension [:field "NAME" {:base-type :type/Text}]]}
-                                     {:parameter_id "p3"
-                                      :target [:dimension [:field "CITY" {:base-type :type/Text}]]}]}
-         :model/DashboardCard _dc2 {:dashboard_id       (:id d)
-                                    :card_id            (:id c2)
-                                    :parameter_mappings
-                                    [{:parameter_id "p1"
-                                      :target [:dimension [:field "STATE" {:base-type :type/Text}]]}
-                                     {:parameter_id "p2"
-                                      :target [:dimension [:field "NAME" {:base-type :type/Text}]]}
-                                     {:parameter_id "p3"
-                                      :target [:dimension [:field "CITY" {:base-type :type/Text}]]}]}]
-        (let [call-count (volatile! 0)
-              orig-filterable-columns-for-query params/filterable-columns-for-query]
-          (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :people :state)))
-          (with-redefs [params/filterable-columns-for-query
-                        (fn [& args]
-                          (vswap! call-count inc)
-                          (apply orig-filterable-columns-for-query args))]
-            (let [response (client/client :get 200 (format "public/dashboard/%s" (:public_uuid d)))]
-              (testing "Baseline: expected :param_fields(#42829)"
-                (is (=? {(mt/id :people :name)  {:name "NAME"}
-                         (mt/id :people :state) {:name "STATE"}
-                         (mt/id :people :city)  {:name "CITY"}}
-                        (get response :param_fields))))
-              (testing "Baseline: expected :param_values (#42829)"
-                (is (=? {(mt/id :people :state) {:values ["AK" "AL"]}}
-                        (-> (get response :param_values)
-                            ;; Take just first 2 values for testing purposes
-                            (update-in [(mt/id :people :state) :values] (partial take 2))))))
-              (testing "Reasonable amount of `filterable-columns` calls performed during dashboard load"
-                ;; Current implementation of [[metabase.models.params/dashcards->param-field-ids]] is supposed
-                ;; to compute `filterable-columns` only once per card per dashboard load, thanks to use of (1) context
-                ;; sharing of it between :param_fields and :param_values hydration. This test defines multiple
-                ;; dashcards and parameters for each dashcard, linked to a single card. Following is the proof
-                ;; of things working as described.
-                (is (= 1 @call-count))))))))))
 
 ;;; --------------------------------- POST /dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format ----------------------------------
 

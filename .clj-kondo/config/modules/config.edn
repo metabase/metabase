@@ -123,7 +123,7 @@
   {:api  #{metabase.cloud-migration.api
            metabase.cloud-migration.core
            metabase.cloud-migration.init}
-   :uses #{api cmd config db models premium-features util}}
+   :uses #{api cmd config db models premium-features task util}}
 
   cmd
   {:api  #{metabase.cmd
@@ -219,7 +219,7 @@
    :uses #{events models util}}
 
   internal-stats
-  {:api #{metabase.internal-stats}
+  {:api #{metabase.internal-stats.core}
    :uses #{db models}}
 
   legacy-mbql
@@ -516,7 +516,7 @@
           metabase.search.ingestion
           metabase.search.init
           metabase.search.spec}
-   :uses #{analytics api audit config db driver models permissions premium-features public-settings request task util}}
+   :uses #{analytics api audit config db driver models permissions premium-features public-settings request startup task util}}
 
   segments
   {:api  #{metabase.segments.api}
@@ -559,6 +559,10 @@
            metabase.sso.core
            metabase.sso.init}
    :uses #{api models permissions premium-features util}}
+
+  startup
+  {:api  #{metabase.startup.core}
+   :uses #{util}}
 
   sync
   {:api #{metabase.sync.api

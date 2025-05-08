@@ -152,12 +152,11 @@
    :visualization_settings {}
    :dataset_query          {:type "query"}
    :parameters             []
-   :param_values           nil
    :param_fields           nil})
 
 (def successful-dashboard-info
   {:auto_apply_filters true, :description nil, :parameters [], :dashcards [], :tabs [],
-   :param_values {}, :param_fields nil :width "fixed"})
+   :param_fields nil :width "fixed"})
 
 (def ^:private yesterday (time/minus (time/now) (time/days 1)))
 
@@ -675,10 +674,6 @@
         (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
           (is (= nil
                  (-> embedding-dashboard
-                     :param_values
-                     (get (mt/id :venues :name)))))
-          (is (= nil
-                 (-> embedding-dashboard
                      :param_fields
                      (get (mt/id :venues :name)))))
           (is (= 1
@@ -688,10 +683,6 @@
                      :parameter_mappings
                      count))))
         (let [eid-embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}} (:entity_id dashboard)))]
-          (is (= nil
-                 (-> eid-embedding-dashboard
-                     :param_values
-                     (get (mt/id :venues :name)))))
           (is (= nil
                  (-> eid-embedding-dashboard
                      :param_fields
@@ -736,10 +727,6 @@
         (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
           (is (some?
                (-> embedding-dashboard
-                   :param_values
-                   (get (mt/id :venues :name)))))
-          (is (some?
-               (-> embedding-dashboard
                    :param_fields
                    (get (mt/id :venues :name)))))
           (is (= 1
@@ -751,10 +738,6 @@
         (let [eid-embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}} (:entity_id dashboard)))]
           (is (some?
                (-> eid-embedding-dashboard
-                   :param_values
-                   (get (mt/id :venues :name)))))
-          (is (some?
-               (-> eid-embedding-dashboard
                    :param_fields
                    (get (mt/id :venues :name)))))
           (is (= 1
@@ -763,49 +746,6 @@
                      first
                      :parameter_mappings
                      count))))))))
-
-(deftest linked-param-to-locked-removes-param-values-test
-  (testing "Check that a linked parameter to a locked params we remove the param_values."
-    (with-embedding-enabled-and-new-secret-key!
-      (mt/with-temp [:model/Dashboard     dashboard     {:enable_embedding true
-                                                         :embedding_params {:venue_name "locked" :category_name "enabled"}
-                                                         :name             "Test Dashboard"
-                                                         :parameters       [{:name      "venue_name"
-                                                                             :slug      "venue_name"
-                                                                             :id        "foo"
-                                                                             :type      :string/=
-                                                                             :sectionId "string"}
-                                                                            {:name                "category_name"
-                                                                             :filteringParameters ["foo"]
-                                                                             :slug                "category_name"
-                                                                             :id                  "bar"
-                                                                             :type                :string/=
-                                                                             :sectionId           "string"}]}
-                     :model/Card          {card-id :id} {:name "Dashboard Test Card"}
-                     :model/DashboardCard {_ :id}       {:dashboard_id       (:id dashboard)
-                                                         :card_id            card-id
-                                                         :parameter_mappings [{:card_id      card-id
-                                                                               :slug         "venue_name"
-                                                                               :parameter_id "foo"
-                                                                               :target       [:dimension
-                                                                                              [:field (mt/id :venues :name) nil]]}
-                                                                              {:card_id      card-id
-                                                                               :slug         "category_name"
-                                                                               :parameter_id "bar"
-                                                                               :target       [:dimension
-                                                                                              [:field (mt/id :categories :name) nil]]}]}]
-        (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
-          (is (= []
-                 (-> embedding-dashboard
-                     :param_values
-                     (get (mt/id :categories :name))
-                     :values))))
-        (let [eid-embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}} (:entity_id dashboard)))]
-          (is (= []
-                 (-> eid-embedding-dashboard
-                     :param_values
-                     (get (mt/id :categories :name))
-                     :values))))))))
 
 ;;; ---------------------- GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id -----------------------
 

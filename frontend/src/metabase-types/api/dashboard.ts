@@ -240,7 +240,6 @@ export type ListDashboardsResponse = Omit<
   | "collection_authority_level"
   | "can_write"
   | "param_fields"
-  | "param_values"
 >[];
 
 export type GetDashboardRequest = {

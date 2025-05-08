@@ -19,6 +19,7 @@ const MockedVisualization = (props) => {
 
   return <div>Hello, I am mocked</div>;
 };
+MockedVisualization.getUiName = () => "Mocked Visualization";
 
 MockedVisualization.propTypes = {
   onRenderError: PropTypes.func.isRequired,

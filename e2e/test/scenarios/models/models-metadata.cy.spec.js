@@ -393,9 +393,8 @@ describe("scenarios > models metadata", () => {
           cy.findByText("User").click();
           cy.findByText("Source").click();
           cy.findByText("Twitter").click();
-          cy.button("Add filter").click();
+          cy.button("Apply filter").click();
         });
-        H.runButtonOverlay().click();
         cy.wait("@dataset");
         cy.findByTestId("question-row-count")
           .invoke("text")

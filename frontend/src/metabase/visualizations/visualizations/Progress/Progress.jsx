@@ -35,7 +35,7 @@ export default class Progress extends Component {
     this.barRef = createRef();
   }
 
-  static uiName = t`Progress`;
+  static getUiName = () => t`Progress`;
   static identifier = "progress";
   static iconName = "progress";
 

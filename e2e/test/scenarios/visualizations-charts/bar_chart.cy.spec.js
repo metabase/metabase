@@ -188,9 +188,8 @@ describe("scenarios > visualizations > bar chart", () => {
       H.selectFilterOperator("Is not");
       H.popover().within(() => {
         cy.findByText("Gadget").click();
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      H.runButtonOverlay().click();
       H.getDraggableElements().should("have.length", 2);
       H.getDraggableElements().eq(0).should("have.text", "Doohickey");
       H.getDraggableElements().eq(1).should("have.text", "Widget");

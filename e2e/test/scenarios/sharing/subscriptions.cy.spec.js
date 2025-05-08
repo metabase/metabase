@@ -107,6 +107,22 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByText("Emailed hourly");
       });
 
+      it("should not add a recipient when Escape is pressed (metabase#24629)", () => {
+        openDashboardSubscriptions(ORDERS_DASHBOARD_ID);
+
+        H.sidebar().findByText("Email it").click();
+
+        const input = cy.findByPlaceholderText(
+          "Enter user names or email addresses",
+        );
+        input.click().type(`${admin.first_name}`);
+        input.type("{esc}");
+
+        input.should("have.value", `${admin.first_name}`);
+
+        cy.findByTestId("token-field-popover").should("not.exist");
+      });
+
       it("should not render people dropdown outside of the borders of the screen (metabase#17186)", () => {
         openDashboardSubscriptions();
 
@@ -739,10 +755,15 @@ function assignRecipient({
 } = {}) {
   openDashboardSubscriptions(dashboard_id);
   cy.findByText("Email it").click();
-  cy.findByPlaceholderText("Enter user names or email addresses")
-    .click()
-    .type(`${user.first_name} ${user.last_name}{enter}`)
-    .blur(); // blur is needed to close the popover
+
+  const input = cy.findByPlaceholderText("Enter user names or email addresses");
+  input.click().type(`${user.first_name} ${user.last_name}`);
+
+  cy.findByTestId("token-field-popover").within(() => {
+    cy.findByText(`${user.first_name} ${user.last_name}`).click();
+  });
+
+  input.blur(); // blur is needed to close the popover
 }
 
 function assignRecipients({

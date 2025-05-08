@@ -88,7 +88,7 @@
                               :archived false, conditions))
         remove-card-non-public-columns
         combine-parameters-and-template-tags
-        (t2/hydrate :param_values :param_fields))))
+        (t2/hydrate :param_fields))))
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
@@ -237,7 +237,7 @@
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true
             params/*field-id-context* (atom params/empty-field-id-context)]
     (-> (api/check-404 (apply t2/select-one [:model/Dashboard :name :description :id :parameters :auto_apply_filters :width], :archived false, conditions))
-        (t2/hydrate [:dashcards :card :series :dashcard/action] :tabs :param_values :param_fields)
+        (t2/hydrate [:dashcards :card :series :dashcard/action] :tabs :param_fields)
         api.dashboard/add-query-average-durations
         (update :dashcards (fn [dashcards]
                              (for [dashcard dashcards]

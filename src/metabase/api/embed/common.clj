@@ -445,21 +445,6 @@
 
 ;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
 
-(defn- remove-linked-filters-param-values [dashboard]
-  (let [param-ids (set (map :id (:parameters dashboard)))
-        param-ids-to-remove (set (for [{param-id :id
-                                        filtering-parameters :filteringParameters} (:parameters dashboard)
-                                       filtering-parameter-id filtering-parameters
-                                       :when (not (contains? param-ids filtering-parameter-id))]
-                                   param-id))
-        linked-field-ids (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-remove))]
-    (update dashboard :param_values #(->> %
-                                          (map (fn [[param-id param]]
-                                                 {param-id (cond-> param
-                                                             (contains? linked-field-ids param-id) ;; is param linked?
-                                                             (assoc :values []))}))
-                                          (into {})))))
-
 (defn- remove-locked-parameters [dashboard embedding-params]
   (let [params                    (:parameters dashboard)
         {params-to-remove :remove
@@ -480,8 +465,7 @@
                                                         (contains? param-ids-to-remove parameter_id)) param-mappings))))]
     (-> dashboard
         (update :dashcards #(map remove-parameters %))
-        (update :param_fields #(apply dissoc % field-ids-to-remove))
-        (update :param_values #(apply dissoc % field-ids-to-remove)))))
+        (update :param_fields #(apply dissoc % field-ids-to-remove)))))
 
 (defn dashboard-for-unsigned-token
   "Return the info needed for embedding about Dashboard specified in `token`. Additional `constraints` can be passed to
@@ -497,8 +481,7 @@
         (substitute-token-parameters-in-text token-params)
         (remove-locked-parameters embedding-params)
         (remove-token-parameters token-params)
-        (remove-locked-and-disabled-params embedding-params)
-        (remove-linked-filters-param-values))))
+        (remove-locked-and-disabled-params embedding-params))))
 
 (defn- get-embed-dashboard-context
   "If a certain export-format is given, return the correct embedded dashboard context."

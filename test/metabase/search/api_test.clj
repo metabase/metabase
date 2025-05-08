@@ -921,6 +921,15 @@
                (binding [*search-request-results-database-id* db-id]
                  (search-request-data :rasta :q (:name table)))))))))
 
+(deftest table-test-8
+  (testing "you should be able to see a Table when the current user is a superuser"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    table {:db_id db-id}]
+      (mt/with-no-data-perms-for-all-users!
+        (is (= 1
+               (binding [*search-request-results-database-id* db-id]
+                 (count (search-request-data :crowberto :q (:name table))))))))))
+
 (deftest all-users-no-perms-table-test
   (testing (str "If the All Users group doesn't have perms to view a Table, but the current User is in a group that "
                 "does have perms, they should still be able to see it (#12332)")
