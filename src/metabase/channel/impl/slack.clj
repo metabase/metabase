@@ -78,9 +78,8 @@
             title-link                             (when-not (= :table-editable (:display card))
                                                      (urls/card-url card-id))]
         (conj [{:type "section"
-                :text {:type     "mrkdwn"
-                       :text     (or card-url-text (mkdwn-link-text title-link title))
-                       #_:verbatim #_true}}]
+                :text {:type "mrkdwn"
+                       :text (or card-url-text (mkdwn-link-text title-link title))}}]
               (if (:render/text rendered-info)
                 {:type "section"
                  :text {:type "plain_text"
