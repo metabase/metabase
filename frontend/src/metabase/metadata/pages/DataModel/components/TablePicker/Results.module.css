@@ -28,7 +28,6 @@
 }
 
 .icon {
-  color: var(--mb-color-accent-gray-dark);
   opacity: 0.5;
   flex-shrink: 0;
 
@@ -39,8 +38,7 @@
 
 .chevron {
   transition: transform 100ms ease-in-out;
-  color: var(--mb-color-accent-gray-dark);
-  opacity: 0.29;
+  opacity: 0.35;
   flex-shrink: 0;
 
   &.expanded {
