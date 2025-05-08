@@ -103,6 +103,7 @@ export const SaveQuestionForm = ({
       {values.saveType === "create" && (
         <Stack gap="md" mb="md">
           <FormTextInput
+            data-autofocus
             name="name"
             label={t`Name`}
             placeholder={nameInputPlaceholder}
