@@ -103,11 +103,7 @@ function isArrayDeepMatch(array, partialArray) {
 }
 
 export const expectGoodSnowplowEvents = (count) => {
-  retrySnowplowRequest(
-    "micro/good",
-    ({ body }) => body.length >= count,
-    `Failure while expecting ${count} good Snowplow events`,
-  )
+  retrySnowplowRequest("micro/good", ({ body }) => body.length >= count)
     .its("body")
     .should("have.length", count);
 };
