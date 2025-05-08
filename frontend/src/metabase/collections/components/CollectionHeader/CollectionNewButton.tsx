@@ -5,7 +5,7 @@ import { setOpenModal } from "metabase/redux/ui";
 import { Tooltip } from "metabase/ui";
 
 import { CollectionHeaderButton } from "./CollectionHeader.styled";
-import { trackNewCollectionInitiated } from "./analytics";
+import { trackNewCollectionFromHeaderInitiated } from "./analytics";
 
 export const CollectionNewButton = () => {
   const dispatch = useDispatch();
@@ -17,7 +17,7 @@ export const CollectionNewButton = () => {
           aria-label={t`Create a new collection`}
           icon="add_folder"
           onClick={() => {
-            trackNewCollectionInitiated();
+            trackNewCollectionFromHeaderInitiated();
             dispatch(setOpenModal("collection"));
           }}
         />
