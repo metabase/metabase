@@ -44,7 +44,6 @@
    :dashboard-id        :int
    :dashboardcard-count :int
    :database-id         :pk
-   :entity-id           :text
    :id                  :text
    :last-edited-at      :timestamp
    :last-editor-id      :pk
@@ -68,7 +67,6 @@
        ;; identifiers and rankers
        (into
         [:id                                                ;;  in addition to being a filter, this is a key property
-         :entity-id
          :name
          :official-collection
          :dashboard-id

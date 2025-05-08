@@ -49,39 +49,25 @@
   (assoc row :id (if (number? id) id (parse-long (last (str/split (:id row) #":"))))))
 
 (defn- rehydrate [weights active-scorers index-row]
-  (let [decoded-result (json/decode+kw (:legacy_input index-row))]
-    (cond-> (-> decoded-result
-                collapse-id
-                (assoc
-                 ;; this relies on the corresponding scorer, which is not great coupling.
-                 ;; ideally we would make per-user computed attributes part of the spec itself.
-                 :bookmark   (pos? (:bookmarked index-row 0))
-                 :score      (:total_score index-row 1)
-                 :all-scores (mapv (fn [k]
-                                     ;; we shouldn't get null scores, but just in case (i.e., because there are bugs)
-                                     (let [score  (or (get index-row k) 0)
-                                           weight (or (weights k) 0)]
-                                       {:score        score
-                                        :name         k
-                                        :weight       weight
-                                        :contribution (* weight score)}))
-                                   active-scorers))
-                ;; Convert entity-id (in schema) to entity_id (in API) if present
-                (as-> result
-                      (if (:entity-id result)
-                        (-> result
-                            (assoc :entity_id (:entity-id result))
-                            (dissoc :entity-id))
-                        result))
-                (update :created_at parse-datetime)
-                (update :updated_at parse-datetime)
-                (update :last_edited_at parse-datetime))
-      ;; Make sure card model has entity_id field
-      (and (or (= (:model decoded-result) "card")
-               (= (:model decoded-result) "dataset")
-               (= (:model decoded-result) "metric"))
-           (not (:entity_id decoded-result)))
-      (assoc :entity_id nil))))
+  (-> (json/decode+kw (:legacy_input index-row))
+      collapse-id
+      (assoc
+       ;; this relies on the corresponding scorer, which is not great coupling.
+       ;; ideally we would make per-user computed attributes part of the spec itself.
+       :bookmark   (pos? (:bookmarked index-row 0))
+       :score      (:total_score index-row 1)
+       :all-scores (mapv (fn [k]
+                           ;; we shouldn't get null scores, but just in case (i.e., because there are bugs)
+                           (let [score  (or (get index-row k) 0)
+                                 weight (or (weights k) 0)]
+                             {:score        score
+                              :name         k
+                              :weight       weight
+                              :contribution (* weight score)}))
+                         active-scorers))
+      (update :created_at parse-datetime)
+      (update :updated_at parse-datetime)
+      (update :last_edited_at parse-datetime)))
 
 (defn add-table-where-clauses
   "Add a `WHERE` clause to the query to only return tables the current user has access to"
