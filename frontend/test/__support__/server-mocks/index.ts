@@ -1,5 +1,7 @@
 export * from "./action";
 export * from "./activity";
+export * from "./ai-entity-analysis";
+export * from "./ai-sql-fixer";
 export * from "./alert";
 export * from "./api-key";
 export * from "./audit";

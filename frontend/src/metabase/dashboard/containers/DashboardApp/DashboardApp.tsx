@@ -25,6 +25,7 @@ import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
 import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 
+import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
 import { getFavicon } from "../../selectors";
 
 import { DashboardTitle } from "./DashboardTitle";
@@ -46,9 +47,6 @@ export const DashboardApp = ({
   const dispatch = useDispatch();
 
   const [error, setError] = useState<string>();
-
-  const favicon = useSelector(getFavicon);
-  useFavicon({ favicon });
 
   const parameterQueryParams = location.query;
   const dashboardId =
@@ -78,7 +76,9 @@ export const DashboardApp = ({
     setTheme,
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
 
+  useRegisterDashboardMetabotContext();
   useDashboardUrlQuery(router, location);
+
   const onLoadDashboard = (dashboard: IDashboard) => {
     try {
       if (editingOnLoad) {
