@@ -18,7 +18,6 @@ interface AddMemberRowProps {
 
 export function AddMemberRow({ members, onCancel, onDone }: AddMemberRowProps) {
   const listUsersReq = useListUsersQuery();
-
   const [text, setText] = useState("");
   const [selectedUsersById, setSelectedUsersById] = useState<Map<number, User>>(
     new Map(),
