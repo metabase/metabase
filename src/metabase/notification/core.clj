@@ -27,4 +27,5 @@
   send-notification!
   *default-options*]
  [events.notification
-  *skip-sending-notification?*])
+  *skip-sending-notification?*
+  notification-filter-for-topic])
