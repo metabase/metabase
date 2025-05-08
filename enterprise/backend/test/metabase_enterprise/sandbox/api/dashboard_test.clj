@@ -2,7 +2,6 @@
   "Tests for special behavior of `/api/metabase/dashboard` endpoints in the Metabase Enterprise Edition."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.models.field-values :as field-values]

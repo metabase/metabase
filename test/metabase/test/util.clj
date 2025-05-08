@@ -233,6 +233,9 @@
    :model/PermissionsGroup
    (fn [_] {:name (u.random/random-name)})
 
+   :model/PermissionsGroupMembership
+   (fn [_] {:__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships true})
+
    :model/Pulse
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)

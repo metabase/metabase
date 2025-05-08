@@ -39,8 +39,7 @@ const getUniqueFunnelRows = (rows: FunnelRow[]) => {
 };
 
 Object.assign(Funnel, {
-  // eslint-disable-next-line ttag/no-module-declaration
-  uiName: t`Funnel`,
+  getUiName: () => t`Funnel`,
   identifier: "funnel",
   iconName: "funnel",
   noHeader: true,

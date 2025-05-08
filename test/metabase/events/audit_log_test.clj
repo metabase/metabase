@@ -5,8 +5,8 @@
   the test code for the feature."
   (:require
    [clojure.test :refer :all]
-   [metabase.events :as events]
    [metabase.events.audit-log :as events.audit-log]
+   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]

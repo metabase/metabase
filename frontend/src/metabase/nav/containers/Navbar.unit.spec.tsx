@@ -8,6 +8,7 @@ import {
   setupDatabasesEndpoints,
   setupGdriveGetFolderEndpoint,
   setupSearchEndpoints,
+  setupSettingEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -61,6 +62,11 @@ async function setup({
   });
   setupGdriveGetFolderEndpoint({ status: "active" });
   fetchMock.get("path:/api/bookmark", []);
+
+  setupSettingEndpoint({
+    settingKey: "version-info",
+    settingValue: {},
+  });
 
   const storeInitialState = createMockState({
     app: createMockAppState({
