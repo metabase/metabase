@@ -226,7 +226,6 @@ describe("scenarios > setup", () => {
     "should pre-fill user info for hosted instances (infra-frontend#1109)",
     { tags: "@flaky" },
     () => {
-      H.setTokenFeatures("none");
       H.mockSessionProperty("is-hosted?", true);
 
       cy.visit(
