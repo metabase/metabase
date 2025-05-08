@@ -40,6 +40,23 @@ export function Results({
 
   const virtualItems = virtual.getVirtualItems();
 
+  useEffect(
+    function scrollActiveTableIntoView() {
+      if (path.tableId === undefined) {
+        return;
+      }
+      const index = items.findIndex(
+        (item) => item.type === "table" && item.value?.tableId === path.tableId,
+      );
+      if (index === -1) {
+        return;
+      }
+
+      virtual.scrollToIndex(index, { behavior: "smooth" });
+    },
+    [path.tableId, items, virtual],
+  );
+
   return (
     <Box ref={ref} px="xl" pb="lg" className={S.results}>
       <Box style={{ height: virtual.getTotalSize() }}>
