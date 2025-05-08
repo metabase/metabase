@@ -6,6 +6,7 @@
    [metabase.notification.events.notification :as events.notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [thunk]
@@ -27,16 +28,20 @@
   [prop request-fn channel-type->assert-fns]
   (data-editing.tu/with-temp-test-db!
     (mt/with-temp [:model/Channel chn {:type :channel/http}]
-      (notification.tu/with-system-event-notification!
-        [notification {:notification-system-event {:event_name (:event_name prop)
-                                                   :table_id   (mt/id (or (:table prop) :categories))}
-                       :handlers                  (all-handlers (:id chn))}]
-        (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
-          (let [channel-type->captured-message (notification.tu/with-captured-channel-send!
-                                                 (request-fn notification))]
-            (doseq [[channel-type assert-fn] channel-type->assert-fns]
-              (testing (format "channel-type = %s" channel-type)
-                (assert-fn (get channel-type->captured-message channel-type))))))))))
+      (let [table-id (mt/id (or (:table prop) :categories))]
+        (notification.tu/with-system-event-notification!
+          [notification {:notification-system-event {:event_name (:event_name prop)
+                                                     :table_id   table-id}
+                         :notification           {:condition  [:and
+                                                               [:= [:context :table_id] table-id]
+                                                               [:= [:context :event_name] (u/qualified-name (:event_name prop))]]}
+                         :handlers                  (all-handlers (:id chn))}]
+          (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
+            (let [channel-type->captured-message (notification.tu/with-captured-channel-send!
+                                                   (request-fn notification))]
+              (doseq [[channel-type assert-fn] channel-type->assert-fns]
+                (testing (format "channel-type = %s" channel-type)
+                  (assert-fn (get channel-type->captured-message channel-type)))))))))))
 
 (deftest create-row-notification-test
   (test-row-notification!
