@@ -6,7 +6,7 @@ import _ from "underscore";
 import Link from "metabase/core/components/Link";
 import { Box, Flex, Icon } from "metabase/ui";
 
-import S from "./Item.module.css";
+import S from "./Results.module.css";
 import type { Item, TreePath } from "./types";
 import { getIconForType, getUrl, hasChildren } from "./utils";
 
