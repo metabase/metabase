@@ -1,7 +1,7 @@
 (ns metabase.events.recent-views-test
   (:require
    [clojure.test :refer :all]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

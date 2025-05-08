@@ -2,7 +2,7 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.notification.models :as models.notification]
    [metabase.notification.send :as notification.send]
    [metabase.task-history.core :as task-history]

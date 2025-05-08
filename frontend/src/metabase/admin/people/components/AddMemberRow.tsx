@@ -7,10 +7,9 @@ import UserAvatar from "metabase/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import Typeahead from "metabase/hoc/Typeahead";
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+import { Icon, UnstyledButton } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
-import { AddMemberAutocompleteSuggestionRoot } from "./AddMemberRow.styled";
 import { AddRow } from "./AddRow";
 
 interface AddMemberRowProps {
@@ -171,8 +170,9 @@ function AddMemberAutocompleteSuggestion({
   onClick,
 }: AddMemberAutocompleteSuggestionProps) {
   return (
-    <AddMemberAutocompleteSuggestionRoot
-      isSelected={selected}
+    <UnstyledButton
+      p="0.5rem 1rem"
+      bg={selected ? "brand" : ""}
       onClick={onClick}
     >
       <span className={cx(CS.inlineBlock, CS.mr2)}>
@@ -181,6 +181,6 @@ function AddMemberAutocompleteSuggestion({
       <span className={cx(CS.h3, { [CS.textWhite]: selected })}>
         {user.common_name}
       </span>
-    </AddMemberAutocompleteSuggestionRoot>
+    </UnstyledButton>
   );
 }

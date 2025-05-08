@@ -6,7 +6,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.channel.settings :as channel.settings]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]

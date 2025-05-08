@@ -20,7 +20,7 @@ type ColumnInfo = {
   isBoolean: boolean;
   isTemporal: boolean;
   isID: boolean;
-  isLocation: boolean;
+  isAddress: boolean;
   isTemporalBucketable: boolean;
   hasFieldValues: FieldValuesType | undefined;
 };
@@ -33,7 +33,7 @@ function isParameterCompatibleWithColumn(
     isBoolean,
     isTemporal,
     isID,
-    isLocation,
+    isAddress,
     isTemporalBucketable,
     hasFieldValues,
   }: ColumnInfo,
@@ -47,12 +47,12 @@ function isParameterCompatibleWithColumn(
     case "category":
       return hasFieldValues === "list";
     case "location":
-      return isLocation;
+      return isString && isAddress;
     case "number":
-      return isNumeric && !isID && !isLocation;
+      return isNumeric && !isID;
     case "string":
       return (
-        (isString || (isBoolean && hasFieldValues === "list")) && !isLocation
+        (isString || (isBoolean && hasFieldValues === "list")) && !isAddress
       );
     case "temporal-unit":
       return isTemporalBucketable;
@@ -71,7 +71,7 @@ export function fieldFilterForParameter(
       isBoolean: field.isBoolean(),
       isTemporal: field.isDate(),
       isID: field.isID(),
-      isLocation: field.isLocation(),
+      isAddress: field.isAddress(),
       isTemporalBucketable: false,
       hasFieldValues: field.has_field_values,
     });
@@ -89,7 +89,7 @@ export function columnFilterForParameter(
       isBoolean: Lib.isBoolean(column),
       isTemporal: Lib.isTemporal(column),
       isID: Lib.isID(column),
-      isLocation: Lib.isLocation(column),
+      isAddress: Lib.isAddress(column),
       isTemporalBucketable: Lib.isTemporalBucketable(query, stageIndex, column),
       hasFieldValues: Lib.fieldValuesSearchInfo(query, column).hasFieldValues,
     });
