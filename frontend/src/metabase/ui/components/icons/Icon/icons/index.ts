@@ -249,6 +249,10 @@ import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
 import mail_filled_source from "./mail_filled.svg?source";
+import metabot_component from "./metabot.svg?component";
+import metabot_source from "./metabot.svg?source";
+import metabot_sad_component from "./metabot_sad.svg?component";
+import metabot_sad_source from "./metabot_sad.svg?source";
 import metric_component from "./metric.svg?component";
 import metric_source from "./metric.svg?source";
 import model_component from "./model.svg?component";
@@ -361,6 +365,8 @@ import star_filled_component from "./star_filled.svg?component";
 import star_filled_source from "./star_filled.svg?source";
 import stepped_component from "./stepped.svg?component";
 import stepped_source from "./stepped.svg?source";
+import stop_component from "./stop.svg?component";
+import stop_source from "./stop.svg?source";
 import store_component from "./store.svg?component";
 import store_source from "./store.svg?source";
 import straight_component from "./straight.svg?component";
@@ -920,6 +926,14 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: mail_filled_component,
       source: mail_filled_source,
     },
+    metabot: {
+      component: metabot_component,
+      source: metabot_source,
+    },
+    metabot_sad: {
+      component: metabot_sad_component,
+      source: metabot_sad_source,
+    },
     metric: {
       component: metric_component,
       source: metric_source,
@@ -1155,6 +1169,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     star: {
       component: star_component,
       source: star_source,
+    },
+    stop: {
+      component: stop_component,
+      source: stop_source,
     },
     store: {
       component: store_component,
@@ -1424,6 +1442,8 @@ export type IconName =
   | "lock_filled"
   | "mail"
   | "mail_filled"
+  | "metabot"
+  | "metabot_sad"
   | "metric"
   | "model"
   | "model_with_badge"
@@ -1483,6 +1503,7 @@ export type IconName =
   | "sparkles"
   | "star_filled"
   | "star"
+  | "stop"
   | "store"
   | "string"
   | "sun"
