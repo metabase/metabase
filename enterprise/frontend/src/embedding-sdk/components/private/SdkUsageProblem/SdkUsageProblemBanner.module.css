@@ -12,6 +12,11 @@
   box-shadow: 0 6px 24px 0 #0000001a;
 }
 
+/**
+  * Use hard-coded colors instead of CSS variables to prevent user's themes
+  * from interfering with the banner color.
+  */
+
 .Indicator .Content {
   border-radius: 0 3px 3px 0;
   user-select: none;
@@ -20,7 +25,6 @@
 }
 
 .Indicator .Content .PillTitle {
-  /** Do not use CSS variables here, as we want to use Metabase colors in the warning banner. */
   color: #509ee3;
   margin-left: 0.37rem;
 }
