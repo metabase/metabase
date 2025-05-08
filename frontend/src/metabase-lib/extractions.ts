@@ -1,4 +1,9 @@
-import * as ML from "cljs/metabase.lib.js";
+import {
+  extract as cljs_extract,
+  column_extract_drill_extractions,
+  column_extractions,
+  extraction_expression,
+} from "cljs/metabase.lib.js";
 
 import { expressionParts } from "./expression";
 import type {
@@ -16,7 +21,7 @@ export function extract(
   stageIndex: number,
   extraction: ColumnExtraction,
 ): Query {
-  return ML.extract(query, stageIndex, extraction);
+  return cljs_extract(query, stageIndex, extraction);
 }
 
 export function extractionExpression(
@@ -24,18 +29,18 @@ export function extractionExpression(
   stageIndex: number,
   extraction: ColumnExtraction,
 ) {
-  return ML.extraction_expression(query, stageIndex, extraction);
+  return extraction_expression(query, stageIndex, extraction);
 }
 
 export function extractionsForDrill(drill: DrillThru): ColumnExtraction[] {
-  return ML.column_extract_drill_extractions(drill);
+  return column_extract_drill_extractions(drill);
 }
 
 export function columnExtractions(
   query: Query,
   column: ColumnMetadata,
 ): ColumnExtraction[] {
-  return ML.column_extractions(query, column);
+  return column_extractions(query, column);
 }
 
 export type ColumnExtractionTag =

@@ -1,4 +1,27 @@
-import * as ML from "cljs/metabase.lib.js";
+import {
+  available_join_strategies,
+  join as cljs_join,
+  joins as cljs_joins,
+  expression_clause,
+  join_clause,
+  join_condition_lhs_columns,
+  join_condition_operators,
+  join_condition_rhs_columns,
+  join_condition_update_temporal_bucketing,
+  join_conditions,
+  join_fields,
+  join_lhs_display_name,
+  join_strategy,
+  joinable_columns,
+  joined_thing,
+  picker_info,
+  remove_join,
+  rename_join,
+  suggested_join_conditions,
+  with_join_conditions,
+  with_join_fields,
+  with_join_strategy,
+} from "cljs/metabase.lib.js";
 import type {
   CardId,
   ConcreteTableId,
@@ -33,7 +56,7 @@ export type JoinOrJoinable = Join | Joinable;
 type ColumnMetadataOrFieldRef = ColumnMetadata | Clause;
 
 export function joins(query: Query, stageIndex: number): Join[] {
-  return ML.joins(query, stageIndex);
+  return cljs_joins(query, stageIndex);
 }
 
 export function joinClause(
@@ -41,7 +64,7 @@ export function joinClause(
   conditions: JoinCondition[],
   strategy: JoinStrategy,
 ): Join {
-  return ML.join_clause(joinable, conditions, strategy);
+  return join_clause(joinable, conditions, strategy);
 }
 
 export function joinConditionClause(
@@ -52,30 +75,30 @@ export function joinConditionClause(
   rhsColumn: ColumnMetadata,
 ): JoinCondition {
   const operatorInfo = displayInfo(query, stageIndex, operator);
-  return ML.expression_clause(operatorInfo.shortName, [lhsColumn, rhsColumn]);
+  return expression_clause(operatorInfo.shortName, [lhsColumn, rhsColumn]);
 }
 
 export function join(query: Query, stageIndex: number, join: Join): Query {
-  return ML.join(query, stageIndex, join);
+  return cljs_join(query, stageIndex, join);
 }
 
 export function availableJoinStrategies(
   query: Query,
   stageIndex: number,
 ): JoinStrategy[] {
-  return ML.available_join_strategies(query, stageIndex);
+  return available_join_strategies(query, stageIndex);
 }
 
 export function joinStrategy(join: Join): JoinStrategy {
-  return ML.join_strategy(join);
+  return join_strategy(join);
 }
 
 export function withJoinStrategy(join: Join, strategy: JoinStrategy): Join {
-  return ML.with_join_strategy(join, strategy);
+  return with_join_strategy(join, strategy);
 }
 
 export function joinConditions(join: Join): JoinCondition[] {
-  return ML.join_conditions(join);
+  return join_conditions(join);
 }
 
 export function joinConditionParts(
@@ -110,7 +133,7 @@ export function withJoinConditions(
   join: Join,
   newConditions: JoinCondition[],
 ): Join {
-  return ML.with_join_conditions(join, newConditions);
+  return with_join_conditions(join, newConditions);
 }
 
 export function joinConditionUpdateTemporalBucketing(
@@ -119,7 +142,7 @@ export function joinConditionUpdateTemporalBucketing(
   condition: JoinCondition,
   bucket: Bucket | null,
 ): JoinCondition {
-  return ML.join_condition_update_temporal_bucketing(
+  return join_condition_update_temporal_bucketing(
     query,
     stageIndex,
     condition,
@@ -155,7 +178,7 @@ export function joinConditionLHSColumns(
   lhsColumn?: ColumnMetadataOrFieldRef,
   rhsColumn?: ColumnMetadataOrFieldRef,
 ): ColumnMetadata[] {
-  return ML.join_condition_lhs_columns(
+  return join_condition_lhs_columns(
     query,
     stageIndex,
     joinOrJoinable,
@@ -185,7 +208,7 @@ export function joinConditionRHSColumns(
   lhsColumn?: ColumnMetadataOrFieldRef,
   rhsColumn?: ColumnMetadataOrFieldRef,
 ): ColumnMetadata[] {
-  return ML.join_condition_rhs_columns(
+  return join_condition_rhs_columns(
     query,
     stageIndex,
     joinOrJoinable,
@@ -200,7 +223,7 @@ export function joinConditionOperators(
   lhsColumn?: ColumnMetadata,
   rhsColumn?: ColumnMetadata,
 ): JoinConditionOperator[] {
-  return ML.join_condition_operators(query, stageIndex, lhsColumn, rhsColumn);
+  return join_condition_operators(query, stageIndex, lhsColumn, rhsColumn);
 }
 
 export function suggestedJoinConditions(
@@ -209,17 +232,17 @@ export function suggestedJoinConditions(
   joinable: Joinable,
   joinPositon?: number,
 ): JoinCondition[] {
-  return ML.suggested_join_conditions(query, stageIndex, joinable, joinPositon);
+  return suggested_join_conditions(query, stageIndex, joinable, joinPositon);
 }
 
 export type JoinFields = ColumnMetadata[] | "all" | "none";
 
 export function joinFields(join: Join): JoinFields {
-  return ML.join_fields(join);
+  return join_fields(join);
 }
 
 export function withJoinFields(join: Join, newFields: JoinFields): Join {
-  return ML.with_join_fields(join, newFields);
+  return with_join_fields(join, newFields);
 }
 
 export function renameJoin(
@@ -228,7 +251,7 @@ export function renameJoin(
   joinSpec: Join | string | number,
   newName: string,
 ): Query {
-  return ML.rename_join(query, stageIndex, joinSpec, newName);
+  return rename_join(query, stageIndex, joinSpec, newName);
 }
 
 export function removeJoin(
@@ -236,11 +259,11 @@ export function removeJoin(
   stageIndex: number,
   joinSpec: Join | string | number,
 ): Query {
-  return ML.remove_join(query, stageIndex, joinSpec);
+  return remove_join(query, stageIndex, joinSpec);
 }
 
 export function joinedThing(query: Query, join: Join): Joinable {
-  return ML.joined_thing(query, join);
+  return joined_thing(query, join);
 }
 
 type CardPickerInfo = {
@@ -266,7 +289,7 @@ export function pickerInfo(
   query: Query,
   metadata: Joinable,
 ): PickerInfo | null {
-  return ML.picker_info(query, metadata);
+  return picker_info(query, metadata);
 }
 
 export function joinableColumns(
@@ -274,7 +297,7 @@ export function joinableColumns(
   stageIndex: number,
   joinOrJoinable: JoinOrJoinable,
 ): ColumnMetadata[] {
-  return ML.joinable_columns(query, stageIndex, joinOrJoinable);
+  return joinable_columns(query, stageIndex, joinOrJoinable);
 }
 
 /**
@@ -318,7 +341,7 @@ export function joinLHSDisplayName(
   joinOrJoinable?: JoinOrJoinable,
   conditionLHSColumn?: ColumnMetadata,
 ): string {
-  return ML.join_lhs_display_name(
+  return join_lhs_display_name(
     query,
     stageIndex,
     joinOrJoinable,

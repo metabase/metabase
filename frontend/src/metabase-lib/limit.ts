@@ -1,13 +1,16 @@
-import * as ML from "cljs/metabase.lib.limit";
+import {
+  current_limit as cljs_current_limit,
+  limit as cljs_limit,
+} from "cljs/metabase.lib.limit";
 
 import type { Limit, Query } from "./types";
 
 export function currentLimit(query: Query, stageIndex: number): Limit {
-  return ML.current_limit(query, stageIndex);
+  return cljs_current_limit(query, stageIndex);
 }
 
 export function limit(query: Query, stageIndex: number, limit: Limit): Query {
-  return ML.limit(query, stageIndex, limit);
+  return cljs_limit(query, stageIndex, limit);
 }
 
 export function hasLimit(query: Query, stageIndex: number) {

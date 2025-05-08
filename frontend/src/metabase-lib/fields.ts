@@ -1,4 +1,12 @@
-import * as ML from "cljs/metabase.lib.js";
+import {
+  add_field,
+  fields as cljs_fields,
+  field_values_search_info,
+  fieldable_columns,
+  legacy_ref,
+  remove_field,
+  with_fields,
+} from "cljs/metabase.lib.js";
 import type { FieldReference } from "metabase-types/api";
 
 import type {
@@ -11,7 +19,7 @@ import type {
 } from "./types";
 
 export function fields(query: Query, stageIndex: number): Clause[] {
-  return ML.fields(query, stageIndex);
+  return cljs_fields(query, stageIndex);
 }
 
 export function withFields(
@@ -19,7 +27,7 @@ export function withFields(
   stageIndex: number,
   newFields: ColumnMetadata[],
 ): Query {
-  return ML.with_fields(query, stageIndex, newFields);
+  return with_fields(query, stageIndex, newFields);
 }
 
 export function addField(
@@ -27,7 +35,7 @@ export function addField(
   stageIndex: number,
   newField: ColumnMetadata,
 ): Query {
-  return ML.add_field(query, stageIndex, newField);
+  return add_field(query, stageIndex, newField);
 }
 
 export function removeField(
@@ -35,21 +43,21 @@ export function removeField(
   stageIndex: number,
   targetField: ColumnMetadata,
 ): Query {
-  return ML.remove_field(query, stageIndex, targetField);
+  return remove_field(query, stageIndex, targetField);
 }
 
 export function fieldableColumns(
   query: Query,
   stageIndex: number,
 ): ColumnMetadata[] {
-  return ML.fieldable_columns(query, stageIndex);
+  return fieldable_columns(query, stageIndex);
 }
 
 export function fieldValuesSearchInfo(
   query: Query,
   column: ColumnMetadata,
 ): FieldValuesSearchInfo {
-  return ML.field_values_search_info(query, column);
+  return field_values_search_info(query, column);
 }
 
 export function legacyRef(
@@ -57,5 +65,5 @@ export function legacyRef(
   stageIndex: number,
   column: ColumnMetadata | MetricMetadata | SegmentMetadata,
 ): FieldReference {
-  return ML.legacy_ref(query, stageIndex, column);
+  return legacy_ref(query, stageIndex, column);
 }

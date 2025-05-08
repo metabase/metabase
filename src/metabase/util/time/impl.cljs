@@ -2,7 +2,7 @@
   "CLJS implementation of the time utilities on top of Moment.js.
   See [[metabase.util.time]] for the public interface."
   (:require
-   ["moment" :as moment]
+   ["moment$default" :as moment]
    [metabase.util.time.impl-common :as common]))
 
 (defn- now [] (moment))

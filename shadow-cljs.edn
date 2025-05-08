@@ -1,4 +1,4 @@
-;; shadow-cljs configuration
+;; shadow-cljs.edn
 {:deps {:aliases [:cljs]}
 
  :nrepl
@@ -10,34 +10,285 @@
 
  :builds
  {:app
-  {:target     :npm-module
+  {:target     :esm
    :output-dir "target/cljs_release/"
-   :dev        {:output-dir "target/cljs_dev/"
-                :compiler-options {:reader-features #{:cljs-dev}}}
-   :compiler-options {:reader-features #{:cljs-release}
-                      :source-map      true}
-   :closure-defines {goog.debug.LOGGING_ENABLED true}
-   :entries    [metabase.legacy-mbql.js
-                metabase.lib.column-group
-                metabase.lib.js
-                metabase.lib.limit
-                metabase.lib.types.isa
-                metabase.models.dashboard.constants
-                metabase.models.params.shared
-                metabase.pivot.core
-                metabase.pivot.js
-                metabase.types
-                metabase.util.currency
-                metabase.util.devtools
-                metabase.util.formatting.constants
-                metabase.util.formatting.date
-                metabase.util.formatting.numbers
-                metabase.util.formatting.time
-                metabase.util.time
-                metabase.xrays.domain-entities.queries.util]}
 
-  :test
-  {:target           :node-test
-   :output-to        "target/node-tests.js"
-   :ns-regexp        "-test$"
-   :compiler-options {:reader-features #{:cljs-test}}}}}
+   ;; development build
+   :dev
+   {:output-dir      "target/cljs_dev/"
+    :compiler-options {:reader-features #{:cljs-dev}}}
+
+   :js-options {:js-provider :import}
+
+   ;; release compiler options
+   :compiler-options
+   {:reader-features #{:cljs-release}
+    :source-map      false
+    :optimizations   :advanced}
+
+   ;; strip debug code
+   :closure-defines
+   {goog.debug.LOGGING_ENABLED true}
+
+   ;; split into one module per entry
+   :modules
+   {:shared
+    {:entries []}
+
+    :metabase.lib.js
+    {:entries [metabase.lib.js]
+     :depends-on #{:metabase.lib.limit}
+     :exports
+     {aggregate                              metabase.lib.js/aggregate
+      aggregations                           metabase.lib.js/aggregations
+      aggregation_clause                     metabase.lib.js/aggregation_clause
+      aggregation_column                     metabase.lib.js/aggregation_column
+      add_field                              metabase.lib.js/add_field
+      fields                                 metabase.lib.js/fields
+      field_values_search_info               metabase.lib.js/field_values_search_info
+      fieldable_columns                      metabase.lib.js/fieldable_columns
+      legacy_ref                             metabase.lib.js/legacy_ref
+      remove_field                           metabase.lib.js/remove_field
+      with_fields                            metabase.lib.js/with_fields
+      boolean_filter_clause                  metabase.lib.js/boolean_filter_clause
+      boolean_filter_parts                   metabase.lib.js/boolean_filter_parts
+      coordinate_filter_clause               metabase.lib.js/coordinate_filter_clause
+      coordinate_filter_parts                metabase.lib.js/coordinate_filter_parts
+      default_filter_clause                  metabase.lib.js/default_filter_clause
+      default_filter_parts                   metabase.lib.js/default_filter_parts
+      exclude_date_filter_clause             metabase.lib.js/exclude_date_filter_clause
+      exclude_date_filter_parts              metabase.lib.js/exclude_date_filter_parts
+      filter_args_display_name               metabase.lib.js/filter_args_display_name
+      filterable_column_operators            metabase.lib.js/filterable_column_operators
+      filterable_columns                     metabase.lib.js/filterable_columns
+      number_filter_clause                   metabase.lib.js/number_filter_clause
+      number_filter_parts                    metabase.lib.js/number_filter_parts
+      relative_date_filter_clause            metabase.lib.js/relative_date_filter_clause
+      relative_date_filter_parts             metabase.lib.js/relative_date_filter_parts
+      specific_date_filter_clause            metabase.lib.js/specific_date_filter_clause
+      specific_date_filter_parts             metabase.lib.js/specific_date_filter_parts
+      string_filter_clause                   metabase.lib.js/string_filter_clause
+      string_filter_parts                    metabase.lib.js/string_filter_parts
+      time_filter_clause                     metabase.lib.js/time_filter_clause
+      time_filter_parts                      metabase.lib.js/time_filter_parts
+      update_lat_lon_filter                  metabase.lib.js/update_lat_lon_filter
+      update_numeric_filter                  metabase.lib.js/update_numeric_filter
+      update_temporal_filter                 metabase.lib.js/update_temporal_filter
+      available_join_strategies              metabase.lib.js/available_join_strategies
+      join                                   metabase.lib.js/join
+      joins                                  metabase.lib.js/joins
+      expression_clause                      metabase.lib.js/expression_clause
+      join_clause                            metabase.lib.js/join_clause
+      join_condition_lhs_columns             metabase.lib.js/join_condition_lhs_columns
+      join_condition_operators               metabase.lib.js/join_condition_operators
+      join_condition_rhs_columns             metabase.lib.js/join_condition_rhs_columns
+      join_condition_update_temporal_bucketing metabase.lib.js/join_condition_update_temporal_bucketing
+      join_conditions                        metabase.lib.js/join_conditions
+      join_fields                            metabase.lib.js/join_fields
+      join_lhs_display_name                  metabase.lib.js/join_lhs_display_name
+      join_strategy                          metabase.lib.js/join_strategy
+      joinable_columns                       metabase.lib.js/joinable_columns
+      joined_thing                           metabase.lib.js/joined_thing
+      picker_info                            metabase.lib.js/picker_info
+      remove_join                            metabase.lib.js/remove_join
+      rename_join                            metabase.lib.js/rename_join
+      suggested_join_conditions              metabase.lib.js/suggested_join_conditions
+      with_join_conditions                   metabase.lib.js/with_join_conditions
+      with_join_fields                       metabase.lib.js/with_join_fields
+      with_join_strategy                     metabase.lib.js/with_join_strategy
+      available_drill_thrus                  metabase.lib.js/available_drill_thrus
+      combine_column_drill_details           metabase.lib.js/combine_column_drill_details
+      drill_thru                             metabase.lib.js/drill_thru
+      expression                             metabase.lib.js/expression
+      expressions                            metabase.lib.js/expressions
+      diagnose_expression                    metabase.lib.js/diagnose_expression
+      expression_parts                       metabase.lib.js/expression_parts
+      expressionable_columns                 metabase.lib.js/expressionable_columns
+      extract                                metabase.lib.js/extract
+      column_extract_drill_extractions       metabase.lib.js/column_extract_drill_extractions
+      column_extractions                     metabase.lib.js/column_extractions
+      extraction_expression                  metabase.lib.js/extraction_expression
+      with_expression_name                   metabase.lib.js/with_expression_name
+      filter                                 metabase.lib.js/filter
+      filters                                metabase.lib.js/filters
+      filter_drill_details                   metabase.lib.js/filter_drill_details
+      pivot_columns_for_type                 metabase.lib.js/pivot_columns_for_type
+      pivot_drill_details                    metabase.lib.js/pivot_drill_details
+      binning                                metabase.lib.js/binning
+      breakout                               metabase.lib.js/breakout
+      breakouts                              metabase.lib.js/breakouts
+      breakout_column                        metabase.lib.js/breakout_column
+      breakoutable_columns                   metabase.lib.js/breakoutable_columns
+      database_id                            metabase.lib.js/database_id
+      find_column_indexes_from_legacy_refs   metabase.lib.js/find_column_indexes_from_legacy_refs
+      find_matching_column                   metabase.lib.js/find_matching_column
+      query_EQ_                              metabase.lib.js/query_EQ_
+      selected_aggregation_operators         metabase.lib.js/selected_aggregation_operators
+      aggregation_operator_columns           metabase.lib.js/aggregation_operator_columns
+      available_binning_strategies           metabase.lib.js/available_binning_strategies
+      available_aggregation_operators        metabase.lib.js/available_aggregation_operators
+      legacy_column__GT_type_info            metabase.lib.js/legacy_column__GT_type_info
+      normalize                              metabase.lib.js/normalize
+      valid_filter_for_QMARK_                metabase.lib.js/valid_filter_for_QMARK_
+      with_binning                           metabase.lib.js/with_binning
+      metadataProvider                       metabase.lib.js/metadataProvider
+      column_key                             metabase.lib.js/column_key
+      column_metadata_QMARK_                 metabase.lib.js/column_metadata_QMARK_
+      columns_group_columns                  metabase.lib.js/columns_group_columns
+      dependent_metadata                     metabase.lib.js/dependent_metadata
+      describe_temporal_unit                 metabase.lib.js/describe_temporal_unit
+      display_info                           metabase.lib.js/display_info
+      group_columns                          metabase.lib.js/group_columns
+      legacy_column__GT_metadata             metabase.lib.js/legacy_column__GT_metadata
+      metric_metadata_QMARK_                 metabase.lib.js/metric_metadata_QMARK_
+      returned_columns                       metabase.lib.js/returned_columns
+      segment_metadata_QMARK_                metabase.lib.js/segment_metadata_QMARK_
+      table_or_card_dependent_metadata       metabase.lib.js/table_or_card_dependent_metadata
+      table_or_card_metadata                 metabase.lib.js/table_or_card_metadata
+      visible_columns                        metabase.lib.js/visible_columns
+      available_metrics                      metabase.lib.js/available_metrics
+      engine                                 metabase.lib.js/engine
+      has_write_permission                   metabase.lib.js/has_write_permission
+      native_extras                          metabase.lib.js/native_extras
+      native_query                           metabase.lib.js/native_query
+      raw_native_query                       metabase.lib.js/raw_native_query
+      required_native_extras                 metabase.lib.js/required_native_extras
+      template_tags                          metabase.lib.js/template_tags
+      with_different_database                metabase.lib.js/with_different_database
+      with_native_extras                     metabase.lib.js/with_native_extras
+      with_native_query                      metabase.lib.js/with_native_query
+      with_template_tags                     metabase.lib.js/with_template_tags
+      change_direction                       metabase.lib.js/change_direction
+      order_by                               metabase.lib.js/order_by
+      order_by_clause                        metabase.lib.js/order_by_clause
+      order_bys                              metabase.lib.js/order_bys
+      orderable_columns                      metabase.lib.js/orderable_columns
+      append_stage                           metabase.lib.js/append_stage
+      as_returned                            metabase.lib.js/as_returned
+      can_run                                metabase.lib.js/can_run
+      can_save                               metabase.lib.js/can_save
+      suggestedName                          metabase.lib.js/suggestedName
+      drop_empty_stages                      metabase.lib.js/drop_empty_stages
+      drop_stage                             metabase.lib.js/drop_stage
+      ensure_filter_stage                    metabase.lib.js/ensure_filter_stage
+      has_clauses                            metabase.lib.js/has_clauses
+      legacy_query                           metabase.lib.js/legacy_query
+      preview_query                          metabase.lib.js/preview_query
+      query                                  metabase.lib.js/query
+      random_ident                           metabase.lib.js/random_ident
+      remove_clause                          metabase.lib.js/remove_clause
+      replace_clause                         metabase.lib.js/replace_clause
+      source_table_or_card_id                metabase.lib.js/source_table_or_card_id
+      stage_count                            metabase.lib.js/stage_count
+      swap_clauses                           metabase.lib.js/swap_clauses
+      with_different_table                   metabase.lib.js/with_different_table
+      available_segments                     metabase.lib.js/available_segments
+      segment_metadata                       metabase.lib.js/segment_metadata
+      available_temporal_buckets             metabase.lib.js/available_temporal_buckets
+      available_temporal_units               metabase.lib.js/available_temporal_units
+      describe_relative_datetime             metabase.lib.js/describe_relative_datetime
+      describe_temporal_interval             metabase.lib.js/describe_temporal_interval
+      format_relative_date_range             metabase.lib.js/format_relative_date_range
+      temporal_bucket                        metabase.lib.js/temporal_bucket
+      with_temporal_bucket                   metabase.lib.js/with_temporal_bucket}}
+
+    :metabase.lib.limit
+    {:entries [metabase.lib.limit]
+     :depends-on #{:metabase.lib.metadata.calculation}
+     :exports
+     {current_limit metabase.lib.limit/current_limit
+      limit         metabase.lib.limit/limit}}
+
+    :metabase.lib.metadata.calculation
+    {:entries [metabase.lib.metadata.calculation]
+     :depends-on #{:metabase.lib.types.isa}
+     :exports
+     {display_name metabase.lib.metadata.calculation/display_name}}
+
+    :metabase.lib.types.isa
+    {:entries [metabase.lib.types.isa]
+     :depends-on #{:metabase.types}
+     :exports
+     {URL_QMARK_               metabase.lib.types.isa/URL_QMARK_
+      address_QMARK_           metabase.lib.types.isa/address_QMARK_
+      avatar_URL_QMARK_        metabase.lib.types.isa/avatar_URL_QMARK_
+      boolean_QMARK_           metabase.lib.types.isa/boolean_QMARK_
+      category_QMARK_          metabase.lib.types.isa/category_QMARK_
+      city_QMARK_              metabase.lib.types.isa/city_QMARK_
+      comment_QMARK_           metabase.lib.types.isa/comment_QMARK_
+      coordinate_QMARK_        metabase.lib.types.isa/coordinate_QMARK_
+      country_QMARK_           metabase.lib.types.isa/country_QMARK_
+      creation_date_QMARK_     metabase.lib.types.isa/creation_date_QMARK_
+      creation_time_QMARK_     metabase.lib.types.isa/creation_time_QMARK_
+      creation_timestamp_QMARK_ metabase.lib.types.isa/creation_timestamp_QMARK_
+      currency_QMARK_          metabase.lib.types.isa/currency_QMARK_
+      date_or_datetime_QMARK_  metabase.lib.types.isa/date_or_datetime_QMARK_
+      date_without_time_QMARK_ metabase.lib.types.isa/date_without_time_QMARK_
+      description_QMARK_       metabase.lib.types.isa/description_QMARK_
+      email_QMARK_             metabase.lib.types.isa/email_QMARK_
+      entity_name_QMARK_       metabase.lib.types.isa/entity_name_QMARK_
+      foreign_key_QMARK_       metabase.lib.types.isa/foreign_key_QMARK_
+      id_QMARK_                metabase.lib.types.isa/id_QMARK_
+      image_URL_QMARK_         metabase.lib.types.isa/image_URL_QMARK_
+      integer_QMARK_           metabase.lib.types.isa/integer_QMARK_
+      latitude_QMARK_          metabase.lib.types.isa/latitude_QMARK_
+      location_QMARK_          metabase.lib.types.isa/location_QMARK_
+      longitude_QMARK_         metabase.lib.types.isa/longitude_QMARK_
+      numeric_QMARK_           metabase.lib.types.isa/numeric_QMARK_
+      primary_key_QMARK_       metabase.lib.types.isa/primary_key_QMARK_
+      state_QMARK_             metabase.lib.types.isa/state_QMARK_
+      string_QMARK_            metabase.lib.types.isa/string_QMARK_
+      string_like_QMARK_       metabase.lib.types.isa/string_like_QMARK_
+      string_or_string_like_QMARK_ metabase.lib.types.isa/string_or_string_like_QMARK_
+      temporal_QMARK_          metabase.lib.types.isa/temporal_QMARK_
+      time_QMARK_              metabase.lib.types.isa/time_QMARK_
+      title_QMARK_             metabase.lib.types.isa/title_QMARK_
+      zip_code_QMARK_          metabase.lib.types.isa/zip_code_QMARK_}}
+
+    :metabase.models.dashboard.constants
+    {:entries [metabase.models.dashboard.constants]
+     :depends-on #{:shared}
+     :exports
+     {CARD_SIZE_DEFAULTS_JSON metabase.models.dashboard.constants/CARD_SIZE_DEFAULTS_JSON}}
+
+    :metabase.models.params.shared
+    {:entries [metabase.models.params.shared]
+     :depends-on #{:metabase.lib.limit}
+     :exports
+     {substitute_tags metabase.models.params.shared/substitute_tags
+      tag_names       metabase.models.params.shared/tag_names}}
+
+    :metabase.types
+    {:entries [metabase.types]
+     :depends-on #{:metabase.util.currency}
+     :exports
+     {LEVEL_ONE_TYPES      metabase.types/LEVEL_ONE_TYPES
+      TYPE                 metabase.types/TYPE
+      coercions_for_type   metabase.types/coercions_for_type
+      is_coerceable        metabase.types/is_coerceable
+      isa                  metabase.types/isa}}
+
+    :metabase.pivot.js
+    {:entries [metabase.pivot.js]
+     :depends-on #{:metabase.lib.js}
+     :exports
+     {columns_without_pivot_group metabase.pivot.js/columns_without_pivot_group
+      process_pivot_table         metabase.pivot.js/process_pivot_table}}
+
+    :metabase.util.currency
+    {:entries [metabase.util.currency]
+     :depends-on #{:shared}
+     :exports
+     {currency metabase.util.currency/currency}}
+
+    :metabase.xrays.domain_entities.queries.util
+    {:entries [metabase.xrays.domain-entities.queries.util]
+     :depends-on #{:shared}
+     :exports
+     {unique_expression_name metabase.xrays.domain-entities.queries.util/unique_expression_name}}}}}
+
+ :test
+ {:target           :node-test
+  :output-to        "target/node-tests.js"
+  :ns-regexp        "-test$"
+  :compiler-options {:reader-features #{:cljs-test}}}}

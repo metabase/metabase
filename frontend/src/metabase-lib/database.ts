@@ -1,4 +1,4 @@
-import * as ML from "cljs/metabase.lib.js";
+import { database_id } from "cljs/metabase.lib.js";
 
 import type { Query } from "./types";
 
@@ -9,5 +9,5 @@ import type { Query } from "./types";
  * `database_id`; if this is not available for one reason or another this will return `null`.
  */
 export function databaseID(query: Query): number | null {
-  return ML.database_id(query);
+  return database_id(query);
 }

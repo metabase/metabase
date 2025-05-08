@@ -1,11 +1,19 @@
-import * as ML from "cljs/metabase.lib.js";
+import {
+  available_temporal_buckets,
+  available_temporal_units,
+  describe_relative_datetime,
+  describe_temporal_interval,
+  format_relative_date_range,
+  temporal_bucket,
+  with_temporal_bucket,
+} from "cljs/metabase.lib.js";
 import type { TemporalUnit } from "metabase-types/api";
 
 import { displayInfo } from "./metadata";
 import type { Bucket, Clause, ColumnMetadata, Query } from "./types";
 
 export function temporalBucket(clause: Clause | ColumnMetadata): Bucket | null {
-  return ML.temporal_bucket(clause);
+  return temporal_bucket(clause);
 }
 
 export function availableTemporalBuckets(
@@ -13,7 +21,7 @@ export function availableTemporalBuckets(
   stageIndex: number,
   column: ColumnMetadata,
 ): Bucket[] {
-  return ML.available_temporal_buckets(query, stageIndex, column);
+  return available_temporal_buckets(query, stageIndex, column);
 }
 
 export function isTemporalBucketable(
@@ -28,7 +36,7 @@ export function withTemporalBucket(
   column: ColumnMetadata,
   bucket: Bucket | null,
 ): ColumnMetadata {
-  return ML.with_temporal_bucket(column, bucket);
+  return with_temporal_bucket(column, bucket);
 }
 
 export function withDefaultTemporalBucket(
@@ -59,14 +67,14 @@ export function describeTemporalInterval(
   n: IntervalAmount,
   unit?: TemporalUnit,
 ): string {
-  return ML.describe_temporal_interval(n, unit);
+  return describe_temporal_interval(n, unit);
 }
 
 export function describeRelativeDatetime(
   n: IntervalAmount,
   unit?: TemporalUnit,
 ): string {
-  return ML.describe_relative_datetime(n, unit);
+  return describe_relative_datetime(n, unit);
 }
 
 type RelativeDateRangeFormatOpts = {
@@ -84,11 +92,11 @@ export function formatRelativeDateRange({
   offsetUnit,
   includeCurrent,
 }: RelativeDateRangeFormatOpts): string {
-  return ML.format_relative_date_range(value, unit, offsetValue, offsetUnit, {
+  return format_relative_date_range(value, unit, offsetValue, offsetUnit, {
     "include-current": includeCurrent,
   });
 }
 
 export function availableTemporalUnits(): TemporalUnit[] {
-  return ML.available_temporal_units();
+  return available_temporal_units();
 }

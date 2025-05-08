@@ -1,4 +1,4 @@
-import * as ML from "cljs/metabase.lib.js";
+import { available_metrics } from "cljs/metabase.lib.js";
 
 import type { MetricMetadata, Query } from "./types";
 
@@ -6,5 +6,5 @@ export function availableMetrics(
   query: Query,
   stageIndex: number,
 ): MetricMetadata[] {
-  return ML.available_metrics(query, stageIndex);
+  return available_metrics(query, stageIndex);
 }

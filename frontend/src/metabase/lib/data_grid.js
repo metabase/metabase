@@ -1,6 +1,9 @@
 import _ from "underscore";
 
-import * as Pivot from "cljs/metabase.pivot.js";
+import {
+  columns_without_pivot_group,
+  process_pivot_table,
+} from "cljs/metabase.pivot.js";
 import { formatValue } from "metabase/lib/formatting";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
@@ -26,7 +29,7 @@ export function multiLevelPivot(data, settings) {
     data.cols,
   );
 
-  const columns = Pivot.columns_without_pivot_group(data.cols);
+  const columns = columns_without_pivot_group(data.cols);
 
   const {
     columns: columnIndexes,
@@ -73,7 +76,7 @@ export function multiLevelPivot(data, settings) {
     leftHeaderItems,
     topHeaderItems,
     getRowSection,
-  } = Pivot.process_pivot_table(
+  } = process_pivot_table(
     data,
     rowIndexes,
     columnIndexes,

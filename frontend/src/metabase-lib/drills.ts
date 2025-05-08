@@ -1,4 +1,11 @@
-import * as ML from "cljs/metabase.lib.js";
+import {
+  available_drill_thrus,
+  combine_column_drill_details,
+  drill_thru,
+  filter_drill_details,
+  pivot_columns_for_type,
+  pivot_drill_details,
+} from "cljs/metabase.lib.js";
 import type { CardId, DatasetColumn, RowValue } from "metabase-types/api";
 
 import type {
@@ -23,7 +30,7 @@ export function availableDrillThrus(
   row: ClickObjectDataRow[] | undefined,
   dimensions: ClickObjectDimension[] | undefined,
 ): DrillThru[] {
-  return ML.available_drill_thrus(
+  return available_drill_thrus(
     query,
     stageIndex,
     cardId,
@@ -42,26 +49,26 @@ export function drillThru(
   drillThru: DrillThru,
   ...args: unknown[]
 ): Query {
-  return ML.drill_thru(query, stageIndex, cardId, drillThru, ...args);
+  return drill_thru(query, stageIndex, cardId, drillThru, ...args);
 }
 
 export function filterDrillDetails(drillThru: DrillThru): FilterDrillDetails {
-  return ML.filter_drill_details(drillThru);
+  return filter_drill_details(drillThru);
 }
 
 export function combineColumnDrillDetails(
   drillThru: DrillThru,
 ): FilterDrillDetails {
-  return ML.combine_column_drill_details(drillThru);
+  return combine_column_drill_details(drillThru);
 }
 
 export function pivotDrillDetails(drillThru: DrillThru): PivotDrillDetails {
-  return ML.pivot_drill_details(drillThru);
+  return pivot_drill_details(drillThru);
 }
 
 export function pivotColumnsForType(
   drillThru: DrillThru,
   pivotType: PivotType,
 ): ColumnMetadata[] {
-  return ML.pivot_columns_for_type(drillThru, pivotType);
+  return pivot_columns_for_type(drillThru, pivotType);
 }

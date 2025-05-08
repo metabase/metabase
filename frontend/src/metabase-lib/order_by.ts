@@ -1,4 +1,10 @@
-import * as ML from "cljs/metabase.lib.js";
+import {
+  change_direction,
+  order_by,
+  order_by_clause,
+  order_bys,
+  orderable_columns,
+} from "cljs/metabase.lib.js";
 
 import { removeClause } from "./query";
 import type {
@@ -12,11 +18,11 @@ export function orderableColumns(
   query: Query,
   stageIndex: number,
 ): ColumnMetadata[] {
-  return ML.orderable_columns(query, stageIndex);
+  return orderable_columns(query, stageIndex);
 }
 
 export function orderBys(query: Query, stageIndex: number): OrderByClause[] {
-  return ML.order_bys(query, stageIndex);
+  return order_bys(query, stageIndex);
 }
 
 export function orderBy(
@@ -25,18 +31,18 @@ export function orderBy(
   column: ColumnMetadata | OrderByClause,
   direction?: OrderByDirection,
 ): Query {
-  return ML.order_by(query, stageIndex, column, direction);
+  return order_by(query, stageIndex, column, direction);
 }
 
 export function orderByClause(
   column: ColumnMetadata,
   direction?: OrderByDirection,
 ): OrderByClause {
-  return ML.order_by_clause(column, direction);
+  return order_by_clause(column, direction);
 }
 
 export function changeDirection(query: Query, clause: OrderByClause): Query {
-  return ML.change_direction(query, clause);
+  return change_direction(query, clause);
 }
 
 export function removeOrderBys(query: Query, stageIndex: number): Query {

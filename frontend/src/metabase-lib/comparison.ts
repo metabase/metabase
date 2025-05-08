@@ -1,4 +1,8 @@
-import * as ML from "cljs/metabase.lib.js";
+import {
+  find_column_indexes_from_legacy_refs,
+  find_matching_column,
+  query_EQ_,
+} from "cljs/metabase.lib.js";
 import type { DatasetQuery, DimensionReference } from "metabase-types/api";
 
 import type { ColumnMetadata, Query } from "./types";
@@ -8,7 +12,7 @@ export function areLegacyQueriesEqual(
   query2: DatasetQuery,
   fieldIds?: number[],
 ): boolean {
-  return ML.query_EQ_(query1, query2, fieldIds);
+  return query_EQ_(query1, query2, fieldIds);
 }
 
 export function findMatchingColumn(
@@ -17,7 +21,7 @@ export function findMatchingColumn(
   column: ColumnMetadata,
   columns: ColumnMetadata[],
 ): ColumnMetadata | null {
-  return ML.find_matching_column(query, stageIndex, column, columns);
+  return find_matching_column(query, stageIndex, column, columns);
 }
 
 export function findColumnIndexesFromLegacyRefs(
@@ -26,7 +30,7 @@ export function findColumnIndexesFromLegacyRefs(
   columns: ColumnMetadata[],
   fieldRefs: DimensionReference[],
 ): number[] {
-  return ML.find_column_indexes_from_legacy_refs(
+  return find_column_indexes_from_legacy_refs(
     query,
     stageIndex,
     columns,

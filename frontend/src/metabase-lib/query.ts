@@ -1,4 +1,24 @@
-import * as ML from "cljs/metabase.lib.js";
+import {
+  append_stage,
+  as_returned,
+  can_run,
+  can_save,
+  suggestedName as cljs_suggestedName,
+  drop_empty_stages,
+  drop_stage,
+  ensure_filter_stage,
+  has_clauses,
+  legacy_query,
+  preview_query,
+  query,
+  random_ident,
+  remove_clause,
+  replace_clause,
+  source_table_or_card_id,
+  stage_count,
+  swap_clauses,
+  with_different_table,
+} from "cljs/metabase.lib.js";
 import type {
   CardId,
   CardType,
@@ -25,12 +45,12 @@ export function fromLegacyQuery(
   metadataProvider: MetadataProvider,
   datasetQuery: DatasetQuery,
 ): Query {
-  return ML.query(databaseId, metadataProvider, datasetQuery);
+  return query(databaseId, metadataProvider, datasetQuery);
 }
 
 // Returns a NanoID string for a card and query to use.
 export function randomIdent(): string {
-  return ML.random_ident();
+  return random_ident();
 }
 
 /**
@@ -41,23 +61,23 @@ export function queryFromTableOrCardMetadata(
   metadataProvider: MetadataProvider,
   tableOrCardMetadata: TableMetadata | CardMetadata,
 ): Query {
-  return ML.query(metadataProvider, tableOrCardMetadata);
+  return query(metadataProvider, tableOrCardMetadata);
 }
 
 export function toLegacyQuery(query: Query): DatasetQuery {
-  return ML.legacy_query(query);
+  return legacy_query(query);
 }
 
 export function withDifferentTable(query: Query, tableId: TableId): Query {
-  return ML.with_different_table(query, tableId);
+  return with_different_table(query, tableId);
 }
 
 export function suggestedName(query: Query): string {
-  return ML.suggestedName(query);
+  return cljs_suggestedName(query);
 }
 
 export function stageCount(query: Query): number {
-  return ML.stage_count(query);
+  return stage_count(query);
 }
 
 export function stageIndexes(query: Query): number[] {
@@ -68,23 +88,23 @@ export function stageIndexes(query: Query): number[] {
 }
 
 export const hasClauses = (query: Query, stageIndex: number): boolean => {
-  return ML.has_clauses(query, stageIndex);
+  return has_clauses(query, stageIndex);
 };
 
 export function appendStage(query: Query): Query {
-  return ML.append_stage(query);
+  return append_stage(query);
 }
 
 export function dropStage(query: Query): Query {
-  return ML.drop_stage(query);
+  return drop_stage(query);
 }
 
 export function dropEmptyStages(query: Query): Query {
-  return ML.drop_empty_stages(query);
+  return drop_empty_stages(query);
 }
 
 export function ensureFilterStage(query: Query): Query {
-  return ML.ensure_filter_stage(query);
+  return ensure_filter_stage(query);
 }
 
 export function removeClause(
@@ -92,7 +112,7 @@ export function removeClause(
   stageIndex: number,
   targetClause: Clause | Join,
 ): Query {
-  return ML.remove_clause(query, stageIndex, targetClause);
+  return remove_clause(query, stageIndex, targetClause);
 }
 
 export function replaceClause(
@@ -101,7 +121,7 @@ export function replaceClause(
   targetClause: Clause | Join,
   newClause: Clause | ColumnMetadata | MetricMetadata | SegmentMetadata | Join,
 ): Query {
-  return ML.replace_clause(query, stageIndex, targetClause, newClause);
+  return replace_clause(query, stageIndex, targetClause, newClause);
 }
 
 export function swapClauses(
@@ -110,19 +130,19 @@ export function swapClauses(
   sourceClause: Clause,
   targetClause: Clause,
 ): Query {
-  return ML.swap_clauses(query, stageIndex, sourceClause, targetClause);
+  return swap_clauses(query, stageIndex, sourceClause, targetClause);
 }
 
 export function sourceTableOrCardId(query: Query): TableId | null {
-  return ML.source_table_or_card_id(query);
+  return source_table_or_card_id(query);
 }
 
 export function canRun(query: Query, cardType: CardType): boolean {
-  return ML.can_run(query, cardType);
+  return can_run(query, cardType);
 }
 
 export function canSave(query: Query, cardType: CardType): boolean {
-  return ML.can_save(query, cardType);
+  return can_save(query, cardType);
 }
 
 export function asReturned(
@@ -130,7 +150,7 @@ export function asReturned(
   stageIndex: number,
   cardId: CardId | undefined,
 ): { query: Query; stageIndex: number } {
-  return ML.as_returned(query, stageIndex, cardId);
+  return as_returned(query, stageIndex, cardId);
 }
 
 export function previewQuery(
@@ -139,5 +159,5 @@ export function previewQuery(
   clauseType: ClauseType,
   clauseIndex: number | null,
 ): Query | null {
-  return ML.preview_query(query, stageIndex, clauseType, clauseIndex);
+  return preview_query(query, stageIndex, clauseType, clauseIndex);
 }

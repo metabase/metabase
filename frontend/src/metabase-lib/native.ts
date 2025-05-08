@@ -1,4 +1,16 @@
-import * as ML from "cljs/metabase.lib.js";
+import {
+  engine as cljs_engine,
+  has_write_permission,
+  native_extras,
+  native_query,
+  raw_native_query,
+  required_native_extras,
+  template_tags,
+  with_different_database,
+  with_native_extras,
+  with_native_query,
+  with_template_tags,
+} from "cljs/metabase.lib.js";
 import type { DatabaseId, TemplateTags } from "metabase-types/api";
 
 import type { MetadataProvider, Query } from "./types";
@@ -8,27 +20,27 @@ export function nativeQuery(
   metadata: MetadataProvider,
   innerQuery: string,
 ): Query {
-  return ML.native_query(databaseId, metadata, innerQuery);
+  return native_query(databaseId, metadata, innerQuery);
 }
 
 export function rawNativeQuery(query: Query): string {
-  return ML.raw_native_query(query);
+  return raw_native_query(query);
 }
 
 export function withNativeQuery(query: Query, innerQuery: string): Query {
-  return ML.with_native_query(query, innerQuery);
+  return with_native_query(query, innerQuery);
 }
 
 export function withTemplateTags(query: Query, tags: TemplateTags): Query {
-  return ML.with_template_tags(query, tags);
+  return with_template_tags(query, tags);
 }
 
 export function templateTags(query: Query): TemplateTags {
-  return ML.template_tags(query);
+  return template_tags(query);
 }
 
 export function hasWritePermission(query: Query): boolean {
-  return ML.has_write_permission(query);
+  return has_write_permission(query);
 }
 
 export function withDifferentDatabase(
@@ -36,11 +48,11 @@ export function withDifferentDatabase(
   databaseId: DatabaseId,
   metadata: MetadataProvider,
 ): Query {
-  return ML.with_different_database(query, databaseId, metadata);
+  return with_different_database(query, databaseId, metadata);
 }
 
 export function engine(query: Query): string | null {
-  return ML.engine(query);
+  return cljs_engine(query);
 }
 
 /**
@@ -51,7 +63,7 @@ export function requiredNativeExtras(
   databaseId: DatabaseId,
   metadata: MetadataProvider,
 ): string[] {
-  return ML.required_native_extras(databaseId, metadata);
+  return required_native_extras(databaseId, metadata);
 }
 
 type NativeExtras = {
@@ -62,7 +74,7 @@ type NativeExtras = {
  * Returns the extra keys for native queries associated with this query.
  */
 export function nativeExtras(query: Query): NativeExtras | null {
-  return ML.native_extras(query);
+  return native_extras(query);
 }
 
 /**
@@ -73,5 +85,5 @@ export function withNativeExtras(
   query: Query,
   nativeExtras: NativeExtras | null,
 ): Query {
-  return ML.with_native_extras(query, nativeExtras);
+  return with_native_extras(query, nativeExtras);
 }

@@ -15,7 +15,7 @@
       (java.time ZoneId))]
     :cljs
     [(:require
-      ["moment" :as moment]
+      ["moment$default" :as moment]
       ["moment-timezone" :as mtz])]))
 
 #?(:cljs

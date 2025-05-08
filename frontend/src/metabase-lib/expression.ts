@@ -1,4 +1,12 @@
-import * as ML from "cljs/metabase.lib.js";
+import {
+  expression as cljs_expression,
+  expressions as cljs_expressions,
+  diagnose_expression,
+  expression_clause,
+  expression_parts,
+  expressionable_columns,
+  with_expression_name,
+} from "cljs/metabase.lib.js";
 
 import type {
   AggregationClause,
@@ -24,20 +32,20 @@ export function expression(
   expressionName: string,
   clause: ExpressionClause,
 ): Query {
-  return ML.expression(query, stageIndex, expressionName, clause);
+  return cljs_expression(query, stageIndex, expressionName, clause);
 }
 
 export function withExpressionName<
   Clause extends AggregationClause | ExpressionClause,
 >(clause: Clause, newName: string): Clause {
-  return ML.with_expression_name(clause, newName);
+  return with_expression_name(clause, newName);
 }
 
 export function expressions(
   query: Query,
   stageIndex: number,
 ): ExpressionClause[] {
-  return ML.expressions(query, stageIndex);
+  return cljs_expressions(query, stageIndex);
 }
 
 export function expressionableColumns(
@@ -45,7 +53,7 @@ export function expressionableColumns(
   stageIndex?: number,
   expressionIndex?: number,
 ): ColumnMetadata[] {
-  return ML.expressionable_columns(query, stageIndex, expressionIndex);
+  return expressionable_columns(query, stageIndex, expressionIndex);
 }
 
 export function expressionParts(
@@ -53,7 +61,7 @@ export function expressionParts(
   stageIndex: number,
   clause: AggregationClause | ExpressionClause | FilterClause | JoinCondition,
 ): ExpressionParts {
-  return ML.expression_parts(query, stageIndex, clause);
+  return expression_parts(query, stageIndex, clause);
 }
 
 export function expressionClause(
@@ -82,9 +90,9 @@ export function expressionClause(
   options?: ExpressionOptions | null,
 ): ExpressionClause {
   if (args === undefined && options === undefined) {
-    return ML.expression_clause(operatorOrParts);
+    return expression_clause(operatorOrParts);
   }
-  return ML.expression_clause(operatorOrParts, args, options ?? null);
+  return expression_clause(operatorOrParts, args, options ?? null);
 }
 
 export type ExpressionMode = "expression" | "aggregation" | "filter";
@@ -95,7 +103,7 @@ export function diagnoseExpression(
   expression: ExpressionClause,
   expressionIndex?: number,
 ): ErrorWithMessage | null {
-  return ML.diagnose_expression(
+  return diagnose_expression(
     query,
     stageIndex,
     expressionMode,

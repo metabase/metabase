@@ -1,6 +1,33 @@
 import moment, { type Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
-import * as ML from "cljs/metabase.lib.js";
+import {
+  boolean_filter_clause,
+  boolean_filter_parts,
+  filter as cljs_filter,
+  filters as cljs_filters,
+  coordinate_filter_clause,
+  coordinate_filter_parts,
+  default_filter_clause,
+  default_filter_parts,
+  exclude_date_filter_clause,
+  exclude_date_filter_parts,
+  filter_args_display_name,
+  filterable_column_operators,
+  filterable_columns,
+  number_filter_clause,
+  number_filter_parts,
+  relative_date_filter_clause,
+  relative_date_filter_parts,
+  specific_date_filter_clause,
+  specific_date_filter_parts,
+  string_filter_clause,
+  string_filter_parts,
+  time_filter_clause,
+  time_filter_parts,
+  update_lat_lon_filter,
+  update_numeric_filter,
+  update_temporal_filter,
+} from "cljs/metabase.lib.js";
 import type { CardId } from "metabase-types/api";
 
 import { expressionParts } from "./expression";
@@ -29,13 +56,13 @@ export function filterableColumns(
   query: Query,
   stageIndex: number,
 ): ColumnMetadata[] {
-  return ML.filterable_columns(query, stageIndex);
+  return filterable_columns(query, stageIndex);
 }
 
 export function filterableColumnOperators(
   column: ColumnMetadata,
 ): FilterOperator[] {
-  return ML.filterable_column_operators(column);
+  return filterable_column_operators(column);
 }
 
 export function filter(
@@ -43,11 +70,11 @@ export function filter(
   stageIndex: number,
   filterClause: FilterClause | ExpressionClause | SegmentMetadata,
 ): Query {
-  return ML.filter(query, stageIndex, filterClause);
+  return cljs_filter(query, stageIndex, filterClause);
 }
 
 export function filters(query: Query, stageIndex: number): FilterClause[] {
-  return ML.filters(query, stageIndex);
+  return cljs_filters(query, stageIndex);
 }
 
 export function removeFilters(query: Query, stageIndex: number): Query {
@@ -62,7 +89,7 @@ export function filterArgsDisplayName(
   stageIndex: number,
   clause: FilterClause,
 ): string {
-  return ML.filter_args_display_name(query, stageIndex, clause);
+  return filter_args_display_name(query, stageIndex, clause);
 }
 
 export function stringFilterClause({
@@ -71,7 +98,7 @@ export function stringFilterClause({
   values,
   options,
 }: StringFilterParts): ExpressionClause {
-  return ML.string_filter_clause(operator, column, values, options);
+  return string_filter_clause(operator, column, values, options);
 }
 
 export function stringFilterParts(
@@ -79,7 +106,7 @@ export function stringFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): StringFilterParts | null {
-  return ML.string_filter_parts(query, stageIndex, filterClause);
+  return string_filter_parts(query, stageIndex, filterClause);
 }
 
 export function numberFilterClause({
@@ -87,7 +114,7 @@ export function numberFilterClause({
   column,
   values,
 }: NumberFilterParts): ExpressionClause {
-  return ML.number_filter_clause(operator, column, values);
+  return number_filter_clause(operator, column, values);
 }
 
 export function numberFilterParts(
@@ -95,7 +122,7 @@ export function numberFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): NumberFilterParts | null {
-  return ML.number_filter_parts(query, stageIndex, filterClause);
+  return number_filter_parts(query, stageIndex, filterClause);
 }
 
 export function coordinateFilterClause({
@@ -104,7 +131,7 @@ export function coordinateFilterClause({
   longitudeColumn,
   values,
 }: CoordinateFilterParts): ExpressionClause {
-  return ML.coordinate_filter_clause(operator, column, longitudeColumn, values);
+  return coordinate_filter_clause(operator, column, longitudeColumn, values);
 }
 
 export function coordinateFilterParts(
@@ -112,7 +139,7 @@ export function coordinateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): CoordinateFilterParts | null {
-  return ML.coordinate_filter_parts(query, stageIndex, filterClause);
+  return coordinate_filter_parts(query, stageIndex, filterClause);
 }
 
 export function booleanFilterClause({
@@ -120,7 +147,7 @@ export function booleanFilterClause({
   column,
   values,
 }: BooleanFilterParts): ExpressionClause {
-  return ML.boolean_filter_clause(operator, column, values);
+  return boolean_filter_clause(operator, column, values);
 }
 
 export function booleanFilterParts(
@@ -128,7 +155,7 @@ export function booleanFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): BooleanFilterParts | null {
-  return ML.boolean_filter_parts(query, stageIndex, filterClause);
+  return boolean_filter_parts(query, stageIndex, filterClause);
 }
 
 export function specificDateFilterClause({
@@ -137,7 +164,7 @@ export function specificDateFilterClause({
   values,
   hasTime,
 }: SpecificDateFilterParts): ExpressionClause {
-  return ML.specific_date_filter_clause(
+  return specific_date_filter_clause(
     operator,
     column,
     values.map((value) => moment(value)),
@@ -150,7 +177,7 @@ export function specificDateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): SpecificDateFilterParts | null {
-  const filterParts = ML.specific_date_filter_parts(
+  const filterParts = specific_date_filter_parts(
     query,
     stageIndex,
     filterClause,
@@ -174,7 +201,7 @@ export function relativeDateFilterClause({
   offsetUnit,
   options,
 }: RelativeDateFilterParts): ExpressionClause {
-  return ML.relative_date_filter_clause(
+  return relative_date_filter_clause(
     column,
     value,
     unit,
@@ -189,7 +216,7 @@ export function relativeDateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): RelativeDateFilterParts | null {
-  return ML.relative_date_filter_parts(query, stageIndex, filterClause);
+  return relative_date_filter_parts(query, stageIndex, filterClause);
 }
 
 export function excludeDateFilterClause({
@@ -198,7 +225,7 @@ export function excludeDateFilterClause({
   unit,
   values,
 }: ExcludeDateFilterParts): ExpressionClause {
-  return ML.exclude_date_filter_clause(operator, column, unit, values);
+  return exclude_date_filter_clause(operator, column, unit, values);
 }
 
 export function excludeDateFilterParts(
@@ -206,7 +233,7 @@ export function excludeDateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): ExcludeDateFilterParts | null {
-  return ML.exclude_date_filter_parts(query, stageIndex, filterClause);
+  return exclude_date_filter_parts(query, stageIndex, filterClause);
 }
 
 export function timeFilterClause({
@@ -214,7 +241,7 @@ export function timeFilterClause({
   column,
   values,
 }: TimeFilterParts): ExpressionClause {
-  return ML.time_filter_clause(
+  return time_filter_clause(
     operator,
     column,
     values.map((value) => moment(value)),
@@ -226,7 +253,7 @@ export function timeFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): TimeFilterParts | null {
-  const filterParts = ML.time_filter_parts(query, stageIndex, filterClause);
+  const filterParts = time_filter_parts(query, stageIndex, filterClause);
   if (!filterParts) {
     return null;
   }
@@ -240,7 +267,7 @@ export function defaultFilterClause({
   operator,
   column,
 }: DefaultFilterParts): ExpressionClause {
-  return ML.default_filter_clause(operator, column);
+  return default_filter_clause(operator, column);
 }
 
 export function defaultFilterParts(
@@ -248,7 +275,7 @@ export function defaultFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): DefaultFilterParts | null {
-  return ML.default_filter_parts(query, stageIndex, filterClause);
+  return default_filter_parts(query, stageIndex, filterClause);
 }
 
 export function filterParts(
@@ -310,7 +337,7 @@ export function updateLatLonFilter(
   cardId: CardId | undefined,
   bounds: UpdateLatLonFilterBounds,
 ): Query {
-  return ML.update_lat_lon_filter(
+  return update_lat_lon_filter(
     query,
     stageIndex,
     latitudeColumn,
@@ -331,7 +358,7 @@ export function updateNumericFilter(
   start: number,
   end: number,
 ): Query {
-  return ML.update_numeric_filter(
+  return update_numeric_filter(
     query,
     stageIndex,
     numericColumn,
@@ -353,7 +380,7 @@ export function updateTemporalFilter(
   start: string | Date,
   end: string | Date,
 ): Query {
-  return ML.update_temporal_filter(
+  return update_temporal_filter(
     query,
     stageIndex,
     temporalColumn,

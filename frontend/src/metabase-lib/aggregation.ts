@@ -1,4 +1,12 @@
-import * as ML from "cljs/metabase.lib.js";
+import {
+  aggregation_clause,
+  aggregation_column,
+  aggregation_operator_columns,
+  available_aggregation_operators,
+  aggregate as cljs_aggregate,
+  aggregations as cljs_aggregations,
+  selected_aggregation_operators,
+} from "cljs/metabase.lib.js";
 
 import { displayInfo } from "./metadata";
 import type {
@@ -13,20 +21,20 @@ export function availableAggregationOperators(
   query: Query,
   stageIndex: number,
 ): AggregationOperator[] {
-  return ML.available_aggregation_operators(query, stageIndex);
+  return available_aggregation_operators(query, stageIndex);
 }
 
 export function aggregationOperatorColumns(
   operator: AggregationOperator,
 ): ColumnMetadata[] {
-  return ML.aggregation_operator_columns(operator);
+  return aggregation_operator_columns(operator);
 }
 
 export function selectedAggregationOperators(
   operators: AggregationOperator[],
   clause: AggregationClause,
 ): AggregationOperator[] {
-  return ML.selected_aggregation_operators(operators, clause);
+  return selected_aggregation_operators(operators, clause);
 }
 
 export function aggregate(
@@ -34,7 +42,7 @@ export function aggregate(
   stageIndex: number,
   clause: Aggregable,
 ): Query {
-  return ML.aggregate(query, stageIndex, clause);
+  return cljs_aggregate(query, stageIndex, clause);
 }
 
 export function aggregateByCount(query: Query, stageIndex: number): Query {
@@ -56,14 +64,14 @@ export function aggregations(
   query: Query,
   stageIndex: number,
 ): AggregationClause[] {
-  return ML.aggregations(query, stageIndex);
+  return cljs_aggregations(query, stageIndex);
 }
 
 export function aggregationClause(
   operator: AggregationOperator,
   column?: ColumnMetadata,
 ): AggregationClause {
-  return ML.aggregation_clause(operator, column);
+  return aggregation_clause(operator, column);
 }
 
 export function aggregationColumn(
@@ -71,5 +79,5 @@ export function aggregationColumn(
   stageIndex: number,
   aggregation: AggregationClause,
 ): ColumnMetadata {
-  return ML.aggregation_column(query, stageIndex, aggregation);
+  return aggregation_column(query, stageIndex, aggregation);
 }

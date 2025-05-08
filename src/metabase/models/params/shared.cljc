@@ -7,7 +7,7 @@
         [metabase.util.date-2.parse.builder :as b]
         [metabase.util.i18n.impl :as i18n.impl]))
    #?@(:cljs
-       (["moment" :as moment]))
+       (["moment$default" :as moment]))
    [clojure.string :as str]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]

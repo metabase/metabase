@@ -1,5 +1,21 @@
-import * as ML from "cljs/metabase.lib.js";
-import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
+import {
+  metadataProvider as cljs_metadataProvider,
+  column_key,
+  column_metadata_QMARK_,
+  columns_group_columns,
+  dependent_metadata,
+  describe_temporal_unit,
+  display_info,
+  group_columns,
+  legacy_column__GT_metadata,
+  metric_metadata_QMARK_,
+  returned_columns,
+  segment_metadata_QMARK_,
+  table_or_card_dependent_metadata,
+  table_or_card_metadata,
+  visible_columns,
+} from "cljs/metabase.lib.js";
+import { display_name } from "cljs/metabase.lib.metadata.calculation";
 import type {
   CardId,
   CardType,
@@ -55,14 +71,14 @@ export function metadataProvider(
   databaseId: DatabaseId | null,
   metadata: Metadata,
 ): MetadataProvider {
-  return ML.metadataProvider(databaseId, metadata);
+  return cljs_metadataProvider(databaseId, metadata);
 }
 
 /**
  * @deprecated use displayInfo instead
  */
 export function displayName(query: Query, clause: Clause): string {
-  return ML_MetadataCalculation.display_name(query, clause);
+  return display_name(query, clause);
 }
 
 declare function DisplayInfoFn(
@@ -158,44 +174,44 @@ declare function DisplayInfoFn(
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
-export const displayInfo: typeof DisplayInfoFn = ML.display_info;
+export const displayInfo: typeof DisplayInfoFn = display_info;
 
 export function groupColumns(columns: ColumnMetadata[]): ColumnGroup[] {
-  return ML.group_columns(columns);
+  return group_columns(columns);
 }
 
 export function getColumnsFromColumnGroup(
   group: ColumnGroup,
 ): ColumnMetadata[] {
-  return ML.columns_group_columns(group);
+  return columns_group_columns(group);
 }
 
 export function describeTemporalUnit(
   unit: string | null = null,
   n: number = 1,
 ): string {
-  return ML.describe_temporal_unit(n, unit);
+  return describe_temporal_unit(n, unit);
 }
 
 export function tableOrCardMetadata(
   queryOrMetadataProvider: Query | MetadataProvider,
   tableID: TableId,
 ): CardMetadata | TableMetadata {
-  return ML.table_or_card_metadata(queryOrMetadataProvider, tableID);
+  return table_or_card_metadata(queryOrMetadataProvider, tableID);
 }
 
 export function visibleColumns(
   query: Query,
   stageIndex: number,
 ): ColumnMetadata[] {
-  return ML.visible_columns(query, stageIndex);
+  return visible_columns(query, stageIndex);
 }
 
 export function returnedColumns(
   query: Query,
   stageIndex: number,
 ): ColumnMetadata[] {
-  return ML.returned_columns(query, stageIndex);
+  return returned_columns(query, stageIndex);
 }
 
 export function fromLegacyColumn(
@@ -203,7 +219,7 @@ export function fromLegacyColumn(
   stageIndex: number,
   columnOrField: DatasetColumn | Field,
 ): ColumnMetadata {
-  return ML.legacy_column__GT_metadata(query, stageIndex, columnOrField);
+  return legacy_column__GT_metadata(query, stageIndex, columnOrField);
 }
 
 export function queryDisplayInfo(query: Query): QueryDisplayInfo {
@@ -214,7 +230,7 @@ export function queryDisplayInfo(query: Query): QueryDisplayInfo {
    * The third parameter is what you would like to have the info about.
    * It just only happens that the thing we're examining is (again) the query itself.
    */
-  return ML.display_info(query, -1, query);
+  return display_info(query, -1, query);
 }
 
 export function dependentMetadata(
@@ -222,28 +238,28 @@ export function dependentMetadata(
   cardId: CardId | undefined,
   cardType: CardType,
 ): DependentItem[] {
-  return ML.dependent_metadata(query, cardId, cardType);
+  return dependent_metadata(query, cardId, cardType);
 }
 
 export function tableOrCardDependentMetadata(
   metadataProvider: MetadataProvider,
   tableId: TableId,
 ): DependentItem[] {
-  return ML.table_or_card_dependent_metadata(metadataProvider, tableId);
+  return table_or_card_dependent_metadata(metadataProvider, tableId);
 }
 
 export function columnKey(column: ColumnMetadata): string {
-  return ML.column_key(column);
+  return column_key(column);
 }
 
 export function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
-  return ML.column_metadata_QMARK_(arg);
+  return column_metadata_QMARK_(arg);
 }
 
 export function isMetricMetadata(arg: unknown): arg is MetricMetadata {
-  return ML.metric_metadata_QMARK_(arg);
+  return metric_metadata_QMARK_(arg);
 }
 
 export function isSegmentMetadata(arg: unknown): arg is SegmentMetadata {
-  return ML.segment_metadata_QMARK_(arg);
+  return segment_metadata_QMARK_(arg);
 }
