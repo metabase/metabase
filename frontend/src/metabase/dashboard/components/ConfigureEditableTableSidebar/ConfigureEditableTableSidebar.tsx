@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useSelector } from "metabase/lib/redux";
 import { ActionIcon, Box, Flex, Icon, Tabs } from "metabase/ui";
+import type { Dashboard } from "metabase-types/api";
 
 import { getDashCardById, getSidebar } from "../../selectors";
 
@@ -11,10 +12,12 @@ import { ConfigureEditableTableFilters } from "./ConfigureEditableTableFilters";
 import { ConfigureEditableTableActions } from "./actions/ConfigureEditableTableActions";
 
 interface ConfigureEditableTableSidebarProps {
+  dashboard: Dashboard;
   onClose: () => void;
 }
 
 export function ConfigureEditableTableSidebar({
+  dashboard,
   onClose,
 }: ConfigureEditableTableSidebarProps) {
   const dashcardId = useSelector(getSidebar).props.dashcardId;
@@ -51,7 +54,10 @@ export function ConfigureEditableTableSidebar({
               <ConfigureEditableTableFilters dashcard={dashcard} />
             </Tabs.Panel>
             <Tabs.Panel value="actions">
-              <ConfigureEditableTableActions dashcard={dashcard} />
+              <ConfigureEditableTableActions
+                dashboard={dashboard}
+                dashcard={dashcard}
+              />
             </Tabs.Panel>
           </Box>
         </Tabs>

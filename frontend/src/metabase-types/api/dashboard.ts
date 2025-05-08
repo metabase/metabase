@@ -107,6 +107,7 @@ export type EditableTableRowActionId =
 export type EditableTableRowActionDisplaySetting = {
   id: EditableTableRowActionId;
   enabled: boolean;
+  parameterMappings?: ActionParametersMapping[];
 };
 
 export type DashCardVisualizationSettings = {

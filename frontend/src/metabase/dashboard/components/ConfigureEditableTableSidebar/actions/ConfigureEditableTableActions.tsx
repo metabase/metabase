@@ -1,20 +1,22 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { ActionDashcardSettings } from "metabase/actions/components/ActionViz";
 import { useListActionsQuery } from "metabase/api";
 import Modal from "metabase/components/Modal";
 import { onUpdateDashCardVisualizationSettings } from "metabase/dashboard/actions";
-import { getDashboard } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Box, Button, Checkbox, Stack, Title } from "metabase/ui";
+import { useDispatch } from "metabase/lib/redux";
+import { Button, Checkbox, Stack } from "metabase/ui";
 import type {
+  Dashboard,
   DashboardCard,
   EditableTableRowActionDisplaySetting,
+  EditableTableRowActionId,
+  WritebackAction,
 } from "metabase-types/api";
 
 import { RowActionItem } from "./RowActionItem";
+import { RowActionSettingsModalContent } from "./RowActionSettingsModalContent";
 
 const DEFAULT_ACTIONS = [
   {
@@ -32,30 +34,37 @@ const DEFAULT_ACTIONS = [
 ];
 
 export const ConfigureEditableTableActions = ({
+  dashboard,
   dashcard,
 }: {
+  dashboard: Dashboard;
   dashcard: DashboardCard;
 }) => {
   const [isOpen, { close, open }] = useDisclosure(false);
+  const [editingAction, setEditingAction] = useState<WritebackAction | null>(
+    null,
+  );
   const dispatch = useDispatch();
 
-  const dashboard = useSelector(getDashboard);
+  const { enabledActions, enabledActionsMap } = useMemo(() => {
+    const enabledActions =
+      dashcard.visualization_settings?.["editableTable.enabledActions"] ?? [];
 
-  const enabledActions =
-    dashcard.visualization_settings?.["editableTable.enabledActions"] ?? [];
+    const enabledActionsMap = enabledActions.reduce((result, item) => {
+      result.set(item.id, item);
+      return result;
+    }, new Map<EditableTableRowActionId, EditableTableRowActionDisplaySetting>());
+
+    return { enabledActions, enabledActionsMap };
+  }, [dashcard.visualization_settings]);
 
   const { data: actions } = useListActionsQuery({}); // TODO: we should have an api to optimize this
 
-  const rowActions =
-    actions?.filter(({ id }) =>
-      enabledActions.find(({ id: itemId }) => itemId === id),
-    ) || [];
+  const addedRowActions =
+    actions?.filter(({ id }) => enabledActionsMap.get(id)) || [];
 
   const handleToggleAction = useCallback(
     ({ id, enabled }: EditableTableRowActionDisplaySetting) => {
-      const enabledActions =
-        dashcard.visualization_settings?.["editableTable.enabledActions"] || [];
-
       const newArray = [...enabledActions];
 
       const actionIndex = enabledActions.findIndex(
@@ -80,18 +89,15 @@ export const ConfigureEditableTableActions = ({
         }),
       );
     },
-    [dashcard.visualization_settings, dashcard.id, dispatch],
+    [enabledActions, dispatch, dashcard.id],
   );
 
   const handleAddAction = useCallback(
-    (actionId: number) => {
-      const enabledActions =
-        dashcard.visualization_settings?.["editableTable.enabledActions"] || [];
-
+    (action: WritebackAction) => {
       const newArray = [
         ...enabledActions,
         {
-          id: actionId,
+          id: action.id,
           enabled: true,
         },
       ];
@@ -102,14 +108,11 @@ export const ConfigureEditableTableActions = ({
         }),
       );
     },
-    [dashcard.id, dashcard.visualization_settings, dispatch],
+    [dashcard.id, dispatch, enabledActions],
   );
 
   const handleRemoveAction = useCallback(
     (actionId: number) => {
-      const enabledActions =
-        dashcard.visualization_settings?.["editableTable.enabledActions"] || [];
-
       const newArray = enabledActions.filter(({ id }) => id !== actionId);
 
       dispatch(
@@ -118,35 +121,41 @@ export const ConfigureEditableTableActions = ({
         }),
       );
     },
-    [dashcard.id, dashcard.visualization_settings, dispatch],
+    [dashcard.id, dispatch, enabledActions],
   );
+
+  const handleEditAction = useCallback(
+    (action: WritebackAction) => {
+      setEditingAction(action);
+      open();
+    },
+    [open],
+  );
+
+  const handleCancelEditAction = useCallback(() => {
+    close();
+    setEditingAction(null);
+  }, [close]);
 
   return (
     <>
-      <Box>
-        <Title order={4} mb="sm">{t`Default actions`}</Title>
-        <Stack gap="xs">
-          {DEFAULT_ACTIONS.map(({ id, label }) => {
-            const isEnabled =
-              enabledActions.find(({ id: itemId }) => itemId === id)?.enabled ||
-              false;
+      <Stack gap="xs">
+        {DEFAULT_ACTIONS.map(({ id, label }) => {
+          const isEnabled = enabledActionsMap.get(id)?.enabled || false;
 
-            return (
-              <Checkbox
-                key={id}
-                label={label}
-                checked={isEnabled}
-                onChange={() => handleToggleAction({ id, enabled: !isEnabled })}
-              />
-            );
-          })}
-        </Stack>
+          return (
+            <Checkbox
+              key={id}
+              label={label}
+              checked={isEnabled}
+              onChange={() => handleToggleAction({ id, enabled: !isEnabled })}
+            />
+          );
+        })}
 
-        <Title order={4} mt="md" mb="sm">{t`Row actions`}</Title>
-        {rowActions?.map((action) => {
-          const isEnabled =
-            enabledActions.find(({ id: itemId }) => itemId === action.id)
-              ?.enabled || false;
+        {addedRowActions?.map((action) => {
+          const actionSettings = enabledActionsMap.get(action.id);
+          const isEnabled = actionSettings?.enabled || false;
 
           return (
             <RowActionItem
@@ -155,22 +164,31 @@ export const ConfigureEditableTableActions = ({
               isEnabled={isEnabled}
               onToggle={handleToggleAction}
               onRemove={handleRemoveAction}
+              onEdit={handleEditAction}
             />
           );
         })}
-        <Button
-          variant="subtle"
-          p={0}
-          onClick={open}
-        >{t`Add new row action`}</Button>
-      </Box>
+      </Stack>
+
+      <Button
+        variant="subtle"
+        p={0}
+        onClick={open}
+      >{t`Add a new row action`}</Button>
+
       {dashboard && (
-        <Modal isOpen={isOpen} fit onClose={close}>
-          <ActionDashcardSettings
+        <Modal isOpen={isOpen} fit onClose={handleCancelEditAction}>
+          <RowActionSettingsModalContent
             dashboard={dashboard}
             dashcard={dashcard}
-            setActionForDashcard={(_, action) => handleAddAction(action.id)}
-            onClose={close}
+            action={editingAction}
+            parameterMappings={
+              editingAction
+                ? enabledActionsMap.get(editingAction.id)?.parameterMappings
+                : undefined
+            }
+            onSubmit={handleAddAction}
+            onClose={handleCancelEditAction}
           />
         </Modal>
       )}

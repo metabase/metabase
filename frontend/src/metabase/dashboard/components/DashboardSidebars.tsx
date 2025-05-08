@@ -258,7 +258,12 @@ export function DashboardSidebars({
       );
 
     case SIDEBAR_NAME.configureEditableTable:
-      return <ConfigureEditableTableSidebar onClose={closeSidebar} />;
+      return (
+        <ConfigureEditableTableSidebar
+          dashboard={dashboard}
+          onClose={closeSidebar}
+        />
+      );
 
     default:
       return null;
