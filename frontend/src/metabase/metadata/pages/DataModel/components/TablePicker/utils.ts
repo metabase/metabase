@@ -362,7 +362,12 @@ export function flatten(
     }
     return [
       { ...node, isExpanded: true },
-      { isLoading: true, type: childType, key: Math.random().toString() },
+      {
+        isLoading: true,
+        type: childType,
+        key: Math.random().toString(),
+        value: node.value,
+      },
     ];
   }
 
