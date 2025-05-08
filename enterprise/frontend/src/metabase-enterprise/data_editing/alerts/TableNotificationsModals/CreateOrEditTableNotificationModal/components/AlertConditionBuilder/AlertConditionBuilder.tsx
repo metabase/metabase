@@ -539,10 +539,10 @@ function parseInitialExpression(
   // As a temporary solution, we need to hide an important implementation detail
   // from the client.
   // Currently, each condition has a required table_id comparison at the top level.
-  // Eg.: '["=",["context","args","table_id"],8]'.
+  // Eg.: '["=",["context","table_id"],8]'.
   // But it should not be exposed to the Condition Builder component, user cannot affect it.
   // An example of an actual conditional expression in that case would look like this:
-  // Eg.: '["and",["=",["context","args","table_id"],8],["=",["context","PAYMENT"],0]]'
+  // Eg.: '["and",["=",["context","table_id"],8],["=",["context","PAYMENT"],0]]'
   // So we need to omit the table_id condition, and move directly to the 2nd nesting level,
   // before parsing the expression.
 
@@ -655,7 +655,7 @@ function generateExpression(
 ): ConditionalAlertExpression {
   const baseExpression: ConditionalAlertExpression = [
     "=",
-    ["context", "args", "table_id"],
+    ["context", "table_id"],
     tableId,
   ];
 
