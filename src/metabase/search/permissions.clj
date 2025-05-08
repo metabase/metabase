@@ -48,7 +48,7 @@
   [{:keys [current-user-id is-superuser?]} :- SearchContext table-id-col :- :keyword]
   (mi/visible-filter-clause
    :model/Table
-   [:cast table-id-col (case (mdb/app-db)
+   [:cast table-id-col (case (mdb/db-type)
                          :mysql :signed
                          :integer)]
    {:user-id current-user-id
