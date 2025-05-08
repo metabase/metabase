@@ -15,33 +15,26 @@
 .Indicator .Content {
   border-radius: 0 3px 3px 0;
   user-select: none;
+  background: #eef6fd;
+  padding: 0.3rem 0.75rem;
+}
+
+.Indicator .Content .PillTitle {
+  /** Do not use CSS variables here, as we want to use Metabase colors in the warning banner. */
+  color: #509ee3;
+  margin-left: 0.37rem;
+}
+
+.Indicator .WrenchIcon {
+  stroke: #509ee3;
+  stroke-width: 1.25;
 }
 
 .Indicator .Logo {
   border-radius: 3px 0 0 3px;
 }
 
-/**
-  * Use hard-coded colors instead of CSS variables to prevent user's themes
-  * from interfering with the banner color.
-  */
-
-.Indicator.Warning {
-  border: 1px solid #e8b923;
-}
-
-.Indicator.Error {
-  border: 1px solid #f7a4a3;
-}
-
-.Indicator.Warning .Content {
-  background: #fef3cf;
-}
-
-.Indicator.Error .Content {
-  background: #fdf0f0;
-}
-
 .DocsButton:not([data-css-specificity-hack="🤣"]) {
+  color: #509ee3;
   border: 1px solid var(--mb-color-brand);
 }

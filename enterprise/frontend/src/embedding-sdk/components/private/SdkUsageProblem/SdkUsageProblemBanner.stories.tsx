@@ -29,7 +29,11 @@ export const Warning = {
   render: Template,
 
   args: {
-    problem: { severity: "warning", title: "Warning", message: MESSAGE },
+    problem: {
+      severity: "warning",
+      title: "This embed is powered by the Metabase SDK",
+      message: MESSAGE,
+    },
   },
 };
 
