@@ -22,7 +22,6 @@ import { createMockState } from "metabase-types/store/mocks";
 import TitleAndDescription from "../TitleAndDescription";
 
 import { sampleDictionary } from "./constants";
-import { WaitForOptions } from "@testing-library/react-hooks";
 
 export interface SetupOpts {
   localeCode: string;
@@ -59,51 +58,48 @@ export const setup = ({
   );
 };
 
-export const assertStringsArePresent = async (key: "msgid" | "msgstr") => {
+export const assertStringsArePresent = async (
+  stringType: "msgid" | "msgstr",
+) => {
   expect(
     await screen.findByRole("heading", {
-      name: sampleDictionary[0][key],
+      name: sampleDictionary[0][stringType],
     }),
   ).toBeInTheDocument();
 
   await userEvent.hover(screen.getByLabelText("info icon"));
   expect(
     await screen.findByRole("tooltip", {
-      name: sampleDictionary[1][key],
+      name: sampleDictionary[1][stringType],
     }),
   ).toBeInTheDocument();
 };
 
-const assertNeverPasses = (
+const assertNeverPasses = async (
   fn: () => void | Promise<void>,
   options?: waitForOptions,
 ) => {
-  let errored = false;
-  try {
-    waitFor(fn, options);
-  } catch (_e) {
-    errored = true;
-  } finally {
-    expect(errored).toBe(true);
-  }
+  await expect(waitFor(fn, options)).rejects.toThrow();
 };
 
 export const assertStringsDoNotBecomePresent = async (
-  key: "msgid" | "msgstr",
+  /** A 'msgid' is a raw, untranslated string. A translation of a msgid is
+   * called a 'msgstr'. */
+  stringType: "msgid" | "msgstr",
 ) => {
-  assertNeverPasses(() => {
+  await assertNeverPasses(() => {
     expect(
       screen.getByRole("heading", {
-        name: sampleDictionary[0][key],
+        name: sampleDictionary[0][stringType],
       }),
     ).toBeInTheDocument();
   });
 
-  assertNeverPasses(async () => {
+  await assertNeverPasses(async () => {
     await userEvent.hover(screen.getByLabelText("info icon"));
     expect(
       await screen.findByRole("tooltip", {
-        name: sampleDictionary[1][key],
+        name: sampleDictionary[1][stringType],
       }),
     ).toBeInTheDocument();
   });
