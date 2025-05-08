@@ -1,18 +1,10 @@
 const { H } = cy;
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
-import type {
-  DashboardDetails,
-  StructuredQuestionDetails,
-} from "e2e/support/helpers";
-import type {
-  CardId,
-  DashboardParameterMapping,
-  Parameter,
-} from "metabase-types/api";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
+import type { CardId, GetFieldValuesResponse } from "metabase-types/api";
 
-const { ORDERS, PRODUCTS, REVIEWS } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > filters > remapping", () => {
   beforeEach(() => {
@@ -22,29 +14,26 @@ describe("scenarios > dashboard > filters > remapping", () => {
     addExternalRemapping();
   });
 
-  describe("dashboards", () => {
-    beforeEach(() => {
-      createDashboard();
-    });
+  it("should work in dashboards", () => {
+    setupDashboard();
+    testDashboardFilterWidgets();
   });
 });
 
 function addInternalRemapping() {
-  cy.request("POST", `/api/field/${REVIEWS.RATING}/dimension`, {
-    name: "Rating",
+  cy.request("POST", `/api/field/${ORDERS.QUANTITY}/dimension`, {
+    name: "Quantity",
     type: "internal",
     human_readable_field_id: null,
   });
 
-  cy.request("POST", `/api/field/${REVIEWS.RATING}/values`, {
-    values: [
-      [1, "A"],
-      [2, "B"],
-      [3, "C"],
-      [4, "D"],
-      [5, "E"],
-    ],
-  });
+  cy.request("GET", `/api/field/${ORDERS.QUANTITY}/values`).then(
+    ({ body }: { body: GetFieldValuesResponse }) => {
+      cy.request("POST", `/api/field/${ORDERS.QUANTITY}/values`, {
+        values: body.values.map(([value]) => [value, `N${value}`]),
+      });
+    },
+  );
 }
 
 function addExternalRemapping() {
@@ -55,89 +44,71 @@ function addExternalRemapping() {
   });
 }
 
-function createDashboard() {
-  const questionDetails: StructuredQuestionDetails = {
+function setupDashboard() {
+  const modelDetails: StructuredQuestionDetails = {
     query: {
-      "source-table": `card__${ORDERS_MODEL_ID}`,
+      "source-table": ORDERS_ID,
     },
   };
-  const internalParameter: Parameter = {
-    id: "internal",
-    name: "Internal",
-    slug: "internal",
-    type: "number/=",
-  };
-  const externalParameter: Parameter = {
-    id: "external",
-    name: "External",
-    slug: "external",
-    type: "id",
-  };
-  const pkNameParameter: Parameter = {
-    id: "pk_name",
-    name: "PK Name",
-    slug: "pk-name",
-    type: "id",
-  };
-  const fkNameParameter: Parameter = {
-    id: "fk_name",
-    name: "FK Name",
-    slug: "fk-name",
-    type: "id",
-  };
-  const dashboardDetails: DashboardDetails = {
-    parameters: [
-      internalParameter,
-      externalParameter,
-      pkNameParameter,
-      fkNameParameter,
-    ],
-  };
-  const getParameterMappings = (
-    questionId: CardId,
-  ): DashboardParameterMapping[] => {
-    return [
-      {
-        parameter_id: internalParameter.id,
-        card_id: questionId,
-        target: [
-          "dimension",
-          ["field", "RATING", { "base-type": "type/Integer" }],
-        ],
-      },
-      {
-        parameter_id: externalParameter.id,
-        card_id: questionId,
-        target: [
-          "dimension",
-          ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
-        ],
-      },
-      {
-        parameter_id: pkNameParameter.id,
-        card_id: questionId,
-        target: [
-          "dimension",
-          ["field", "ID_3", { "base-type": "type/BigInteger" }],
-        ],
-      },
-      {
-        parameter_id: fkNameParameter.id,
-        card_id: questionId,
-        target: [
-          "dimension",
-          ["field", "USER_ID", { "base-type": "type/Integer" }],
-        ],
-      },
-    ];
-  };
-  H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-    ({ body: { dashboard_id }, questionId }) => {
-      H.updateDashboardCards({
-        dashboard_id,
-        cards: [{ parameter_mappings: getParameterMappings(questionId) }],
-      });
-      cy.wrap(dashboard_id).as("dashboardId");
+  const getQuestionDetails = (modelId: CardId): StructuredQuestionDetails => ({
+    name: "Question",
+    type: "question",
+    query: {
+      "source-table": `card__${modelId}`,
     },
-  );
+  });
+  H.createQuestion(modelDetails).then(({ body: card }) => {
+    H.createQuestionAndDashboard({
+      questionDetails: getQuestionDetails(card.id),
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+  });
+
+  H.editDashboard();
+  H.setFilter("Number", undefined, "Quantity");
+  H.selectDashboardFilter(H.getDashboardCard(), "Quantity");
+  H.setFilter("ID", undefined, "User ID PK");
+  H.getDashboardCard().findByText("Select…").click();
+  H.popover().findAllByText("ID").should("have.length", 3).last().click();
+  H.setFilter("ID", undefined, "User ID FK");
+  H.selectDashboardFilter(H.getDashboardCard(), "User ID");
+  H.saveDashboard();
+}
+
+const RATING_INDEX = 0;
+const USER_ID_PK_INDEX = 1;
+const USER_ID_FK_INDEX = 2;
+const WIDGET_COUNT = 3;
+
+function findWidget(index: number) {
+  return H.filterWidget().should("have.length", WIDGET_COUNT).eq(index);
+}
+
+function testDashboardFilterWidgets() {
+  cy.log("internal remapping");
+  findWidget(RATING_INDEX).click();
+  H.popover().within(() => {
+    cy.findByText("N5").click();
+    cy.button("Add filter").click();
+  });
+  findWidget(RATING_INDEX).should("contain.text", "N5");
+
+  cy.log("PK->Name remapping");
+  findWidget(USER_ID_PK_INDEX).click();
+  H.popover().within(() => {
+    cy.findByPlaceholderText("Enter an ID").type("1,");
+    cy.findByText("Hudson Borer").should("exist");
+    cy.button("Add filter").click();
+  });
+  findWidget(USER_ID_PK_INDEX).should("contain.text", "Hudson Borer");
+
+  cy.log("FK->PK->Name remapping");
+  findWidget(USER_ID_FK_INDEX).click();
+  H.popover().within(() => {
+    cy.findByPlaceholderText("Enter an ID").type("2,");
+    cy.findByText("Domenica Williamson").should("exist");
+    cy.button("Add filter").click();
+  });
+  findWidget(USER_ID_FK_INDEX).should("contain.text", "Domenica Williamson");
 }
