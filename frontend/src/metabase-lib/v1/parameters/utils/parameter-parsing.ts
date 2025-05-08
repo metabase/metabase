@@ -69,12 +69,10 @@ export function parseParameterValue(value: any, parameter: Parameter) {
       return normalizeStringParameterValue(coercedValue);
     case "date":
       return normalizeDateParameterValue(coercedValue);
+    case "boolean":
+      return normalizeBooleanParameterValue(coercedValue);
     case "temporal-unit":
       return normalizeTemporalUnitParameterValue(coercedValue);
-  }
-
-  if (type === "boolean") {
-    return deserializeBooleanParameterValue(coercedValue);
   }
 
   return coercedValue;
