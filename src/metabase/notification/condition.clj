@@ -1,9 +1,12 @@
-(ns metabase.notification.condition)
+(ns metabase.notification.condition
+  (:require
+   [metabase.util :as u]))
 
 (defn evaluate-expression
   "Evaluates an array-based expression against a context payload"
   [expr context]
-  (if (sequential? expr)
+  (cond
+    (sequential? expr)
     (let [operator (first expr)
           operands (rest expr)]
       (case (keyword operator)
@@ -21,18 +24,26 @@
         :<= (apply <= (map #(evaluate-expression % context) operands))
 
         ;; Data access
-        :context (get-in context (map keyword operands))
+        :context (let [v (get-in context (map keyword operands))]
+                   (if (keyword? v)
+                     (u/qualified-name v)
+                     v))
 
         ;; Functions
         :count (count (evaluate-expression (first operands) context))
         :min   (apply min (map #(evaluate-expression % context) operands))
         :max   (apply max (map #(evaluate-expression % context) operands))))
+    ;; keyword are converted to string
+    (keyword? expr)
     ;; literal value
-    expr))
+    (u/qualified-name expr)
+    :else expr))
 
 (comment
   (evaluate-expression ["and",
                         [">", ["count", ["context", "rows"]], 0],
-                        ["=", ["context", "user_id"], 1]]
+                        ["=", ["context", "user_id"], 1]
+                        ["=", ["context", "event_name"], "created"]]
                        {:user_id 1
-                        :rows [1 2 3 4]}))
+                        :rows [1 2 3 4]
+                        :event_name :created}))
