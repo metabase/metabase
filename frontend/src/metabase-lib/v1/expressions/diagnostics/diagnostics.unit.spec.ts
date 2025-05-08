@@ -55,7 +55,7 @@ describe("diagnostics", () => {
     });
 
     it("should catch invalid characters", () => {
-      expect(err("[Price] / #")).toBe("Invalid character: #");
+      expect(err("[Price] / #")).toBe("Unexpected character: #");
     });
 
     it("should catch unterminated string literals", () => {
@@ -369,12 +369,9 @@ describe("diagnostics", () => {
         expect(err(expression)).toBe("Missing a closing bracket");
       });
 
-      it.each([`foo]`, `foo   ]`])(
-        "reject missing field quotes for %s",
-        (expression) => {
-          expect(err(expression)).toMatch(/^Missing an opening bracket for /);
-        },
-      );
+      it("should reject missing field quotes for foo]", () => {
+        expect(err("foo]")).toMatch(/^Missing an opening bracket for /);
+      });
 
       it.each([`[`, `[]`])("reject missing field name for %s", (expression) => {
         expect(err(expression)).toBe("Expected a field name");
@@ -385,7 +382,7 @@ describe("diagnostics", () => {
       it.each([`.`, `1°`, `@`, `#`, `%`, `@`, `(])`])(
         "should reject bad tokens like %s",
         (expression) => {
-          expect(err(expression)).toMatch(/^Invalid character/);
+          expect(err(expression)).toMatch(/^Unexpected character/);
         },
       );
 

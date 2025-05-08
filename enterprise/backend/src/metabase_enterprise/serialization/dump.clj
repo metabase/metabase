@@ -7,7 +7,7 @@
    [metabase-enterprise.serialization.serialize :as serialize]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))

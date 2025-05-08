@@ -61,10 +61,11 @@ describe("scenarios > admin > settings > public sharing", () => {
 
   it("should be able to toggle public sharing", () => {
     cy.visit("/admin/settings/public-sharing");
-    cy.findByLabelText("Enable Public Sharing")
-      .should("be.checked")
-      .click()
-      .should("not.be.checked");
+    cy.findByTestId("enable-public-sharing-setting").within(() => {
+      cy.findByText("Enabled").should("be.visible");
+      cy.findByText("Enabled").click();
+      cy.findByText("Disabled").should("be.visible");
+    });
   });
 
   it("should see public dashboards", () => {

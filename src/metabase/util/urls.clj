@@ -8,7 +8,7 @@
   (:require
    [clojure.string :as str]
    [metabase.models.params.shared :as shared.params]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [ring.util.codec :as codec]))
 
 (defn site-url

@@ -1,4 +1,4 @@
-import { useWindowEvent } from "@mantine/hooks";
+import { useHotkeys } from "@mantine/hooks";
 import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
@@ -6,7 +6,7 @@ import _ from "underscore";
 import Styles from "metabase/css/core/index.css";
 import { METAKEY } from "metabase/lib/browser";
 import { shortcuts as ALL_SHORTCUTS } from "metabase/palette/shortcuts";
-import type { ShortcutGroup } from "metabase/palette/types";
+import type { ShortcutDef, ShortcutGroup } from "metabase/palette/types";
 import {
   Group,
   Kbd,
@@ -17,7 +17,7 @@ import {
   Text,
 } from "metabase/ui";
 
-import { GROUP_LABLES } from "../../constants";
+import { ELLIPSIS, GROUP_LABLES } from "../../constants";
 
 const groupedShortcuts = _.groupBy(
   _.mapObject(ALL_SHORTCUTS, (val, id) => ({ id, ...val })),
@@ -33,8 +33,10 @@ export const PaletteShortcutsModal = ({
   onClose: ModalProps["onClose"];
   open: boolean;
 }) => {
-  // I don't know why this needs to be a window event. useHotKeys doesn't work with this modal.
-  useWindowEvent("keydown", (event) => event.key === "?" && onClose());
+  useHotkeys([
+    ["Shift+?", onClose],
+    ["?", onClose],
+  ]);
 
   return (
     <Modal
@@ -91,7 +93,7 @@ export const PaletteShortcutsModal = ({
                       {context}
                     </Text>
                   ) : null,
-                  ...shortcutContexts[context].map((shortcut) => (
+                  ...shortcutContexts[context].map((shortcut: ShortcutDef) => (
                     <Group
                       key={shortcut.id}
                       justify="space-between"
@@ -100,7 +102,16 @@ export const PaletteShortcutsModal = ({
                       my="sm"
                     >
                       <Text>{shortcut.name}</Text>
-                      <Shortcut shortcut={shortcut.shortcut[0]} />
+                      <Group gap="0.25rem">
+                        {(shortcut.shortcutDisplay || shortcut.shortcut).map(
+                          (shortcutKeys) => (
+                            <Shortcut
+                              key={shortcutKeys}
+                              shortcut={shortcutKeys}
+                            />
+                          ),
+                        )}
+                      </Group>
                     </Group>
                   )),
                 ]);
@@ -114,6 +125,10 @@ export const PaletteShortcutsModal = ({
 };
 
 const Shortcut = (props: { shortcut: string }) => {
+  if (props.shortcut === ELLIPSIS) {
+    return props.shortcut;
+  }
+
   const string = props.shortcut
     .replace("$mod", METAKEY)
     .replace(" ", " > ")

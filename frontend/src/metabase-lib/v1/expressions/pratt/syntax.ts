@@ -54,7 +54,7 @@ function setAttributes(...syntaxRules: [Partial<NodeType>, NodeType[]][]) {
   }
 }
 
-const ALL_NODES = {
+export const NODE_TYPE = {
   ADD,
   LOGICAL_AND,
   ARG_LIST,
@@ -94,7 +94,7 @@ setAttributes([
     precedence: -Infinity,
   },
 
-  Object.values(ALL_NODES),
+  Object.values(NODE_TYPE),
 ]);
 
 setAttributes(
@@ -231,23 +231,6 @@ ROOT.checkChildConstraints = anyChildConstraint(
   }
 });
 
-for (const [key, value] of Object.entries(ALL_NODES)) {
+for (const [key, value] of Object.entries(NODE_TYPE)) {
   value.name = key;
 }
-
-SUB.name = "SUBTRACT";
-
-export const OPERATORS = new Set([
-  COMMA,
-  GROUP,
-  GROUP_CLOSE,
-  ADD,
-  SUB,
-  MULDIV_OP,
-  EQUALITY,
-  COMPARISON,
-  LOGICAL_AND,
-  LOGICAL_OR,
-  LOGICAL_NOT,
-  NEGATIVE,
-]);

@@ -3,7 +3,6 @@ import cx from "classnames";
 import { Fragment } from "react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import {
   getGroupNameLocalized,
   isAdminGroup,
@@ -11,19 +10,14 @@ import {
 } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
-import { Icon, Popover } from "metabase/ui";
-import type { Group, GroupListQuery, Member } from "metabase-types/api";
+import { Box, Flex, Icon, Popover } from "metabase/ui";
+import type { Group, Member } from "metabase-types/api";
 
-import GroupSummary from "../GroupSummary";
+import { GroupSummary } from "../GroupSummary";
 
-import {
-  MembershipActionsContainer,
-  MembershipSelectContainer,
-  MembershipSelectHeader,
-  MembershipSelectItem,
-} from "./MembershipSelect.styled";
+import S from "./MembershipSelect.module.css";
 
-const getGroupSections = (groups: GroupListQuery[]) => {
+const getGroupSections = (groups: Omit<Group, "members">[]) => {
   const defaultGroup = groups.find(isDefaultGroup);
   const adminGroup = groups.find(isAdminGroup);
   const pinnedGroups = [defaultGroup, adminGroup].filter(isNotNull);
@@ -33,9 +27,7 @@ const getGroupSections = (groups: GroupListQuery[]) => {
 
   if (pinnedGroups.length > 0) {
     return [
-      {
-        groups: pinnedGroups,
-      },
+      { groups: pinnedGroups },
       { groups: regularGroups, header: t`Groups` },
     ];
   }
@@ -46,7 +38,7 @@ const getGroupSections = (groups: GroupListQuery[]) => {
 type Memberships = Map<Group["id"], Partial<Member>>;
 
 interface MembershipSelectProps {
-  groups: GroupListQuery[];
+  groups: Omit<Group, "members">[];
   memberships: Memberships;
   isCurrentUser?: boolean;
   isUserAdmin: boolean;
@@ -94,31 +86,35 @@ export const MembershipSelect = ({
       // prevent clicks on the confirm modal from closing this popover
       closeOnClickOutside={!isConfirmModalOpen}
       onChange={togglePopover}
+      position="bottom-end"
     >
       <Popover.Target>
-        <div
+        <Flex
+          display="inline-flex"
           onClick={openPopover}
-          className={cx(CS.flex, CS.alignCenter)}
+          align="center"
           aria-label="group-summary"
         >
-          <span className={cx(CS.mr1, CS.textMedium)}>
-            <GroupSummary groups={groups} selectedGroupIds={selectedGroupIds} />
-          </span>
-          <Icon className={CS.textLight} name="chevrondown" size={10} />
-        </div>
+          <GroupSummary
+            me="sm"
+            groups={groups}
+            selectedGroupIds={selectedGroupIds}
+          />
+          <Icon c="text-light" name="chevrondown" size={10} />
+        </Flex>
       </Popover.Target>
       <Popover.Dropdown>
         {groups.length === 0 && (
-          <span className={CS.p1}>{emptyListMessage}</span>
+          <Box component="span" p="sm">
+            {emptyListMessage}
+          </Box>
         )}
         {groups.length > 0 && (
-          <MembershipSelectContainer>
+          <ul className={S.membershipSelectContainer}>
             {groupSections.map((section, index) => (
               <Fragment key={index}>
                 {section.header && (
-                  <MembershipSelectHeader>
-                    {section.header}
-                  </MembershipSelectHeader>
+                  <li className={S.membershipSelectHeader}>{section.header}</li>
                 )}
                 {section.groups.map((group) => {
                   const isDisabled =
@@ -132,8 +128,10 @@ export const MembershipSelect = ({
                     !isAdminGroup(group);
 
                   return (
-                    <MembershipSelectItem
-                      isDisabled={isDisabled}
+                    <li
+                      className={cx(S.membershipSelectItem, {
+                        [S.membershipSelectItemDisabled]: isDisabled,
+                      })}
                       key={group.id}
                       aria-label={group.name}
                       onClick={() =>
@@ -143,7 +141,7 @@ export const MembershipSelect = ({
                       }
                     >
                       <span>{getGroupNameLocalized(group)}</span>
-                      <MembershipActionsContainer>
+                      <div className={S.membershipActionsContainer}>
                         {canEditMembershipType && (
                           <PLUGIN_GROUP_MANAGERS.UserTypeToggle
                             tooltipPlacement="bottom"
@@ -164,18 +162,15 @@ export const MembershipSelect = ({
                         >
                           <Icon name="check" />
                         </span>
-                      </MembershipActionsContainer>
-                    </MembershipSelectItem>
+                      </div>
+                    </li>
                   );
                 })}
               </Fragment>
             ))}
-          </MembershipSelectContainer>
+          </ul>
         )}
       </Popover.Dropdown>
     </Popover>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default MembershipSelect;

@@ -45,7 +45,6 @@ export const ADD_REMAPPINGS = "metabase/entities/fields/ADD_REMAPPINGS";
 
 // ADDITIONAL OTHER ACTIONS
 
-export const ADD_PARAM_VALUES = "metabase/entities/fields/ADD_PARAM_VALUES";
 export const ADD_FIELDS = "metabase/entities/fields/ADD_FIELDS";
 
 /**
@@ -196,7 +195,6 @@ const Fields = createEntity({
   },
 
   actions: {
-    addParamValues: createAction(ADD_PARAM_VALUES),
     addFields: createAction(ADD_FIELDS, (fields) =>
       normalize(fields, [FieldSchema]),
     ),
@@ -206,18 +204,6 @@ const Fields = createEntity({
 
   reducer: handleActions(
     {
-      [ADD_PARAM_VALUES]: {
-        next: (state, { payload: paramValues }) => {
-          for (const fieldValues of Object.values(paramValues)) {
-            state = assocIn(
-              state,
-              [fieldValues.field_id, "values"],
-              fieldValues,
-            );
-          }
-          return state;
-        },
-      },
       [ADD_REMAPPINGS]: (state, { payload: { fieldId, remappings } }) =>
         updateIn(state, [fieldId, "remappings"], (existing = []) =>
           Array.from(new Map(existing.concat(remappings))),

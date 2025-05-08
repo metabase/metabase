@@ -14,12 +14,9 @@ import _ from "underscore";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { skipToken, useGetRemappedFieldValueQuery } from "metabase/api";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import { ListField } from "metabase/components/ListField";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import SingleSelectListField from "metabase/components/SingleSelectListField";
 import TokenField, { parseStringValue } from "metabase/components/TokenField";
 import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenField";
-import ValueComponent from "metabase/components/Value";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { parseNumber } from "metabase/lib/number";
@@ -48,7 +45,11 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import ValueComponent from "../Value";
+
 import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
+import { ListField } from "./ListField";
+import SingleSelectListField from "./SingleSelectListField";
 import type { LoadingStateType, ValuesMode } from "./types";
 import {
   canUseCardEndpoints,
