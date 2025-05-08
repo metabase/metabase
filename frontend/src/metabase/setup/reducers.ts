@@ -32,11 +32,17 @@ const getUserFromQueryParams = () => {
   };
 };
 
+const getIsEmbeddingUseCaseFromQueryParams = () => {
+  const params = new URLSearchParams(window.location.search);
+  return params.has("use_case", "embedding");
+};
+
 const initialState: SetupState = {
   step: "welcome",
   isLocaleLoaded: false,
   isTrackingAllowed: true,
   user: getUserFromQueryParams(),
+  isEmbeddingUseCase: getIsEmbeddingUseCaseFromQueryParams(),
 };
 
 export const reducer = createReducer(initialState, (builder) => {
