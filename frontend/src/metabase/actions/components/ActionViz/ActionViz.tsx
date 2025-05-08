@@ -13,8 +13,7 @@ const isForm = (object: any, computedSettings: VisualizationSettings) =>
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(Action, {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  uiName: t`Action`,
+  getUiName: () => t`Action`,
   identifier: "action",
   iconName: "play",
 

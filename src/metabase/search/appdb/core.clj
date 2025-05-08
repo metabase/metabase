@@ -69,6 +69,17 @@
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))
 
+(defn add-table-where-clauses
+  "Add a `WHERE` clause to the query to only return tables the current user has access to"
+  [search-ctx qry]
+  (sql.helpers/where qry
+                     [:or
+                      [:= :search_index.model nil]
+                      [:!= :search_index.model [:inline "table"]]
+                      [:and
+                       [:= :search_index.model [:inline "table"]]
+                       (search.permissions/permitted-tables-clause search-ctx :search_index.model_id)]]))
+
 (defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
   so we can return its `:name`."
@@ -123,6 +134,7 @@
           scorers (search.scoring/scorers search-ctx)]
       (->> (search.index/search-query search-string search-ctx [:legacy_input])
            (add-collection-join-and-where-clauses search-ctx)
+           (add-table-where-clauses search-ctx)
            (search.scoring/with-scores search-ctx scorers)
            (search.filter/with-filters search-ctx)
            t2/query

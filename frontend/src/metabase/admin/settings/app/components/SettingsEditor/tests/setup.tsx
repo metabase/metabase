@@ -5,6 +5,7 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupApiKeyEndpoints,
   setupPropertiesEndpoints,
+  setupSettingEndpoint,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -65,6 +66,10 @@ export const setup = async ({
   }
 
   setupApiKeyEndpoints([]);
+  setupSettingEndpoint({
+    settingKey: "version-info",
+    settingValue: settingValuesWithToken["version-info"],
+  });
   setupSettingsEndpoints(settings);
   setupPropertiesEndpoints(settingValuesWithToken);
 

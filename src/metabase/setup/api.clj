@@ -6,7 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.email :as email]
    [metabase.config :as config]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
