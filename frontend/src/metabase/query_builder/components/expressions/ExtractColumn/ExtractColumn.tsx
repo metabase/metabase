@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
-import { getExample } from "metabase/querying/drills/utils/column-extract-drill";
 import { Box, Button, Flex, Stack, Text, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -161,7 +160,7 @@ function ExtractionPicker({
             <ExtractColumnButton
               key={extraction.info.tag}
               title={extraction.info.displayName}
-              example={getExample(extraction.info) ?? ""}
+              example={Lib.getExtractionExample(extraction.info) ?? ""}
               onClick={() => onSelect(extraction.info, extraction.extraction)}
             />
           ))}
