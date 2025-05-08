@@ -62,6 +62,8 @@ export function FormattingWidget() {
     localValue?.["type/Currency"] || {};
 
   const dateStyleOptions = getDateStyleOptionsForUnit("default", dateAbreviate);
+  const currencyOptions: { name: string; value: string }[] =
+    getCurrencyOptions();
 
   const handleChange = (newValue: FormattingSettings) => {
     if (_.isEqual(newValue, localValue)) {
@@ -173,7 +175,10 @@ export function FormattingWidget() {
               label={t`Unit of currency`}
               value={currency}
               inputType="select"
-              options={getCurrencyOptions()}
+              options={currencyOptions.map(({ name, value }) => ({
+                label: name,
+                value,
+              }))}
               onChange={(newValue) =>
                 handleChange({
                   ...localValue,
