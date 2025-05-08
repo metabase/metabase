@@ -42,7 +42,10 @@ import {
 import { SidebarCollectionLink } from "../SidebarItems";
 import { AddDatabase } from "../SidebarItems/AddDatabase";
 import { DwhUploadMenu } from "../SidebarItems/DwhUpload";
-import { trackOnboardingChecklistOpened } from "../analytics";
+import {
+  trackNewCollectionFromNavInitiated,
+  trackOnboardingChecklistOpened,
+} from "../analytics";
 import type { SelectedItem } from "../types";
 
 import BookmarkList from "./BookmarkList";
@@ -300,6 +303,7 @@ function CollectionSectionHeading({
           aria-label={t`Create a new collection`}
           color="var(--mb-color-text-medium)"
           onClick={() => {
+            trackNewCollectionFromNavInitiated();
             handleCreateNewCollection();
           }}
         >

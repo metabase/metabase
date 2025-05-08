@@ -30,10 +30,16 @@ describe("scenarios > collection defaults", () => {
     cy.intercept("GET", "/api/collection/*/items?**").as("getCollectionItems");
   });
 
-  describe("new collection button", () => {
+  H.describeWithSnowplow("new collection button", () => {
     beforeEach(() => {
       H.restore();
-      cy.signInAsNormalUser();
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.enableTracking();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
     });
 
     it("should show the new collection button in the root collection", () => {
@@ -43,6 +49,12 @@ describe("scenarios > collection defaults", () => {
       cy.findByTestId("collection-menu")
         .findByLabelText("Create a new collection")
         .click();
+
+      cy.log("Track the collection initiation from the header");
+      H.expectGoodSnowplowEvent({
+        event: "plus_button_clicked",
+        triggered_from: "collection-header",
+      });
       cy.findByTestId("new-collection-modal").within(() => {
         cy.findByLabelText("Name").type("MCL");
         cy.findByTestId("collection-picker-button").should(
@@ -61,6 +73,14 @@ describe("scenarios > collection defaults", () => {
       cy.findByTestId("collection-menu")
         .findByLabelText("Create a new collection")
         .should("be.visible");
+
+      cy.log("Track the collection initiation from the main navbar");
+      H.navigationSidebar().findByLabelText("Create a new collection").click();
+      cy.findByTestId("new-collection-modal").should("be.visible");
+      H.expectGoodSnowplowEvent({
+        event: "plus_button_clicked",
+        triggered_from: "collection-nav",
+      });
     });
 
     it("user without curate permissions should only be allowed to create a new collection inside their personal collection scope", () => {

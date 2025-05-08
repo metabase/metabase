@@ -51,7 +51,7 @@ describe("parameters/utils/template-tag-options", () => {
       isNumeric: () => false,
       isString: () => false,
       isBoolean: () => false,
-      isLocation: () => false,
+      isAddress: () => false,
     };
 
     it("should return relevantly typed options for date field", () => {
@@ -78,9 +78,13 @@ describe("parameters/utils/template-tag-options", () => {
       ).toBe(true);
     });
 
-    it("should return string options for a location field", () => {
-      const locationField = { ...field, isLocation: () => true };
-      const availableOptions = getParameterOptionsForField(locationField);
+    it("should return string options for an address field", () => {
+      const addressField = {
+        ...field,
+        isString: () => true,
+        isAddress: () => true,
+      };
+      const availableOptions = getParameterOptionsForField(addressField);
       expect(
         availableOptions.length > 0 &&
           availableOptions.every((option) => option.type.startsWith("string")),
