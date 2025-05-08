@@ -6,7 +6,6 @@ import { commonjs } from "@hyrious/esbuild-plugin-commonjs";
 import { transform } from "@svgr/core";
 import babel from "esbuild-plugin-babel";
 import fixReactVirtualizedPlugin from "esbuild-plugin-react-virtualized";
-import { createGenerateScopedName } from "hash-css-selector";
 import path from "path";
 import postcss from "postcss";
 import postCssModulesPlugin from "postcss-modules";
@@ -118,109 +117,94 @@ const generateScopedName = (selector, fileName) => {
   return hashCSSSelector(`${getFileName(fileName)}-${selector}`, prefix);
 };
 
-const cssModulesPlugin = () => ({
-  name: "css-module",
-  setup(build) {
-    build.onResolve(
-      {
-        filter: /(index\.css|\.module\.css)$/,
-        namespace: "file",
-      },
-      (args) => {
-        let pathDir = "";
+const cssModulesPlugin = ({
+  srcPath,
+  aliases = [],
+  additionalCssModuleRegexp,
+  resolve,
+  generateScopedName,
+}) => {
+  const filter = new RegExp(
+    `(${additionalCssModuleRegexp.source}$|\\.module\\.css$)`,
+  );
 
-        if (args.path.startsWith(".")) {
-          pathDir = path.resolve(args.resolveDir, args.path);
-        } else if (args.path.startsWith("metabase")) {
-          pathDir = path.resolve(
-            path.join(SRC_PATH, args.path.replace("metabase", "")),
-          );
+  return {
+    name: "css-modules",
+    setup(build) {
+      build.onResolve({ filter, namespace: "file" }, (args) => {
+        const importPath = args.path;
+        let fullPath;
+
+        if (importPath.startsWith(".")) {
+          fullPath = path.resolve(args.resolveDir, importPath);
         } else {
-          pathDir = path.resolve(
-            path.join(import.meta.dirname, "node_modules", args.path),
-          );
+          const alias = aliases.find((a) => importPath.startsWith(a));
+
+          if (alias) {
+            fullPath = path.resolve(
+              path.join(srcPath, importPath.replace(alias, "")),
+            );
+          } else {
+            fullPath = path.resolve(
+              path.join(import.meta.dirname, "node_modules", importPath),
+            );
+          }
         }
-
         return {
-          path: `${pathDir}#css-module`,
+          path: `${fullPath}#css-module`,
           namespace: "css-module",
-          pluginData: {
-            pathDir,
-          },
+          pluginData: { fullPath },
         };
-      },
-    );
+      });
 
-    build.onLoad(
-      { filter: /#css-module$/, namespace: "css-module" },
-      async (args) => {
-        const { pluginData } = args;
+      build.onLoad(
+        { filter: /#css-module$/, namespace: "css-module" },
+        async (args) => {
+          const { fullPath } = args.pluginData;
+          const source = await fs.promises.readFile(fullPath, "utf8");
+          const json = {};
+          const plugins = postcssConfig.plugins.filter(
+            (p) => p.postcssPlugin !== "postcss-modules",
+          );
 
-        const source = await fs.promises.readFile(pluginData.pathDir, "utf8");
+          const result = await postcss([
+            ...plugins,
+            postCssModulesPlugin({
+              generateScopedName: (name, filename) => {
+                const s = generateScopedName(name, filename);
+                json[name] = s;
+                return s;
+              },
+              getJSON: () => {},
+              resolve,
+            }),
+          ]).process(source, { from: fullPath });
 
-        const cssModule = {};
+          return {
+            contents: `import "${fullPath}";\nexport default ${JSON.stringify(
+              json,
+            )};`,
+            pluginData: { css: result.css },
+          };
+        },
+      );
 
-        const filteredPlugins = postcssConfig.plugins.filter(
-          (pluginData) => pluginData.postcssPlugin !== "postcss-modules",
-        );
-
-        const result = await postcss([
-          ...filteredPlugins,
-          postCssModulesPlugin({
-            generateScopedName(name, filename) {
-              const newSelector = generateScopedName(name, filename);
-
-              cssModule[name] = newSelector;
-
-              return newSelector;
-            },
-            getJSON() {},
-            resolve(filePath) {
-              if (filePath === "style") {
-                return path.resolve(SRC_PATH, "css/core/index.css");
-              }
-
-              return filePath;
-            },
-          }),
-        ]).process(source, {
-          from: pluginData.pathDir,
-        });
-
-        return {
-          pluginData: { css: result.css },
-          contents: `import "${
-            pluginData.pathDir
-          }"; export default ${JSON.stringify(cssModule)}`,
-        };
-      },
-    );
-
-    build.onResolve(
-      {
-        filter: /(index\.css|\.module\.css)$/,
+      build.onResolve({ filter, namespace: "css-module" }, (args) => ({
+        path: path.join(args.resolveDir, args.path) + "#css-module-data",
         namespace: "css-module",
-      },
-      (args) => {
-        return {
-          path: path.join(args.resolveDir, args.path, "#css-module-data"),
-          namespace: "css-module",
-          pluginData: args.pluginData,
-        };
-      },
-    );
+        pluginData: args.pluginData,
+      }));
 
-    build.onLoad(
-      { filter: /#css-module-data$/, namespace: "css-module" },
-      (args) => {
-        return {
-          contents: args.pluginData?.css ?? "",
+      build.onLoad(
+        { filter: /#css-module-data$/, namespace: "css-module" },
+        (args) => ({
+          contents: args.pluginData.css,
           loader: "css",
-        };
-      },
-    );
-  },
-});
+        }),
+      );
+    },
+  };
+};
 
 // We have to use a custom plugin, because `esbuild-plugin-svgr` as a side-effect disables svg processing in `css` files
 const svgrPlugin = () => ({
@@ -296,7 +280,7 @@ await build({
   splitting: true,
   treeshake: true,
   sourcemap: isDevMode,
-  minify: false,
+  minify: !isDevMode,
   clean: true,
   metafile: true,
   // We have to generate `dts` via `tsc` to emit files on `dts` type errors
@@ -319,7 +303,19 @@ await build({
     define: '"undefined"',
   },
   esbuildPlugins: [
-    cssModulesPlugin(),
+    cssModulesPlugin({
+      srcPath: SRC_PATH,
+      aliases: ["metabase"],
+      additionalCssModuleRegexp: /css\/core\/index\.css/,
+      resolve: (filePath) => {
+        if (filePath === "style") {
+          return path.resolve(SRC_PATH, "css/core/index.css");
+        }
+
+        return filePath;
+      },
+      generateScopedName,
+    }),
     fixReactVirtualizedPlugin,
     // To properly apply @emotion plugin before `requireToImport`
     babel({ filter: /\.[jt]s?x/ }),
