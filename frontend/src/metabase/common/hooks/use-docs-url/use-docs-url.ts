@@ -1,5 +1,9 @@
 import { useSelector } from "metabase/lib/redux";
-import { type UtmProps, getDocsUrl } from "metabase/selectors/settings";
+import {
+  type UtmProps,
+  getDocsUrl,
+  getLearnUrl,
+} from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 type DocsUtmProps = Omit<UtmProps, "utm_medium"> & {
@@ -27,6 +31,13 @@ export const useDocsUrl = (
       },
     }),
   );
+
+  return { url, showMetabaseLinks };
+};
+
+export const useLearnUrl = (page: string) => {
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+  const url = getLearnUrl(page);
 
   return { url, showMetabaseLinks };
 };
