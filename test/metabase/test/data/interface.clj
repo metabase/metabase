@@ -365,10 +365,6 @@
 
 (defmethod drop-if-exists-and-create-db! ::test-extensions
   [_driver _db-name & [_just-drop]]
-  (tap> "calling default method for drop-if-exists-and-create-db!")
-  (tap> {:driver _driver
-         :db-name _db-name
-         :just-drop _just-drop})
   nil)
 
 (defn with-temp-database-fn!

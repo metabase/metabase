@@ -41,7 +41,6 @@
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.test.data.postgres :as postgres.tx]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -715,7 +714,7 @@
                           {:aggregation [[:count]]
                            :filter      [:= $ip "192.168.1.1"]}))))))))
 
-(defn- do-with-money-test-db [thunk]
+(defn- do-with-money-test-db! [thunk]
   (tx/drop-if-exists-and-create-db! driver/*driver*  "money_columns_test")
   (let [details (mt/dbdef->connection-details :postgres :db {:database-name "money_columns_test"})]
     (sql-jdbc.execute/do-with-connection-with-options
@@ -748,7 +747,7 @@
                (is (= [1000.00M]
                       (row-thunk))))))))
 
-      (do-with-money-test-db
+      (do-with-money-test-db!
        (fn []
          (testing "We should be able to select avg() of a money column (#11498)"
            (is (= "SELECT AVG(bird_prices.price::numeric) AS avg FROM bird_prices"
