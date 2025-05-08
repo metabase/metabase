@@ -43,6 +43,7 @@ import { ModelsVideo } from "./EmptyStates";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
 import { ModelsTable } from "./ModelsTable";
 import { RecentModels } from "./RecentModels";
+import { trackNewModelInitiated } from "./analytics";
 import type { ModelFilterSettings, ModelResult } from "./types";
 import { getMaxRecentModelCount, isRecentModel } from "./utils";
 
@@ -101,6 +102,7 @@ export const BrowseModels = () => {
                     variant="viewHeader"
                     component={ForwardRefLink}
                     to="/model/new"
+                    onClick={() => trackNewModelInitiated()}
                   >
                     <Icon name="add" />
                   </ActionIcon>
