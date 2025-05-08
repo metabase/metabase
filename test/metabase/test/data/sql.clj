@@ -355,6 +355,13 @@
         (sql.qp/format-honeysql driver)
         first)))
 
+(defmethod tx/field-reference :sparksql
+  ([driver field-id]
+   (let [parent-method (get-method tx/field-reference :sql)
+         full-reference (parent-method driver field-id)
+         [_ _ field-name] (str/split full-reference #"\.")]
+     (format "`t1`.%s" field-name))))
+
 (defmulti session-schema
   "Return the unquoted schema name for the current test session, if any. This can be used in test code that needs
   to use the schema to create tables outside the regular test data setup. Test code that uses this should assume that
