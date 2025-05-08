@@ -7,8 +7,7 @@ import { Box, Icon, Input, Stack } from "metabase/ui";
 import type { DatabaseId, SchemaId } from "metabase-types/api";
 
 import { Results } from "./Item";
-import { useSearch } from "./Search";
-import { flatten, useExpandedState, useTableLoader } from "./utils";
+import { flatten, useExpandedState, useSearch, useTableLoader } from "./utils";
 
 type TablePickerProps = {
   databaseId?: DatabaseId;
@@ -48,8 +47,11 @@ function Tree(props: TablePickerProps) {
 }
 
 function Search({ query }: { query: string }) {
-  const { data, isLoading } = useSearch(query);
-  const isEmpty = !isLoading && data.length === 0;
+  const { tree, isLoading } = useSearch(query);
+
+  const isExpanded = () => true;
+  const items = flatten(tree, isExpanded);
+  const isEmpty = !isLoading && items.length === 0;
 
   if (isEmpty) {
     return (
@@ -61,5 +63,6 @@ function Search({ query }: { query: string }) {
       </Box>
     );
   }
-  return <Results items={data} isExpanded={() => true} />;
+
+  return <Results items={items} isExpanded={isExpanded} />;
 }
