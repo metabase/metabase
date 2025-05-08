@@ -110,6 +110,12 @@ export const expectGoodSnowplowEvents = (count) => {
   )
     .its("body")
     .then((body) => {
+      cy.log(
+        console.log(
+          "DEBUG:expectGoodSnowplowEvents:events",
+          body.map((event) => event?.event?.unstruct_event?.data?.data?.event),
+        ),
+      );
       console.log(
         "DEBUG:expectGoodSnowplowEvents:events",
         body.map((event) => event?.event?.unstruct_event?.data?.data?.event),
