@@ -7,7 +7,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { UndoListing } from "metabase/containers/UndoListing";
 import type { SettingKey } from "metabase-types/api";
 import {
@@ -73,22 +73,40 @@ describe("PublicSharingSettingsPage", () => {
     expect(await screen.findByDisplayValue("100,000.00")).toBeInTheDocument();
     expect(await screen.findByDisplayValue("US Dollar")).toBeInTheDocument();
 
-    // const radios = await screen.findAllByRole("radio");
-    // expect(radios).toHaveLength(2);
+    const timeStyleWidget = screen.getByTestId("time_style-formatting-setting");
+    const timeStyleRadios = within(timeStyleWidget).getAllByRole("radio");
+    expect(timeStyleRadios).toHaveLength(2);
 
-    // const timeStyleWidget = screen.getByTestId("time_style-formatting-setting");
+    // eslint-disable-next-line jest-dom/prefer-to-have-value
+    expect(timeStyleRadios[0]).toHaveAttribute("value", "h:mm A");
+    expect(timeStyleRadios[0]).toBeChecked();
 
-    // // Then search within that component
-    // const radiosInComponent = within(timeStyleWidget).getAllByRole("radio");
-    // expect(radiosInComponent).toHaveLength(5);
+    // eslint-disable-next-line jest-dom/prefer-to-have-value
+    expect(timeStyleRadios[1]).toHaveAttribute("value", "HH:mm");
+    expect(timeStyleRadios[1]).not.toBeChecked();
 
-    // // eslint-disable-next-line jest-dom/prefer-to-have-value
-    // expect(radios[0]).toHaveAttribute("value", "none");
-    // expect(radios[0]).toBeChecked();
+    const currencyStyleWidget = screen.getByTestId(
+      "currency_style-formatting-setting",
+    );
 
-    // // eslint-disable-next-line jest-dom/prefer-to-have-value
-    // expect(radios[1]).toHaveAttribute("value", "simple");
-    // expect(radios[1]).not.toBeChecked();
+    const dateAbbreviateToggle = await screen.findByRole("switch");
+    expect(dateAbbreviateToggle).not.toBeChecked();
+
+    const symbolRadio = within(currencyStyleWidget).getByLabelText(/symbol/i);
+    const codeRadio = within(currencyStyleWidget).getByLabelText(/code/i);
+    const nameRadio = within(currencyStyleWidget).getByLabelText(/name/i);
+
+    // eslint-disable-next-line jest-dom/prefer-to-have-value
+    expect(symbolRadio).toHaveAttribute("value", "symbol");
+    expect(symbolRadio).toBeChecked();
+
+    // eslint-disable-next-line jest-dom/prefer-to-have-value
+    expect(codeRadio).toHaveAttribute("value", "code");
+    expect(codeRadio).not.toBeChecked();
+
+    // eslint-disable-next-line jest-dom/prefer-to-have-value
+    expect(nameRadio).toHaveAttribute("value", "name");
+    expect(nameRadio).not.toBeChecked();
   });
 
   it("should update multiple settings", async () => {
@@ -98,15 +116,22 @@ describe("PublicSharingSettingsPage", () => {
       await userEvent.click(elementOutside); // blur
     };
 
-    const timezoneInput = await screen.findByDisplayValue("Database Default");
-    await userEvent.clear(timezoneInput);
-    await userEvent.type(timezoneInput, "Mount");
-    await userEvent.click(await screen.findByText("US/Mountain"));
+    const dateStyleInput = await screen.findByDisplayValue("January 31, 2018");
+    dateStyleInput.click();
+    await userEvent.click(await screen.findByText("31/1/2018"));
     blur();
 
-    const startOfWeekInput = await screen.findByDisplayValue("Monday");
-    await userEvent.click(startOfWeekInput);
-    await userEvent.click(await screen.findByText("Tuesday"));
+    const dateAbbreviateToggle = await screen.findByRole("switch");
+    dateAbbreviateToggle.click();
+    blur();
+
+    const timeStyle24HourRadio = await screen.findByLabelText(/24-hour/i);
+    timeStyle24HourRadio.click();
+    blur();
+
+    const seperatorStyleInput = await screen.findByDisplayValue("100,000.00");
+    await userEvent.click(seperatorStyleInput);
+    await userEvent.click(await screen.findByText("100000.00"));
     blur();
 
     const currencyInput = await screen.findByDisplayValue("US Dollar");
@@ -114,30 +139,40 @@ describe("PublicSharingSettingsPage", () => {
     await userEvent.click(await screen.findByText("New Zealand Dollar"));
     blur();
 
+    const currencyStyleNameRadio = await screen.findByLabelText(/name/i);
+    await userEvent.click(currencyStyleNameRadio);
+    blur();
+
     await waitFor(async () => {
       const puts = await findRequests("PUT");
-      expect(puts).toHaveLength(3);
+      expect(puts).toHaveLength(6);
     });
 
     const puts = await findRequests("PUT");
-    const { url: timezonePutUrl, body: timezonePutBody } = puts[0];
-    const { url: startOfWeekPutUrl, body: startOfWeekPutBody } = puts[1];
-    const { url: currencyPutUrl, body: currencyPutBody } = puts[2];
-
-    expect(timezonePutUrl).toContain("/api/setting/report-timezone");
-    expect(timezonePutBody).toEqual({ value: "US/Mountain" });
-
-    expect(startOfWeekPutUrl).toContain("/api/setting/start-of-week");
-    expect(startOfWeekPutBody).toEqual({ value: "tuesday" });
-
-    expect(currencyPutUrl).toContain("/api/setting/custom-formatting");
-    // custom-formatting is a nested JSON object. This just checks the currency value
-    // to avoid being coupled to the entire object structure
-    expect(currencyPutBody.value["type/Currency"].currency).toEqual("NZD");
+    const [{ url, body }] = puts.slice(-1); // last put
+    expect(url).toContain("/api/setting/custom-formatting");
+    // the custom-formatting object gets updates merged into it
+    // so the last put should contain the latest values from all the inputs
+    expect(body).toEqual({
+      value: {
+        "type/Currency": {
+          currency: "NZD",
+          currency_style: "name",
+        },
+        "type/Number": {
+          number_separators: ".",
+        },
+        "type/Temporal": {
+          date_abbreviate: true,
+          date_style: "D/M/YYYY",
+          time_style: "HH:mm",
+        },
+      },
+    });
 
     await waitFor(() => {
       const toasts = screen.getAllByLabelText("check icon");
-      expect(toasts).toHaveLength(3);
+      expect(toasts).toHaveLength(6);
     });
   });
 });
