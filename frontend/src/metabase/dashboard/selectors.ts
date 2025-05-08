@@ -101,7 +101,10 @@ export const getFavicon = (state: State) =>
 export const getIsDashCardsRunning = (state: State) =>
   state.dashboard.loadingDashCards.loadingStatus === "running";
 export const getIsDashCardsLoadingComplete = (state: State) =>
-  state.dashboard.loadingDashCards.loadingStatus === "complete";
+  state.dashboard.loadingDashCards.loadingStatus === "complete" ||
+  // we need this condition when there's no cards
+  (state.dashboard.loadingDashCards.loadingIds.length === 0 &&
+    state.dashboard.loadingDashCards.loadingStatus === "idle");
 
 export const getLoadingStartTime = (state: State) =>
   state.dashboard.loadingDashCards.startTime;
