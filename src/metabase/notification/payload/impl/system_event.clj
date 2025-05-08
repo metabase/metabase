@@ -43,6 +43,10 @@
   (fn [event-topic _event-info]
     event-topic))
 
+(defmethod event-info->condition-context :default
+  [_event-topic event-info]
+  event-info)
+
 (defn- sample-for-table
   [table-id changes?]
   (let [order-field    (t2/select-one-fn :field_order :model/Table table-id)
